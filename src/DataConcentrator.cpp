@@ -109,6 +109,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		else
 			std::cout << "Warning: invalid LOG_LEVEL setting: \n'" << value << "\n' : ignoring and using default log level." << std::endl;
 		AdvFileLog.SetLogLevel(LOG_LEVEL);
+		AdvConsoleLog.SetLogLevel(LOG_LEVEL);
 	}
 
 	if(!JSONRoot["Ports"].isNull())
