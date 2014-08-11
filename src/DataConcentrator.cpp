@@ -26,7 +26,7 @@
 
 #include <thread>
 #include <asio.hpp>
-#include <openpal/logging/LogLevels.h>
+#include <opendnp3/LogLevels.h>
 
 #include "DataConcentrator.h"
 #include "Console.h"
@@ -98,16 +98,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 	if(!JSONRoot["LOG_LEVEL"].isNull())
 	{
 		std::string value = JSONRoot["LOG_LEVEL"].asString();
-		if(value == "Event")
-			LOG_LEVEL = openpal::logflags::EVENT;
-		else if(value == "Error")
-			LOG_LEVEL = openpal::logflags::ERR;
-		else if(value == "Warning")
-			LOG_LEVEL = openpal::logflags::WARN;
-		else if(value == "Info")
-			LOG_LEVEL = openpal::logflags::INFO;
-		else if(value == "Debug")
-			LOG_LEVEL = openpal::logflags::DBG;
+		if(value == "ALL")
+			LOG_LEVEL = opendnp3::levels::ALL;
+		else if(value == "ALL_COMMS")
+			LOG_LEVEL = opendnp3::levels::ALL_COMMS;
+		else if(value == "NORMAL")
+			LOG_LEVEL = opendnp3::levels::NORMAL;
+		else if(value == "NOTHING")
+			LOG_LEVEL = opendnp3::levels::NOTHING;
 	}
 
 	if(!JSONRoot["Ports"].isNull())

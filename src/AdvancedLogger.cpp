@@ -26,7 +26,7 @@ AdvancedLogger::AdvancedLogger(openpal::ILogHandler& aBaseLogger, openpal::LogFi
 
 void AdvancedLogger::Log(const openpal::LogEntry& arEntry)
 {
-	if(!(arEntry.GetFilters().GetBitfield() >= LOG_LEVEL.GetBitfield()))
+	if(!(arEntry.GetFilters().GetBitfield() & LOG_LEVEL.GetBitfield()))
 		return;
 	bool DoLog = true;
 	openpal::LogEntry ToPrint(arEntry);
