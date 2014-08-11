@@ -33,7 +33,7 @@
 
 #include "DataPort.h"
 #include "DataConnector.h"
-#include "LogToStdioAdv.h"
+#include "AdvancedLogger.h"
 #include "LogToFile.h"
 #include "ConfigParser.h"
 
@@ -48,16 +48,17 @@ public:
 
 	asiodnp3::DNP3Manager DNP3Mgr;
 	openpal::LogFilters LOG_LEVEL;
-	LogToStdioAdv AdvLog;//just prints messages to the console plus filtering (Adv)
+	AdvancedLogger AdvConsoleLog;//just prints messages to the console plus filtering (Adv)
 	LogToFile FileLog;//Prints all messages to a rolling set of log files.
+	AdvancedLogger AdvFileLog;
 	asiopal::LogFanoutHandler FanoutHandler;
 	asio::io_service IOS;
 	std::unique_ptr<asio::io_service::work> ios_working;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void BuildOrRebuild();
-	void Enable();
-	void Disable();
+	void Run();
+	void Shutdown();
 };
 
 #endif /* DATACONCENTRATOR_H_ */

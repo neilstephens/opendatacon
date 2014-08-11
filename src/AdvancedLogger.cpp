@@ -17,18 +17,22 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */ 
-#include "LogToStdioAdv.h"
-#include <asiodnp3/ConsoleLogger.h>
+#include "AdvancedLogger.h"
 
-openpal::ILogHandler& LogToStdioAdv::console = asiodnp3::ConsoleLogger::Instance();
+AdvancedLogger::AdvancedLogger(openpal::ILogHandler& aBaseLogger, openpal::LogFilters aLOG_LEVEL):
+	BaseLogger(aBaseLogger),
+	LOG_LEVEL(aLOG_LEVEL)
+{}
 
-void LogToStdioAdv::Log(const openpal::LogEntry& arEntry)
+void AdvancedLogger::Log(const openpal::LogEntry& arEntry)
 {
+	if(!(arEntry.GetFilters().GetBitfield() >= LOG_LEVEL.GetBitfield()))
+		return;
 	bool DoLog = true;
 	openpal::LogEntry ToPrint(arEntry);
 	for (MessageCount& reg : IgnoreRepeats)
 	{
-		if(std::regex_match(arEntry.GetMessage(), reg.LogRegex))
+		if(std::regex_match(arEntry.GetMessage(), reg.MessageRegex))
 		{
 			if (reg.Count > 0 && (reg.Decimate == 0 || (reg.Count%reg.Decimate) != 0) && (reg.IgnoreDuration.GetMilliseconds() == 0 || asiopal::UTCTimeSource::Instance().Now().msSinceEpoch < reg.PrintTime.msSinceEpoch+reg.IgnoreDuration.GetMilliseconds()))
 			{
@@ -44,10 +48,10 @@ void LogToStdioAdv::Log(const openpal::LogEntry& arEntry)
 			}
 		}
 	}
-	if (DoLog) console.Log(ToPrint);
+	if (DoLog) BaseLogger.Log(ToPrint);
 }
 
-void LogToStdioAdv::AddIngoreMultiple(const std::string& str)
+void AdvancedLogger::AddIngoreMultiple(const std::string& str)
 {
 	try
 	{
@@ -60,7 +64,7 @@ void LogToStdioAdv::AddIngoreMultiple(const std::string& str)
 	}
 }
 
-void LogToStdioAdv::AddIngoreAlways(const std::string& str)
+void AdvancedLogger::AddIngoreAlways(const std::string& str)
 {
 	try
 	{
@@ -73,7 +77,7 @@ void LogToStdioAdv::AddIngoreAlways(const std::string& str)
 	}
 }
 
-void LogToStdioAdv::AddIngoreDecimate(const std::string& str, int decimate)
+void AdvancedLogger::AddIngoreDecimate(const std::string& str, int decimate)
 {
 	try
 	{
@@ -85,7 +89,7 @@ void LogToStdioAdv::AddIngoreDecimate(const std::string& str, int decimate)
 		return;
 	}
 }
-void LogToStdioAdv::AddIngoreDuration(const std::string& str, openpal::TimeDuration ignore_duration)
+void AdvancedLogger::AddIngoreDuration(const std::string& str, openpal::TimeDuration ignore_duration)
 {
 	try
 	{
@@ -97,11 +101,11 @@ void LogToStdioAdv::AddIngoreDuration(const std::string& str, openpal::TimeDurat
 		return;
 	}
 }
-void LogToStdioAdv::RemoveIgnore(const std::string& str)
+void AdvancedLogger::RemoveIgnore(const std::string& str)
 {
 	for(auto ignored = IgnoreRepeats.begin(); ignored != IgnoreRepeats.end(); ignored++)
 	{
-		if(ignored->LogRegex_string == str)
+		if(ignored->MessageRegex_string == str)
 		{
 			IgnoreRepeats.erase(ignored);
 			return;
@@ -109,10 +113,10 @@ void LogToStdioAdv::RemoveIgnore(const std::string& str)
 	}
 	std::cout<<"Ignore regex '"<<str<<"' not found - not removing anything"<<std::endl;
 }
-void LogToStdioAdv::ShowIgnored()
+void AdvancedLogger::ShowIgnored()
 {
 	for(auto ignored : IgnoreRepeats)
 	{
-		std::cout<<ignored.LogRegex_string<<"\t\t silenced "<<ignored.Count<<" messages"<<std::endl;
+		std::cout<<ignored.MessageRegex_string<<"\t\t silenced "<<ignored.Count<<" messages"<<std::endl;
 	}
 }

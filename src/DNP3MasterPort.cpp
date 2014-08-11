@@ -44,11 +44,32 @@ void DNP3MasterPort::Disable()
 	pMaster->Disable();
 	enabled = false;
 }
+void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
+{
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	for(auto IOHandler_pair : Subscribers)
+	{
+		bool failed;
+		if(state == opendnp3::ChannelState::CLOSED || state == opendnp3::ChannelState::SHUTDOWN || state == opendnp3::ChannelState::WAITING)
+		{
+			for(auto index : pConf->pPointConf->AnalogIndicies)
+				IOHandler_pair.second->Event(opendnp3::Analog(0.0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),index,this->Name);
+			for(auto index : pConf->pPointConf->BinaryIndicies)
+				IOHandler_pair.second->Event(opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)),index,this->Name);
+			failed = pConf->pPointConf->mCommsPoint.first.value;
+		}
+		else
+			failed = !pConf->pPointConf->mCommsPoint.first.value;
+
+		if(pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
+			IOHandler_pair.second->Event(opendnp3::Binary(failed),pConf->pPointConf->mCommsPoint.second,this->Name);
+	}
+}
 void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	auto IPPort = pConf->mAddrConf.IP + std::to_string(pConf->mAddrConf.Port);
-	auto log_id = "tcp_client_"+IPPort;
+	auto IPPort = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
+	auto log_id = "mast_"+IPPort;
 
 	//create a new channel if one isn't already up
 	if(!TCPChannels.count(IPPort))
@@ -60,26 +81,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 											pConf->mAddrConf.Port);
 	}
 	//Add a callback to get notified when the channel changes state
-	TCPChannels[IPPort]->AddStateListener([=](opendnp3::ChannelState state)
-	{
-		for(auto IOHandler_pair : Subscribers)
-		{
-			bool failed;
-			if(state == opendnp3::ChannelState::CLOSED || state == opendnp3::ChannelState::SHUTDOWN)
-			{
-				for(auto index : pConf->pPointConf->AnalogIndicies)
-					IOHandler_pair.second->Event(opendnp3::Analog(0.0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),index,this->Name);
-				for(auto index : pConf->pPointConf->BinaryIndicies)
-					IOHandler_pair.second->Event(opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)),index,this->Name);
-				failed = pConf->pPointConf->mCommsPoint.first.value;
-			}
-			else
-				failed = !pConf->pPointConf->mCommsPoint.first.value;
-
-			if(pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
-					IOHandler_pair.second->Event(opendnp3::Binary(failed),pConf->pPointConf->mCommsPoint.second,this->Name);
-		}
-	});
+	TCPChannels[IPPort]->AddStateListener(std::bind(&DNP3MasterPort::StateListener,this,std::placeholders::_1));
 
 	opendnp3::MasterStackConfig StackConfig;
 	StackConfig.link.LocalAddr = pConf->mAddrConf.MasterAddr;

@@ -44,6 +44,7 @@ public:
 	void Enable();
 	void Disable();
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
+	void StateListener(opendnp3::ChannelState state);
 
 	//implement ISOEHandler
 	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas);
@@ -68,8 +69,8 @@ public:
 
 protected:
 
-	void Start() final {}
-	void End() final {}
+	void Start() override final {}
+	void End() override final {}
 
 };
 

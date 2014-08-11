@@ -20,6 +20,7 @@
 #pragma once
 
 #include <openpal/logging/ILogHandler.h>
+#include <opendnp3/LogLevels.h>
 #include <asiopal/UTCTimeSource.h>
 #include <openpal/executor/UTCTimestamp.h>
 #include <openpal/executor/TimeDuration.h>
@@ -31,40 +32,41 @@ class MessageCount
 {
 public:
 	MessageCount(std::string aRegex_str, int aCount) :
-		LogRegex(aRegex_str.c_str()),
-		LogRegex_string(aRegex_str),
+		MessageRegex(aRegex_str.c_str()),
+		MessageRegex_string(aRegex_str),
 		Count(aCount),
 		Decimate(0),
 		IgnoreDuration(openpal::TimeDuration::Milliseconds(0)),
 		PrintTime(0)
 	{};
 	MessageCount(std::string aRegex_str, int aCount, int decimate) :
-		LogRegex(aRegex_str.c_str()),
-		LogRegex_string(aRegex_str),
+		MessageRegex(aRegex_str.c_str()),
+		MessageRegex_string(aRegex_str),
 		Count(aCount),
 		Decimate(decimate),
 		IgnoreDuration(openpal::TimeDuration::Milliseconds(0)),
 		PrintTime(0)
 	{};
 	MessageCount(std::string aRegex_str, int aCount, openpal::TimeDuration ignore_duration) :
-		LogRegex(aRegex_str.c_str()),
-		LogRegex_string(aRegex_str),
+		MessageRegex(aRegex_str.c_str()),
+		MessageRegex_string(aRegex_str),
 		Count(aCount),
 		Decimate(0),
 		IgnoreDuration(ignore_duration),
 		PrintTime(asiopal::UTCTimeSource::Instance().Now())
 	{};
-	std::regex LogRegex;
-	std::string LogRegex_string;
+	std::regex MessageRegex;
+	std::string MessageRegex_string;
 	int Count;
 	int Decimate;
 	openpal::TimeDuration IgnoreDuration;
 	openpal::UTCTimestamp PrintTime;
 };
 
-class LogToStdioAdv : public openpal::ILogHandler
+class AdvancedLogger : public openpal::ILogHandler
 {
 public:
+	AdvancedLogger(openpal::ILogHandler& aBaseLogger, openpal::LogFilters aLOG_LEVEL);
 	void Log(const openpal::LogEntry& arEntry);
 	void AddIngoreMultiple(const std::string& str);
 	void AddIngoreAlways(const std::string& str);
@@ -74,7 +76,8 @@ public:
 	void ShowIgnored();
 
 private:
-	static openpal::ILogHandler& console;
+	openpal::ILogHandler& BaseLogger;
+	openpal::LogFilters LOG_LEVEL;
 	std::vector<MessageCount> IgnoreRepeats;
 };
 

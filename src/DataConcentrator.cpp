@@ -29,6 +29,10 @@
 #include <openpal/logging/LogLevels.h>
 
 #include "DataConcentrator.h"
+#include "Console.h"
+
+#include <asiodnp3/ConsoleLogger.h>
+#include "logging_cmds.h"
 #include "DNP3OutstationPort.h"
 #include "DNP3MasterPort.h"
 #include "../JSONPort/JSONClientPort.h"
@@ -37,7 +41,9 @@
 DataConcentrator::DataConcentrator(std::string FileName):
 	DNP3Mgr(std::thread::hardware_concurrency()),
 	LOG_LEVEL(openpal::logflags::WARN),
+	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
 	FileLog("datacon_log"),
+	AdvFileLog(FileLog,LOG_LEVEL),
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS))
 {
@@ -45,24 +51,24 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	for(size_t i=0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
 
-	AdvLog.AddIngoreAlways(".*"); //silence all console messages by default
-	DNP3Mgr.AddLogSubscriber(&AdvLog);
-	DNP3Mgr.AddLogSubscriber(&FileLog);
+	AdvConsoleLog.AddIngoreAlways(".*"); //silence all console messages by default
+	DNP3Mgr.AddLogSubscriber(&AdvConsoleLog);
+	DNP3Mgr.AddLogSubscriber(&AdvFileLog);
 
 	//Parse the configs and create all the ports and connections
 	ProcessFile(FileName);
 
 	for(auto& port : DataPorts)
 	{
-		port.second->AddLogSubscriber(&AdvLog);
-		port.second->AddLogSubscriber(&FileLog);
+		port.second->AddLogSubscriber(&AdvConsoleLog);
+		port.second->AddLogSubscriber(&AdvFileLog);
 		port.second->SetIOS(&IOS);
 		port.second->SetLogLevel(LOG_LEVEL);
 	}
 	for(auto& conn : DataConnectors)
 	{
-		conn.second->AddLogSubscriber(&AdvLog);
-		conn.second->AddLogSubscriber(&FileLog);
+		conn.second->AddLogSubscriber(&AdvConsoleLog);
+		conn.second->AddLogSubscriber(&AdvFileLog);
 		conn.second->SetIOS(&IOS);
 		conn.second->SetLogLevel(LOG_LEVEL);
 	}
@@ -70,7 +76,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 DataConcentrator::~DataConcentrator()
 {
 	//turn everything off
-	this->Disable();
+	this->Shutdown();
 	DNP3Mgr.Shutdown();
 	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
 	ios_working.reset();
@@ -163,7 +169,7 @@ void DataConcentrator::BuildOrRebuild()
 		Name_n_Conn.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
 	}
 }
-void DataConcentrator::Enable()
+void DataConcentrator::Run()
 {
 	for(auto& Name_n_Conn : DataConnectors)
 	{
@@ -179,8 +185,31 @@ void DataConcentrator::Enable()
 			Name_n_Port.second->Enable();
 		});
 	}
+
+	Console console("odc> ");
+
+	std::function<void (std::stringstream&)> bound_func;
+
+	//console logging control
+	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(AdvConsoleLog));
+	console.AddCmd("ignore_message",bound_func,"Enter regex to silence matching messages from the console logger.");
+	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(AdvConsoleLog));
+	console.AddCmd("unignore_message",bound_func,"Enter regex to remove from the console ignore list.");
+	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(AdvConsoleLog));
+	console.AddCmd("show_ignored",bound_func,"Shows all console message ignore regexes and how many messages they've matched.");
+
+	//file logging control
+	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(AdvFileLog));
+	console.AddCmd("ignore_file_message",bound_func,"Enter regex to silence matching messages from the file logger.");
+	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(AdvFileLog));
+	console.AddCmd("unignore_file_message",bound_func,"Enter regex to remove from the file ignore list.");
+	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(AdvFileLog));
+	console.AddCmd("show_file_ignored",bound_func,"Shows all file message ignore regexes and how many messages they've matched.");
+
+	console.run();
+	Shutdown();
 }
-void DataConcentrator::Disable()
+void DataConcentrator::Shutdown()
 {
 	for(auto& Name_n_Port : DataPorts)
 	{
