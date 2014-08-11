@@ -30,7 +30,7 @@
 #include <memory>
 #include <opendatacon/DataPortConf.h>
 #include <opendatacon/AddrConf.h>
-#include <opendatacon/JSONPointConf.h>
+#include "JSONPointConf.h"
 
 class JSONPortConf: public DataPortConf
 {

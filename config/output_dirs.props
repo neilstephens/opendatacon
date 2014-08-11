@@ -5,4 +5,13 @@
     <OutDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
+  <!--<Target Name="CopyContent" BeforeTargets="Build">
+    <ItemGroup>
+      <DeployFileGroup Include="**\*.h;" />
+    </ItemGroup>
+    <Copy DestinationFolder="$(SolutionDir)\include\$(ProjectName)\"
+	  SkipUnchangedFiles="True"
+	  SourceFiles="@(DeployFileGroup)"
+	  UseHardLinkIfPossible="True" />
+  </Target>-->
 </Project>
