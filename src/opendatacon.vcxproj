@@ -222,7 +222,6 @@
     <ClInclude Include="DNP3PortConf.h" />
     <ClInclude Include="IndexOffsetTransform.h" />
     <ClInclude Include="IOHandler.h" />
-    <ClInclude Include="JSONPointConf.h" />
     <ClInclude Include="NullPort.h" />
     <ClInclude Include="Transform.h" />
   </ItemGroup>

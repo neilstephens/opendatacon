@@ -80,9 +80,6 @@
     <ClInclude Include="IOHandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="JSONPointConf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="NullPort.h">
       <Filter>Header Files</Filter>
     </ClInclude>

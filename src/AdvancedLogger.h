@@ -74,6 +74,7 @@ public:
 	void AddIngoreDuration(const std::string& str, openpal::TimeDuration ignore_duration);
 	void RemoveIgnore(const std::string& str);
 	void ShowIgnored();
+	void SetLogLevel(openpal::LogFilters aLOG_LEVEL);
 
 private:
 	openpal::ILogHandler& BaseLogger;

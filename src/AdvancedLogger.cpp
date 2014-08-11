@@ -120,3 +120,7 @@ void AdvancedLogger::ShowIgnored()
 		std::cout<<ignored.MessageRegex_string<<"\t\t silenced "<<ignored.Count<<" messages"<<std::endl;
 	}
 }
+void AdvancedLogger::SetLogLevel(openpal::LogFilters aLOG_LEVEL)
+{
+	LOG_LEVEL = aLOG_LEVEL;
+}
