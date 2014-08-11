@@ -69,13 +69,17 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	opendnp3::OutstationStackConfig StackConfig;
 	StackConfig.link.LocalAddr = pConf->mAddrConf.OutstationAddr;
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
-	StackConfig.link.NumRetry = openpal::TimeDuration::Seconds(5);
-	StackConfig.link.Timeout = openpal::TimeDuration::Seconds(30);
+	StackConfig.link.NumRetry = 5;
+	StackConfig.link.Timeout = openpal::TimeDuration::Seconds(5);
 	StackConfig.link.UseConfirms = pConf->pPointConf->UseConfirms;
 	StackConfig.outstation.defaultEventResponses.analog = pConf->pPointConf->EventAnalogResponse;
 	StackConfig.outstation.defaultEventResponses.binary = pConf->pPointConf->EventBinaryResponse;
 	StackConfig.outstation.params.allowUnsolicited = pConf->pPointConf->EnableUnsol;
 	StackConfig.outstation.params.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
+	StackConfig.outstation.params.selectTimeout = openpal::TimeDuration::Seconds(300);/// How long the outstation will allow an operate to proceed after a prior select
+	StackConfig.outstation.params.solConfirmTimeout = openpal::TimeDuration::Seconds(300);/// Timeout for solicited confirms
+	StackConfig.outstation.params.unsolConfirmTimeout = openpal::TimeDuration::Seconds(300); /// Timeout for unsolicited confirms
+	StackConfig.outstation.params.unsolRetryTimeout = openpal::TimeDuration::Seconds(300); /// Timeout for unsolicited retries
 	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = 1000;//TODO: event buf size config item
 	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = 1000;
 
