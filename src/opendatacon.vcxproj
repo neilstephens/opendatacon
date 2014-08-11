@@ -117,7 +117,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;ASIO_STANDALONE;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -141,7 +141,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;ASIO_STANDALONE;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -165,7 +165,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;ASIO_STANDALONE;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -182,12 +182,12 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AdvancedLogger.cpp" />
     <ClCompile Include="CommandCorrespondant.cpp" />
     <ClCompile Include="ConfigParser.cpp" />
     <ClCompile Include="Console.cpp" />
     <ClCompile Include="logging_cmds.cpp" />
     <ClCompile Include="LogToFile.cpp" />
-    <ClCompile Include="LogToStdioAdv.cpp" />
     <ClCompile Include="tinycon.cpp" />
     <ClCompile Include="util.cpp" />
     <ClCompile Include="DataConcentrator.cpp" />
@@ -201,12 +201,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AddrConf.h" />
+    <ClInclude Include="AdvancedLogger.h" />
     <ClInclude Include="CommandCorrespondant.h" />
     <ClInclude Include="ConfigParser.h" />
     <ClInclude Include="Console.h" />
     <ClInclude Include="logging_cmds.h" />
     <ClInclude Include="LogToFile.h" />
-    <ClInclude Include="LogToStdioAdv.h" />
     <ClInclude Include="tinycon.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="CommandCallbackPromise.h" />

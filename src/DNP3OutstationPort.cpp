@@ -54,8 +54,8 @@ void DNP3OutstationPort::Disable()
 void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	auto IPPort = pConf->mAddrConf.IP + std::to_string(pConf->mAddrConf.Port);
-	auto log_id = "tcp_serv_"+IPPort;
+	auto IPPort = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
+	auto log_id = "outst_"+IPPort;
 
 	//create a new channel if one isn't already up
 	if(!TCPChannels.count(IPPort))

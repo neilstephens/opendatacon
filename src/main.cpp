@@ -24,28 +24,50 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+/*TODO:
+ * 	-fix logging:
+ * 		-use log level properly
+ * 		-cmd to change log level on the fly (part of config cmds: see below)
+ * 	-add config change commands
+ * 		-implement BuildOrRebuild properly for changed configs
+ * 		-cmd to apply config item from command line
+ * 		-cmd to load config from file
+ * 		-save config to file
+ * 	-add maintenance commands:
+ * 		-enable/disable/restart ports/connectors/connections
+ * 	-remove the need for DNP3Manager and two threadpools?
+ * 		-DataConcentrator class can do it all
+ * 	-implement plugin architecture - the following should be plugins:
+ * 		-DataPort implementations
+ * 		-Transform implementations
+ * 	-add a network interface to the console
+ *	-network logging
+ *	-daemon mode
+ *	-more dataports to implement:
+ *		-EventGenPort (random events ala old test_slaves util)
+ *		-C37.118
+ *		-NMEA 2k / CANv2
+ *		-NMEA 0183
+ *		-XMLoHTML (inc. Gridlab-D)
+ *		-JSONoHTML
+ */
+
 #include "DataConcentrator.h"
-#include "Console.h"
 
 int main(int argc, char* argv[])
 {
 	try
 	{
-		//default for commandline args
-		std::string ConfFileName = "datacon.conf";
-
+		//default config file
+		std::string ConfFileName = "opendatacon.conf";
+		//override if there's one provided
 		if (argc>1)
 			ConfFileName = argv[1];
 
 		DataConcentrator TheDataConcentrator(ConfFileName);
 		TheDataConcentrator.BuildOrRebuild();
-		TheDataConcentrator.Enable();
+		TheDataConcentrator.Run();
 
-		Console console("datacon> ");
-
-		console.run();
-
-		TheDataConcentrator.Disable();
 	}
 	catch(std::exception& e)
 	{

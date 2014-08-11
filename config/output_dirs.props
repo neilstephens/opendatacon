@@ -5,7 +5,9 @@
     <OutDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
-  <!--<Target Name="CopyContent" BeforeTargets="Build">
+  <!--
+  <ItemDefinitionGroup>
+  <Target Name="CopyContent" BeforeTargets="Build">
     <ItemGroup>
       <DeployFileGroup Include="**\*.h;" />
     </ItemGroup>
@@ -13,5 +15,7 @@
 	  SkipUnchangedFiles="True"
 	  SourceFiles="@(DeployFileGroup)"
 	  UseHardLinkIfPossible="True" />
-  </Target>-->
+  </Target>
+  </ItemDefinitionGroup>  
+  -->
 </Project>

@@ -26,7 +26,7 @@
 
 #include "logging_cmds.h"
 
-void cmd_ignore_message(std::stringstream& args, LogToStdioAdv& AdvLog)
+void cmd_ignore_message(std::stringstream& args, AdvancedLogger& AdvLog)
 {
 	std::string mregex;
 	if(!extract_delimited_string(args,mregex))
@@ -42,7 +42,7 @@ void cmd_ignore_message(std::stringstream& args, LogToStdioAdv& AdvLog)
 	std::cout<<"adding regex "<<mregex<<std::endl;
 	AdvLog.AddIngoreAlways(mregex);
 }
-void cmd_unignore_message(std::stringstream& args, LogToStdioAdv& AdvLog)
+void cmd_unignore_message(std::stringstream& args, AdvancedLogger& AdvLog)
 {
 	std::string arg = "";
 	std::string mregex;
@@ -54,7 +54,7 @@ void cmd_unignore_message(std::stringstream& args, LogToStdioAdv& AdvLog)
 	std::cout<<"removing regex "<<mregex<<std::endl;
 	AdvLog.RemoveIgnore(mregex);
 }
-void cmd_show_ignored(std::stringstream& args, LogToStdioAdv& AdvLog)
+void cmd_show_ignored(std::stringstream& args, AdvancedLogger& AdvLog)
 {
 	AdvLog.ShowIgnored();
 }

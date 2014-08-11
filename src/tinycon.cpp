@@ -18,7 +18,7 @@
 
 // On Unix-like systems, add getch support without curses
 #if !defined(WIN32) && !defined(_WIN32) && !defined(__WIN32)
-int getch ()
+int _getch ()
 {
 	struct termios oldt, newt;
 	int ch;
