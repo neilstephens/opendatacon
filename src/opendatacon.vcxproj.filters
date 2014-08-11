@@ -13,18 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="include">
-      <UniqueIdentifier>{4080d112-a960-446c-a550-d7811f07d5f3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="JSONPort">
-      <UniqueIdentifier>{3e0c5ca9-f45d-4f91-bb39-03bd8315494b}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IOHandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="JSONPointConf.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
@@ -60,9 +51,6 @@
     <ClCompile Include="LogToFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LogToStdioAdv.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="tinycon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -72,14 +60,8 @@
     <ClCompile Include="CommandCorrespondant.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\JSONPort\JSONPortConf.cpp">
-      <Filter>JSONPort</Filter>
-    </ClCompile>
-    <ClCompile Include="..\JSONPort\JSONClientPort.cpp">
-      <Filter>JSONPort</Filter>
-    </ClCompile>
-    <ClCompile Include="..\JSONPort\jsoncpp.cpp">
-      <Filter>JSONPort</Filter>
+    <ClCompile Include="AdvancedLogger.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -146,9 +128,6 @@
     <ClInclude Include="LogToFile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LogToStdioAdv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="tinycon.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -158,17 +137,8 @@
     <ClInclude Include="CommandCorrespondant.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\JSONPort\json\json.h">
-      <Filter>JSONPort</Filter>
-    </ClInclude>
-    <ClInclude Include="..\JSONPort\JSONPortConf.h">
-      <Filter>JSONPort</Filter>
-    </ClInclude>
-    <ClInclude Include="..\JSONPort\JSONClientPort.h">
-      <Filter>JSONPort</Filter>
-    </ClInclude>
-    <ClInclude Include="..\JSONPort\JSONPort.h">
-      <Filter>JSONPort</Filter>
+    <ClInclude Include="AdvancedLogger.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

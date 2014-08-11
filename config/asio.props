@@ -5,6 +5,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
+	  <PreprocessorDefinitions>ASIO_STANDALONE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(ASIO_HOME);</AdditionalIncludeDirectories>
 	</ClCompile>
   </ItemDefinitionGroup>

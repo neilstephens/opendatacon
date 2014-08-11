@@ -30,9 +30,10 @@
 #include <vector>
 #include <unordered_map>
 #include <functional>
-#include "opendnp3/app/MeasurementTypes.h"
-#include "../src/DataPointConf.h"
-#include "../src/ConfigParser.h"
+#include <opendnp3/app/MeasurementTypes.h>
+#include <opendatacon/DataPointConf.h>
+#include <opendatacon/ConfigParser.h>
+#include "../JSON/json/json.h"
 
 class JSONPointConf: public ConfigParser
 {
