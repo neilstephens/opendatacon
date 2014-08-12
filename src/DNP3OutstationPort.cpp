@@ -51,6 +51,16 @@ void DNP3OutstationPort::Disable()
 	pOutstation->Disable();
 	enabled = false;
 }
+void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
+{
+	if(!enabled)
+		return;
+
+	for(auto IOHandler_pair : Subscribers)
+	{
+		IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
+	}
+}
 void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -66,6 +76,10 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 											pConf->mAddrConf.IP,
 											pConf->mAddrConf.Port);
 	}
+
+	//FIXME: change this to listen to the state of the outstation, not it's channel, if there is a callback interface added to the outstation in the future
+	TCPChannels[IPPort]->AddStateListener(std::bind(&DNP3OutstationPort::StateListener,this,std::placeholders::_1));
+
 	opendnp3::OutstationStackConfig StackConfig;
 	StackConfig.link.LocalAddr = pConf->mAddrConf.OutstationAddr;
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;

@@ -48,6 +48,7 @@ public:
 	virtual bool Event(opendnp3::AnalogOutputInt32& arCommand, uint16_t index){return true;};
 	virtual bool Event(opendnp3::AnalogOutputFloat32& arCommand, uint16_t index){return true;};
 	virtual bool Event(opendnp3::AnalogOutputDouble64& arCommand, uint16_t index){return true;};
+	virtual bool Event(bool connection, uint16_t index){return true;};
 
 	std::string params;
 };

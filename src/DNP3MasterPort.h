@@ -44,7 +44,6 @@ public:
 	void Enable();
 	void Disable();
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
-	void StateListener(opendnp3::ChannelState state);
 
 	//implement ISOEHandler
 	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas);
@@ -63,12 +62,14 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
 	asiodnp3::IMaster* pMaster;
+	opendnp3::MasterScan IntegrityScan;
 
 protected:
-
+	void StateListener(opendnp3::ChannelState state);
 	void Start() override final {}
 	void End() override final {}
 

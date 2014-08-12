@@ -34,14 +34,12 @@ void DNP3MasterPort::Enable()
 {
 	if(enabled)
 		return;
-	pMaster->Enable();
 	enabled = true;
 }
 void DNP3MasterPort::Disable()
 {
 	if(!enabled)
 		return;
-	pMaster->Disable();
 	enabled = false;
 }
 void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
@@ -100,7 +98,9 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 
 	// configure integrity scans
 	if(pConf->pPointConf->IntegrityScanRateSec > 0)
-		pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Seconds(pConf->pPointConf->IntegrityScanRateSec));
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Seconds(pConf->pPointConf->IntegrityScanRateSec));
+	else
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Minutes(openpal::MaxValue<int64_t>()));
 
 	// configure event scans
 	if(pConf->pPointConf->EventClass1ScanRateSec > 0)
@@ -138,6 +138,29 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::Analo
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
+
+std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(bool connected, uint16_t index, const std::string& SenderName)
+{
+	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
+	auto cmd_future = cmd_promise.get_future();
+
+	if(!enabled)
+	{
+		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+		return cmd_future;
+	}
+
+	//connected == true means something upstream has connected
+	if(connected)
+	{
+		//enable the stack (does nothing if already enabled)
+		pMaster->Enable();
+		//do an integrity scan
+		IntegrityScan.Demand();
+	}
+
+	return cmd_future;
+}
 
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)

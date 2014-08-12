@@ -65,6 +65,9 @@ public:
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
 
 	asiodnp3::IOutstation* pOutstation;
+
+private:
+	void StateListener(opendnp3::ChannelState state);
 };
 
 #endif /* DNP3SERVERPORT_H_ */

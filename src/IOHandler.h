@@ -59,9 +59,8 @@ public:
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) =0;
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) =0;
 
-	//TODO:
-	//Connect events:
-	//etc.
+	//Connection events:
+	virtual std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName) =0;
 
 	void Subscribe(IOHandler* pIOHandler, std::string aName);
 	void AddLogSubscriber(openpal::ILogHandler* logger);

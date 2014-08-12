@@ -112,6 +112,12 @@ public:
 		Promise.set_value(opendnp3::CommandStatus::NOT_SUPPORTED);
 		return Promise.get_future();
 	};
+	virtual std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName)
+	{
+		auto Promise = std::promise<opendnp3::CommandStatus>();
+		Promise.set_value(opendnp3::CommandStatus::NOT_SUPPORTED);
+		return Promise.get_future();
+	};
 
 	void ProcessElements(const Json::Value& JSONRoot);
 
