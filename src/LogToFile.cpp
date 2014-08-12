@@ -29,9 +29,13 @@
 void LogToFile::Log( const openpal::LogEntry& arEntry )
 {
 	auto time = std::chrono::high_resolution_clock::now();
-	auto num = std::chrono::duration_cast<std::chrono::milliseconds>(time.time_since_epoch()).count();
-	std::lock_guard<std::mutex> get_lock(mMutex);
+	auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time.time_since_epoch()).count() - (1000*std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch()).count());
+	auto as_time_t = std::chrono::high_resolution_clock::to_time_t(time);
+	auto local_time = std::localtime(&as_time_t);
+	char time_formatted[25];
+	std::strftime(time_formatted, 25, "%F %T", local_time);
 
+	std::lock_guard<std::mutex> get_lock(mMutex);
 	if(!mLogFile.is_open())
 	{
 		mLogFile.open(mLogName+std::to_string(mFileIndex)+".txt");
@@ -39,7 +43,7 @@ void LogToFile::Log( const openpal::LogEntry& arEntry )
 			throw std::runtime_error("Failed to open log file");
 	}
 
-	mLogFile << "ms(" << num << ") " << FilterToString(arEntry.GetFilters())<<" - "<<arEntry.GetAlias();
+	mLogFile <<time_formatted<< "." << time_ms <<" - "<< FilterToString(arEntry.GetFilters())<<" - "<<arEntry.GetAlias();
 	if(mPrintLocation && !arEntry.GetLocation())
 		mLogFile << " - " << arEntry.GetLocation();
 	mLogFile << " - " << arEntry.GetMessage();
