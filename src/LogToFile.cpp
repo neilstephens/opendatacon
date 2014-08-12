@@ -26,14 +26,28 @@
 #include <map>
 #include <opendnp3/LogLevels.h>
 
+namespace platformtime
+{
+	tm localtime(const std::time_t* time)
+	{
+		std::tm tm_snapshot;
+		#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
+			localtime_s(tm_snapshot, &time);
+		#else
+			localtime_r(time, &tm_snapshot); // POSIX
+		#endif
+		return tm_snapshot;
+	}
+}
+
 void LogToFile::Log( const openpal::LogEntry& arEntry )
 {
 	auto time = std::chrono::high_resolution_clock::now();
 	auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time.time_since_epoch()).count() - (1000*std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch()).count());
 	auto as_time_t = std::chrono::high_resolution_clock::to_time_t(time);
-	auto local_time = std::localtime(&as_time_t);
+	auto local_time = platformtime::localtime(&as_time_t);
 	char time_formatted[25];
-	std::strftime(time_formatted, 25, "%F %T", local_time);
+	std::strftime(time_formatted, 25, "%F %T", &local_time);
 
 	std::lock_guard<std::mutex> get_lock(mMutex);
 	if(!mLogFile.is_open())
