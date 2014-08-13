@@ -36,11 +36,12 @@
 class DataPort: public IOHandler, public ConfigParser
 {
 public:
-	DataPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):IOHandler(aName),pConf(nullptr)
-	{
-		ConfFilename = aConfFilename;
-		ConfOverrides = aConfOverrides;
-	};
+	DataPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
+		IOHandler(aName),
+		pConf(nullptr),
+		ConfFilename(aConfFilename),
+		ConfOverrides(aConfOverrides)
+	{};
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;

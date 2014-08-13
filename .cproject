@@ -44,13 +44,13 @@
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.1499014253" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.flags.1112080908" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.link.option.libs.979482971" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="stdc++"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiodnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiopal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
+									<listOptionValue builtIn="false" value="stdc++"/>
+									<listOptionValue builtIn="false" value="dl"/>
+									<listOptionValue builtIn="false" value="asiodnp3"/>
+									<listOptionValue builtIn="false" value="asiopal"/>
+									<listOptionValue builtIn="false" value="opendnp3"/>
+									<listOptionValue builtIn="false" value="openpal"/>
+									<listOptionValue builtIn="false" value="m"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.106646688" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
@@ -120,13 +120,13 @@
 							<tool command="g++" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.2094556943" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.flags.1098752613" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.link.option.libs.1835647051" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="stdc++"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiodnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiopal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
+									<listOptionValue builtIn="false" value="stdc++"/>
+									<listOptionValue builtIn="false" value="dl"/>
+									<listOptionValue builtIn="false" value="asiodnp3"/>
+									<listOptionValue builtIn="false" value="asiopal"/>
+									<listOptionValue builtIn="false" value="opendnp3"/>
+									<listOptionValue builtIn="false" value="openpal"/>
+									<listOptionValue builtIn="false" value="m"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1623008596" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
@@ -191,20 +191,20 @@
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.exe.release.option.optimization.level.141187020" name="Optimization Level" superClass="gnu.c.compiler.exe.release.option.optimization.level" value="gnu.c.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.1155757318" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.debugging.gprof.1157133032" name="Generate gprof information (-pg)" superClass="gnu.c.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
-								<option id="gnu.c.compiler.option.include.paths.1101841181" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath"/>
+								<option id="gnu.c.compiler.option.include.paths.1101841181" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.907202805" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.release.1938997470" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.release"/>
 							<tool command="g++" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.1886093899" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.flags.890798384" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.link.option.libs.186873966" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="stdc++"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiodnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiopal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
+									<listOptionValue builtIn="false" value="stdc++"/>
+									<listOptionValue builtIn="false" value="dl"/>
+									<listOptionValue builtIn="false" value="asiodnp3"/>
+									<listOptionValue builtIn="false" value="asiopal"/>
+									<listOptionValue builtIn="false" value="opendnp3"/>
+									<listOptionValue builtIn="false" value="openpal"/>
+									<listOptionValue builtIn="false" value="m"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1623672544" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
@@ -219,7 +219,7 @@
 								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.887353734" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.961849325" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
-								<option id="gnu.both.asm.option.include.paths.1024564871" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
+								<option id="gnu.both.asm.option.include.paths.1024564871" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1151227933" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -278,13 +278,13 @@
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.1135464080" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.flags.615726346" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.link.option.libs.1144433403" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="stdc++"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiodnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiopal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
+									<listOptionValue builtIn="false" value="stdc++"/>
+									<listOptionValue builtIn="false" value="dl"/>
+									<listOptionValue builtIn="false" value="asiodnp3"/>
+									<listOptionValue builtIn="false" value="asiopal"/>
+									<listOptionValue builtIn="false" value="opendnp3"/>
+									<listOptionValue builtIn="false" value="openpal"/>
+									<listOptionValue builtIn="false" value="m"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.473686912" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
@@ -357,13 +357,13 @@
 							<tool command="g++" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.1892422066" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.flags.294186136" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.link.option.libs.712337655" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="stdc++"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiodnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="asiopal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
+									<listOptionValue builtIn="false" value="stdc++"/>
+									<listOptionValue builtIn="false" value="dl"/>
+									<listOptionValue builtIn="false" value="asiodnp3"/>
+									<listOptionValue builtIn="false" value="asiopal"/>
+									<listOptionValue builtIn="false" value="opendnp3"/>
+									<listOptionValue builtIn="false" value="openpal"/>
+									<listOptionValue builtIn="false" value="m"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1647938177" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>

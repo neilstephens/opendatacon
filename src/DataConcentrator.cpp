@@ -24,6 +24,7 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#include <dlfcn.h>
 #include <thread>
 #include <asio.hpp>
 #include <opendnp3/LogLevels.h>
@@ -40,7 +41,7 @@
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	DNP3Mgr(std::thread::hardware_concurrency()),
-	LOG_LEVEL(openpal::logflags::WARN),
+	LOG_LEVEL(opendnp3::levels::NORMAL),
 	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
 	FileLog("datacon_log"),
 	AdvFileLog(FileLog,LOG_LEVEL),
@@ -107,7 +108,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		else if(value == "NOTHING")
 			LOG_LEVEL = opendnp3::levels::NOTHING;
 		else
-			std::cout << "Warning: invalid LOG_LEVEL setting: \n'" << value << "\n' : ignoring and using default log level." << std::endl;
+			std::cout << "Warning: invalid LOG_LEVEL setting: '" << value << "' : ignoring and using 'NORMAL' log level." << std::endl;
 		AdvFileLog.SetLogLevel(LOG_LEVEL);
 		AdvConsoleLog.SetLogLevel(LOG_LEVEL);
 	}
@@ -130,18 +131,37 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new DNP3MasterPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"].asString()));
 			}
-			else if(Ports[n]["Type"].asString() == "JSONClient")
-			{
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new JSONClientPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"].asString()));
-			}
 			else if(Ports[n]["Type"].asString() == "Null")
 			{
 				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"].asString()));
 			}
 			else
 			{
-				//TODO: unrecognised port type should default to seaching for a plugin.
-				continue;
+				std::string libname;
+				if(Ports[n]["Library"].isNull())
+				{
+					libname = "lib"+Ports[n]["Type"].asString()+"Port.so";
+				}
+				else
+				{
+					libname = "lib"+Ports[n]["Library"].asString()+".so";
+				}
+
+				void* portlib = dlopen(libname.c_str(),RTLD_LAZY);
+				if(portlib == nullptr)
+				{
+					std::cout << "Warning: failed to load library '"<<libname<<"' skipping port..."<<std::endl;
+					continue;
+				}
+				std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
+				auto new_port_func = (DataPort*(*)(std::string,std::string,std::string))dlsym(portlib, new_funcname.c_str());
+				if(new_port_func == nullptr)
+				{
+					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' skipping port..."<<std::endl;
+					continue;
+				}
+
+				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"].asString()));
 			}
 		}
 	}

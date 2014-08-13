@@ -52,6 +52,11 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 			}
 
+			if(!IOHandler::IOHandlers.count(JConnections[n]["Port1"].asString()) || !IOHandler::IOHandlers.count(JConnections[n]["Port2"].asString()))
+			{
+				std::cout<<"Warning: invalid port on connection '"<<JConnections[n]["Name"].asString()<<"' skipping..."<<std::endl;
+				continue;
+			}
 			Connections[JConnections[n]["Name"].asString()] = std::make_pair(IOHandler::IOHandlers[JConnections[n]["Port1"].asString()],IOHandler::IOHandlers[JConnections[n]["Port2"].asString()]);
 			//Subscribe to recieve events for the connection
 			IOHandlers[JConnections[n]["Port1"].asString()]->Subscribe(this,this->Name);
