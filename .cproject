@@ -50,17 +50,19 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.106646688" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/armv6-rpi-linux-gnueabi/lib"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1743862312" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
 								</inputType>
-								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.441128983" outputPrefix="build" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
+								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.441128983" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.1068495714" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.206525223" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
@@ -68,7 +70,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -124,9 +126,11 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1623008596" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1919592503" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
@@ -140,7 +144,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -187,6 +191,7 @@
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.exe.release.option.optimization.level.141187020" name="Optimization Level" superClass="gnu.c.compiler.exe.release.option.optimization.level" value="gnu.c.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.1155757318" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.debugging.gprof.1157133032" name="Generate gprof information (-pg)" superClass="gnu.c.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
+								<option id="gnu.c.compiler.option.include.paths.1101841181" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.907202805" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.release.1938997470" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.release"/>
@@ -199,9 +204,11 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1623672544" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.debugging.prof.1406588439" name="Generate prof information (-p)" superClass="gnu.cpp.link.option.debugging.prof" value="false" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.debugging.gprof.1358661995" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" value="false" valueType="boolean"/>
@@ -209,15 +216,16 @@
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
 								</inputType>
-								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.887353734" outputPrefix="build" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
+								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.887353734" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.961849325" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
+								<option id="gnu.both.asm.option.include.paths.1024564871" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1151227933" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -276,18 +284,20 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.473686912" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/armv6-rpi-linux-gnueabi/lib"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.debugging.gprof.1542757098" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" value="true" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.396729094" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
 								</inputType>
-								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.1834817234" outputPrefix="build" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
+								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.1834817234" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.530257087" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1420665783" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
@@ -295,7 +305,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -353,16 +363,18 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opendnp3"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="openpal"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="m"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSONPort"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1647938177" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.debugging.gprof.1638409378" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" value="true" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.68921348" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
 								</inputType>
-								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.1126672948" outputPrefix="build" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
+								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.1126672948" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.2022490717" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1742086381" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
@@ -370,7 +382,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
