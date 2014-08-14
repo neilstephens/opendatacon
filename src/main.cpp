@@ -26,7 +26,6 @@
 
 /*TODO:
  * 	-fix logging:
- * 		-use log level properly
  * 		-cmd to change log level on the fly (part of config cmds: see below)
  * 	-add config change commands
  * 		-implement BuildOrRebuild properly for changed configs
@@ -38,7 +37,7 @@
  * 	-remove the need for DNP3Manager and two threadpools?
  * 		-DataConcentrator class can do it all
  * 	-implement plugin architecture - the following should be plugins:
- * 		-DataPort implementations
+ * 		-DataPort implementations - DONE
  * 		-Transform implementations
  * 	-add a network interface to the console
  *	-network logging
