@@ -4,3 +4,5 @@ build/
 include/
 /Release
 /Debug
+/Release-rpi
+/Debug-rpi

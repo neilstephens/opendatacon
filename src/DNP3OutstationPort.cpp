@@ -109,6 +109,10 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	StackConfig.dbTemplate = opendnp3::DatabaseTemplate(BinIndexes, opendnp3::PointIndexes::EMPTYINDEXES, AnaIndexes);
 
 	pOutstation = TCPChannels[IPPort]->AddOutstation(Name.c_str(), *this, opendnp3::DefaultOutstationApplication::Instance(), StackConfig);
+
+	//TODO:
+	//BinIndexes.operator opendnp3::PointIndexes().GetPosition()
+	//pOutstation->GetDatabase().staticData.analogs.metadata[0].clazz = opendnp3::PointClass::Class1;
 }
 
 template<typename T>

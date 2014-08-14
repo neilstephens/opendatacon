@@ -33,6 +33,9 @@
 									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/openpal/src"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.325296810" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.165636779" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="ASIO_STANDALONE=true"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.23455860" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-gcc" id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.1422195263" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">
@@ -55,10 +58,9 @@
 								<option id="gnu.cpp.link.option.paths.106646688" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/armv6-rpi-linux-gnueabi/lib"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug-rpi}&quot;"/>
 								</option>
-								<option id="gnu.cpp.link.option.other.40065113" superClass="gnu.cpp.link.option.other" valueType="stringList">
+								<option id="gnu.cpp.link.option.other.40065113" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList">
 									<listOptionValue builtIn="false" value="--export-dynamic"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1743862312" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
@@ -112,6 +114,9 @@
 									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/openpal/src"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.287048987" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.1328576604" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="ASIO_STANDALONE=true"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.985564815" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-gcc" id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.764674326" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">
@@ -135,7 +140,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug}&quot;"/>
 								</option>
-								<option id="gnu.cpp.link.option.other.934752129" superClass="gnu.cpp.link.option.other" valueType="stringList">
+								<option id="gnu.cpp.link.option.other.934752129" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList">
 									<listOptionValue builtIn="false" value="--export-dynamic"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1919592503" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
@@ -191,6 +196,9 @@
 								<option id="gnu.cpp.compiler.option.dialect.std.1975786955" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.prof.857099551" name="Generate prof information (-p)" superClass="gnu.cpp.compiler.option.debugging.prof" value="false" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.896299510" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="false" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.999079976" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="ASIO_STANDALONE=true"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.766561429" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-gcc" id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.974694028" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">
@@ -218,7 +226,7 @@
 								</option>
 								<option id="gnu.cpp.link.option.debugging.prof.1406588439" name="Generate prof information (-p)" superClass="gnu.cpp.link.option.debugging.prof" value="false" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.debugging.gprof.1358661995" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" value="false" valueType="boolean"/>
-								<option id="gnu.cpp.link.option.other.224788884" superClass="gnu.cpp.link.option.other" valueType="stringList">
+								<option id="gnu.cpp.link.option.other.224788884" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList">
 									<listOptionValue builtIn="false" value="--export-dynamic"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.130419595" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
@@ -274,6 +282,9 @@
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.731464652" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.1921547530" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.2129869281" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="ASIO_STANDALONE=true"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.159961730" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-gcc" id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.1269701006" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">
@@ -298,11 +309,10 @@
 								<option id="gnu.cpp.link.option.paths.473686912" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/armv6-rpi-linux-gnueabi/lib"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug-rpi}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.debugging.gprof.1542757098" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" value="true" valueType="boolean"/>
-								<option id="gnu.cpp.link.option.other.1753099750" superClass="gnu.cpp.link.option.other" valueType="stringList">
+								<option id="gnu.cpp.link.option.other.1753099750" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList">
 									<listOptionValue builtIn="false" value="--export-dynamic"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.396729094" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
@@ -357,6 +367,9 @@
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.1381428326" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.1502418747" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.771912434" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="ASIO_STANDALONE=true"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.863283236" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-gcc" id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.586210096" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">
@@ -382,7 +395,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort/Debug}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.debugging.gprof.1638409378" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" value="true" valueType="boolean"/>
-								<option id="gnu.cpp.link.option.other.111925443" superClass="gnu.cpp.link.option.other" valueType="stringList">
+								<option id="gnu.cpp.link.option.other.111925443" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList">
 									<listOptionValue builtIn="false" value="--export-dynamic"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.68921348" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
