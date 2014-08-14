@@ -137,22 +137,28 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
+				//Looks for a specific library (for libs that implement more than one class)
 				std::string libname;
-				if(Ports[n]["Library"].isNull())
-				{
-					libname = "lib"+Ports[n]["Type"].asString()+"Port.so";
-				}
-				else
+				if(!Ports[n]["Library"].isNull())
 				{
 					libname = "lib"+Ports[n]["Library"].asString()+".so";
 				}
+				//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
+				else
+				{
+					libname = "lib"+Ports[n]["Type"].asString()+"Port.so";
+				}
 
+				//try to load the lib
 				void* portlib = dlopen(libname.c_str(),RTLD_LAZY);
 				if(portlib == nullptr)
 				{
 					std::cout << "Warning: failed to load library '"<<libname<<"' skipping port..."<<std::endl;
 					continue;
 				}
+
+				//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
+				//it should return a pointer to a heap allocated instance of a descendant of DataPort
 				std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
 				auto new_port_func = (DataPort*(*)(std::string,std::string,std::string))dlsym(portlib, new_funcname.c_str());
 				if(new_port_func == nullptr)
@@ -161,6 +167,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 					continue;
 				}
 
+				//call the creation function and wrap the returned pointer to a new port
 				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"].asString()));
 			}
 		}
