@@ -1,5 +1,6 @@
 build/
 *.suo
+*.vcxproj.user
 include/
 /Release
 /Debug
