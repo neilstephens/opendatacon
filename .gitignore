@@ -6,3 +6,13 @@ include/
 /Debug
 /Release-rpi
 /Debug-rpi
+/blat_json_config.pl
+/Data Concentrator0.txt
+/DMCConnector.conf
+/DMCDNP3.conf
+/DMCDNP3Outstation.conf
+/example_weather.json
+/gmon.out
+/ConnectorSimple.conf
+/opendatacon.conf
+/simple-opendatacon.conf

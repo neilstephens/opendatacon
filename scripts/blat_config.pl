@@ -20,30 +20,30 @@ my $port_template =
 			"Name" : "InPort_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Master",
 			"ConfFilename" : "DMCDNP3.conf",
-			"ConfOverrides" : "{ \"IP\" : \"127.0.0.1\", \"Port\" : 30000, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
+			"ConfOverrides" : "{ \"IP\" : \"10.0.1.2\", \"Port\" : 30000, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
 		},
 		{
 			"Name" : "OutPort_AP_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Outstation",
-			"ConfFilename" : "DMCDNP3.conf",
+			"ConfFilename" : "DMCDNP3Outstation.conf",
 			"ConfOverrides" : "{ \"IP\" : \"0.0.0.0\", \"Port\" : 20000, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
 		},
 		{
 			"Name" : "OutPort_AS_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Outstation",
-			"ConfFilename" : "DMCDNP3.conf",
+			"ConfFilename" : "DMCDNP3Outstation.conf",
 			"ConfOverrides" : "{ \"IP\" : \"0.0.0.0\", \"Port\" : 20001, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
 		},
 		{
 			"Name" : "OutPort_BP_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Outstation",
-			"ConfFilename" : "DMCDNP3.conf",
+			"ConfFilename" : "DMCDNP3Outstation.conf",
 			"ConfOverrides" : "{ \"IP\" : \"0.0.0.0\", \"Port\" : 20002, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
 		},
 		{
 			"Name" : "OutPort_BS_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Outstation",
-			"ConfFilename" : "DMCDNP3.conf",
+			"ConfFilename" : "DMCDNP3Outstation.conf",
 			"ConfOverrides" : "{ \"IP\" : \"0.0.0.0\", \"Port\" : 20003, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
 		}
 ';
@@ -56,22 +56,22 @@ my $connector_header =
 
 my $connection_template =
 '		{
-			"Name" : "Connection_<OUTSTATION_ADDR>_AP",
+			"Name" : "Connection_<OUTSTATION_ADDR>a",
 			"Port1" : "InPort_<OUTSTATION_ADDR>",
 			"Port2" : "OutPort_AP_<OUTSTATION_ADDR>"
 		},
 		{
-			"Name" : "Connection_<OUTSTATION_ADDR>_AS",
+			"Name" : "Connection_<OUTSTATION_ADDR>b",
 			"Port1" : "InPort_<OUTSTATION_ADDR>",
 			"Port2" : "OutPort_AS_<OUTSTATION_ADDR>"
 		},
 		{
-			"Name" : "Connection_<OUTSTATION_ADDR>_BP",
+			"Name" : "Connection_<OUTSTATION_ADDR>c",
 			"Port1" : "InPort_<OUTSTATION_ADDR>",
 			"Port2" : "OutPort_BP_<OUTSTATION_ADDR>"
 		},
 		{
-			"Name" : "Connection_<OUTSTATION_ADDR>_BS",
+			"Name" : "Connection_<OUTSTATION_ADDR>d",
 			"Port1" : "InPort_<OUTSTATION_ADDR>",
 			"Port2" : "OutPort_BS_<OUTSTATION_ADDR>"
 		}
