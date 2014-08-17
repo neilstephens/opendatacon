@@ -57,6 +57,36 @@ uint8_t DNP3PointConf::GetUnsolClassMask()
 	return class_mask;
 }
 
+opendnp3::PointClass GetClass(Json::Value JPoint)
+{
+	opendnp3::PointClass clazz = opendnp3::PointClass::Class1;
+	if(!JPoint["Class"].isNull())
+	{
+		if(JPoint["Class"].isUInt())
+		{
+			switch(JPoint["Class"].asUInt())
+			{
+				case 0:
+					clazz = opendnp3::PointClass::Class0;
+					break;
+				case 1:
+					clazz = opendnp3::PointClass::Class1;
+					break;
+				case 2:
+					clazz = opendnp3::PointClass::Class2;
+					break;
+				case 3:
+					clazz = opendnp3::PointClass::Class3;
+					break;
+				default:
+					std::cout<<"Invalid class for Point: '"<<JPoint.toStyledString()<<"'"<<std::endl;
+					break;
+			}
+		}
+	}
+	return clazz;
+}
+
 void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot["EventClass3ScanRateSec"].isNull())
@@ -111,6 +141,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto Analogs = JSONRoot["Analogs"];
 		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
 		{
+			opendnp3::PointClass clazz = GetClass(Analogs[n]);
 			size_t start, stop;
 			if(!Analogs[n]["Index"].isNull())
 				start = stop = Analogs[n]["Index"].asUInt();
@@ -132,6 +163,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					if(existing_index == index)
 						exists = true;
 
+				AnalogClasses[index] = clazz;
+
 				if(!exists)
 					AnalogIndicies.push_back(index);
 
@@ -142,6 +175,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					{
 						if(AnalogStartVals.count(index))
 							AnalogStartVals.erase(index);
+						if(AnalogClasses.count(index))
+							AnalogClasses.erase(index);
 						for(auto it = AnalogIndicies.begin(); it != AnalogIndicies.end(); it++)
 							if(*it == index)
 							{
@@ -165,6 +200,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto Binaries = JSONRoot["Binaries"];
 		for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
 		{
+			opendnp3::PointClass clazz = GetClass(Binaries[n]);
 			size_t start, stop;
 			if(!Binaries[n]["Index"].isNull())
 				start = stop = Binaries[n]["Index"].asUInt();
@@ -187,6 +223,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					if(existing_index == index)
 						exists = true;
 
+				BinaryClasses[index] = clazz;
+
 				if(!exists)
 					BinaryIndicies.push_back(index);
 
@@ -197,6 +235,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					{
 						if(BinaryStartVals.count(index))
 							BinaryStartVals.erase(index);
+						if(BinaryClasses.count(index))
+							BinaryClasses.erase(index);
 						for(auto it = BinaryIndicies.begin(); it != BinaryIndicies.end(); it++)
 							if(*it == index)
 							{

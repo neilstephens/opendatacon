@@ -48,8 +48,10 @@ public:
 	std::pair<opendnp3::Binary,size_t> mCommsPoint;
 	std::vector<uint32_t> BinaryIndicies;
 	std::map<size_t, opendnp3::Binary> BinaryStartVals;
+	std::map<size_t, opendnp3::PointClass> BinaryClasses;
 	std::vector<uint32_t> AnalogIndicies;
 	std::map<size_t, opendnp3::Analog> AnalogStartVals;
+	std::map<size_t, opendnp3::PointClass> AnalogClasses;
 	std::vector<uint32_t> ControlIndicies;
 	bool EnableUnsol;
 	bool UnsolClass1;
