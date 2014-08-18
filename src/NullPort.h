@@ -27,7 +27,7 @@
 #ifndef NULLPORT_H_
 #define NULLPORT_H_
 
-#include "DataPort.h"
+#include <opendatacon/DataPort.h>
 
 /* The equivalent of /dev/null as a DataPort */
 class NullPort: public DataPort

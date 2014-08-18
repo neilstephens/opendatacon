@@ -28,7 +28,7 @@
 #include <algorithm>
 #include <opendnp3/app/ClassField.h>
 #include "DNP3PointConf.h"
-#include "util.h"
+#include <opendatacon/util.h>
 
 DNP3PointConf::DNP3PointConf(std::string FileName):
 		EnableUnsol(true),

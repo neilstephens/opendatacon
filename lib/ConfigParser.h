@@ -28,7 +28,7 @@
 #define CONFIGPARSER_H_
 
 #include <unordered_map>
-#include "../JSON/json/json.h"
+#include <json/json.h>
 
 class ConfigParser
 {

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>opendatacon</name>
+	<name>DNP3Port</name>
 	<comment></comment>
 	<projects>
 		<project>ODC</project>
+		<project>dnp3-2.0-RC1</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

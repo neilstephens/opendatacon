@@ -28,7 +28,7 @@
 #define INDEXOFFSETTRANSFORM_H_
 
 #include <cstdint>
-#include "Transform.h"
+#include <opendatacon/Transform.h>
 
 class IndexOffsetTransform: public Transform
 {

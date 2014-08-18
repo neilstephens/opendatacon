@@ -34,9 +34,6 @@
 
 #include <asiodnp3/ConsoleLogger.h>
 #include "logging_cmds.h"
-#include "DNP3OutstationPort.h"
-#include "DNP3MasterPort.h"
-#include "../JSONPort/JSONClientPort.h"
 #include "NullPort.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
@@ -122,14 +119,6 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			if(Ports[n]["Type"].isNull() || Ports[n]["Name"].isNull() || Ports[n]["ConfFilename"].isNull())
 			{
 				std::cout<<"Warning: invalid port config: need at least Type, Name, ConfFilename: \n'"<<Ports[n].toStyledString()<<"\n' : ignoring"<<std::endl;
-			}
-			if(Ports[n]["Type"].asString() == "DNP3Outstation")
-			{
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new DNP3OutstationPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"].asString()));
-			}
-			else if(Ports[n]["Type"].asString() == "DNP3Master")
-			{
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new DNP3MasterPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"].asString()));
 			}
 			else if(Ports[n]["Type"].asString() == "Null")
 			{

@@ -33,8 +33,8 @@
 #include <functional>
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/outstation/EventResponseConfig.h>
-#include "DataPointConf.h"
-#include "ConfigParser.h"
+#include <opendatacon/DataPointConf.h>
+#include <opendatacon/ConfigParser.h>
 
 class DNP3PointConf: public ConfigParser
 {

@@ -30,12 +30,13 @@
 #include <asio.hpp>
 #include <unordered_map>
 #include <asiodnp3/DNP3Manager.h>
+#include <opendatacon/DataPort.h>
+#include <opendatacon/ConfigParser.h>
 
-#include "DataPort.h"
 #include "DataConnector.h"
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
-#include "ConfigParser.h"
+
 
 class DataConcentrator: public ConfigParser
 {

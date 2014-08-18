@@ -27,9 +27,9 @@
 #ifndef DATACONNECTOR_H_
 #define DATACONNECTOR_H_
 
-#include "IOHandler.h"
-#include "ConfigParser.h"
-#include "Transform.h"
+#include <opendatacon/IOHandler.h>
+#include <opendatacon/ConfigParser.h>
+#include <opendatacon/Transform.h>
 
 
 class DataConnector: public IOHandler, public ConfigParser

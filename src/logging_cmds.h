@@ -27,7 +27,7 @@
 #ifndef LOGGING_CMDS_H_
 #define LOGGING_CMDS_H_
 
-#include "util.h"
+#include <opendatacon/util.h>
 #include "AdvancedLogger.h"
 #include <sstream>
 

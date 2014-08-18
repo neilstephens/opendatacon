@@ -18,33 +18,22 @@
  *	limitations under the License.
  */ 
 /*
- * JSONPointConf.h
+ * main.cpp
  *
- *  Created on: 22/07/2014
+ *  Created on: 13/08/2014
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#ifndef JSONPOINTCONF_H_
-#define JSONPOINTCONF_H_
+#include "DNP3MasterPort.h"
+#include "DNP3OutstationPort.h"
 
-#include <vector>
-#include <unordered_map>
-#include <functional>
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendatacon/DataPointConf.h>
-#include <opendatacon/ConfigParser.h>
-#include <json/json.h>
-
-class JSONPointConf: public ConfigParser
+extern "C" DNP3MasterPort* new_DNP3MasterPort(std::string Name, std::string File, std::string Overrides)
 {
-public:
-	JSONPointConf(std::string FileName);
+	return new DNP3MasterPort(Name,File,Overrides);
+}
+extern "C" DNP3OutstationPort* new_DNP3OutstationPort(std::string Name, std::string File, std::string Overrides)
+{
+	return new DNP3OutstationPort(Name,File,Overrides);
+}
 
-	void ProcessElements(const Json::Value& JSONRoot);
 
-	std::map<size_t, Json::Value> Binaries;
-	std::map<size_t, Json::Value> Analogs;
-	std::map<size_t, Json::Value> Controls;
-};
-
-#endif /* JSONPOINTCONF_H_ */
