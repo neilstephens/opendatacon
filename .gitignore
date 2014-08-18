@@ -16,3 +16,7 @@ include/
 /ConnectorSimple.conf
 /opendatacon.conf
 /simple-opendatacon.conf
+.directory
+WeatherStationBuild/*
+
+
