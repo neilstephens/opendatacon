@@ -32,12 +32,33 @@
 /* The equivalent of /dev/null as a DataPort */
 class NullPort: public DataPort
 {
+private:
+	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+	std::unique_ptr<Timer_t> pTimer;
 public:
 	NullPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
 		DataPort(aName, aConfFilename, aConfOverrides)
 	{};
-	void Enable(){};
-	void Disable(){};
+	void Enable()
+	{
+		pTimer.reset(new Timer_t(*pIOS, std::chrono::seconds(3)));
+		pTimer->async_wait(
+				[this](asio::error_code err_code)
+				{
+					for(auto IOHandler_pair : Subscribers)
+					{
+						IOHandler_pair.second->Event(true, 0, this->Name);
+					}
+				});
+		return;
+	};
+	void Disable()
+	{
+		for(auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(false, 0, this->Name);
+		}
+	};
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL){};
 	void ProcessElements(const Json::Value& JSONRoot){};
 

@@ -224,8 +224,107 @@ void DataConcentrator::Run()
 	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(AdvFileLog));
 	console.AddCmd("show_file_ignored",bound_func,"Shows all file message ignore regexes and how many messages they've matched.");
 
+	//disable/enable/restart
+	bound_func = std::bind(&DataConcentrator::EnablePortOrConn,this,std::placeholders::_1,true);
+	console.AddCmd("enable",bound_func,"Enable ports and/or connectors matching a regex (by name)");
+	bound_func = std::bind(&DataConcentrator::EnablePortOrConn,this,std::placeholders::_1,false);
+	console.AddCmd("disable",bound_func,"Disable ports and/or connectors matching a regex (by name)");
+	bound_func = std::bind(&DataConcentrator::RestartPortOrConn,this,std::placeholders::_1);
+	console.AddCmd("restart",bound_func,"Restart ports and/or connectors matching a regex (by name)");
+
+	//list ports/connectors
+	bound_func = std::bind(&DataConcentrator::ListPorts,this,std::placeholders::_1);
+	console.AddCmd("lsports",bound_func,"List ports matching a regex (by name)");
+	bound_func = std::bind(&DataConcentrator::ListConns,this,std::placeholders::_1);
+	console.AddCmd("lsconns",bound_func,"List connectors matching a regex (by name)");
+
 	console.run();
 	Shutdown();
+}
+void DataConcentrator::RestartPortOrConn(std::stringstream& args)
+{
+	EnablePortOrConn(args,false);
+	EnablePortOrConn(args,true);
+}
+void DataConcentrator::EnablePortOrConn(std::stringstream& args, bool enable)
+{
+	std::string arg = "";
+	std::string mregex;
+	std::regex reg;
+	if(!extract_delimited_string(args,mregex))
+	{
+		std::cout<<"Syntax error: Delimited regex expected, found \"..."<<mregex<<"\""<<std::endl;
+		return;
+	}
+	try
+	{
+		reg = std::regex(mregex);
+	}
+	catch(std::exception& e)
+	{
+		std::cout<<e.what()<<std::endl;
+		return;
+	}
+	for(auto& Name_n_Conn : DataConnectors)
+	{
+		if(std::regex_match(Name_n_Conn.first, reg))
+			enable ? Name_n_Conn.second->Enable() : Name_n_Conn.second->Disable();
+	}
+	for(auto& Name_n_Port : DataPorts)
+	{
+		if(std::regex_match(Name_n_Port.first, reg))
+			enable ? Name_n_Port.second->Enable() : Name_n_Port.second->Disable();
+	}
+}
+void DataConcentrator::ListPorts(std::stringstream& args)
+{
+	std::string arg = "";
+	std::string mregex;
+	std::regex reg;
+	if(!extract_delimited_string(args,mregex))
+	{
+		std::cout<<"Syntax error: Delimited regex expected, found \"..."<<mregex<<"\""<<std::endl;
+		return;
+	}
+	try
+	{
+		reg = std::regex(mregex);
+	}
+	catch(std::exception& e)
+	{
+		std::cout<<e.what()<<std::endl;
+		return;
+	}
+	for(auto& Name_n_Port : DataPorts)
+	{
+		if(std::regex_match(Name_n_Port.first, reg))
+			std::cout<<Name_n_Port.first<<std::endl;
+	}
+}
+void DataConcentrator::ListConns(std::stringstream& args)
+{
+	std::string arg = "";
+	std::string mregex;
+	std::regex reg;
+	if(!extract_delimited_string(args,mregex))
+	{
+		std::cout<<"Syntax error: Delimited regex expected, found \"..."<<mregex<<"\""<<std::endl;
+		return;
+	}
+	try
+	{
+		reg = std::regex(mregex);
+	}
+	catch(std::exception& e)
+	{
+		std::cout<<e.what()<<std::endl;
+		return;
+	}
+	for(auto& Name_n_Conn : DataConnectors)
+	{
+		if(std::regex_match(Name_n_Conn.first, reg))
+			std::cout<<Name_n_Conn.first<<std::endl;
+	}
 }
 void DataConcentrator::Shutdown()
 {
