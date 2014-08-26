@@ -110,9 +110,17 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 
 	pOutstation = TCPChannels[IPPort]->AddOutstation(Name.c_str(), *this, opendnp3::DefaultOutstationApplication::Instance(), StackConfig);
 
-	//TODO:
-	//BinIndexes.operator opendnp3::PointIndexes().GetPosition()
-	//pOutstation->GetDatabase().staticData.analogs.metadata[0].clazz = opendnp3::PointClass::Class1;
+	for(auto index : pConf->pPointConf->AnalogIndicies)
+	{
+		auto pos = AnaIndexes.operator opendnp3::PointIndexes().GetPosition(index);
+		pOutstation->GetDatabase().staticData.analogs.metadata[pos].clazz = pConf->pPointConf->AnalogClasses[index];
+		pOutstation->GetDatabase().staticData.analogs.metadata[pos].deadband = pConf->pPointConf->AnalogDeadbands[index];
+	}
+	for(auto index : pConf->pPointConf->BinaryIndicies)
+	{
+		auto pos = BinIndexes.operator opendnp3::PointIndexes().GetPosition(index);
+		pOutstation->GetDatabase().staticData.analogs.metadata[pos].clazz = pConf->pPointConf->BinaryClasses[index];
+	}
 }
 
 template<typename T>

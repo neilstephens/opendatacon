@@ -141,6 +141,11 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto Analogs = JSONRoot["Analogs"];
 		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
 		{
+			double deadband = 0;
+			if(!Analogs[n]["Deadband"].isNull())
+			{
+				deadband = Analogs[n]["Deadband"].asDouble();
+			}
 			opendnp3::PointClass clazz = GetClass(Analogs[n]);
 			size_t start, stop;
 			if(!Analogs[n]["Index"].isNull())
@@ -164,6 +169,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 						exists = true;
 
 				AnalogClasses[index] = clazz;
+				AnalogDeadbands[index] = deadband;
 
 				if(!exists)
 					AnalogIndicies.push_back(index);

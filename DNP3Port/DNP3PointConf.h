@@ -52,6 +52,7 @@ public:
 	std::vector<uint32_t> AnalogIndicies;
 	std::map<size_t, opendnp3::Analog> AnalogStartVals;
 	std::map<size_t, opendnp3::PointClass> AnalogClasses;
+	std::map<size_t, double> AnalogDeadbands;
 	std::vector<uint32_t> ControlIndicies;
 	bool EnableUnsol;
 	bool UnsolClass1;
