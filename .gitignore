@@ -22,3 +22,4 @@ WeatherStationBuild/*
 
 *.opensdf
 *.sdf
+lib/
