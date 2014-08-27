@@ -218,7 +218,7 @@
     <ProjectReference Include="..\JSON\json.vcxproj">
       <Project>{eabe9ce5-533e-4442-b77c-d554853784ff}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\lib\ODC.vcxproj">
+    <ProjectReference Include="..\ODC\ODC.vcxproj">
       <Project>{6715f2d3-391f-4e19-bb2c-52c1fa102a4a}</Project>
     </ProjectReference>
   </ItemGroup>
