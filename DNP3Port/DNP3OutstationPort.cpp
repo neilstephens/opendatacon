@@ -109,7 +109,21 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	auto BinIndexes = opendnp3::DynamicPointIndexes(BinIndexable);
 	StackConfig.dbTemplate = opendnp3::DatabaseTemplate(BinIndexes, opendnp3::PointIndexes::EMPTYINDEXES, AnaIndexes);
 
-	pOutstation = TCPChannels[IPPort]->AddOutstation(Name.c_str(), *this, opendnp3::DefaultOutstationApplication::Instance(), StackConfig);
+    auto TargetChan = TCPChannels[IPPort];
+    
+    if (TargetChan == nullptr)
+    {
+        std::cout << "TCP channel not found for outstation '" << Name << std::endl;
+        return;
+    }
+    
+	pOutstation = TargetChan->AddOutstation(Name.c_str(), *this, opendnp3::DefaultOutstationApplication::Instance(), StackConfig);
+    
+    if (pOutstation == nullptr)
+    {
+        std::cout << "Error creating outstation '" << Name << std::endl;
+        return;
+    }
 
 	for(auto index : pConf->pPointConf->AnalogIndicies)
 	{

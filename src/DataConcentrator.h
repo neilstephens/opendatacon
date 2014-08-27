@@ -44,7 +44,11 @@ const std::string DYNLIBEXT = ".dll";
 #define DYNLIBGETSYM(a,b) GetProcAddress(a, b)
 #else
 const std::string DYNLIBPRE = "lib";
+#ifdef __APPLE__
+const std::string DYNLIBEXT = ".dylib";
+#else
 const std::string DYNLIBEXT = ".so";
+#endif
 #define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
 #define DYNLIBGETSYM(a,b) dlsym(a, b)
 #endif
