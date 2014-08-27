@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{EABE9CE5-533E-4442-B77C-D554853784FF}</ProjectGuid>
-    <RootNamespace>json</RootNamespace>
+    <ProjectGuid>{E875231E-87E1-4707-891D-6CAD448644CF}</ProjectGuid>
+    <RootNamespace>DNP3Port</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -54,29 +54,41 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
+    <Import Project="..\config\asio.props" />
+    <Import Project="..\config\opendatacon.props" />
     <Import Project="..\config\json.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
+    <Import Project="..\config\asio.props" />
+    <Import Project="..\config\opendatacon.props" />
     <Import Project="..\config\json.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
+    <Import Project="..\config\asio.props" />
+    <Import Project="..\config\opendatacon.props" />
     <Import Project="..\config\json.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
+    <Import Project="..\config\asio.props" />
+    <Import Project="..\config\opendatacon.props" />
     <Import Project="..\config\json.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -94,8 +106,9 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ModuleDefinitionFile>JSON.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
     </Link>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -106,8 +119,9 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ModuleDefinitionFile>JSON.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
     </Link>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -122,8 +136,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <ModuleDefinitionFile>JSON.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
     </Link>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -138,15 +153,34 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <ModuleDefinitionFile>JSON.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
     </Link>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="jsoncpp.cpp" />
+    <ClInclude Include="CommandCallbackPromise.h" />
+    <ClInclude Include="CommandCorrespondant.h" />
+    <ClInclude Include="DNP3MasterPort.h" />
+    <ClInclude Include="DNP3OutstationPort.h" />
+    <ClInclude Include="DNP3PointConf.h" />
+    <ClInclude Include="DNP3Port.h" />
+    <ClInclude Include="DNP3PortConf.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="json\json-forwards.h" />
-    <ClInclude Include="json\json.h" />
+    <ClCompile Include="CommandCorrespondant.cpp" />
+    <ClCompile Include="DNP3MasterPort.cpp" />
+    <ClCompile Include="DNP3OutstationPort.cpp" />
+    <ClCompile Include="DNP3PointConf.cpp" />
+    <ClCompile Include="DNP3Port.cpp" />
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\JSON\json.vcxproj">
+      <Project>{eabe9ce5-533e-4442-b77c-d554853784ff}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\lib\ODC.vcxproj">
+      <Project>{6715f2d3-391f-4e19-bb2c-52c1fa102a4a}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

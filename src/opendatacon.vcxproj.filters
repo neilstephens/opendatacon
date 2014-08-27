@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="IOHandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -25,21 +22,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DataConnector.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DNP3MasterPort.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DNP3OutstationPort.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DNP3PointConf.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DNP3Port.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ConfigParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Console.cpp">
@@ -54,39 +36,15 @@
     <ClCompile Include="tinycon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="util.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CommandCorrespondant.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="AdvancedLogger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DNP3PointConf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DNP3Port.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DNP3PortConf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="IndexOffsetTransform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="IOHandler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="NullPort.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Transform.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CommandCallbackPromise.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DataConcentrator.h">
@@ -95,25 +53,7 @@
     <ClInclude Include="DataConnector.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DataPointConf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DataPort.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DataPortConf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DNP3MasterPort.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DNP3OutstationPort.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="AddrConf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ConfigParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Console.h">
@@ -126,12 +66,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="tinycon.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CommandCorrespondant.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AdvancedLogger.h">

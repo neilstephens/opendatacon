@@ -69,11 +69,16 @@ public:
 
 	std::string Name;
 	std::unordered_map<std::string,IOHandler*> Subscribers;
-	static std::unordered_map<std::string,IOHandler*> IOHandlers;
 	std::unique_ptr<asiopal::LogFanoutHandler> pLoggers;
 	openpal::LogFilters LOG_LEVEL;
 	asio::io_service* pIOS;
 	bool enabled;
+
+	// Don't access the following from outside this dll under Windows
+	// due to static issues use GetIOHandlers to return the right reference instead
+	static std::unordered_map<std::string, IOHandler*> IOHandlers;
 };
+
+std::unordered_map<std::string, IOHandler*>& GetIOHandlers();
 
 #endif /* IOHANDLER_H_ */

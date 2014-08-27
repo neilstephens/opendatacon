@@ -37,6 +37,22 @@
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
 
+#ifdef WIN32 
+const std::string DYNLIBPRE = "";
+const std::string DYNLIBEXT = ".dll";
+#define DYNLIBLOAD(a) LoadLibraryExA(a, 0, DWORD(0))
+#define DYNLIBGETSYM(a,b) GetProcAddress(a, b)
+#else
+const std::string DYNLIBPRE = "lib";
+const std::string DYNLIBEXT = ".so";
+#define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
+#define DYNLIBGETSYM(a,b) dlsym(a, b)
+#endif
+
+inline std::string GetLibFileName(const std::string LibName)
+{
+	return DYNLIBPRE + LibName + DYNLIBEXT;
+}
 
 class DataConcentrator: public ConfigParser
 {

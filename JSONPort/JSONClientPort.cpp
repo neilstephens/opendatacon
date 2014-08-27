@@ -190,7 +190,7 @@ void JSONClientPort::ProcessBraced(std::string braced)
 					{
 						value = std::stod(val.asString());
 					}
-					catch(std::exception& e)
+					catch(std::exception&)
 					{
 						LoadT(opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),point_pair.first);
 						continue;

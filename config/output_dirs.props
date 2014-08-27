@@ -2,8 +2,8 @@
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\$(TargetName)\</IntDir>
   </PropertyGroup>
   <!--
   <ItemDefinitionGroup>
@@ -11,7 +11,7 @@
     <ItemGroup>
       <DeployFileGroup Include="**\*.h;" />
     </ItemGroup>
-    <Copy DestinationFolder="$(SolutionDir)\include\$(ProjectName)\"
+    <Copy DestinationFolder="$(SolutionDir)include\$(ProjectName)\"
 	  SkipUnchangedFiles="True"
 	  SourceFiles="@(DeployFileGroup)"
 	  UseHardLinkIfPossible="True" />

@@ -28,7 +28,7 @@
 #define DNP3PORT_H_
 
 #include <opendatacon/DataPort.h>
-#include <opendatacon/DNP3PortConf.h>
+#include "DNP3PortConf.h"
 
 class DNP3Port: public DataPort
 {

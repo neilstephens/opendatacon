@@ -24,7 +24,12 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#ifdef WIN32
+
+#else
 #include <dlfcn.h>
+#endif
+
 #include <thread>
 #include <asio.hpp>
 #include <opendnp3/LogLevels.h>
@@ -130,16 +135,17 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				std::string libname;
 				if(!Ports[n]["Library"].isNull())
 				{
-					libname = "lib"+Ports[n]["Library"].asString()+".so";
+					libname = GetLibFileName(Ports[n]["Library"].asString());
 				}
 				//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
 				else
 				{
-					libname = "lib"+Ports[n]["Type"].asString()+"Port.so";
+					libname = GetLibFileName(Ports[n]["Type"].asString());
 				}
 
 				//try to load the lib
-				void* portlib = dlopen(libname.c_str(),RTLD_LAZY);
+				auto* portlib = DYNLIBLOAD(libname.c_str());
+
 				if(portlib == nullptr)
 				{
 					std::cout << "Warning: failed to load library '"<<libname<<"' skipping port..."<<std::endl;
@@ -149,7 +155,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 				//it should return a pointer to a heap allocated instance of a descendant of DataPort
 				std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-				auto new_port_func = (DataPort*(*)(std::string,std::string,std::string))dlsym(portlib, new_funcname.c_str());
+				auto new_port_func = (DataPort*(*)(std::string, std::string, std::string))DYNLIBGETSYM(portlib, new_funcname.c_str());
+
 				if(new_port_func == nullptr)
 				{
 					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' skipping port..."<<std::endl;

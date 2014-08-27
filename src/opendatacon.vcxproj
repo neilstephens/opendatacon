@@ -59,6 +59,7 @@
     <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
     <Import Project="..\config\opendatacon.props" />
+    <Import Project="..\config\json.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -66,6 +67,7 @@
     <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
     <Import Project="..\config\opendatacon.props" />
+    <Import Project="..\config\json.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -73,6 +75,7 @@
     <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
     <Import Project="..\config\opendatacon.props" />
+    <Import Project="..\config\json.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -80,6 +83,7 @@
     <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
     <Import Project="..\config\opendatacon.props" />
+    <Import Project="..\config\json.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -90,6 +94,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -103,6 +108,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -120,6 +126,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,6 +151,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -152,9 +160,11 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>
-      <Command>mkdir '$(SolutionDir)\include\$(ProjectName)\'; copy '$(ProjectDir)*.h' '$(SolutionDir)\include\$(ProjectName)\';</Command>
+      <Command>mkdir '$(SolutionDir)include\$(ProjectName)\'; copy '$(ProjectDir)*.h' '$(SolutionDir)include\$(ProjectName)\';</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -168,6 +178,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -183,54 +194,32 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AdvancedLogger.cpp" />
-    <ClCompile Include="CommandCorrespondant.cpp" />
-    <ClCompile Include="ConfigParser.cpp" />
     <ClCompile Include="Console.cpp" />
     <ClCompile Include="logging_cmds.cpp" />
     <ClCompile Include="LogToFile.cpp" />
     <ClCompile Include="tinycon.cpp" />
-    <ClCompile Include="util.cpp" />
     <ClCompile Include="DataConcentrator.cpp" />
     <ClCompile Include="DataConnector.cpp" />
-    <ClCompile Include="DNP3MasterPort.cpp" />
-    <ClCompile Include="DNP3OutstationPort.cpp" />
-    <ClCompile Include="DNP3PointConf.cpp" />
-    <ClCompile Include="DNP3Port.cpp" />
-    <ClCompile Include="IOHandler.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AddrConf.h" />
     <ClInclude Include="AdvancedLogger.h" />
-    <ClInclude Include="CommandCorrespondant.h" />
-    <ClInclude Include="ConfigParser.h" />
     <ClInclude Include="Console.h" />
     <ClInclude Include="logging_cmds.h" />
     <ClInclude Include="LogToFile.h" />
     <ClInclude Include="tinycon.h" />
-    <ClInclude Include="util.h" />
-    <ClInclude Include="CommandCallbackPromise.h" />
     <ClInclude Include="DataConcentrator.h" />
     <ClInclude Include="DataConnector.h" />
-    <ClInclude Include="DataPointConf.h" />
-    <ClInclude Include="DataPort.h" />
-    <ClInclude Include="DataPortConf.h" />
-    <ClInclude Include="DNP3MasterPort.h" />
-    <ClInclude Include="DNP3OutstationPort.h" />
-    <ClInclude Include="DNP3PointConf.h" />
-    <ClInclude Include="DNP3Port.h" />
-    <ClInclude Include="DNP3PortConf.h" />
     <ClInclude Include="IndexOffsetTransform.h" />
-    <ClInclude Include="IOHandler.h" />
     <ClInclude Include="NullPort.h" />
-    <ClInclude Include="Transform.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\JSONPort\JSONPort.vcxproj">
-      <Project>{9ca7d982-f912-4881-8219-dfc1e12c1ee9}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\JSON\json.vcxproj">
       <Project>{eabe9ce5-533e-4442-b77c-d554853784ff}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\lib\ODC.vcxproj">
+      <Project>{6715f2d3-391f-4e19-bb2c-52c1fa102a4a}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

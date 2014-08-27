@@ -51,19 +51,21 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			{
 				std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 			}
-
-			if(!IOHandler::IOHandlers.count(JConnections[n]["Port1"].asString()) || !IOHandler::IOHandlers.count(JConnections[n]["Port2"].asString()))
+			auto ConName = JConnections[n]["Name"].asString();
+			auto ConPort1 = JConnections[n]["Port1"].asString();
+			auto ConPort2 = JConnections[n]["Port2"].asString();
+			if ((GetIOHandlers().count(ConPort1) == 0) || (GetIOHandlers().count(ConPort2) == 0))
 			{
-				std::cout<<"Warning: invalid port on connection '"<<JConnections[n]["Name"].asString()<<"' skipping..."<<std::endl;
+				std::cout << "Warning: invalid port on connection '" << ConName << "' skipping..." << std::endl;
 				continue;
 			}
-			Connections[JConnections[n]["Name"].asString()] = std::make_pair(IOHandler::IOHandlers[JConnections[n]["Port1"].asString()],IOHandler::IOHandlers[JConnections[n]["Port2"].asString()]);
+			Connections[ConName] = std::make_pair(GetIOHandlers()[ConPort1], GetIOHandlers()[ConPort2]);
 			//Subscribe to recieve events for the connection
-			IOHandlers[JConnections[n]["Port1"].asString()]->Subscribe(this,this->Name);
-			IOHandlers[JConnections[n]["Port2"].asString()]->Subscribe(this,this->Name);
+			GetIOHandlers()[ConPort1]->Subscribe(this, this->Name);
+			GetIOHandlers()[ConPort2]->Subscribe(this, this->Name);
 			//Add to the lookup table
-			SenderConnectionsLookup.insert(std::make_pair(JConnections[n]["Port1"].asString(), JConnections[n]["Name"].asString()));
-			SenderConnectionsLookup.insert(std::make_pair(JConnections[n]["Port2"].asString(), JConnections[n]["Name"].asString()));
+			SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
+			SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
 		}
 	}
 	if(!JSONRoot["Transforms"].isNull())

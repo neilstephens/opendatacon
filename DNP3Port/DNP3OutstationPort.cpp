@@ -32,6 +32,7 @@
 #include <opendnp3/outstation/TimeTransaction.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include "DNP3OutstationPort.h"
+#include "opendnp3/app/DynamicPointIndexes.h"
 
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides)
@@ -119,7 +120,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	for(auto index : pConf->pPointConf->BinaryIndicies)
 	{
 		auto pos = BinIndexes.operator opendnp3::PointIndexes().GetPosition(index);
-		pOutstation->GetDatabase().staticData.analogs.metadata[pos].clazz = pConf->pPointConf->BinaryClasses[index];
+		pOutstation->GetDatabase().staticData.binaries.metadata[pos].clazz = pConf->pPointConf->BinaryClasses[index];
 	}
 }
 

@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{EABE9CE5-533E-4442-B77C-D554853784FF}</ProjectGuid>
-    <RootNamespace>json</RootNamespace>
+    <ProjectGuid>{6715F2D3-391F-4E19-BB2C-52C1FA102A4A}</ProjectGuid>
+    <RootNamespace>ODC</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -54,29 +54,41 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
+    <Import Project="..\config\asio.props" />
+    <Import Project="..\config\opendatacon.props" />
     <Import Project="..\config\json.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
+    <Import Project="..\config\asio.props" />
+    <Import Project="..\config\opendatacon.props" />
     <Import Project="..\config\json.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
+    <Import Project="..\config\asio.props" />
+    <Import Project="..\config\opendatacon.props" />
     <Import Project="..\config\json.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\config\opendnp3.props" />
     <Import Project="..\config\output_dirs.props" />
+    <Import Project="..\config\asio.props" />
+    <Import Project="..\config\opendatacon.props" />
     <Import Project="..\config\json.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -94,8 +106,10 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ModuleDefinitionFile>JSON.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
+      <ModuleDefinitionFile>ODC.def</ModuleDefinitionFile>
     </Link>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -106,8 +120,10 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ModuleDefinitionFile>JSON.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
+      <ModuleDefinitionFile>ODC.def</ModuleDefinitionFile>
     </Link>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -122,8 +138,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <ModuleDefinitionFile>JSON.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
+      <ModuleDefinitionFile>ODC.def</ModuleDefinitionFile>
     </Link>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -138,15 +156,37 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <ModuleDefinitionFile>JSON.def</ModuleDefinitionFile>
+      <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
+      <ModuleDefinitionFile>ODC.def</ModuleDefinitionFile>
     </Link>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="jsoncpp.cpp" />
+    <ClCompile Include="ConfigParser.cpp" />
+    <ClCompile Include="IOHandler.cpp" />
+    <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="json\json-forwards.h" />
-    <ClInclude Include="json\json.h" />
+    <ClInclude Include="ConfigParser.h" />
+    <ClInclude Include="DataPointConf.h" />
+    <ClInclude Include="DataPort.h" />
+    <ClInclude Include="DataPortConf.h" />
+    <ClInclude Include="IOHandler.h" />
+    <ClInclude Include="Transform.h" />
+    <ClInclude Include="util.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\JSON\json.vcxproj">
+      <Project>{eabe9ce5-533e-4442-b77c-d554853784ff}</Project>
+      <Private>false</Private>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ODC.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

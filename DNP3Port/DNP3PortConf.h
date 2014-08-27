@@ -27,8 +27,8 @@
 #ifndef DNP3OUTSTATIONPORTCONF_H_
 #define DNP3OUTSTATIONPORTCONF_H_
 
-#include "DataPortConf.h"
-#include "AddrConf.h"
+#include <opendatacon/DataPort.h>
+#include <opendatacon/AddrConf.h>
 #include "DNP3PointConf.h"
 
 class DNP3PortConf: public DataPortConf
