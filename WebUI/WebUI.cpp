@@ -64,9 +64,8 @@ void fopen_s(FILE** file, const char * name, const char * mode)
 
 struct connection_info_struct
 {
-    int connectiontype;
-    char *answerstring;
-    struct MHD_PostProcessor *postprocessor;
+    ParamCollection PostValues;
+    struct MHD_PostProcessor *postprocessor = nullptr;
 };
 
 /* Test Certificate */
@@ -188,7 +187,7 @@ int WebUI::ReturnFile(struct MHD_Connection *connection,
     return ret;
 }
 
-int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url, const std::string& params)
+int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url, const ParamCollection& params)
 {
 #define MIMETYPE_JSON "application/json"
 #define MIMETYPE_JSONP "text/javascript"
@@ -196,7 +195,7 @@ int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url,
     struct MHD_Response *response;
     int ret;
     
-    //    Json::FastWriter jsonout;
+    //Json::FastWriter jsonout;
     Json::StyledWriter jsonout;
     
     Json::Value event;
@@ -204,11 +203,6 @@ int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url,
     if (this->JsonResponders.count(url) != 0)
     {
         event = JsonResponders[url]->GetResponse(params);
-    }
-    else
-    {
-        event["url"] = url;
-        event["params"] = params;
     }
     
     std::string jsonstring = jsonout.write(event);
@@ -229,29 +223,71 @@ int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url,
 }
 
 static int
-iterate_post (void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
-              const char *filename, const char *content_type,
-              const char *transfer_encoding, const char *data,
-              uint64_t off, size_t size)
+iterate_post (void *coninfo_cls,
+              enum MHD_ValueKind kind, //MHD_POSTDATA_KIND
+              const char *key, // POST KEY
+              const char *filename,
+              const char *content_type,
+              const char *transfer_encoding,
+              const char *data, // POST VALUE
+              uint64_t off,
+              size_t size // POST VALUE LENGTH
+)
 {
     struct connection_info_struct* con_info = (connection_info_struct*) coninfo_cls;
     
-    if (0 == strcmp (key, "search"))
+    if (kind == MHD_POSTDATA_KIND)
     {
-        if ((size > 0) && (size <= MAXNAMESIZE))
-        {
-            char *answerstring;
-            answerstring = new char[MAXANSWERSIZE];
-            if (!answerstring) return MHD_NO;
-            
-            snprintf (answerstring, MAXANSWERSIZE, "%s", data);
-            con_info->answerstring = answerstring;
-        }
-        else con_info->answerstring = nullptr;
-        
-        return MHD_NO;
+        con_info->PostValues[key] = data;
+        return MHD_YES;
     }
+    return MHD_NO;
+}
+
+static
+void request_completed(void *cls, struct MHD_Connection *connection,
+                        void **con_cls,
+                        enum MHD_RequestTerminationCode toe)
+{
+    struct connection_info_struct *con_info = (connection_info_struct*)*con_cls;
     
+    if (nullptr == con_info) return;
+    if (nullptr != con_info->postprocessor) MHD_destroy_post_processor(con_info->postprocessor);
+    con_info->postprocessor = nullptr;
+    free(con_info);
+    *con_cls = NULL;   
+}
+
+static int CreateNewRequest(void *cls,
+                      struct MHD_Connection *connection,
+                      const char *url,
+                      const char *method,
+                      const char *version,
+                      const char *upload_data,
+                      size_t *upload_data_size,
+                      void **con_cls)
+{
+    struct connection_info_struct *con_info;
+
+    con_info = new connection_info_struct;
+    if (nullptr == con_info) return MHD_NO;
+    
+    if (0 == strcmp (method, "POST"))
+    {
+        con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void*) con_info);
+        
+        if (nullptr == con_info->postprocessor)
+        {
+            free(con_info);
+            return MHD_NO;
+        }
+    }
+    else if (0 != strcmp(method, MHD_HTTP_METHOD_GET))
+    {
+        free(con_info);
+        return MHD_NO;             // unexpected method
+    }
+    *con_cls = (void*)con_info;
     return MHD_YES;
 }
 
@@ -269,52 +305,37 @@ int	WebUI::http_ahc(void *cls,
 
     if(nullptr == *con_cls)
     {
-        con_info = new connection_info_struct;
-        if (nullptr == con_info) return MHD_NO;
-        con_info->answerstring = nullptr;
-        
-        if (0 == strcmp (method, "POST"))
-        {
-            
-            con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void*) con_info);
-            
-            if (nullptr == con_info->postprocessor)
-            {
-                free(con_info);
-                return MHD_NO;
-            }
-            con_info->connectiontype = 1;
-        }
-        else if (0 != strcmp(method, MHD_HTTP_METHOD_GET))
-        {
-            free(con_info);
-            return MHD_NO;             /* unexpected method */
-        }
-        *con_cls = (void*)con_info;
-        return MHD_YES;
+        return CreateNewRequest(cls,
+                                connection,
+                                url,
+                                method,
+                                version,
+                                upload_data,
+                                upload_data_size,
+                                con_cls);
     }
     
-    std::string params = "";
+    ParamCollection params;
 
-    if (0 == strcmp (method, "POST"))
+    if (0 == strcmp(method, "POST"))
     {
         con_info = (connection_info_struct*)*con_cls;
         
         if (*upload_data_size != 0)
         {
-            MHD_post_process (con_info->postprocessor, upload_data, *upload_data_size);
+            MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
             *upload_data_size = 0;
             
             return MHD_YES;
         }
-        else if (NULL != con_info->answerstring)
-            params = con_info->answerstring;
-//            return send_page (connection, con_info->answerstring);
+        if (con_info)
+            params = con_info->PostValues;
+        // return send_page (connection, con_info->answerstring);
     }
     
     if (strncmp(url, ROOTJSON, strlen(ROOTJSON)) == 0)
     {
-        return ReturnJSON(connection, url, params);
+        return ReturnJSON(connection, &url[strlen(ROOTJSON)], params);
     }
     else
     {
@@ -337,6 +358,7 @@ int WebUI::start(uint16_t port)
                          nullptr, // extra argument to apc
                          &ahc, // handler called for all requests
                          this, // extra argument to dh
+                         MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
                          MHD_OPTION_CONNECTION_TIMEOUT, 256,
                          MHD_OPTION_HTTPS_MEM_KEY, key_pem,
                          MHD_OPTION_HTTPS_MEM_CERT, cert_pem,

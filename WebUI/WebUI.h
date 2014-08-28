@@ -19,10 +19,12 @@
  */ 
 #include <unordered_map>
 
+typedef std::unordered_map<std::string, std::string> ParamCollection;
+
 class IJsonResponder
 {
 public:
-    virtual Json::Value GetResponse(const std::string& params) = 0;
+    virtual Json::Value GetResponse(const ParamCollection& params) = 0;
 };
 
 class StaticJsonResponder : public IJsonResponder
@@ -33,19 +35,15 @@ public:
         
     }
     
-    virtual Json::Value GetResponse(const std::string& params) final
+    virtual Json::Value GetResponse(const ParamCollection& params) final
     {
         Json::Value event;
-        Json::Value vec(Json::arrayValue);
-        vec.append(Json::Value(1));
-        vec.append(Json::Value(2));
-        vec.append(Json::Value(3));
-        
-        event["competitors"]["home"]["name"] = "Test";
-        event["competitors"]["away"]["code"] = 89223;
-        event["competitors"]["away"]["name"] = params;
-        event["competitors"]["away"]["code"] = vec;
-        
+
+        for(auto key : params)
+        {
+            event[key.first] = key.second;
+        }
+                
         return event;
     };
 };
@@ -70,9 +68,8 @@ public:
     
 private:
 	/* HTTP file handler */
-    int ReturnFile(struct MHD_Connection *connection,
-                          const char *url);
-    int ReturnJSON(struct MHD_Connection *connection, const std::string& url, const std::string& params);
+    int ReturnFile(struct MHD_Connection *connection, const char *url);
+    int ReturnJSON(struct MHD_Connection *connection, const std::string& url, const ParamCollection& params);
 	struct MHD_Daemon * d;
     
     /* JSON response handlers */
