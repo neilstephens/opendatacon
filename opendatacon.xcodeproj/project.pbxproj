@@ -185,6 +185,7 @@
 		84009F7019AE16CD0096E673 /* WebUI.vcxproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = WebUI.vcxproj; sourceTree = "<group>"; };
 		84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libmicrohttpd.10.dylib; path = ../../../../usr/local/lib/libmicrohttpd.10.dylib; sourceTree = "<group>"; };
 		84009F7519AEA5900096E673 /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
+		84009F7619AF07FE0096E673 /* jquery-1.10.2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "jquery-1.10.2.js"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -381,6 +382,7 @@
 		84009F6C19AE16CD0096E673 /* WebUI */ = {
 			isa = PBXGroup;
 			children = (
+				84009F7619AF07FE0096E673 /* jquery-1.10.2.js */,
 				84009F6D19AE16CD0096E673 /* WebUI.cpp */,
 				84009F6E19AE16CD0096E673 /* WebUI.def */,
 				84009F6F19AE16CD0096E673 /* WebUI.h */,

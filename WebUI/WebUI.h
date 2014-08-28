@@ -17,6 +17,39 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */ 
+#include <unordered_map>
+
+class IJsonResponder
+{
+public:
+    virtual Json::Value GetResponse(const std::string& params) = 0;
+};
+
+class StaticJsonResponder : public IJsonResponder
+{
+public:
+    StaticJsonResponder()
+    {
+        
+    }
+    
+    virtual Json::Value GetResponse(const std::string& params) final
+    {
+        Json::Value event;
+        Json::Value vec(Json::arrayValue);
+        vec.append(Json::Value(1));
+        vec.append(Json::Value(2));
+        vec.append(Json::Value(3));
+        
+        event["competitors"]["home"]["name"] = "Test";
+        event["competitors"]["away"]["code"] = 89223;
+        event["competitors"]["away"]["name"] = params;
+        event["competitors"]["away"]["code"] = vec;
+        
+        return event;
+    };
+};
+
 class WebUI
 {
 public:
@@ -34,11 +67,14 @@ public:
 
 	int start(uint16_t port);
 	void stop();
+    
 private:
 	/* HTTP file handler */
     int ReturnFile(struct MHD_Connection *connection,
                           const char *url);
-    int ReturnJSON(struct MHD_Connection *connection,
-                   const char *url);
+    int ReturnJSON(struct MHD_Connection *connection, const std::string& url, const std::string& params);
 	struct MHD_Daemon * d;
+    
+    /* JSON response handlers */
+    std::unordered_map<std::string, IJsonResponder*> JsonResponders;
 };
