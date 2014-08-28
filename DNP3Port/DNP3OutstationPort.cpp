@@ -24,6 +24,7 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#include <iostream>
 #include <future>
 #include <regex>
 #include <chrono>
@@ -32,7 +33,7 @@
 #include <opendnp3/outstation/TimeTransaction.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include "DNP3OutstationPort.h"
-#include "opendnp3/app/DynamicPointIndexes.h"
+
 
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides)

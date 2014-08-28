@@ -26,12 +26,12 @@
 								<option id="gnu.cpp.compiler.option.other.other.1479164282" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.842625950" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/asio-1.10.2/include"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/opendnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiopal/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiodnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/openpal/src"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.325296810" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.165636779" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
@@ -62,12 +62,12 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.106646688" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/armv6-rpi-linux-gnueabi/lib"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC/${config_name:opendatacon}}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/${config_name:opendatacon}}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-rpi/.libs}&quot;"/>
 								</option>
-								<option id="gnu.cpp.link.option.other.40065113" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList"/>
+								<option id="gnu.cpp.link.option.other.40065113" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1743862312" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -83,7 +83,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="WebUI|ODC|JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -123,12 +123,12 @@
 								<option id="gnu.cpp.compiler.option.other.other.1768411341" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1795881518" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/asio-1.10.2/include"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/opendnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiopal/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiodnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/openpal/src"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.287048987" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.1328576604" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
@@ -159,11 +159,11 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1623008596" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC/${config_name:opendatacon}}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/${config_name:opendatacon}}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/.libs}&quot;"/>
 								</option>
-								<option id="gnu.cpp.link.option.other.934752129" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList"/>
+								<option id="gnu.cpp.link.option.other.934752129" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1919592503" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -179,7 +179,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="WebUI|ODC|JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -219,12 +219,12 @@
 								<option id="gnu.cpp.compiler.option.other.other.1711200890" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.871485551" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/asio-1.10.2/include"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/opendnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiopal/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiodnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/openpal/src"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.1975786955" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.prof.857099551" name="Generate prof information (-p)" superClass="gnu.cpp.compiler.option.debugging.prof" value="false" valueType="boolean"/>
@@ -258,13 +258,13 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1623672544" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC/${config_name:opendatacon}}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/${config_name:opendatacon}}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.debugging.prof.1406588439" name="Generate prof information (-p)" superClass="gnu.cpp.link.option.debugging.prof" value="false" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.debugging.gprof.1358661995" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" value="false" valueType="boolean"/>
-								<option id="gnu.cpp.link.option.other.224788884" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList"/>
+								<option id="gnu.cpp.link.option.other.224788884" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.130419595" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -280,7 +280,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="WebUI|ODC|JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -320,12 +320,12 @@
 								<option id="gnu.cpp.compiler.option.other.other.983516344" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1952480701" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/asio-1.10.2/include"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/opendnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiopal/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiodnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/openpal/src"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.731464652" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.1921547530" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
@@ -359,13 +359,13 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.473686912" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/armv6-rpi-linux-gnueabi/lib"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC/${config_name:opendatacon}}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/${config_name:opendatacon}}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-rpi/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.debugging.gprof.1542757098" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" value="true" valueType="boolean"/>
-								<option id="gnu.cpp.link.option.other.1753099750" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList"/>
+								<option id="gnu.cpp.link.option.other.1753099750" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.396729094" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -381,7 +381,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="WebUI|ODC|JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -421,12 +421,12 @@
 								<option id="gnu.cpp.compiler.option.other.other.579314132" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1262714107" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/asio-1.10.2/include"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/opendnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiopal/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/asiodnp3/src"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/dnp3-2.0-RC1/cpp/libs/openpal/src"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.1381428326" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.1502418747" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
@@ -459,12 +459,12 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1647938177" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC/${config_name:opendatacon}}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/${config_name:opendatacon}}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.debugging.gprof.1638409378" name="Generate gprof information (-pg)" superClass="gnu.cpp.link.option.debugging.gprof" value="true" valueType="boolean"/>
-								<option id="gnu.cpp.link.option.other.111925443" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList"/>
+								<option id="gnu.cpp.link.option.other.111925443" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.68921348" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -480,7 +480,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="WebUI|ODC|JSON|DNP3Port|lib|JSONPort|include" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
