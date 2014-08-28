@@ -22,18 +22,8 @@ class WebUI
 public:
 	WebUI();
 
-	/* HTTP static response handler call back */
-	static int ahc_echo(void * cls,
-	struct MHD_Connection * connection,
-		const char * url,
-		const char * method,
-		const char * version,
-		const char * upload_data,
-		size_t * upload_data_size,
-		void ** ptr);
-
-	/* HTTP file handler call back */
-	static int
+	/* HTTP response handler call back */
+    int
 		http_ahc(void *cls,
 	struct MHD_Connection *connection,
 		const char *url,
@@ -45,5 +35,10 @@ public:
 	int start(uint16_t port);
 	void stop();
 private:
+	/* HTTP file handler */
+    int ReturnFile(struct MHD_Connection *connection,
+                          const char *url);
+    int ReturnJSON(struct MHD_Connection *connection,
+                   const char *url);
 	struct MHD_Daemon * d;
 };

@@ -17,23 +17,33 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */ 
-#ifdef _WIN32
-	#include <io.h>
-	#include <ws2tcpip.h>
-	#include <stdarg.h>
-	#include <stdint.h>
-	typedef SSIZE_T ssize_t;
-	#include <sys/types.h> //off_t, ssize_t
-	#include <sys/stat.h>
-	#define MHD_PLATFORM_H
-#endif
 
-#include <functional>
-
-#include <microhttpd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <functional>
+
+#ifdef _WIN32
+    #include <io.h>
+    #include <ws2tcpip.h>
+    #include <stdarg.h>
+    #include <stdint.h>
+    typedef SSIZE_T ssize_t;
+    //#define S_ISREG(a) true
+    #define	S_ISREG(m)	(((m) & S_IFMT) == S_IFREG)	/* regular file */
+    #include <sys/types.h> //off_t, ssize_t
+    #define MHD_PLATFORM_H
+#else
+    //#define fopen_s(a, args...) a = fopen(args...);
+    void fopen_s(FILE** file, const char * name, const char * mode)
+    {
+        *file = fopen(name, mode);
+    }
+#endif
+
+#include <microhttpd.h>
+#include <json/json.h>
 
 #include "WebUI.h"
 
@@ -44,6 +54,8 @@
 #define CAFILE "ca.pem"
 #define CRLFILE "crl.pem"
 
+#define ROOTPAGE "/index.html"
+#define ROOTJSON "/JSON/"
 #define PAGE "<html><head><title>libmicrohttpd demo</title></head><body>libmicrohttpd demo</body></html>"
 #define EMPTY_PAGE "<html><head><title>File not found</title></head><body>File not found</body></html>"
 
@@ -99,7 +111,7 @@ static ssize_t
 file_reader(void *cls, uint64_t pos, char *buf, size_t max)
 {
 	FILE *file = (FILE *)cls;
-
+    
 	(void)fseek(file, pos, SEEK_SET);
 	return fread(buf, 1, max, file);
 }
@@ -113,169 +125,176 @@ file_free_callback(void *cls)
 
 /* response handler callback wrapper */
 static int ahc(void *cls,
-struct MHD_Connection *connection,
-	const char *url,
-	const char *method,
-	const char *version,
-	const char *upload_data,
-	size_t *upload_data_size,
-	void **ptr)
+               struct MHD_Connection *connection,
+               const char *url,
+               const char *method,
+               const char *version,
+               const char *upload_data,
+               size_t *upload_data_size,
+               void **ptr)
 {
 	WebUI* test = (WebUI*)cls;
-	//return test->http_ahc(cls, connection, url, method, version, upload_data, upload_data_size, ptr);
-	return test->ahc_echo(cls, connection, url, method, version, upload_data, upload_data_size, ptr);
+	return test->http_ahc(cls, connection, url, method, version, upload_data, upload_data_size, ptr);
 }
 
 WebUI::WebUI() : d(nullptr)
-	{
-	}
+{
+    
+}
 
-/* HTTP static response handler call back */
-int WebUI::ahc_echo(void * cls,
-	struct MHD_Connection * connection,
-		const char * url,
-		const char * method,
-		const char * version,
-		const char * upload_data,
-		size_t * upload_data_size,
-		void ** ptr) {
-		static int dummy;
-		const char * page = (const char *)cls;
-		struct MHD_Response * response;
-		int ret;
+int WebUI::ReturnFile(struct MHD_Connection *connection,
+               const char *url)
+{
+    struct stat buf;
+    FILE *file;
+    struct MHD_Response *response;
+    int ret;
 
-		if (0 != strcmp(method, MHD_HTTP_METHOD_GET))
-			return MHD_NO; /* unexpected method */
-		if (&dummy != *ptr)
-		{
-			/* The first time only the headers are valid,
-			do not respond in the first round... */
-			*ptr = &dummy;
-			return MHD_YES;
-		}
-		if (0 != *upload_data_size)
-			return MHD_NO; /* upload data in a GET!? */
-		*ptr = NULL; /* clear context pointer */
-		response = MHD_create_response_from_data(strlen(page),
-			(void*)page,
-			MHD_NO,
-			MHD_NO);
-		ret = MHD_queue_response(connection,
-			MHD_HTTP_OK,
-			response);
-		MHD_destroy_response(response);
-		return ret;
-	}
+    if ((0 == stat(&url[1], &buf)) && (S_ISREG(buf.st_mode)))
+        fopen_s(&file, &url[1], "rb");
+    else
+        file = NULL;
+    if (file == NULL)
+    {
+        response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
+                                                   (void *)EMPTY_PAGE,
+                                                   MHD_RESPMEM_PERSISTENT);
+        ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
+        MHD_destroy_response(response);
+    }
+    else
+    {
+        response = MHD_create_response_from_callback(buf.st_size, 32 * 1024,     /* 32k PAGE_NOT_FOUND size */
+                                                     &file_reader, file,
+                                                     &file_free_callback);
+        if (response == NULL)
+        {
+            fclose(file);
+            return MHD_NO;
+        }
+        ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+    }
+    return ret;
+}
+
+int WebUI::ReturnJSON(struct MHD_Connection *connection,
+                      const char *url)
+{
+#define MIMETYPE_JSON "application/json"
+#define MIMETYPE_JSONP "text/javascript"
+
+    struct MHD_Response *response;
+    int ret;
+    
+//    Json::FastWriter jsonout;
+    Json::StyledWriter jsonout;
+    
+    Json::Value event;
+    Json::Value vec(Json::arrayValue);
+    vec.append(Json::Value(1));
+    vec.append(Json::Value(2));
+    vec.append(Json::Value(3));
+    
+    event["competitors"]["home"]["name"] = "Liverpool";
+    event["competitors"]["away"]["code"] = 89223;
+    event["competitors"]["away"]["name"] = "Aston Villa";
+    event["competitors"]["away"]["code"]=vec;
+    
+    std::string jsonstring = jsonout.write(event);
+    const char* jsoncstr = jsonstring.c_str();
+    
+    /*
+    MHD_RESPMEM_MUST_FREE
+    MHD_RESPMEM_MUST_COPY
+    */
+    response = MHD_create_response_from_buffer(strlen(jsoncstr),
+                                               (void *)jsoncstr,
+                                               MHD_RESPMEM_MUST_COPY);
+    MHD_add_response_header (response, "Content-Type", MIMETYPE_JSON);
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+    
+    return ret;
+}
 
 /* HTTP access handler call back */
 int	WebUI::http_ahc(void *cls,
-	struct MHD_Connection *connection,
-		const char *url,
-		const char *method,
-		const char *version,
-		const char *upload_data,
-		size_t *upload_data_size, void **ptr)
-	{
-			static int aptr;
-			struct MHD_Response *response;
-			int ret;
-			FILE *file;
-			struct stat buf;
+                    struct MHD_Connection *connection,
+                    const char *url,
+                    const char *method,
+                    const char *version,
+                    const char *upload_data,
+                    size_t *upload_data_size,
+                    void **ptr)
+{
+    static int aptr;
+    
+    if (0 != strcmp(method, MHD_HTTP_METHOD_GET))
+        return MHD_NO;              /* unexpected method */
+    if (&aptr != *ptr)
+    {
+        /* do never respond on first call */
+        *ptr = &aptr;
+        return MHD_YES;
+    }
+    *ptr = NULL;                  /* reset when done */
+    
+    if (strncmp(url, ROOTJSON, strlen(ROOTJSON)) == 0)
+    {
+        return ReturnJSON(connection, &url[6]);
+    }
+    else
+    {
+        if (strlen(url) == 1)
+        {
+            return ReturnFile(connection, ROOTPAGE);
+        }
+        else
+        {
+            return ReturnFile(connection, url);
+        }
+    }
+}
 
-			if (0 != strcmp(method, MHD_HTTP_METHOD_GET))
-				return MHD_NO;              /* unexpected method */
-			if (&aptr != *ptr)
-			{
-				/* do never respond on first call */
-				*ptr = &aptr;
-				return MHD_YES;
-			}
-			*ptr = NULL;                  /* reset when done */
+int WebUI::start(uint16_t port)
+{
+    d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG | MHD_USE_SSL,
+                         port, // Port to bind to
+                         NULL, // callback to call to check which clients allowed to connect
+                         NULL, // extra argument to apc
+                         &ahc, // handler called for all requests
+                         this, // extra argument to dh
+                         MHD_OPTION_CONNECTION_TIMEOUT, 256,
+                         MHD_OPTION_HTTPS_MEM_KEY, key_pem,
+                         MHD_OPTION_HTTPS_MEM_CERT, cert_pem,
+                         MHD_OPTION_END);
+    
+    if (d == nullptr)
+        return 1;
+    return 0;
+}
 
-			if ((0 == stat(&url[1], &buf)))// && (S_ISREG(buf.st_mode)))
-				fopen_s(&file, &url[1], "rb"); //file = fopen(&url[1], "rb");
-			else
-				file = NULL;
-			if (file == NULL)
-			{
-				response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
-					(void *)EMPTY_PAGE,
-					MHD_RESPMEM_PERSISTENT);
-				ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
-				MHD_destroy_response(response);
-			}
-			else
-			{
-				response = MHD_create_response_from_callback(buf.st_size, 32 * 1024,     /* 32k PAGE_NOT_FOUND size */
-					&file_reader, file,
-					&file_free_callback);
-				if (response == NULL)
-				{
-					fclose(file);
-					return MHD_NO;
-				}
-				ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-				MHD_destroy_response(response);
-			}
-			return ret;
-		}
-
-	int WebUI::start(uint16_t port)
-	{
-		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG |	MHD_USE_SSL, 
-			port, // Port to bind to
-			NULL, // callback to call to check which clients allowed to connect
-			NULL, // extra argument to apc
-			&ahc, // handler called for all requests
-			this, // extra argument to dh
-			MHD_OPTION_CONNECTION_TIMEOUT, 256,
-			MHD_OPTION_HTTPS_MEM_KEY, key_pem,
-			MHD_OPTION_HTTPS_MEM_CERT, cert_pem,
-			MHD_OPTION_END);
-
-		if (d == nullptr)
-			return 1;
-		return 0;
-	}
-
-	void WebUI::stop()
-	{
-		if (d == nullptr) return;
-		MHD_stop_daemon(d);
-		d = nullptr;
-	}
-
-
-/**
-* @file https_fileserver_example.c
-* @brief a simple HTTPS file server using TLS.
-*
-* Usage :
-*
-*  'http_fileserver_example HTTP-PORT SECONDS-TO-RUN'
-*
-* The certificate & key are required by the server to operate,  Omitting the
-* path arguments will cause the server to use the hard coded example certificate & key.
-*
-* 'certtool' may be used to generate these if required.
-*
-* @author Sagie Amir
-*/
+void WebUI::stop()
+{
+    if (d == nullptr) return;
+    MHD_stop_daemon(d);
+    d = nullptr;
+}
 
 int
 main(int argc, char *const *argv)
 {
-
-
-	if (argc != 2)
+    int port = 18080;
+    
+	if (argc == 2)
 	{
-		printf("Usage: %s HTTP-PORT\n", argv[0]);
-		return 1;
+        port = atoi(argv[1]);
 	}
-
+    
 	WebUI inst;
-	int status = inst.start(atoi(argv[1]));
-
+	int status = inst.start(port);
+    
 	if (status)
 	{
 		fprintf(stderr, "Error: failed to start TLS_daemon\n");
@@ -283,13 +302,13 @@ main(int argc, char *const *argv)
 	}
 	else
 	{
-		printf("MHD daemon listening on port %d\n", atoi(argv[1]));
+		printf("MHD daemon listening on port %d\n", port);
 	}
-
+    
 	(void)getc(stdin);
-
+    
 	inst.stop();
-
+    
 	return 0;
 }
 
