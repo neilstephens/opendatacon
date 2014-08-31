@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>jQuery.post demo</title>
+        <script src="/jquery-1.11.1.min.js"></script>
+    </head>
+    <body>
+        <!-- the result of the search will be rendered inside this div -->
+        <h1>Responders</h1>
+        <div id="responders"></div>
+        <script>
+            // Send the data using post
+            var getResponders = $.post( "/JSON/Responders", { } );
+            
+            // Put the results in a div
+            getResponders.done(function( data )
+            {
+                    $( "#responders" ).empty();
+                    for(elem in data["Responders"])
+                    {
+                         $( "#responders" ).append(data["Responders"][elem] + '</br>');
+                    }
+            });
+        </script>
+    </body>
+</html>
