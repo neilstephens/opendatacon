@@ -22,6 +22,7 @@ class WebUI : public IUI
 {
 public:
 	WebUI(uint16_t port);
+	~WebUI();
     
     /* Implement IUI interface */
     void AddJsonResponder(const std::string name, std::weak_ptr<const IJsonResponder> responder);
@@ -40,6 +41,8 @@ public:
     
 private:
     const int port;
+    std::string cert_pem;
+    std::string key_pem;
     
     /* */
     int CreateNewRequest(void *cls,
