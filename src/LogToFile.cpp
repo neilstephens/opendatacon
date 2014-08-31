@@ -40,13 +40,17 @@ namespace platformtime
 	}
 	std::string time_string()
 	{
-		auto time = std::chrono::high_resolution_clock::now();
-		auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time.time_since_epoch()).count() - (1000*std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch()).count());
-		auto as_time_t = std::chrono::high_resolution_clock::to_time_t(time);
-		auto local_time = platformtime::localtime(&as_time_t);
+        using namespace std::chrono;
+        
+		high_resolution_clock::time_point time = std::chrono::high_resolution_clock::now();
+        milliseconds ms = duration_cast<milliseconds>(time.time_since_epoch());
+        seconds s = duration_cast<seconds>(ms);
+        std::time_t t = s.count();
+        std::size_t fractional_seconds = ms.count() % 1000;
+		auto local_time = platformtime::localtime(&t);
 		char time_formatted[25];
 		std::strftime(time_formatted, 25, "%Y-%m-%d %H:%M:%S", &local_time);
-		return std::string(time_formatted)+"."+std::to_string(time_ms);
+		return std::string(time_formatted)+"."+std::to_string(fractional_seconds);
 	}
 }
 
