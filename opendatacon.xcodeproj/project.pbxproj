@@ -66,9 +66,24 @@
 		84009F5C19AE0E2A0096E673 /* libasiopal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4719ADE3EC0096E673 /* libasiopal.dylib */; };
 		84009F5D19AE0E2A0096E673 /* libopendnp3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4819ADE3EC0096E673 /* libopendnp3.dylib */; };
 		84009F5E19AE0E2A0096E673 /* libopenpal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4919ADE3EC0096E673 /* libopenpal.dylib */; };
-		84009F7119AE16CD0096E673 /* WebUI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84009F6D19AE16CD0096E673 /* WebUI.cpp */; };
-		84009F7319AE17C80096E673 /* libmicrohttpd.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */; };
-		84009F7419AE9EE40096E673 /* libJSON.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EA819ADD3E80096E673 /* libJSON.dylib */; };
+		84009F8119B13B6F0096E673 /* WebUI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84009F6D19AE16CD0096E673 /* WebUI.cpp */; };
+		84009F8419B13CD10096E673 /* libmicrohttpd.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */; };
+		84009F8519B13CDA0096E673 /* libJSON.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EA819ADD3E80096E673 /* libJSON.dylib */; };
+		84009F8D19B13D1A0096E673 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84009F8C19B13D1A0096E673 /* main.cpp */; };
+		84009F9519B13D330096E673 /* libWebUI.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F7D19B13B630096E673 /* libWebUI.dylib */; };
+		84009F9619B13E980096E673 /* libJSON.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EA819ADD3E80096E673 /* libJSON.dylib */; };
+		84009F9819B13F6F0096E673 /* IUI.h in Headers */ = {isa = PBXBuildFile; fileRef = 84009F9719B13F6F0096E673 /* IUI.h */; };
+		84009F9A19B13FB30096E673 /* IJsonResponder.h in Headers */ = {isa = PBXBuildFile; fileRef = 84009F9919B13FB30096E673 /* IJsonResponder.h */; };
+		84009F9B19B179B60096E673 /* libWebUI.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F7D19B13B630096E673 /* libWebUI.dylib */; };
+		84009FA019B17AD10096E673 /* ResponderListResponder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84009F9E19B17AD10096E673 /* ResponderListResponder.cpp */; };
+		84009FA119B17AD10096E673 /* ResponderListResponder.h in Headers */ = {isa = PBXBuildFile; fileRef = 84009F9F19B17AD10096E673 /* ResponderListResponder.h */; };
+		84009FA419B17F220096E673 /* libJSON.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EA819ADD3E80096E673 /* libJSON.dylib */; };
+		84009FA519B17F220096E673 /* libODC.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EB819ADD4000096E673 /* libODC.dylib */; };
+		84009FA819B17F3F0096E673 /* libasiopal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4719ADE3EC0096E673 /* libasiopal.dylib */; };
+		84009FA919B17F4C0096E673 /* libasiodnp3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4619ADE3EC0096E673 /* libasiodnp3.dylib */; };
+		84009FAA19B17F4C0096E673 /* libopendnp3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4819ADE3EC0096E673 /* libopendnp3.dylib */; };
+		84009FAB19B17F4C0096E673 /* libopenpal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4919ADE3EC0096E673 /* libopenpal.dylib */; };
+		84009FB319B189C90096E673 /* AddrConf.h in Headers */ = {isa = PBXBuildFile; fileRef = 84009FB219B189C90096E673 /* AddrConf.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -93,6 +108,55 @@
 			remoteGlobalIDString = 84009EA719ADD3E80096E673;
 			remoteInfo = JSON;
 		};
+		84009F8219B13CB70096E673 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 84009E6B19ADD33F0096E673 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 84009EA719ADD3E80096E673;
+			remoteInfo = JSON;
+		};
+		84009F9319B13D2B0096E673 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 84009E6B19ADD33F0096E673 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 84009F7C19B13B630096E673;
+			remoteInfo = WebUI;
+		};
+		84009F9C19B179B90096E673 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 84009E6B19ADD33F0096E673 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 84009F7C19B13B630096E673;
+			remoteInfo = WebUI;
+		};
+		84009FA219B17F1C0096E673 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 84009E6B19ADD33F0096E673 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 84009EA719ADD3E80096E673;
+			remoteInfo = JSON;
+		};
+		84009FA619B17F240096E673 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 84009E6B19ADD33F0096E673 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 84009EB719ADD4000096E673;
+			remoteInfo = ODC;
+		};
+		84009FAE19B183300096E673 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 84009E6B19ADD33F0096E673 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 84009E9F19ADD3D60096E673;
+			remoteInfo = DNP3Port;
+		};
+		84009FB019B183300096E673 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 84009E6B19ADD33F0096E673 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 84009EAF19ADD3F10096E673;
+			remoteInfo = JSONPort;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -105,7 +169,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
-		84009F6119AE16B90096E673 /* CopyFiles */ = {
+		84009F8819B13D1A0096E673 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
@@ -118,7 +182,6 @@
 
 /* Begin PBXFileReference section */
 		84009E7319ADD33F0096E673 /* opendatacon */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = opendatacon; sourceTree = BUILT_PRODUCTS_DIR; };
-		84009E8019ADD3960096E673 /* AddrConf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AddrConf.h; sourceTree = "<group>"; };
 		84009E8119ADD3960096E673 /* AdvancedLogger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AdvancedLogger.cpp; sourceTree = "<group>"; };
 		84009E8219ADD3960096E673 /* AdvancedLogger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AdvancedLogger.h; sourceTree = "<group>"; };
 		84009E8319ADD3960096E673 /* Console.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Console.cpp; sourceTree = "<group>"; };
@@ -178,14 +241,31 @@
 		84009F4719ADE3EC0096E673 /* libasiopal.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libasiopal.dylib; path = lib/libasiopal.dylib; sourceTree = "<group>"; };
 		84009F4819ADE3EC0096E673 /* libopendnp3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopendnp3.dylib; path = lib/libopendnp3.dylib; sourceTree = "<group>"; };
 		84009F4919ADE3EC0096E673 /* libopenpal.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopenpal.dylib; path = lib/libopenpal.dylib; sourceTree = "<group>"; };
-		84009F6319AE16B90096E673 /* WebUI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = WebUI; sourceTree = BUILT_PRODUCTS_DIR; };
 		84009F6D19AE16CD0096E673 /* WebUI.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WebUI.cpp; sourceTree = "<group>"; };
 		84009F6E19AE16CD0096E673 /* WebUI.def */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = WebUI.def; sourceTree = "<group>"; };
 		84009F6F19AE16CD0096E673 /* WebUI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebUI.h; sourceTree = "<group>"; };
 		84009F7019AE16CD0096E673 /* WebUI.vcxproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = WebUI.vcxproj; sourceTree = "<group>"; };
 		84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libmicrohttpd.10.dylib; path = ../../../../usr/local/lib/libmicrohttpd.10.dylib; sourceTree = "<group>"; };
-		84009F7519AEA5900096E673 /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
-		84009F7619AF07FE0096E673 /* jquery-1.10.2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "jquery-1.10.2.js"; sourceTree = "<group>"; };
+		84009F7D19B13B630096E673 /* libWebUI.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libWebUI.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		84009F8A19B13D1A0096E673 /* WebUItest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = WebUItest; sourceTree = BUILT_PRODUCTS_DIR; };
+		84009F8C19B13D1A0096E673 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		84009F9719B13F6F0096E673 /* IUI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IUI.h; sourceTree = "<group>"; };
+		84009F9919B13FB30096E673 /* IJsonResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IJsonResponder.h; sourceTree = "<group>"; };
+		84009F9E19B17AD10096E673 /* ResponderListResponder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ResponderListResponder.cpp; sourceTree = "<group>"; };
+		84009F9F19B17AD10096E673 /* ResponderListResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResponderListResponder.h; sourceTree = "<group>"; };
+		84009FB219B189C90096E673 /* AddrConf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AddrConf.h; sourceTree = "<group>"; };
+		84009FB419B1921A0096E673 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
+		84009FB519B1921A0096E673 /* jquery-1.10.2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "jquery-1.10.2.js"; sourceTree = "<group>"; };
+		84009FB719B192420096E673 /* ConnectorEg.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = ConnectorEg.conf; path = example/ConnectorEg.conf; sourceTree = "<group>"; };
+		84009FB919B192420096E673 /* datacon-test.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = "datacon-test.conf"; path = "example/datacon-test.conf"; sourceTree = "<group>"; };
+		84009FBB19B192420096E673 /* DMCConnector.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = DMCConnector.conf; path = example/DMCConnector.conf; sourceTree = "<group>"; };
+		84009FBC19B192420096E673 /* DMCDNP3_Master.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = DMCDNP3_Master.conf; path = example/DMCDNP3_Master.conf; sourceTree = "<group>"; };
+		84009FBD19B192420096E673 /* DMCDNP3_Outstation.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = DMCDNP3_Outstation.conf; path = example/DMCDNP3_Outstation.conf; sourceTree = "<group>"; };
+		84009FBE19B192420096E673 /* DNP3PointsEg.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = DNP3PointsEg.conf; path = example/DNP3PointsEg.conf; sourceTree = "<group>"; };
+		84009FBF19B192420096E673 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = index.html; path = example/index.html; sourceTree = "<group>"; };
+		84009FC019B192420096E673 /* JSONClientEg.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = JSONClientEg.conf; path = example/JSONClientEg.conf; sourceTree = "<group>"; };
+		84009FC119B192420096E673 /* opendatacon.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = opendatacon.conf; path = example/opendatacon.conf; sourceTree = "<group>"; };
+		84009FC219B192420096E673 /* opendataconDMC.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = opendataconDMC.conf; path = example/opendataconDMC.conf; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -193,6 +273,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				84009F9B19B179B60096E673 /* libWebUI.dylib in Frameworks */,
 				84009F5719AE08270096E673 /* libJSON.dylib in Frameworks */,
 				84009F5819AE08270096E673 /* libODC.dylib in Frameworks */,
 				84009F5319AE080F0096E673 /* libasiodnp3.dylib in Frameworks */,
@@ -226,6 +307,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				84009FA419B17F220096E673 /* libJSON.dylib in Frameworks */,
+				84009FA519B17F220096E673 /* libODC.dylib in Frameworks */,
+				84009FA919B17F4C0096E673 /* libasiodnp3.dylib in Frameworks */,
+				84009FA819B17F3F0096E673 /* libasiopal.dylib in Frameworks */,
+				84009FAA19B17F4C0096E673 /* libopendnp3.dylib in Frameworks */,
+				84009FAB19B17F4C0096E673 /* libopenpal.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -241,12 +328,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		84009F6019AE16B90096E673 /* Frameworks */ = {
+		84009F7A19B13B630096E673 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				84009F7419AE9EE40096E673 /* libJSON.dylib in Frameworks */,
-				84009F7319AE17C80096E673 /* libmicrohttpd.10.dylib in Frameworks */,
+				84009F8519B13CDA0096E673 /* libJSON.dylib in Frameworks */,
+				84009F8419B13CD10096E673 /* libmicrohttpd.10.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		84009F8719B13D1A0096E673 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84009F9619B13E980096E673 /* libJSON.dylib in Frameworks */,
+				84009F9519B13D330096E673 /* libWebUI.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,17 +352,19 @@
 		84009E6A19ADD33F0096E673 = {
 			isa = PBXGroup;
 			children = (
+				84009FB619B1922D0096E673 /* example */,
 				84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */,
-				84009F6C19AE16CD0096E673 /* WebUI */,
 				84009F4619ADE3EC0096E673 /* libasiodnp3.dylib */,
 				84009F4719ADE3EC0096E673 /* libasiopal.dylib */,
 				84009F4819ADE3EC0096E673 /* libopendnp3.dylib */,
 				84009F4919ADE3EC0096E673 /* libopenpal.dylib */,
+				84009F6C19AE16CD0096E673 /* WebUI */,
 				84009F0019ADD4210096E673 /* ODC */,
 				84009EE919ADD41B0096E673 /* JSONPort */,
 				84009EDB19ADD4140096E673 /* JSON */,
 				84009EBC19ADD40C0096E673 /* DNP3Port */,
-				84009E7F19ADD3960096E673 /* src */,
+				84009E7F19ADD3960096E673 /* opendatacon */,
+				84009F8B19B13D1A0096E673 /* WebUItest */,
 				84009E7419ADD33F0096E673 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -279,15 +377,15 @@
 				84009EA819ADD3E80096E673 /* libJSON.dylib */,
 				84009EB019ADD3F10096E673 /* libJSONPort.dylib */,
 				84009EB819ADD4000096E673 /* libODC.dylib */,
-				84009F6319AE16B90096E673 /* WebUI */,
+				84009F7D19B13B630096E673 /* libWebUI.dylib */,
+				84009F8A19B13D1A0096E673 /* WebUItest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		84009E7F19ADD3960096E673 /* src */ = {
+		84009E7F19ADD3960096E673 /* opendatacon */ = {
 			isa = PBXGroup;
 			children = (
-				84009E8019ADD3960096E673 /* AddrConf.h */,
 				84009E8119ADD3960096E673 /* AdvancedLogger.cpp */,
 				84009E8219ADD3960096E673 /* AdvancedLogger.h */,
 				84009E8319ADD3960096E673 /* Console.cpp */,
@@ -306,6 +404,7 @@
 				84009E9219ADD3960096E673 /* tinycon.cpp */,
 				84009E9319ADD3960096E673 /* tinycon.h */,
 			);
+			name = opendatacon;
 			path = src;
 			sourceTree = "<group>";
 		};
@@ -365,8 +464,11 @@
 		84009F0019ADD4210096E673 /* ODC */ = {
 			isa = PBXGroup;
 			children = (
+				84009F9919B13FB30096E673 /* IJsonResponder.h */,
+				84009F9719B13F6F0096E673 /* IUI.h */,
 				84009F0419ADD4210096E673 /* ConfigParser.cpp */,
 				84009F0519ADD4210096E673 /* ConfigParser.h */,
+				84009FB219B189C90096E673 /* AddrConf.h */,
 				84009F0619ADD4210096E673 /* DataPointConf.h */,
 				84009F0719ADD4210096E673 /* DataPort.h */,
 				84009F0819ADD4210096E673 /* DataPortConf.h */,
@@ -382,14 +484,41 @@
 		84009F6C19AE16CD0096E673 /* WebUI */ = {
 			isa = PBXGroup;
 			children = (
-				84009F7619AF07FE0096E673 /* jquery-1.10.2.js */,
 				84009F6D19AE16CD0096E673 /* WebUI.cpp */,
 				84009F6E19AE16CD0096E673 /* WebUI.def */,
 				84009F6F19AE16CD0096E673 /* WebUI.h */,
 				84009F7019AE16CD0096E673 /* WebUI.vcxproj */,
-				84009F7519AEA5900096E673 /* index.html */,
+				84009F9E19B17AD10096E673 /* ResponderListResponder.cpp */,
+				84009F9F19B17AD10096E673 /* ResponderListResponder.h */,
 			);
 			path = WebUI;
+			sourceTree = "<group>";
+		};
+		84009F8B19B13D1A0096E673 /* WebUItest */ = {
+			isa = PBXGroup;
+			children = (
+				84009FB419B1921A0096E673 /* index.html */,
+				84009FB519B1921A0096E673 /* jquery-1.10.2.js */,
+				84009F8C19B13D1A0096E673 /* main.cpp */,
+			);
+			path = WebUItest;
+			sourceTree = "<group>";
+		};
+		84009FB619B1922D0096E673 /* example */ = {
+			isa = PBXGroup;
+			children = (
+				84009FB719B192420096E673 /* ConnectorEg.conf */,
+				84009FB919B192420096E673 /* datacon-test.conf */,
+				84009FBB19B192420096E673 /* DMCConnector.conf */,
+				84009FBC19B192420096E673 /* DMCDNP3_Master.conf */,
+				84009FBD19B192420096E673 /* DMCDNP3_Outstation.conf */,
+				84009FBE19B192420096E673 /* DNP3PointsEg.conf */,
+				84009FBF19B192420096E673 /* index.html */,
+				84009FC019B192420096E673 /* JSONClientEg.conf */,
+				84009FC119B192420096E673 /* opendatacon.conf */,
+				84009FC219B192420096E673 /* opendataconDMC.conf */,
+			);
+			name = example;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -435,11 +564,22 @@
 			files = (
 				84009F1319ADD4210096E673 /* DataPort.h in Headers */,
 				84009F1619ADD4210096E673 /* IOHandler.h in Headers */,
+				84009F9819B13F6F0096E673 /* IUI.h in Headers */,
+				84009F9A19B13FB30096E673 /* IJsonResponder.h in Headers */,
 				84009F1419ADD4210096E673 /* DataPortConf.h in Headers */,
 				84009F1719ADD4210096E673 /* Transform.h in Headers */,
 				84009F1119ADD4210096E673 /* ConfigParser.h in Headers */,
 				84009F1919ADD4210096E673 /* util.h in Headers */,
 				84009F1219ADD4210096E673 /* DataPointConf.h in Headers */,
+				84009FB319B189C90096E673 /* AddrConf.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		84009F7B19B13B630096E673 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84009FA119B17AD10096E673 /* ResponderListResponder.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -457,6 +597,9 @@
 			buildRules = (
 			);
 			dependencies = (
+				84009FAF19B183300096E673 /* PBXTargetDependency */,
+				84009FB119B183300096E673 /* PBXTargetDependency */,
+				84009F9D19B179B90096E673 /* PBXTargetDependency */,
 				84009F1F19ADD4410096E673 /* PBXTargetDependency */,
 				84009F1D19ADD43E0096E673 /* PBXTargetDependency */,
 			);
@@ -510,6 +653,8 @@
 			buildRules = (
 			);
 			dependencies = (
+				84009FA719B17F240096E673 /* PBXTargetDependency */,
+				84009FA319B17F1C0096E673 /* PBXTargetDependency */,
 			);
 			name = JSONPort;
 			productName = JSONPort;
@@ -534,21 +679,40 @@
 			productReference = 84009EB819ADD4000096E673 /* libODC.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
-		84009F6219AE16B90096E673 /* WebUI */ = {
+		84009F7C19B13B630096E673 /* WebUI */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 84009F6919AE16B90096E673 /* Build configuration list for PBXNativeTarget "WebUI" */;
+			buildConfigurationList = 84009F7E19B13B630096E673 /* Build configuration list for PBXNativeTarget "WebUI" */;
 			buildPhases = (
-				84009F5F19AE16B90096E673 /* Sources */,
-				84009F6019AE16B90096E673 /* Frameworks */,
-				84009F6119AE16B90096E673 /* CopyFiles */,
+				84009F7919B13B630096E673 /* Sources */,
+				84009F7A19B13B630096E673 /* Frameworks */,
+				84009F7B19B13B630096E673 /* Headers */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				84009F8319B13CB70096E673 /* PBXTargetDependency */,
 			);
 			name = WebUI;
 			productName = WebUI;
-			productReference = 84009F6319AE16B90096E673 /* WebUI */;
+			productReference = 84009F7D19B13B630096E673 /* libWebUI.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		84009F8919B13D1A0096E673 /* WebUItest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 84009F9019B13D1A0096E673 /* Build configuration list for PBXNativeTarget "WebUItest" */;
+			buildPhases = (
+				84009F8619B13D1A0096E673 /* Sources */,
+				84009F8719B13D1A0096E673 /* Frameworks */,
+				84009F8819B13D1A0096E673 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				84009F9419B13D2B0096E673 /* PBXTargetDependency */,
+			);
+			name = WebUItest;
+			productName = WebUItest;
+			productReference = 84009F8A19B13D1A0096E673 /* WebUItest */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -577,7 +741,8 @@
 				84009EA719ADD3E80096E673 /* JSON */,
 				84009EAF19ADD3F10096E673 /* JSONPort */,
 				84009EB719ADD4000096E673 /* ODC */,
-				84009F6219AE16B90096E673 /* WebUI */,
+				84009F7C19B13B630096E673 /* WebUI */,
+				84009F8919B13D1A0096E673 /* WebUItest */,
 			);
 		};
 /* End PBXProject section */
@@ -640,11 +805,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		84009F5F19AE16B90096E673 /* Sources */ = {
+		84009F7919B13B630096E673 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				84009F7119AE16CD0096E673 /* WebUI.cpp in Sources */,
+				84009F8119B13B6F0096E673 /* WebUI.cpp in Sources */,
+				84009FA019B17AD10096E673 /* ResponderListResponder.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		84009F8619B13D1A0096E673 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84009F8D19B13D1A0096E673 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -665,6 +839,41 @@
 			isa = PBXTargetDependency;
 			target = 84009EA719ADD3E80096E673 /* JSON */;
 			targetProxy = 84009F4319ADD7AF0096E673 /* PBXContainerItemProxy */;
+		};
+		84009F8319B13CB70096E673 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 84009EA719ADD3E80096E673 /* JSON */;
+			targetProxy = 84009F8219B13CB70096E673 /* PBXContainerItemProxy */;
+		};
+		84009F9419B13D2B0096E673 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 84009F7C19B13B630096E673 /* WebUI */;
+			targetProxy = 84009F9319B13D2B0096E673 /* PBXContainerItemProxy */;
+		};
+		84009F9D19B179B90096E673 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 84009F7C19B13B630096E673 /* WebUI */;
+			targetProxy = 84009F9C19B179B90096E673 /* PBXContainerItemProxy */;
+		};
+		84009FA319B17F1C0096E673 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 84009EA719ADD3E80096E673 /* JSON */;
+			targetProxy = 84009FA219B17F1C0096E673 /* PBXContainerItemProxy */;
+		};
+		84009FA719B17F240096E673 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 84009EB719ADD4000096E673 /* ODC */;
+			targetProxy = 84009FA619B17F240096E673 /* PBXContainerItemProxy */;
+		};
+		84009FAF19B183300096E673 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 84009E9F19ADD3D60096E673 /* DNP3Port */;
+			targetProxy = 84009FAE19B183300096E673 /* PBXContainerItemProxy */;
+		};
+		84009FB119B183300096E673 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 84009EAF19ADD3F10096E673 /* JSONPort */;
+			targetProxy = 84009FB019B183300096E673 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -706,9 +915,14 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 					/usr/local/include,
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/lib",
+					/usr/local/lib,
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				USER_HEADER_SEARCH_PATHS = "\"$(SRCROOT)/include\" $(SRCROOT)/ODC";
 			};
 			name = Debug;
 		};
@@ -744,76 +958,55 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 					/usr/local/include,
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/lib",
+					/usr/local/lib,
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				SDKROOT = macosx;
+				USER_HEADER_SEARCH_PATHS = "\"$(SRCROOT)/include\" $(SRCROOT)/ODC";
 			};
 			name = Release;
 		};
 		84009E7D19ADD33F0096E673 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = YES;
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/lib",
-				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				USER_HEADER_SEARCH_PATHS = "/Users/admin/source/opendatacon/include /usr/local/include";
 			};
 			name = Debug;
 		};
 		84009E7E19ADD33F0096E673 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = YES;
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/lib",
-				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				USER_HEADER_SEARCH_PATHS = "/Users/admin/source/opendatacon/include /usr/local/include";
 			};
 			name = Release;
 		};
 		84009EA219ADD3D60096E673 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = YES;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
-				);
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
-					/usr/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				USER_HEADER_SEARCH_PATHS = "\"$(SRCROOT)/include\"";
 			};
 			name = Debug;
 		};
 		84009EA319ADD3D60096E673 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = YES;
 				EXECUTABLE_PREFIX = lib;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
-					/usr/local/include,
-				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				USER_HEADER_SEARCH_PATHS = "\"$(SRCROOT)/include\"";
 			};
 			name = Release;
 		};
@@ -845,6 +1038,10 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -853,6 +1050,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				EXECUTABLE_PREFIX = lib;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -860,7 +1061,6 @@
 		84009EBA19ADD4000096E673 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = YES;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -871,43 +1071,56 @@
 					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				USER_HEADER_SEARCH_PATHS = "/Users/admin/source/dnp3/cpp/libs/openpal/src /usr/local/include JSON /Users/admin/source/dnp3/cpp/libs/opendnp3/src /Users/admin/source/dnp3/cpp/libs/asiopal/src /Users/admin/source/dnp3/cpp/libs/asiodnp3/src";
 			};
 			name = Debug;
 		};
 		84009EBB19ADD4000096E673 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = YES;
 				EXECUTABLE_PREFIX = lib;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				USER_HEADER_SEARCH_PATHS = "/Users/admin/source/dnp3/cpp/libs/openpal/src /usr/local/include JSON /Users/admin/source/dnp3/cpp/libs/opendnp3/src /Users/admin/source/dnp3/cpp/libs/asiopal/src /Users/admin/source/dnp3/cpp/libs/asiodnp3/src";
 			};
 			name = Release;
 		};
-		84009F6A19AE16B90096E673 /* Debug */ = {
+		84009F7F19B13B630096E673 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		84009F8019B13B630096E673 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		84009F9119B13D1A0096E673 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				USER_HEADER_SEARCH_PATHS = include;
 			};
 			name = Debug;
 		};
-		84009F6B19AE16B90096E673 /* Release */ = {
+		84009F9219B13D1A0096E673 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				USER_HEADER_SEARCH_PATHS = include;
 			};
 			name = Release;
 		};
@@ -968,11 +1181,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		84009F6919AE16B90096E673 /* Build configuration list for PBXNativeTarget "WebUI" */ = {
+		84009F7E19B13B630096E673 /* Build configuration list for PBXNativeTarget "WebUI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				84009F6A19AE16B90096E673 /* Debug */,
-				84009F6B19AE16B90096E673 /* Release */,
+				84009F7F19B13B630096E673 /* Debug */,
+				84009F8019B13B630096E673 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		84009F9019B13D1A0096E673 /* Build configuration list for PBXNativeTarget "WebUItest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				84009F9119B13D1A0096E673 /* Debug */,
+				84009F9219B13D1A0096E673 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
