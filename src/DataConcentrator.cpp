@@ -41,6 +41,9 @@
 #include "logging_cmds.h"
 #include "NullPort.h"
 
+#include "../WebUI/ResponderListResponder.h"
+#include "../WebUI/WebUI.h"
+
 DataConcentrator::DataConcentrator(std::string FileName):
 	DNP3Mgr(std::thread::hardware_concurrency()),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
@@ -48,7 +51,8 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	FileLog("datacon_log"),
 	AdvFileLog(FileLog,LOG_LEVEL),
 	IOS(std::thread::hardware_concurrency()),
-	ios_working(new asio::io_service::work(IOS))
+	ios_working(new asio::io_service::work(IOS)),
+    UI(new WebUI(10443))
 {
 	//fire up some worker threads
 	for(size_t i=0; i < std::thread::hardware_concurrency(); ++i)
@@ -60,14 +64,21 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	//Parse the configs and create all the ports and connections
 	ProcessFile(FileName);
+    
+    //Initialise User Interface(s)
 
+    //Initialise Data Ports
 	for(auto& port : DataPorts)
 	{
 		port.second->AddLogSubscriber(&AdvConsoleLog);
 		port.second->AddLogSubscriber(&AdvFileLog);
 		port.second->SetIOS(&IOS);
 		port.second->SetLogLevel(LOG_LEVEL);
-	}
+        
+        UI->AddJsonResponder(port.first, port.second);
+    }
+    
+    //Initialise Data Connectors
 	for(auto& conn : DataConnectors)
 	{
 		conn.second->AddLogSubscriber(&AdvConsoleLog);
@@ -212,6 +223,8 @@ void DataConcentrator::Run()
 	}
 
 	Console console("odc> ");
+    
+    UI->start();
 
 	std::function<void (std::stringstream&)> bound_func;
 
@@ -335,6 +348,7 @@ void DataConcentrator::ListConns(std::stringstream& args)
 }
 void DataConcentrator::Shutdown()
 {
+    UI->stop();
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->Disable();

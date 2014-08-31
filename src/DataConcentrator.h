@@ -37,6 +37,8 @@
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
 
+#include "IUI.h"
+
 #ifdef WIN32 
 const std::string DYNLIBPRE = "";
 const std::string DYNLIBEXT = ".dll";
@@ -75,6 +77,7 @@ public:
 	asiopal::LogFanoutHandler FanoutHandler;
 	asio::io_service IOS;
 	std::unique_ptr<asio::io_service::work> ios_working;
+    std::unique_ptr<IUI> UI;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void BuildOrRebuild();
