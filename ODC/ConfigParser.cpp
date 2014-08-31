@@ -33,7 +33,7 @@ std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
 void ConfigParser::ProcessFile(std::string filename, std::string overrides)
 {
 	Json::Value JSONRoot;
-	if(RecallOrCreate(filename,JSONRoot))
+	if((ConfigBase = RecallOrCreate(filename,JSONRoot)))
 	{
 		if(!JSONRoot["Inherits"].isNull())
 		{
@@ -49,17 +49,17 @@ void ConfigParser::ProcessFile(std::string filename, std::string overrides)
 	if(overrides != "")
 	{
 		Json::Reader JSONReader;
-		bool parse_success = JSONReader.parse(overrides,JSONRoot);
+		bool parse_success = JSONReader.parse(overrides,ConfigOverrides);
 		if (!parse_success)
 		{
 			std::cout  << "Failed to parse configuration from '"<<overrides<<"' conf overrides\n"
 					<< JSONReader.getFormattedErrorMessages()<<std::endl;
 			return;
 		}
-		ProcessElements(JSONRoot);
+		ProcessElements(ConfigOverrides);
 	}
 }
-bool ConfigParser::RecallOrCreate(std::string FileName, Json::Value& JSONRoot)
+const Json::Value* ConfigParser::RecallOrCreate(std::string FileName, Json::Value& JSONRoot)
 {
 	std::string Err;
 	if(!(JSONCache.count(FileName))) //not cached - read it in
@@ -68,7 +68,7 @@ bool ConfigParser::RecallOrCreate(std::string FileName, Json::Value& JSONRoot)
 		if (fin.fail())
 		{
 			std::cout << "WARNING: Config file " << FileName << " open fail." << std::endl;
-			return false;
+			return nullptr;
 		}
 		Json::Reader JSONReader;
 		bool parse_success = JSONReader.parse(fin,JSONRoot);
@@ -76,13 +76,23 @@ bool ConfigParser::RecallOrCreate(std::string FileName, Json::Value& JSONRoot)
 		{
 			std::cout  << "Failed to parse configuration from '"<<FileName<<"'\n"
 					<< JSONReader.getFormattedErrorMessages()<<std::endl;
-			return false;
+			return nullptr;
 		}
 		JSONCache[FileName] = JSONRoot;
 	}
 	else
 		JSONRoot = JSONCache[FileName];
-	return true;
+	return &(JSONCache[FileName]);
 }
-
+Json::Value ConfigParser::GetConfiguration() const
+{
+    Json::Value JSONRoot;
+    if (nullptr != ConfigBase)
+    {
+        JSONRoot["ConfigBase"] = *ConfigBase;
+    }
+    JSONRoot["ConfigOverrides"] = ConfigOverrides;
+    
+    return JSONRoot;
+}
 
