@@ -17,41 +17,16 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */ 
-#include <unordered_map>
-
-typedef std::unordered_map<std::string, std::string> ParamCollection;
-
-class IJsonResponder
+#include "IUI.h"
+class WebUI : public IUI
 {
 public:
-    virtual Json::Value GetResponse(const ParamCollection& params) = 0;
-};
-
-class StaticJsonResponder : public IJsonResponder
-{
-public:
-    StaticJsonResponder()
-    {
-        
-    }
+	WebUI(uint16_t port);
     
-    virtual Json::Value GetResponse(const ParamCollection& params) final
-    {
-        Json::Value event;
-
-        for(auto key : params)
-        {
-            event[key.first] = key.second;
-        }
-                
-        return event;
-    };
-};
-
-class WebUI
-{
-public:
-	WebUI();
+    /* Implement IUI interface */
+    void AddJsonResponder(const std::string name, std::weak_ptr<const IJsonResponder> responder);
+	int start();
+	void stop();
 
 	/* HTTP response handler call back */
     int
@@ -62,16 +37,26 @@ public:
 		const char *version,
 		const char *upload_data,
 		size_t *upload_data_size, void **ptr);
-
-	int start(uint16_t port);
-	void stop();
     
 private:
+    const int port;
+    
+    /* */
+    int CreateNewRequest(void *cls,
+                                struct MHD_Connection *connection,
+                                const char *url,
+                                const char *method,
+                                const char *version,
+                                const char *upload_data,
+                                size_t *upload_data_size,
+                                void **con_cls);
+    
 	/* HTTP file handler */
     int ReturnFile(struct MHD_Connection *connection, const char *url);
     int ReturnJSON(struct MHD_Connection *connection, const std::string& url, const ParamCollection& params);
 	struct MHD_Daemon * d;
     
     /* JSON response handlers */
-    std::unordered_map<std::string, IJsonResponder*> JsonResponders;
+    std::unordered_map<std::string, std::shared_ptr<const IJsonResponder>> LocalResponders;
+    std::unordered_map<std::string, std::weak_ptr<const IJsonResponder>> JsonResponders;
 };
