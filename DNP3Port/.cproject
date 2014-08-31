@@ -32,11 +32,11 @@
 								<option id="gnu.cpp.compiler.option.include.paths.1019485465" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/asio-1.10.2/include"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/asiodnp3/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/asiopal/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/opendnp3/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.290968259" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.other.pic.1251394942" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
@@ -66,7 +66,7 @@
 									<listOptionValue builtIn="false" value="asiopal"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.477937102" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.407126608" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1270574434" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
@@ -127,11 +127,11 @@
 								<option id="gnu.cpp.compiler.option.include.paths.122605747" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/asio-1.10.2/include"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/asiodnp3/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/asiopal/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/opendnp3/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.347237058" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.other.pic.300592593" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
@@ -160,7 +160,7 @@
 									<listOptionValue builtIn="false" value="asiopal"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1479077655" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/.libs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.897000573" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1901018503" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
@@ -221,11 +221,11 @@
 								<option id="gnu.cpp.compiler.option.include.paths.1093118492" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/asio-1.10.2/include"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/asiodnp3/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/asiopal/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/opendnp3/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.425667160" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.other.pic.1402914747" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
@@ -255,7 +255,7 @@
 									<listOptionValue builtIn="false" value="asiopal"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.818851667" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-rpi/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.1412550509" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1099516410" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
@@ -316,11 +316,11 @@
 								<option id="gnu.cpp.compiler.option.include.paths.1311967364" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/knarl/automatak/asio-1.10.2/include"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/asiodnp3/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/asiopal/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/opendnp3/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.214598855" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.other.pic.2019870919" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
@@ -349,7 +349,7 @@
 									<listOptionValue builtIn="false" value="asiopal"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1735899154" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-2.0-RC1-rpi/.libs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-rpi/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.1246919430" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.2108115873" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
