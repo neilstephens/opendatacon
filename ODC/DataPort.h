@@ -29,7 +29,6 @@
 
 #include <asiodnp3/DNP3Manager.h>
 #include "DataPortConf.h"
-#include "DataConnector.h"
 #include "IOHandler.h"
 #include "ConfigParser.h"
 

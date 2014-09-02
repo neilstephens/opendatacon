@@ -29,8 +29,13 @@
 
 #include <memory>
 #include <opendatacon/DataPortConf.h>
-#include <opendatacon/AddrConf.h>
 #include "JSONPointConf.h"
+
+typedef struct
+{
+	std::string IP;
+	uint16_t Port;
+}JSONAddrConf;
 
 class JSONPortConf: public DataPortConf
 {

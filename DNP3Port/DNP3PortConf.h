@@ -28,8 +28,15 @@
 #define DNP3OUTSTATIONPORTCONF_H_
 
 #include <opendatacon/DataPort.h>
-#include <opendatacon/AddrConf.h>
 #include "DNP3PointConf.h"
+
+typedef struct
+{
+	std::string IP;
+	uint16_t Port;
+	uint16_t OutstationAddr;
+	uint16_t MasterAddr;
+}DNP3AddrConf;
 
 class DNP3PortConf: public DataPortConf
 {
