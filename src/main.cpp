@@ -55,7 +55,7 @@
 
 int main(int argc, char* argv[])
 {
-    std::unique_ptr<DataConcentrator> TheDataConcentrator;
+    std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
 	try
 	{
 
