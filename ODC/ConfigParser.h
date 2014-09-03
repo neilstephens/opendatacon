@@ -36,14 +36,17 @@ public:
 	ConfigParser(){};
 	virtual ~ConfigParser(){};
 	void ProcessFile(std::string filename, std::string overrides = "");
-	static const Json::Value* RecallOrCreate(std::string FileName,Json::Value& JSONRoot);
 
 	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
     
+    static Json::Value GetConfiguration(std::string FileName);
     Json::Value GetConfiguration() const;
 
 private:
-    const Json::Value* ConfigBase;
+	static Json::Value* RecallOrCreate(std::string FileName);
+    Json::Value* ProcessInherit(std::string pFileName);
+
+    Json::Value* ConfigBase;
     Json::Value ConfigOverrides;
 	static std::unordered_map<std::string,Json::Value> JSONCache;
 };
