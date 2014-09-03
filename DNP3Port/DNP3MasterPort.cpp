@@ -101,7 +101,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	if(pConf->pPointConf->IntegrityScanRateSec > 0)
 		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Seconds(pConf->pPointConf->IntegrityScanRateSec));
 	else
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Minutes(openpal::MaxValue<int64_t>()));
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Minutes(600000000)); //ten million hours
 
 	// configure event scans
 	if(pConf->pPointConf->EventClass1ScanRateSec > 0)
