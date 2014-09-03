@@ -27,6 +27,7 @@
 #include <asiodnp3/DefaultMasterApplication.h>
 #include <opendnp3/app/ClassField.h>
 #include <opendnp3/app/MeasurementTypes.h>
+#include <opendnp3/app/DynamicPointIndexes.h>
 #include "DNP3MasterPort.h"
 #include "CommandCallbackPromise.h"
 
@@ -141,6 +142,7 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::Analo
 
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(bool connected, uint16_t index, const std::string& SenderName)
 {
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
 	auto cmd_future = cmd_promise.get_future();
 
@@ -153,8 +155,99 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(bool connected, uint1
 	//connected == true means something upstream has connected
 	if(connected)
 	{
-		//enable the stack (does nothing if already enabled)
-		pMaster->Enable();
+		//Send out assign class commands on connect
+		if(!stack_enabled)
+		{
+			//enable the stack
+			pMaster->Enable();
+			stack_enabled = true;
+
+			//send out an assign class command
+			auto pFunctionProcessor = pMaster->GetFunctionProcessor();
+			//scope for analog temp vars
+			{
+				std::vector<uint32_t> ClassZeroVec, ClassOneVec, ClassTwoVec, ClassThreeVec;
+				for(auto index : pConf->pPointConf->AnalogIndicies)
+				{
+					switch(pConf->pPointConf->AnalogClasses[index])
+					{
+						case opendnp3::PointClass::Class0:
+							ClassZeroVec.push_back(index);
+							break;
+						case opendnp3::PointClass::Class1:
+							ClassOneVec.push_back(index);
+							break;
+						case opendnp3::PointClass::Class2:
+							ClassTwoVec.push_back(index);
+							break;
+						case opendnp3::PointClass::Class3:
+							ClassThreeVec.push_back(index);
+							break;
+					}
+				}
+				auto Class0Indexable = openpal::Indexable<uint32_t, uint32_t>(ClassZeroVec.data(),ClassZeroVec.size());
+				auto Class0Indexes = opendnp3::DynamicPointIndexes(Class0Indexable);
+				auto Class0PointIndexes = opendnp3::PointIndexes(Class0Indexes);
+				auto Class1Indexable = openpal::Indexable<uint32_t, uint32_t>(ClassOneVec.data(),ClassOneVec.size());
+				auto Class1Indexes = opendnp3::DynamicPointIndexes(Class1Indexable);
+				auto Class1PointIndexes = opendnp3::PointIndexes(Class1Indexes);
+				auto Class2Indexable = openpal::Indexable<uint32_t, uint32_t>(ClassTwoVec.data(),ClassTwoVec.size());
+				auto Class2Indexes = opendnp3::DynamicPointIndexes(Class2Indexable);
+				auto Class2PointIndexes = opendnp3::PointIndexes(Class2Indexes);
+				auto Class3Indexable = openpal::Indexable<uint32_t, uint32_t>(ClassThreeVec.data(),ClassThreeVec.size());
+				auto Class3Indexes = opendnp3::DynamicPointIndexes(Class3Indexable);
+				auto Class3PointIndexes = opendnp3::PointIndexes(Class3Indexes);
+
+				pFunctionProcessor->AssignClass(GroupVariation::Group30Var0, &Class0PointIndexes, opendnp3::PointClass::Class0);
+				pFunctionProcessor->AssignClass(GroupVariation::Group30Var0, &Class1PointIndexes, opendnp3::PointClass::Class1);
+				pFunctionProcessor->AssignClass(GroupVariation::Group30Var0, &Class2PointIndexes, opendnp3::PointClass::Class2);
+				pFunctionProcessor->AssignClass(GroupVariation::Group30Var0, &Class3PointIndexes, opendnp3::PointClass::Class3);
+			}
+			//scope for binary temp vars
+			{
+				std::vector<uint32_t> ClassZeroVec, ClassOneVec, ClassTwoVec, ClassThreeVec;
+				for(auto index : pConf->pPointConf->BinaryIndicies)
+				{
+					switch(pConf->pPointConf->BinaryClasses[index])
+					{
+						case opendnp3::PointClass::Class0:
+							ClassZeroVec.push_back(index);
+							break;
+						case opendnp3::PointClass::Class1:
+							ClassOneVec.push_back(index);
+							break;
+						case opendnp3::PointClass::Class2:
+							ClassTwoVec.push_back(index);
+							break;
+						case opendnp3::PointClass::Class3:
+							ClassThreeVec.push_back(index);
+							break;
+					}
+				}
+				auto Class0Indexable = openpal::Indexable<uint32_t, uint32_t>(ClassZeroVec.data(),ClassZeroVec.size());
+				auto Class0Indexes = opendnp3::DynamicPointIndexes(Class0Indexable);
+				auto Class0PointIndexes = opendnp3::PointIndexes(Class0Indexes);
+				auto Class1Indexable = openpal::Indexable<uint32_t, uint32_t>(ClassOneVec.data(),ClassOneVec.size());
+				auto Class1Indexes = opendnp3::DynamicPointIndexes(Class1Indexable);
+				auto Class1PointIndexes = opendnp3::PointIndexes(Class1Indexes);
+				auto Class2Indexable = openpal::Indexable<uint32_t, uint32_t>(ClassTwoVec.data(),ClassTwoVec.size());
+				auto Class2Indexes = opendnp3::DynamicPointIndexes(Class2Indexable);
+				auto Class2PointIndexes = opendnp3::PointIndexes(Class2Indexes);
+				auto Class3Indexable = openpal::Indexable<uint32_t, uint32_t>(ClassThreeVec.data(),ClassThreeVec.size());
+				auto Class3Indexes = opendnp3::DynamicPointIndexes(Class3Indexable);
+				auto Class3PointIndexes = opendnp3::PointIndexes(Class3Indexes);
+
+				pFunctionProcessor->AssignClass(GroupVariation::Group1Var0, &Class0PointIndexes, opendnp3::PointClass::Class0);
+				pFunctionProcessor->AssignClass(GroupVariation::Group1Var0, &Class1PointIndexes, opendnp3::PointClass::Class1);
+				pFunctionProcessor->AssignClass(GroupVariation::Group1Var0, &Class2PointIndexes, opendnp3::PointClass::Class2);
+				pFunctionProcessor->AssignClass(GroupVariation::Group1Var0, &Class3PointIndexes, opendnp3::PointClass::Class3);
+			}
+			pFunctionProcessor->AssignClassExecute(*CommandCorrespondant::GetCallback(std::move(cmd_promise)));
+		}
+		else
+		{
+			cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
+		}
 		//do an integrity scan
 		IntegrityScan.Demand();
 	}

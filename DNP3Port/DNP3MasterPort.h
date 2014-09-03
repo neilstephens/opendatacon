@@ -39,7 +39,10 @@ using namespace opendnp3;
 class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler
 {
 public:
-	DNP3MasterPort(std::string aName, std::string aConfFilename, std::string aConfOverrides) : DNP3Port(aName, aConfFilename, aConfOverrides){};
+	DNP3MasterPort(std::string aName, std::string aConfFilename, std::string aConfOverrides) :
+		DNP3Port(aName, aConfFilename, aConfOverrides),
+		stack_enabled(false)
+	{};
 
 	void Enable();
 	void Disable();
@@ -66,6 +69,7 @@ public:
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
 	asiodnp3::IMaster* pMaster;
+	bool stack_enabled;
 	opendnp3::MasterScan IntegrityScan;
 
 protected:
