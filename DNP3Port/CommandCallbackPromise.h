@@ -27,6 +27,7 @@
 #ifndef COMMANDCALLBACKPROMISE_H_
 #define COMMANDCALLBACKPROMISE_H_
 
+#include <iostream>
 #include <future>
 #include <opendnp3/master/ICommandCallback.h>
 #include <opendnp3/master/CommandResponse.h>
@@ -42,10 +43,21 @@ public:
 
 	void OnComplete(const opendnp3::CommandResponse& response)
 	{
-		if(response.GetResult() == opendnp3::CommandResult::RESPONSE_OK)
-			mPromise.set_value(response.GetStatus());
-		else
-			mPromise.set_value(opendnp3::CommandStatus::UNDEFINED);
+		switch(response.GetResult())
+		{
+			case opendnp3::CommandResult::RESPONSE_OK:
+				mPromise.set_value(response.GetStatus());
+				break;
+			case opendnp3::CommandResult::TIMEOUT:
+				mPromise.set_value(opendnp3::CommandStatus::TIMEOUT);
+				break;
+			case opendnp3::CommandResult::BAD_RESPONSE:
+			case opendnp3::CommandResult::NO_COMMS:
+			case opendnp3::CommandResult::QUEUE_FULL:
+			default:
+				mPromise.set_value(opendnp3::CommandStatus::UNDEFINED);
+				break;
+		}
 
 		CommandCorrespondant::ReleaseCallback(this);
 	};
