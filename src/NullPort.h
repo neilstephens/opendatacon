@@ -36,7 +36,7 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	std::unique_ptr<Timer_t> pTimer;
 public:
-	NullPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
+	NullPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 		DataPort(aName, aConfFilename, aConfOverrides)
 	{};
 	void Enable()

@@ -20,31 +20,31 @@ my $port_template =
 			"Name" : "InPort_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Master",
 			"ConfFilename" : "DMCDNP3.conf",
-			"ConfOverrides" : "{ \"IP\" : \"10.0.1.2\", \"Port\" : 30000, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
+			"ConfOverrides" : { "IP" : "127.0.0.1", "Port" : 30000, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
 		},
 		{
 			"Name" : "OutPort_AP_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Outstation",
 			"ConfFilename" : "DMCDNP3Outstation.conf",
-			"ConfOverrides" : "{ \"IP\" : \"0.0.0.0\", \"Port\" : 20000, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
+			"ConfOverrides" : { "IP" : "0.0.0.0", "Port" : 20000, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
 		},
 		{
 			"Name" : "OutPort_AS_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Outstation",
 			"ConfFilename" : "DMCDNP3Outstation.conf",
-			"ConfOverrides" : "{ \"IP\" : \"0.0.0.0\", \"Port\" : 20001, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
+			"ConfOverrides" : { "IP" : "0.0.0.0", "Port" : 20001, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
 		},
 		{
 			"Name" : "OutPort_BP_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Outstation",
 			"ConfFilename" : "DMCDNP3Outstation.conf",
-			"ConfOverrides" : "{ \"IP\" : \"0.0.0.0\", \"Port\" : 20002, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
+			"ConfOverrides" : { "IP" : "0.0.0.0", "Port" : 20002, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
 		},
 		{
 			"Name" : "OutPort_BS_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Outstation",
 			"ConfFilename" : "DMCDNP3Outstation.conf",
-			"ConfOverrides" : "{ \"IP\" : \"0.0.0.0\", \"Port\" : 20003, \"MasterAddr\" : 0, \"OutstationAddr\" : <OUTSTATION_ADDR>}"
+			"ConfOverrides" : { "IP" : "0.0.0.0", "Port" : 20003, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
 		}
 ';
 		
@@ -96,7 +96,7 @@ my $config_footer =
 }
 ';
 
-open main_conf, ">datacon.conf";
+open main_conf, ">opendatacon.conf";
 open conn_conf, ">DMCConnector.conf";
 
 print main_conf $config_header;

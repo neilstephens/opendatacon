@@ -39,7 +39,6 @@
 class DNP3PointConf: public ConfigParser
 {
 public:
-	DNP3PointConf(){};
 	DNP3PointConf(std::string FileName);
 
 	void ProcessElements(const Json::Value& JSONRoot);

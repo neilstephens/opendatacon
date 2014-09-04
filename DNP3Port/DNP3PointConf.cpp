@@ -31,6 +31,7 @@
 #include <opendatacon/util.h>
 
 DNP3PointConf::DNP3PointConf(std::string FileName):
+	ConfigParser(FileName),
 		EnableUnsol(true),
 		UnsolClass1(false),
 		UnsolClass2(false),
@@ -45,7 +46,7 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		EventClass2ScanRateSec(1),
 		EventClass3ScanRateSec(1)
 {
-	ProcessFile(FileName);
+	ProcessFile();
 }
 
 uint8_t DNP3PointConf::GetUnsolClassMask()
