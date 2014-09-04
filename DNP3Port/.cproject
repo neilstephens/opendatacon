@@ -26,7 +26,7 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.debug.1630357507" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.debug"/>
 							<builder buildPath="${workspace_loc:/JSONPort}/Debug" id="cdt.managedbuild.target.gnu.builder.so.debug.509490335" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.so.debug"/>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1275070422" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
-							<tool command="g++" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug.745747019" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug">
+							<tool command="g++" commandLinePattern="${COMMAND} -MMD -MT ${OUTPUT_PREFIX}${OUTPUT} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug.745747019" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug">
 								<option id="gnu.cpp.compiler.so.debug.option.optimization.level.1908479636" name="Optimization Level" superClass="gnu.cpp.compiler.so.debug.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.so.debug.option.debugging.level.55581037" name="Debug Level" superClass="gnu.cpp.compiler.so.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1019485465" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
@@ -92,7 +92,7 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSONPort" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3-2.0-RC1;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
+				<externalSettings containerId="dnp3;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -121,7 +121,7 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.release.1039635327" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.release"/>
 							<builder buildPath="${workspace_loc:/JSONPort}/Release" id="cdt.managedbuild.target.gnu.builder.so.release.1826372941" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.so.release"/>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1550519914" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.so.release.457463940" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.release">
+							<tool commandLinePattern="${COMMAND} -MMD -MT ${OUTPUT_PREFIX}${OUTPUT} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.release.457463940" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.release">
 								<option id="gnu.cpp.compiler.so.release.option.optimization.level.1552426373" name="Optimization Level" superClass="gnu.cpp.compiler.so.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.so.release.option.debugging.level.1689374641" name="Debug Level" superClass="gnu.cpp.compiler.so.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.122605747" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
@@ -186,7 +186,7 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSONPort" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3-2.0-RC1;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
+				<externalSettings containerId="dnp3;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -215,7 +215,7 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.debug.186412868" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.debug"/>
 							<builder buildPath="${workspace_loc:/JSONPort}/Debug" id="cdt.managedbuild.target.gnu.builder.so.debug.1654024536" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.so.debug"/>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.archiver.base.1234359176" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
-							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug.2102538284" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug">
+							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" commandLinePattern="${COMMAND} -MMD -MT ${OUTPUT_PREFIX}${OUTPUT} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug.2102538284" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug">
 								<option id="gnu.cpp.compiler.so.debug.option.optimization.level.443047668" name="Optimization Level" superClass="gnu.cpp.compiler.so.debug.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.so.debug.option.debugging.level.1686015579" name="Debug Level" superClass="gnu.cpp.compiler.so.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1093118492" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
@@ -281,7 +281,7 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSONPort" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3-2.0-RC1-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
+				<externalSettings containerId="dnp3-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -310,7 +310,7 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.release.572449886" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.release"/>
 							<builder buildPath="${workspace_loc:/JSONPort}/Release" id="cdt.managedbuild.target.gnu.builder.so.release.1592388120" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.so.release"/>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.archiver.base.1009801228" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
-							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.release.1904145006" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.release">
+							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" commandLinePattern="${COMMAND} -MMD -MT ${OUTPUT_PREFIX}${OUTPUT} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.release.1904145006" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.release">
 								<option id="gnu.cpp.compiler.so.release.option.optimization.level.879350217" name="Optimization Level" superClass="gnu.cpp.compiler.so.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.so.release.option.debugging.level.1742815835" name="Debug Level" superClass="gnu.cpp.compiler.so.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1311967364" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
@@ -375,7 +375,7 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSONPort" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3-2.0-RC1-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
+				<externalSettings containerId="dnp3-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 		</cconfiguration>
 	</storageModule>
