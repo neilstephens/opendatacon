@@ -26,7 +26,7 @@
 
 #include "JSONClientPort.h"
 
-extern "C" JSONClientPort* new_JSONClientPort(std::string Name, std::string File, std::string Overrides)
+extern "C" JSONClientPort* new_JSONClientPort(std::string Name, std::string File, const Json::Value Overrides)
 {
 	return new JSONClientPort(Name,File,Overrides);
 }

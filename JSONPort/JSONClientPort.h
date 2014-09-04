@@ -33,7 +33,7 @@
 class JSONClientPort: public JSONPort
 {
 public:
-	JSONClientPort(std::string aName, std::string aConfFilename, std::string aConfOverrides);
+	JSONClientPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 
 	void Enable();
 	void Disable();

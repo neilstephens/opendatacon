@@ -33,7 +33,7 @@
 class DNP3Port: public DataPort
 {
 public:
-	DNP3Port(std::string aName, std::string aConfFilename, std::string aConfOverrides);
+	DNP3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;

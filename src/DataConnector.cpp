@@ -31,12 +31,11 @@
 #include "DataConnector.h"
 #include "IndexOffsetTransform.h"
 
-DataConnector::DataConnector(std::string aName, std::string aConfFilename, std::string aConfOverrides):IOHandler(aName)
+DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	IOHandler(aName),
+	ConfigParser(aConfFilename, aConfOverrides)
 {
-	ConfFilename = aConfFilename;
-	ConfOverrides = aConfOverrides;
-
-	ProcessFile(ConfFilename, ConfOverrides);
+	ProcessFile();
 }
 
 void DataConnector::ProcessElements(const Json::Value& JSONRoot)

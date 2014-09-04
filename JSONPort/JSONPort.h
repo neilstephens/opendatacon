@@ -34,14 +34,14 @@
 class JSONPort: public DataPort
 {
 public:
-	JSONPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
+	JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 		DataPort(aName, aConfFilename, aConfOverrides)
 	{
 		//the creation of a new PortConf will get the point details
 		pConf.reset(new JSONPortConf(ConfFilename));
 
 		//We still may need to process the file (or overrides) to get Addr details:
-		ProcessFile(ConfFilename,ConfOverrides);
+		ProcessFile();
 	};
 
 	void ProcessElements(const Json::Value& JSONRoot)

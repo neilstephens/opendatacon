@@ -36,7 +36,7 @@
 #include "DNP3OutstationPort.h"
 
 
-DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
+DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides)
 {};
 
