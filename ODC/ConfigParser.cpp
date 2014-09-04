@@ -37,13 +37,14 @@ ConfigParser::ConfigParser(std::string aConfFilename, const Json::Value aConfOve
 
 void ConfigParser::ProcessInherits(std::string FileName)
 {
-	Json::Value JSONRoot;
-	if(RecallOrCreate(FileName))
+	Json::Value* pJSONRoot;
+	pJSONRoot = RecallOrCreate(FileName);
+	if(pJSONRoot != nullptr)
 	{
-		if(!JSONRoot["Inherits"].isNull())
-			for(Json::ArrayIndex n=0; n<JSONRoot["Inherits"].size(); n++)
-				ProcessInherits(JSONRoot["Inherits"][n].asString());
-		ProcessElements(JSONRoot);
+		if(!(*pJSONRoot)["Inherits"].isNull())
+			for(Json::ArrayIndex n=0; n<(*pJSONRoot)["Inherits"].size(); n++)
+				ProcessInherits((*pJSONRoot)["Inherits"][n].asString());
+		ProcessElements(*pJSONRoot);
 	}
 }
 
