@@ -61,6 +61,7 @@ public:
 	opendnp3::EventAnalogResponse EventAnalogResponse;
 	opendnp3::EventCounterResponse EventCounterResponse;
 	bool DoUnsolOnStartup;
+	bool DoAssignClassOnStartup;
 	bool UseConfirms;
 	size_t IntegrityScanRateSec;
 	size_t EventClass1ScanRateSec;
