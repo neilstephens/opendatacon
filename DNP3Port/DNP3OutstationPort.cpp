@@ -29,6 +29,7 @@
 #include <regex>
 #include <chrono>
 #include <asiopal/UTCTimeSource.h>
+#include <opendnp3/app/DynamicPointIndexes.h>
 #include <opendnp3/outstation/Database.h>
 #include <opendnp3/outstation/TimeTransaction.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
