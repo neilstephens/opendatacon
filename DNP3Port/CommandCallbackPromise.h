@@ -36,8 +36,9 @@
 class CommandCallbackPromise: public opendnp3::ICommandCallback
 {
 public:
-	CommandCallbackPromise(std::promise<opendnp3::CommandStatus> aPromise):
-		mPromise(std::move(aPromise))
+	CommandCallbackPromise(std::promise<opendnp3::CommandStatus> aPromise, std::function<void()> aCompletionHook = nullptr):
+		mPromise(std::move(aPromise)),
+		mCompletionHook(std::move(aCompletionHook))
 	{};
 	virtual ~CommandCallbackPromise(){};
 
@@ -58,12 +59,14 @@ public:
 				mPromise.set_value(opendnp3::CommandStatus::UNDEFINED);
 				break;
 		}
-
+		if(mCompletionHook != nullptr)
+			mCompletionHook();
 		CommandCorrespondant::ReleaseCallback(this);
 	};
 
 private:
 	std::promise<opendnp3::CommandStatus> mPromise;
+	std::function<void()> mCompletionHook;
 
 };
 
