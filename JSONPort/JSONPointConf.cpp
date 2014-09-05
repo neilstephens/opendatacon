@@ -29,9 +29,10 @@
 #include <cstdint>
 #include "JSONPointConf.h"
 
-JSONPointConf::JSONPointConf(std::string FileName)
+JSONPointConf::JSONPointConf(std::string FileName):
+	ConfigParser(FileName)
 {
-	ProcessFile(FileName);
+	ProcessFile();
 };
 
 void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)

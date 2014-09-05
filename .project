@@ -4,7 +4,6 @@
 	<comment></comment>
 	<projects>
 		<project>ODC</project>
-		<project>JSON</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

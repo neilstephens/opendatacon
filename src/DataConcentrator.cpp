@@ -42,6 +42,7 @@
 #include "NullPort.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
+	ConfigParser(FileName),
 	DNP3Mgr(std::thread::hardware_concurrency()),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
 	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
@@ -59,7 +60,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	DNP3Mgr.AddLogSubscriber(&AdvFileLog);
 
 	//Parse the configs and create all the ports and connections
-	ProcessFile(FileName);
+	ProcessFile();
 
 	for(auto& port : DataPorts)
 	{
@@ -127,7 +128,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else if(Ports[n]["Type"].asString() == "Null")
 			{
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"].asString()));
+				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
 			}
 			else
 			{
@@ -155,7 +156,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 				//it should return a pointer to a heap allocated instance of a descendant of DataPort
 				std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-				auto new_port_func = (DataPort*(*)(std::string, std::string, std::string))DYNLIBGETSYM(portlib, new_funcname.c_str());
+				auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))DYNLIBGETSYM(portlib, new_funcname.c_str());
 
 				if(new_port_func == nullptr)
 				{
@@ -164,7 +165,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				}
 
 				//call the creation function and wrap the returned pointer to a new port
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"].asString()));
+				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
 			}
 		}
 	}
@@ -179,7 +180,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				std::cout<<"Warning: invalid Connector config: need at least Name, ConfFilename: \n'"<<Connectors[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 			}
-			DataConnectors[Connectors[n]["Name"].asString()] = std::unique_ptr<DataConnector>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"].asString()));
+			DataConnectors[Connectors[n]["Name"].asString()] = std::unique_ptr<DataConnector>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]));
 		}
 	}
 }
@@ -216,7 +217,7 @@ void DataConcentrator::Run()
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
-	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.1"<<std::endl;};
+	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2"<<std::endl;};
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control

@@ -29,18 +29,16 @@
 
 #include <asiodnp3/DNP3Manager.h>
 #include "DataPortConf.h"
-#include "DataConnector.h"
 #include "IOHandler.h"
 #include "ConfigParser.h"
 
 class DataPort: public IOHandler, public ConfigParser
 {
 public:
-	DataPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
+	DataPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 		IOHandler(aName),
-		pConf(nullptr),
-		ConfFilename(aConfFilename),
-		ConfOverrides(aConfOverrides)
+		ConfigParser(aConfFilename, aConfOverrides),
+		pConf(nullptr)
 	{};
 
 	virtual void Enable()=0;
@@ -64,8 +62,6 @@ public:
 
 protected:
 	std::unique_ptr<DataPortConf> pConf;
-	std::string ConfFilename;
-	std::string ConfOverrides;
 };
 
 #endif /* DATAPORT_H_ */

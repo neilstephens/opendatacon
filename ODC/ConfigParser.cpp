@@ -30,37 +30,34 @@
 
 std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
 
-void ConfigParser::ProcessFile(std::string filename, std::string overrides)
+ConfigParser::ConfigParser(std::string aConfFilename, const Json::Value aConfOverrides):
+	ConfFilename(aConfFilename),
+	ConfOverrides(aConfOverrides)
+{};
+
+void ConfigParser::ProcessInherits(std::string FileName)
 {
-	Json::Value JSONRoot;
-	if(RecallOrCreate(filename,JSONRoot))
+	Json::Value* pJSONRoot;
+	pJSONRoot = RecallOrCreate(FileName);
+	if(pJSONRoot != nullptr)
 	{
-		if(!JSONRoot["Inherits"].isNull())
-		{
-			for(Json::ArrayIndex n=0; n<JSONRoot["Inherits"].size(); n++)
-			{
-				Json::Value JSONInc;
-				if(RecallOrCreate(JSONRoot["Inherits"][n].asString(),JSONInc))
-					ProcessElements(JSONInc);
-			}
-		}
-		ProcessElements(JSONRoot);
-	}
-	if(overrides != "")
-	{
-		Json::Reader JSONReader;
-		bool parse_success = JSONReader.parse(overrides,JSONRoot);
-		if (!parse_success)
-		{
-			std::cout  << "Failed to parse configuration from '"<<overrides<<"' conf overrides\n"
-					<< JSONReader.getFormattedErrorMessages()<<std::endl;
-			return;
-		}
-		ProcessElements(JSONRoot);
+		if(!(*pJSONRoot)["Inherits"].isNull())
+			for(Json::ArrayIndex n=0; n<(*pJSONRoot)["Inherits"].size(); n++)
+				ProcessInherits((*pJSONRoot)["Inherits"][n].asString());
+		ProcessElements(*pJSONRoot);
 	}
 }
-bool ConfigParser::RecallOrCreate(std::string FileName, Json::Value& JSONRoot)
+
+void ConfigParser::ProcessFile()
 {
+	ProcessInherits(ConfFilename);
+	if(!ConfOverrides.isNull())
+		ProcessElements(ConfOverrides);
+}
+
+Json::Value* ConfigParser::RecallOrCreate(std::string FileName)
+{
+	Json::Value JSONRoot;
 	std::string Err;
 	if(!(JSONCache.count(FileName))) //not cached - read it in
 	{
@@ -68,7 +65,7 @@ bool ConfigParser::RecallOrCreate(std::string FileName, Json::Value& JSONRoot)
 		if (fin.fail())
 		{
 			std::cout << "WARNING: Config file " << FileName << " open fail." << std::endl;
-			return false;
+			return nullptr;
 		}
 		Json::Reader JSONReader;
 		bool parse_success = JSONReader.parse(fin,JSONRoot);
@@ -76,13 +73,11 @@ bool ConfigParser::RecallOrCreate(std::string FileName, Json::Value& JSONRoot)
 		{
 			std::cout  << "Failed to parse configuration from '"<<FileName<<"'\n"
 					<< JSONReader.getFormattedErrorMessages()<<std::endl;
-			return false;
+			return nullptr;
 		}
 		JSONCache[FileName] = JSONRoot;
 	}
-	else
-		JSONRoot = JSONCache[FileName];
-	return true;
+	return &JSONCache[FileName];
 }
 
 

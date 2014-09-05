@@ -31,6 +31,7 @@
 #include <opendatacon/util.h>
 
 DNP3PointConf::DNP3PointConf(std::string FileName):
+	ConfigParser(FileName),
 		EnableUnsol(true),
 		UnsolClass1(false),
 		UnsolClass2(false),
@@ -39,13 +40,14 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		EventAnalogResponse(opendnp3::EventAnalogResponse::Group32Var5),
 		EventCounterResponse(opendnp3::EventCounterResponse::Group22Var1),
 		DoUnsolOnStartup(true),
+		DoAssignClassOnStartup(true),
 		UseConfirms(true),
 		IntegrityScanRateSec(3600),
 		EventClass1ScanRateSec(1),
 		EventClass2ScanRateSec(1),
 		EventClass3ScanRateSec(1)
 {
-	ProcessFile(FileName);
+	ProcessFile();
 }
 
 uint8_t DNP3PointConf::GetUnsolClassMask()
@@ -132,6 +134,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	if(!JSONRoot["DoUnsolOnStartup"].isNull())
 		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
+
+	if(!JSONRoot["DoAssignClassOnStartup"].isNull())
+		DoAssignClassOnStartup = JSONRoot["DoAssignClassOnStartup"].asBool();
 
 	if(!JSONRoot["UseConfirms"].isNull())
 		UseConfirms = JSONRoot["UseConfirms"].asBool();
