@@ -186,6 +186,9 @@
       <Project>{6715f2d3-391f-4e19-bb2c-52c1fa102a4a}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="DNP3Port.def" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
