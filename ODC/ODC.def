@@ -21,7 +21,6 @@ LIBRARY ODC
 EXPORTS
 	?extract_delimited_string@@YA_NAAV?$basic_istream@DU?$char_traits@D@std@@@std@@AAV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@2@@Z
 	?StringToEventAnalogResponse@@YA?AW4EventAnalogResponse@opendnp3@@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
-	?ProcessFile@ConfigParser@@QAEXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@0@Z
 	?StringToEventCounterResponse@@YA?AW4EventCounterResponse@opendnp3@@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	?StringToEventBinaryResponse@@YA?AW4EventBinaryResponse@opendnp3@@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	??0IOHandler@@QAE@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
@@ -30,5 +29,6 @@ EXPORTS
 	?AddLogSubscriber@IOHandler@@QAEXPAVILogHandler@openpal@@@Z
 	?Subscribe@IOHandler@@QAEXPAV1@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	?GetIOHandlers@@YAAAV?$unordered_map@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@PAVIOHandler@@U?$hash@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@U?$equal_to@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@PAVIOHandler@@@std@@@2@@std@@XZ
-
-
+	??0ConfigParser@@QAE@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@VValue@Json@@@Z
+	??0ConfigParser@@QAE@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@VValue@Json@@@Z
+	?ProcessFile@ConfigParser@@QAEXXZ

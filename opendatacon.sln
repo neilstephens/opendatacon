@@ -13,8 +13,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DNP3Port", "DNP3Port\DNP3Po
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ODC", "ODC\ODC.vcxproj", "{6715F2D3-391F-4E19-BB2C-52C1FA102A4A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WebUI", "WebUI\WebUI.vcxproj", "{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -85,18 +83,6 @@ Global
 		{6715F2D3-391F-4E19-BB2C-52C1FA102A4A}.Release|Win32.Build.0 = Release|Win32
 		{6715F2D3-391F-4E19-BB2C-52C1FA102A4A}.Release|x64.ActiveCfg = Release|x64
 		{6715F2D3-391F-4E19-BB2C-52C1FA102A4A}.Release|x64.Build.0 = Release|x64
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Debug|Mixed Platforms.Build.0 = Debug|Win32
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Debug|Win32.ActiveCfg = Debug|Win32
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Debug|Win32.Build.0 = Debug|Win32
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Debug|x64.ActiveCfg = Debug|x64
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Debug|x64.Build.0 = Debug|x64
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Release|Mixed Platforms.ActiveCfg = Release|Win32
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Release|Mixed Platforms.Build.0 = Release|Win32
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Release|Win32.ActiveCfg = Release|Win32
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Release|Win32.Build.0 = Release|Win32
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Release|x64.ActiveCfg = Release|x64
-		{150A3BB1-B87D-4873-A2AD-8C0DEE56C80F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

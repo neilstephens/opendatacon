@@ -148,6 +148,9 @@
     <ClInclude Include="json\json-forwards.h" />
     <ClInclude Include="json\json.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="JSON.def" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
