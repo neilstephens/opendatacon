@@ -66,8 +66,6 @@
 		84009F5C19AE0E2A0096E673 /* libasiopal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4719ADE3EC0096E673 /* libasiopal.dylib */; };
 		84009F5D19AE0E2A0096E673 /* libopendnp3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4819ADE3EC0096E673 /* libopendnp3.dylib */; };
 		84009F5E19AE0E2A0096E673 /* libopenpal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4919ADE3EC0096E673 /* libopenpal.dylib */; };
-		84009F7119AE16CD0096E673 /* WebUI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84009F6D19AE16CD0096E673 /* WebUI.cpp */; };
-		84009F7319AE17C80096E673 /* libmicrohttpd.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */; };
 		84009F7419AE9EE40096E673 /* libJSON.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EA819ADD3E80096E673 /* libJSON.dylib */; };
 /* End PBXBuildFile section */
 
@@ -118,7 +116,6 @@
 
 /* Begin PBXFileReference section */
 		84009E7319ADD33F0096E673 /* opendatacon */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = opendatacon; sourceTree = BUILT_PRODUCTS_DIR; };
-		84009E8019ADD3960096E673 /* AddrConf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AddrConf.h; sourceTree = "<group>"; };
 		84009E8119ADD3960096E673 /* AdvancedLogger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AdvancedLogger.cpp; sourceTree = "<group>"; };
 		84009E8219ADD3960096E673 /* AdvancedLogger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AdvancedLogger.h; sourceTree = "<group>"; };
 		84009E8319ADD3960096E673 /* Console.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Console.cpp; sourceTree = "<group>"; };
@@ -179,13 +176,6 @@
 		84009F4819ADE3EC0096E673 /* libopendnp3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopendnp3.dylib; path = lib/libopendnp3.dylib; sourceTree = "<group>"; };
 		84009F4919ADE3EC0096E673 /* libopenpal.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopenpal.dylib; path = lib/libopenpal.dylib; sourceTree = "<group>"; };
 		84009F6319AE16B90096E673 /* WebUI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = WebUI; sourceTree = BUILT_PRODUCTS_DIR; };
-		84009F6D19AE16CD0096E673 /* WebUI.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WebUI.cpp; sourceTree = "<group>"; };
-		84009F6E19AE16CD0096E673 /* WebUI.def */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = WebUI.def; sourceTree = "<group>"; };
-		84009F6F19AE16CD0096E673 /* WebUI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebUI.h; sourceTree = "<group>"; };
-		84009F7019AE16CD0096E673 /* WebUI.vcxproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = WebUI.vcxproj; sourceTree = "<group>"; };
-		84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libmicrohttpd.10.dylib; path = ../../../../usr/local/lib/libmicrohttpd.10.dylib; sourceTree = "<group>"; };
-		84009F7519AEA5900096E673 /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
-		84009F7619AF07FE0096E673 /* jquery-1.10.2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "jquery-1.10.2.js"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -246,7 +236,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				84009F7419AE9EE40096E673 /* libJSON.dylib in Frameworks */,
-				84009F7319AE17C80096E673 /* libmicrohttpd.10.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,8 +245,6 @@
 		84009E6A19ADD33F0096E673 = {
 			isa = PBXGroup;
 			children = (
-				84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */,
-				84009F6C19AE16CD0096E673 /* WebUI */,
 				84009F4619ADE3EC0096E673 /* libasiodnp3.dylib */,
 				84009F4719ADE3EC0096E673 /* libasiopal.dylib */,
 				84009F4819ADE3EC0096E673 /* libopendnp3.dylib */,
@@ -287,7 +274,6 @@
 		84009E7F19ADD3960096E673 /* src */ = {
 			isa = PBXGroup;
 			children = (
-				84009E8019ADD3960096E673 /* AddrConf.h */,
 				84009E8119ADD3960096E673 /* AdvancedLogger.cpp */,
 				84009E8219ADD3960096E673 /* AdvancedLogger.h */,
 				84009E8319ADD3960096E673 /* Console.cpp */,
@@ -377,19 +363,6 @@
 				84009F0F19ADD4210096E673 /* util.h */,
 			);
 			path = ODC;
-			sourceTree = "<group>";
-		};
-		84009F6C19AE16CD0096E673 /* WebUI */ = {
-			isa = PBXGroup;
-			children = (
-				84009F7619AF07FE0096E673 /* jquery-1.10.2.js */,
-				84009F6D19AE16CD0096E673 /* WebUI.cpp */,
-				84009F6E19AE16CD0096E673 /* WebUI.def */,
-				84009F6F19AE16CD0096E673 /* WebUI.h */,
-				84009F7019AE16CD0096E673 /* WebUI.vcxproj */,
-				84009F7519AEA5900096E673 /* index.html */,
-			);
-			path = WebUI;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -644,7 +617,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				84009F7119AE16CD0096E673 /* WebUI.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
