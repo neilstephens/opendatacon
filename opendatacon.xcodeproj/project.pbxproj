@@ -66,6 +66,9 @@
 		84009F5C19AE0E2A0096E673 /* libasiopal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4719ADE3EC0096E673 /* libasiopal.dylib */; };
 		84009F5D19AE0E2A0096E673 /* libopendnp3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4819ADE3EC0096E673 /* libopendnp3.dylib */; };
 		84009F5E19AE0E2A0096E673 /* libopenpal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4919ADE3EC0096E673 /* libopenpal.dylib */; };
+		84009F7119AE16CD0096E673 /* WebUI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84009F6D19AE16CD0096E673 /* WebUI.cpp */; };
+		84009F7319AE17C80096E673 /* libmicrohttpd.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */; };
+		84009F7419AE9EE40096E673 /* libJSON.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EA819ADD3E80096E673 /* libJSON.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -94,6 +97,15 @@
 
 /* Begin PBXCopyFilesBuildPhase section */
 		84009E7119ADD33F0096E673 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		84009F6119AE16B90096E673 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
@@ -166,6 +178,14 @@
 		84009F4719ADE3EC0096E673 /* libasiopal.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libasiopal.dylib; path = lib/libasiopal.dylib; sourceTree = "<group>"; };
 		84009F4819ADE3EC0096E673 /* libopendnp3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopendnp3.dylib; path = lib/libopendnp3.dylib; sourceTree = "<group>"; };
 		84009F4919ADE3EC0096E673 /* libopenpal.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopenpal.dylib; path = lib/libopenpal.dylib; sourceTree = "<group>"; };
+		84009F6319AE16B90096E673 /* WebUI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = WebUI; sourceTree = BUILT_PRODUCTS_DIR; };
+		84009F6D19AE16CD0096E673 /* WebUI.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WebUI.cpp; sourceTree = "<group>"; };
+		84009F6E19AE16CD0096E673 /* WebUI.def */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = WebUI.def; sourceTree = "<group>"; };
+		84009F6F19AE16CD0096E673 /* WebUI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebUI.h; sourceTree = "<group>"; };
+		84009F7019AE16CD0096E673 /* WebUI.vcxproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = WebUI.vcxproj; sourceTree = "<group>"; };
+		84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libmicrohttpd.10.dylib; path = ../../../../usr/local/lib/libmicrohttpd.10.dylib; sourceTree = "<group>"; };
+		84009F7519AEA5900096E673 /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
+		84009F7619AF07FE0096E673 /* jquery-1.10.2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "jquery-1.10.2.js"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -221,12 +241,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		84009F6019AE16B90096E673 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84009F7419AE9EE40096E673 /* libJSON.dylib in Frameworks */,
+				84009F7319AE17C80096E673 /* libmicrohttpd.10.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		84009E6A19ADD33F0096E673 = {
 			isa = PBXGroup;
 			children = (
+				84009F7219AE17C80096E673 /* libmicrohttpd.10.dylib */,
+				84009F6C19AE16CD0096E673 /* WebUI */,
 				84009F4619ADE3EC0096E673 /* libasiodnp3.dylib */,
 				84009F4719ADE3EC0096E673 /* libasiopal.dylib */,
 				84009F4819ADE3EC0096E673 /* libopendnp3.dylib */,
@@ -248,6 +279,7 @@
 				84009EA819ADD3E80096E673 /* libJSON.dylib */,
 				84009EB019ADD3F10096E673 /* libJSONPort.dylib */,
 				84009EB819ADD4000096E673 /* libODC.dylib */,
+				84009F6319AE16B90096E673 /* WebUI */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -345,6 +377,19 @@
 				84009F0F19ADD4210096E673 /* util.h */,
 			);
 			path = ODC;
+			sourceTree = "<group>";
+		};
+		84009F6C19AE16CD0096E673 /* WebUI */ = {
+			isa = PBXGroup;
+			children = (
+				84009F7619AF07FE0096E673 /* jquery-1.10.2.js */,
+				84009F6D19AE16CD0096E673 /* WebUI.cpp */,
+				84009F6E19AE16CD0096E673 /* WebUI.def */,
+				84009F6F19AE16CD0096E673 /* WebUI.h */,
+				84009F7019AE16CD0096E673 /* WebUI.vcxproj */,
+				84009F7519AEA5900096E673 /* index.html */,
+			);
+			path = WebUI;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -489,6 +534,23 @@
 			productReference = 84009EB819ADD4000096E673 /* libODC.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
+		84009F6219AE16B90096E673 /* WebUI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 84009F6919AE16B90096E673 /* Build configuration list for PBXNativeTarget "WebUI" */;
+			buildPhases = (
+				84009F5F19AE16B90096E673 /* Sources */,
+				84009F6019AE16B90096E673 /* Frameworks */,
+				84009F6119AE16B90096E673 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WebUI;
+			productName = WebUI;
+			productReference = 84009F6319AE16B90096E673 /* WebUI */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -515,6 +577,7 @@
 				84009EA719ADD3E80096E673 /* JSON */,
 				84009EAF19ADD3F10096E673 /* JSONPort */,
 				84009EB719ADD4000096E673 /* ODC */,
+				84009F6219AE16B90096E673 /* WebUI */,
 			);
 		};
 /* End PBXProject section */
@@ -577,6 +640,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		84009F5F19AE16B90096E673 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84009F7119AE16CD0096E673 /* WebUI.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -632,9 +703,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 					/usr/local/include,
 				);
-				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/lib";
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -671,9 +742,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 					/usr/local/include,
 				);
-				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/lib";
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				SDKROOT = macosx;
 				USER_HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
@@ -683,34 +754,68 @@
 		84009E7D19ADD33F0096E673 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "/Users/admin/source/opendatacon/include /usr/local/include";
 			};
 			name = Debug;
 		};
 		84009E7E19ADD33F0096E673 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "/Users/admin/source/opendatacon/include /usr/local/include";
 			};
 			name = Release;
 		};
 		84009EA219ADD3D60096E673 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					/usr/local/include,
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "\"$(SRCROOT)/include\"";
 			};
 			name = Debug;
 		};
 		84009EA319ADD3D60096E673 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				EXECUTABLE_PREFIX = lib;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					/usr/local/include,
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "\"$(SRCROOT)/include\"";
 			};
 			name = Release;
 		};
@@ -757,6 +862,7 @@
 		84009EBA19ADD4000096E673 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -767,18 +873,43 @@
 					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "/Users/admin/source/dnp3/cpp/libs/openpal/src /usr/local/include JSON /Users/admin/source/dnp3/cpp/libs/opendnp3/src /Users/admin/source/dnp3/cpp/libs/asiopal/src /Users/admin/source/dnp3/cpp/libs/asiodnp3/src";
 			};
 			name = Debug;
 		};
 		84009EBB19ADD4000096E673 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				EXECUTABLE_PREFIX = lib;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "/Users/admin/source/dnp3/cpp/libs/openpal/src /usr/local/include JSON /Users/admin/source/dnp3/cpp/libs/opendnp3/src /Users/admin/source/dnp3/cpp/libs/asiopal/src /Users/admin/source/dnp3/cpp/libs/asiodnp3/src";
+			};
+			name = Release;
+		};
+		84009F6A19AE16B90096E673 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = include;
+			};
+			name = Debug;
+		};
+		84009F6B19AE16B90096E673 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = include;
 			};
 			name = Release;
 		};
@@ -835,6 +966,15 @@
 			buildConfigurations = (
 				84009EBA19ADD4000096E673 /* Debug */,
 				84009EBB19ADD4000096E673 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		84009F6919AE16B90096E673 /* Build configuration list for PBXNativeTarget "WebUI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				84009F6A19AE16B90096E673 /* Debug */,
+				84009F6B19AE16B90096E673 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

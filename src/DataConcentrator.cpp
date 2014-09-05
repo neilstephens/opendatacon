@@ -216,6 +216,10 @@ void DataConcentrator::Run()
 
 	std::function<void (std::stringstream&)> bound_func;
 
+	//Version
+	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.1"<<std::endl;};
+	console.AddCmd("version",bound_func,"Print version information");
+
 	//console logging control
 	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(AdvConsoleLog));
 	console.AddCmd("ignore_message",bound_func,"Enter regex to silence matching messages from the console logger.");
