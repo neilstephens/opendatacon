@@ -30,6 +30,7 @@
 #include <opendnp3/app/DynamicPointIndexes.h>
 #include "DNP3MasterPort.h"
 #include "CommandCallbackPromise.h"
+#include <array>
 
 void DNP3MasterPort::Enable()
 {
@@ -239,8 +240,8 @@ void DNP3MasterPort::SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_p
 		}
 	}
 
-	std::shared_ptr<opendnp3::DynamicPointIndexes> pAnaDIndexClass[4], pBinDIndexClass[4];
-	std::shared_ptr<opendnp3::PointIndexes> pAnaPIndexClass[4], pBinPIndexClass[4];
+	std::array<std::shared_ptr<opendnp3::DynamicPointIndexes>, 4> pAnaDIndexClass, pBinDIndexClass;
+	std::array<std::shared_ptr<opendnp3::PointIndexes>, 4> pAnaPIndexClass, pBinPIndexClass;
 
 	for(size_t i = 0; i<4; i++)
 	{
@@ -261,7 +262,7 @@ void DNP3MasterPort::SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_p
 	}
 
 	//copy all the shared pointers into a lambda to extend the life of all the heap allocated indexes
-	auto CleanupFunction = [this,pAnaDIndexClass,pBinDIndexClass,pAnaPIndexClass,pBinPIndexClass]
+	auto CleanupFunction = [this, pAnaDIndexClass, pBinDIndexClass, pAnaPIndexClass, pBinPIndexClass]
 	                        {
 								//do an integrity scan after assign class
 								IntegrityScan.Demand();
