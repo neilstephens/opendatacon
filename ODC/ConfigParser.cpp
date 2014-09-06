@@ -37,7 +37,7 @@ std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
  apply overrides
  */
 
-Json::Value* ConfigParser::ProcessInherit(std::string pFileName)
+Json::Value* ConfigParser::ProcessInherit(const std::string& pFileName)
 {
     Json::Value* CurrentConfig;
     if((CurrentConfig = RecallOrCreate(pFileName)))
@@ -54,10 +54,10 @@ Json::Value* ConfigParser::ProcessInherit(std::string pFileName)
     return CurrentConfig;
 }
 
-
-void ConfigParser::ProcessFile(std::string filename, std::string overrides)
+void ConfigParser::ProcessFile(const std::string& pFileName, const std::string& overrides)
 {
-    ConfigBase = ProcessInherit(filename);
+    FileName = pFileName;
+    ConfigBase = ProcessInherit(FileName);
 	if(overrides != "")
 	{
 		Json::Reader JSONReader;
@@ -72,7 +72,7 @@ void ConfigParser::ProcessFile(std::string filename, std::string overrides)
 	}
 }
 
-Json::Value* ConfigParser::RecallOrCreate(std::string pFileName)
+Json::Value* ConfigParser::RecallOrCreate(const std::string& pFileName)
 {
 	std::string Err;
 	if(!(JSONCache.count(pFileName))) //not cached - read it in
@@ -97,7 +97,7 @@ Json::Value* ConfigParser::RecallOrCreate(std::string pFileName)
 	return &JSONCache[pFileName];
 }
 
-Json::Value ConfigParser::GetConfiguration(std::string pFileName)
+Json::Value ConfigParser::GetConfiguration(const std::string& pFileName)
 {
 	if(JSONCache.count(pFileName))
     {
@@ -106,15 +106,31 @@ Json::Value ConfigParser::GetConfiguration(std::string pFileName)
     return Json::Value();
 }
 
+void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits)
+{
+    for(Json::Value InheritFile : Inherits)
+    {
+        Json::Value InheritRoot = ConfigParser::GetConfiguration(InheritFile.asString());
+        JSONRoot[InheritFile.asString()] = InheritRoot;
+        if (!(InheritRoot["Inherits"].isNull()))
+        {
+            AddInherits(JSONRoot, InheritRoot["Inherits"]);
+        }
+    }
+}
+
 Json::Value ConfigParser::GetConfiguration() const
 {
     Json::Value JSONRoot;
     if (nullptr != ConfigBase)
     {
-        JSONRoot["ConfigBase"] = *ConfigBase;
+        JSONRoot[FileName] = *ConfigBase;
+		if(!(*ConfigBase)["Inherits"].isNull())
+		{
+            AddInherits(JSONRoot, (*ConfigBase)["Inherits"]);
+		}
     }
     JSONRoot["ConfigOverrides"] = ConfigOverrides;
     
     return JSONRoot;
 }
-
