@@ -29,6 +29,7 @@
 #include <regex>
 #include <chrono>
 #include <asiopal/UTCTimeSource.h>
+#include <opendnp3/app/DynamicPointIndexes.h>
 #include <opendnp3/outstation/Database.h>
 #include <opendnp3/outstation/TimeTransaction.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
@@ -36,7 +37,7 @@
 #include "DNP3OutstationPort.h"
 
 
-DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
+DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides)
 {};
 

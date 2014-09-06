@@ -27,8 +27,10 @@
 #include <asiodnp3/DefaultMasterApplication.h>
 #include <opendnp3/app/ClassField.h>
 #include <opendnp3/app/MeasurementTypes.h>
+#include <opendnp3/app/DynamicPointIndexes.h>
 #include "DNP3MasterPort.h"
 #include "CommandCallbackPromise.h"
+#include <array>
 
 void DNP3MasterPort::Enable()
 {
@@ -61,6 +63,25 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 
 		if(pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
 			IOHandler_pair.second->Event(opendnp3::Binary(failed),pConf->pPointConf->mCommsPoint.second,this->Name);
+	}
+	if(state == opendnp3::ChannelState::OPEN)
+	{
+		if(pConf->pPointConf->DoAssignClassOnStartup)
+		{
+			assign_class_sent = false;
+			IntegrityScan.SetStateListener(*this);
+			IntegrityScan.Demand();
+		}
+	}
+}
+void DNP3MasterPort::OnStateChange(opendnp3::PollState state)
+{
+	if(assign_class_sent)
+		return;
+	if(state == opendnp3::PollState::SUCCESS)
+	{
+		assign_class_sent = true;
+		SendAssignClass(std::promise<opendnp3::CommandStatus>());
 	}
 }
 void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
@@ -100,7 +121,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	if(pConf->pPointConf->IntegrityScanRateSec > 0)
 		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Seconds(pConf->pPointConf->IntegrityScanRateSec));
 	else
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Minutes(openpal::MaxValue<int64_t>()));
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Minutes(600000000)); //ten million hours
 
 	// configure event scans
 	if(pConf->pPointConf->EventClass1ScanRateSec > 0)
@@ -141,6 +162,7 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::Analo
 
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(bool connected, uint16_t index, const std::string& SenderName)
 {
+
 	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
 	auto cmd_future = cmd_promise.get_future();
 
@@ -153,13 +175,101 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(bool connected, uint1
 	//connected == true means something upstream has connected
 	if(connected)
 	{
-		//enable the stack (does nothing if already enabled)
-		pMaster->Enable();
+		//Send out assign class commands on connect
+		if(!stack_enabled)
+		{
+			//enable the stack
+			pMaster->Enable();
+			stack_enabled = true;
+		}
+
 		//do an integrity scan
 		IntegrityScan.Demand();
 	}
 
+	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
 	return cmd_future;
+}
+
+void DNP3MasterPort::SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_promise)
+{
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	//enable the stack
+	pMaster->Enable();
+	stack_enabled = true;
+
+	//send out an assign class command
+	auto pFunctionProcessor = pMaster->GetFunctionProcessor();
+	std::vector<uint32_t> AnaClassVec[4], BinClassVec[4];
+	opendnp3::PointClass ClassArray[4] = {opendnp3::PointClass::Class0, opendnp3::PointClass::Class1, opendnp3::PointClass::Class2, opendnp3::PointClass::Class3};
+
+	for(auto index : pConf->pPointConf->AnalogIndicies)
+	{
+		switch(pConf->pPointConf->AnalogClasses[index])
+		{
+			case opendnp3::PointClass::Class0:
+				AnaClassVec[0].push_back(index);
+				break;
+			case opendnp3::PointClass::Class1:
+				AnaClassVec[1].push_back(index);
+				break;
+			case opendnp3::PointClass::Class2:
+				AnaClassVec[2].push_back(index);
+				break;
+			case opendnp3::PointClass::Class3:
+				AnaClassVec[3].push_back(index);
+				break;
+		}
+	}
+	for(auto index : pConf->pPointConf->BinaryIndicies)
+	{
+		switch(pConf->pPointConf->BinaryClasses[index])
+		{
+			case opendnp3::PointClass::Class0:
+				BinClassVec[0].push_back(index);
+				break;
+			case opendnp3::PointClass::Class1:
+				BinClassVec[1].push_back(index);
+				break;
+			case opendnp3::PointClass::Class2:
+				BinClassVec[2].push_back(index);
+				break;
+			case opendnp3::PointClass::Class3:
+				BinClassVec[3].push_back(index);
+				break;
+		}
+	}
+
+	std::array<std::shared_ptr<opendnp3::DynamicPointIndexes>, 4> pAnaDIndexClass, pBinDIndexClass;
+	std::array<std::shared_ptr<opendnp3::PointIndexes>, 4> pAnaPIndexClass, pBinPIndexClass;
+
+	for(size_t i = 0; i<4; i++)
+	{
+		if(AnaClassVec[i].size() > 0)
+		{
+			auto AnaClassIndexable = openpal::Indexable<uint32_t, uint32_t>(AnaClassVec[i].data(),AnaClassVec[i].size());
+			pAnaDIndexClass[i].reset(new opendnp3::DynamicPointIndexes(AnaClassIndexable));
+			pAnaPIndexClass[i].reset(new opendnp3::PointIndexes(*(pAnaDIndexClass[i].get())));
+			pFunctionProcessor->AssignClass(GroupVariation::Group30Var0, pAnaPIndexClass[i].get(), ClassArray[i]);
+		}
+		if(BinClassVec[i].size() > 0)
+		{
+			auto BinClassIndexable = openpal::Indexable<uint32_t, uint32_t>(BinClassVec[i].data(),BinClassVec[i].size());
+			pBinDIndexClass[i].reset(new opendnp3::DynamicPointIndexes(BinClassIndexable));
+			pBinPIndexClass[i].reset(new opendnp3::PointIndexes(*(pBinDIndexClass[i].get())));
+			pFunctionProcessor->AssignClass(GroupVariation::Group1Var0, pBinPIndexClass[i].get(), ClassArray[i]);
+		}
+	}
+
+	//copy all the shared pointers into a lambda to extend the life of all the heap allocated indexes
+	auto CleanupFunction = [this, pAnaDIndexClass, pBinDIndexClass, pAnaPIndexClass, pBinPIndexClass]
+	                        {
+								//do an integrity scan after assign class
+								IntegrityScan.Demand();
+	                        };
+
+	//once the command completes, the correspondant will clean everything up
+	pFunctionProcessor->AssignClassExecute(*CommandCorrespondant::GetCallback(std::move(cmd_promise),std::move(CleanupFunction)));
 }
 
 template<typename T>

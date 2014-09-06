@@ -29,7 +29,7 @@
 #include <opendnp3/LogLevels.h>
 #include "JSONClientPort.h"
 
-JSONClientPort::JSONClientPort(std::string aName, std::string aConfFilename, std::string aConfOverrides):
+JSONClientPort::JSONClientPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	JSONPort(aName, aConfFilename, aConfOverrides)
 {};
 

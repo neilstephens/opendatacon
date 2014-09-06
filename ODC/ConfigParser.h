@@ -33,9 +33,11 @@
 class ConfigParser
 {
 public:
-	ConfigParser(){};
+	ConfigParser(std::string aConfFilename, const Json::Value aConfOverrides = Json::Value());
 	virtual ~ConfigParser(){};
-	void ProcessFile(const std::string& filename, const std::string& overrides = "");
+	void ProcessFile();
+	void ProcessInherits(std::string FileName);
+	static Json::Value* RecallOrCreate(std::string FileName);
 
 	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
     
@@ -43,11 +45,11 @@ public:
     
     Json::Value GetConfiguration() const;
 
+protected:
+	std::string ConfFilename;
+	const Json::Value ConfOverrides;
 private:
-	static Json::Value* RecallOrCreate(const std::string& FileName);
     static void AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits);
-
-    Json::Value* ProcessInherit(const std::string& pFileName);
 
     std::string FileName;
     Json::Value* ConfigBase;

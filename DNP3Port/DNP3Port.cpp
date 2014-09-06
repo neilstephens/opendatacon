@@ -27,14 +27,14 @@
 
 std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::TCPChannels;
 
-DNP3Port::DNP3Port(std::string aName, std::string aConfFilename, std::string aConfOverrides):
+DNP3Port::DNP3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 		DataPort(aName, aConfFilename, aConfOverrides)
 {
 	//the creation of a new DNP3PortConf will get the point details
 	pConf.reset(new DNP3PortConf(ConfFilename));
 
 	//We still may need to process the file (or overrides) to get Addr details:
-	ProcessFile(ConfFilename,ConfOverrides);
+	ProcessFile();
 };
 
 void DNP3Port::ProcessElements(const Json::Value& JSONRoot)

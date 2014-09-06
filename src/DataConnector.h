@@ -35,7 +35,7 @@
 class DataConnector: public IOHandler, public ConfigParser
 {
 public:
-	DataConnector(std::string aName, std::string aConfFilename, std::string aConfOverrides);
+	DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 	~DataConnector(){};
 
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName);
@@ -60,8 +60,6 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
 
-	std::string ConfFilename;
-	std::string ConfOverrides;
 	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*>> Connections;
 	std::multimap<std::string,std::string> SenderConnectionsLookup;
 	std::unordered_map<std::string,std::vector<Transform*>> ConnectionTransforms;

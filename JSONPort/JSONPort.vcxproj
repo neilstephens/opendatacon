@@ -107,6 +107,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
+      <ModuleDefinitionFile>JSONPort.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
   </ItemDefinitionGroup>
@@ -120,6 +121,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
+      <ModuleDefinitionFile>JSONPort.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
   </ItemDefinitionGroup>
@@ -137,6 +139,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
+      <ModuleDefinitionFile>JSONPort.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
   </ItemDefinitionGroup>
@@ -154,6 +157,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
+      <ModuleDefinitionFile>JSONPort.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
   </ItemDefinitionGroup>
@@ -176,6 +180,9 @@
     <ProjectReference Include="..\ODC\ODC.vcxproj">
       <Project>{6715f2d3-391f-4e19-bb2c-52c1fa102a4a}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="JSONPort.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

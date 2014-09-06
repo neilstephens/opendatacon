@@ -30,50 +30,34 @@
 
 std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
 
-/*
- load main config
- process each includes (recurses)
- apply main config
- apply overrides
- */
+ConfigParser::ConfigParser(std::string aConfFilename, const Json::Value aConfOverrides):
+	ConfFilename(aConfFilename),
+	ConfOverrides(aConfOverrides)
+{};
 
-Json::Value* ConfigParser::ProcessInherit(const std::string& pFileName)
+void ConfigParser::ProcessInherits(std::string FileName)
 {
-    Json::Value* CurrentConfig;
-    if((CurrentConfig = RecallOrCreate(pFileName)))
+	Json::Value* pJSONRoot;
+	pJSONRoot = RecallOrCreate(FileName);
+	if(pJSONRoot != nullptr)
 	{
-		if(!(*CurrentConfig)["Inherits"].isNull())
-		{
-            for(Json::Value InheritFile : (*CurrentConfig)["Inherits"])
-			{
-                ProcessInherit(InheritFile.asString());
-			}
-		}
-		ProcessElements(*CurrentConfig);
-	}
-    return CurrentConfig;
-}
-
-void ConfigParser::ProcessFile(const std::string& pFileName, const std::string& overrides)
-{
-    FileName = pFileName;
-    ConfigBase = ProcessInherit(FileName);
-	if(overrides != "")
-	{
-		Json::Reader JSONReader;
-		bool parse_success = JSONReader.parse(overrides,ConfigOverrides);
-		if (!parse_success)
-		{
-			std::cout  << "Failed to parse configuration from '"<<overrides<<"' conf overrides\n"
-					<< JSONReader.getFormattedErrorMessages()<<std::endl;
-			return;
-		}
-		ProcessElements(ConfigOverrides);
+		if(!(*pJSONRoot)["Inherits"].isNull())
+			for(Json::ArrayIndex n=0; n<(*pJSONRoot)["Inherits"].size(); n++)
+				ProcessInherits((*pJSONRoot)["Inherits"][n].asString());
+		ProcessElements(*pJSONRoot);
 	}
 }
 
-Json::Value* ConfigParser::RecallOrCreate(const std::string& pFileName)
+void ConfigParser::ProcessFile()
 {
+	ProcessInherits(ConfFilename);
+	if(!ConfOverrides.isNull())
+		ProcessElements(ConfOverrides);
+}
+
+Json::Value* ConfigParser::RecallOrCreate(std::string pFileName)
+{
+	Json::Value JSONRoot;
 	std::string Err;
 	if(!(JSONCache.count(pFileName))) //not cached - read it in
 	{

@@ -55,17 +55,19 @@
 
 int main(int argc, char* argv[])
 {
+    std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
 	try
 	{
+
 		//default config file
 		std::string ConfFileName = "opendatacon.conf";
 		//override if there's one provided
 		if (argc>1)
 			ConfFileName = argv[1];
 
-		DataConcentrator TheDataConcentrator(ConfFileName);
-		TheDataConcentrator.BuildOrRebuild();
-		TheDataConcentrator.Run();
+        TheDataConcentrator.reset(new DataConcentrator(ConfFileName));
+		TheDataConcentrator->BuildOrRebuild();
+		TheDataConcentrator->Run();
 
 	}
 	catch(std::exception& e)

@@ -29,6 +29,7 @@
 
 #include <unordered_map>
 #include <opendnp3/master/ISOEHandler.h>
+#include <opendnp3/master/IPollListener.h>
 #include <opendnp3/master/CommandResponse.h>
 #include <opendnp3/app/IterableBuffer.h>
 
@@ -36,10 +37,14 @@
 
 using namespace opendnp3;
 
-class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler
+class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IPollListener
 {
 public:
-	DNP3MasterPort(std::string aName, std::string aConfFilename, std::string aConfOverrides) : DNP3Port(aName, aConfFilename, aConfOverrides){};
+	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
+		DNP3Port(aName, aConfFilename, aConfOverrides),
+		stack_enabled(false),
+		assign_class_sent(false)
+	{};
 
 	void Enable();
 	void Disable();
@@ -65,14 +70,20 @@ public:
 	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
-	asiodnp3::IMaster* pMaster;
-	opendnp3::MasterScan IntegrityScan;
-
 protected:
-	void StateListener(opendnp3::ChannelState state);
+	//implement IPollListener
+	void OnStateChange(opendnp3::PollState state);
+	//implement transactable
 	void Start() override final {}
 	void End() override final {}
 
+private:
+	asiodnp3::IMaster* pMaster;
+	bool stack_enabled;
+	bool assign_class_sent;
+	opendnp3::MasterScan IntegrityScan;
+	void SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_promise);
+	void StateListener(opendnp3::ChannelState state);
 };
 
 #endif /* DNP3CLIENTPORT_H_ */

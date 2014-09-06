@@ -35,7 +35,7 @@ class CommandCallbackPromise;
 class CommandCorrespondant
 {
 public:
-	static CommandCallbackPromise* GetCallback(std::promise<opendnp3::CommandStatus> aPromise);
+	static CommandCallbackPromise* GetCallback(std::promise<opendnp3::CommandStatus> aPromise, std::function<void()> aCompletionHook = nullptr);
 	static void ReleaseCallback(CommandCallbackPromise* pFinshedCallback);
 
 private:

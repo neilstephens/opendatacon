@@ -26,12 +26,12 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.debug.1630357507" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.debug"/>
 							<builder buildPath="${workspace_loc:/JSONPort}/Debug" id="cdt.managedbuild.target.gnu.builder.so.debug.509490335" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.so.debug"/>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1275070422" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
-							<tool command="g++" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug.745747019" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug">
+							<tool command="g++" commandLinePattern="${COMMAND} -MMD -MT ${OUTPUT_PREFIX}${OUTPUT} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug.745747019" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug">
 								<option id="gnu.cpp.compiler.so.debug.option.optimization.level.1908479636" name="Optimization Level" superClass="gnu.cpp.compiler.so.debug.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.so.debug.option.debugging.level.55581037" name="Debug Level" superClass="gnu.cpp.compiler.so.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1019485465" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
@@ -49,6 +49,9 @@
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.so.debug.2134608104" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.so.debug">
 								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.so.debug.option.optimization.level.1026083575" name="Optimization Level" superClass="gnu.c.compiler.so.debug.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.so.debug.option.debugging.level.86246038" name="Debug Level" superClass="gnu.c.compiler.so.debug.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.include.paths.1036044626" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.116596338" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.so.debug.1028048048" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.so.debug">
@@ -57,12 +60,14 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.so.debug.735560832" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.so.debug">
 								<option defaultValue="true" id="gnu.cpp.link.so.debug.option.shared.539895965" name="Shared (-shared)" superClass="gnu.cpp.link.so.debug.option.shared" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.libs.1498636863" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 									<listOptionValue builtIn="false" value="opendnp3"/>
 									<listOptionValue builtIn="false" value="openpal"/>
 									<listOptionValue builtIn="false" value="asiodnp3"/>
 									<listOptionValue builtIn="false" value="asiopal"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.477937102" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/Debug}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.407126608" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11" valueType="string"/>
@@ -72,6 +77,9 @@
 								</inputType>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.so.debug.303736046" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.so.debug">
+								<option id="gnu.both.asm.option.include.paths.1183445610" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1912705645" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -79,7 +87,13 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="dnp3-2.0-RC1;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
+				<externalSettings containerId="JSON;cdt.managedbuild.config.gnu.so.debug.1259621975" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/JSON"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/JSON/Debug"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -108,12 +122,12 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.release.1039635327" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.release"/>
 							<builder buildPath="${workspace_loc:/JSONPort}/Release" id="cdt.managedbuild.target.gnu.builder.so.release.1826372941" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.so.release"/>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1550519914" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.so.release.457463940" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.release">
+							<tool commandLinePattern="${COMMAND} -MMD -MT ${OUTPUT_PREFIX}${OUTPUT} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.release.457463940" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.release">
 								<option id="gnu.cpp.compiler.so.release.option.optimization.level.1552426373" name="Optimization Level" superClass="gnu.cpp.compiler.so.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.so.release.option.debugging.level.1689374641" name="Debug Level" superClass="gnu.cpp.compiler.so.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.122605747" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
@@ -130,6 +144,9 @@
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.so.release.727485620" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.so.release">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.so.release.option.optimization.level.1878676520" name="Optimization Level" superClass="gnu.c.compiler.so.release.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.so.release.option.debugging.level.110109782" name="Debug Level" superClass="gnu.c.compiler.so.release.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.include.paths.1615513488" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1394668219" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.so.release.2138689500" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.so.release">
@@ -138,12 +155,14 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.so.release.1920080431" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.so.release">
 								<option defaultValue="true" id="gnu.cpp.link.so.release.option.shared.1577124625" name="Shared (-shared)" superClass="gnu.cpp.link.so.release.option.shared" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.libs.798434519" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 									<listOptionValue builtIn="false" value="opendnp3"/>
 									<listOptionValue builtIn="false" value="openpal"/>
 									<listOptionValue builtIn="false" value="asiodnp3"/>
 									<listOptionValue builtIn="false" value="asiopal"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1479077655" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/Release}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.897000573" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11" valueType="string"/>
@@ -153,6 +172,9 @@
 								</inputType>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.so.release.362113300" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.so.release">
+								<option id="gnu.both.asm.option.include.paths.647611764" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1938469290" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -160,7 +182,13 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="dnp3-2.0-RC1;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
+				<externalSettings containerId="JSON;cdt.managedbuild.config.gnu.so.release.1530350729" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/JSON"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/JSON/Release"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -189,12 +217,12 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.debug.186412868" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.debug"/>
 							<builder buildPath="${workspace_loc:/JSONPort}/Debug" id="cdt.managedbuild.target.gnu.builder.so.debug.1654024536" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.so.debug"/>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.archiver.base.1234359176" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
-							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug.2102538284" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug">
+							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" commandLinePattern="${COMMAND} -MMD -MT ${OUTPUT_PREFIX}${OUTPUT} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug.2102538284" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.debug">
 								<option id="gnu.cpp.compiler.so.debug.option.optimization.level.443047668" name="Optimization Level" superClass="gnu.cpp.compiler.so.debug.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.so.debug.option.debugging.level.1686015579" name="Debug Level" superClass="gnu.cpp.compiler.so.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1093118492" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
@@ -212,6 +240,9 @@
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-gcc" id="cdt.managedbuild.tool.gnu.c.compiler.so.debug.1847552997" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.so.debug">
 								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.so.debug.option.optimization.level.1791885898" name="Optimization Level" superClass="gnu.c.compiler.so.debug.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.so.debug.option.debugging.level.543979901" name="Debug Level" superClass="gnu.c.compiler.so.debug.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.include.paths.190966562" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1453434829" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.c.linker.so.debug.1013359014" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.so.debug">
@@ -220,12 +251,14 @@
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.linker.so.debug.2027507138" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.so.debug">
 								<option defaultValue="true" id="gnu.cpp.link.so.debug.option.shared.1704307115" name="Shared (-shared)" superClass="gnu.cpp.link.so.debug.option.shared" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.libs.264266456" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 									<listOptionValue builtIn="false" value="opendnp3"/>
 									<listOptionValue builtIn="false" value="openpal"/>
 									<listOptionValue builtIn="false" value="asiodnp3"/>
 									<listOptionValue builtIn="false" value="asiopal"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.818851667" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/Release-rpi}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-rpi/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.1412550509" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11" valueType="string"/>
@@ -235,6 +268,9 @@
 								</inputType>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.so.debug.540352930" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.so.debug">
+								<option id="gnu.both.asm.option.include.paths.1012658293" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.812430937" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -242,7 +278,13 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="dnp3-2.0-RC1-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
+				<externalSettings containerId="JSON;cdt.managedbuild.config.gnu.so.release.1530350729.1190083738" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/JSON"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/JSON/Release-rpi"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -271,12 +313,12 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.release.572449886" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.release"/>
 							<builder buildPath="${workspace_loc:/JSONPort}/Release" id="cdt.managedbuild.target.gnu.builder.so.release.1592388120" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.so.release"/>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.archiver.base.1009801228" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
-							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.release.1904145006" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.release">
+							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" commandLinePattern="${COMMAND} -MMD -MT ${OUTPUT_PREFIX}${OUTPUT} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.so.release.1904145006" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.so.release">
 								<option id="gnu.cpp.compiler.so.release.option.optimization.level.879350217" name="Optimization Level" superClass="gnu.cpp.compiler.so.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.so.release.option.debugging.level.1742815835" name="Debug Level" superClass="gnu.cpp.compiler.so.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1311967364" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
@@ -293,6 +335,9 @@
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-gcc" id="cdt.managedbuild.tool.gnu.c.compiler.so.release.1330942376" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.so.release">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.so.release.option.optimization.level.554823608" name="Optimization Level" superClass="gnu.c.compiler.so.release.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.so.release.option.debugging.level.1626923170" name="Debug Level" superClass="gnu.c.compiler.so.release.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.include.paths.509401927" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.563915301" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.c.linker.so.release.1202611289" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.so.release">
@@ -301,12 +346,14 @@
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-g++" id="cdt.managedbuild.tool.gnu.cpp.linker.so.release.1739671448" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.so.release">
 								<option defaultValue="true" id="gnu.cpp.link.so.release.option.shared.1301741774" name="Shared (-shared)" superClass="gnu.cpp.link.so.release.option.shared" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.libs.457492749" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 									<listOptionValue builtIn="false" value="opendnp3"/>
 									<listOptionValue builtIn="false" value="openpal"/>
 									<listOptionValue builtIn="false" value="asiodnp3"/>
 									<listOptionValue builtIn="false" value="asiopal"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1735899154" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/Release-rpi}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3-rpi/.libs}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.1246919430" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-std=c++11" valueType="string"/>
@@ -316,6 +363,9 @@
 								</inputType>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.so.release.2058018634" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.so.release">
+								<option id="gnu.both.asm.option.include.paths.1300311818" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.276060513" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -323,7 +373,13 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="dnp3-2.0-RC1-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
+				<externalSettings containerId="JSON;cdt.managedbuild.config.gnu.so.release.1530350729.1190083738" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/JSON"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/JSON/Release-rpi"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
 			</storageModule>
 		</cconfiguration>
 	</storageModule>

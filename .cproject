@@ -75,9 +75,7 @@
 								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.441128983" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.1068495714" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
-								<option id="gnu.both.asm.option.include.paths.545738273" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort}&quot;"/>
-								</option>
+								<option id="gnu.both.asm.option.include.paths.545738273" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.206525223" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -122,13 +120,13 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.915627720" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.other.other.1768411341" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1795881518" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.287048987" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.1328576604" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
@@ -171,9 +169,7 @@
 								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.2081353533" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.1839230049" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
-								<option id="gnu.both.asm.option.include.paths.1659562821" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort}&quot;"/>
-								</option>
+								<option id="gnu.both.asm.option.include.paths.1659562821" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.38985415" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -218,13 +214,13 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.1780665428" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.other.other.1711200890" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.871485551" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/opendnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.1975786955" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.prof.857099551" name="Generate prof information (-p)" superClass="gnu.cpp.compiler.option.debugging.prof" value="false" valueType="boolean"/>
@@ -272,9 +268,7 @@
 								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.887353734" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.961849325" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
-								<option id="gnu.both.asm.option.include.paths.1024564871" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort}&quot;"/>
-								</option>
+								<option id="gnu.both.asm.option.include.paths.1024564871" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1151227933" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -373,9 +367,7 @@
 								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.1834817234" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="/home/knarl/x-tools/armv6-rpi-linux-gnueabi/bin/armv6-rpi-linux-gnueabi-as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.530257087" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
-								<option id="gnu.both.asm.option.include.paths.801767740" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort}&quot;"/>
-								</option>
+								<option id="gnu.both.asm.option.include.paths.801767740" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1420665783" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -472,9 +464,7 @@
 								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.1126672948" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.2022490717" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
-								<option id="gnu.both.asm.option.include.paths.1614862480" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort}&quot;"/>
-								</option>
+								<option id="gnu.both.asm.option.include.paths.1614862480" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1742086381" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
