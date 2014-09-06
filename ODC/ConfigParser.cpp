@@ -30,12 +30,12 @@
 
 std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
 
-ConfigParser::ConfigParser(std::string aConfFilename, const Json::Value aConfOverrides):
+ConfigParser::ConfigParser(const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	ConfFilename(aConfFilename),
 	ConfOverrides(aConfOverrides)
 {};
 
-void ConfigParser::ProcessInherits(std::string FileName)
+void ConfigParser::ProcessInherits(const std::string& FileName)
 {
 	Json::Value* pJSONRoot;
 	pJSONRoot = RecallOrCreate(FileName);
@@ -55,7 +55,7 @@ void ConfigParser::ProcessFile()
 		ProcessElements(ConfOverrides);
 }
 
-Json::Value* ConfigParser::RecallOrCreate(std::string FileName)
+Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 {
 	Json::Value JSONRoot;
 	std::string Err;
