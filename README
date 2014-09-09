@@ -1,6 +1,9 @@
 
 
-opendatacon version 0.2
+opendatacon version 0.2.2
+
+Release notes (delta from 0.2):
+	- Fixed building under Windows
 
 Release notes (delta from 0.1):
 	- Assign class on startup
