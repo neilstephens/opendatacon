@@ -127,7 +127,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
-      <ModuleDefinitionFile>ODC.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>ODC_x64.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
     <PostBuildEvent>
@@ -175,7 +175,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>%(AdditionalDependencies);</AdditionalDependencies>
-      <ModuleDefinitionFile>ODC.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>ODC_x64.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
     <PostBuildEvent>
@@ -211,6 +211,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ODC.def" />
+    <None Include="ODC_x64.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

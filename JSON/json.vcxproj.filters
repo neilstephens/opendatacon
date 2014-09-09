@@ -31,5 +31,8 @@
     <None Include="JSON.def">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="JSON_x64.def">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
