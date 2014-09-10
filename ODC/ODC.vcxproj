@@ -116,6 +116,9 @@
     <PostBuildEvent>
       <Message>Copy public headers</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -136,6 +139,9 @@
     <PostBuildEvent>
       <Message>Copy public headers</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>copy "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -160,6 +166,9 @@
     <PostBuildEvent>
       <Message>Copy public headers</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -184,6 +193,9 @@
     <PostBuildEvent>
       <Message>Copy public headers</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>copy "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ConfigParser.cpp" />
