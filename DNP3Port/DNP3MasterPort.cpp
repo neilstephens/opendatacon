@@ -115,7 +115,21 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
 	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::ALL_CLASSES; //TODO: report/investigate bug - doesn't recognise response to integrity scan if not ALL_CLASSES
 
-	pMaster = TCPChannels[IPPort]->AddMaster(Name.c_str(), *this, asiodnp3::DefaultMasterApplication::Instance(), StackConfig);
+    pChannel = TCPChannels[IPPort];
+    
+    if (pChannel == nullptr)
+    {
+        std::cout << "TCP channel not found for masterstation '" << Name << std::endl;
+        return;
+    }
+    
+	pMaster = pChannel->AddMaster(Name.c_str(), *this, asiodnp3::DefaultMasterApplication::Instance(), StackConfig);
+    
+    if (pMaster == nullptr)
+    {
+        std::cout << "Error creating masterstation '" << Name << std::endl;
+        return;
+    }
 
 	// configure integrity scans
 	if(pConf->pPointConf->IntegrityScanRateSec > 0)
