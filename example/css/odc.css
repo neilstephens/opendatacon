@@ -10,10 +10,9 @@ span.JsonKey
 	display: inline-block;
 }
 
-span.JsonValue
+td.JsonValue
 {
-	width: 100px;
-	display: inline-block;
+	text-align: center;	
 }
 
 ol.JsonArray

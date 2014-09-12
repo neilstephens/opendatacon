@@ -1,23 +1,29 @@
 <!doctype html>
 <html lang="en">
 	<head>
-		<meta charset="utf-8" />
+		<meta charset="utf-8"/>
 		<title>Configuration</title>
 		<script src="/js/jquery-1.11.1.min.js"></script>
 		<script src="/js/JsonDiff.js"></script>
 		<link href="/css/odc.css" rel="stylesheet">
+		<link href="/css/jquery.treetable.css" rel="stylesheet" type="text/css" />
+		<link href="/css/jquery.treetable.theme.css" rel="stylesheet" />
+		<script src="/js/jquery.treetable.js"></script>		
 	</head>
     <body>
         <h1>Configuration</h1>
-        <ol id="Configuration"></ol>
+        <table id="Configuration">
+        </table>
         <script>
         	var responder = window.location.hash.substring(1);
         
             // Send the data using post
             var getResponders = $.post( "/JSON/" + responder, { } )
             	.done(function( data ) {
-                    outputJsonTree(document.getElementById("Configuration"), "", data["Configuration"]);                    
+                    BuildJsonTree(document.getElementById("Configuration"), "", data["Configuration"]);    
+                    $(document.getElementById("Configuration")).treetable({ expandable: true });
                 });
         </script>
     </body>
+    
 </html>
