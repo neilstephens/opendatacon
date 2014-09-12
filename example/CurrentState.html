@@ -4,6 +4,7 @@
         <meta charset="utf-8"/>
         <title>Current State</title>
         <script src="/js/jquery-1.11.1.min.js"></script>
+		<script src="/js/JsonDiff.js"></script>
 		<link href="/css/odc.css" rel="stylesheet">        
     </head>
     <body>
@@ -17,9 +18,8 @@
             var getResponders = $.post( "/JSON/" + responder, { } )
             	.done(function( data ) {
                     $( "#CurrentState" ).empty();
-                    for(elem in data["CurrentState"]) {
-                         $( "#status" ).append("<il><div>"+elem+"</div><div>" + data["CurrentState"][elem] + "</div></il>");
-                    }
+
+                    outputJsonTree(document.getElementById("CurrentState"), "", [data["CurrentState"]]);                    
                 });
         </script>
     </body>

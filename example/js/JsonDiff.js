@@ -1,112 +1,111 @@
-function buildlist() {
 function check(arr, key) {
-			var out = [];
-			for (var a in arr) {
-				if (arr[a] == undefined)
-				{
-					out[a] = null;
-				}
-				else if (key in arr[a])
-				{
-					out[a] = arr[a][key];
-				}
-				else
-				{
-					out[a] = null;
-				}
+	var out = [];
+	for (var a in arr) {
+		if (arr[a] == undefined)
+		{
+			out[a] = null;
+		}
+		else if (key in arr[a])
+		{
+			out[a] = arr[a][key];
+		}
+		else
+		{
+			out[a] = null;
+		}
+	}
+	return out;
+}
+
+function merge(left, right) {
+	var result = [];
+	while(left.length || right.length) {
+	  if(left.length && right.length) {
+		if(left[0] < right[0]) {
+		  result.push(left.shift());
+		} else if(left[0] > right[0]) {
+		  result.push(right.shift());
+		} else {
+		  result.push(left.shift());
+		  right.shift();
+			//throw away dupe
+		}
+	  } else if (left.length) {
+		result.push(left.shift());
+	  } else {
+		result.push(right.shift());
+	  }
+	}
+	return result;
+  }
+
+function buildlist() {
+	//called with every property and it's value
+	function process(parent, key, o) {
+		var li = document.createElement('li');
+		//li.setAttribute('class','file');
+		parent.appendChild(li);
+		
+		var span = document.createElement('span');
+		span.setAttribute('class','JsonKey');
+		span.textContent = key;
+		li.appendChild(span);
+
+		for (var a in o)
+		{
+			var span = document.createElement('span');
+			span.setAttribute('class','JsonValue');
+			span.textContent = o[a];
+			li.appendChild(span);
+		}
+	}
+
+	function traverse(parent,s,o,func) {
+			
+		var ol = document.createElement('ol');
+		ol.setAttribute('class','JsonArray');
+		parent.appendChild(ol);
+		
+		var keys = [];
+		for (var i in o) {
+			if (o[i] != null)
+			{
+				keys = merge(keys,Object.keys(o[i]));
+				//keys = keys.concat(Object.keys(o[i]));
 			}
-			return out;
 		}
 		
-		function merge(left, right) {
-			var result = [];
-			while(left.length || right.length) {
-			  if(left.length && right.length) {
-				if(left[0] < right[0]) {
-				  result.push(left.shift());
-				} else if(left[0] > right[0]) {
-				  result.push(right.shift());
-				} else {
-				  result.push(left.shift());
-				  right.shift();
-					//throw away dupe
-				}
-			  } else if (left.length) {
-				result.push(left.shift());
-			  } else {
-				result.push(right.shift());
-			  }
-			}
-			return result;
-		  }
-
-
-		//called with every property and it's value
-		function process(parent, key, o) {
-			var li = document.createElement('li');
-			//li.setAttribute('class','file');
-			parent.appendChild(li);
+		for (var i in keys) {
+			k = keys[i];
 			
-			var span = document.createElement('span');
-			span.setAttribute('class','JsonKey');
-			span.textContent = key;
-			li.appendChild(span);
+			isObject = false;
+			for (var j in o) {
+				if (o[j] != null && o[j][k] != null && typeof(o[j][k])=="object")
+				{
+					isObject = true;
+				}
+			}
+					
+			//if (b[k] !== null && typeof(b[k])=="object") {
+			if (isObject) {
+				var li = document.createElement('li');
+				ol.appendChild(li);
 
-			for (var a in o)
-			{
 				var span = document.createElement('span');
-				span.setAttribute('class','JsonValue');
-				span.textContent = o[a];
+				span.setAttribute('class','JsonKey');
+				span.textContent = s + "[" + k + "]";
 				li.appendChild(span);
+									
+				//going on step down in the object tree!!
+				traverse(li, s + "[" + k + "]", check(o,k),func);
+			} else
+			{
+				func.apply(this, [ol, s + "[" + k + "]", check(o,k)]);  
 			}
 		}
-
-		function traverse(parent,s,o,func) {
-				
-			var ol = document.createElement('ol');
-			ol.setAttribute('class','JsonArray');
-			parent.appendChild(ol);
-			
-			var keys = [];
-			for (var i in o) {
-				if (o[i] != null)
-				{
-					keys = merge(keys,Object.keys(o[i]));
-					//keys = keys.concat(Object.keys(o[i]));
-				}
-			}
-			
-			for (var i in keys) {
-				k = keys[i];
-				
-				isObject = false;
-				for (var j in o) {
-					if (o[j] != null && o[j][k] != null && typeof(o[j][k])=="object")
-					{
-						isObject = true;
-					}
-				}
-						
-				//if (b[k] !== null && typeof(b[k])=="object") {
-				if (isObject) {
-					var li = document.createElement('li');
-					ol.appendChild(li);
-
-					var span = document.createElement('span');
-					span.setAttribute('class','JsonKey');
-					span.textContent = s + "[" + k + "]";
-					li.appendChild(span);
-										
-					//going on step down in the object tree!!
-					traverse(li, s + "[" + k + "]", check(o,k),func);
-				} else
-				{
-					func.apply(this, [ol, s + "[" + k + "]", check(o,k)]);  
-				}
-			}
-			
-		}
-     
+		
+	}
+ 
 	var responder = window.location.hash.substring(1);
 	// Send the data using post
 	var getResponders = $.post("/JSON/" + responder, {})
@@ -116,4 +115,65 @@ function check(arr, key) {
 			document.body.appendChild(div);
 			traverse(div, "config", data["Configuration"], process);
 		});
+}
+
+
+function outputJsonTree(parent,s,o) {
+		
+	var ol = document.createElement('ol');
+	ol.setAttribute('class','JsonArray');
+	parent.appendChild(ol);
+	
+	var keys = [];
+	for (var i in o) {
+		if (o[i] != null)
+		{
+			keys = merge(keys,Object.keys(o[i]));
+			//keys = keys.concat(Object.keys(o[i]));
+		}
+	}
+	
+	for (var i in keys) {
+		k = keys[i];
+		
+		isObject = false;
+		for (var j in o) {
+			if (o[j] != null && o[j][k] != null && typeof(o[j][k])=="object")
+			{
+				isObject = true;
+			}
+		}
+				
+		//if (b[k] !== null && typeof(b[k])=="object") {
+		if (isObject) {
+			var li = document.createElement('li');
+			ol.appendChild(li);
+
+			var span = document.createElement('span');
+			span.setAttribute('class','JsonKey');
+			span.textContent = s + "[" + k + "]";
+			li.appendChild(span);
+								
+			//going on step down in the object tree!!
+			outputJsonTree(li, s + "[" + k + "]", check(o,k));
+		} else
+		{
+			var els = check(o,k);
+			var li = document.createElement('li');
+			ol.appendChild(li);
+		
+			var span = document.createElement('span');
+			span.setAttribute('class','JsonKey');
+			span.textContent = s + "[" + k + "]";
+			li.appendChild(span);
+
+			for (var a in els)
+			{
+				var span = document.createElement('span');
+				span.setAttribute('class','JsonValue');
+				span.textContent = els[a];
+				li.appendChild(span);
+			}			
+		}
+	}
 }
