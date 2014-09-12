@@ -40,9 +40,9 @@ function merge(left, right) {
   }
 
 function outputJsonTree(parent,s,o) {
-		
 	var ol = document.createElement('ol');
 	ol.setAttribute('class','JsonArray');
+	
 	parent.appendChild(ol);
 	
 	var keys = [];
@@ -65,18 +65,21 @@ function outputJsonTree(parent,s,o) {
 			}
 		}
 				
-		//if (b[k] !== null && typeof(b[k])=="object") {
 		if (isObject) {
+
 			var li = document.createElement('li');
 			ol.appendChild(li);
 
 			var span = document.createElement('span');
 			span.setAttribute('class','JsonKey');
+			span.setAttribute('onclick','ExpandCollapse($(this))');
 			span.textContent = s + "[" + k + "]";
 			li.appendChild(span);
 								
 			//going on step down in the object tree!!
 			outputJsonTree(li, s + "[" + k + "]", check(o,k));
+			
+			$(li).find(' > ol ').hide('fast');
 		} else
 		{
 			var els = check(o,k);
@@ -96,5 +99,15 @@ function outputJsonTree(parent,s,o) {
 				li.appendChild(span);
 			}			
 		}
+	}
+}
+function ExpandCollapse(element) {
+	var children = element.parent('li').find(' > ol ');
+	if (children.is(":visible")) {
+		children.hide('fast');
+		element.attr('title', 'Expand this branch');
+	} else {
+		children.show('fast');
+		element.attr('title', 'Collapse this branch');
 	}
 }
