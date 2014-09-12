@@ -2,23 +2,26 @@
 <html lang="en">
     <head>
         <meta charset="utf-8"/>
-        <title>Statistics</title>
+        <title>Current State</title>
         <script src="/js/jquery-1.11.1.min.js"></script>
+		<script src="/js/JsonDiff.js"></script>
 		<link href="/css/odc.css" rel="stylesheet">        
+		<link href="/css/jquery.treetable.css" rel="stylesheet" type="text/css" />
+		<link href="/css/jquery.treetable.theme.css" rel="stylesheet" />
+		<script src="/js/jquery.treetable.js"></script>				
     </head>
     <body>
         <h1>Statistics</h1>
-        <ol id="status"></ol>
+        <table id="Statistics">
+        </table>
         <script>
         	var responder = window.location.hash.substring(1);
         
             // Send the data using post
             var getResponders = $.post( "/JSON/" + responder, { } )
             	.done(function( data ) {
-                    $( "#status" ).empty();
-                    for(elem in data["Statistics"]) {
-                         $( "#status" ).append('<il><span class="JsonKey">'+elem+'</span><span class="JsonValue">' + data["Statistics"][elem] + '</span></il>');
-                    }
+                    BuildJsonTree(document.getElementById("Statistics"), "", {"Value" : data["Statistics"]});
+                    $(document.getElementById("Statistics")).treetable({ expandable: true });                    
                 });
         </script>
     </body>
