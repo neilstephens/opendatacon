@@ -30,9 +30,9 @@
 #include <opendatacon/IOHandler.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/Transform.h>
+#include <opendatacon/IJsonResponder.h>
 
-
-class DataConnector: public IOHandler, public ConfigParser
+class DataConnector: public IOHandler, public ConfigParser, public IJsonResponder
 {
 public:
 	DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);

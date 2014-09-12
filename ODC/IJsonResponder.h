@@ -36,7 +36,31 @@ typedef std::unordered_map<std::string, std::string> ParamCollection;
 class IJsonResponder
 {
 public:
-    virtual Json::Value GetResponse(const ParamCollection& params) const = 0;
+    virtual Json::Value GetResponse(const ParamCollection& params) const
+    {
+        Json::Value event;
+        
+        event["Configuration"] = GetConfiguration(params);
+        event["CurrentState"] = GetCurrentState(params);
+        event["Statistics"] = GetStatistics(params);
+        
+        return event;
+    };
+
+    virtual Json::Value GetStatistics(const ParamCollection& params) const
+    {
+        return Json::Value();
+    };
+    
+    virtual Json::Value GetCurrentState(const ParamCollection& params) const
+    {
+        return Json::Value();
+    };
+
+    virtual Json::Value GetConfiguration(const ParamCollection& params) const
+    {
+        return Json::Value();
+    };
 };
 
 #endif

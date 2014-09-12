@@ -103,7 +103,7 @@ void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherit
     }
 }
 
-Json::Value ConfigParser::GetConfiguration() const
+Json::Value ConfigParser::GetConfiguration(const ParamCollection& params) const
 {
     Json::Value JSONRoot;
     JSONRoot[ConfFilename] = GetConfiguration(ConfFilename);

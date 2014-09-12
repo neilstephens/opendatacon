@@ -29,8 +29,9 @@
 
 #include <unordered_map>
 #include <json/json.h>
+#include "IJsonResponder.h"
 
-class ConfigParser
+class ConfigParser : public IJsonResponder
 {
 public:
 	ConfigParser(const std::string& aConfFilename, const Json::Value& aConfOverrides = Json::Value());
@@ -38,9 +39,9 @@ public:
 	void ProcessFile();
 
 	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
-    Json::Value GetConfiguration() const;
+    Json::Value GetConfiguration(const ParamCollection& params) const override;
     
-    static Json::Value GetConfiguration(const std::string& FileName);    
+    static Json::Value GetConfiguration(const std::string& FileName);
 
 protected:
 	const std::string ConfFilename;
