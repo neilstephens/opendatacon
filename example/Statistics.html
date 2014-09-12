@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Statistics</title>
+        <script src="/jquery-1.11.1.min.js"></script>
+    </head>
+    <body>
+        <!-- the result of the search will be rendered inside this div -->
+        <h1>Statistics</h1>
+        <ul id="status"></ul>
+        <script>
+        	var responder = window.location.hash.substring(1);
+        
+            // Send the data using post
+            var getResponders = $.post( "/JSON/" + responder, { } )
+            	.done(function( data ) {
+                    $( "#status" ).empty();
+                    for(elem in data["Statistics"]) {
+                         $( "#status" ).append("<il><div>"+elem+"</div><div>" + data["Statistics"][elem] + "</div></il>");
+                    }
+                });
+        </script>
+    </body>
+</html>

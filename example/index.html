@@ -8,7 +8,7 @@
     <body>
         <!-- the result of the search will be rendered inside this div -->
         <h1>Responders</h1>
-        <div id="responders"></div>
+        <ol id="responders"></ol>
         <script>
             // Send the data using post
             var getResponders = $.post( "/JSON/Responders", { } );
@@ -19,7 +19,12 @@
                     $( "#responders" ).empty();
                     for(elem in data["Responders"])
                     {
-                         $( "#responders" ).append(data["Responders"][elem] + '</br>');
+                         $( "#responders" ).append('<li>' +
+                            '<span>' + data["Responders"][elem] + '</span>' +
+                            '<span><a href="Statistics.html#' + data["Responders"][elem] + '">Statistics</a></span>' +
+                            '<span><a href="CurrentState.html#' + data["Responders"][elem] + '">Current State</a></span>' +
+                            '<span><a href="Configuration.html#' + data["Responders"][elem] + '">Configuration</a></span>' +
+                            '</li>');
                     }
             });
         </script>

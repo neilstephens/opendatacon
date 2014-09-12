@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Current State</title>
+        <script src="/jquery-1.11.1.min.js"></script>
+    </head>
+    <body>
+        <!-- the result of the search will be rendered inside this div -->
+        <h1>Current State</h1>
+        <ul id="CurrentState"></ul>
+        <script>
+        	var responder = window.location.hash.substring(1);
+        
+            // Send the data using post
+            var getResponders = $.post( "/JSON/" + responder, { } )
+            	.done(function( data ) {
+                    $( "#CurrentState" ).empty();
+                    for(elem in data["CurrentState"]) {
+                         $( "#status" ).append("<il><div>"+elem+"</div><div>" + data["CurrentState"][elem] + "</div></il>");
+                    }
+                });
+        </script>
+    </body>
+</html>
