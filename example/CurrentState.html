@@ -8,17 +8,14 @@
 		<link href="/css/odc.css" rel="stylesheet">        
     </head>
     <body>
-        <!-- the result of the search will be rendered inside this div -->
         <h1>Current State</h1>
-        <ul id="CurrentState"></ul>
+        <ol id="CurrentState"></ol>
         <script>
         	var responder = window.location.hash.substring(1);
         
             // Send the data using post
             var getResponders = $.post( "/JSON/" + responder, { } )
             	.done(function( data ) {
-                    $( "#CurrentState" ).empty();
-
                     outputJsonTree(document.getElementById("CurrentState"), "", [data["CurrentState"]]);                    
                 });
         </script>

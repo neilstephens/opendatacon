@@ -7,6 +7,17 @@
 		<script src="/js/JsonDiff.js"></script>
 		<link href="/css/odc.css" rel="stylesheet">
 	</head>
-	<body onload="buildlist()">
-	</body>
+    <body>
+        <h1>Configuration</h1>
+        <ol id="Configuration"></ol>
+        <script>
+        	var responder = window.location.hash.substring(1);
+        
+            // Send the data using post
+            var getResponders = $.post( "/JSON/" + responder, { } )
+            	.done(function( data ) {
+                    outputJsonTree(document.getElementById("Configuration"), "", data["Configuration"]);                    
+                });
+        </script>
+    </body>
 </html>
