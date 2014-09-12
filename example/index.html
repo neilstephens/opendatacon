@@ -3,7 +3,8 @@
     <head>
         <meta charset="utf-8"/>
         <title>jQuery.post demo</title>
-        <script src="/jquery-1.11.1.min.js"></script>
+        <script src="/js/jquery-1.11.1.min.js"></script>
+		<link href="/css/odc.css" rel="stylesheet">        
     </head>
     <body>
         <!-- the result of the search will be rendered inside this div -->
@@ -20,10 +21,10 @@
                     for(elem in data["Responders"])
                     {
                          $( "#responders" ).append('<li>' +
-                            '<span>' + data["Responders"][elem] + '</span>' +
-                            '<span><a href="Statistics.html#' + data["Responders"][elem] + '">Statistics</a></span>' +
-                            '<span><a href="CurrentState.html#' + data["Responders"][elem] + '">Current State</a></span>' +
-                            '<span><a href="Configuration.html#' + data["Responders"][elem] + '">Configuration</a></span>' +
+                            '<span class="Link">' + data["Responders"][elem] + '</span>' +
+                            '<span class="Link"><a href="Statistics.html#' + data["Responders"][elem] + '">Statistics</a></span>' +
+                            '<span class="Link"><a href="CurrentState.html#' + data["Responders"][elem] + '">Current State</a></span>' +
+                            '<span class="Link"><a href="Configuration.html#' + data["Responders"][elem] + '">Configuration</a></span>' +
                             '</li>');
                     }
             });

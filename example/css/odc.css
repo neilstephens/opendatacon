@@ -1,0 +1,35 @@
+div.JsonValues
+{
+
+}
+
+span.JsonKey
+{
+	width: 500px;
+	//padding-left: 20px;
+	display: inline-block;
+}
+
+span.JsonValue
+{
+	width: 100px;
+	display: inline-block;
+}
+
+ol.JsonArray
+{
+	padding-left: 20px;
+}
+
+li 
+{ 
+	//position: relative; 
+	margin-left: -20px;
+}
+
+span.Link
+{
+	width: 150px;
+	//padding-left: 20px;
+	display: inline-block;
+}
