@@ -62,8 +62,33 @@ constexpr char ROOTJSON[] = "/JSON/";
 constexpr char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";
 constexpr char NO_RESPONDER[] = "<html><head><title>Responder not found</title></head><body>Responder not found</body></html>";
 
+const std::string MIMETYPE_DEFAULT = "application/octet-stream";
+
+const std::unordered_map<std::string, const std::string> MimeTypeMap {
+    { "json", "application/json" },
+    { "js", "text/javascript" },
+    { "html", "text/html"},
+    { "jpg", "image/jpeg"},
+    { "css", "text/css"},
+    { "txt", "text/plain"}
+};
+
+const std::string& GetMimeType(const std::string pPath)
+{
+    auto last = pPath.find_last_of("/\\.");
+    if (last == std::string::npos) return MIMETYPE_DEFAULT;
+    const std::string pExt = pPath.substr(last+1);
+    
+    if(MimeTypeMap.count(pExt) != 0)
+    {
+        return MimeTypeMap.at(pExt);
+    }
+    return MIMETYPE_DEFAULT;
+}
+
 constexpr char MIMETYPE_JSON[] = "application/json";
-//constexpr char MIMETYPE_JSONP[] = "text/javascript";
+constexpr char MIMETYPE_JAVASCRIPT[] = "text/javascript";
+constexpr char MIMETYPE_HTML[] = "text/html";
 
 /* Test Certificate */
 //openssl genrsa -out server.key 2048
@@ -225,6 +250,7 @@ int WebUI::ReturnFile(struct MHD_Connection *connection,
             fclose(file);
             return MHD_NO;
         }
+        MHD_add_response_header(response, "Content-Type", GetMimeType(url).c_str());
         ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
         MHD_destroy_response(response);
     }
@@ -244,9 +270,7 @@ int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url,
         auto responder = JsonResponders[decurl].lock();
         if (responder != nullptr)
         {
-            Json::FastWriter jsonout;
-            //Json::StyledWriter jsonout;
-            
+            Json::FastWriter jsonout;            
             Json::Value event;
 
             event = responder->GetResponse(params);
