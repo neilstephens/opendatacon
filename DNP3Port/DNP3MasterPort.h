@@ -61,6 +61,9 @@ public:
 	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<OctetString, uint16_t>>& meas);
 	template<typename T> void LoadT(const IterableBuffer<IndexedValue<T, uint16_t>>& meas);
 
+    ///
+    Json::Value GetStatistics(const ParamCollection& params) const;
+    
 	//Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName);
@@ -79,6 +82,7 @@ protected:
 
 private:
 	asiodnp3::IMaster* pMaster;
+    
 	bool stack_enabled;
 	bool assign_class_sent;
 	opendnp3::MasterScan IntegrityScan;

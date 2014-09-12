@@ -121,7 +121,10 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot);
 
+protected:
+    asiodnp3::IChannel* pChannel;    
 	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
+
 };
 
 #endif /* DNP3PORT_H_ */

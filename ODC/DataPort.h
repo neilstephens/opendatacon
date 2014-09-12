@@ -67,6 +67,12 @@ public:
         Json::Value event;
         return event;
     }
+    
+    virtual Json::Value GetStatistics(const ParamCollection& params) const
+    {
+        Json::Value event;
+        return event;
+    }
 
     virtual Json::Value GetResponse(const ParamCollection& params) const
     {
@@ -74,6 +80,7 @@ public:
         
         event["Configuration"] = GetConfiguration();
         event["CurrentState"] = GetCurrentState(params);
+        event["Statistics"] = GetStatistics(params);
         
         return event;
     };

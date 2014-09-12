@@ -312,3 +312,29 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 	return cmd_future;
 }
 
+Json::Value DNP3MasterPort::GetStatistics(const ParamCollection& params) const
+{
+    Json::Value event;
+    
+    auto StackStats = this->pMaster->GetStackStatistics();
+    
+    event["numTransportErrorRx"] = StackStats.numTransportErrorRx;
+    event["numTransportRx"] = StackStats.numTransportRx;
+    event["numTransportTx"] = StackStats.numTransportTx;
+    
+    auto ChanStats = this->pChannel->GetChannelStatistics();
+    
+    /// Number of frames discared due to CRC errors
+	event["numCrcError"] = ChanStats.numCrcError;
+    
+    /// Number of frames transmitted
+    event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;
+    
+    /// Number of frames received
+    event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;
+    
+    /// Number of frames detected with bad / malformed contents
+    event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;
+    
+    return event;
+};

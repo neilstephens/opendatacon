@@ -51,6 +51,7 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
 
     Json::Value GetCurrentState(const ParamCollection& params) const;
+    Json::Value GetStatistics(const ParamCollection& params) const;
 
     //ICommandHandler implementation
 	opendnp3::CommandStatus Supports(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
@@ -66,6 +67,7 @@ public:
 
 private:
 	asiodnp3::IOutstation* pOutstation;
+    asiodnp3::IChannel* pChannel;
 
     template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);

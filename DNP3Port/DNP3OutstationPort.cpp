@@ -172,6 +172,33 @@ Json::Value DNP3OutstationPort::GetCurrentState(const ParamCollection& params) c
     return event;
 };
 
+Json::Value DNP3OutstationPort::GetStatistics(const ParamCollection& params) const
+{
+    Json::Value event;
+    
+    auto StackStats = this->pOutstation->GetStackStatistics();
+    
+    event["numTransportErrorRx"] = StackStats.numTransportErrorRx;
+    event["numTransportRx"] = StackStats.numTransportRx;
+    event["numTransportTx"] = StackStats.numTransportTx;
+    
+    auto ChanStats = this->pChannel->GetChannelStatistics();
+    
+    /// Number of frames discared due to CRC errors
+	event["numCrcError"] = ChanStats.numCrcError;
+        
+    /// Number of frames transmitted
+    event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;
+        
+    /// Number of frames received
+    event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;
+		
+    /// Number of frames detected with bad / malformed contents
+    event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;
+    
+    return event;
+};
+
 template<typename T>
 inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {
