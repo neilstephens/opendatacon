@@ -18,7 +18,7 @@
             	.done(function( data ) {
                     $( "#status" ).empty();
                     for(elem in data["Statistics"]) {
-                         $( "#status" ).append("<il><div>"+elem+"</div><div>" + data["Statistics"][elem] + "</div></il>");
+                         $( "#status" ).append('<il><span class="JsonKey">'+elem+'</span><span class="JsonValue">' + data["Statistics"][elem] + '</span></il>');
                     }
                 });
         </script>
