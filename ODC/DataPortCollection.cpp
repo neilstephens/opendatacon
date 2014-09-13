@@ -18,26 +18,32 @@
  *	limitations under the License.
  */ 
 //
-//  IUI.h
+//  DataPortCollection.cpp
 //  opendatacon
 //
-//  Created by Alan Murray on 29/08/2014.
+//  Created by Alan Murray on 13/09/2014.
 //  
 //
 
-#ifndef opendatacon_IUI_h
-#define opendatacon_IUI_h
+#include "DataPortCollection.h"
 
-#include "IUIResponder.h"
-#include "IUIResponderCollection.h"
-
-class IUI
+Json::Value DataPortCollection::GetResponse(const ParamCollection& params) const
 {
-public:
-    virtual void AddResponderCollection(const std::string name, const IUIResponderCollection& pResponderCollection) = 0;
-    virtual int start() = 0;
-	virtual void stop() = 0;
+    Json::Value vec;
+    
+    for(auto responder : *this)
+    {
+        vec.append(Json::Value(responder.first));
+    }
+    
+    return vec;
 };
 
-
-#endif
+IUIResponder* DataPortCollection::GetUIResponder(const std::string& arName) const
+{
+    if (this->count(arName))
+    {
+        return this->at(arName).get();
+    }
+    return nullptr;
+}

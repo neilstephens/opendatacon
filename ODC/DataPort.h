@@ -31,7 +31,7 @@
 #include "DataPortConf.h"
 #include "IOHandler.h"
 #include "ConfigParser.h"
-#include "IJsonResponder.h"
+#include "IUIResponder.h"
 
 class DataPort: public IOHandler, public ConfigParser
 {

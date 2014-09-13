@@ -18,22 +18,22 @@
  *	limitations under the License.
  */ 
 //
-//  IJsonResponder.h
+//  IUIResponder.h
 //  opendatacon
 //
 //  Created by Alan Murray on 29/08/2014.
 //  
 //
 
-#ifndef opendatacon_IJsonResponder_h
-#define opendatacon_IJsonResponder_h
+#ifndef opendatacon_IUIResponder_h
+#define opendatacon_IUIResponder_h
 
 #include <json/json.h>
 #include <unordered_map>
 
 typedef std::unordered_map<std::string, std::string> ParamCollection;
 
-class IJsonResponder
+class IUIResponder
 {
 public:
     virtual Json::Value GetResponse(const ParamCollection& params) const

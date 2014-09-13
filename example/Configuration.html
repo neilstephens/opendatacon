@@ -18,7 +18,7 @@
         	var responder = window.location.hash.substring(1);
         
             // Send the data using post
-            var getResponders = $.post( "/JSON/" + responder, { } )
+            var getResponders = $.post( responder, { } )
             	.done(function( data ) {
                     BuildJsonTree(document.getElementById("Configuration"), "", data["Configuration"]);    
                     $(document.getElementById("Configuration")).treetable({ expandable: true });

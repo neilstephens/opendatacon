@@ -48,7 +48,6 @@ inline void fopen_s(FILE** file, const char * name, const char * mode)
 #include <microhttpd.h>
 
 #include "WebUI.h"
-#include "ResponderListResponder.h"
 
 struct connection_info_struct
 {
@@ -62,33 +61,42 @@ constexpr char ROOTJSON[] = "/JSON/";
 constexpr char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";
 constexpr char NO_RESPONDER[] = "<html><head><title>Responder not found</title></head><body>Responder not found</body></html>";
 
-const std::string MIMETYPE_DEFAULT = "application/octet-stream";
-
 const std::unordered_map<std::string, const std::string> MimeTypeMap {
     { "json", "application/json" },
     { "js", "text/javascript" },
     { "html", "text/html"},
     { "jpg", "image/jpeg"},
     { "css", "text/css"},
-    { "txt", "text/plain"}
+    { "txt", "text/plain"},
+    { "default", "application/octet-stream"}
 };
 
-const std::string& GetMimeType(const std::string pPath)
+const std::string& GetMimeType(const std::string& rUrl)
 {
-    auto last = pPath.find_last_of("/\\.");
-    if (last == std::string::npos) return MIMETYPE_DEFAULT;
-    const std::string pExt = pPath.substr(last+1);
+    auto last = rUrl.find_last_of("/\\.");
+    if (last == std::string::npos) return MimeTypeMap.at("default");
+    const std::string pExt = rUrl.substr(last+1);
     
     if(MimeTypeMap.count(pExt) != 0)
     {
         return MimeTypeMap.at(pExt);
     }
-    return MIMETYPE_DEFAULT;
+    return MimeTypeMap.at("default");
 }
 
-constexpr char MIMETYPE_JSON[] = "application/json";
-constexpr char MIMETYPE_JAVASCRIPT[] = "text/javascript";
-constexpr char MIMETYPE_HTML[] = "text/html";
+const std::string GetPath(const std::string& rUrl)
+{
+    auto last = rUrl.find_last_of("/\\");
+    if (last == std::string::npos) return "";
+    return rUrl.substr(0,last);
+}
+
+const std::string GetFile(const std::string& rUrl)
+{
+    auto last = rUrl.find_last_of("/\\");
+    if (last == std::string::npos) return rUrl;
+    return rUrl.substr(last+1);
+}
 
 /* Test Certificate */
 //openssl genrsa -out server.key 2048
@@ -214,10 +222,9 @@ WebUI::~WebUI()
 
 }
 
-
-void WebUI::AddJsonResponder(const std::string name, std::weak_ptr<const IJsonResponder> responder)
+void WebUI::AddResponderCollection(const std::string name, const IUIResponderCollection& pResponderCollection)
 {
-    JsonResponders[name] = responder;
+    Responders[name] = &pResponderCollection;
 }
 
 int WebUI::ReturnFile(struct MHD_Connection *connection,
@@ -257,40 +264,59 @@ int WebUI::ReturnFile(struct MHD_Connection *connection,
     return ret;
 }
 
-int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url, const ParamCollection& params)
+int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url, const IUIResponderCollection& rResponderCollection, const ParamCollection& params)
 {
     struct MHD_Response *response;
     int ret;
     
-    //TODO: urldecode the following:
-    const std::string& decurl(url);
+    const std::string responderName = GetFile(url);
     
-    if (this->JsonResponders.count(decurl) != 0)
+    if (responderName.length() == 0)
     {
-        auto responder = JsonResponders[decurl].lock();
-        if (responder != nullptr)
-        {
-            Json::FastWriter jsonout;            
-            Json::Value event;
+        Json::FastWriter jsonout;
+        Json::Value event;
+        
+        event = rResponderCollection.GetResponse(params);
+        
+        std::string jsonstring = jsonout.write(event);
+        const char* jsoncstr = jsonstring.c_str();
+        
+        /*
+         MHD_RESPMEM_MUST_FREE
+         MHD_RESPMEM_MUST_COPY
+         */
+        response = MHD_create_response_from_buffer(strlen(jsoncstr),
+                                                   (void *)jsoncstr,
+                                                   MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header (response, "Content-Type", MimeTypeMap.at("json").c_str());
+        ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        
+        return ret;
+    }
+    else
+    if (auto responder = rResponderCollection.GetUIResponder(responderName))
+    {
+        Json::FastWriter jsonout;
+        Json::Value event;
 
-            event = responder->GetResponse(params);
-            
-            std::string jsonstring = jsonout.write(event);
-            const char* jsoncstr = jsonstring.c_str();
-            
-            /*
-             MHD_RESPMEM_MUST_FREE
-             MHD_RESPMEM_MUST_COPY
-             */
-            response = MHD_create_response_from_buffer(strlen(jsoncstr),
-                                                       (void *)jsoncstr,
-                                                       MHD_RESPMEM_MUST_COPY);
-            MHD_add_response_header (response, "Content-Type", MIMETYPE_JSON);
-            ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-            MHD_destroy_response(response);
-            
-            return ret;
-        }
+        event = responder->GetResponse(params);
+        
+        std::string jsonstring = jsonout.write(event);
+        const char* jsoncstr = jsonstring.c_str();
+        
+        /*
+         MHD_RESPMEM_MUST_FREE
+         MHD_RESPMEM_MUST_COPY
+         */
+        response = MHD_create_response_from_buffer(strlen(jsoncstr),
+                                                   (void *)jsoncstr,
+                                                   MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header (response, "Content-Type", MimeTypeMap.at("json").c_str());
+        ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        
+        return ret;
     }
 
     response = MHD_create_response_from_buffer(strlen(NO_RESPONDER),
@@ -409,9 +435,10 @@ int	WebUI::http_ahc(void *cls,
         }
     }
     
-    if (strncmp(url, ROOTJSON, strlen(ROOTJSON)) == 0)
+    const std::string responderCollectionName = GetPath(url);
+    if (Responders.count(responderCollectionName))
     {
-        return ReturnJSON(connection, &url[strlen(ROOTJSON)], params);
+        return ReturnJSON(connection, &url[strlen(ROOTJSON)], *(Responders[responderCollectionName]), params);
     }
     else
     {
@@ -428,9 +455,6 @@ int	WebUI::http_ahc(void *cls,
 
 int WebUI::start()
 {
-    LocalResponders["ResponderList"] = std::shared_ptr<ResponderListResponder>(new ResponderListResponder(JsonResponders));
-    
-    AddJsonResponder("Responders", LocalResponders["ResponderList"]);
     
     d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG | MHD_USE_SSL,
                          port, // Port to bind to

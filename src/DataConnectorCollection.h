@@ -18,26 +18,27 @@
  *	limitations under the License.
  */ 
 //
-//  IUI.h
+//  DataConectorCollection.h
 //  opendatacon
 //
-//  Created by Alan Murray on 29/08/2014.
+//  Created by Alan Murray on 13/09/2014.
 //  
 //
 
-#ifndef opendatacon_IUI_h
-#define opendatacon_IUI_h
+#ifndef __opendatacon__DataConectorCollection__
+#define __opendatacon__DataConectorCollection__
 
-#include "IUIResponder.h"
+#include <iostream>
+
+
+#include "DataConnector.h"
 #include "IUIResponderCollection.h"
 
-class IUI
+class DataConnectorCollection : public std::unordered_map<std::string, std::shared_ptr<DataConnector>>, public IUIResponderCollection
 {
 public:
-    virtual void AddResponderCollection(const std::string name, const IUIResponderCollection& pResponderCollection) = 0;
-    virtual int start() = 0;
-	virtual void stop() = 0;
+    virtual Json::Value GetResponse(const ParamCollection& params) const;
+    virtual IUIResponder* GetUIResponder(const std::string& arName) const;
 };
 
-
-#endif
+#endif /* defined(__opendatacon__DataConectorCollection__) */

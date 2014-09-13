@@ -31,9 +31,12 @@
 #include <unordered_map>
 #include <asiodnp3/DNP3Manager.h>
 #include <opendatacon/DataPort.h>
+#include <opendatacon/DataPortCollection.h>
+#include "DataConnector.h"
+#include "DataConnectorCollection.h"
+
 #include <opendatacon/ConfigParser.h>
 
-#include "DataConnector.h"
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
 
@@ -66,8 +69,9 @@ public:
 	DataConcentrator(std::string FileName);
 	~DataConcentrator();
 
-	std::unordered_map<std::string, std::shared_ptr<DataPort>> DataPorts;
-	std::unordered_map<std::string, std::shared_ptr<DataConnector>> DataConnectors;
+	//std::unordered_map<std::string, std::shared_ptr<DataPort>> DataPorts;
+    DataPortCollection DataPorts;
+	DataConnectorCollection DataConnectors;
 
 	asiodnp3::DNP3Manager DNP3Mgr;
 	openpal::LogFilters LOG_LEVEL;

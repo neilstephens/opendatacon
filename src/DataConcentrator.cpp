@@ -41,7 +41,6 @@
 #include "logging_cmds.h"
 #include "NullPort.h"
 
-#include "../WebUI/ResponderListResponder.h"
 #include "../WebUI/WebUI.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
@@ -66,6 +65,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	//Parse the configs and create all the ports and connections
 	ProcessFile();
 
+    UI->AddResponderCollection("/DataPorts", DataPorts);
+    UI->AddResponderCollection("/DataConnectors", DataConnectors);
+    
     //Initialise Data Ports
 	for(auto& port : DataPorts)
 	{
@@ -73,8 +75,6 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		port.second->AddLogSubscriber(&AdvFileLog);
 		port.second->SetIOS(&IOS);
 		port.second->SetLogLevel(LOG_LEVEL);
-        
-        UI->AddJsonResponder(port.first, port.second);
     }
     
     //Initialise Data Connectors

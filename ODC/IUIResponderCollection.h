@@ -18,43 +18,40 @@
  *	limitations under the License.
  */ 
 //
-//  ResponderListResponder.h
+//  ResponderCollection.h
 //  opendatacon
 //
-//  Created by Alan Murray on 30/08/2014.
+//  Created by Alan Murray on 13/09/2014.
 //  
 //
 
-#ifndef __opendatacon__ResponderListResponder__
-#define __opendatacon__ResponderListResponder__
+#ifndef __opendatacon__IUIResponderCollection__
+#define __opendatacon__IUIResponderCollection__
 
+#include <iostream>
+#include <unordered_map>
 #include "IUIResponder.h"
 
-class ResponderListResponder : public IUIResponder
+class IUIResponderCollection : public IUIResponder
 {
 public:
-    ResponderListResponder(const std::unordered_map<std::string, std::weak_ptr<const IUIResponder>>& pJsonResponders) :
-        JsonResponders(pJsonResponders)
-    {
-        
-    }
     
-    virtual Json::Value GetResponse(const ParamCollection& params) const final
+    virtual Json::Value GetResponse(const ParamCollection& params) const = 0;
+    virtual IUIResponder* GetUIResponder(const std::string& arName) const = 0;
+    /*
     {
         Json::Value event;
-        Json::Value vec(Json::arrayValue);
+        Json::Value vec;
         
-        for(auto responder : JsonResponders)
-        {
-            vec.append(Json::Value(responder.first));
-        }
+        //for(auto responder : *this)
+        //{
+         //   vec.append(Json::Value(responder.first));
+       // }
         
         event["Responders"] = vec;
         
         return event;
-    };
-private:
-    const std::unordered_map<std::string, std::weak_ptr<const IUIResponder>>& JsonResponders;
+    };*/
 };
 
-#endif /* defined(__opendatacon__ResponderListResponder__) */
+#endif /* defined(__opendatacon__IUIResponderCollection__) */

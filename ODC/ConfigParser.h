@@ -29,9 +29,9 @@
 
 #include <unordered_map>
 #include <json/json.h>
-#include "IJsonResponder.h"
+#include "IUIResponder.h"
 
-class ConfigParser : public IJsonResponder
+class ConfigParser : public IUIResponder
 {
 public:
 	ConfigParser(const std::string& aConfFilename, const Json::Value& aConfOverrides = Json::Value());

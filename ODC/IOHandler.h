@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include <asio.hpp>
 #include <asiopal/LogFanoutHandler.h>
+#include <asiodnp3/DNP3Manager.h>
 #include "opendnp3/app/MeasurementTypes.h"
 #include "opendnp3/app/ControlRelayOutputBlock.h"
 #include "opendnp3/app/AnalogOutput.h"
