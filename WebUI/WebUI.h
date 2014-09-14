@@ -25,7 +25,7 @@ public:
 	~WebUI();
     
     /* Implement IUI interface */
-    void AddResponderCollection(const std::string name, const IUIResponderCollection& pResponderCollection);
+    void AddResponder(const std::string name, const IUIResponder& pResponder);
 	int start();
 	void stop();
 
@@ -57,10 +57,10 @@ private:
 	/* HTTP file handler */
     int ReturnFile(struct MHD_Connection *connection, const char *url);
 //    int ReturnJSON(struct MHD_Connection *connection, const std::string& url, const ParamCollection& params);
-    int ReturnJSON(struct MHD_Connection *connection, const std::string& url, const IUIResponderCollection& rResponderCollection, const ParamCollection& params);
+    int ReturnJSON(struct MHD_Connection *connection, const std::string& url, const IUIResponder& rResponder, const ParamCollection& params);
 
 	struct MHD_Daemon * d;
     
     /* UI response handlers */
-    std::unordered_map<std::string, const IUIResponderCollection*> Responders;
+    std::unordered_map<std::string, const IUIResponder*> Responders;
 };

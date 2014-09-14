@@ -27,23 +27,3 @@
 
 #include "DataPortCollection.h"
 
-Json::Value DataPortCollection::GetResponse(const ParamCollection& params) const
-{
-    Json::Value vec;
-    
-    for(auto responder : *this)
-    {
-        vec.append(Json::Value(responder.first));
-    }
-    
-    return vec;
-};
-
-IUIResponder* DataPortCollection::GetUIResponder(const std::string& arName) const
-{
-    if (this->count(arName))
-    {
-        return this->at(arName).get();
-    }
-    return nullptr;
-}

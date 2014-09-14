@@ -29,13 +29,26 @@
 #define __opendatacon__DataPortCollection__
 
 #include "DataPort.h"
-#include "IUIResponderCollection.h"
+#include "ResponderMap.h"
 
-class DataPortCollection : public std::unordered_map<std::string, std::shared_ptr<DataPort>>, public IUIResponderCollection
+class DataPortCollection : public ResponderMap<DataPort>
 {
 public:
-    virtual Json::Value GetResponse(const ParamCollection& params) const;
-    virtual IUIResponder* GetUIResponder(const std::string& arName) const;
+    DataPortCollection()
+    {
+        this->AddCommand("GetConfiguration", [this](const ParamCollection & params) {
+            auto target = this->at(params.at("target")).get();
+            return target->GetConfiguration();
+        });
+        this->AddCommand("GetCurrentState", [this](const ParamCollection & params) {
+            auto target = this->at(params.at("target")).get();
+            return target->GetCurrentState();
+        });
+        this->AddCommand("GetStatistics", [this](const ParamCollection & params) {
+            auto target = this->at(params.at("target")).get();
+            return target->GetStatistics();
+        });
+    }
 };
 
 #endif /* defined(__opendatacon__DataPortCollection__) */

@@ -21,46 +21,59 @@
 //  IUIResponder.h
 //  opendatacon
 //
-//  Created by Alan Murray on 29/08/2014.
+//  Created by Alan Murray on 13/09/2014.
 //  
 //
 
-#ifndef opendatacon_IUIResponder_h
-#define opendatacon_IUIResponder_h
+#ifndef __opendatacon__IUIResponder__
+#define __opendatacon__IUIResponder__
 
-#include <json/json.h>
+#include <iostream>
 #include <unordered_map>
+#include <json/json.h>
 
 typedef std::unordered_map<std::string, std::string> ParamCollection;
 
 class IUIResponder
 {
 public:
-    virtual Json::Value GetResponse(const ParamCollection& params) const
-    {
-        Json::Value event;
-        
-        event["Configuration"] = GetConfiguration(params);
-        event["CurrentState"] = GetCurrentState(params);
-        event["Statistics"] = GetStatistics(params);
-        
-        return event;
-    };
 
-    virtual Json::Value GetStatistics(const ParamCollection& params) const
+    virtual Json::Value GetCommandList()
     {
-        return Json::Value();
-    };
+        Json::Value result;
+        for (auto command : commands)
+        {
+            result.append(command.first);
+        }
+        return result;
+    }
     
-    virtual Json::Value GetCurrentState(const ParamCollection& params) const
+    Json::Value ExecuteCommand(const std::string& arCommandName, const ParamCollection& params) const
     {
+        if(commands.count(arCommandName) != 0)
+        {
+            auto command = commands.at(arCommandName);
+            return command(params);
+        }
         return Json::Value();
-    };
-
-    virtual Json::Value GetConfiguration(const ParamCollection& params) const
+    }
+    
+    void AddCommand(const std::string& arCommandName, std::function<Json::Value(const ParamCollection& params)> arCommand)
     {
-        return Json::Value();
-    };
+        commands[arCommandName] = arCommand;
+    }
+    
+    static bool CheckParams(const ParamCollection& params, std::initializer_list<std::string> DesiredParams)
+    {
+        for (auto param : DesiredParams)
+        {
+            if(params.count(param) == 0) return false;
+        }
+        return true;
+    }
+    
+private:
+    std::unordered_map<std::string, std::function<Json::Value(const ParamCollection& params)>> commands;
 };
 
-#endif
+#endif /* defined(__opendatacon__IUIResponder__) */

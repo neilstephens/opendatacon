@@ -31,7 +31,6 @@
 #include "DataPortConf.h"
 #include "IOHandler.h"
 #include "ConfigParser.h"
-#include "IUIResponder.h"
 
 class DataPort: public IOHandler, public ConfigParser
 {
@@ -60,6 +59,16 @@ public:
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName)=0;
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName)=0;
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName)=0;
+    
+    virtual Json::Value GetStatistics() const
+    {
+        return Json::Value();
+    };
+    
+    virtual Json::Value GetCurrentState() const
+    {
+        return Json::Value();
+    };
 
 protected:
 	std::unique_ptr<DataPortConf> pConf;

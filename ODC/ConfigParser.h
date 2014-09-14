@@ -29,9 +29,8 @@
 
 #include <unordered_map>
 #include <json/json.h>
-#include "IUIResponder.h"
 
-class ConfigParser : public IUIResponder
+class ConfigParser
 {
 public:
 	ConfigParser(const std::string& aConfFilename, const Json::Value& aConfOverrides = Json::Value());
@@ -39,10 +38,8 @@ public:
 	void ProcessFile();
 
 	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
-    Json::Value GetConfiguration(const ParamCollection& params) const override;
+    Json::Value GetConfiguration() const;
     
-    static Json::Value GetConfiguration(const std::string& FileName);
-
 protected:
 	const std::string ConfFilename;
 	const Json::Value ConfOverrides;
@@ -50,6 +47,7 @@ protected:
 private:
 	void ProcessInherits(const std::string& FileName);
 
+    static Json::Value GetConfiguration(const std::string& FileName);
     static void AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits);
 	static Json::Value* RecallOrCreate(const std::string& FileName);
 	static std::unordered_map<std::string,Json::Value> JSONCache;

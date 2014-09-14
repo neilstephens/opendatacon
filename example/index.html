@@ -12,25 +12,25 @@
         <h1>Data Connectors</h1>
         <ol id="DataConnectorsList"></ol>
         <script>
-            $.post( "/DataPorts/", { } ).done(function( data ) {
-				for(elem in data)
+            $.post( "/DataPorts/List", { } ).done(function( data ) {
+				for(elem in data["Items"])
 				{
 					 $( "#DataPortsList" ).append('<li>' +
-						'<span class="Link">' + data[elem] + '</span>' +
-						'<span class="Link"><a href="Statistics.html#/DataPorts/' + data[elem] + '">Statistics</a></span>' +
-						'<span class="Link"><a href="CurrentState.html#/DataPorts/' + data[elem] + '">Current State</a></span>' +
-						'<span class="Link"><a href="Configuration.html#/DataPorts/' + data[elem] + '">Configuration</a></span>' +
+						'<span class="Link">' + data["Items"][elem] + '</span>' +
+						'<span class="Link"><a href="Statistics.html#/DataPorts/' + data["Items"][elem] + '">Statistics</a></span>' +
+						'<span class="Link"><a href="CurrentState.html#/DataPorts/' + data["Items"][elem] + '">Current State</a></span>' +
+						'<span class="Link"><a href="Configuration.html#/DataPorts/' + data["Items"][elem] + '">Configuration</a></span>' +
 						'</li>');
 				}
             });
-            $.post( "/DataConnectors/", { } ).done(function( data ) {
-				for(elem in data)
+            $.post( "/DataConnectors/List", { } ).done(function( data ) {
+				for(elem in data["Items"])
 				{
 					 $( "#DataConnectorsList" ).append('<li>' +
-						'<span class="Link">' + data[elem] + '</span>' +
-						'<span class="Link"><a href="Statistics.html#/DataConnectors/' + data[elem] + '">Statistics</a></span>' +
-						'<span class="Link"><a href="CurrentState.html#/DataConnectors/' + data[elem] + '">Current State</a></span>' +
-						'<span class="Link"><a href="Configuration.html#/DataConnectors/' + data[elem] + '">Configuration</a></span>' +
+						'<span class="Link">' + data["Items"][elem] + '</span>' +
+						'<span class="Link"><a href="Statistics.html#/DataConnectors/' + data["Items"][elem] + '">Statistics</a></span>' +
+						'<span class="Link"><a href="CurrentState.html#/DataConnectors/' + data["Items"][elem] + '">Current State</a></span>' +
+						'<span class="Link"><a href="Configuration.html#/DataConnectors/' + data["Items"][elem] + '">Configuration</a></span>' +
 						'</li>');
 				}
             });

@@ -30,7 +30,6 @@
 #include <opendatacon/IOHandler.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/Transform.h>
-#include <opendatacon/IUIResponder.h>
 
 class DataConnector: public IOHandler, public ConfigParser
 {
@@ -53,10 +52,22 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
 
 	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
+    
+    virtual Json::Value GetStatistics() const
+    {
+        return Json::Value();
+    };
+    
+    virtual Json::Value GetCurrentState() const
+    {
+        return Json::Value();
+    };
 
 	void Enable();
 	void Disable();
-	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);    
+    
+protected:
 	void ProcessElements(const Json::Value& JSONRoot);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
 

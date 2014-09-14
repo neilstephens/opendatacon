@@ -57,7 +57,6 @@ struct connection_info_struct
 
 constexpr int POSTBUFFERSIZE = 512;
 constexpr char ROOTPAGE[] = "/index.html";
-constexpr char ROOTJSON[] = "/JSON/";
 constexpr char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";
 constexpr char NO_RESPONDER[] = "<html><head><title>Responder not found</title></head><body>Responder not found</body></html>";
 
@@ -222,9 +221,9 @@ WebUI::~WebUI()
 
 }
 
-void WebUI::AddResponderCollection(const std::string name, const IUIResponderCollection& pResponderCollection)
+void WebUI::AddResponder(const std::string name, const IUIResponder& pResponder)
 {
-    Responders[name] = &pResponderCollection;
+    Responders[name] = &pResponder;
 }
 
 int WebUI::ReturnFile(struct MHD_Connection *connection,
@@ -264,43 +263,19 @@ int WebUI::ReturnFile(struct MHD_Connection *connection,
     return ret;
 }
 
-int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url, const IUIResponderCollection& rResponderCollection, const ParamCollection& params)
+int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url, const IUIResponder& rResponder, const ParamCollection& params)
 {
     struct MHD_Response *response;
     int ret;
     
-    const std::string responderName = GetFile(url);
-    
-    if (responderName.length() == 0)
-    {
-        Json::FastWriter jsonout;
-        Json::Value event;
-        
-        event = rResponderCollection.GetResponse(params);
-        
-        std::string jsonstring = jsonout.write(event);
-        const char* jsoncstr = jsonstring.c_str();
-        
-        /*
-         MHD_RESPMEM_MUST_FREE
-         MHD_RESPMEM_MUST_COPY
-         */
-        response = MHD_create_response_from_buffer(strlen(jsoncstr),
-                                                   (void *)jsoncstr,
-                                                   MHD_RESPMEM_MUST_COPY);
-        MHD_add_response_header (response, "Content-Type", MimeTypeMap.at("json").c_str());
-        ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-        MHD_destroy_response(response);
-        
-        return ret;
-    }
-    else
-    if (auto responder = rResponderCollection.GetUIResponder(responderName))
+    const std::string command = GetFile(url);
+
     {
         Json::FastWriter jsonout;
         Json::Value event;
 
-        event = responder->GetResponse(params);
+        event = rResponder.ExecuteCommand(command, params);
+//        event = responder->GetResponse(params);
         
         std::string jsonstring = jsonout.write(event);
         const char* jsoncstr = jsonstring.c_str();
@@ -327,6 +302,66 @@ int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url,
     return ret;
 }
 
+/*
+ * adapted from MHD_http_unescape
+ */
+std::string post_unescape(const char *val)
+{
+    std::string result;
+    const char *rpos = val;
+    //char *wpos = val;
+    char *end;
+    char buf3[3];
+    
+    while ('\0' != *rpos)
+    {
+        switch (*rpos)
+        {
+            case '+':
+            {
+                result += ' ';
+                //*wpos = ' ';
+                //wpos++;
+                rpos++;
+                break;
+            }
+            case '%':
+            {
+                if ( ('\0' == rpos[1]) ||
+                    ('\0' == rpos[2]) )
+                {
+                    //*wpos = '\0';
+                    //return wpos - val;
+                    return result;
+                }
+                buf3[0] = rpos[1];
+                buf3[1] = rpos[2];
+                buf3[2] = '\0';
+                auto num = strtoul (buf3, &end, 16);
+                if ('\0' == *end)
+                {
+                    //*wpos = (char)((unsigned char) num);
+                    //wpos++;
+                    result += (char)((unsigned char) num);
+                    rpos += 3;
+                    break;
+                }
+                /* intentional fall through! */
+            }
+            default:
+            {
+                //*wpos = *rpos;
+                //wpos++;
+                result += *rpos;
+                rpos++;
+            }
+        }
+    }
+    //*wpos = '\0'; /* add 0-terminator */
+    //return wpos - val; /* = strlen(val) */
+    return result;
+}
+
 static int
 iterate_post (void *coninfo_cls,
               enum MHD_ValueKind kind, //MHD_POSTDATA_KIND
@@ -343,7 +378,7 @@ iterate_post (void *coninfo_cls,
     
     if (kind == MHD_POSTDATA_KIND)
     {
-        con_info->PostValues[key] = data;
+        con_info->PostValues[post_unescape(key)] = post_unescape(data);
         return MHD_YES;
     }
     return MHD_NO;
@@ -360,7 +395,7 @@ void request_completed(void *cls, struct MHD_Connection *connection,
     if (nullptr != con_info->postprocessor) MHD_destroy_post_processor(con_info->postprocessor);
     con_info->postprocessor = nullptr;
     free(con_info);
-    *con_cls = NULL;   
+    *con_cls = nullptr;
 }
 
 int WebUI::CreateNewRequest(void *cls,
@@ -379,16 +414,17 @@ int WebUI::CreateNewRequest(void *cls,
     *con_cls = (void*)con_info;
     
     if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) return MHD_YES;
-    if (0 == strcmp (method, "POST"))
+    if (0 == strcmp(method, "POST"))
     {
-        if (*upload_data_size == 0) return MHD_YES;
+        auto length = atoi(MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "Content-Length"));
+        if (length == 0) return MHD_YES;
         con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void*) con_info);
-        
         if (nullptr != con_info->postprocessor) return MHD_YES;
     }
 
     // unexpected method or couldn't create post processor
     free(con_info);
+    *con_cls = nullptr;
     return MHD_NO;
 }
 
@@ -404,6 +440,7 @@ int	WebUI::http_ahc(void *cls,
 {
     struct connection_info_struct *con_info;
 
+    //
     if(nullptr == *con_cls)
     {
         return CreateNewRequest(cls,
@@ -435,10 +472,10 @@ int	WebUI::http_ahc(void *cls,
         }
     }
     
-    const std::string responderCollectionName = GetPath(url);
-    if (Responders.count(responderCollectionName))
+    const std::string ResponderName = GetPath(url);
+    if (Responders.count(ResponderName))
     {
-        return ReturnJSON(connection, &url[strlen(ROOTJSON)], *(Responders[responderCollectionName]), params);
+        return ReturnJSON(connection, &url[ResponderName.length()], *(Responders[ResponderName]), params);
     }
     else
     {

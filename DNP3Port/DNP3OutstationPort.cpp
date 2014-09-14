@@ -142,7 +142,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	}
 }
 
-Json::Value DNP3OutstationPort::GetCurrentState(const ParamCollection& params) const
+Json::Value DNP3OutstationPort::GetCurrentState() const
 {
     Json::Value event;
     Json::Value analogValues;
@@ -172,7 +172,7 @@ Json::Value DNP3OutstationPort::GetCurrentState(const ParamCollection& params) c
     return event;
 };
 
-Json::Value DNP3OutstationPort::GetStatistics(const ParamCollection& params) const
+Json::Value DNP3OutstationPort::GetStatistics() const
 {
     Json::Value event;
     

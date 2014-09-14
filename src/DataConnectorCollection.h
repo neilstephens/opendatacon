@@ -30,15 +30,27 @@
 
 #include <iostream>
 
-
 #include "DataConnector.h"
-#include "IUIResponderCollection.h"
+#include <opendatacon/ResponderMap.h>
 
-class DataConnectorCollection : public std::unordered_map<std::string, std::shared_ptr<DataConnector>>, public IUIResponderCollection
+class DataConnectorCollection : public ResponderMap<DataConnector>
 {
 public:
-    virtual Json::Value GetResponse(const ParamCollection& params) const;
-    virtual IUIResponder* GetUIResponder(const std::string& arName) const;
+    DataConnectorCollection()
+    {
+        this->AddCommand("GetConfiguration", [this](const ParamCollection & params) {
+            auto target = this->at(params.at("target")).get();
+            return target->GetConfiguration();
+        });
+        this->AddCommand("GetCurrentState", [this](const ParamCollection & params) {
+            auto target = this->at(params.at("target")).get();
+            return target->GetCurrentState();
+        });
+        this->AddCommand("GetStatistics", [this](const ParamCollection & params) {
+            auto target = this->at(params.at("target")).get();
+            return target->GetStatistics();
+        });
+    }
 };
 
 #endif /* defined(__opendatacon__DataConectorCollection__) */

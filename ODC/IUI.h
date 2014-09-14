@@ -29,12 +29,11 @@
 #define opendatacon_IUI_h
 
 #include "IUIResponder.h"
-#include "IUIResponderCollection.h"
 
 class IUI
 {
 public:
-    virtual void AddResponderCollection(const std::string name, const IUIResponderCollection& pResponderCollection) = 0;
+    virtual void AddResponder(const std::string name, const IUIResponder& pResponder) = 0;
     virtual int start() = 0;
 	virtual void stop() = 0;
 };

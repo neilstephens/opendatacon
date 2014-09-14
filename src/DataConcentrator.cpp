@@ -65,8 +65,8 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	//Parse the configs and create all the ports and connections
 	ProcessFile();
 
-    UI->AddResponderCollection("/DataPorts", DataPorts);
-    UI->AddResponderCollection("/DataConnectors", DataConnectors);
+    UI->AddResponder("/DataPorts", DataPorts);
+    UI->AddResponder("/DataConnectors", DataConnectors);
     
     //Initialise Data Ports
 	for(auto& port : DataPorts)
