@@ -103,6 +103,7 @@ DataConcentrator::~DataConcentrator()
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
+    if(!JSONRoot.isObject()) return;
 	if(!JSONRoot["LogFileSizekB"].isNull())
 		FileLog.SetLogFileSizekB(JSONRoot["LogFileSizekB"].asUInt());
 
@@ -230,7 +231,7 @@ void DataConcentrator::Run()
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
-	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2"<<std::endl;};
+	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.2"<<std::endl;};
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control

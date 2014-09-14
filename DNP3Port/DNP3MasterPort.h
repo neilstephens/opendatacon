@@ -88,6 +88,18 @@ private:
 	opendnp3::MasterScan IntegrityScan;
 	void SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_promise);
 	void StateListener(opendnp3::ChannelState state);
+	template<typename T>
+	inline void DoOverrideControlCode(T& arCommand){};
+	inline void DoOverrideControlCode(opendnp3::ControlRelayOutputBlock& arCommand)
+	{
+		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		if(pConf->pPointConf->OverrideControlCode != opendnp3::ControlCode::UNDEFINED)
+		{
+			arCommand.functionCode = pConf->pPointConf->OverrideControlCode;
+			arCommand.rawCode = opendnp3::ControlCodeToType(arCommand.functionCode);
+		}
+
+	};
 };
 
 #endif /* DNP3CLIENTPORT_H_ */
