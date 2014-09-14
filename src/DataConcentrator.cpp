@@ -54,6 +54,8 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	ios_working(new asio::io_service::work(IOS)),
     UI(new WebUI(10443))
 {
+    UI->start();
+
 	//fire up some worker threads
 	for(size_t i=0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
@@ -95,6 +97,8 @@ DataConcentrator::~DataConcentrator()
 	ios_working.reset();
 	//help finish any work
 	IOS.run();
+    
+    UI->stop();
 }
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
@@ -223,8 +227,6 @@ void DataConcentrator::Run()
 
 	Console console("odc> ");
     
-    UI->start();
-
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
@@ -351,7 +353,7 @@ void DataConcentrator::ListConns(std::stringstream& args)
 }
 void DataConcentrator::Shutdown()
 {
-    UI->stop();
+
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->Disable();
