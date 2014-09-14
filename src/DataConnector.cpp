@@ -40,6 +40,7 @@ DataConnector::DataConnector(std::string aName, std::string aConfFilename, const
 
 void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 {
+    if(!JSONRoot.isObject()) return;    
 	if(!JSONRoot["Connections"].isNull())
 	{
 		const Json::Value JConnections = JSONRoot["Connections"];
