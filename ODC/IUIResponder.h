@@ -36,7 +36,11 @@
 class IUIResponder
 {
 public:
-
+    
+    static const Json::Value GenerateError(const std::string& message);
+    
+    static const Json::Value ERROR_BADPARAMETER;
+    
     virtual Json::Value GetCommandList()
     {
         Json::Value result;
@@ -60,15 +64,6 @@ public:
     void AddCommand(const std::string& arCommandName, std::function<Json::Value(const ParamCollection& params)> arCommand)
     {
         commands[arCommandName] = arCommand;
-    }
-    
-    static bool CheckParams(const ParamCollection& params, std::initializer_list<std::string> DesiredParams)
-    {
-        for (auto param : DesiredParams)
-        {
-            if(params.count(param) == 0) return false;
-        }
-        return true;
     }
     
 private:

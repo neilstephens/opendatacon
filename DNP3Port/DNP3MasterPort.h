@@ -62,7 +62,7 @@ public:
 	template<typename T> void LoadT(const IterableBuffer<IndexedValue<T, uint16_t>>& meas);
 
     ///
-    Json::Value GetStatistics() const override;
+    const Json::Value GetStatistics() const override;
     
 	//Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);

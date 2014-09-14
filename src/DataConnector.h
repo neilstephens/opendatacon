@@ -53,12 +53,12 @@ public:
 
 	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
     
-    virtual Json::Value GetStatistics() const
+    virtual const Json::Value GetStatistics() const
     {
         return Json::Value();
     };
     
-    virtual Json::Value GetCurrentState() const
+    virtual const Json::Value GetCurrentState() const
     {
         return Json::Value();
     };

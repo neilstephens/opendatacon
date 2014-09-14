@@ -312,7 +312,7 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 	return cmd_future;
 }
 
-Json::Value DNP3MasterPort::GetStatistics() const
+const Json::Value DNP3MasterPort::GetStatistics() const
 {
     Json::Value event;
     

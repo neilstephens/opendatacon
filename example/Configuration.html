@@ -24,7 +24,7 @@
         	var posturl = responder + "/" + command;
         
             // Send the data using post
-            var getResponders = $.post( posturl, { target : target } )
+            var getResponders = $.post( posturl, { Target : target } )
             	.done(function( data ) {
                     BuildJsonTree(document.getElementById("Configuration"), "", data);    
                     $(document.getElementById("Configuration")).treetable({ expandable: true });

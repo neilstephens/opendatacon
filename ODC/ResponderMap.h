@@ -53,11 +53,11 @@ public:
         });
     }
 
-    T* GetPtr(const std::string name)
+    T* GetTarget(const ParamCollection & params)
     {
-        if (this->count(name))
+        if (params.count("Target") && this->count(params.at("Target")))
         {
-            return this->at(name).get();
+            return this->at(params.at("Target")).get();
         }
         return nullptr;
     }

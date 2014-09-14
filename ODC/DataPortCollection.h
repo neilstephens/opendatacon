@@ -37,16 +37,16 @@ public:
     DataPortCollection()
     {
         this->AddCommand("GetConfiguration", [this](const ParamCollection & params) {
-            auto target = this->at(params.at("target")).get();
-            return target->GetConfiguration();
+            if (auto target = GetTarget(params)) return target->GetConfiguration();
+            return IUIResponder::ERROR_BADPARAMETER;
         });
         this->AddCommand("GetCurrentState", [this](const ParamCollection & params) {
-            auto target = this->at(params.at("target")).get();
-            return target->GetCurrentState();
+            if (auto target = GetTarget(params)) return target->GetCurrentState();
+            return IUIResponder::ERROR_BADPARAMETER;
         });
         this->AddCommand("GetStatistics", [this](const ParamCollection & params) {
-            auto target = this->at(params.at("target")).get();
-            return target->GetStatistics();
+            if (auto target = GetTarget(params)) return target->GetStatistics();
+            return IUIResponder::ERROR_BADPARAMETER;
         });
     }
 };
