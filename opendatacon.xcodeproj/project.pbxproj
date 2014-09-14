@@ -86,6 +86,8 @@
 		8481CC4619C4067800BE84E8 /* DataPortCollection.h in Headers */ = {isa = PBXBuildFile; fileRef = 8481CC4419C4067800BE84E8 /* DataPortCollection.h */; };
 		8481CC4919C425A200BE84E8 /* DataConnectorCollection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8481CC4719C425A200BE84E8 /* DataConnectorCollection.cpp */; };
 		8481CC4A19C425A200BE84E8 /* DataConnectorCollection.h in Headers */ = {isa = PBXBuildFile; fileRef = 8481CC4819C425A200BE84E8 /* DataConnectorCollection.h */; };
+		84F1C4CC19C5558600071DAF /* MhdWrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84F1C4CA19C5558600071DAF /* MhdWrapper.cpp */; };
+		84F1C4CD19C5558600071DAF /* MhdWrapper.h in Headers */ = {isa = PBXBuildFile; fileRef = 84F1C4CB19C5558600071DAF /* MhdWrapper.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -269,6 +271,9 @@
 		8481CC4719C425A200BE84E8 /* DataConnectorCollection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DataConnectorCollection.cpp; sourceTree = "<group>"; };
 		8481CC4819C425A200BE84E8 /* DataConnectorCollection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DataConnectorCollection.h; sourceTree = "<group>"; };
 		84F1C4C919C54C5100071DAF /* ResponderMap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ResponderMap.h; sourceTree = "<group>"; };
+		84F1C4CA19C5558600071DAF /* MhdWrapper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MhdWrapper.cpp; sourceTree = "<group>"; };
+		84F1C4CB19C5558600071DAF /* MhdWrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MhdWrapper.h; sourceTree = "<group>"; };
+		84F1C4CE19C55C9D00071DAF /* ParamCollection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ParamCollection.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -485,6 +490,7 @@
 				84009F0F19ADD4210096E673 /* util.h */,
 				8481CC4319C4067800BE84E8 /* DataPortCollection.cpp */,
 				8481CC4419C4067800BE84E8 /* DataPortCollection.h */,
+				84F1C4CE19C55C9D00071DAF /* ParamCollection.h */,
 			);
 			path = ODC;
 			sourceTree = "<group>";
@@ -496,6 +502,8 @@
 				84009F6E19AE16CD0096E673 /* WebUI.def */,
 				84009F6F19AE16CD0096E673 /* WebUI.h */,
 				84009F7019AE16CD0096E673 /* WebUI.vcxproj */,
+				84F1C4CA19C5558600071DAF /* MhdWrapper.cpp */,
+				84F1C4CB19C5558600071DAF /* MhdWrapper.h */,
 			);
 			path = WebUI;
 			sourceTree = "<group>";
@@ -585,6 +593,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				84F1C4CD19C5558600071DAF /* MhdWrapper.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -817,6 +826,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				84009F8119B13B6F0096E673 /* WebUI.cpp in Sources */,
+				84F1C4CC19C5558600071DAF /* MhdWrapper.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

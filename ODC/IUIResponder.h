@@ -31,8 +31,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <json/json.h>
-
-typedef std::unordered_map<std::string, std::string> ParamCollection;
+#include <opendatacon/ParamCollection.h>
 
 class IUIResponder
 {
