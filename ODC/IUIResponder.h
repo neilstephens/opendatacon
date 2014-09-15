@@ -29,6 +29,7 @@
 #define __opendatacon__IUIResponder__
 
 #include <iostream>
+#include <functional>
 #include <unordered_map>
 #include <json/json.h>
 #include <opendatacon/ParamCollection.h>
