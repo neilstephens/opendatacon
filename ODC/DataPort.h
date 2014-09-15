@@ -31,9 +31,8 @@
 #include "DataPortConf.h"
 #include "IOHandler.h"
 #include "ConfigParser.h"
-#include "IJsonResponder.h"
 
-class DataPort: public IOHandler, public ConfigParser, public IJsonResponder
+class DataPort: public IOHandler, public ConfigParser
 {
 public:
 	DataPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
@@ -61,28 +60,14 @@ public:
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName)=0;
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName)=0;
     
-    //Default implementation of IJsonResponder
-    virtual Json::Value GetCurrentState(const ParamCollection& params) const
+    virtual const Json::Value GetStatistics() const
     {
-        Json::Value event;
-        return event;
-    }
+        return Json::Value();
+    };
     
-    virtual Json::Value GetStatistics(const ParamCollection& params) const
+    virtual const Json::Value GetCurrentState() const
     {
-        Json::Value event;
-        return event;
-    }
-
-    virtual Json::Value GetResponse(const ParamCollection& params) const
-    {
-        Json::Value event;
-        
-        event["Configuration"] = GetConfiguration();
-        event["CurrentState"] = GetCurrentState(params);
-        event["Statistics"] = GetStatistics(params);
-        
-        return event;
+        return Json::Value();
     };
 
 protected:

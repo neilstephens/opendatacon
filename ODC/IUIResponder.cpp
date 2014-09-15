@@ -18,11 +18,20 @@
  *	limitations under the License.
  */ 
 //
-//  ResponderListResponder.cpp
+//  IUIResponder.cpp
 //  opendatacon
 //
-//  Created by Alan Murray on 30/08/2014.
+//  Created by Alan Murray on 13/09/2014.
 //  
 //
 
-#include "ResponderListResponder.h"
+#include <IUIResponder.h>
+
+const Json::Value IUIResponder::GenerateError(const std::string& message)
+{
+    Json::Value result;
+    result["ERROR"] = "Bad Parameter";
+    return result;
+}
+
+const Json::Value IUIResponder::ERROR_BADPARAMETER = GenerateError("Bad parameter");

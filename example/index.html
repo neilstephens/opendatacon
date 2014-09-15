@@ -2,30 +2,37 @@
 <html lang="en">
     <head>
         <meta charset="utf-8"/>
-        <title>jQuery.post demo</title>
+        <title>OpenDataCon</title>
         <script src="/js/jquery-1.11.1.min.js"></script>
 		<link href="/css/odc.css" rel="stylesheet">        
     </head>
     <body>
-        <h1>Responders</h1>
-        <ol id="responders"></ol>
+        <h1>Data Ports</h1>
+        <ol id="DataPortsList"></ol>
+        <h1>Data Connectors</h1>
+        <ol id="DataConnectorsList"></ol>
         <script>
-            // Send the data using post
-            var getResponders = $.post( "/JSON/Responders", { } );
-            
-            // Put the results in a div
-            getResponders.done(function( data )
-            {
-                    $( "#responders" ).empty();
-                    for(elem in data["Responders"])
-                    {
-                         $( "#responders" ).append('<li>' +
-                            '<span class="Link">' + data["Responders"][elem] + '</span>' +
-                            '<span class="Link"><a href="Statistics.html#' + data["Responders"][elem] + '">Statistics</a></span>' +
-                            '<span class="Link"><a href="CurrentState.html#' + data["Responders"][elem] + '">Current State</a></span>' +
-                            '<span class="Link"><a href="Configuration.html#' + data["Responders"][elem] + '">Configuration</a></span>' +
-                            '</li>');
-                    }
+            $.post( "/DataPorts/List", { } ).done(function( data ) {
+				for(elem in data["Items"])
+				{
+					 $( "#DataPortsList" ).append('<li>' +
+						'<span class="Link">' + data["Items"][elem] + '</span>' +
+						'<span class="Link"><a href="Statistics.html#/DataPorts/' + data["Items"][elem] + '">Statistics</a></span>' +
+						'<span class="Link"><a href="CurrentState.html#/DataPorts/' + data["Items"][elem] + '">Current State</a></span>' +
+						'<span class="Link"><a href="Configuration.html#/DataPorts/' + data["Items"][elem] + '">Configuration</a></span>' +
+						'</li>');
+				}
+            });
+            $.post( "/DataConnectors/List", { } ).done(function( data ) {
+				for(elem in data["Items"])
+				{
+					 $( "#DataConnectorsList" ).append('<li>' +
+						'<span class="Link">' + data["Items"][elem] + '</span>' +
+						'<span class="Link"><a href="Statistics.html#/DataConnectors/' + data["Items"][elem] + '">Statistics</a></span>' +
+						'<span class="Link"><a href="CurrentState.html#/DataConnectors/' + data["Items"][elem] + '">Current State</a></span>' +
+						'<span class="Link"><a href="Configuration.html#/DataConnectors/' + data["Items"][elem] + '">Configuration</a></span>' +
+						'</li>');
+				}
             });
         </script>
     </body>

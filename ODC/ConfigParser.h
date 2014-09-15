@@ -38,10 +38,8 @@ public:
 	void ProcessFile();
 
 	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
-    Json::Value GetConfiguration() const;
+    const Json::Value GetConfiguration() const;
     
-    static Json::Value GetConfiguration(const std::string& FileName);    
-
 protected:
 	const std::string ConfFilename;
 	const Json::Value ConfOverrides;
@@ -49,6 +47,7 @@ protected:
 private:
 	void ProcessInherits(const std::string& FileName);
 
+    static const Json::Value GetConfiguration(const std::string& FileName);
     static void AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits);
 	static Json::Value* RecallOrCreate(const std::string& FileName);
 	static std::unordered_map<std::string,Json::Value> JSONCache;

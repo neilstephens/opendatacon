@@ -304,7 +304,12 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 		if(i == index)
 		{
 			auto cmd_proc = this->pMaster->GetCommandProcessor();
-			cmd_proc->DirectOperate(arCommand,index, *CommandCorrespondant::GetCallback(std::move(cmd_promise)));
+			//make a copy of the command, so we can change it if needed
+			auto lCommand = arCommand;
+			//this will change the control code if the command is binary, and there's a defined override
+			DoOverrideControlCode(lCommand);
+
+			cmd_proc->DirectOperate(lCommand,index, *CommandCorrespondant::GetCallback(std::move(cmd_promise)));
 			return cmd_future;
 		}
 	}
@@ -312,7 +317,7 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 	return cmd_future;
 }
 
-Json::Value DNP3MasterPort::GetStatistics(const ParamCollection& params) const
+const Json::Value DNP3MasterPort::GetStatistics() const
 {
     Json::Value event;
     

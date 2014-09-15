@@ -18,26 +18,12 @@
  *	limitations under the License.
  */ 
 //
-//  IUI.h
+//  DataPortCollection.cpp
 //  opendatacon
 //
-//  Created by Alan Murray on 29/08/2014.
+//  Created by Alan Murray on 13/09/2014.
 //  
 //
 
-#ifndef opendatacon_IUI_h
-#define opendatacon_IUI_h
+#include "DataPortCollection.h"
 
-#include "IUIResponder.h"
-#include <memory>
-
-class IUI
-{
-public:
-    virtual void AddResponder(const std::string name, const IUIResponder& pResponder) = 0;
-    virtual int start() = 0;
-	virtual void stop() = 0;
-};
-
-
-#endif

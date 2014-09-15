@@ -17,78 +17,15 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */ 
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <functional>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <cerrno>
-
-#ifdef _WIN32
-#include <io.h>
-#include <ws2tcpip.h>
-#include <stdarg.h>
-#include <stdint.h>
-typedef SSIZE_T ssize_t;
-//#define S_ISREG(a) true
-#define	S_ISREG(m)	(((m) & S_IFMT) == S_IFREG)	// regular file
-#include <sys/types.h> // off_t, ssize_t
-#define MHD_PLATFORM_H
-#else
-inline void fopen_s(FILE** file, const char * name, const char * mode)
-{
-    *file = fopen(name, mode);
-}
-#endif
-
-#include <microhttpd.h>
+//
+//  WebUI.cpp
+//  opendatacon
+//
+//  Created by Alan Murray on 06/09/2014.
+//  
+//
 
 #include "WebUI.h"
-#include "ResponderListResponder.h"
-
-struct connection_info_struct
-{
-    ParamCollection PostValues;
-    struct MHD_PostProcessor *postprocessor = nullptr;
-};
-
-constexpr int POSTBUFFERSIZE = 512;
-constexpr char ROOTPAGE[] = "/index.html";
-constexpr char ROOTJSON[] = "/JSON/";
-constexpr char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";
-constexpr char NO_RESPONDER[] = "<html><head><title>Responder not found</title></head><body>Responder not found</body></html>";
-
-const std::string MIMETYPE_DEFAULT = "application/octet-stream";
-
-const std::unordered_map<std::string, const std::string> MimeTypeMap {
-    { "json", "application/json" },
-    { "js", "text/javascript" },
-    { "html", "text/html"},
-    { "jpg", "image/jpeg"},
-    { "css", "text/css"},
-    { "txt", "text/plain"}
-};
-
-const std::string& GetMimeType(const std::string pPath)
-{
-    auto last = pPath.find_last_of("/\\.");
-    if (last == std::string::npos) return MIMETYPE_DEFAULT;
-    const std::string pExt = pPath.substr(last+1);
-    
-    if(MimeTypeMap.count(pExt) != 0)
-    {
-        return MimeTypeMap.at(pExt);
-    }
-    return MIMETYPE_DEFAULT;
-}
-
-constexpr char MIMETYPE_JSON[] = "application/json";
-constexpr char MIMETYPE_JAVASCRIPT[] = "text/javascript";
-constexpr char MIMETYPE_HTML[] = "text/html";
 
 /* Test Certificate */
 //openssl genrsa -out server.key 2048
@@ -144,22 +81,6 @@ DE+cahwFk7x5dZ28WePVnm/QqIFdyq3g9MliQrlIGVbbn3DtvVVBT5cc2/NPDnHN\
 9Ew4HhHIV+smoLTlGglfrlCuHXcrEzK5l5AMy9gD62OnhR3b3y0o4g==\
 -----END RSA PRIVATE KEY-----";
 
-static ssize_t
-file_reader(void *cls, uint64_t pos, char *buf, size_t max)
-{
-	FILE *file = (FILE *)cls;
-    
-	(void)fseek(file, pos, SEEK_SET);
-	return fread(buf, 1, max, file);
-}
-
-static void
-file_free_callback(void *cls)
-{
-	FILE *file = (FILE *)cls;
-	fclose(file);
-}
-
 /* response handler callback wrapper */
 static int ahc(void *cls,
                struct MHD_Connection *connection,
@@ -199,7 +120,6 @@ WebUI::WebUI(uint16_t pPort) :
     {
         key_pem = load_key("server.key");
         cert_pem = load_key("server.pem");
-        
     }
     catch (std::exception e)
     {
@@ -209,162 +129,11 @@ WebUI::WebUI(uint16_t pPort) :
     }
 }
 
-WebUI::~WebUI()
+void WebUI::AddResponder(const std::string name, const IUIResponder& pResponder)
 {
-
+    Responders[name] = &pResponder;
 }
 
-
-void WebUI::AddJsonResponder(const std::string name, std::weak_ptr<const IJsonResponder> responder)
-{
-    JsonResponders[name] = responder;
-}
-
-int WebUI::ReturnFile(struct MHD_Connection *connection,
-                      const char *url)
-{
-    struct stat buf;
-    FILE *file;
-    struct MHD_Response *response;
-    int ret;
-    
-    if ((0 == stat(&url[1], &buf)) && (S_ISREG(buf.st_mode)))
-        fopen_s(&file, &url[1], "rb");
-    else
-        file = nullptr;
-    if (file == nullptr)
-    {
-        response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
-                                                   (void *)EMPTY_PAGE,
-                                                   MHD_RESPMEM_PERSISTENT);
-        ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
-        MHD_destroy_response(response);
-    }
-    else
-    {
-        response = MHD_create_response_from_callback(buf.st_size, 32 * 1024,     /* 32k PAGE_NOT_FOUND size */
-                                                     &file_reader, file,
-                                                     &file_free_callback);
-        if (response == nullptr)
-        {
-            fclose(file);
-            return MHD_NO;
-        }
-        MHD_add_response_header(response, "Content-Type", GetMimeType(url).c_str());
-        ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-        MHD_destroy_response(response);
-    }
-    return ret;
-}
-
-int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url, const ParamCollection& params)
-{
-    struct MHD_Response *response;
-    int ret;
-    
-    //TODO: urldecode the following:
-    const std::string& decurl(url);
-    
-    if (this->JsonResponders.count(decurl) != 0)
-    {
-        auto responder = JsonResponders[decurl].lock();
-        if (responder)
-        {
-            Json::FastWriter jsonout;            
-            Json::Value event;
-
-            event = responder->GetResponse(params);
-            
-            std::string jsonstring = jsonout.write(event);
-            const char* jsoncstr = jsonstring.c_str();
-            
-            /*
-             MHD_RESPMEM_MUST_FREE
-             MHD_RESPMEM_MUST_COPY
-             */
-            response = MHD_create_response_from_buffer(strlen(jsoncstr),
-                                                       (void *)jsoncstr,
-                                                       MHD_RESPMEM_MUST_COPY);
-            MHD_add_response_header (response, "Content-Type", MIMETYPE_JSON);
-            ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-            MHD_destroy_response(response);
-            
-            return ret;
-        }
-    }
-
-    response = MHD_create_response_from_buffer(strlen(NO_RESPONDER),
-                                               (void *)NO_RESPONDER,
-                                               MHD_RESPMEM_PERSISTENT);
-    ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
-    MHD_destroy_response(response);
-    return ret;
-}
-
-static int
-iterate_post (void *coninfo_cls,
-              enum MHD_ValueKind kind, //MHD_POSTDATA_KIND
-              const char *key, // POST KEY
-              const char *filename,
-              const char *content_type,
-              const char *transfer_encoding,
-              const char *data, // POST VALUE
-              uint64_t off,
-              size_t size // POST VALUE LENGTH
-)
-{
-    struct connection_info_struct* con_info = (connection_info_struct*) coninfo_cls;
-    
-    if (kind == MHD_POSTDATA_KIND)
-    {
-        con_info->PostValues[key] = data;
-        return MHD_YES;
-    }
-    return MHD_NO;
-}
-
-static
-void request_completed(void *cls, struct MHD_Connection *connection,
-                        void **con_cls,
-                        enum MHD_RequestTerminationCode toe)
-{
-    struct connection_info_struct *con_info = (connection_info_struct*)*con_cls;
-    
-    if (nullptr == con_info) return;
-    if (nullptr != con_info->postprocessor) MHD_destroy_post_processor(con_info->postprocessor);
-    con_info->postprocessor = nullptr;
-    free(con_info);
-    *con_cls = NULL;   
-}
-
-int WebUI::CreateNewRequest(void *cls,
-                      struct MHD_Connection *connection,
-                      const char *url,
-                      const char *method,
-                      const char *version,
-                      const char *upload_data,
-                      size_t *upload_data_size,
-                      void **con_cls)
-{
-    struct connection_info_struct *con_info;
-
-    con_info = new connection_info_struct;
-    if (nullptr == con_info) return MHD_NO;
-    *con_cls = (void*)con_info;
-    
-    if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) return MHD_YES;
-    if (0 == strcmp (method, "POST"))
-    {
-        if (*upload_data_size == 0) return MHD_YES;
-        con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void*) con_info);
-        
-        if (nullptr != con_info->postprocessor) return MHD_YES;
-    }
-
-    // unexpected method or couldn't create post processor
-    free(con_info);
-    return MHD_NO;
-}
 
 /* HTTP access handler call back */
 int	WebUI::http_ahc(void *cls,
@@ -378,6 +147,7 @@ int	WebUI::http_ahc(void *cls,
 {
     struct connection_info_struct *con_info;
 
+    //
     if(nullptr == *con_cls)
     {
         return CreateNewRequest(cls,
@@ -409,9 +179,20 @@ int	WebUI::http_ahc(void *cls,
         }
     }
     
-    if (strncmp(url, ROOTJSON, strlen(ROOTJSON)) == 0)
+    const std::string ResponderName = GetPath(url);
+    if (Responders.count(ResponderName))
     {
-        return ReturnJSON(connection, &url[strlen(ROOTJSON)], params);
+        const std::string command = GetFile(&url[ResponderName.length()]);
+
+        Json::FastWriter jsonout;
+        Json::Value event;
+        
+        event = Responders[ResponderName]->ExecuteCommand(command, params);
+        
+        std::string jsonstring = jsonout.write(event);
+        const char* jsoncstr = jsonstring.c_str();
+        
+        return ReturnJSON(connection, jsoncstr);
     }
     else
     {
@@ -428,9 +209,6 @@ int	WebUI::http_ahc(void *cls,
 
 int WebUI::start()
 {
-    LocalResponders["ResponderList"] = std::shared_ptr<ResponderListResponder>(new ResponderListResponder(JsonResponders));
-    
-    AddJsonResponder("Responders", LocalResponders["ResponderList"]);
     
     d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG | MHD_USE_SSL,
                          port, // Port to bind to

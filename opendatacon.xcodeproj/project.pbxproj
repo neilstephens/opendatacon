@@ -73,10 +73,7 @@
 		84009F9519B13D330096E673 /* libWebUI.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F7D19B13B630096E673 /* libWebUI.dylib */; };
 		84009F9619B13E980096E673 /* libJSON.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EA819ADD3E80096E673 /* libJSON.dylib */; };
 		84009F9819B13F6F0096E673 /* IUI.h in Headers */ = {isa = PBXBuildFile; fileRef = 84009F9719B13F6F0096E673 /* IUI.h */; };
-		84009F9A19B13FB30096E673 /* IJsonResponder.h in Headers */ = {isa = PBXBuildFile; fileRef = 84009F9919B13FB30096E673 /* IJsonResponder.h */; };
 		84009F9B19B179B60096E673 /* libWebUI.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F7D19B13B630096E673 /* libWebUI.dylib */; };
-		84009FA019B17AD10096E673 /* ResponderListResponder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84009F9E19B17AD10096E673 /* ResponderListResponder.cpp */; };
-		84009FA119B17AD10096E673 /* ResponderListResponder.h in Headers */ = {isa = PBXBuildFile; fileRef = 84009F9F19B17AD10096E673 /* ResponderListResponder.h */; };
 		84009FA419B17F220096E673 /* libJSON.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EA819ADD3E80096E673 /* libJSON.dylib */; };
 		84009FA519B17F220096E673 /* libODC.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009EB819ADD4000096E673 /* libODC.dylib */; };
 		84009FA819B17F3F0096E673 /* libasiopal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4719ADE3EC0096E673 /* libasiopal.dylib */; };
@@ -84,6 +81,14 @@
 		84009FAA19B17F4C0096E673 /* libopendnp3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4819ADE3EC0096E673 /* libopendnp3.dylib */; };
 		84009FAB19B17F4C0096E673 /* libopenpal.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84009F4919ADE3EC0096E673 /* libopenpal.dylib */; };
 		84009FB319B189C90096E673 /* AddrConf.h in Headers */ = {isa = PBXBuildFile; fileRef = 84009FB219B189C90096E673 /* AddrConf.h */; };
+		8481CC4219C3B05D00BE84E8 /* IUIResponder.h in Headers */ = {isa = PBXBuildFile; fileRef = 8481CC4019C3B05D00BE84E8 /* IUIResponder.h */; };
+		8481CC4519C4067800BE84E8 /* DataPortCollection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8481CC4319C4067800BE84E8 /* DataPortCollection.cpp */; };
+		8481CC4619C4067800BE84E8 /* DataPortCollection.h in Headers */ = {isa = PBXBuildFile; fileRef = 8481CC4419C4067800BE84E8 /* DataPortCollection.h */; };
+		8481CC4919C425A200BE84E8 /* DataConnectorCollection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8481CC4719C425A200BE84E8 /* DataConnectorCollection.cpp */; };
+		8481CC4A19C425A200BE84E8 /* DataConnectorCollection.h in Headers */ = {isa = PBXBuildFile; fileRef = 8481CC4819C425A200BE84E8 /* DataConnectorCollection.h */; };
+		84F1C4CC19C5558600071DAF /* MhdWrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84F1C4CA19C5558600071DAF /* MhdWrapper.cpp */; };
+		84F1C4CD19C5558600071DAF /* MhdWrapper.h in Headers */ = {isa = PBXBuildFile; fileRef = 84F1C4CB19C5558600071DAF /* MhdWrapper.h */; };
+		84F1C4D019C5640000071DAF /* IUIResponder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84F1C4CF19C5640000071DAF /* IUIResponder.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -250,12 +255,7 @@
 		84009F8A19B13D1A0096E673 /* WebUItest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = WebUItest; sourceTree = BUILT_PRODUCTS_DIR; };
 		84009F8C19B13D1A0096E673 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		84009F9719B13F6F0096E673 /* IUI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IUI.h; sourceTree = "<group>"; };
-		84009F9919B13FB30096E673 /* IJsonResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IJsonResponder.h; sourceTree = "<group>"; };
-		84009F9E19B17AD10096E673 /* ResponderListResponder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ResponderListResponder.cpp; sourceTree = "<group>"; };
-		84009F9F19B17AD10096E673 /* ResponderListResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResponderListResponder.h; sourceTree = "<group>"; };
 		84009FB219B189C90096E673 /* AddrConf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AddrConf.h; sourceTree = "<group>"; };
-		84009FB419B1921A0096E673 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
-		84009FB519B1921A0096E673 /* jquery-1.10.2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "jquery-1.10.2.js"; sourceTree = "<group>"; };
 		84009FB719B192420096E673 /* ConnectorEg.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = ConnectorEg.conf; path = example/ConnectorEg.conf; sourceTree = "<group>"; };
 		84009FB919B192420096E673 /* datacon-test.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = "datacon-test.conf"; path = "example/datacon-test.conf"; sourceTree = "<group>"; };
 		84009FBB19B192420096E673 /* DMCConnector.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = DMCConnector.conf; path = example/DMCConnector.conf; sourceTree = "<group>"; };
@@ -266,6 +266,16 @@
 		84009FC019B192420096E673 /* JSONClientEg.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = JSONClientEg.conf; path = example/JSONClientEg.conf; sourceTree = "<group>"; };
 		84009FC119B192420096E673 /* opendatacon.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = opendatacon.conf; path = example/opendatacon.conf; sourceTree = "<group>"; };
 		84009FC219B192420096E673 /* opendataconDMC.conf */ = {isa = PBXFileReference; lastKnownFileType = text; name = opendataconDMC.conf; path = example/opendataconDMC.conf; sourceTree = "<group>"; };
+		8481CC4019C3B05D00BE84E8 /* IUIResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IUIResponder.h; sourceTree = "<group>"; };
+		8481CC4319C4067800BE84E8 /* DataPortCollection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DataPortCollection.cpp; sourceTree = "<group>"; };
+		8481CC4419C4067800BE84E8 /* DataPortCollection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DataPortCollection.h; sourceTree = "<group>"; };
+		8481CC4719C425A200BE84E8 /* DataConnectorCollection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DataConnectorCollection.cpp; sourceTree = "<group>"; };
+		8481CC4819C425A200BE84E8 /* DataConnectorCollection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DataConnectorCollection.h; sourceTree = "<group>"; };
+		84F1C4C919C54C5100071DAF /* ResponderMap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ResponderMap.h; sourceTree = "<group>"; };
+		84F1C4CA19C5558600071DAF /* MhdWrapper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MhdWrapper.cpp; sourceTree = "<group>"; };
+		84F1C4CB19C5558600071DAF /* MhdWrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MhdWrapper.h; sourceTree = "<group>"; };
+		84F1C4CE19C55C9D00071DAF /* ParamCollection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ParamCollection.h; sourceTree = "<group>"; };
+		84F1C4CF19C5640000071DAF /* IUIResponder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IUIResponder.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -359,9 +369,9 @@
 				84009F4819ADE3EC0096E673 /* libopendnp3.dylib */,
 				84009F4919ADE3EC0096E673 /* libopenpal.dylib */,
 				84009F6C19AE16CD0096E673 /* WebUI */,
-				84009F0019ADD4210096E673 /* ODC */,
 				84009EE919ADD41B0096E673 /* JSONPort */,
 				84009EDB19ADD4140096E673 /* JSON */,
+				84009F0019ADD4210096E673 /* ODC */,
 				84009EBC19ADD40C0096E673 /* DNP3Port */,
 				84009E7F19ADD3960096E673 /* opendatacon */,
 				84009F8B19B13D1A0096E673 /* WebUItest */,
@@ -403,6 +413,8 @@
 				84009E8F19ADD3960096E673 /* NullPort.h */,
 				84009E9219ADD3960096E673 /* tinycon.cpp */,
 				84009E9319ADD3960096E673 /* tinycon.h */,
+				8481CC4719C425A200BE84E8 /* DataConnectorCollection.cpp */,
+				8481CC4819C425A200BE84E8 /* DataConnectorCollection.h */,
 			);
 			name = opendatacon;
 			path = src;
@@ -464,19 +476,24 @@
 		84009F0019ADD4210096E673 /* ODC */ = {
 			isa = PBXGroup;
 			children = (
-				84009F9919B13FB30096E673 /* IJsonResponder.h */,
+				84F1C4C919C54C5100071DAF /* ResponderMap.h */,
+				8481CC4019C3B05D00BE84E8 /* IUIResponder.h */,
+				84F1C4CF19C5640000071DAF /* IUIResponder.cpp */,
 				84009F9719B13F6F0096E673 /* IUI.h */,
 				84009F0419ADD4210096E673 /* ConfigParser.cpp */,
 				84009F0519ADD4210096E673 /* ConfigParser.h */,
 				84009FB219B189C90096E673 /* AddrConf.h */,
 				84009F0619ADD4210096E673 /* DataPointConf.h */,
-				84009F0719ADD4210096E673 /* DataPort.h */,
 				84009F0819ADD4210096E673 /* DataPortConf.h */,
+				84009F0719ADD4210096E673 /* DataPort.h */,
+				8481CC4319C4067800BE84E8 /* DataPortCollection.cpp */,
+				8481CC4419C4067800BE84E8 /* DataPortCollection.h */,
 				84009F0919ADD4210096E673 /* IOHandler.cpp */,
 				84009F0A19ADD4210096E673 /* IOHandler.h */,
 				84009F0D19ADD4210096E673 /* Transform.h */,
 				84009F0E19ADD4210096E673 /* util.cpp */,
 				84009F0F19ADD4210096E673 /* util.h */,
+				84F1C4CE19C55C9D00071DAF /* ParamCollection.h */,
 			);
 			path = ODC;
 			sourceTree = "<group>";
@@ -488,8 +505,8 @@
 				84009F6E19AE16CD0096E673 /* WebUI.def */,
 				84009F6F19AE16CD0096E673 /* WebUI.h */,
 				84009F7019AE16CD0096E673 /* WebUI.vcxproj */,
-				84009F9E19B17AD10096E673 /* ResponderListResponder.cpp */,
-				84009F9F19B17AD10096E673 /* ResponderListResponder.h */,
+				84F1C4CA19C5558600071DAF /* MhdWrapper.cpp */,
+				84F1C4CB19C5558600071DAF /* MhdWrapper.h */,
 			);
 			path = WebUI;
 			sourceTree = "<group>";
@@ -497,8 +514,6 @@
 		84009F8B19B13D1A0096E673 /* WebUItest */ = {
 			isa = PBXGroup;
 			children = (
-				84009FB419B1921A0096E673 /* index.html */,
-				84009FB519B1921A0096E673 /* jquery-1.10.2.js */,
 				84009F8C19B13D1A0096E673 /* main.cpp */,
 			);
 			path = WebUItest;
@@ -565,12 +580,14 @@
 				84009F1319ADD4210096E673 /* DataPort.h in Headers */,
 				84009F1619ADD4210096E673 /* IOHandler.h in Headers */,
 				84009F9819B13F6F0096E673 /* IUI.h in Headers */,
-				84009F9A19B13FB30096E673 /* IJsonResponder.h in Headers */,
+				8481CC4219C3B05D00BE84E8 /* IUIResponder.h in Headers */,
+				8481CC4619C4067800BE84E8 /* DataPortCollection.h in Headers */,
 				84009F1419ADD4210096E673 /* DataPortConf.h in Headers */,
 				84009F1719ADD4210096E673 /* Transform.h in Headers */,
 				84009F1119ADD4210096E673 /* ConfigParser.h in Headers */,
 				84009F1919ADD4210096E673 /* util.h in Headers */,
 				84009F1219ADD4210096E673 /* DataPointConf.h in Headers */,
+				8481CC4A19C425A200BE84E8 /* DataConnectorCollection.h in Headers */,
 				84009FB319B189C90096E673 /* AddrConf.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -579,7 +596,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				84009FA119B17AD10096E673 /* ResponderListResponder.h in Headers */,
+				84F1C4CD19C5558600071DAF /* MhdWrapper.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -799,8 +816,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8481CC4919C425A200BE84E8 /* DataConnectorCollection.cpp in Sources */,
 				84009F1519ADD4210096E673 /* IOHandler.cpp in Sources */,
 				84009F1019ADD4210096E673 /* ConfigParser.cpp in Sources */,
+				8481CC4519C4067800BE84E8 /* DataPortCollection.cpp in Sources */,
+				84F1C4D019C5640000071DAF /* IUIResponder.cpp in Sources */,
 				84009F1819ADD4210096E673 /* util.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -810,7 +830,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				84009F8119B13B6F0096E673 /* WebUI.cpp in Sources */,
-				84009FA019B17AD10096E673 /* ResponderListResponder.cpp in Sources */,
+				84F1C4CC19C5558600071DAF /* MhdWrapper.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

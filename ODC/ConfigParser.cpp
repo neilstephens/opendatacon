@@ -81,7 +81,7 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 	return &JSONCache[FileName];
 }
 
-Json::Value ConfigParser::GetConfiguration(const std::string& pFileName)
+const Json::Value ConfigParser::GetConfiguration(const std::string& pFileName)
 {
 	if(JSONCache.count(pFileName))
     {
@@ -103,7 +103,7 @@ void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherit
     }
 }
 
-Json::Value ConfigParser::GetConfiguration() const
+const Json::Value ConfigParser::GetConfiguration() const
 {
     Json::Value JSONRoot;
     JSONRoot[ConfFilename] = GetConfiguration(ConfFilename);

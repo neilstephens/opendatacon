@@ -17,8 +17,22 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */ 
+//
+//  WebUI.h
+//  opendatacon
+//
+//  Created by Alan Murray on 06/09/2014.
+//  
+//
 
-#include <opendatacon/IUI.h>
+#ifndef __opendatacon__WebUI__
+#define __opendatacon__WebUI__
+
+#include "IUI.h"
+#include "MhdWrapper.h"
+
+constexpr char ROOTPAGE[] = "/index.html";
+
 class WebUI : public IUI
 {
 public:
@@ -26,41 +40,28 @@ public:
 	~WebUI();
     
     /* Implement IUI interface */
-    void AddJsonResponder(const std::string name, std::weak_ptr<const IJsonResponder> responder);
+    void AddResponder(const std::string name, const IUIResponder& pResponder);
 	int start();
 	void stop();
 
 	/* HTTP response handler call back */
-    int
-		http_ahc(void *cls,
-	struct MHD_Connection *connection,
+    int http_ahc(void *cls,
+        struct MHD_Connection *connection,
 		const char *url,
 		const char *method,
 		const char *version,
 		const char *upload_data,
-		size_t *upload_data_size, void **ptr);
+		size_t *upload_data_size,
+        void **ptr);
     
 private:
+	struct MHD_Daemon * d;
     const int port;
     std::string cert_pem;
     std::string key_pem;
     
-    /* */
-    int CreateNewRequest(void *cls,
-                                struct MHD_Connection *connection,
-                                const char *url,
-                                const char *method,
-                                const char *version,
-                                const char *upload_data,
-                                size_t *upload_data_size,
-                                void **con_cls);
-    
-	/* HTTP file handler */
-    int ReturnFile(struct MHD_Connection *connection, const char *url);
-    int ReturnJSON(struct MHD_Connection *connection, const std::string& url, const ParamCollection& params);
-	struct MHD_Daemon * d;
-    
-    /* JSON response handlers */
-    std::unordered_map<std::string, std::shared_ptr<const IJsonResponder>> LocalResponders;
-    std::unordered_map<std::string, std::weak_ptr<const IJsonResponder>> JsonResponders;
+    /* UI response handlers */
+    std::unordered_map<std::string, const IUIResponder*> Responders;
 };
+
+#endif /* defined(__opendatacon__WebUI__) */

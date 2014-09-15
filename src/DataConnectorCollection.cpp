@@ -18,25 +18,12 @@
  *	limitations under the License.
  */ 
 //
-//  IJsonResponder.h
+//  DataConectorCollection.cpp
 //  opendatacon
 //
-//  Created by Alan Murray on 29/08/2014.
+//  Created by Alan Murray on 13/09/2014.
 //  
 //
 
-#ifndef opendatacon_IJsonResponder_h
-#define opendatacon_IJsonResponder_h
+#include "DataConnectorCollection.h"
 
-#include <json/json.h>
-#include <unordered_map>
-
-typedef std::unordered_map<std::string, std::string> ParamCollection;
-
-class IJsonResponder
-{
-public:
-    virtual Json::Value GetResponse(const ParamCollection& params) const = 0;
-};
-
-#endif

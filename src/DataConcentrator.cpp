@@ -41,7 +41,6 @@
 #include "logging_cmds.h"
 #include "NullPort.h"
 
-#include "../WebUI/ResponderListResponder.h"
 #include "../WebUI/WebUI.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
@@ -55,6 +54,8 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	ios_working(new asio::io_service::work(IOS)),
     UI(new WebUI(10443))
 {
+    UI->start();
+
 	//fire up some worker threads
 	for(size_t i=0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
@@ -66,6 +67,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	//Parse the configs and create all the ports and connections
 	ProcessFile();
 
+    UI->AddResponder("/DataPorts", DataPorts);
+    UI->AddResponder("/DataConnectors", DataConnectors);
+    
     //Initialise Data Ports
 	for(auto& port : DataPorts)
 	{
@@ -73,8 +77,6 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		port.second->AddLogSubscriber(&AdvFileLog);
 		port.second->SetIOS(&IOS);
 		port.second->SetLogLevel(LOG_LEVEL);
-        
-        UI->AddJsonResponder(port.first, port.second);
     }
     
     //Initialise Data Connectors
@@ -95,10 +97,13 @@ DataConcentrator::~DataConcentrator()
 	ios_working.reset();
 	//help finish any work
 	IOS.run();
+    
+    UI->stop();
 }
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
+    if(!JSONRoot.isObject()) return;
 	if(!JSONRoot["LogFileSizekB"].isNull())
 		FileLog.SetLogFileSizekB(JSONRoot["LogFileSizekB"].asUInt());
 
@@ -223,12 +228,10 @@ void DataConcentrator::Run()
 
 	Console console("odc> ");
     
-    UI->start();
-
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
-	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2"<<std::endl;};
+	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.2"<<std::endl;};
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control
@@ -351,7 +354,7 @@ void DataConcentrator::ListConns(std::stringstream& args)
 }
 void DataConcentrator::Shutdown()
 {
-    UI->stop();
+
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->Disable();

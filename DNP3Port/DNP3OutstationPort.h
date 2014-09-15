@@ -50,8 +50,8 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
 
-    Json::Value GetCurrentState(const ParamCollection& params) const;
-    Json::Value GetStatistics(const ParamCollection& params) const;
+    const Json::Value GetCurrentState() const override;
+    const Json::Value GetStatistics() const override;
 
     //ICommandHandler implementation
 	opendnp3::CommandStatus Supports(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
