@@ -28,7 +28,8 @@
 #ifndef __opendatacon__ResponderListResponder__
 #define __opendatacon__ResponderListResponder__
 
-#include "IJsonResponder.h"
+#include <memory>
+#include <opendatacon/IJsonResponder.h>
 
 class ResponderListResponder : public IJsonResponder
 {

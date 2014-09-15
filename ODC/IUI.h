@@ -29,6 +29,7 @@
 #define opendatacon_IUI_h
 
 #include "IJsonResponder.h"
+#include <memory>
 
 class IUI
 {

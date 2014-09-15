@@ -268,7 +268,7 @@ int WebUI::ReturnJSON(struct MHD_Connection *connection, const std::string& url,
     if (this->JsonResponders.count(decurl) != 0)
     {
         auto responder = JsonResponders[decurl].lock();
-        if (responder != nullptr)
+        if (responder)
         {
             Json::FastWriter jsonout;            
             Json::Value event;

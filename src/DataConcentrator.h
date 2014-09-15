@@ -37,7 +37,7 @@
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
 
-#include "IUI.h"
+#include <opendatacon/IUI.h>
 
 #ifdef WIN32 
 const std::string DYNLIBPRE = "";

@@ -17,7 +17,8 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */ 
-#include "IUI.h"
+
+#include <opendatacon/IUI.h>
 class WebUI : public IUI
 {
 public:
