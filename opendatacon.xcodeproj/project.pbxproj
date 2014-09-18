@@ -276,6 +276,7 @@
 		84F1C4CB19C5558600071DAF /* MhdWrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MhdWrapper.h; sourceTree = "<group>"; };
 		84F1C4CE19C55C9D00071DAF /* ParamCollection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ParamCollection.h; sourceTree = "<group>"; };
 		84F1C4CF19C5640000071DAF /* IUIResponder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IUIResponder.cpp; sourceTree = "<group>"; };
+		84F1C4D319C872D100071DAF /* LogCollection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LogCollection.h; path = ODC/LogCollection.h; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -396,6 +397,7 @@
 		84009E7F19ADD3960096E673 /* opendatacon */ = {
 			isa = PBXGroup;
 			children = (
+				84F1C4D319C872D100071DAF /* LogCollection.h */,
 				84009E8119ADD3960096E673 /* AdvancedLogger.cpp */,
 				84009E8219ADD3960096E673 /* AdvancedLogger.h */,
 				84009E8319ADD3960096E673 /* Console.cpp */,
