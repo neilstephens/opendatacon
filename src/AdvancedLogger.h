@@ -27,6 +27,7 @@
 #include <iostream>
 #include <vector>
 #include <regex>
+#include <json/json.h>
 
 class MessageCount
 {
@@ -73,7 +74,7 @@ public:
 	void AddIngoreDecimate(const std::string& str, int decimate);
 	void AddIngoreDuration(const std::string& str, openpal::TimeDuration ignore_duration);
 	void RemoveIgnore(const std::string& str);
-	void ShowIgnored();
+	const Json::Value ShowIgnored();
 	void SetLogLevel(openpal::LogFilters aLOG_LEVEL);
 
 private:
