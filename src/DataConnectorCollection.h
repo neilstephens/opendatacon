@@ -38,17 +38,51 @@ class DataConnectorCollection : public ResponderMap<DataConnector>
 public:
     DataConnectorCollection()
     {
-        this->AddCommand("GetConfiguration", [this](const ParamCollection & params) {
+        this->AddCommand("Configuration", [this](const ParamCollection & params) {
             if (auto target = GetTarget(params)) return target->GetConfiguration();
-            return IUIResponder::ERROR_BADPARAMETER;
+            return IUIResponder::RESULT_BADPARAMETER;
         });
-        this->AddCommand("GetCurrentState", [this](const ParamCollection & params) {
+        this->AddCommand("CurrentState", [this](const ParamCollection & params) {
             if (auto target = GetTarget(params)) return target->GetCurrentState();
-            return IUIResponder::ERROR_BADPARAMETER;
+            return IUIResponder::RESULT_BADPARAMETER;
         });
-        this->AddCommand("GetStatistics", [this](const ParamCollection & params) {
+        this->AddCommand("Statistics", [this](const ParamCollection & params) {
             if (auto target = GetTarget(params)) return target->GetStatistics();
-            return IUIResponder::ERROR_BADPARAMETER;
+            return IUIResponder::RESULT_BADPARAMETER;
+        });
+        this->AddCommand("Status", [this](const ParamCollection & params) -> const Json::Value {
+            if (auto target = GetTarget(params))
+            {
+                Json::Value result;
+                result["Result"] = target->enabled;
+                return result;
+            }
+            return IUIResponder::RESULT_BADPARAMETER;
+        });
+        this->AddCommand("Enable", [this](const ParamCollection & params) -> const Json::Value {
+            if (auto target = GetTarget(params))
+            {
+                target->Enable();
+                return IUIResponder::RESULT_SUCCESS;
+            }
+            return IUIResponder::RESULT_BADPARAMETER;
+        });
+        this->AddCommand("Disable", [this](const ParamCollection & params) -> const Json::Value {
+            if (auto target = GetTarget(params))
+            {
+                target->Disable();
+                return IUIResponder::RESULT_SUCCESS;
+            }
+            return IUIResponder::RESULT_BADPARAMETER;
+        });
+        this->AddCommand("Restart", [this](const ParamCollection & params) -> const Json::Value {
+            if (auto target = GetTarget(params))
+            {
+                target->Disable();
+                target->Enable();
+                return IUIResponder::RESULT_SUCCESS;
+            }
+            return IUIResponder::RESULT_BADPARAMETER;
         });
     }
 };
