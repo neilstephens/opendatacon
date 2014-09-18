@@ -11,8 +11,8 @@
 		<script src="/js/jquery.treetable.js"></script>				
     </head>
     <body>
-        <h1>Current State</h1>
-        <table id="CurrentState">
+        <h1>Log Filters</h1>
+        <table id="Result">
         </table>
         <script>
         	var urlhash = window.location.hash.substring(1);
@@ -20,14 +20,14 @@
         	
         	var responder = hasharray[1];
         	var target = hasharray[2];
-        	var command = "CurrentState";
+        	var command = "ShowFilters";
         	var posturl = responder + "/" + command;
         	
             // Send the data using post
             var getResponders = $.post( posturl, { Target : target } )
             	.done(function( data ) {
-                    BuildJsonTree(document.getElementById("CurrentState"), "", {"Value" : data});
-                    $(document.getElementById("CurrentState")).treetable({ expandable: true });                    
+                    BuildJsonTree(document.getElementById("Result"), "", {"Silenced Messages" : data});
+                    $(document.getElementById("Result")).treetable({ expandable: true });                    
                 });
         </script>
     </body>

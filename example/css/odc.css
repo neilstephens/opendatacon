@@ -5,7 +5,7 @@ div.JsonValues
 
 span.JsonKey
 {
-	width: 500px;
+	width: 150px;
 	//padding-left: 20px;
 	display: inline-block;
 }
@@ -26,9 +26,9 @@ li
 	margin-left: -20px;
 }
 
-span.Link
+span.JsonLink
 {
-	width: 150px;
-	//padding-left: 20px;
+	//width: 100px;
+	padding-left: 20px;
 	display: inline-block;
 }
