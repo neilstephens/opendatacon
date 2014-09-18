@@ -50,7 +50,7 @@ public:
             result["Items"]  = vec;
             
             return result;
-        });
+        }, "", true);
     }
 
     T* GetTarget(const ParamCollection & params)
