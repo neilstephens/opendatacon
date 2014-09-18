@@ -27,11 +27,39 @@
 
 #include "IUIResponder.h"
 
-const Json::Value IUIResponder::GenerateError(const std::string& message)
+const Json::Value IUIResponder::GenerateResult(const std::string& message)
 {
     Json::Value result;
-    result["ERROR"] = "Bad Parameter";
+    result["RESULT"] = message;
     return result;
 }
 
-const Json::Value IUIResponder::ERROR_BADPARAMETER = GenerateError("Bad parameter");
+const Json::Value IUIResponder::RESULT_SUCCESS = GenerateResult("Success");
+const Json::Value IUIResponder::RESULT_BADPARAMETER = GenerateResult("Bad parameter");
+const Json::Value IUIResponder::RESULT_BADCOMMAND = GenerateResult("Bad command");
+
+Json::Value IUIResponder::GetCommandList()
+{
+    Json::Value result;
+    for (auto command : commands)
+    {
+        if (!command.second.hidden) result.append(command.first);
+    }
+    return result;
+}
+
+Json::Value IUIResponder::ExecuteCommand(const std::string& arCommandName, const ParamCollection& params) const
+{
+    if(commands.count(arCommandName) != 0)
+    {
+        auto command = commands.at(arCommandName);
+        return command.function(params);
+    }
+    return IUIResponder::RESULT_BADCOMMAND;
+}
+
+void IUIResponder::AddCommand(const std::string& arCommandName, UIFunction arCommand, const std::string& desc, const bool hide)
+{
+    
+    commands.insert(std::pair<std::string, UICommand>(arCommandName, UICommand(arCommand, desc, hide)));
+}

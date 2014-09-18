@@ -34,41 +34,33 @@
 #include <json/json.h>
 #include <opendatacon/ParamCollection.h>
 
+typedef std::function<Json::Value(const ParamCollection& params)> UIFunction;
+
+class UICommand
+{
+public:
+    UICommand(const UIFunction& func, const std::string& desc, const bool hide) : function(func), description(desc), hidden(hide) {};
+    UIFunction function;
+    std::string description;
+    bool hidden; // if true, command is not listed during a call to GetCommandList
+};
+
 class IUIResponder
 {
 public:
     
-    static const Json::Value GenerateError(const std::string& message);
+    static const Json::Value GenerateResult(const std::string& message);
     
-    static const Json::Value ERROR_BADPARAMETER;
+    static const Json::Value RESULT_SUCCESS;
+    static const Json::Value RESULT_BADPARAMETER;
+    static const Json::Value RESULT_BADCOMMAND;
     
-    virtual Json::Value GetCommandList()
-    {
-        Json::Value result;
-        for (auto command : commands)
-        {
-            result.append(command.first);
-        }
-        return result;
-    }
-    
-    Json::Value ExecuteCommand(const std::string& arCommandName, const ParamCollection& params) const
-    {
-        if(commands.count(arCommandName) != 0)
-        {
-            auto command = commands.at(arCommandName);
-            return command(params);
-        }
-        return Json::Value();
-    }
-    
-    void AddCommand(const std::string& arCommandName, std::function<Json::Value(const ParamCollection& params)> arCommand)
-    {
-        commands[arCommandName] = arCommand;
-    }
+    virtual Json::Value GetCommandList();
+    virtual Json::Value ExecuteCommand(const std::string& arCommandName, const ParamCollection& params) const;
+    void AddCommand(const std::string& arCommandName, UIFunction arCommand, const std::string& desc = "", const bool hide = false);
     
 private:
-    std::unordered_map<std::string, std::function<Json::Value(const ParamCollection& params)>> commands;
+    std::unordered_map<std::string, UICommand> commands;
 };
 
 #endif /* defined(__opendatacon__IUIResponder__) */
