@@ -54,7 +54,20 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	ios_working(new asio::io_service::work(IOS)),
     UI(new WebUI(10443))
 {
+    //Configure the user interface
     UI->start();
+    
+    //Version
+    this->AddCommand("version", [this](const ParamCollection & params) { //"Print version information"
+        Json::Value result;
+        result["version"] = "Release 0.2.2";
+        return result;
+    },"Return the version information of opendatacon.");
+    
+    UI->AddResponder("/OpenDataCon", *this);
+    UI->AddResponder("/DataPorts", DataPorts);
+    UI->AddResponder("/DataConnectors", DataConnectors);
+    UI->AddResponder("/Loggers", AdvancedLoggers);
 
 	//fire up some worker threads
 	for(size_t i=0; i < std::thread::hardware_concurrency(); ++i)
@@ -62,14 +75,13 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	AdvConsoleLog.AddIngoreAlways(".*"); //silence all console messages by default
 	DNP3Mgr.AddLogSubscriber(&AdvConsoleLog);
+    AdvancedLoggers["Console Log"] = std::shared_ptr<AdvancedLogger>(&AdvConsoleLog); // TODO: shouldn't be a shared_ptr, this is likely really bad
 	DNP3Mgr.AddLogSubscriber(&AdvFileLog);
+    AdvancedLoggers["File Log"] = std::shared_ptr<AdvancedLogger>(&AdvFileLog); // TODO: shouldn't be a shared_ptr, this is likely really bad
 
 	//Parse the configs and create all the ports and connections
 	ProcessFile();
 
-    UI->AddResponder("/DataPorts", DataPorts);
-    UI->AddResponder("/DataConnectors", DataConnectors);
-    
     //Initialise Data Ports
 	for(auto& port : DataPorts)
 	{
@@ -163,7 +175,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 				if(portlib == nullptr)
 				{
-					std::cout << "Warning: failed to load library '"<<libname<<"' skipping port..."<<std::endl;
+					std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
+                    DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
 					continue;
 				}
 
@@ -174,7 +187,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 				if(new_port_func == nullptr)
 				{
-					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' skipping port..."<<std::endl;
+					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' mapping to null port..."<<std::endl;
+                    DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
 					continue;
 				}
 

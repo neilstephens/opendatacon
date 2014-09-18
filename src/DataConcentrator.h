@@ -39,6 +39,7 @@
 
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
+#include "LogCollection.h"
 
 #include <opendatacon/IUI.h>
 
@@ -63,7 +64,7 @@ inline std::string GetLibFileName(const std::string LibName)
 	return DYNLIBPRE + LibName + DYNLIBEXT;
 }
 
-class DataConcentrator: public ConfigParser
+class DataConcentrator: public ConfigParser, public IUIResponder
 {
 public:
 	DataConcentrator(std::string FileName);
@@ -72,6 +73,7 @@ public:
 	//std::unordered_map<std::string, std::shared_ptr<DataPort>> DataPorts;
     DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
+    LogCollection AdvancedLoggers;
 
 	asiodnp3::DNP3Manager DNP3Mgr;
 	openpal::LogFilters LOG_LEVEL;
