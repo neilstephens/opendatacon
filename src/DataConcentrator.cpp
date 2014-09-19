@@ -90,6 +90,7 @@ DataConcentrator::~DataConcentrator()
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
+    if(!JSONRoot.isObject()) return;
 	if(!JSONRoot["LogFileSizekB"].isNull())
 		FileLog.SetLogFileSizekB(JSONRoot["LogFileSizekB"].asUInt());
 

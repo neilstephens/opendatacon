@@ -39,6 +39,7 @@ DNP3Port::DNP3Port(std::string aName, std::string aConfFilename, const Json::Val
 
 void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 {
+    if(!JSONRoot.isObject()) return;
 	if(!JSONRoot["IP"].isNull())
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
 

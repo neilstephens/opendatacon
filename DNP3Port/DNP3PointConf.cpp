@@ -92,6 +92,7 @@ opendnp3::PointClass GetClass(Json::Value JPoint)
 
 void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 {
+    if(!JSONRoot.isObject()) return;    
 	if(!JSONRoot["EventClass3ScanRateSec"].isNull())
 		EventClass3ScanRateSec = JSONRoot["EventClass3ScanRateSec"].asUInt();
 
