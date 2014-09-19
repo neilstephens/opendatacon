@@ -28,7 +28,7 @@
 #ifndef opendatacon_LogCollection_h
 #define opendatacon_LogCollection_h
 
-#include "IUIResponder.h"
+#include <opendatacon/IUIResponder.h>
 #include "logging_cmds.h"
 /*
 std::string mregex;

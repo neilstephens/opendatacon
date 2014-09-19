@@ -27,8 +27,8 @@
 
 #include "MhdWrapper.h"
 
-constexpr int POSTBUFFERSIZE = 512;
-constexpr char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";
+const int POSTBUFFERSIZE = 512;
+const char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";
 
 const std::unordered_map<std::string, const std::string> MimeTypeMap {
     { "json", "application/json" },

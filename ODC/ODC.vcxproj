@@ -24,26 +24,26 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -86,16 +86,16 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetExt>.dll</TargetExt>
+    <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetExt>.dll</TargetExt>
+    <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <TargetExt>.dll</TargetExt>
+    <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <TargetExt>.dll</TargetExt>
+    <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -110,14 +110,13 @@
       <ModuleDefinitionFile>ODC.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
+    <PostBuildEvent />
     <PostBuildEvent>
-      <Command>copy $(ProjectDir)*.h $(SolutionDir)\include\opendatacon</Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
-      <Message>Copy public headers</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -133,14 +132,13 @@
       <ModuleDefinitionFile>ODC_x64.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
+    <PostBuildEvent />
     <PostBuildEvent>
-      <Command>copy $(ProjectDir)*.h $(SolutionDir)\include\opendatacon</Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
-      <Message>Copy public headers</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>copy "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -160,14 +158,13 @@
       <ModuleDefinitionFile>ODC.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
+    <PostBuildEvent />
     <PostBuildEvent>
-      <Command>copy $(ProjectDir)*.h $(SolutionDir)\include\opendatacon</Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
-      <Message>Copy public headers</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -187,27 +184,33 @@
       <ModuleDefinitionFile>ODC_x64.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
+    <PostBuildEvent />
     <PostBuildEvent>
-      <Command>copy $(ProjectDir)*.h $(SolutionDir)\include\opendatacon</Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
-      <Message>Copy public headers</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>copy "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ConfigParser.cpp" />
+    <ClCompile Include="DataPortCollection.cpp" />
     <ClCompile Include="IOHandler.cpp" />
+    <ClCompile Include="IUIResponder.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConfigParser.h" />
     <ClInclude Include="DataPointConf.h" />
     <ClInclude Include="DataPort.h" />
+    <ClInclude Include="DataPortCollection.h" />
     <ClInclude Include="DataPortConf.h" />
     <ClInclude Include="IOHandler.h" />
+    <ClInclude Include="IUI.h" />
+    <ClInclude Include="IUIResponder.h" />
+    <ClInclude Include="ParamCollection.h" />
+    <ClInclude Include="ResponderMap.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>

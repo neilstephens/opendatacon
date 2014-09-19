@@ -12,6 +12,7 @@
       <AdditionalLibraryDirectories>$(SolutionDir)lib\libmicrohttpd\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Lib>
+      <AdditionalDependencies>libmicrohttpd.dll.a;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)lib\libmicrohttpd\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>

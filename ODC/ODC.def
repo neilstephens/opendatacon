@@ -31,3 +31,11 @@ EXPORTS
 	?GetIOHandlers@@YAAAV?$unordered_map@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@PAVIOHandler@@U?$hash@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@U?$equal_to@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@PAVIOHandler@@@std@@@2@@std@@XZ
 	?ProcessFile@ConfigParser@@QAEXXZ
 	??0ConfigParser@@QAE@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@ABVValue@Json@@@Z
+	?GenerateResult@IUIResponder@@SA?BVValue@Json@@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+	?GenerateResult@IUIResponder@@SA?BVValue@Json@@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+	?GetCommandList@IUIResponder@@UAE?AVValue@Json@@XZ
+	?ExecuteCommand@IUIResponder@@UBE?AVValue@Json@@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@ABV?$unordered_map@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@V12@U?$hash@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@U?$equal_to@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@V12@@std@@@2@@5@@Z
+	?AddCommand@IUIResponder@@QAEXABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@V?$function@$$A6A?AVValue@Json@@ABV?$unordered_map@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@V12@U?$hash@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@U?$equal_to@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@V12@@std@@@2@@std@@@Z@3@0_N@Z	?RESULT_SUCCESS@IUIResponder@@2VValue@Json@@B
+	?RESULT_SUCCESS@IUIResponder@@2VValue@Json@@B
+	?RESULT_BADPARAMETER@IUIResponder@@2VValue@Json@@B
+	?RESULT_BADPARAMETER@IUIResponder@@2VValue@Json@@B

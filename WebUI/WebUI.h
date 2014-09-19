@@ -31,7 +31,7 @@
 #include <opendatacon/IUI.h>
 #include "MhdWrapper.h"
 
-constexpr char ROOTPAGE[] = "/index.html";
+const char ROOTPAGE[] = "/index.html";
 
 class WebUI : public IUI
 {
