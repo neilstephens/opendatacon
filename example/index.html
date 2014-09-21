@@ -37,11 +37,7 @@
 					}
 					TableData.push(TableRow);
 				}
-				$('#DataPortsTable').dataTable({
-					"data": TableData,
-					"scrollY":        "360px",
-					"paging":         true					
-				});
+				$('#DataPortsTable').dataTable({ "data": TableData });
             });
             $.post( "/DataConnectors/List", { } ).done(function( data ) {
 				for(command in data["Commands"]) {
