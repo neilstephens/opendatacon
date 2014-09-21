@@ -37,6 +37,7 @@ const std::unordered_map<std::string, const std::string> MimeTypeMap {
     { "jpg", "image/jpeg"},
     { "css", "text/css"},
     { "txt", "text/plain"},
+    { "svg", "image/svg+xml"},
     { "default", "application/octet-stream"}
 };
 

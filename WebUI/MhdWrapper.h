@@ -56,7 +56,7 @@ inline void fopen_s(FILE** file, const char * name, const char * mode)
 }
 #endif
 
-#include <libmicrohttpd/microhttpd.h>
+#include <microhttpd.h>
 
 #include <opendatacon/ParamCollection.h>
 #include <unordered_map>
