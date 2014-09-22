@@ -14,7 +14,7 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.48.5 r10040"
-   sodipodi:docname="mimic-dmc.svg">
+   sodipodi:docname="dmc.svg">
   <defs
      id="defs4">
     <clipPath
@@ -755,16 +755,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.4"
-     inkscape:cx="270.80444"
-     inkscape:cy="454.40225"
+     inkscape:zoom="1.61"
+     inkscape:cx="306.27605"
+     inkscape:cy="389.82299"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="SwA_EFI_Group"
      showgrid="false"
-     inkscape:window-width="1920"
-     inkscape:window-height="1153"
-     inkscape:window-x="-4"
-     inkscape:window-y="-4"
+     inkscape:window-width="1680"
+     inkscape:window-height="930"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
      inkscape:window-maximized="1"
      fit-margin-top="10"
      fit-margin-left="10"
@@ -789,6 +789,18 @@
      style="display:inline"
      transform="translate(-61.94751,-266.94243)">
     <path
+       inkscape:label="#path3272"
+       id="path3403"
+       d="m 81.889398,555.81765 0,33.5625 33.452262,0 0,-33.5625 z"
+       style="fill:none;stroke:#000000;stroke-width:1.00044154999999990px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       inkscape:connector-curvature="0" />
+    <path
+       inkscape:connector-curvature="0"
+       style="fill:#ff0000;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       d="m 81.889398,555.81765 0,33.5625 33.452262,0 0,-33.5625 z"
+       id="SwA_Position_Closed"
+       inkscape:label="#path3272" />
+    <path
        inkscape:connector-curvature="0"
        style="fill:none;fill-opacity:1;fill-rule:evenodd;stroke:none"
        d="m 517.51915,597.75515 0,33.5 33.51479,0 0,-33.5 -33.51479,0 z"
@@ -808,19 +820,19 @@
     <path
        inkscape:label="#path3454"
        id="path5300"
-       d="m 534.27654,946.56765 0,33.5 33.51479,0 0,-33.5 z"
+       d="m 544.27654,946.56765 0,33.5 33.51479,0 0,-33.5 z"
        style="fill:none;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        inkscape:connector-curvature="0" />
     <path
        inkscape:label="#path3446"
        id="path5298"
-       d="m 324.8091,946.56765 0,33.5 33.51479,0 0,-33.5 z"
+       d="m 328.8091,946.56765 0,33.5 33.51479,0 0,-33.5 z"
        style="fill:none;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        inkscape:connector-curvature="0" />
     <path
        inkscape:label="#path3438"
        id="path5296"
-       d="m 115.34166,946.56765 0,33.5 33.51479,0 0,-33.5 z"
+       d="m 111.34166,946.56765 0,33.5 33.51479,0 0,-33.5 z"
        style="fill:none;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        inkscape:connector-curvature="0" />
     <path
@@ -846,7 +858,7 @@
        x="653.76678"
        y="982.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3210"> </text>
+       id="text3210" />
     <path
        inkscape:connector-curvature="0"
        style="fill:none;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
@@ -855,16 +867,17 @@
     <text
        inkscape:label="#text3218"
        xml:space="preserve"
-       x="136.5394"
+       x="145.43939"
        y="904.06763"
-       style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
-       id="Voltage_230V_APh">213</text>
+       style="font-size:13.00573921px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman,'"
+       id="Voltage_230V_APh"
+       sodipodi:linespacing="125%">213</text>
     <text
        xml:space="preserve"
        x="157.54779"
        y="904.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3220"> </text>
+       id="text3220" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -991,17 +1004,6 @@
        id="path3268" />
     <path
        inkscape:connector-curvature="0"
-       style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
-       d="m 81.889398,555.81765 0,33.5625 33.452262,0 0,-33.5625 -33.452262,0 z"
-       id="path3270" />
-    <path
-       inkscape:connector-curvature="0"
-       style="fill:#ff0000;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
-       d="m 81.889398,555.81765 0,33.5625 33.452262,0 0,-33.5625 z"
-       id="SwA_Position_Closed"
-       inkscape:label="#path3272" />
-    <path
-       inkscape:connector-curvature="0"
        style="fill:#92d050;fill-opacity:1;fill-rule:evenodd;stroke:none"
        d="m 81.889398,597.75515 0,33.5 33.452262,0 0,-33.5 -33.452262,0 z"
        id="SwA_Position_Open"
@@ -1032,7 +1034,7 @@
        x="191.56279"
        y="577.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3284"> </text>
+       id="text3284" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1056,7 +1058,7 @@
        x="188.56148"
        y="619.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3292"> </text>
+       id="text3292" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1097,7 +1099,7 @@
        x="626.75488"
        y="577.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3308"> </text>
+       id="text3308" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1121,7 +1123,7 @@
        x="623.75354"
        y="619.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3316"> </text>
+       id="text3316" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1145,7 +1147,7 @@
        x="156.54735"
        y="515.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3324"> </text>
+       id="text3324" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1169,7 +1171,7 @@
        x="591.73938"
        y="515.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3332"> </text>
+       id="text3332" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ff0000;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1188,10 +1190,10 @@
        x="118.53056"
        y="549.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3348"> </text>
+       id="text3348" />
     <text
        xml:space="preserve"
-       x="505.70145"
+       x="515.70142"
        y="548.06763"
        style="font-size:11.00485611px;font-style:normal;font-weight:bold;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
        id="text3350">Position</text>
@@ -1200,7 +1202,7 @@
        x="544.71863"
        y="548.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3352"> </text>
+       id="text3352" />
     <path
        inkscape:connector-curvature="0"
        style="fill:none;stroke:#000000;stroke-width:1.43813467px;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;stroke-dasharray:none"
@@ -1219,7 +1221,7 @@
        x="138.5394"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3362"> </text>
+       id="text3362" />
     <text
        xml:space="preserve"
        x="135.53807"
@@ -1231,7 +1233,7 @@
        x="140.54028"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3366"> </text>
+       id="text3366" />
     <text
        xml:space="preserve"
        x="140.54028"
@@ -1243,7 +1245,7 @@
        x="155.54691"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3370"> </text>
+       id="text3370" />
     <text
        xml:space="preserve"
        x="154.54646"
@@ -1255,7 +1257,7 @@
        x="161.54955"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3374"> </text>
+       id="text3374" />
     <text
        xml:space="preserve"
        x="160.5491"
@@ -1267,7 +1269,7 @@
        x="165.55132"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3378"> </text>
+       id="text3378" />
     <text
        xml:space="preserve"
        x="166.55176"
@@ -1279,7 +1281,7 @@
        x="184.55971"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3382"> </text>
+       id="text3382" />
     <text
        xml:space="preserve"
        x="323.62109"
@@ -1291,7 +1293,7 @@
        x="355.63522"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3386"> </text>
+       id="text3386" />
     <text
        xml:space="preserve"
        x="353.63434"
@@ -1303,7 +1305,7 @@
        x="358.63654"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3390"> </text>
+       id="text3390" />
     <text
        xml:space="preserve"
        x="357.63611"
@@ -1315,7 +1317,7 @@
        x="372.64273"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3394"> </text>
+       id="text3394" />
     <text
        xml:space="preserve"
        x="371.64227"
@@ -1327,7 +1329,7 @@
        x="378.64536"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3398"> </text>
+       id="text3398" />
     <text
        xml:space="preserve"
        x="378.64536"
@@ -1339,7 +1341,7 @@
        x="383.64758"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3402"> </text>
+       id="text3402" />
     <text
        xml:space="preserve"
        x="383.64758"
@@ -1351,7 +1353,7 @@
        x="400.65509"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3406"> </text>
+       id="text3406" />
     <text
        xml:space="preserve"
        x="536.71509"
@@ -1363,7 +1365,7 @@
        x="568.72925"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3410"> </text>
+       id="text3410" />
     <text
        xml:space="preserve"
        x="566.72833"
@@ -1375,7 +1377,7 @@
        x="571.73059"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3414"> </text>
+       id="text3414" />
     <text
        xml:space="preserve"
        x="571.73059"
@@ -1387,7 +1389,7 @@
        x="586.73718"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3418"> </text>
+       id="text3418" />
     <text
        xml:space="preserve"
        x="585.73676"
@@ -1399,7 +1401,7 @@
        x="592.73987"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3422"> </text>
+       id="text3422" />
     <text
        xml:space="preserve"
        x="592.73987"
@@ -1411,7 +1413,7 @@
        x="597.74207"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3426"> </text>
+       id="text3426" />
     <text
        xml:space="preserve"
        x="597.74207"
@@ -1423,10 +1425,10 @@
        x="614.74957"
        y="876.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3430"> </text>
+       id="text3430" />
     <text
        xml:space="preserve"
-       x="168.55264"
+       x="164.55264"
        y="968.06763"
        style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
        id="text3432">Local Control</text>
@@ -1435,7 +1437,7 @@
        x="224.57736"
        y="968.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3434"> </text>
+       id="text3434" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#507baf;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1446,12 +1448,12 @@
     <path
        inkscape:connector-curvature="0"
        style="fill:#007cff;fill-opacity:1;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
-       d="m 115.34166,946.56765 0,33.5 33.51479,0 0,-33.5 z"
+       d="m 111.34166,946.56765 0,33.5 33.51479,0 0,-33.5 z"
        id="LocalControl"
        inkscape:label="#path3438" />
     <text
        xml:space="preserve"
-       x="372.64273"
+       x="376.64273"
        y="968.06763"
        style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
        id="text3440">Low Gas</text>
@@ -1460,7 +1462,7 @@
        x="408.65863"
        y="968.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3442"> </text>
+       id="text3442" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1471,12 +1473,12 @@
     <path
        inkscape:connector-curvature="0"
        style="fill:#ff0000;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
-       d="m 324.8091,946.56765 0,33.5 33.51479,0 0,-33.5 z"
+       d="m 328.8091,946.56765 0,33.5 33.51479,0 0,-33.5 z"
        id="LowGas"
        inkscape:label="#path3446" />
     <text
        xml:space="preserve"
-       x="587.73761"
+       x="597.73761"
        y="968.06763"
        style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
        id="text3448">Low Battery</text>
@@ -1485,7 +1487,7 @@
        x="637.7597"
        y="968.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3450"> </text>
+       id="text3450" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1496,7 +1498,7 @@
     <path
        inkscape:connector-curvature="0"
        style="fill:#ff0000;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
-       d="m 534.27654,946.56765 0,33.5 33.51479,0 0,-33.5 z"
+       d="m 544.27654,946.56765 0,33.5 33.51479,0 0,-33.5 z"
        id="LowBattery"
        inkscape:label="#path3454" />
     <path
@@ -1514,7 +1516,7 @@
        inkscape:label="#path3474" />
     <text
        xml:space="preserve"
-       x="292.60739"
+       x="294.60739"
        y="291.06766"
        style="font-size:11.00485611px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
        id="text3476">COMMS </text>
@@ -1523,10 +1525,10 @@
        x="337.62726"
        y="291.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3478"> </text>
+       id="text3478" />
     <text
        xml:space="preserve"
-       x="292.60739"
+       x="295.7077"
        y="305.06766"
        style="font-size:11.00485611px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
        id="text3480">STATUS</text>
@@ -1535,7 +1537,7 @@
        x="335.62637"
        y="305.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3482"> </text>
+       id="text3482" />
     <path
        inkscape:connector-curvature="0"
        style="fill:none;stroke:#000000;stroke-width:1.43813467px;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;stroke-dasharray:none"
@@ -1640,26 +1642,27 @@
        x="330.62418"
        y="418.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3634"> </text>
+       id="text3634" />
     <text
        xml:space="preserve"
        x="334.62595"
        y="418.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3638"> </text>
+       id="text3638" />
     <text
        xml:space="preserve"
-       x="296.69739"
-       y="418.06766"
-       style="font-size:13.00573921px;font-style:normal;font-weight:bold;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
+       x="359.12512"
+       y="419.24686"
+       style="font-size:13.00573921px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman, Bold'"
        id="Location"
-       inkscape:label="#text3640">S.12345 Some Location </text>
+       inkscape:label="#text3640"
+       sodipodi:linespacing="125%">S.12345 Some Location </text>
     <text
        xml:space="preserve"
        x="367.6405"
        y="418.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3642"> </text>
+       id="text3642" />
     <text
        xml:space="preserve"
        x="373.64316"
@@ -1671,7 +1674,7 @@
        x="453.67847"
        y="418.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3646"> </text>
+       id="text3646" />
     <path
        inkscape:connector-curvature="0"
        style="fill:none;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
@@ -1682,16 +1685,17 @@
     <text
        inkscape:label="#text3650"
        xml:space="preserve"
-       x="351.63168"
+       x="361.63168"
        y="904.06763"
-       style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
-       id="Voltage_230V_BPh">212</text>
+       style="font-size:13.00573921px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman,'"
+       id="Voltage_230V_BPh"
+       sodipodi:linespacing="125%">212</text>
     <text
        xml:space="preserve"
        x="366.64008"
        y="904.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3652"> </text>
+       id="text3652" />
     <path
        inkscape:connector-curvature="0"
        style="fill:none;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
@@ -1702,16 +1706,17 @@
     <text
        inkscape:label="#text3656"
        xml:space="preserve"
-       x="567.72437"
+       x="577.72437"
        y="904.06763"
-       style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
-       id="Voltage_230V_CPh">211</text>
+       style="font-size:13.00573921px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman,'"
+       id="Voltage_230V_CPh"
+       sodipodi:linespacing="125%">211</text>
     <text
        xml:space="preserve"
        x="576.73279"
        y="904.06763"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3658"> </text>
+       id="text3658" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1761,19 +1766,19 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="686.06763"
          x="625.75439"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="text3354"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
          y="659.06763"
-         x="522.70892"
+         x="526.70892"
          xml:space="preserve">EFI</text>
       <text
          id="text3356"
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="659.06763"
          x="537.71558"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <path
          inkscape:label="#path3662"
          id="SwB_EFI_Unflagged"
@@ -1802,7 +1807,7 @@
        x="182.55882"
        y="473.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3670"> </text>
+       id="text3670" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1826,7 +1831,7 @@
        x="544.71863"
        y="473.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3678"> </text>
+       id="text3678" />
     <path
        inkscape:connector-curvature="0"
        style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -1850,7 +1855,7 @@
        x="111.52747"
        y="410.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3686"> </text>
+       id="text3686" />
     <path
        inkscape:connector-curvature="0"
        style="fill:none;stroke:#000000;stroke-width:1.43813467px;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;stroke-dasharray:none"
@@ -1894,7 +1899,7 @@
        x="613.74915"
        y="410.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3706"> </text>
+       id="text3706" />
     <path
        inkscape:connector-curvature="0"
        style="fill:none;stroke:#000000;stroke-width:1.43813467px;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;stroke-dasharray:none"
@@ -1945,7 +1950,7 @@
        inkscape:label="#path3724" />
     <text
        xml:space="preserve"
-       x="378.64536"
+       x="380.64536"
        y="291.06766"
        style="font-size:11.00485611px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
        id="text3726">DEVICE </text>
@@ -1954,10 +1959,10 @@
        x="422.66479"
        y="291.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3728"> </text>
+       id="text3728" />
     <text
        xml:space="preserve"
-       x="378.64536"
+       x="381.14536"
        y="305.06766"
        style="font-size:11.00485611px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
        id="text3730">STATUS</text>
@@ -1966,7 +1971,7 @@
        x="421.66434"
        y="305.06766"
        style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-       id="text3732"> </text>
+       id="text3732" />
     <path
        id="SwB_Closed"
        d="m 614.43116,472.0879 -74.93038,-0.80836"
@@ -2005,7 +2010,7 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="337.06766"
          x="531.71289"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="text3582"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2017,7 +2022,7 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="337.06766"
          x="535.71466"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="text3586"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2029,45 +2034,48 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="337.06766"
          x="542.71777"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="SwB_Amp_B"
-         style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
-         y="359.06766"
-         x="517.70673"
-         xml:space="preserve">21</text>
+         style="font-size:13.00573921px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman,'"
+         y="357.06766"
+         x="527.70673"
+         xml:space="preserve"
+         sodipodi:linespacing="125%">21</text>
       <text
          id="text3594"
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="359.06766"
          x="530.71246"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="SwB_Amp_A"
-         style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
-         y="359.06766"
-         x="425.66611"
+         style="font-size:13.00573921px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman,'"
+         y="357.06766"
+         x="427.66611"
          xml:space="preserve"
-         inkscape:label="#text3598">21</text>
+         inkscape:label="#text3598"
+         sodipodi:linespacing="125%">21</text>
       <text
          id="text3600"
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="359.06766"
          x="438.67184"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="SwB_Amp_C"
-         style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
-         y="359.06766"
-         x="609.74738"
+         style="font-size:13.00573921px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman,'"
+         y="357.06766"
+         x="615.74738"
          xml:space="preserve"
-         inkscape:label="#text3604">21</text>
+         inkscape:label="#text3604"
+         sodipodi:linespacing="125%">21</text>
       <text
          id="text3606"
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="359.06766"
          x="622.75311"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="text3608"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2079,7 +2087,7 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="337.06766"
          x="430.66833"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="text3612"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2091,7 +2099,7 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="337.06766"
          x="435.67053"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="text3616"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2103,7 +2111,7 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="337.06766"
          x="441.67319"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="text3620"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2115,7 +2123,7 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="337.06766"
          x="615.75"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="text3624"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2127,7 +2135,7 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="337.06766"
          x="619.75177"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <text
          id="text3628"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2139,7 +2147,7 @@
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
          y="337.06766"
          x="626.75488"
-         xml:space="preserve"> </text>
+         xml:space="preserve" />
       <path
          inkscape:connector-curvature="0"
          style="fill:none;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
@@ -2194,17 +2202,18 @@
            id="path3524" />
         <text
            xml:space="preserve"
-           x="189.56192"
+           x="197.56192"
            y="357.06766"
-           style="font-size:11.00485611px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;font-family:Times New Roman"
+           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr;text-anchor:middle;fill:#000000;fill-opacity:1;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman,'"
            id="SwA_Amp_B"
-           inkscape:label="#text3526">212</text>
+           inkscape:label="#text3526"
+           sodipodi:linespacing="125%">212</text>
         <text
            xml:space="preserve"
            x="206.56941"
            y="357.06766"
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-           id="text3528"> </text>
+           id="text3528" />
         <path
            inkscape:connector-curvature="0"
            style="fill:none;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
@@ -2212,17 +2221,18 @@
            id="path3532" />
         <text
            xml:space="preserve"
-           x="97.521294"
+           x="105.52129"
            y="357.06766"
-           style="font-size:11.00485611px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;font-family:Times New Roman"
+           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr;text-anchor:middle;fill:#000000;fill-opacity:1;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman,'"
            id="SwA_Amp_A"
-           inkscape:label="#text3534">213</text>
+           inkscape:label="#text3534"
+           sodipodi:linespacing="125%">213</text>
         <text
            xml:space="preserve"
            x="114.5288"
            y="357.06766"
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-           id="text3536"> </text>
+           id="text3536" />
         <path
            inkscape:connector-curvature="0"
            style="fill:none;stroke:#000000;stroke-width:1.00044155px;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
@@ -2230,17 +2240,18 @@
            id="path3540" />
         <text
            xml:space="preserve"
-           x="281.60254"
+           x="291.60254"
            y="357.06766"
-           style="font-size:11.00485611px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;font-family:Times New Roman"
+           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr;text-anchor:middle;fill:#000000;fill-opacity:1;font-family:Times New Roman;-inkscape-font-specification:'Times New Roman,'"
            id="SwA_Amp_C"
-           inkscape:label="#text3542">211</text>
+           inkscape:label="#text3542"
+           sodipodi:linespacing="125%">211</text>
         <text
            xml:space="preserve"
            x="298.61005"
            y="357.06766"
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-           id="text3544"> </text>
+           id="text3544" />
         <text
            id="text5206"
            style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2252,19 +2263,19 @@
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
            y="337.06766"
            x="209.47423"
-           xml:space="preserve"> </text>
+           xml:space="preserve" />
         <text
            id="text5212"
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
            y="337.06766"
            x="213.476"
-           xml:space="preserve"> </text>
+           xml:space="preserve" />
         <text
            id="text5216"
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
            y="337.06766"
            x="220.47911"
-           xml:space="preserve"> </text>
+           xml:space="preserve" />
         <text
            id="text5218"
            style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2276,19 +2287,19 @@
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
            y="337.06766"
            x="108.42967"
-           xml:space="preserve"> </text>
+           xml:space="preserve" />
         <text
            id="text5224"
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
            y="337.06766"
            x="113.43187"
-           xml:space="preserve"> </text>
+           xml:space="preserve" />
         <text
            id="text5228"
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
            y="337.06766"
            x="119.43452"
-           xml:space="preserve"> </text>
+           xml:space="preserve" />
         <text
            id="text5230"
            style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
@@ -2300,19 +2311,19 @@
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
            y="337.06766"
            x="293.51135"
-           xml:space="preserve"> </text>
+           xml:space="preserve" />
         <text
            id="text5236"
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
            y="337.06766"
            x="297.51312"
-           xml:space="preserve"> </text>
+           xml:space="preserve" />
         <text
            id="text5240"
            style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
            y="337.06766"
            x="304.51624"
-           xml:space="preserve"> </text>
+           xml:space="preserve" />
       </g>
     </g>
     <g
@@ -2357,11 +2368,11 @@
          x="190.56236"
          y="686.06763"
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-         id="text3466"> </text>
+         id="text3466" />
       <text
          xml:space="preserve"
          x="91.518646"
-         y="662.06763"
+         y="660.06763"
          style="font-size:10.00441456px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Times New Roman"
          id="text3468">EFI</text>
       <text
@@ -2369,7 +2380,7 @@
          x="106.52527"
          y="662.06763"
          style="font-size:13.00573921px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;font-family:Arial"
-         id="text3470"> </text>
+         id="text3470" />
       <path
          inkscape:label="#path3662"
          id="path5316"

@@ -96,7 +96,9 @@ function AddJsonTree(tbody,s,o) {
 			for (var a in els)
 			{
 				var td = document.createElement('td');
+				
 				td.setAttribute('class','JsonValue');
+				td.setAttribute('id',name + '[' + a + ']');				
 				td.textContent = els[a];
 				tr.appendChild(td);
 			}			
@@ -120,4 +122,41 @@ function BuildJsonTree(table,s,o) {
 	var tbody = document.createElement('tbody');
 	table.appendChild(tbody);
 	AddJsonTree(tbody,s,o);
+}
+
+function UpdateJsonTree(s,o) {		
+	var keys = [];
+	for (var i in o) {
+		if (o[i] != null)
+		{
+			keys = merge(keys,Object.keys(o[i]));
+			//keys = keys.concat(Object.keys(o[i]));
+		}
+	}
+	
+	for (var i in keys) {
+		k = keys[i];
+		var name = s + ':' + k ;
+
+		isObject = false;
+		for (var j in o) {
+			if (o[j] != null && o[j][k] != null && typeof(o[j][k])=="object")
+			{
+				isObject = true;
+			}
+		}
+				
+		if (isObject) {
+			//going on step down in the object tree!!
+			UpdateJsonTree(name, check(o,k));
+		} else
+		{
+			var els = check(o,k);
+
+			for (var a in els)
+			{
+				document.getElementById(name + '[' + a + ']').textContent = els[a];
+			}			
+		}
+	}
 }
