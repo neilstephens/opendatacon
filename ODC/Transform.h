@@ -28,12 +28,13 @@
 #define TRANSFORM_H_
 
 #include <opendnp3/app/MeasurementTypes.h>
+#include <json/json.h>
 #include <string>
 
 class Transform
 {
 public:
-	Transform(std::string params):params(params){};
+	Transform(Json::Value params):params(params){};
 	virtual ~Transform(){};
 
 	virtual bool Event(opendnp3::Binary& meas, uint16_t& index){return true;};
@@ -50,7 +51,7 @@ public:
 	virtual bool Event(opendnp3::AnalogOutputDouble64& arCommand, uint16_t index){return true;};
 	virtual bool Event(bool connection, uint16_t index){return true;};
 
-	std::string params;
+	Json::Value params;
 };
 
 #endif /* TRANSFORM_H_ */

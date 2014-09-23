@@ -33,7 +33,15 @@
 class IndexOffsetTransform: public Transform
 {
 public:
-	IndexOffsetTransform(std::string params):Transform(params),offset(stoi(params)){};
+	IndexOffsetTransform(Json::Value params):Transform(params)
+	{
+		if(!params["Offset"].isNull() && params["Offset"].isInt())
+			offset = params["Offset"].asInt();
+		else if(!params["offset"].isNull() && params["offset"].isInt())
+			offset = params["Offset"].asInt();
+		else
+			offset = 0;
+	};
 
 	bool Event(opendnp3::Binary& meas, uint16_t& index){return EventT(meas,index);};
 	bool Event(opendnp3::DoubleBitBinary& meas, uint16_t& index){return EventT(meas,index);};

@@ -30,6 +30,7 @@
 #include <opendnp3/LogLevels.h>
 #include "DataConnector.h"
 #include "IndexOffsetTransform.h"
+#include "ThresholdTransform.h"
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	IOHandler(aName),
@@ -80,7 +81,9 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			}
 
 			if(Transforms[n]["Type"].asString() == "IndexOffset")
-				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new IndexOffsetTransform(Transforms[n]["Parameters"].asString()));
+				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new IndexOffsetTransform(Transforms[n]["Parameters"]));
+			if(Transforms[n]["Type"].asString() == "Threshold")
+				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new ThresholdTransform(Transforms[n]["Parameters"]));
 		}
 	}
 }
