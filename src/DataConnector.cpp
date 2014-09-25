@@ -125,9 +125,9 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 				pSendee = Connections[aMatch_it->second].first;
 
 			std::shared_ptr<T> new_event_obj(new T(event_obj));
+			bool pass_on = true;
 			if(ConnectionTransforms.count(SenderName))
 			{
-				bool pass_on = true;
 				for(Transform* Transform : ConnectionTransforms[SenderName])
 				{
 					if(!Transform->Event(*(new_event_obj.get()), index))
@@ -136,15 +136,27 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 						break;
 					}
 				}
-				if(!pass_on)
-				continue;
 			}
 
 			//return on the last connection
 			if(++aMatch_it != bounds.second)
-				pSendee->Event(*new_event_obj.get(), index, this->Name);
+			{
+				if(pass_on)
+					pSendee->Event(*new_event_obj.get(), index, this->Name);
+			}
 			else
-				return pSendee->Event(*new_event_obj.get(), index, this->Name);
+			{
+				if(pass_on)
+				{
+					return pSendee->Event(*new_event_obj.get(), index, this->Name);
+				}
+				else
+				{
+					auto cmd_promise = std::promise<opendnp3::CommandStatus>();
+					cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+					return cmd_promise.get_future();
+				}
+			}
 		}
 	}
 	//no connection for sender if we get here

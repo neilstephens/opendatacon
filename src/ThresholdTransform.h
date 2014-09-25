@@ -37,6 +37,7 @@ public:
 	ThresholdTransform(Json::Value params):
 		Transform(params),
 		pass_on(false),
+		already_under(false),
 		threshold(DBL_MIN)
 	{
 		if(params["threshold_point_index"].isNull() || !params["threshold_point_index"].isUInt())
@@ -70,7 +71,10 @@ public:
 			return true;
 
 		if(index == threshold_point_index)
-			pass_on = (meas.value >= threshold);
+		{
+			pass_on = (meas.value >= threshold) || (!already_under);
+			already_under = (meas.value < threshold);
+		}
 
 		if(!pass_on)
 		{
@@ -85,6 +89,7 @@ public:
 	};
 
 	bool pass_on;
+	bool already_under;
 	uint16_t threshold_point_index;
 	double threshold;
 };
