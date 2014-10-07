@@ -218,7 +218,7 @@ void DataConcentrator::Run()
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
-	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.2"<<std::endl;};
+	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.3"<<std::endl;};
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control
