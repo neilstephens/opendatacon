@@ -45,4 +45,7 @@ EXPORTS
 	?asCString@Value@Json@@QBEPBDXZ
 	??9Value@Json@@QBE_NABV01@@Z
 	??8Value@Json@@QBE_NABV01@@Z
-	
+	?isObject@Value@Json@@QBE_NXZ
+	?isArray@Value@Json@@QBE_NXZ
+	?isInt@Value@Json@@QBE_NXZ
+	?asInt@Value@Json@@QBEHXZ

@@ -32,6 +32,7 @@
 #include <unordered_map>
 #include <functional>
 #include <opendnp3/app/MeasurementTypes.h>
+#include <opendnp3/gen/ControlCode.h>
 #include <opendnp3/outstation/EventResponseConfig.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
@@ -60,6 +61,7 @@ public:
 	opendnp3::EventBinaryResponse EventBinaryResponse;
 	opendnp3::EventAnalogResponse EventAnalogResponse;
 	opendnp3::EventCounterResponse EventCounterResponse;
+	opendnp3::ControlCode OverrideControlCode;
 	bool DoUnsolOnStartup;
 	bool DoAssignClassOnStartup;
 	bool UseConfirms;

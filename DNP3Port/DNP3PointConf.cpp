@@ -39,6 +39,7 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		EventBinaryResponse(opendnp3::EventBinaryResponse::Group2Var1),
 		EventAnalogResponse(opendnp3::EventAnalogResponse::Group32Var5),
 		EventCounterResponse(opendnp3::EventCounterResponse::Group22Var1),
+		OverrideControlCode(opendnp3::ControlCode::UNDEFINED),
 		DoUnsolOnStartup(true),
 		DoAssignClassOnStartup(true),
 		UseConfirms(true),
@@ -91,6 +92,7 @@ opendnp3::PointClass GetClass(Json::Value JPoint)
 
 void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 {
+    if(!JSONRoot.isObject()) return;    
 	if(!JSONRoot["EventClass3ScanRateSec"].isNull())
 		EventClass3ScanRateSec = JSONRoot["EventClass3ScanRateSec"].asUInt();
 
@@ -131,6 +133,22 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	if(!JSONRoot["EventCounterResponse"].isNull())
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
+
+	if(!JSONRoot["OverrideControlCode"].isNull())
+	{
+		if(JSONRoot["OverrideControlCode"].asString()=="PULSE")
+			OverrideControlCode = opendnp3::ControlCode::PULSE;
+		if(JSONRoot["OverrideControlCode"].asString()=="LATCH_OFF")
+			OverrideControlCode = opendnp3::ControlCode::LATCH_OFF;
+		if(JSONRoot["OverrideControlCode"].asString()=="LATCH_ON")
+			OverrideControlCode = opendnp3::ControlCode::LATCH_ON;
+		if(JSONRoot["OverrideControlCode"].asString()=="PULSE_CLOSE")
+			OverrideControlCode = opendnp3::ControlCode::PULSE_CLOSE;
+		if(JSONRoot["OverrideControlCode"].asString()=="PULSE_TRIP")
+			OverrideControlCode = opendnp3::ControlCode::PULSE_TRIP;
+		if(JSONRoot["OverrideControlCode"].asString()=="NUL")
+			OverrideControlCode = opendnp3::ControlCode::NUL;
+	}
 
 	if(!JSONRoot["DoUnsolOnStartup"].isNull())
 		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();

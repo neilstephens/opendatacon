@@ -21,7 +21,6 @@ LIBRARY ODC
 EXPORTS
 	??0IOHandler@@QEAA@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	?ProcessFile@ConfigParser@@QEAAXXZ
-	??0ConfigParser@@QEAA@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@VValue@Json@@@Z
 	?toStyledString@Value@Json@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ
 	?extract_delimited_string@@YA_NAEAV?$basic_istream@DU?$char_traits@D@std@@@std@@AEAV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@2@@Z
 	?SetIOS@IOHandler@@QEAAXPEAVio_service@asio@@@Z
@@ -32,3 +31,5 @@ EXPORTS
 	?StringToEventAnalogResponse@@YA?AW4EventAnalogResponse@opendnp3@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	?StringToEventCounterResponse@@YA?AW4EventCounterResponse@opendnp3@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	?StringToEventBinaryResponse@@YA?AW4EventBinaryResponse@opendnp3@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+	??0ConfigParser@@QEAA@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVValue@Json@@@Z
+

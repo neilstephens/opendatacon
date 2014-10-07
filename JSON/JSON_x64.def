@@ -45,4 +45,8 @@ EXPORTS
 	?parse@Reader@Json@@QEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEAVValue@2@_N@Z
 	?toStyledString@Value@Json@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ
 	?isUInt@Value@Json@@QEBA_NXZ	
-	
+	?isObject@Value@Json@@QEBA_NXZ
+	?isArray@Value@Json@@QEBA_NXZ
+	?isInt@Value@Json@@QEBA_NXZ
+	?asInt@Value@Json@@QEBAHXZ
+	?isObject@Value@Json@@QEBA_NXZ

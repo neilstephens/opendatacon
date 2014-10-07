@@ -1,6 +1,9 @@
+opendatacon version 0.2.3
 
-
-opendatacon version 0.2.2
+Release notes (delta from 0.2.2):
+	- Added DNP3 Control Code Override functionality
+	- Added threshold transform
+	- Fixed issue in transform code when events are blocked
 
 Release notes (delta from 0.2):
 	- Fixed building under Windows

@@ -22,5 +22,6 @@ WeatherStationBuild/*
 
 *.opensdf
 *.sdf
+lib
 opendatacon.xcodeproj/xcuserdata
 opendatacon.xcodeproj/project.xcworkspace
