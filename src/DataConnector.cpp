@@ -48,43 +48,54 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 
 		for(Json::ArrayIndex n = 0; n < JConnections.size(); ++n)
 		{
-			if(JConnections[n]["Name"].isNull() || JConnections[n]["Port1"].isNull() || JConnections[n]["Port2"].isNull())
-			{
-				std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
-			}
-			auto ConName = JConnections[n]["Name"].asString();
-			auto ConPort1 = JConnections[n]["Port1"].asString();
-			auto ConPort2 = JConnections[n]["Port2"].asString();
-			if ((GetIOHandlers().count(ConPort1) == 0) || (GetIOHandlers().count(ConPort2) == 0))
-			{
-				std::cout << "Warning: invalid port on connection '" << ConName << "' skipping..." << std::endl;
-				continue;
-			}
-			Connections[ConName] = std::make_pair(GetIOHandlers()[ConPort1], GetIOHandlers()[ConPort2]);
-			//Subscribe to recieve events for the connection
-			GetIOHandlers()[ConPort1]->Subscribe(this, this->Name);
-			GetIOHandlers()[ConPort2]->Subscribe(this, this->Name);
-			//Add to the lookup table
-			SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
-			SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
+            try {
+                if(JConnections[n]["Name"].isNull() || JConnections[n]["Port1"].isNull() || JConnections[n]["Port2"].isNull())
+                {
+                    std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                }
+                auto ConName = JConnections[n]["Name"].asString();
+                auto ConPort1 = JConnections[n]["Port1"].asString();
+                auto ConPort2 = JConnections[n]["Port2"].asString();
+                if ((GetIOHandlers().count(ConPort1) == 0) || (GetIOHandlers().count(ConPort2) == 0))
+                {
+                    std::cout << "Warning: invalid port on connection '" << ConName << "' skipping..." << std::endl;
+                    continue;
+                }
+                Connections[ConName] = std::make_pair(GetIOHandlers()[ConPort1], GetIOHandlers()[ConPort2]);
+                //Subscribe to recieve events for the connection
+                GetIOHandlers()[ConPort1]->Subscribe(this, this->Name);
+                GetIOHandlers()[ConPort2]->Subscribe(this, this->Name);
+                //Add to the lookup table
+                SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
+                SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
+            } catch (std::exception e) {
+                std::cout<<"Warning: Exception raised when creating Connection from config: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+            }
 		}
 	}
 	if(!JSONRoot["Transforms"].isNull())
 	{
 		const Json::Value Transforms = JSONRoot["Transforms"];
 
-		for(Json::ArrayIndex n = 0; n < Transforms.size(); ++n)
-		{
-			if(Transforms[n]["Type"].isNull() || Transforms[n]["Sender"].isNull())
-			{
-				std::cout<<"Warning: invalid Transform config: need at least Type and Sender: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
-			}
+        for(Json::ArrayIndex n = 0; n < Transforms.size(); ++n)
+        {
+            try
+            {
+                if(Transforms[n]["Type"].isNull() || Transforms[n]["Sender"].isNull())
+                {
+                    std::cout<<"Warning: invalid Transform config: need at least Type and Sender: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                }
 
-			if(Transforms[n]["Type"].asString() == "IndexOffset")
-				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new IndexOffsetTransform(Transforms[n]["Parameters"]));
-			if(Transforms[n]["Type"].asString() == "Threshold")
-				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new ThresholdTransform(Transforms[n]["Parameters"]));
-		}
+                if(Transforms[n]["Type"].asString() == "IndexOffset")
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new IndexOffsetTransform(Transforms[n]["Parameters"]));
+                if(Transforms[n]["Type"].asString() == "Threshold")
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new ThresholdTransform(Transforms[n]["Parameters"]));
+            }
+            catch (std::exception e)
+            {
+                std::cout<<"Warning: Exception raised when creating Transform from config: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+            }
+        }
 	}
 }
 
