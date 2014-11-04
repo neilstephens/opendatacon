@@ -65,173 +65,122 @@ opendnp3::PointClass GetClass(Json::Value JPoint)
 	return clazz;
 }
 
+template<class T>
+T GetStartVal(const Json::Value& value);
+
+template<>
+opendnp3::Analog GetStartVal<opendnp3::Analog>(const Json::Value& value)
+{
+    opendnp3::Analog startval;
+
+    std::string start_val = value.asString();
+    if(start_val == "X")
+        return opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST));
+    else
+        return opendnp3::Analog(std::stod(start_val),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
+}
+
+template<>
+opendnp3::Binary GetStartVal<opendnp3::Binary>(const Json::Value& value)
+{
+    opendnp3::Binary startval;
+    
+    if(value.asString() == "X")
+        return opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
+    else
+        return opendnp3::Binary(value.asBool(),static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+}
+
+template<class T>
+void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGroupCollection<T>& ReadGroup)
+{
+    for(Json::ArrayIndex n = 0; n < Ranges.size(); ++n)
+    {
+        uint32_t pollgroup = 0;
+        if(!Ranges[n]["PollGroup"].isNull())
+        {
+            pollgroup = Ranges[n]["PollGroup"].asUInt();
+        }
+        
+        T startval;
+        if(!Ranges[n]["StartVal"].isNull())
+        {
+            startval = GetStartVal<T>(Ranges[n]["StartVal"]);
+        }
+        
+        size_t start, stop;
+        if(!Ranges[n]["Index"].isNull())
+            start = stop = Ranges[n]["Index"].asUInt();
+        else if(!Ranges[n]["Range"]["Start"].isNull() && !Ranges[n]["Range"]["Stop"].isNull())
+        {
+            start = Ranges[n]["Range"]["Start"].asUInt();
+            stop = Ranges[n]["Range"]["Stop"].asUInt();
+            //TODO: propper error logging
+            if (start > stop)
+            {
+                std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Ranges[n].toStyledString()<<"'"<<std::endl;
+                continue;
+            }
+        }
+        else
+        {
+            std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Ranges[n].toStyledString()<<"'"<<std::endl;
+            start = 1;
+            stop = 0;
+            continue;
+        }
+        
+        ReadGroup.emplace_back(start,stop-start+1,pollgroup,startval);
+    }
+}
+
 void ModbusPointConf::ProcessElements(const Json::Value& JSONRoot)
 {
     if(!JSONRoot.isObject()) return;
     
-    /*
-	if(!JSONRoot["Analogs"].isNull())
-	{
-		const auto Analogs = JSONRoot["Analogs"];
-		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
-		{
-			double deadband = 0;
-			if(!Analogs[n]["Deadband"].isNull())
-			{
-				deadband = Analogs[n]["Deadband"].asDouble();
-			}
-			opendnp3::PointClass clazz = GetClass(Analogs[n]);
-			size_t start, stop;
-			if(!Analogs[n]["Index"].isNull())
-				start = stop = Analogs[n]["Index"].asUInt();
-			else if(!Analogs[n]["Range"]["Start"].isNull() && !Analogs[n]["Range"]["Stop"].isNull())
-			{
-				start = Analogs[n]["Range"]["Start"].asUInt();
-				stop = Analogs[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Analogs[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
-			}
-			for(auto index = start; index <= stop; index++)
-			{
-				bool exists = false;
-				for(auto existing_index: AnalogIndicies)
-					if(existing_index == index)
-						exists = true;
+    if(!JSONRoot["BitIndicies"].isNull())
+        ProcessReadGroup(JSONRoot["BitIndicies"], BitIndicies);
+    if(!JSONRoot["InputBitIndicies"].isNull())
+        ProcessReadGroup(JSONRoot["InputBitIndicies"], InputBitIndicies);
+    if(!JSONRoot["RegIndicies"].isNull())
+        ProcessReadGroup(JSONRoot["RegIndicies"], RegIndicies);
+    if(!JSONRoot["InputRegIndicies"].isNull())
+        ProcessReadGroup(JSONRoot["InputRegIndicies"], InputRegIndicies);
 
-				AnalogDeadbands[index] = deadband;
+    if(!JSONRoot["PollGroups"].isNull())
+    {
+        auto jPollGroups = JSONRoot["PollGroups"];
+        for(Json::ArrayIndex n = 0; n < jPollGroups.size(); ++n)
+        {
+            if(jPollGroups[n]["ID"].isNull())
+            {
+                std::cout<<"Poll group missing ID : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
+                continue;
+            }
+            if(jPollGroups[n]["PollRate"].isNull())
+            {
+                std::cout<<"Poll group missing PollRate : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
+                continue;
+            }
 
-				if(!exists)
-					AnalogIndicies.push_back(index);
+            uint32_t PollGroupID = jPollGroups[n]["ID"].asUInt();
+            uint32_t pollrate = jPollGroups[n]["PollRate"].asUInt();
+            
+            if(PollGroupID == 0)
+            {
+                std::cout<<"Poll group 0 is reserved (do not poll) : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
+                continue;
+            }
 
-				if(!Analogs[n]["StartVal"].isNull())
-				{
-					std::string start_val = Analogs[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
-					{
-						if(AnalogStartVals.count(index))
-							AnalogStartVals.erase(index);
-						for(auto it = AnalogIndicies.begin(); it != AnalogIndicies.end(); it++)
-							if(*it == index)
-							{
-								AnalogIndicies.erase(it);
-								break;
-							}
-					}
-					else if(start_val == "X")
-						AnalogStartVals[index] = opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST));
-					else
-						AnalogStartVals[index] = opendnp3::Analog(std::stod(start_val),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
-				}
-				else if(AnalogStartVals.count(index))
-					AnalogStartVals.erase(index);
-			}
-		}
-		std::sort(AnalogIndicies.begin(),AnalogIndicies.end());
-	}
-	if(!JSONRoot["Binaries"].isNull())
-	{
-		const auto Binaries = JSONRoot["Binaries"];
-		for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
-		{
-			size_t start, stop;
-			if(!Binaries[n]["Index"].isNull())
-				start = stop = Binaries[n]["Index"].asUInt();
-			else if(!Binaries[n]["Range"]["Start"].isNull() && !Binaries[n]["Range"]["Stop"].isNull())
-			{
-				start = Binaries[n]["Range"]["Start"].asUInt();
-				stop = Binaries[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Binaries[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
-			}
-			for(auto index = start; index <= stop; index++)
-			{
-
-				bool exists = false;
-				for(auto existing_index: BinaryIndicies)
-					if(existing_index == index)
-						exists = true;
-
-				if(!exists)
-					BinaryIndicies.push_back(index);
-
-				if(!Binaries[n]["StartVal"].isNull())
-				{
-					std::string start_val = Binaries[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
-					{
-						if(BinaryStartVals.count(index))
-							BinaryStartVals.erase(index);
-						for(auto it = BinaryIndicies.begin(); it != BinaryIndicies.end(); it++)
-							if(*it == index)
-							{
-								BinaryIndicies.erase(it);
-								break;
-							}
-					}
-					else if(start_val == "X")
-						BinaryStartVals[index] = opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
-					else
-						BinaryStartVals[index] = opendnp3::Binary(Binaries[n]["StartVal"].asBool(),static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
-				}
-				else if(BinaryStartVals.count(index))
-					BinaryStartVals.erase(index);
-			}
-		}
-		std::sort(BinaryIndicies.begin(),BinaryIndicies.end());
-	}
-	if(!JSONRoot["BinaryControls"].isNull())
-	{
-		const auto BinaryControls= JSONRoot["BinaryControls"];
-		for(Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
-		{
-			size_t start, stop;
-			if(!BinaryControls[n]["Index"].isNull())
-				start = stop = BinaryControls[n]["Index"].asUInt();
-			else if(!BinaryControls[n]["Range"]["Start"].isNull() && !BinaryControls[n]["Range"]["Stop"].isNull())
-			{
-				start = BinaryControls[n]["Range"]["Start"].asUInt();
-				stop = BinaryControls[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<BinaryControls[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
-			}
-			for(auto index = start; index <= stop; index++)
-			{
-
-				bool exists = false;
-				for(auto existing_index: ControlIndicies)
-					if(existing_index == index)
-						exists = true;
-
-				if(!exists)
-					ControlIndicies.push_back(index);
-
-				auto start_val = BinaryControls[n]["StartVal"].asString();
-				if(start_val == "D")
-				{
-					for(auto it = ControlIndicies.begin(); it != ControlIndicies.end(); it++)
-						if(*it == index)
-						{
-							ControlIndicies.erase(it);
-							break;
-						}
-				}
-			}
-		}
-		std::sort(ControlIndicies.begin(),ControlIndicies.end());
-	}
-     */
+            if(PollGroups.count(PollGroupID) > 0)
+            {
+                std::cout<<"Duplicate poll group ignored : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
+                continue;
+            }
+            
+            PollGroups.emplace(std::piecewise_construct,std::forward_as_tuple(PollGroupID),std::forward_as_tuple(PollGroupID,pollrate));
+        }
+    }
 }
 
 

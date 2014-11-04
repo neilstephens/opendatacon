@@ -27,13 +27,14 @@
 #ifndef ModbusCLIENTPORT_H_
 #define ModbusCLIENTPORT_H_
 
-#include <unordered_map>
+#include <queue>
 #include <opendnp3/master/ISOEHandler.h>
 #include <opendnp3/master/IPollListener.h>
 #include <opendnp3/master/CommandResponse.h>
 #include <opendnp3/app/IterableBuffer.h>
 
 #include "ModbusPort.h"
+#include "ASIOScheduler.h"
 
 using namespace opendnp3;
 
@@ -67,20 +68,14 @@ public:
 	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
-protected:
+    void DoPoll(uint32_t pollgroup);
     
-    void DoPoll();
-    
-	//implement transactable
-	//void Start() override final {}
-	//void End() override final {}
-
 private:
     void StateListener(opendnp3::ChannelState state);
     modbus_t *mb;
     typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-    std::unique_ptr<Timer_t> pPollTimer;
     std::unique_ptr<Timer_t> pTCPRetryTimer;
+    std::unique_ptr<ASIOScheduler> PollScheduler;
 };
 
 #endif /* ModbusCLIENTPORT_H_ */

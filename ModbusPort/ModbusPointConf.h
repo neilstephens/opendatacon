@@ -37,6 +37,53 @@
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 
+#include <chrono>
+
+class ModbusPollGroup
+{
+public:
+    ModbusPollGroup() :
+    ID(0),
+    pollrate(0)
+    { };
+
+    ModbusPollGroup(uint32_t ID_, uint32_t pollrate_) :
+        ID(ID_),
+        pollrate(pollrate_)
+    { };
+    
+    uint32_t ID;
+    uint32_t pollrate;
+};
+
+template<class T>
+class ModbusReadGroup
+{
+public:
+    ModbusReadGroup(uint32_t start_, uint32_t count_, uint32_t pollgroup_, const T& startval_) :
+        start(start_),
+        count(count_),
+        pollgroup(pollgroup_),
+        startval(startval_)
+    { };
+    
+    bool operator<(const ModbusReadGroup& other) const
+    {
+        return (this->start < other.start);
+    }
+
+    uint32_t start;
+    uint32_t count;
+    uint32_t pollgroup;
+    T startval;
+};
+
+template<class T>
+class ModbusReadGroupCollection : public std::vector<ModbusReadGroup<T>>
+{
+    
+};
+
 class ModbusPointConf: public ConfigParser
 {
 public:
@@ -47,10 +94,16 @@ public:
 
 	std::pair<opendnp3::Binary,size_t> mCommsPoint;
     
-	std::vector<uint32_t> BitIndicies;
-    std::vector<uint32_t> InputBitIndicies;
-    std::vector<uint32_t> RegIndicies;
-    std::vector<uint32_t> InputRegIndicies;
+	ModbusReadGroupCollection<opendnp3::Binary> BitIndicies;
+    ModbusReadGroupCollection<opendnp3::Binary> InputBitIndicies;
+    ModbusReadGroupCollection<opendnp3::Analog> RegIndicies;
+    ModbusReadGroupCollection<opendnp3::Analog> InputRegIndicies;
+    
+    std::map<uint32_t, ModbusPollGroup> PollGroups;
+
+private:
+    template<class T>
+    void ProcessReadGroup(const Json::Value& Ranges,ModbusReadGroupCollection<T>& ReadGroup);
 };
 
 #endif /* ModbusPOINTCONF_H_ */

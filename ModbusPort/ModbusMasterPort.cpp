@@ -36,6 +36,9 @@ void ModbusMasterPort::Enable()
 {
 	if(enabled) return;
     enabled = true;
+    
+    pTCPRetryTimer.reset(new Timer_t(*pIOS));
+    PollScheduler.reset(new ASIOScheduler(*pIOS));
 
     ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -44,15 +47,12 @@ void ModbusMasterPort::Enable()
     {
         this->Connect();
     }
-    
 }
 
 void ModbusMasterPort::Connect()
 {
     if(!enabled) return;
     if (stack_enabled) return;
-    
-    stack_enabled = true;
     
     if (mb == NULL)
     {
@@ -69,21 +69,25 @@ void ModbusMasterPort::Connect()
         pLoggers->Log(log_entry);
         
         //try again later
-        pTCPRetryTimer->expires_at(pTCPRetryTimer->expires_at() + std::chrono::seconds(5));
+        pTCPRetryTimer->expires_from_now(std::chrono::seconds(5));
         pTCPRetryTimer->async_wait(
                                    [this](asio::error_code err_code)
                                    {
                                        if(err_code != asio::error::operation_aborted)
-                                           this->Enable();
+                                           this->Connect();
                                    });
         return;
     };
+
+    stack_enabled = true;
 
     {
         std::string msg = Name + ": Connect success!";
         auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
         pLoggers->Log(log_entry);
     }
+    
+    modbus_set_slave(mb, 1);
     
     uint8_t tab_bytes[64];
     int rc = modbus_report_slave_id(mb, 64, tab_bytes);
@@ -93,8 +97,19 @@ void ModbusMasterPort::Connect()
         auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
         pLoggers->Log(log_entry);
     }
-
-    DoPoll();
+    
+    PollScheduler->Clear();
+    ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+    for(auto pg : pConf->pPointConf->PollGroups)
+    {
+        auto id = pg.second.ID;
+        auto action = [=](){
+            this->DoPoll(id);
+        };
+        PollScheduler->Add(pg.second.pollrate, action);
+    }
+    
+    PollScheduler->Start();
 }
 
 void ModbusMasterPort::Disable()
@@ -111,7 +126,7 @@ void ModbusMasterPort::Disconnect()
     
     //cancel the timers (otherwise it would tie up the io_service on shutdown)
     pTCPRetryTimer->cancel();
-    pPollTimer->cancel();
+    PollScheduler->Stop();
     
     if(mb != nullptr) modbus_close(mb);
 }
@@ -161,114 +176,116 @@ void ModbusMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::L
         pLoggers->Log(log_entry);
         return;
     }
-    
-    pTCPRetryTimer.reset(new Timer_t(*pIOS));
-    pPollTimer.reset(new Timer_t(*pIOS));
 }
 
-void ModbusMasterPort::DoPoll()
+void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 {
     uint8_t tab_bits[64];
     uint16_t tab_reg[64];
-
-    uint16_t bits_start = 0;
-    uint16_t bits_count = 5;
-
-    uint16_t reg_start = 0;
-    uint16_t reg_count = 5;
-    
     if(!enabled) return;
     
+    auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
     int rc;
 
     // Modbus function code 0x01 (read coil status)
-    rc = modbus_read_bits(mb, bits_start, bits_count, tab_bits);
-    if (rc == -1)
+    for(auto range : pConf->pPointConf->BitIndicies)
     {
-        std::string msg = Name+": read bits poll error: '" + modbus_strerror(errno) + "'";
-        auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-    }
-    else
-    {
-        uint16_t index = bits_start;
-        for(uint16_t i = 0; i < rc; i++ )
+        if (pollgroup && (range.pollgroup != pollgroup)) continue;
+        rc = modbus_read_bits(mb, range.start, range.count, tab_bits);
+        if (rc == -1)
         {
-            for(auto IOHandler_pair : Subscribers)
+            std::string msg = Name+": read bits poll error: '" + modbus_strerror(errno) + "'";
+            auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+            pLoggers->Log(log_entry);
+        }
+        else
+        {
+            uint16_t index = range.start;
+            for(uint16_t i = 0; i < rc; i++ )
             {
-                IOHandler_pair.second->Event(opendnp3::Binary(tab_bits[i] != false),index,this->Name);
+                for(auto IOHandler_pair : Subscribers)
+                {
+                    IOHandler_pair.second->Event(opendnp3::Binary(tab_bits[i] != false),index,this->Name);
+                }
+                ++index;
             }
         }
     }
     
     // Modbus function code 0x02 (read input status)
-    rc = modbus_read_input_bits(mb, bits_start, bits_count, tab_bits);
-    if (rc == -1)
+    for(auto range : pConf->pPointConf->BitIndicies)
     {
-        std::string msg = Name+": read input bits poll error: '" + modbus_strerror(errno) + "'";
-        auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-    }
-    else
-    {
-        uint16_t index = bits_start;
-        for(uint16_t i = 0; i < rc; i++ )
+        if (pollgroup && (range.pollgroup != pollgroup)) continue;
+        rc = modbus_read_input_bits(mb, range.start, range.count, tab_bits);
+        if (rc == -1)
         {
-            for(auto IOHandler_pair : Subscribers)
+            std::string msg = Name+": read input bits poll error: '" + modbus_strerror(errno) + "'";
+            auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+            pLoggers->Log(log_entry);
+        }
+        else
+        {
+            uint16_t index = range.start;
+            for(uint16_t i = 0; i < rc; i++ )
             {
-                IOHandler_pair.second->Event(opendnp3::Binary(tab_bits[i] != false),index,this->Name);
+                for(auto IOHandler_pair : Subscribers)
+                {
+                    IOHandler_pair.second->Event(opendnp3::Binary(tab_bits[i] != false),index,this->Name);
+                }
+                ++index;
             }
         }
     }
     
     // Modbus function code 0x03 (read holding registers)
-    rc = modbus_read_registers(mb, reg_start, reg_count, tab_reg);
-    if (rc == -1)
+    for(auto range : pConf->pPointConf->RegIndicies)
     {
-        std::string msg = Name+": read registers poll error: '" + modbus_strerror(errno) + "'";
-        auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-    }
-    else
-    {
-        uint16_t index = reg_start;
-        for(uint16_t i = 0; i < rc; i++ )
+        if (pollgroup && (range.pollgroup != pollgroup)) continue;
+        rc = modbus_read_registers(mb, range.start, range.count, tab_reg);
+        if (rc == -1)
         {
-            for(auto IOHandler_pair : Subscribers)
+            std::string msg = Name+": read registers poll error: '" + modbus_strerror(errno) + "'";
+            auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+            pLoggers->Log(log_entry);
+        }
+        else
+        {
+            uint16_t index = range.start;
+            for(uint16_t i = 0; i < rc; i++ )
             {
-                IOHandler_pair.second->Event(opendnp3::Analog(tab_reg[i]),index,this->Name);
+                for(auto IOHandler_pair : Subscribers)
+                {
+                    IOHandler_pair.second->Event(opendnp3::Analog(tab_reg[i]),index,this->Name);
+                }
+                ++index;
             }
         }
     }
     
     // Modbus function code 0x04 (read input registers)
-    rc = modbus_read_input_registers(mb, reg_start, reg_count, tab_reg);
-    if (rc == -1)
+    for(auto range : pConf->pPointConf->InputRegIndicies)
     {
-        std::string msg = Name+": read input registers poll error: '" + modbus_strerror(errno) + "'";
-        auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-    }
-    else
-    {
-        uint16_t index = reg_start;
-        for(uint16_t i = 0; i < rc; i++ )
+        if (pollgroup && (range.pollgroup != pollgroup)) continue;
+        rc = modbus_read_input_registers(mb, range.start, range.count, tab_reg);
+        if (rc == -1)
         {
-            for(auto IOHandler_pair : Subscribers)
+            std::string msg = Name+": read input registers poll error: '" + modbus_strerror(errno) + "'";
+            auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+            pLoggers->Log(log_entry);
+        }
+        else
+        {
+            uint16_t index = range.start;
+            for(uint16_t i = 0; i < rc; i++ )
             {
-                IOHandler_pair.second->Event(opendnp3::Analog(tab_reg[i]),index,this->Name);
+                for(auto IOHandler_pair : Subscribers)
+                {
+                    IOHandler_pair.second->Event(opendnp3::Analog(tab_reg[i]),index,this->Name);
+                }
+                ++index;
             }
         }
     }
-    
-    // TODO: differing poll times
-    pPollTimer->expires_at(pPollTimer->expires_at() + std::chrono::seconds(5));
-    pPollTimer->async_wait(
-                               [this](asio::error_code err_code)
-                               {
-                                   if(err_code != asio::error::operation_aborted)
-                                       this->DoPoll();
-                               });
 }
 
 //Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
