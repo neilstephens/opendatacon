@@ -84,21 +84,32 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	TCPChannels[IPPort]->AddStateListener(std::bind(&DNP3OutstationPort::StateListener,this,std::placeholders::_1));
 
 	opendnp3::OutstationStackConfig StackConfig;
+
+	// Link layer configuration
 	StackConfig.link.LocalAddr = pConf->mAddrConf.OutstationAddr;
+	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
-	StackConfig.link.NumRetry = 5;
-	StackConfig.link.Timeout = openpal::TimeDuration::Seconds(5);
-	StackConfig.link.UseConfirms = pConf->pPointConf->UseConfirms;
-	StackConfig.outstation.defaultEventResponses.analog = pConf->pPointConf->EventAnalogResponse;
-	StackConfig.outstation.defaultEventResponses.binary = pConf->pPointConf->EventBinaryResponse;
+	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
+
+	// Outstation parameters
 	StackConfig.outstation.params.allowUnsolicited = pConf->pPointConf->EnableUnsol;
 	StackConfig.outstation.params.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.outstation.params.selectTimeout = openpal::TimeDuration::Seconds(300);/// How long the outstation will allow an operate to proceed after a prior select
-	StackConfig.outstation.params.solConfirmTimeout = openpal::TimeDuration::Seconds(300);/// Timeout for solicited confirms
-	StackConfig.outstation.params.unsolConfirmTimeout = openpal::TimeDuration::Seconds(300); /// Timeout for unsolicited confirms
-	StackConfig.outstation.params.unsolRetryTimeout = openpal::TimeDuration::Seconds(300); /// Timeout for unsolicited retries
-	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = 1000;//TODO: event buf size config item
-	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = 1000;
+	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest; 	/// The maximum number of controls the outstation will attempt to process from a single APDU
+	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize; /// The maximum fragment size the outstation will use for fragments it sends
+	StackConfig.outstation.params.selectTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SelectTimeoutms);/// How long the outstation will allow an operate to proceed after a prior select
+	StackConfig.outstation.params.solConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);/// Timeout for solicited confirms
+	StackConfig.outstation.params.unsolConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
+
+	// TODO: Expose default event responses for any new event types to be supported by opendatacon
+	StackConfig.outstation.defaultEventResponses.analog = pConf->pPointConf->EventAnalogResponse;
+	StackConfig.outstation.defaultEventResponses.binary = pConf->pPointConf->EventBinaryResponse;
+	StackConfig.outstation.defaultEventResponses.counter = pConf->pPointConf->EventCounterResponse;
+
+	// TODO: Expose event limits for any new event types to be supported by opendatacon
+	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents; /// The number of binary events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;	/// The number of analog events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents;	/// The number of counter events the outstation will buffer before overflowing
 
 	//contiguous points
 //	StackConfig.dbTemplate.numAnalog = pConf->pPointConf->AnalogIndicies.back();

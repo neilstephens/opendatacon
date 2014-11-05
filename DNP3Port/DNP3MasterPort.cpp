@@ -103,33 +103,36 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	TCPChannels[IPPort]->AddStateListener(std::bind(&DNP3MasterPort::StateListener,this,std::placeholders::_1));
 
 	opendnp3::MasterStackConfig StackConfig;
-	StackConfig.link.LocalAddr = pConf->mAddrConf.MasterAddr;
-	StackConfig.link.RemoteAddr = pConf->mAddrConf.OutstationAddr;
 
-	//TODO: add config items for these
-	StackConfig.link.NumRetry = 0;
-	StackConfig.link.Timeout = openpal::TimeDuration::Seconds(30);
+	// Link layer configuration
+	StackConfig.link.LocalAddr = pConf->mAddrConf.OutstationAddr;
+	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
+	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
+	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
 
-	StackConfig.link.UseConfirms = pConf->pPointConf->UseConfirms;
+	// Master station configuration
+	StackConfig.master.responseTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->MasterResponseTimeoutms);
+	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ? TimeSyncMode::SerialTimeSync : TimeSyncMode::None;
 	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::ALL_CLASSES; //TODO: report/investigate bug - doesn't recognise response to integrity scan if not ALL_CLASSES
+	StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask(); //TODO: report/investigate bug - doesn't recognise response to integrity scan if not ALL_CLASSES
+	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
+	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	pMaster = TCPChannels[IPPort]->AddMaster(Name.c_str(), *this, asiodnp3::DefaultMasterApplication::Instance(), StackConfig);
 
-	// configure integrity scans
-	if(pConf->pPointConf->IntegrityScanRateSec > 0)
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Seconds(pConf->pPointConf->IntegrityScanRateSec));
+	// Master Station scanning configuration
+	if(pConf->pPointConf->IntegrityScanRatems > 0)
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems));
 	else
 		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Minutes(600000000)); //ten million hours
-
-	// configure event scans
-	if(pConf->pPointConf->EventClass1ScanRateSec > 0)
-		pMaster->AddClassScan(opendnp3::ClassField::CLASS_1, openpal::TimeDuration::Seconds(pConf->pPointConf->EventClass1ScanRateSec));
-	if(pConf->pPointConf->EventClass2ScanRateSec > 0)
-		pMaster->AddClassScan(opendnp3::ClassField::CLASS_2, openpal::TimeDuration::Seconds(pConf->pPointConf->EventClass2ScanRateSec));
-	if(pConf->pPointConf->EventClass3ScanRateSec > 0)
-		pMaster->AddClassScan(opendnp3::ClassField::CLASS_3, openpal::TimeDuration::Seconds(pConf->pPointConf->EventClass3ScanRateSec));
+	if(pConf->pPointConf->EventClass1ScanRatems > 0)
+		pMaster->AddClassScan(opendnp3::ClassField::CLASS_1, openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems));
+	if(pConf->pPointConf->EventClass2ScanRatems > 0)
+		pMaster->AddClassScan(opendnp3::ClassField::CLASS_2, openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass2ScanRatems));
+	if(pConf->pPointConf->EventClass3ScanRatems > 0)
+		pMaster->AddClassScan(opendnp3::ClassField::CLASS_3, openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass3ScanRatems));
 }
 //implement ISOEHandler
 void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas){ LoadT(meas); };
