@@ -30,6 +30,7 @@
 #include <opendnp3/app/DynamicPointIndexes.h>
 #include "DNP3MasterPort.h"
 #include "CommandCallbackPromise.h"
+#include <openpal/logging/LogLevels.h>
 #include <array>
 
 void DNP3MasterPort::Enable()
@@ -105,9 +106,9 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	opendnp3::MasterStackConfig StackConfig;
 
 	// Link layer configuration
-	StackConfig.link.LocalAddr = pConf->mAddrConf.OutstationAddr;
+	StackConfig.link.LocalAddr = pConf->mAddrConf.MasterAddr;
 	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
-	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
+	StackConfig.link.RemoteAddr = pConf->mAddrConf.OutstationAddr;
 	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
 
@@ -298,10 +299,17 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 			//this will change the control code if the command is binary, and there's a defined override
 			DoOverrideControlCode(lCommand);
 
-			cmd_proc->DirectOperate(lCommand,index, *CommandCorrespondant::GetCallback(std::move(cmd_promise)));
+			std::string msg = "Executing direct operate to index: " + std::to_string(index);
+			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+
+			cmd_proc->DirectOperate(lCommand, index, *CommandCorrespondant::GetCallback(std::move(cmd_promise)));
 			return cmd_future;
 		}
 	}
+	std::string msg = "Control sent to invalid DNP3 index: " + std::to_string(index);
+	auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::WARN, "", msg.c_str(), -1);
+	pLoggers->Log(log_entry);
 	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
 	return cmd_future;
 }
