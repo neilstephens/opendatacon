@@ -1,4 +1,7 @@
-opendatacon version 0.2.3
+opendatacon version 0.2.4
+
+Release notes (delta from 0.2.3):
+	- Exposed all OpenDNP3 configuration parameters in DNP3Port
 
 Release notes (delta from 0.2.2):
 	- Added DNP3 Control Code Override functionality
