@@ -71,6 +71,7 @@ public:
     void DoPoll(uint32_t pollgroup);
     
 private:
+    void HandleError(int errnum, const std::string& source);
     void StateListener(opendnp3::ChannelState state);
     modbus_t *mb;
     typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

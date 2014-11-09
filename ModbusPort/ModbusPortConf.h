@@ -40,7 +40,7 @@ typedef struct
 {
 	std::string IP;
 	uint16_t Port;
-	uint16_t OutstationAddr;
+	uint8_t OutstationAddr;
     server_type_t ServerType;
 } ModbusAddrConf;
 

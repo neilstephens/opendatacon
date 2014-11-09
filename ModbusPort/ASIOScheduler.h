@@ -146,7 +146,7 @@ public:
         Schedule.pop();
         task->reschedule();
         Schedule.push(task);
-        Start();
+        if (running) Start();
     }
     
 private:
