@@ -68,10 +68,17 @@ public:
 	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
+    
+private:
+    template<class T>
+    opendnp3::CommandStatus WriteObject(const T& command, uint16_t index);
+    
     void DoPoll(uint32_t pollgroup);
     
 private:
     void HandleError(int errnum, const std::string& source);
+    CommandStatus HandleWriteError(int errnum, const std::string& source);
+    
     void StateListener(opendnp3::ChannelState state);
     modbus_t *mb;
     typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

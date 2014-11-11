@@ -159,6 +159,34 @@ void ModbusMasterPort::HandleError(int errnum, const std::string& source)
     }
 }
 
+CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& source)
+{
+    HandleError(errnum, source);
+    switch (errno) {
+        case EMBXILFUN:                 //return "Illegal function";
+            return opendnp3::CommandStatus::NOT_SUPPORTED;
+        case EMBBADCRC:                 //return "Invalid CRC";
+        case EMBBADDATA:                //return "Invalid data";
+        case EMBBADEXC:                 //return "Invalid exception code";
+        case EMBXILADD:                 //return "Illegal data address";
+        case EMBXILVAL:                 //return "Illegal data value";
+        case EMBMDATA:                  //return "Too many data";
+            return opendnp3::CommandStatus::FORMAT_ERROR;
+        case EMBXSFAIL:                 //return "Slave device or server failure";
+        case EMBXMEMPAR:                //return "Memory parity error";
+            return opendnp3::CommandStatus::HARDWARE_ERROR;
+        case EMBXGTAR:                  //return "Target device failed to respond";
+            return opendnp3::CommandStatus::TIMEOUT;
+        case EMBXACK:                   //return "Acknowledge";
+        case EMBXSBUSY:                 //return "Slave device or server is busy";
+        case EMBXNACK:                  //return "Negative acknowledge";
+        case EMBXGPATH:                 //return "Gateway path unavailable";
+        case EMBBADSLAVE:               //return "Response not from requested slave";
+        default:
+            return opendnp3::CommandStatus::UNDEFINED;
+    }
+}
+
 void ModbusMasterPort::StateListener(opendnp3::ChannelState state)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
@@ -346,35 +374,99 @@ std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(bool connected, uin
 	return cmd_future;
 }
 
+template<>
+opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::ControlRelayOutputBlock& command, uint16_t index)
+{
+    if (
+        (command.functionCode == ControlCode::NUL) ||
+        (command.functionCode == ControlCode::UNDEFINED)
+        )
+    {
+        return CommandStatus::FORMAT_ERROR;
+    }
+    int rc;
+    if (
+        (command.functionCode == ControlCode::LATCH_OFF) ||
+        (command.functionCode == ControlCode::PULSE_TRIP)
+        )
+    {
+        rc = modbus_write_bit(mb, index, false);
+    }
+    else
+    {
+        //ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
+        rc = modbus_write_bit(mb, index, true);
+    }
+    
+    if (rc == -1) return HandleWriteError(errno, "write bit");
+    return CommandStatus::SUCCESS;
+}
+
+template<>
+opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutputInt16& command, uint16_t index)
+{
+    int rc = modbus_write_register(mb, index, command.value);
+    if (rc == -1) return HandleWriteError(errno, "write register");
+    return CommandStatus::SUCCESS;
+}
+
+template<>
+opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutputInt32& command, uint16_t index)
+{
+    int rc = modbus_write_register(mb, index, command.value);
+    if (rc == -1) return HandleWriteError(errno, "write register");
+    return CommandStatus::SUCCESS;
+}
+
+template<>
+opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutputFloat32& command, uint16_t index)
+{
+    int rc = modbus_write_register(mb, index, command.value);
+    if (rc == -1) return HandleWriteError(errno, "write register");
+    return CommandStatus::SUCCESS;
+}
+
+template<>
+opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutputDouble64& command, uint16_t index)
+{
+    int rc = modbus_write_register(mb, index, command.value);
+    if (rc == -1) return HandleWriteError(errno, "write register");
+    return CommandStatus::SUCCESS;
+}
+
 template<typename T>
 inline std::future<opendnp3::CommandStatus> ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
 {
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-	auto cmd_future = cmd_promise.get_future();
+    std::unique_ptr<std::promise<opendnp3::CommandStatus>> cmd_promise{ new std::promise<opendnp3::CommandStatus>() };
+	auto cmd_future = cmd_promise->get_future();
 
 	if(!enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+		cmd_promise->set_value(opendnp3::CommandStatus::UNDEFINED);
 		return cmd_future;
 	}
 
-	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	//auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+
     
-	//for(auto i : pConf->pPointConf->ControlIndicies)
-	{
-		//if(i == index)
-		{
-            /*
-             // Modbus function code 0x0F (force multiple coils)
-             modbus_write_bits
-             // Modbus function code 0x10 (preset multiple registers)
-             modbus_write_registers
-             */
-			//cmd_proc->DirectOperate(lCommand,index, *CommandCorrespondant::GetCallback(std::move(cmd_promise)));
-			//return cmd_future;
-		}
-	}
-	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+    if(true)
+    {
+        cmd_promise->set_value(WriteObject(arCommand, index));
+        /*
+        auto lambda = capture( std::move(cmd_promise),
+                              [=]( std::unique_ptr<std::promise<opendnp3::CommandStatus>> & cmd_promise ) {
+                              
+                                  cmd_promise->set_value(WriteObject(arCommand, index));
+
+                                  
+                              } );
+        pIOS->post([&](){ lambda(); });*/
+    }
+    else
+    {
+        cmd_promise->set_value(opendnp3::CommandStatus::UNDEFINED);
+    }
+    
 	return cmd_future;
 }
 
