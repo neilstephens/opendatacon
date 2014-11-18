@@ -182,6 +182,12 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 		future_results.push_back((IOHandler_pair.second->Event(arCommand, aIndex, this->Name)));
 	}
 
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if (!pConf->pPointConf->WaitForCommandResponses)
+	{
+		return opendnp3::CommandStatus::SUCCESS;
+	}
+
 	for(auto& future_result : future_results)
 	{
 		//if results aren't ready, we'll try to do some work instead of blocking

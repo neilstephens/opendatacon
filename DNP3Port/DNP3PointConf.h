@@ -86,6 +86,7 @@ public:
 	uint32_t SelectTimeoutms; /// How long the outstation will allow an operate to proceed after a prior select
 	uint32_t SolConfirmTimeoutms; /// Timeout for solicited confirms
 	uint32_t UnsolConfirmTimeoutms; /// Timeout for unsolicited confirms
+	bool WaitForCommandResponses; // when responding to a command, wait for downstream command responses, otherwise returns success
 
 	// Default Event Response Types
 	opendnp3::EventBinaryResponse EventBinaryResponse;
