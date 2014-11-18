@@ -37,8 +37,12 @@
 
 
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	DNP3Port(aName, aConfFilename, aConfOverrides)
-{};
+	DNP3Port(aName, aConfFilename, aConfOverrides),
+	lastRx(0),
+	pPollStatTimer(new Timer_t(*pIOS, std::chrono::milliseconds(200)))
+{
+	pPollStatTimer->async_wait(std::bind(&DNP3OutstationPort::PollStats,this));
+};
 
 void DNP3OutstationPort::Enable()
 {
@@ -59,10 +63,27 @@ void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
 	if(!enabled)
 		return;
 
-	for(auto IOHandler_pair : Subscribers)
+	//This has been replaced by a stack statistics poller - so connect events are sent on application layer connection instead of comms layer
+	//for(auto IOHandler_pair : Subscribers)
+	//{
+		//IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
+	//}
+}
+void DNP3OutstationPort::PollStats()
+{
+	if(!enabled)
+		return;
+	auto stats = pOutstation->GetStackStatistics();
+	if(stats.numTransportRx > lastRx)
 	{
-		IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
+		for(auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(true, 0, this->Name);
+		}
 	}
+	lastRx = stats.numTransportRx;
+	pPollStatTimer->expires_from_now(std::chrono::milliseconds(200));
+	pPollStatTimer->async_wait(std::bind(&DNP3OutstationPort::PollStats,this));
 }
 void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {

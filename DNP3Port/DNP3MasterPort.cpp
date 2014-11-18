@@ -37,12 +37,27 @@ void DNP3MasterPort::Enable()
 {
 	if(enabled)
 		return;
+
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if(!stack_enabled && pConf->mAddrConf.ServerType != server_type_t::ONDEMAND)
+	{
+		pMaster->Enable();
+		stack_enabled = true;
+	}
+
 	enabled = true;
 }
 void DNP3MasterPort::Disable()
 {
 	if(!enabled)
 		return;
+
+	if(stack_enabled)
+	{
+		pMaster->Disable();
+		stack_enabled = false;
+	}
+
 	enabled = false;
 }
 void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
@@ -58,6 +73,12 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 			for(auto index : pConf->pPointConf->BinaryIndicies)
 				IOHandler_pair.second->Event(opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)),index,this->Name);
 			failed = pConf->pPointConf->mCommsPoint.first.value;
+			if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT)
+			{
+				//disable the stack
+				pMaster->Disable();
+				stack_enabled = false;
+			}
 		}
 		else
 			failed = !pConf->pPointConf->mCommsPoint.first.value;
@@ -179,8 +200,9 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(bool connected, uint1
 	//connected == true means something upstream has connected
 	if (connected)
 	{
+		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		pIOS->post([&]() {
-			if (!stack_enabled)
+			if (!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 			{
 				//enable the stack
 				pMaster->Enable();
