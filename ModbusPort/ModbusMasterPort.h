@@ -38,6 +38,40 @@
 
 using namespace opendnp3;
 
+#include <utility>
+
+/*
+template <typename T, typename F>
+class capture_impl
+{
+    T x;
+    F f;
+public:
+    capture_impl( T && x, F && f )
+    : x{std::forward<T>(x)}, f{std::forward<F>(f)}
+    {}
+    
+    template <typename ...Ts> auto operator()( Ts&&...args )
+    -> decltype(f( x, std::forward<Ts>(args)... ))
+    {
+        return f( x, std::forward<Ts>(args)... );
+    }
+    
+    template <typename ...Ts> auto operator()( Ts&&...args ) const
+    -> decltype(f( x, std::forward<Ts>(args)... ))
+    {
+        return f( x, std::forward<Ts>(args)... );
+    }
+};
+
+template <typename T, typename F>
+capture_impl<T,F> capture( T && x, F && f )
+{
+    return capture_impl<T,F>(
+                             std::forward<T>(x), std::forward<F>(f) );
+}*/
+
+
 class ModbusMasterPort: public ModbusPort
 {
 public:
@@ -79,7 +113,8 @@ private:
     void HandleError(int errnum, const std::string& source);
     CommandStatus HandleWriteError(int errnum, const std::string& source);
     
-    void StateListener(opendnp3::ChannelState state);
+    ModbusReadGroup<opendnp3::Binary>* GetRange(uint16_t index);
+    
     modbus_t *mb;
     typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
     std::unique_ptr<Timer_t> pTCPRetryTimer;

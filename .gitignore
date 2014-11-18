@@ -1,7 +1,5 @@
-build/
-*.suo
-*.vcxproj.user
-include/
+/build
+/include
 /Release
 /Debug
 /Release-rpi
@@ -16,12 +14,14 @@ include/
 /ConnectorSimple.conf
 /opendatacon.conf
 /simple-opendatacon.conf
+/lib
 .directory
 WeatherStationBuild/*
 
-
+*.suo
+*.vcxproj.user
 *.opensdf
 *.sdf
-lib
 opendatacon.xcodeproj/xcuserdata
 opendatacon.xcodeproj/project.xcworkspace
+opendatacon.build

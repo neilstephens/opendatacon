@@ -35,7 +35,7 @@ set (opendatacon_VERSION_MINOR 3)
 # so that we will find TutorialConfig.h
 include_directories("${PROJECT_BINARY_DIR}")
 
-# Initialize CXXFLAGS.
+# Initialize CXXFLAGS
 set(CMAKE_CXX_FLAGS "-Wall -std=c++11")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 
