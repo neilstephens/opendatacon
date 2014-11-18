@@ -177,18 +177,19 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(bool connected, uint1
 	}
 
 	//connected == true means something upstream has connected
-	if(connected)
+	if (connected)
 	{
-		//Send out assign class commands on connect
-		if(!stack_enabled)
-		{
-			//enable the stack
-			pMaster->Enable();
-			stack_enabled = true;
-		}
+		pIOS->post([&]() {
+			if (!stack_enabled)
+			{
+				//enable the stack
+				pMaster->Enable();
+				stack_enabled = true;
+			}
 
-		//do an integrity scan
-		IntegrityScan.Demand();
+			//do an integrity scan
+			IntegrityScan.Demand();
+		});
 	}
 
 	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
