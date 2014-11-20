@@ -77,16 +77,6 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		conn.second->SetLogLevel(LOG_LEVEL);
 	}
 }
-DataConcentrator::~DataConcentrator()
-{
-	//turn everything off
-	this->Shutdown();
-	DNP3Mgr.Shutdown();
-	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
-	ios_working.reset();
-	//help finish any work
-	IOS.run();
-}
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
@@ -252,7 +242,14 @@ void DataConcentrator::Run()
 	console.AddCmd("lsconns",bound_func,"List connectors matching a regex (by name)");
 
 	console.run();
-	Shutdown();
+
+	//turn everything off
+	this->Shutdown();
+	DNP3Mgr.Shutdown();
+	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
+	ios_working.reset();
+	//help finish any work
+	IOS.run();
 }
 void DataConcentrator::RestartPortOrConn(std::stringstream& args)
 {
@@ -341,12 +338,12 @@ void DataConcentrator::ListConns(std::stringstream& args)
 }
 void DataConcentrator::Shutdown()
 {
-	for(auto& Name_n_Port : DataPorts)
-	{
-		Name_n_Port.second->Disable();
-	}
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
+	}
+	for(auto& Name_n_Port : DataPorts)
+	{
+		Name_n_Port.second->Disable();
 	}
 }

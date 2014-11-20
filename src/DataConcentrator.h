@@ -62,7 +62,7 @@ class DataConcentrator: public ConfigParser
 {
 public:
 	DataConcentrator(std::string FileName);
-	~DataConcentrator();
+	//~DataConcentrator();
 
 	std::unordered_map<std::string, std::shared_ptr<DataPort>> DataPorts;
 	std::unordered_map<std::string, std::shared_ptr<DataConnector>> DataConnectors;
