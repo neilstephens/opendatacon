@@ -245,13 +245,13 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot["MaxCounterEvents"].isNull())
 		MaxCounterEvents = JSONRoot["MaxCounterEvents"].asUInt();
 
-	// Point Configuration
+	// Comms Point Configuration
 	if (JSONRoot["CommsPoint"].isNull() || JSONRoot["CommsPoint"]["Index"].isNull())
 		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
 	else
 	{
 		mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
-		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asBool();
+		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
 	}
 
 	if(!JSONRoot["Analogs"].isNull())

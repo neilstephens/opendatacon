@@ -31,14 +31,15 @@
 #include "DNP3PointConf.h"
 
 typedef enum server_type_t {ONDEMAND,PERSISTENT,MANUAL};
-typedef struct
+struct DNP3AddrConf
 {
-	std::string IP = "0.0.0.0";
-	uint16_t Port = 20000;
-	uint16_t OutstationAddr = 1;
-	uint16_t MasterAddr = 0;
-	server_type_t ServerType = server_type_t::ONDEMAND;
-}DNP3AddrConf;
+	std::string IP;
+	uint16_t Port;
+	uint16_t OutstationAddr;
+	uint16_t MasterAddr;
+	server_type_t ServerType;
+	DNP3AddrConf() :IP("0.0.0.0"), Port(20000), OutstationAddr(1), MasterAddr(0), ServerType(server_type_t::ONDEMAND){};
+};
 
 class DNP3PortConf: public DataPortConf
 {
