@@ -87,6 +87,7 @@ public:
 	uint32_t SolConfirmTimeoutms; /// Timeout for solicited confirms
 	uint32_t UnsolConfirmTimeoutms; /// Timeout for unsolicited confirms
 	bool WaitForCommandResponses; // when responding to a command, wait for downstream command responses, otherwise returns success
+	uint32_t DemandCheckPeriodms; /// Time between checking Transport layer Rx traffic - signifying Demand to connect
 
 	// Default Event Response Types
 	opendnp3::EventBinaryResponse EventBinaryResponse;

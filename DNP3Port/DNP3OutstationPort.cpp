@@ -83,7 +83,8 @@ void DNP3OutstationPort::PollStats()
 		}
 	}
 	lastRx = stats.numTransportRx;
-	pPollStatTimer->expires_from_now(std::chrono::milliseconds(200));
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	pPollStatTimer->expires_from_now(std::chrono::milliseconds(pConf->pPointConf->DemandCheckPeriodms));
 	pPollStatTimer->async_wait(std::bind(&DNP3OutstationPort::PollStats,this));
 }
 void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)

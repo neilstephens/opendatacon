@@ -68,6 +68,7 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		SolConfirmTimeoutms(5000),
 		UnsolConfirmTimeoutms(5000),
 		WaitForCommandResponses(false),
+		DemandCheckPeriodms(200),
 		// Default Event Response Types
 		EventBinaryResponse(opendnp3::EventBinaryResponse::Group2Var1),
 		EventAnalogResponse(opendnp3::EventAnalogResponse::Group32Var5),
@@ -228,6 +229,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolConfirmTimeoutms = JSONRoot["UnsolConfirmTimeoutms"].asUInt();
 	if (!JSONRoot["WaitForCommandResponses"].isNull())
 		UnsolConfirmTimeoutms = JSONRoot["WaitForCommandResponses"].asBool();
+	if (!JSONRoot["DemandCheckPeriodms"].isNull())
+		DemandCheckPeriodms = JSONRoot["DemandCheckPeriodms"].asUInt();
 
 	// Default Event Response Types
 	if (!JSONRoot["EventBinaryResponse"].isNull())
