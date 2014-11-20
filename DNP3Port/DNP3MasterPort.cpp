@@ -39,7 +39,7 @@ void DNP3MasterPort::Enable()
 		return;
 
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(!stack_enabled && pConf->mAddrConf.ServerType != server_type_t::ONDEMAND)
+	if(!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
 	{
 		pMaster->Enable();
 		stack_enabled = true;
@@ -54,8 +54,8 @@ void DNP3MasterPort::Disable()
 
 	if(stack_enabled)
 	{
-		pMaster->Disable();
 		stack_enabled = false;
+		pMaster->Disable();
 	}
 
 	enabled = false;
@@ -78,6 +78,10 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 			bool failed;
 			if (state == opendnp3::ChannelState::CLOSED || state == opendnp3::ChannelState::SHUTDOWN)
 			{
+				std::string msg = Name + ": Setting point quality to COMM_LOST";
+				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
+				pLoggers->Log(log_entry);
+
 				for (auto index : pConf->pPointConf->AnalogIndicies)
 					IOHandler_pair.second->Event(opendnp3::Analog(0.0, static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)), index, this->Name);
 				for (auto index : pConf->pPointConf->BinaryIndicies)
@@ -89,7 +93,13 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 
 			// Update the comms state point if configured
 			if (pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
+			{
+				std::string msg = Name + ": Updating comms state point";
+				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
+				pLoggers->Log(log_entry);
+
 				IOHandler_pair.second->Event(opendnp3::Binary(failed), pConf->pPointConf->mCommsPoint.second, this->Name);
+			}
 		}
 	}
 
@@ -110,9 +120,12 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 		// This represents a transition from connected to disconnected
 		if (state == opendnp3::ChannelState::WAITING && LastState == opendnp3::ChannelState::OPEN)
 		{
-			
 			if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT)
 			{
+				std::string msg = Name + ": disabling stack following disconnect on non-persistent port.";
+				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
+				pLoggers->Log(log_entry);
+
 				// For all but persistent connections, disable the master station and don't reconnect
 				pIOS->post([&]()
 				{
@@ -134,6 +147,7 @@ void DNP3MasterPort::OnStateChange(opendnp3::PollState state)
 {
 	if(assign_class_sent)
 		return;
+
 	if(state == opendnp3::PollState::SUCCESS)
 	{
 		// Mark that we've done an assign class
@@ -232,12 +246,26 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 		return cmd_future;
 	}
 
+	// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
+	if (stack_enabled && state == ConnectState::PORT_UP)
+	{
+		std::string msg = Name + ": upstream port enabled, performing integrity scan.";
+		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+
+		IntegrityScan.Demand();
+	}
+
 	// If an upstream port is connected, attempt a connection (if on demand)
-	if (state == ConnectState::CONNECTED)
+	if (!stack_enabled && state == ConnectState::CONNECTED)
 	{
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-		if (!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+		if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
+			std::string msg = Name + ": upstream port connected, performing on-demand connection.";
+			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+
 			pIOS->post([&]()
 			{
 				//enable the stack
@@ -247,12 +275,6 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 		}
 	}
 
-	// If an upstream port has ben enabled, do an integrity scan
-	if (state == ConnectState::PORT_UP)
-	{
-		IntegrityScan.Demand();
-	}
-
 	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
 	return cmd_future;
 }
@@ -260,7 +282,7 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 void DNP3MasterPort::SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_promise)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	//enable the stack
+	//TODO: why enable the stack here?
 	pMaster->Enable();
 	stack_enabled = true;
 
@@ -344,7 +366,15 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
 	auto cmd_future = cmd_promise.get_future();
 
+	// If the port is disabled, fail the command
 	if(!enabled)
+	{
+		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+		return cmd_future;
+	}
+
+	// If the stack is disabled, fail the command
+	if (!stack_enabled)
 	{
 		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
 		return cmd_future;

@@ -46,7 +46,7 @@ void DNP3OutstationPort::Enable()
 		return;
 	pOutstation->Enable();
 	enabled = true;
-	PollStats();
+	pIOS->post([this](){ PollStats(); });
 	for (auto IOHandler_pair : Subscribers)
 	{
 		IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
@@ -56,8 +56,8 @@ void DNP3OutstationPort::Disable()
 {
 	if(!enabled)
 		return;
-	pOutstation->Disable();
 	enabled = false;
+	pOutstation->Disable();
 }
 void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
 {
