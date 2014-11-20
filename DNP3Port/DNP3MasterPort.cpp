@@ -62,6 +62,13 @@ void DNP3MasterPort::Disable()
 }
 void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 {
+	// StateListener gets called even if this port is disabled (if the port's channel changes state)
+	if (!stack_enabled)
+	{
+		LastState = state;
+		return;
+	}
+
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if (state == opendnp3::ChannelState::CLOSED || state == opendnp3::ChannelState::SHUTDOWN || state == opendnp3::ChannelState::OPEN)
 	{
@@ -87,6 +94,7 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 	}
 
 	// Following a connection, do an integrity scan which will trigger an aissign class
+	//TODO: consider moving assign class to occur on stack enable, not comms up (in case channel is already up when stack is enabled causing this not to run)
 	if(state == opendnp3::ChannelState::OPEN)
 	{
 		if(pConf->pPointConf->DoAssignClassOnStartup)
@@ -121,6 +129,7 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 	}
 	LastState = state;
 }
+
 void DNP3MasterPort::OnStateChange(opendnp3::PollState state)
 {
 	if(assign_class_sent)
