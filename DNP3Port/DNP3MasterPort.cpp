@@ -63,38 +63,63 @@ void DNP3MasterPort::Disable()
 void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	for(auto IOHandler_pair : Subscribers)
+	if (state == opendnp3::ChannelState::CLOSED || state == opendnp3::ChannelState::SHUTDOWN || state == opendnp3::ChannelState::OPEN)
 	{
-		bool failed;
-		if(state == opendnp3::ChannelState::CLOSED || state == opendnp3::ChannelState::SHUTDOWN || state == opendnp3::ChannelState::WAITING)
+		for (auto IOHandler_pair : Subscribers)
 		{
-			for(auto index : pConf->pPointConf->AnalogIndicies)
-				IOHandler_pair.second->Event(opendnp3::Analog(0.0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),index,this->Name);
-			for(auto index : pConf->pPointConf->BinaryIndicies)
-				IOHandler_pair.second->Event(opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)),index,this->Name);
-			failed = pConf->pPointConf->mCommsPoint.first.value;
-			if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT)
+			// Update the quality of points
+			bool failed;
+			if (state == opendnp3::ChannelState::CLOSED || state == opendnp3::ChannelState::SHUTDOWN)
 			{
-				//disable the stack
-				pMaster->Disable();
-				stack_enabled = false;
+				for (auto index : pConf->pPointConf->AnalogIndicies)
+					IOHandler_pair.second->Event(opendnp3::Analog(0.0, static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)), index, this->Name);
+				for (auto index : pConf->pPointConf->BinaryIndicies)
+					IOHandler_pair.second->Event(opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)), index, this->Name);
+				failed = pConf->pPointConf->mCommsPoint.first.value;
 			}
-		}
-		else
-			failed = !pConf->pPointConf->mCommsPoint.first.value;
+			else
+				failed = !pConf->pPointConf->mCommsPoint.first.value;
 
-		if(pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
-			IOHandler_pair.second->Event(opendnp3::Binary(failed),pConf->pPointConf->mCommsPoint.second,this->Name);
+			// Update the comms state point if configured
+			if (pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
+				IOHandler_pair.second->Event(opendnp3::Binary(failed), pConf->pPointConf->mCommsPoint.second, this->Name);
+		}
 	}
+
+	// Following a connection, do an integrity scan which will trigger an aissign class
 	if(state == opendnp3::ChannelState::OPEN)
 	{
 		if(pConf->pPointConf->DoAssignClassOnStartup)
 		{
+			//TODO: Do we need integrity scan or can we queue an assign class from here and rely on the startup integrity to happen first?
 			assign_class_sent = false;
 			IntegrityScan.SetStateListener(*this);
 			IntegrityScan.Demand();
 		}
 	}
+	else
+	{
+		// This represents a transition from connected to disconnected
+		if (state == opendnp3::ChannelState::WAITING && LastState == opendnp3::ChannelState::OPEN)
+		{
+			
+			if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT)
+			{
+				// For all but persistent connections, disable the master station and don't reconnect
+				pIOS->post([&]()
+				{
+					stack_enabled = false;
+					pMaster->Disable();
+				});
+				// Notify subscribers that a disconnect event has occured
+				for (auto IOHandler_pair : Subscribers)
+				{
+					IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
+				}
+			}
+		}
+	}
+	LastState = state;
 }
 void DNP3MasterPort::OnStateChange(opendnp3::PollState state)
 {
@@ -102,6 +127,7 @@ void DNP3MasterPort::OnStateChange(opendnp3::PollState state)
 		return;
 	if(state == opendnp3::PollState::SUCCESS)
 	{
+		// Mark that we've done an assign class
 		assign_class_sent = true;
 		SendAssignClass(std::promise<opendnp3::CommandStatus>());
 	}
@@ -143,6 +169,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	pMaster = TCPChannels[IPPort]->AddMaster(Name.c_str(), *this, asiodnp3::DefaultMasterApplication::Instance(), StackConfig);
+	LastState = opendnp3::ChannelState::CLOSED;
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)
@@ -185,9 +212,8 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::Analo
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 
-std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(bool connected, uint16_t index, const std::string& SenderName)
+std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, uint16_t index, const std::string& SenderName)
 {
-
 	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
 	auto cmd_future = cmd_promise.get_future();
 
@@ -197,21 +223,25 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(bool connected, uint1
 		return cmd_future;
 	}
 
-	//connected == true means something upstream has connected
-	if (connected)
+	// If an upstream port is connected, attempt a connection (if on demand)
+	if (state == ConnectState::CONNECTED)
 	{
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-		pIOS->post([&]() {
-			if (!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+		if (!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+		{
+			pIOS->post([&]()
 			{
 				//enable the stack
 				pMaster->Enable();
 				stack_enabled = true;
-			}
+			});
+		}
+	}
 
-			//do an integrity scan
-			IntegrityScan.Demand();
-		});
+	// If an upstream port has ben enabled, do an integrity scan
+	if (state == ConnectState::PORT_UP)
+	{
+		IntegrityScan.Demand();
 	}
 
 	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);

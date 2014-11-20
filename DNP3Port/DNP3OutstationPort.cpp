@@ -37,12 +37,8 @@
 
 
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	DNP3Port(aName, aConfFilename, aConfOverrides),
-	lastRx(0),
-	pPollStatTimer(new Timer_t(*pIOS, std::chrono::milliseconds(200)))
-{
-	pPollStatTimer->async_wait(std::bind(&DNP3OutstationPort::PollStats,this));
-};
+	DNP3Port(aName, aConfFilename, aConfOverrides)
+{};
 
 void DNP3OutstationPort::Enable()
 {
@@ -163,6 +159,9 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
         std::cout << "Error creating outstation '" << Name << std::endl;
         return;
     }
+
+	lastRx = 0;
+	pPollStatTimer.reset(new Timer_t(*pIOS));
 
 	for(auto index : pConf->pPointConf->AnalogIndicies)
 	{
