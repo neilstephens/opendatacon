@@ -248,7 +248,7 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 	}
 
 	// If an upstream port has ben enabled, do an integrity scan
-	if (state == ConnectState::PORT_UP)
+	if (state == ConnectState::PORT_UP && stack_enabled)
 	{
 		IntegrityScan.Demand();
 	}

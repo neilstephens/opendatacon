@@ -56,8 +56,8 @@ void DNP3OutstationPort::Disable()
 {
 	if(!enabled)
 		return;
-	pOutstation->Disable();
 	enabled = false;
+	pOutstation->Disable();
 }
 void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
 {
