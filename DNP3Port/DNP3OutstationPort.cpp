@@ -50,6 +50,11 @@ void DNP3OutstationPort::Enable()
 		return;
 	pOutstation->Enable();
 	enabled = true;
+	PollStats();
+	for (auto IOHandler_pair : Subscribers)
+	{
+		IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
+	}
 }
 void DNP3OutstationPort::Disable()
 {
@@ -78,7 +83,7 @@ void DNP3OutstationPort::PollStats()
 	{
 		for(auto IOHandler_pair : Subscribers)
 		{
-			IOHandler_pair.second->Event(true, 0, this->Name);
+			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
 		}
 	}
 	lastRx = stats.numTransportRx;
@@ -250,5 +255,25 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, 
 	}
 	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
 	return cmd_promise.get_future();
+}
+
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(ConnectState state, uint16_t index, const std::string& SenderName)
+{
+	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
+	auto cmd_future = cmd_promise.get_future();
+
+	if (!enabled)
+	{
+		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+		return cmd_future;
+	}
+
+	if (state == ConnectState::DISCONNECTED)
+	{
+		//stub		
+	}
+
+	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
+	return cmd_future;
 }
 

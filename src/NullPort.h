@@ -45,9 +45,9 @@ public:
 		pTimer->async_wait(
 				[this](asio::error_code err_code)
 				{
-					for(auto IOHandler_pair : Subscribers)
+					for (auto IOHandler_pair : Subscribers)
 					{
-						IOHandler_pair.second->Event(true, 0, this->Name);
+						IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
 					}
 				});
 		return;
@@ -56,7 +56,7 @@ public:
 	{
 		for(auto IOHandler_pair : Subscribers)
 		{
-			IOHandler_pair.second->Event(false, 0, this->Name);
+			IOHandler_pair.second->Event(ConnectState::PORT_DOWN, 0, this->Name);
 		}
 	};
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL){};
@@ -135,7 +135,7 @@ public:
 		Promise.set_value(opendnp3::CommandStatus::SUCCESS);
 		return Promise.get_future();
 	};
-	virtual std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName)
+	virtual std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName)
 	{
 		auto Promise = std::promise<opendnp3::CommandStatus>();
 		Promise.set_value(opendnp3::CommandStatus::SUCCESS);

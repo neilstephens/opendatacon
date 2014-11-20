@@ -35,6 +35,7 @@
 #include "opendnp3/app/ControlRelayOutputBlock.h"
 #include "opendnp3/app/AnalogOutput.h"
 
+typedef enum ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 class IOHandler
 {
 public:
@@ -60,7 +61,7 @@ public:
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) =0;
 
 	//Connection events:
-	virtual std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName) =0;
+	virtual std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) = 0;
 
 	void Subscribe(IOHandler* pIOHandler, std::string aName);
 	void AddLogSubscriber(openpal::ILogHandler* logger);

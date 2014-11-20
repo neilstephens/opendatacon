@@ -59,6 +59,7 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
