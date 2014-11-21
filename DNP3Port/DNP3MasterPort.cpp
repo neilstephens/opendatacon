@@ -59,6 +59,8 @@ void DNP3MasterPort::Disable()
 		pMaster->Disable();
 	}
 }
+
+// Called by OpenDNP3 Thread Pool
 void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 {
 	// StateListener gets called even if this port is disabled (if the port's channel changes state)
@@ -214,6 +216,8 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	if(pConf->pPointConf->EventClass3ScanRatems > 0)
 		pMaster->AddClassScan(opendnp3::ClassField::CLASS_3, openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass3ScanRatems));
 }
+
+// Called by OpenDNP3 Thread Pool
 //implement ISOEHandler
 void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas){ LoadT(meas); };
 void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<DoubleBitBinary, uint16_t>>& meas){ LoadT(meas); };

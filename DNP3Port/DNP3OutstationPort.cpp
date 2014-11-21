@@ -57,8 +57,11 @@ void DNP3OutstationPort::Disable()
 	if(!enabled)
 		return;
 	enabled = false;
+
 	pOutstation->Disable();
 }
+
+// Called by OpenDNP3 Thread Pool
 void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
 {
 	if(!enabled)
@@ -70,11 +73,14 @@ void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
 		//IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
 	//}
 }
+
 void DNP3OutstationPort::PollStats()
 {
 	if(!enabled)
 		return;
+	
 	auto stats = pOutstation->GetStackStatistics();
+
 	if(stats.numTransportRx > lastRx)
 	{
 		for(auto IOHandler_pair : Subscribers)
@@ -87,6 +93,7 @@ void DNP3OutstationPort::PollStats()
 	pPollStatTimer->expires_from_now(std::chrono::milliseconds(pConf->pPointConf->DemandCheckPeriodms));
 	pPollStatTimer->async_wait(std::bind(&DNP3OutstationPort::PollStats,this));
 }
+
 void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -177,6 +184,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	}
 }
 
+// Called by OpenDNP3 Thread Pool
 template<typename T>
 inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {
@@ -194,6 +202,8 @@ inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint1
 	}
 	return opendnp3::CommandStatus::NOT_SUPPORTED;
 }
+
+// Called by OpenDNP3 Thread Pool
 template<typename T>
 inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 {
