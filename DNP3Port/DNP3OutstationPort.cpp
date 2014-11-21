@@ -46,11 +46,13 @@ void DNP3OutstationPort::Enable()
 		return;
 	pOutstation->Enable();
 	enabled = true;
-	pIOS->post([this](){ PollStats(); });
+
 	for (auto IOHandler_pair : Subscribers)
 	{
 		IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
 	}
+
+	pIOS->post([this](){ PollStats(); });
 }
 void DNP3OutstationPort::Disable()
 {
