@@ -44,15 +44,15 @@
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
 	DNP3Mgr(std::thread::hardware_concurrency()),
+	IOS(std::thread::hardware_concurrency()),
+	ios_working(new asio::io_service::work(IOS)),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
 	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
 	FileLog("datacon_log"),
-	AdvFileLog(FileLog,LOG_LEVEL),
-	IOS(std::thread::hardware_concurrency()),
-	ios_working(new asio::io_service::work(IOS))
+	AdvFileLog(FileLog,LOG_LEVEL)
 {
 	//fire up some worker threads
-	for(size_t i=0; i < std::thread::hardware_concurrency(); ++i)
+	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
 
 	AdvConsoleLog.AddIngoreAlways(".*"); //silence all console messages by default
