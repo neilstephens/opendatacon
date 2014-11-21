@@ -55,8 +55,53 @@ void DNP3MasterPort::Disable()
 
 	if(stack_enabled)
 	{
+		PortDown();
+
 		stack_enabled = false;
 		pMaster->Disable();
+	}
+}
+
+void DNP3MasterPort::PortUp()
+{
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+	for (auto IOHandler_pair : Subscribers)
+	{
+		// Update the comms state point if configured
+		std::string msg = Name + ": Updating comms state point to good";
+		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+
+		IOHandler_pair.second->Event(opendnp3::Binary(!pConf->pPointConf->mCommsPoint.first.value), pConf->pPointConf->mCommsPoint.second, this->Name);
+	}
+}
+
+void DNP3MasterPort::PortDown()
+{
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+	for (auto IOHandler_pair : Subscribers)
+	{
+		{
+			std::string msg = Name + ": Setting point quality to COMM_LOST";
+			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+		}
+
+		for (auto index : pConf->pPointConf->BinaryIndicies)
+			IOHandler_pair.second->Event(opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)), index, this->Name);
+		for (auto index : pConf->pPointConf->AnalogIndicies)
+			IOHandler_pair.second->Event(opendnp3::Analog(0.0, static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)), index, this->Name);
+
+		// Update the comms state point if configured
+		{
+			std::string msg = Name + ": Updating comms state point to bad";
+			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+		}
+
+		IOHandler_pair.second->Event(opendnp3::Binary(pConf->pPointConf->mCommsPoint.first.value), pConf->pPointConf->mCommsPoint.second, this->Name);
 	}
 }
 
@@ -75,42 +120,13 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 	// If we've exited the connected state, mark points as bad quality
 	if (LastState == opendnp3::ChannelState::OPEN)
 	{
-		for (auto IOHandler_pair : Subscribers)
-		{
-			{
-				std::string msg = Name + ": Setting point quality to COMM_LOST";
-				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-				pLoggers->Log(log_entry);
-			}
-
-			for (auto index : pConf->pPointConf->BinaryIndicies)
-				IOHandler_pair.second->Event(opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)), index, this->Name);
-			for (auto index : pConf->pPointConf->AnalogIndicies)
-				IOHandler_pair.second->Event(opendnp3::Analog(0.0, static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)), index, this->Name);
-
-			// Update the comms state point if configured
-			{
-				std::string msg = Name + ": Updating comms state point to bad";
-				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-				pLoggers->Log(log_entry);
-			}
-
-			IOHandler_pair.second->Event(opendnp3::Binary(pConf->pPointConf->mCommsPoint.first.value), pConf->pPointConf->mCommsPoint.second, this->Name);
-		}
+		PortDown();
 	}
 
 	// Update the comms state point if configured
 	if (state == opendnp3::ChannelState::OPEN)
 	{
-		for (auto IOHandler_pair : Subscribers)
-		{
-			// Update the comms state point if configured
-			std::string msg = Name + ": Updating comms state point to good";
-			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-
-			IOHandler_pair.second->Event(opendnp3::Binary(!pConf->pPointConf->mCommsPoint.first.value), pConf->pPointConf->mCommsPoint.second, this->Name);
-		}
+		PortUp();
 	}
 
 	// Following a connection, do an integrity scan which will trigger an aissign class
