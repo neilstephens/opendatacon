@@ -57,7 +57,6 @@ void ConfigParser::ProcessFile()
 
 Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 {
-	Json::Value JSONRoot;
 	std::string Err;
 	if(!(JSONCache.count(FileName))) //not cached - read it in
 	{
@@ -68,14 +67,13 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 			return nullptr;
 		}
 		Json::Reader JSONReader;
-		bool parse_success = JSONReader.parse(fin,JSONRoot);
+		bool parse_success = JSONReader.parse(fin, JSONCache[FileName]);
 		if (!parse_success)
 		{
 			std::cout  << "Failed to parse configuration from '"<<FileName<<"'\n"
 					<< JSONReader.getFormattedErrorMessages()<<std::endl;
 			return nullptr;
 		}
-		JSONCache[FileName] = JSONRoot;
 	}
 	return &JSONCache[FileName];
 }
