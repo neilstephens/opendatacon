@@ -24,6 +24,7 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 #include "DNP3Port.h"
+#include <iostream>
 
 std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::TCPChannels;
 
@@ -51,6 +52,18 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 
 	if(!JSONRoot["MasterAddr"].isNull())
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.MasterAddr = JSONRoot["MasterAddr"].asUInt();
+
+	if(!JSONRoot["ServerType"].isNull())
+	{
+		if(JSONRoot["ServerType"].asString() == "ONDEMAND")
+			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::ONDEMAND;
+		else if(JSONRoot["ServerType"].asString() == "PERSISTENT")
+			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::PERSISTENT;
+		else if(JSONRoot["ServerType"].asString() == "MANUAL")
+			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::MANUAL;
+		else
+			std::cout<<"Invalid DNP3 Port server type: '"<<JSONRoot["ServerType"].asString()<<"'."<<std::endl;
+	}
 
 };
 

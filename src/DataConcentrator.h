@@ -62,19 +62,22 @@ class DataConcentrator: public ConfigParser
 {
 public:
 	DataConcentrator(std::string FileName);
-	~DataConcentrator();
+	//~DataConcentrator();
 
-	std::unordered_map<std::string, std::shared_ptr<DataPort>> DataPorts;
-	std::unordered_map<std::string, std::shared_ptr<DataConnector>> DataConnectors;
 
 	asiodnp3::DNP3Manager DNP3Mgr;
+	asio::io_service IOS;
+
+	std::unique_ptr<asio::io_service::work> ios_working;
+
 	openpal::LogFilters LOG_LEVEL;
 	AdvancedLogger AdvConsoleLog;//just prints messages to the console plus filtering (Adv)
 	LogToFile FileLog;//Prints all messages to a rolling set of log files.
 	AdvancedLogger AdvFileLog;
 	asiopal::LogFanoutHandler FanoutHandler;
-	asio::io_service IOS;
-	std::unique_ptr<asio::io_service::work> ios_working;
+
+	std::unordered_map<std::string, std::shared_ptr<DataPort>> DataPorts;
+	std::unordered_map<std::string, std::shared_ptr<DataConnector>> DataConnectors;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void BuildOrRebuild();

@@ -44,15 +44,15 @@
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
 	DNP3Mgr(std::thread::hardware_concurrency()),
+	IOS(std::thread::hardware_concurrency()),
+	ios_working(new asio::io_service::work(IOS)),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
 	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
 	FileLog("datacon_log"),
-	AdvFileLog(FileLog,LOG_LEVEL),
-	IOS(std::thread::hardware_concurrency()),
-	ios_working(new asio::io_service::work(IOS))
+	AdvFileLog(FileLog,LOG_LEVEL)
 {
 	//fire up some worker threads
-	for(size_t i=0; i < std::thread::hardware_concurrency(); ++i)
+	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
 
 	AdvConsoleLog.AddIngoreAlways(".*"); //silence all console messages by default
@@ -76,16 +76,6 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		conn.second->SetIOS(&IOS);
 		conn.second->SetLogLevel(LOG_LEVEL);
 	}
-}
-DataConcentrator::~DataConcentrator()
-{
-	//turn everything off
-	this->Shutdown();
-	DNP3Mgr.Shutdown();
-	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
-	ios_working.reset();
-	//help finish any work
-	IOS.run();
 }
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
@@ -218,7 +208,7 @@ void DataConcentrator::Run()
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
-	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.4"<<std::endl;};
+	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.5"<<std::endl;};
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control
@@ -252,7 +242,14 @@ void DataConcentrator::Run()
 	console.AddCmd("lsconns",bound_func,"List connectors matching a regex (by name)");
 
 	console.run();
-	Shutdown();
+
+	//turn everything off
+	this->Shutdown();
+	DNP3Mgr.Shutdown();
+	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
+	ios_working.reset();
+	//help finish any work
+	IOS.run();
 }
 void DataConcentrator::RestartPortOrConn(std::stringstream& args)
 {
@@ -341,12 +338,12 @@ void DataConcentrator::ListConns(std::stringstream& args)
 }
 void DataConcentrator::Shutdown()
 {
-	for(auto& Name_n_Port : DataPorts)
-	{
-		Name_n_Port.second->Disable();
-	}
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
+	}
+	for(auto& Name_n_Port : DataPorts)
+	{
+		Name_n_Port.second->Disable();
 	}
 }

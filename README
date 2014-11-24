@@ -1,17 +1,26 @@
-opendatacon version 0.2.4
+opendatacon version 0.2.5
 
-Release notes (delta from 0.2.3):
+0.2.5 Release notes
+	- Added server type for DNP3 master port for "on demand" masters
+	- Added polling timer (with DemandCheckPeriodms) on DNP3 outstation to generate connect event for downstream ports
+	- Fix to comms point index
+	- Mark points as bad quality and update comms point when enabling/disabling port
+
+0.2.4 Release notes:
 	- Exposed all OpenDNP3 configuration parameters in DNP3Port
 	- Added "WaitForCommandResponses" flag so that command responses can return a status immediately
 	- MasterPort is enabled asynchronously in response to upstream connection event
 
-Release notes (delta from 0.2.2):
+0.2.3 Release notes:
 	- Added DNP3 Control Code Override functionality
 	- Added threshold transform
 	- Fixed issue in transform code when events are blocked
 
-Release notes (delta from 0.2):
+0.2.2 Release notes:
 	- Fixed building under Windows
 
-Release notes (delta from 0.1):
+0.2.0 Release notes:
 	- Assign class on startup
+
+0.1.0 Release notes:
+	- Initial release
