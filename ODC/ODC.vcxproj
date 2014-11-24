@@ -117,7 +117,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -140,7 +140,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -167,7 +167,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -194,7 +194,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
