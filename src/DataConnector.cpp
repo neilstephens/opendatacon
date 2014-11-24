@@ -113,7 +113,7 @@ std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::Analog
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
-std::future<opendnp3::CommandStatus> DataConnector::Event(bool connected, uint16_t index, const std::string& SenderName){ return EventT(connected, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName){ return EventT(state, index, SenderName); }
 
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event_obj, uint16_t index, const std::string& SenderName)

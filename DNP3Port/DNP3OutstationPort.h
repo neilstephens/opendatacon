@@ -59,6 +59,7 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
@@ -68,6 +69,10 @@ public:
 
 private:
 	void StateListener(opendnp3::ChannelState state);
+	void PollStats();
+	uint32_t lastRx;
+	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+	std::unique_ptr<Timer_t> pPollStatTimer;
 };
 
 #endif /* DNP3SERVERPORT_H_ */

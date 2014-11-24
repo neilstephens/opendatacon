@@ -46,24 +46,62 @@ void DNP3OutstationPort::Enable()
 		return;
 	pOutstation->Enable();
 	enabled = true;
+
+	for (auto IOHandler_pair : Subscribers)
+	{
+		IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
+	}
+
+	pIOS->post([this](){ PollStats(); });
 }
 void DNP3OutstationPort::Disable()
 {
 	if(!enabled)
 		return;
-	pOutstation->Disable();
 	enabled = false;
+
+	pOutstation->Disable();
 }
+
+// Called by OpenDNP3 Thread Pool
 void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
 {
 	if(!enabled)
 		return;
 
-	for(auto IOHandler_pair : Subscribers)
-	{
-		IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
-	}
+	//This has been replaced by a stack statistics poller - so connect events are sent on application layer connection instead of comms layer
+	//for(auto IOHandler_pair : Subscribers)
+	//{
+		//IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
+	//}
 }
+
+void DNP3OutstationPort::PollStats()
+{
+	if(!enabled)
+		return;
+	
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto period = pConf->pPointConf->DemandCheckPeriodms;
+
+	// Don't perform demand checks if period == 0
+	if (period == 0) return;
+
+	auto stats = pOutstation->GetStackStatistics();
+
+	if(stats.numTransportRx > lastRx)
+	{
+		for(auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+		}
+	}
+	lastRx = stats.numTransportRx;
+
+	pPollStatTimer->expires_from_now(std::chrono::milliseconds(period));
+	pPollStatTimer->async_wait(std::bind(&DNP3OutstationPort::PollStats,this));
+}
+
 void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -138,6 +176,9 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
         return;
     }
 
+	lastRx = 0;
+	pPollStatTimer.reset(new Timer_t(*pIOS));
+
 	for(auto index : pConf->pPointConf->AnalogIndicies)
 	{
 		auto pos = AnaIndexes.operator opendnp3::PointIndexes().GetPosition(index);
@@ -151,6 +192,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	}
 }
 
+// Called by OpenDNP3 Thread Pool
 template<typename T>
 inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {
@@ -168,6 +210,8 @@ inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint1
 	}
 	return opendnp3::CommandStatus::NOT_SUPPORTED;
 }
+
+// Called by OpenDNP3 Thread Pool
 template<typename T>
 inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 {
@@ -229,5 +273,25 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, 
 	}
 	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
 	return cmd_promise.get_future();
+}
+
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(ConnectState state, uint16_t index, const std::string& SenderName)
+{
+	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
+	auto cmd_future = cmd_promise.get_future();
+
+	if (!enabled)
+	{
+		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+		return cmd_future;
+	}
+
+	if (state == ConnectState::DISCONNECTED)
+	{
+		//stub		
+	}
+
+	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
+	return cmd_future;
 }
 

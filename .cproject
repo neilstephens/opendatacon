@@ -412,6 +412,7 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.70355686" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.other.other.579314132" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11 -pthread" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1262714107" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/asio/include&quot;"/>
@@ -432,7 +433,7 @@
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.444146635" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.debugging.gprof.968699327" name="Generate gprof information (-pg)" superClass="gnu.c.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
 								<option id="gnu.c.compiler.option.include.paths.1400680932" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSONPort}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.714503131" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -451,6 +452,7 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="JSON"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1647938177" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC/Perf}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC/${config_name:opendatacon}}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON/${config_name:opendatacon}}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/.libs}&quot;"/>
@@ -464,7 +466,9 @@
 								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.output.1126672948" outputPrefix="" superClass="cdt.managedbuild.tool.gnu.cpp.linker.output"/>
 							</tool>
 							<tool command="as" id="cdt.managedbuild.tool.gnu.assembler.exe.release.2022490717" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
-								<option id="gnu.both.asm.option.include.paths.1614862480" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths"/>
+								<option id="gnu.both.asm.option.include.paths.1614862480" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ODC}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1742086381" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -475,11 +479,11 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="ODC;cdt.managedbuild.config.gnu.so.release.2015955356" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="ODC;cdt.managedbuild.config.gnu.so.release.2015955356.893120307" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/JSONPort"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/JSONPort/Release"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="JSONPort" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/ODC"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/ODC/Perf"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="ODC" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 			</storageModule>

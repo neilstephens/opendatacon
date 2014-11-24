@@ -6,10 +6,10 @@ use warnings;
 
 my $config_header =
 '{
-	"LogName" :	"Data Concentrator",
-	"LogFileSizekB"	:4096,
-	"NumLogFiles":	5,
-	"LOG_LEVEL":	"Info",
+	"LogName" :	"ODC_Log",
+	"LogFileSizekB"	: 50000,
+	"NumLogFiles":	1,
+	"LOG_LEVEL":	"NORMAL",
 	
 	"Ports" :
 	[
@@ -19,32 +19,16 @@ my $port_template =
 '		{
 			"Name" : "InPort_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Master",
-			"ConfFilename" : "DMCDNP3.conf",
-			"ConfOverrides" : { "IP" : "127.0.0.1", "Port" : 30000, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
+			"Library" : "DNP3Port",
+			"ConfFilename" : "DMCDNP3_Master.conf",
+			"ConfOverrides" : { "IP" : "127.0.0.1", "Port" : <INPORT>, "MasterAddr" : 0, "OutstationAddr" : 1}
 		},
 		{
-			"Name" : "OutPort_AP_<OUTSTATION_ADDR>",
+			"Name" : "OutPort_<OUTSTATION_ADDR>",
 			"Type" : "DNP3Outstation",
-			"ConfFilename" : "DMCDNP3Outstation.conf",
-			"ConfOverrides" : { "IP" : "0.0.0.0", "Port" : 20000, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
-		},
-		{
-			"Name" : "OutPort_AS_<OUTSTATION_ADDR>",
-			"Type" : "DNP3Outstation",
-			"ConfFilename" : "DMCDNP3Outstation.conf",
-			"ConfOverrides" : { "IP" : "0.0.0.0", "Port" : 20001, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
-		},
-		{
-			"Name" : "OutPort_BP_<OUTSTATION_ADDR>",
-			"Type" : "DNP3Outstation",
-			"ConfFilename" : "DMCDNP3Outstation.conf",
-			"ConfOverrides" : { "IP" : "0.0.0.0", "Port" : 20002, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
-		},
-		{
-			"Name" : "OutPort_BS_<OUTSTATION_ADDR>",
-			"Type" : "DNP3Outstation",
-			"ConfFilename" : "DMCDNP3Outstation.conf",
-			"ConfOverrides" : { "IP" : "0.0.0.0", "Port" : 20003, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
+			"Library" : "DNP3Port",
+			"ConfFilename" : "DMCDNP3_Outstation.conf",
+			"ConfOverrides" : { "IP" : "0.0.0.0", "Port" : <PORT>, "MasterAddr" : 0, "OutstationAddr" : <OUTSTATION_ADDR>}
 		}
 ';
 		
@@ -56,24 +40,9 @@ my $connector_header =
 
 my $connection_template =
 '		{
-			"Name" : "Connection_<OUTSTATION_ADDR>a",
+			"Name" : "Connection_<OUTSTATION_ADDR>",
 			"Port1" : "InPort_<OUTSTATION_ADDR>",
-			"Port2" : "OutPort_AP_<OUTSTATION_ADDR>"
-		},
-		{
-			"Name" : "Connection_<OUTSTATION_ADDR>b",
-			"Port1" : "InPort_<OUTSTATION_ADDR>",
-			"Port2" : "OutPort_AS_<OUTSTATION_ADDR>"
-		},
-		{
-			"Name" : "Connection_<OUTSTATION_ADDR>c",
-			"Port1" : "InPort_<OUTSTATION_ADDR>",
-			"Port2" : "OutPort_BP_<OUTSTATION_ADDR>"
-		},
-		{
-			"Name" : "Connection_<OUTSTATION_ADDR>d",
-			"Port1" : "InPort_<OUTSTATION_ADDR>",
-			"Port2" : "OutPort_BS_<OUTSTATION_ADDR>"
+			"Port2" : "OutPort_<OUTSTATION_ADDR>"
 		}
 ';
 
@@ -102,14 +71,39 @@ open conn_conf, ">DMCConnector.conf";
 print main_conf $config_header;
 print conn_conf $connector_header;
 
-foreach my $i (1 .. 1000)
+my $in_port = 30001;
+foreach my $i (1 .. 8000)
 {
+	my $listen_port;
+	
+	if(($i-1)%8 < 3)
+	{
+		$listen_port = (((int(($i-1)/8)*3)+(($i-1)%8))%100)+20001;
+	}
+	elsif(($i-1)%8 < 6)
+	{
+		$listen_port = (((int(($i-1)/8)*3)+((($i-1)%8)-3))%100)+20101;
+	}
+	elsif(($i-1)%8 == 6)
+	{
+		$listen_port = (int(($i-1)/8)%100)+20201;
+	}
+	elsif(($i-1)%8 == 7)
+	{
+		$listen_port = (int(($i-1)/8)%100)+20301;
+	}
+	
 	my $ports = $port_template;
 	$ports =~ s/<OUTSTATION_ADDR>/$i/gs;
+	$ports =~ s/<PORT>/$listen_port/gs;
+	$ports =~ s/<INPORT>/$in_port/gs;
+	
+	$in_port++;
+	
 	my $connections = $connection_template;
 	$connections =~ s/<OUTSTATION_ADDR>/$i/gs;
 	
-	if($i != 1000)
+	if($i != 8000)
 	{
 		$ports = $ports.",";
 		$connections = $connections.",";

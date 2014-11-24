@@ -43,7 +43,8 @@ public:
 	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
 		DNP3Port(aName, aConfFilename, aConfOverrides),
 		stack_enabled(false),
-		assign_class_sent(false)
+		assign_class_sent(false),
+		LastState(opendnp3::ChannelState::CLOSED)
 	{};
 
 	void Enable();
@@ -67,7 +68,7 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
 protected:
@@ -81,11 +82,14 @@ private:
 	asiodnp3::IMaster* pMaster;
 	bool stack_enabled;
 	bool assign_class_sent;
+	opendnp3::ChannelState LastState;
 	opendnp3::MasterScan IntegrityScan;
 	void SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_promise);
 	void StateListener(opendnp3::ChannelState state);
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){};
+	void DNP3MasterPort::PortUp();
+	void DNP3MasterPort::PortDown();
 	inline void DoOverrideControlCode(opendnp3::ControlRelayOutputBlock& arCommand)
 	{
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());

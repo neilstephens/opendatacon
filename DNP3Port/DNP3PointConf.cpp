@@ -68,6 +68,7 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		SolConfirmTimeoutms(5000),
 		UnsolConfirmTimeoutms(5000),
 		WaitForCommandResponses(false),
+		DemandCheckPeriodms(2000),
 		// Default Event Response Types
 		EventBinaryResponse(opendnp3::EventBinaryResponse::Group2Var1),
 		EventAnalogResponse(opendnp3::EventAnalogResponse::Group32Var5),
@@ -227,7 +228,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot["UnsolConfirmTimeoutms"].isNull())
 		UnsolConfirmTimeoutms = JSONRoot["UnsolConfirmTimeoutms"].asUInt();
 	if (!JSONRoot["WaitForCommandResponses"].isNull())
-		UnsolConfirmTimeoutms = JSONRoot["WaitForCommandResponses"].asBool();
+		WaitForCommandResponses = JSONRoot["WaitForCommandResponses"].asBool();
+	if (!JSONRoot["DemandCheckPeriodms"].isNull())
+		DemandCheckPeriodms = JSONRoot["DemandCheckPeriodms"].asUInt();
 
 	// Default Event Response Types
 	if (!JSONRoot["EventBinaryResponse"].isNull())
@@ -245,13 +248,13 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot["MaxCounterEvents"].isNull())
 		MaxCounterEvents = JSONRoot["MaxCounterEvents"].asUInt();
 
-	// Point Configuration
+	// Comms Point Configuration
 	if (JSONRoot["CommsPoint"].isNull() || JSONRoot["CommsPoint"]["Index"].isNull())
 		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
 	else
 	{
 		mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
-		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asBool();
+		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
 	}
 
 	if(!JSONRoot["Analogs"].isNull())
