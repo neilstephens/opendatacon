@@ -38,6 +38,9 @@ void DNP3MasterPort::Enable()
 	if(enabled)
 		return;
 
+	enabled = true;
+	PortDown();
+
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
 	{
@@ -45,7 +48,6 @@ void DNP3MasterPort::Enable()
 		stack_enabled = true;
 	}
 
-	enabled = true;
 }
 void DNP3MasterPort::Disable()
 {
