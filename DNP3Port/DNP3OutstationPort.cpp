@@ -81,6 +81,12 @@ void DNP3OutstationPort::PollStats()
 	if(!enabled)
 		return;
 	
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto period = pConf->pPointConf->DemandCheckPeriodms;
+
+	// Don't perform demand checks if period == 0
+	if (period == 0) return;
+
 	auto stats = pOutstation->GetStackStatistics();
 
 	if(stats.numTransportRx > lastRx)
@@ -91,8 +97,8 @@ void DNP3OutstationPort::PollStats()
 		}
 	}
 	lastRx = stats.numTransportRx;
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	pPollStatTimer->expires_from_now(std::chrono::milliseconds(pConf->pPointConf->DemandCheckPeriodms));
+
+	pPollStatTimer->expires_from_now(std::chrono::milliseconds(period));
 	pPollStatTimer->async_wait(std::bind(&DNP3OutstationPort::PollStats,this));
 }
 
