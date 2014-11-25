@@ -137,6 +137,14 @@ public:
 		return Promise.get_future();
 	};
 
+	virtual std::future<opendnp3::CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureNotSupported(); }
+	virtual std::future<opendnp3::CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureNotSupported(); }
+	virtual std::future<opendnp3::CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureNotSupported(); }
+	virtual std::future<opendnp3::CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureNotSupported(); }
+	virtual std::future<opendnp3::CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureNotSupported(); }
+	virtual std::future<opendnp3::CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureNotSupported(); }
+	virtual std::future<opendnp3::CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureNotSupported(); }
+
 
 	std::unique_ptr<asio::basic_stream_socket<asio::ip::tcp>> pSock;
 

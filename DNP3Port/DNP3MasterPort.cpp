@@ -92,9 +92,9 @@ void DNP3MasterPort::PortDown()
 		}
 
 		for (auto index : pConf->pPointConf->BinaryIndicies)
-			IOHandler_pair.second->Event(opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)), index, this->Name);
+			IOHandler_pair.second->Event(opendnp3::BinaryQuality::COMM_LOST, index, this->Name);
 		for (auto index : pConf->pPointConf->AnalogIndicies)
-			IOHandler_pair.second->Event(opendnp3::Analog(0.0, static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)), index, this->Name);
+			IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST, index, this->Name);
 
 		// Update the comms state point if configured
 		{

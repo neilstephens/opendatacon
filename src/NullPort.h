@@ -30,31 +30,31 @@
 #include <opendatacon/DataPort.h>
 
 /* The equivalent of /dev/null as a DataPort */
-class NullPort: public DataPort
+class NullPort : public DataPort
 {
 private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	std::unique_ptr<Timer_t> pTimer;
 public:
-	NullPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	NullPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
 		DataPort(aName, aConfFilename, aConfOverrides)
 	{};
 	void Enable()
 	{
 		pTimer.reset(new Timer_t(*pIOS, std::chrono::seconds(3)));
 		pTimer->async_wait(
-				[this](asio::error_code err_code)
-				{
-					for (auto IOHandler_pair : Subscribers)
-					{
-						IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
-					}
-				});
+			[this](asio::error_code err_code)
+		{
+			for (auto IOHandler_pair : Subscribers)
+			{
+				IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
+			}
+		});
 		return;
 	};
 	void Disable()
 	{
-		for(auto IOHandler_pair : Subscribers)
+		for (auto IOHandler_pair : Subscribers)
 		{
 			IOHandler_pair.second->Event(ConnectState::PORT_DOWN, 0, this->Name);
 		}
@@ -135,6 +135,15 @@ public:
 		Promise.set_value(opendnp3::CommandStatus::SUCCESS);
 		return Promise.get_future();
 	};
+
+	std::future<opendnp3::CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureSuccess(); };
+	std::future<opendnp3::CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureSuccess(); };
+	std::future<opendnp3::CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureSuccess(); };
+	std::future<opendnp3::CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureSuccess(); };
+	std::future<opendnp3::CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureSuccess(); };
+	std::future<opendnp3::CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureSuccess(); };
+	std::future<opendnp3::CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return CommandFutureSuccess(); };
+
 	virtual std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName)
 	{
 		auto Promise = std::promise<opendnp3::CommandStatus>();

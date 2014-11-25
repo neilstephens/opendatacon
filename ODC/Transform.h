@@ -49,7 +49,16 @@ public:
 	virtual bool Event(opendnp3::AnalogOutputInt32& arCommand, uint16_t index){return true;};
 	virtual bool Event(opendnp3::AnalogOutputFloat32& arCommand, uint16_t index){return true;};
 	virtual bool Event(opendnp3::AnalogOutputDouble64& arCommand, uint16_t index){return true;};
-	virtual bool Event(bool connection, uint16_t index){return true;};
+
+	virtual bool Event(BinaryQuality qual, uint16_t index) { return true; };
+	virtual bool Event(DoubleBitBinaryQuality qual, uint16_t index) { return true; };
+	virtual bool Event(AnalogQuality qual, uint16_t index) { return true; };
+	virtual bool Event(CounterQuality qual, uint16_t index) { return true; };
+	virtual bool Event(FrozenCounterQuality qual, uint16_t index) { return true; };
+	virtual bool Event(BinaryOutputStatusQuality qual, uint16_t index) { return true; };
+	virtual bool Event(AnalogOutputStatusQuality qual, uint16_t index) { return true; };
+
+	virtual bool Event(ConnectState state, uint16_t index){ return true; };
 
 	Json::Value params;
 };
