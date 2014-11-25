@@ -268,31 +268,23 @@ std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogOutpu
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
 {
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-
 	if(!enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_promise.get_future();
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	{//transaction scope
 		opendnp3::TimeTransaction tx(pOutstation->GetDatabase(), asiopal::UTCTimeSource::Instance().Now());
 		tx.Update(meas, index);
 	}
-	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
-	return cmd_promise.get_future();
+	return IOHandler::CommandFutureSuccess();
 }
 
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(ConnectState state, uint16_t index, const std::string& SenderName)
 {
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-	auto cmd_future = cmd_promise.get_future();
-
 	if (!enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_future;
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	if (state == ConnectState::DISCONNECTED)
@@ -300,7 +292,6 @@ std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(ConnectState stat
 		//stub		
 	}
 
-	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
-	return cmd_future;
+	return IOHandler::CommandFutureSuccess();
 }
 

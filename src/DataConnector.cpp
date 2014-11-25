@@ -117,9 +117,7 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 {
 	if(!enabled)
 	{
-		auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_promise.get_future();
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	auto bounds = SenderConnectionsLookup.equal_range(SenderName);
@@ -160,9 +158,7 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 				}
 				else
 				{
-					auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-					cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-					return cmd_promise.get_future();
+					return IOHandler::CommandFutureUndefined();
 				}
 			}
 		}
@@ -172,9 +168,7 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 	auto log_entry = openpal::LogEntry("DataConnector", openpal::logflags::WARN,"", msg.c_str(), -1);
 	pLoggers->Log(log_entry);
 
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-	return cmd_promise.get_future();
+	return IOHandler::CommandFutureUndefined();
 }
 
 void DataConnector::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
