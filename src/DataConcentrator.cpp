@@ -32,12 +32,13 @@
 
 #include <thread>
 #include <asio.hpp>
+#include <asiodnp3/ConsoleLogger.h>
 #include <opendnp3/LogLevels.h>
+
+#include <opendatacon/Version.h>
 
 #include "DataConcentrator.h"
 #include "Console.h"
-
-#include <asiodnp3/ConsoleLogger.h>
 #include "logging_cmds.h"
 #include "NullPort.h"
 
@@ -208,7 +209,7 @@ void DataConcentrator::Run()
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
-	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.6"<<std::endl;};
+	bound_func = [](std::stringstream& ss){std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;};
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control

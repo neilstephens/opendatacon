@@ -188,10 +188,12 @@
     </Link>
     <ProjectReference />
     <PostBuildEvent>
-      <Command>copy $(ProjectDir)*.h $(SolutionDir)\include\opendatacon</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy public headers</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
@@ -208,8 +210,10 @@
     <ClInclude Include="DataPort.h" />
     <ClInclude Include="DataPortConf.h" />
     <ClInclude Include="IOHandler.h" />
+    <ClInclude Include="Platform.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="util.h" />
+    <ClInclude Include="Version.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\JSON\json.vcxproj">

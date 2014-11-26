@@ -52,30 +52,48 @@
  */
 
 #include "DataConcentrator.h"
+#include <tclap/CmdLine.h>
+#include <opendatacon/Platform.h>
+#include <opendatacon/Version.h>
 
 int main(int argc, char* argv[])
 {
-    std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
-	try
-	{
+	std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
 
-		//default config file
-		std::string ConfFileName = "opendatacon.conf";
-		//override if there's one provided
-		if (argc>1)
-			ConfFileName = argv[1];
+	// Wrap everything in a try block.  Do this every time, 
+	// because exceptions will be thrown for problems.
+	try { 
+		TCLAP::CmdLine cmd("High performance asynchronous data concentrator", ' ', ODC_VERSION_STRING);
+		TCLAP::ValueArg<std::string> ConfigFileArg("c", "config", "Configuration file, specified as an absolute path or relative to the working directory.", false, "opendatacon.conf", "string");
+		cmd.add(ConfigFileArg);
+		TCLAP::ValueArg<std::string> PathArg("p", "path", "Working directory path, all configuration files and log files are relative to this path.", false, "", "string");
+		cmd.add(PathArg);
 
-        TheDataConcentrator.reset(new DataConcentrator(ConfFileName));
+		cmd.parse(argc, argv);
+
+		std::string ConfFileName = ConfigFileArg.getValue();
+
+		if (PathArg.isSet())
+		{
+			// Try to change working directory
+			std::string PathName = PathArg.getValue();
+			CHDIR(PathName.c_str());
+		}
+
+		TheDataConcentrator.reset(new DataConcentrator(ConfFileName));
 		TheDataConcentrator->BuildOrRebuild();
 		TheDataConcentrator->Run();
-
 	}
-	catch(std::exception& e)
+	catch (TCLAP::ArgException &e)  // catch any exceptions
 	{
-		std::cout<<"Caught exception: "<<e.what()<<std::endl;
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 1;
 	}
-
+	catch (std::exception& e)
+	{
+		std::cout << "Caught exception: " << e.what() << std::endl;
+		return 1;
+	}
 	return 0;
 }
 
