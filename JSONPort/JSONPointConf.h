@@ -42,9 +42,9 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot);
 
-	std::map<size_t, Json::Value> Binaries;
-	std::map<size_t, Json::Value> Analogs;
-	std::map<size_t, Json::Value> Controls;
+	std::map<uint16_t, Json::Value> Binaries;
+	std::map<uint16_t, Json::Value> Analogs;
+	std::map<uint16_t, Json::Value> Controls;
 };
 
 #endif /* JSONPOINTCONF_H_ */
