@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 		cmd.parse(argc, argv);
 
 		std::string ConfFileName = ConfigFileArg.getValue();
-
+		
 		if (PathArg.isSet())
 		{
 			// Try to change working directory
@@ -87,21 +87,24 @@ int main(int argc, char* argv[])
 			}
 		}
 
+		std::cout << "This is opendatacon version " << ODC_VERSION_STRING << std::endl;
+		std::cout << "Loading configuration... ";
 		TheDataConcentrator.reset(new DataConcentrator(ConfFileName));
+		std::cout << "done" << std::endl << "Initialising objects... ";
 		TheDataConcentrator->BuildOrRebuild();
+		std::cout << "done" << std::endl << "Starting up opendatacon..." << std::endl;
 		TheDataConcentrator->Run();
+		std::cout << "opendatacon version " << ODC_VERSION_STRING << " shutdown cleanly." << std::endl;
 	}
 	catch (TCLAP::ArgException &e)  // catch any exceptions
 	{
-		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+		std::cerr << "Command line error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 1;
 	}
 	catch (std::exception& e)
 	{
-		std::cout << "Caught exception: " << e.what() << std::endl;
+		std::cerr << "Caught exception: " << e.what() << std::endl;
 		return 1;
 	}
 	return 0;
 }
-
-

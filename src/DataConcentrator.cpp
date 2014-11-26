@@ -246,11 +246,14 @@ void DataConcentrator::Run()
 
 	//turn everything off
 	this->Shutdown();
+	std::cout << "Shutting down DNP3 manager... ";
 	DNP3Mgr.Shutdown();
 	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
+	std::cout << "done" << std::endl << "Finishing any remaining work... ";
 	ios_working.reset();
 	//help finish any work
 	IOS.run();
+	std::cout << "done" << std::endl;
 }
 void DataConcentrator::RestartPortOrConn(std::stringstream& args)
 {
@@ -339,12 +342,15 @@ void DataConcentrator::ListConns(std::stringstream& args)
 }
 void DataConcentrator::Shutdown()
 {
+	std::cout << "Disabling data connectors... ";
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
 	}
+	std::cout << "done" << std::endl << "Disabling data ports... ";
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->Disable();
 	}
+	std::cout << "done" << std::endl;
 }
