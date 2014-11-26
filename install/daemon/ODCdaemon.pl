@@ -9,7 +9,8 @@ use POSIX ":sys_wait_h"; #for handling dead children (waitpid flags)
 our $PIDFILE = '/var/run/ODCdaemon.pid';
 our $LOGFILE = '/var/log/ODCdaemon.log';
 our $ODCPATH = '/opt/ODC';
-our $ODCCONF = '/etc/opendatacon/opendatacon.conf';
+our $ODCWDIR = '/etc/opendatacon/';
+our $ODCCONF = 'opendatacon.conf';
 
 daemonize();
 
@@ -83,7 +84,7 @@ sub daemonize {
 sub launch_ODC
 {
 	#launch opendatacon
-	$ODCpid = open($ODC, "|-", "exec env LD_LIBRARY_PATH=$ODCPATH/libs/ $ODCPATH/opendatacon $ODCCONF > /dev/null") or die "ODCdaemon: can't launch opendatacon: $!";
+	$ODCpid = open($ODC, "|-", "exec env LD_LIBRARY_PATH=$ODCPATH/libs/ $ODCPATH/opendatacon -p $ODCWDIR -c $ODCCONF > /dev/null") or die "ODCdaemon: can't launch opendatacon: $!";
 }
 sub KeepAlive
 {
