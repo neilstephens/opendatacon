@@ -55,6 +55,7 @@
 #include <tclap/CmdLine.h>
 #include <opendatacon/Platform.h>
 #include <opendatacon/Version.h>
+#include <errno.h>
 
 int main(int argc, char* argv[])
 {
@@ -77,7 +78,13 @@ int main(int argc, char* argv[])
 		{
 			// Try to change working directory
 			std::string PathName = PathArg.getValue();
-			CHDIR(PathName.c_str());
+			if (CHDIR(PathName.c_str()))
+			{
+				const size_t strmax = 80;
+				char buf[strmax];
+				strerror_r(errno, buf, strmax);
+				throw std::exception(buf);
+			}
 		}
 
 		TheDataConcentrator.reset(new DataConcentrator(ConfFileName));

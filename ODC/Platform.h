@@ -56,3 +56,8 @@
 #endif
 
 #endif
+
+/// Implement strerror_r error to string equivalent for windows
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+	#define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
+#endif
