@@ -1,4 +1,7 @@
-opendatacon version 0.2.5
+opendatacon version 0.2.6
+
+0.2.6
+	- Preservation of point values when marking points bad quality due to downstream loss of comms
 
 0.2.5 Release notes
 	- Added server type for DNP3 master port for "on demand" masters

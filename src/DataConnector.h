@@ -46,6 +46,14 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
 
+	std::future<opendnp3::CommandStatus> Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName);
+
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);

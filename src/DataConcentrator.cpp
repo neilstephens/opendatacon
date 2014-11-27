@@ -32,12 +32,13 @@
 
 #include <thread>
 #include <asio.hpp>
+#include <asiodnp3/ConsoleLogger.h>
 #include <opendnp3/LogLevels.h>
+
+#include <opendatacon/Version.h>
 
 #include "DataConcentrator.h"
 #include "Console.h"
-
-#include <asiodnp3/ConsoleLogger.h>
 #include "logging_cmds.h"
 #include "NullPort.h"
 
@@ -208,7 +209,7 @@ void DataConcentrator::Run()
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
-	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.5"<<std::endl;};
+	bound_func = [](std::stringstream& ss){std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;};
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control
@@ -245,11 +246,14 @@ void DataConcentrator::Run()
 
 	//turn everything off
 	this->Shutdown();
+	std::cout << "Shutting down DNP3 manager... ";
 	DNP3Mgr.Shutdown();
 	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
+	std::cout << "done" << std::endl << "Finishing any remaining work... ";
 	ios_working.reset();
 	//help finish any work
 	IOS.run();
+	std::cout << "done" << std::endl;
 }
 void DataConcentrator::RestartPortOrConn(std::stringstream& args)
 {
@@ -338,12 +342,15 @@ void DataConcentrator::ListConns(std::stringstream& args)
 }
 void DataConcentrator::Shutdown()
 {
+	std::cout << "Disabling data connectors... ";
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
 	}
+	std::cout << "done" << std::endl << "Disabling data ports... ";
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->Disable();
 	}
+	std::cout << "done" << std::endl;
 }

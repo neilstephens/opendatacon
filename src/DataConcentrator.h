@@ -30,28 +30,14 @@
 #include <asio.hpp>
 #include <unordered_map>
 #include <asiodnp3/DNP3Manager.h>
+
+#include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/ConfigParser.h>
 
 #include "DataConnector.h"
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
-
-#ifdef WIN32 
-const std::string DYNLIBPRE = "";
-const std::string DYNLIBEXT = ".dll";
-#define DYNLIBLOAD(a) LoadLibraryExA(a, 0, DWORD(0))
-#define DYNLIBGETSYM(a,b) GetProcAddress(a, b)
-#else
-const std::string DYNLIBPRE = "lib";
-#ifdef __APPLE__
-const std::string DYNLIBEXT = ".dylib";
-#else
-const std::string DYNLIBEXT = ".so";
-#endif
-#define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
-#define DYNLIBGETSYM(a,b) dlsym(a, b)
-#endif
 
 inline std::string GetLibFileName(const std::string LibName)
 {
@@ -62,8 +48,6 @@ class DataConcentrator: public ConfigParser
 {
 public:
 	DataConcentrator(std::string FileName);
-	//~DataConcentrator();
-
 
 	asiodnp3::DNP3Manager DNP3Mgr;
 	asio::io_service IOS;

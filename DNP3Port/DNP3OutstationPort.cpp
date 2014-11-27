@@ -35,6 +35,7 @@
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include "DNP3OutstationPort.h"
 
+#include "OpenDNP3Helpers.h"
 
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides)
@@ -248,6 +249,21 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	return opendnp3::CommandStatus::SUCCESS;
 }
 
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Binary>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::DoubleBitBinary>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Analog>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Counter>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::FrozenCounter>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::BinaryOutputStatus>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::AnalogOutputStatus>(qual,index,SenderName);};
+
+template<typename T, typename Q>
+inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName)
+{
+	auto meas = UpdateQuality<T>(pOutstation->GetDatabase(), static_cast<uint8_t>(qual), index);
+	return EventT(meas, index, SenderName);
+}
+
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
@@ -259,31 +275,23 @@ std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::A
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
 {
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-
 	if(!enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_promise.get_future();
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	{//transaction scope
 		opendnp3::TimeTransaction tx(pOutstation->GetDatabase(), asiopal::UTCTimeSource::Instance().Now());
 		tx.Update(meas, index);
 	}
-	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-	return cmd_promise.get_future();
+	return IOHandler::CommandFutureSuccess();
 }
 
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(ConnectState state, uint16_t index, const std::string& SenderName)
 {
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-	auto cmd_future = cmd_promise.get_future();
-
 	if (!enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_future;
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	if (state == ConnectState::DISCONNECTED)
@@ -291,7 +299,6 @@ std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(ConnectState stat
 		//stub		
 	}
 
-	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
-	return cmd_future;
+	return IOHandler::CommandFutureSuccess();
 }
 
