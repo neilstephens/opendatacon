@@ -32,6 +32,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/tclap/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.325296810" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.165636779" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
@@ -127,6 +128,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/tclap/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.287048987" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.1328576604" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
@@ -221,6 +223,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/tclap/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.1975786955" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.prof.857099551" name="Generate prof information (-p)" superClass="gnu.cpp.compiler.option.debugging.prof" value="false" valueType="boolean"/>
@@ -320,6 +323,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/tclap/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.731464652" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.1921547530" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
@@ -420,6 +424,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/tclap/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.1381428326" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.1502418747" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
@@ -521,6 +526,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiopal/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/asiodnp3/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/dnp3/cpp/libs/openpal/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/tclap/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.718714330" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.1175160565" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
@@ -596,6 +602,7 @@
 		<configuration configurationName="Release">
 			<resource resourceType="PROJECT" workspacePath="/datacon"/>
 		</configuration>
+		<configuration configurationName="Release-RHEL65"/>
 		<configuration configurationName="Multiple configurations">
 			<resource resourceType="PROJECT" workspacePath="/datacon_dnp2rc1"/>
 		</configuration>

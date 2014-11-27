@@ -117,7 +117,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -140,7 +140,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -167,7 +167,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -188,13 +188,15 @@
     </Link>
     <ProjectReference />
     <PostBuildEvent>
-      <Command>copy $(ProjectDir)*.h $(SolutionDir)\include\opendatacon</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy public headers</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -208,8 +210,10 @@
     <ClInclude Include="DataPort.h" />
     <ClInclude Include="DataPortConf.h" />
     <ClInclude Include="IOHandler.h" />
+    <ClInclude Include="Platform.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="util.h" />
+    <ClInclude Include="Version.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\JSON\json.vcxproj">

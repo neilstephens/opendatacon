@@ -1,0 +1,89 @@
+#!/bin/bash
+#
+# opendatacon        Startup script for opendatacon.
+#
+# chkconfig: 2345 12 88
+# description: opendatacon is a data concentrator or SCADA protocol
+#              gateway that supports amongst others DNP3.
+### BEGIN INIT INFO
+# Provides: $opendatacon
+# Required-Start: $network
+# Required-Stop: $network
+# Default-Start:  2 3 5
+# Default-Stop: 0 1 6
+# Short-Description: Persistent daemon for opendatacon.
+# Description: opendatacon is a data concentrator or SCADA protocol
+#              gateway that supports amongst others DNP3.
+### END INIT INFO
+
+# Source function library.
+. /etc/init.d/functions
+
+RETVAL=0
+
+prog=ODCdaemon
+exec=/opt/ODC/ODCdaemon.pl
+PIDFILE=/var/run/$prog.pid
+lockfile=/var/lock/subsys/$prog
+
+# Source config
+if [ -f /etc/sysconfig/$prog ] ; then
+    . /etc/sysconfig/$prog
+fi
+
+start() {
+	[ -x $exec ] || exit 5
+
+	umask 077
+
+        action $"Starting opendatacon daemon: " $exec
+        RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && touch $lockfile
+        return $RETVAL
+}
+stop() {
+        echo -n $"Shutting down opendatacon daemon: "
+        killproc -p "$PIDFILE" $exec
+        RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && rm -f $lockfile
+        return $RETVAL
+}
+rhstatus() {
+        status -p "$PIDFILE" -l $prog $exec
+}
+restart() {
+        stop
+        start
+}
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart)
+        restart
+        ;;
+  reload)
+        exit 3
+        ;;
+  force-reload)
+        restart
+        ;;
+  status)
+        rhstatus
+        ;;
+  condrestart|try-restart)
+        rhstatus >/dev/null 2>&1 || exit 0
+        restart
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart|condrestart|try-restart|reload|force-reload|status}"
+        exit 3
+esac
+
+exit $?

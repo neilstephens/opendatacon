@@ -88,8 +88,8 @@ private:
 	void StateListener(opendnp3::ChannelState state);
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){};
-	void DNP3MasterPort::PortUp();
-	void DNP3MasterPort::PortDown();
+	void PortUp();
+	void PortDown();
 	inline void DoOverrideControlCode(opendnp3::ControlRelayOutputBlock& arCommand)
 	{
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());

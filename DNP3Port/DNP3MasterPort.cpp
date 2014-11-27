@@ -92,9 +92,9 @@ void DNP3MasterPort::PortDown()
 		}
 
 		for (auto index : pConf->pPointConf->BinaryIndicies)
-			IOHandler_pair.second->Event(opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)), index, this->Name);
+			IOHandler_pair.second->Event(opendnp3::BinaryQuality::COMM_LOST, index, this->Name);
 		for (auto index : pConf->pPointConf->AnalogIndicies)
-			IOHandler_pair.second->Event(opendnp3::Analog(0.0, static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)), index, this->Name);
+			IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST, index, this->Name);
 
 		// Update the comms state point if configured
 		{
@@ -267,13 +267,9 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::Analo
 
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, uint16_t index, const std::string& SenderName)
 {
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-	auto cmd_future = cmd_promise.get_future();
-
 	if(!enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_future;
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
@@ -305,8 +301,7 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 		}
 	}
 
-	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
-	return cmd_future;
+	return IOHandler::CommandFutureSuccess();
 }
 
 void DNP3MasterPort::SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_promise)
@@ -393,21 +388,16 @@ void DNP3MasterPort::SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_p
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
 {
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-	auto cmd_future = cmd_promise.get_future();
-
 	// If the port is disabled, fail the command
 	if(!enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_future;
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	// If the stack is disabled, fail the command
 	if (!stack_enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_future;
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -415,6 +405,9 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 	{
 		if(i == index)
 		{
+			auto cmd_promise = std::promise<opendnp3::CommandStatus>();
+			auto cmd_future = cmd_promise.get_future();
+
 			auto cmd_proc = this->pMaster->GetCommandProcessor();
 			//make a copy of the command, so we can change it if needed
 			auto lCommand = arCommand;
@@ -432,9 +425,5 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 	std::string msg = "Control sent to invalid DNP3 index: " + std::to_string(index);
 	auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::WARN, "", msg.c_str(), -1);
 	pLoggers->Log(log_entry);
-	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-	return cmd_future;
+	return IOHandler::CommandFutureUndefined();
 }
-
-
-

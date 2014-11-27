@@ -169,6 +169,7 @@
     <ClInclude Include="DNP3PointConf.h" />
     <ClInclude Include="DNP3Port.h" />
     <ClInclude Include="DNP3PortConf.h" />
+    <ClInclude Include="OpenDNP3Helpers.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CommandCorrespondant.cpp" />
