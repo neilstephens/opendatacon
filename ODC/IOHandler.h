@@ -35,7 +35,7 @@
 #include "opendnp3/app/ControlRelayOutputBlock.h"
 #include "opendnp3/app/AnalogOutput.h"
 
-typedef enum ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
+enum ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 
 typedef opendnp3::BinaryQuality BinaryQuality;
 typedef opendnp3::DoubleBitBinaryQuality DoubleBitBinaryQuality;

@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
 				const size_t strmax = 80;
 				char buf[strmax];
 				strerror_r(errno, buf, strmax);
-				throw std::exception(buf);
+				throw std::runtime_error(buf);
 			}
 		}
 

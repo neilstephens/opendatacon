@@ -30,7 +30,7 @@
 #include <opendatacon/DataPort.h>
 #include "DNP3PointConf.h"
 
-typedef enum server_type_t {ONDEMAND,PERSISTENT,MANUAL};
+enum server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 struct DNP3AddrConf
 {
 	std::string IP;
