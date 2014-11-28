@@ -66,3 +66,6 @@ EXPORTS
 	??0Value@Json@@QAE@I@Z
 	??0Value@Json@@QAE@I@Z
 	??0Value@Json@@QAE@N@Z
+	?isArray@Value@Json@@QBE_NXZ
+	?isInt@Value@Json@@QBE_NXZ
+	?asInt@Value@Json@@QBEHXZ

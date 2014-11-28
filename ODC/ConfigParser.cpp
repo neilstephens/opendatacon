@@ -112,6 +112,6 @@ const Json::Value ConfigParser::GetConfiguration() const
         AddInherits(JSONRoot, JSONRoot[ConfFilename]["Inherits"]);
     }
     JSONRoot["ConfigOverrides"] = ConfOverrides;
-    
+
     return JSONRoot;
 }

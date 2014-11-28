@@ -32,21 +32,51 @@
 
 DNP3PointConf::DNP3PointConf(std::string FileName):
 	ConfigParser(FileName),
+		// DNP3 Link Configuration
+		LinkNumRetry(0),
+		LinkTimeoutms(1000),
+		LinkUseConfirms(true),
+		// Common application stack configuration
 		EnableUnsol(true),
 		UnsolClass1(false),
 		UnsolClass2(false),
 		UnsolClass3(false),
+		// Master Station configuration
+		MasterResponseTimeoutms(5000), /// Application layer response timeout
+		MasterRespondTimeSync(true), /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+		DoUnsolOnStartup(true),
+		/// Which classes should be requested in a startup integrity scan
+		StartupIntegrityClass0(true),
+		StartupIntegrityClass1(true),
+		StartupIntegrityClass2(true),
+		StartupIntegrityClass3(true),
+		/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
+		IntegrityOnEventOverflowIIN(true),
+		/// Time delay beforce retrying a failed task
+		TaskRetryPeriodms(5000),
+		// Master Station scanning configuration
+		IntegrityScanRatems(3600000),
+		EventClass1ScanRatems(1000),
+		EventClass2ScanRatems(1000),
+		EventClass3ScanRatems(1000),
+		OverrideControlCode(opendnp3::ControlCode::UNDEFINED),
+		DoAssignClassOnStartup(false),
+		// Outstation configuration
+		MaxControlsPerRequest(16),
+		MaxTxFragSize(2048),
+		SelectTimeoutms(10000),
+		SolConfirmTimeoutms(5000),
+		UnsolConfirmTimeoutms(5000),
+		WaitForCommandResponses(false),
+		DemandCheckPeriodms(2000),
+		// Default Event Response Types
 		EventBinaryResponse(opendnp3::EventBinaryResponse::Group2Var1),
 		EventAnalogResponse(opendnp3::EventAnalogResponse::Group32Var5),
 		EventCounterResponse(opendnp3::EventCounterResponse::Group22Var1),
-		OverrideControlCode(opendnp3::ControlCode::UNDEFINED),
-		DoUnsolOnStartup(true),
-		DoAssignClassOnStartup(true),
-		UseConfirms(true),
-		IntegrityScanRateSec(3600),
-		EventClass1ScanRateSec(1),
-		EventClass2ScanRateSec(1),
-		EventClass3ScanRateSec(1)
+		// Event buffer limits
+		MaxBinaryEvents(1000),
+		MaxAnalogEvents(1000),
+		MaxCounterEvents(1000)
 {
 	ProcessFile();
 }
@@ -57,6 +87,16 @@ uint8_t DNP3PointConf::GetUnsolClassMask()
 	class_mask += (UnsolClass1 ? opendnp3::ClassField::CLASS_1 : 0);
 	class_mask += (UnsolClass2 ? opendnp3::ClassField::CLASS_2 : 0);
 	class_mask += (UnsolClass3 ? opendnp3::ClassField::CLASS_3 : 0);
+	return class_mask;
+}
+
+uint8_t DNP3PointConf::GetStartupIntegrityClassMask()
+{
+	uint8_t class_mask = 0;
+	class_mask += (StartupIntegrityClass0 ? opendnp3::ClassField::CLASS_0 : 0);
+	class_mask += (StartupIntegrityClass1 ? opendnp3::ClassField::CLASS_1 : 0);
+	class_mask += (StartupIntegrityClass2 ? opendnp3::ClassField::CLASS_2 : 0);
+	class_mask += (StartupIntegrityClass3 ? opendnp3::ClassField::CLASS_3 : 0);
 	return class_mask;
 }
 
@@ -92,72 +132,130 @@ opendnp3::PointClass GetClass(Json::Value JPoint)
 
 void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 {
-    if(!JSONRoot.isObject()) return;    
-	if(!JSONRoot["EventClass3ScanRateSec"].isNull())
-		EventClass3ScanRateSec = JSONRoot["EventClass3ScanRateSec"].asUInt();
+    if(!JSONRoot.isObject()) return;
 
-	if(JSONRoot["CommsPoint"].isNull() || JSONRoot["CommsPoint"]["Index"].isNull())
-		mCommsPoint.first = opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
-	else
-	{
-		mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(),static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
-		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asBool();
-	}
+	// DNP3 Link Configuration
+	if (!JSONRoot["LinkNumRetry"].isNull())
+		LinkNumRetry = JSONRoot["LinkNumRetry"].asUInt();
+	if (!JSONRoot["LinkTimeoutms"].isNull())
+		LinkTimeoutms = JSONRoot["LinkTimeoutms"].asUInt();
+	if (!JSONRoot["LinkUseConfirms"].isNull())
+		LinkUseConfirms = JSONRoot["LinkUseConfirms"].asBool();
+	if (!JSONRoot["UseConfirms"].isNull())
+		std::cout << "Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '" << JSONRoot["UseConfirms"].toStyledString() << "'" << std::endl;
 
-	if(!JSONRoot["EventClass2ScanRateSec"].isNull())
-		EventClass2ScanRateSec = JSONRoot["EventClass2ScanRateSec"].asUInt();
-
-	if(!JSONRoot["EventClass1ScanRateSec"].isNull())
-		EventClass1ScanRateSec = JSONRoot["EventClass1ScanRateSec"].asUInt();
-
-	if(!JSONRoot["IntegrityScanRateSec"].isNull())
-		IntegrityScanRateSec = JSONRoot["IntegrityScanRateSec"].asUInt();
-
-	if(!JSONRoot["EnableUnsol"].isNull())
+	// Common application configuration
+	if (!JSONRoot["EnableUnsol"].isNull())
 		EnableUnsol = JSONRoot["EnableUnsol"].asBool();
-
-	if(!JSONRoot["UnsolClass1"].isNull())
+	if (!JSONRoot["UnsolClass1"].isNull())
 		UnsolClass1 = JSONRoot["UnsolClass1"].asBool();
-
-	if(!JSONRoot["UnsolClass2"].isNull())
+	if (!JSONRoot["UnsolClass2"].isNull())
 		UnsolClass2 = JSONRoot["UnsolClass2"].asBool();
-
-	if(!JSONRoot["UnsolClass3"].isNull())
+	if (!JSONRoot["UnsolClass3"].isNull())
 		UnsolClass3 = JSONRoot["UnsolClass3"].asBool();
 
-	if(!JSONRoot["EventBinaryResponse"].isNull())
-		EventBinaryResponse = StringToEventBinaryResponse(JSONRoot["EventBinaryResponse"].asString());
+	// Master Station configuration
+	if (!JSONRoot["MasterResponseTimeoutms"].isNull())
+		MasterResponseTimeoutms = JSONRoot["MasterResponseTimeoutms"].asUInt();
+	if (!JSONRoot["MasterRespondTimeSync"].isNull())
+		MasterRespondTimeSync = JSONRoot["MasterRespondTimeSync"].asBool();
+	if (!JSONRoot["DoUnsolOnStartup"].isNull())
+		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
 
-	if(!JSONRoot["EventAnalogResponse"].isNull())
-		EventAnalogResponse = StringToEventAnalogResponse(JSONRoot["EventAnalogResponse"].asString());
+	/// Which classes should be requested in a startup integrity scan
+	if (!JSONRoot["StartupIntegrityClass0"].isNull())
+		StartupIntegrityClass0 = JSONRoot["StartupIntegrityClass0"].asBool();
+	if (!JSONRoot["StartupIntegrityClass1"].isNull())
+		StartupIntegrityClass1 = JSONRoot["StartupIntegrityClass1"].asBool();
+	if (!JSONRoot["StartupIntegrityClass2"].isNull())
+		StartupIntegrityClass2 = JSONRoot["StartupIntegrityClass2"].asBool();
+	if (!JSONRoot["StartupIntegrityClass3"].isNull())
+		StartupIntegrityClass3 = JSONRoot["StartupIntegrityClass3"].asBool();
 
-	if(!JSONRoot["EventCounterResponse"].isNull())
-		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
+	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
+	if (!JSONRoot["IntegrityOnEventOverflowIIN"].isNull())
+		IntegrityOnEventOverflowIIN = JSONRoot["IntegrityOnEventOverflowIIN"].asBool();
+	/// Time delay beforce retrying a failed task
+	if (!JSONRoot["TaskRetryPeriodms"].isNull())
+		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();
 
-	if(!JSONRoot["OverrideControlCode"].isNull())
+	// Master Station scanning configuration
+	if (!JSONRoot["IntegrityScanRatems"].isNull())
+		IntegrityScanRatems = JSONRoot["IntegrityScanRatems"].asUInt();
+	if (!JSONRoot["IntegrityScanRateSec"].isNull())
+		std::cout << "Use of 'IntegrityScanRateSec' is deprecated, use 'IntegrityScanRatems' instead : '" << JSONRoot["IntegrityScanRateSec"].toStyledString() << "'" << std::endl;
+	if (!JSONRoot["EventClass1ScanRatems"].isNull())
+		EventClass1ScanRatems = JSONRoot["EventClass1ScanRatems"].asUInt();
+	if (!JSONRoot["EventClass1ScanRateSec"].isNull())
+		std::cout << "Use of 'EventClass1ScanRateSec' is deprecated, use 'EventClass1ScanRatems' instead : '" << JSONRoot["EventClass1ScanRateSec"].toStyledString() << "'" << std::endl;
+	if (!JSONRoot["EventClass2ScanRatems"].isNull())
+		EventClass2ScanRatems = JSONRoot["EventClass2ScanRatems"].asUInt();
+	if (!JSONRoot["EventClass2ScanRateSec"].isNull())
+		std::cout << "Use of 'EventClass2ScanRateSec' is deprecated, use 'EventClass2ScanRatems' instead : '" << JSONRoot["EventClass2ScanRateSec"].toStyledString() << "'" << std::endl;
+	if (!JSONRoot["EventClass3ScanRatems"].isNull())
+		EventClass3ScanRatems = JSONRoot["EventClass3ScanRatems"].asUInt();
+	if (!JSONRoot["EventClass3ScanRateSec"].isNull())
+		std::cout << "Use of 'EventClass3ScanRateSec' is deprecated, use 'EventClass3ScanRatems' instead : '" << JSONRoot["EventClass3ScanRateSec"].toStyledString() << "'" << std::endl;
+
+	if (!JSONRoot["DoAssignClassOnStartup"].isNull())
+		DoAssignClassOnStartup = JSONRoot["DoAssignClassOnStartup"].asBool();
+
+	if (!JSONRoot["OverrideControlCode"].isNull())
 	{
-		if(JSONRoot["OverrideControlCode"].asString()=="PULSE")
+		if (JSONRoot["OverrideControlCode"].asString() == "PULSE")
 			OverrideControlCode = opendnp3::ControlCode::PULSE;
-		if(JSONRoot["OverrideControlCode"].asString()=="LATCH_OFF")
+		if (JSONRoot["OverrideControlCode"].asString() == "LATCH_OFF")
 			OverrideControlCode = opendnp3::ControlCode::LATCH_OFF;
-		if(JSONRoot["OverrideControlCode"].asString()=="LATCH_ON")
+		if (JSONRoot["OverrideControlCode"].asString() == "LATCH_ON")
 			OverrideControlCode = opendnp3::ControlCode::LATCH_ON;
-		if(JSONRoot["OverrideControlCode"].asString()=="PULSE_CLOSE")
+		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_CLOSE")
 			OverrideControlCode = opendnp3::ControlCode::PULSE_CLOSE;
-		if(JSONRoot["OverrideControlCode"].asString()=="PULSE_TRIP")
+		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_TRIP")
 			OverrideControlCode = opendnp3::ControlCode::PULSE_TRIP;
-		if(JSONRoot["OverrideControlCode"].asString()=="NUL")
+		if (JSONRoot["OverrideControlCode"].asString() == "NUL")
 			OverrideControlCode = opendnp3::ControlCode::NUL;
 	}
 
-	if(!JSONRoot["DoUnsolOnStartup"].isNull())
-		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
+	// Outstation configuration
+	if (!JSONRoot["MaxControlsPerRequest"].isNull())
+		MaxControlsPerRequest = JSONRoot["MaxControlsPerRequest"].asUInt();
+	if (!JSONRoot["MaxTxFragSize"].isNull())
+		MaxTxFragSize = JSONRoot["MaxTxFragSize"].asUInt();
+	if (!JSONRoot["SelectTimeoutms"].isNull())
+		SelectTimeoutms = JSONRoot["SelectTimeoutms"].asUInt();
+	if (!JSONRoot["SolConfirmTimeoutms"].isNull())
+		SolConfirmTimeoutms = JSONRoot["SolConfirmTimeoutms"].asUInt();
+	if (!JSONRoot["UnsolConfirmTimeoutms"].isNull())
+		UnsolConfirmTimeoutms = JSONRoot["UnsolConfirmTimeoutms"].asUInt();
+	if (!JSONRoot["WaitForCommandResponses"].isNull())
+		WaitForCommandResponses = JSONRoot["WaitForCommandResponses"].asBool();
+	if (!JSONRoot["DemandCheckPeriodms"].isNull())
+		DemandCheckPeriodms = JSONRoot["DemandCheckPeriodms"].asUInt();
 
-	if(!JSONRoot["DoAssignClassOnStartup"].isNull())
-		DoAssignClassOnStartup = JSONRoot["DoAssignClassOnStartup"].asBool();
+	// Default Event Response Types
+	if (!JSONRoot["EventBinaryResponse"].isNull())
+		EventBinaryResponse = StringToEventBinaryResponse(JSONRoot["EventBinaryResponse"].asString());
+	if (!JSONRoot["EventAnalogResponse"].isNull())
+		EventAnalogResponse = StringToEventAnalogResponse(JSONRoot["EventAnalogResponse"].asString());
+	if (!JSONRoot["EventCounterResponse"].isNull())
+		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
 
-	if(!JSONRoot["UseConfirms"].isNull())
-		UseConfirms = JSONRoot["UseConfirms"].asBool();
+	// Event buffer limits
+	if (!JSONRoot["MaxBinaryEvents"].isNull())
+		MaxBinaryEvents = JSONRoot["MaxBinaryEvents"].asUInt();
+	if (!JSONRoot["MaxAnalogEvents"].isNull())
+		MaxAnalogEvents = JSONRoot["MaxAnalogEvents"].asUInt();
+	if (!JSONRoot["MaxCounterEvents"].isNull())
+		MaxCounterEvents = JSONRoot["MaxCounterEvents"].asUInt();
+
+	// Comms Point Configuration
+	if (JSONRoot["CommsPoint"].isNull() || JSONRoot["CommsPoint"]["Index"].isNull())
+		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
+	else
+	{
+		mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
+	}
 
 	if(!JSONRoot["Analogs"].isNull())
 	{
@@ -224,6 +322,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		std::sort(AnalogIndicies.begin(),AnalogIndicies.end());
 	}
+
 	if(!JSONRoot["Binaries"].isNull())
 	{
 		const auto Binaries = JSONRoot["Binaries"];
@@ -284,6 +383,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		std::sort(BinaryIndicies.begin(),BinaryIndicies.end());
 	}
+
 	if(!JSONRoot["BinaryControls"].isNull())
 	{
 		const auto BinaryControls= JSONRoot["BinaryControls"];

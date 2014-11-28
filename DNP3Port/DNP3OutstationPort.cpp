@@ -33,9 +33,9 @@
 #include <opendnp3/outstation/Database.h>
 #include <opendnp3/outstation/TimeTransaction.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
-#include <opendnp3/app/DynamicPointIndexes.h>
 #include "DNP3OutstationPort.h"
 
+#include "OpenDNP3Helpers.h"
 
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides)
@@ -47,24 +47,62 @@ void DNP3OutstationPort::Enable()
 		return;
 	pOutstation->Enable();
 	enabled = true;
+
+	for (auto IOHandler_pair : Subscribers)
+	{
+		IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
+	}
+
+	pIOS->post([this](){ PollStats(); });
 }
 void DNP3OutstationPort::Disable()
 {
 	if(!enabled)
 		return;
-	pOutstation->Disable();
 	enabled = false;
+
+	pOutstation->Disable();
 }
+
+// Called by OpenDNP3 Thread Pool
 void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
 {
 	if(!enabled)
 		return;
 
-	for(auto IOHandler_pair : Subscribers)
-	{
-		IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
-	}
+	//This has been replaced by a stack statistics poller - so connect events are sent on application layer connection instead of comms layer
+	//for(auto IOHandler_pair : Subscribers)
+	//{
+		//IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
+	//}
 }
+
+void DNP3OutstationPort::PollStats()
+{
+	if(!enabled)
+		return;
+	
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto period = pConf->pPointConf->DemandCheckPeriodms;
+
+	// Don't perform demand checks if period == 0
+	if (period == 0) return;
+
+	auto stats = pOutstation->GetStackStatistics();
+
+	if(stats.numTransportRx > lastRx)
+	{
+		for(auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+		}
+	}
+	lastRx = stats.numTransportRx;
+
+	pPollStatTimer->expires_from_now(std::chrono::milliseconds(period));
+	pPollStatTimer->async_wait(std::bind(&DNP3OutstationPort::PollStats,this));
+}
+
 void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -85,21 +123,32 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	TCPChannels[IPPort]->AddStateListener(std::bind(&DNP3OutstationPort::StateListener,this,std::placeholders::_1));
 
 	opendnp3::OutstationStackConfig StackConfig;
+
+	// Link layer configuration
 	StackConfig.link.LocalAddr = pConf->mAddrConf.OutstationAddr;
+	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
-	StackConfig.link.NumRetry = 5;
-	StackConfig.link.Timeout = openpal::TimeDuration::Seconds(5);
-	StackConfig.link.UseConfirms = pConf->pPointConf->UseConfirms;
-	StackConfig.outstation.defaultEventResponses.analog = pConf->pPointConf->EventAnalogResponse;
-	StackConfig.outstation.defaultEventResponses.binary = pConf->pPointConf->EventBinaryResponse;
+	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
+
+	// Outstation parameters
 	StackConfig.outstation.params.allowUnsolicited = pConf->pPointConf->EnableUnsol;
 	StackConfig.outstation.params.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.outstation.params.selectTimeout = openpal::TimeDuration::Seconds(300);/// How long the outstation will allow an operate to proceed after a prior select
-	StackConfig.outstation.params.solConfirmTimeout = openpal::TimeDuration::Seconds(300);/// Timeout for solicited confirms
-	StackConfig.outstation.params.unsolConfirmTimeout = openpal::TimeDuration::Seconds(300); /// Timeout for unsolicited confirms
-	StackConfig.outstation.params.unsolRetryTimeout = openpal::TimeDuration::Seconds(300); /// Timeout for unsolicited retries
-	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = 1000;//TODO: event buf size config item
-	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = 1000;
+	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest; 	/// The maximum number of controls the outstation will attempt to process from a single APDU
+	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize; /// The maximum fragment size the outstation will use for fragments it sends
+	StackConfig.outstation.params.selectTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SelectTimeoutms);/// How long the outstation will allow an operate to proceed after a prior select
+	StackConfig.outstation.params.solConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);/// Timeout for solicited confirms
+	StackConfig.outstation.params.unsolConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
+
+	// TODO: Expose default event responses for any new event types to be supported by opendatacon
+	StackConfig.outstation.defaultEventResponses.analog = pConf->pPointConf->EventAnalogResponse;
+	StackConfig.outstation.defaultEventResponses.binary = pConf->pPointConf->EventBinaryResponse;
+	StackConfig.outstation.defaultEventResponses.counter = pConf->pPointConf->EventCounterResponse;
+
+	// TODO: Expose event limits for any new event types to be supported by opendatacon
+	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents; /// The number of binary events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;	/// The number of analog events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents;	/// The number of counter events the outstation will buffer before overflowing
 
 	//contiguous points
 //	StackConfig.dbTemplate.numAnalog = pConf->pPointConf->AnalogIndicies.back();
@@ -112,15 +161,15 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	auto BinIndexes = opendnp3::DynamicPointIndexes(BinIndexable);
 	StackConfig.dbTemplate = opendnp3::DatabaseTemplate(BinIndexes, opendnp3::PointIndexes::EMPTYINDEXES, AnaIndexes);
 
-    pChannel = TCPChannels[IPPort];
+    auto TargetChan = TCPChannels[IPPort];
     
-    if (pChannel == nullptr)
+    if (TargetChan == nullptr)
     {
         std::cout << "TCP channel not found for outstation '" << Name << std::endl;
         return;
     }
     
-	pOutstation = pChannel->AddOutstation(Name.c_str(), *this, opendnp3::DefaultOutstationApplication::Instance(), StackConfig);
+	pOutstation = TargetChan->AddOutstation(Name.c_str(), *this, opendnp3::DefaultOutstationApplication::Instance(), StackConfig);
     
     if (pOutstation == nullptr)
     {
@@ -128,7 +177,9 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
         return;
     }
 
-    //TODO: Has to be a better way to iterate over all database points
+	lastRx = 0;
+	pPollStatTimer.reset(new Timer_t(*pIOS));
+
 	for(auto index : pConf->pPointConf->AnalogIndicies)
 	{
 		auto pos = AnaIndexes.operator opendnp3::PointIndexes().GetPosition(index);
@@ -216,6 +267,8 @@ inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint1
 	}
 	return opendnp3::CommandStatus::NOT_SUPPORTED;
 }
+
+// Called by OpenDNP3 Thread Pool
 template<typename T>
 inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 {
@@ -228,6 +281,12 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	for(auto IOHandler_pair : Subscribers)
 	{
 		future_results.push_back((IOHandler_pair.second->Event(arCommand, aIndex, this->Name)));
+	}
+
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if (!pConf->pPointConf->WaitForCommandResponses)
+	{
+		return opendnp3::CommandStatus::SUCCESS;
 	}
 
 	for(auto& future_result : future_results)
@@ -246,6 +305,21 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	return opendnp3::CommandStatus::SUCCESS;
 }
 
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Binary>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::DoubleBitBinary>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Analog>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Counter>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::FrozenCounter>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::BinaryOutputStatus>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::AnalogOutputStatus>(qual,index,SenderName);};
+
+template<typename T, typename Q>
+inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName)
+{
+	auto meas = UpdateQuality<T>(pOutstation->GetDatabase(), static_cast<uint8_t>(qual), index);
+	return EventT(meas, index, SenderName);
+}
+
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
@@ -257,19 +331,30 @@ std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::A
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
 {
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-
 	if(!enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_promise.get_future();
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	{//transaction scope
 		opendnp3::TimeTransaction tx(pOutstation->GetDatabase(), asiopal::UTCTimeSource::Instance().Now());
 		tx.Update(meas, index);
 	}
-	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-	return cmd_promise.get_future();
+	return IOHandler::CommandFutureSuccess();
+}
+
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(ConnectState state, uint16_t index, const std::string& SenderName)
+{
+	if (!enabled)
+	{
+		return IOHandler::CommandFutureUndefined();
+	}
+
+	if (state == ConnectState::DISCONNECTED)
+	{
+		//stub		
+	}
+
+	return IOHandler::CommandFutureSuccess();
 }
 

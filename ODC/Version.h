@@ -18,33 +18,22 @@
  *	limitations under the License.
  */ 
 /*
- * JSONPointConf.h
- *
- *  Created on: 22/07/2014
- *      Author: Neil Stephens <dearknarl@gmail.com>
- */
+* Version.h
+*
+*  Created on: 26/11/2014
+*      Author: Alan Murray
+*/
 
-#ifndef JSONPOINTCONF_H_
-#define JSONPOINTCONF_H_
+#ifndef ODC_VERSION_H_
+#define ODC_VERSION_H_
 
-#include <vector>
-#include <unordered_map>
-#include <functional>
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendatacon/DataPointConf.h>
-#include <opendatacon/ConfigParser.h>
-#include <json/json.h>
+#define ODC_VERSION_MAJOR 0
+#define ODC_VERSION_MINOR 2
+#define ODC_VERSION_MICRO 6
 
-class JSONPointConf: public ConfigParser
-{
-public:
-	JSONPointConf(std::string FileName);
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
 
-	void ProcessElements(const Json::Value& JSONRoot);
+#define ODC_VERSION_STRING "" STR(ODC_VERSION_MAJOR) "." STR(ODC_VERSION_MINOR) "." STR(ODC_VERSION_MICRO)
 
-	std::map<uint16_t, Json::Value> Binaries;
-	std::map<uint16_t, Json::Value> Analogs;
-	std::map<uint16_t, Json::Value> Controls;
-};
-
-#endif /* JSONPOINTCONF_H_ */
+#endif

@@ -32,12 +32,13 @@
 
 #include <thread>
 #include <asio.hpp>
+#include <asiodnp3/ConsoleLogger.h>
 #include <opendnp3/LogLevels.h>
+
+#include <opendatacon/Version.h>
 
 #include "DataConcentrator.h"
 #include "Console.h"
-
-#include <asiodnp3/ConsoleLogger.h>
 #include "logging_cmds.h"
 #include "NullPort.h"
 
@@ -46,52 +47,39 @@
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
 	DNP3Mgr(std::thread::hardware_concurrency()),
+	IOS(std::thread::hardware_concurrency()),
+	ios_working(new asio::io_service::work(IOS)),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
 	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
 	FileLog("datacon_log"),
-	AdvFileLog(FileLog,LOG_LEVEL),
-	IOS(std::thread::hardware_concurrency()),
-	ios_working(new asio::io_service::work(IOS)),
-    UI(new WebUI(10443))
+    UI(new WebUI(10443)),
+	AdvFileLog(FileLog,LOG_LEVEL)
 {
     //Configure the user interface
     UI->start();
-    
-    //Version
-    this->AddCommand("version", [this](const ParamCollection & params) { //"Print version information"
-        Json::Value result;
-        result["version"] = "Release 0.2.2";
-        return result;
-    },"Return the version information of opendatacon.");
-    
     UI->AddResponder("/OpenDataCon", *this);
     UI->AddResponder("/DataPorts", DataPorts);
     UI->AddResponder("/DataConnectors", DataConnectors);
     UI->AddResponder("/Loggers", AdvancedLoggers);
 
 	//fire up some worker threads
-	for(size_t i=0; i < std::thread::hardware_concurrency(); ++i)
+	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
 
 	AdvConsoleLog.AddIngoreAlways(".*"); //silence all console messages by default
 	DNP3Mgr.AddLogSubscriber(&AdvConsoleLog);
-    AdvancedLoggers["Console Log"] = std::shared_ptr<AdvancedLogger>(&AdvConsoleLog); // TODO: shouldn't be a shared_ptr, this is likely really bad
 	DNP3Mgr.AddLogSubscriber(&AdvFileLog);
-    AdvancedLoggers["File Log"] = std::shared_ptr<AdvancedLogger>(&AdvFileLog); // TODO: shouldn't be a shared_ptr, this is likely really bad
 
 	//Parse the configs and create all the ports and connections
 	ProcessFile();
 
-    //Initialise Data Ports
 	for(auto& port : DataPorts)
 	{
 		port.second->AddLogSubscriber(&AdvConsoleLog);
 		port.second->AddLogSubscriber(&AdvFileLog);
 		port.second->SetIOS(&IOS);
 		port.second->SetLogLevel(LOG_LEVEL);
-    }
-    
-    //Initialise Data Connectors
+	}
 	for(auto& conn : DataConnectors)
 	{
 		conn.second->AddLogSubscriber(&AdvConsoleLog);
@@ -99,18 +87,6 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		conn.second->SetIOS(&IOS);
 		conn.second->SetLogLevel(LOG_LEVEL);
 	}
-}
-DataConcentrator::~DataConcentrator()
-{
-	//turn everything off
-	this->Shutdown();
-	DNP3Mgr.Shutdown();
-	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
-	ios_working.reset();
-	//help finish any work
-	IOS.run();
-    
-    UI->stop();
 }
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
@@ -175,8 +151,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 				if(portlib == nullptr)
 				{
-					std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
-                    DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+					std::cout << "Warning: failed to load library '"<<libname<<"' skipping port..."<<std::endl;
 					continue;
 				}
 
@@ -187,8 +162,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 				if(new_port_func == nullptr)
 				{
-					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' mapping to null port..."<<std::endl;
-                    DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' skipping port..."<<std::endl;
 					continue;
 				}
 
@@ -241,11 +215,11 @@ void DataConcentrator::Run()
 	}
 
 	Console console("odc> ");
-    
+
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
-	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.2"<<std::endl;};
+	bound_func = [](std::stringstream& ss){std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;};
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control
@@ -279,7 +253,17 @@ void DataConcentrator::Run()
 	console.AddCmd("lsconns",bound_func,"List connectors matching a regex (by name)");
 
 	console.run();
-	Shutdown();
+
+	//turn everything off
+	this->Shutdown();
+	std::cout << "Shutting down DNP3 manager... ";
+	DNP3Mgr.Shutdown();
+	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
+	std::cout << "done" << std::endl << "Finishing any remaining work... ";
+	ios_working.reset();
+	//help finish any work
+	IOS.run();
+	std::cout << "done" << std::endl;
 }
 void DataConcentrator::RestartPortOrConn(std::stringstream& args)
 {
@@ -368,13 +352,15 @@ void DataConcentrator::ListConns(std::stringstream& args)
 }
 void DataConcentrator::Shutdown()
 {
-
-	for(auto& Name_n_Port : DataPorts)
-	{
-		Name_n_Port.second->Disable();
-	}
+	std::cout << "Disabling data connectors... ";
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
 	}
+	std::cout << "done" << std::endl << "Disabling data ports... ";
+	for(auto& Name_n_Port : DataPorts)
+	{
+		Name_n_Port.second->Disable();
+	}
+	std::cout << "done" << std::endl;
 }

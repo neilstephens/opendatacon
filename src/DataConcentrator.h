@@ -35,30 +35,16 @@
 #include "DataConnector.h"
 #include "DataConnectorCollection.h"
 
+#include <opendatacon/Platform.h>
+#include <opendatacon/DataPort.h>
 #include <opendatacon/ConfigParser.h>
 
+#include "DataConnector.h"
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
 #include "LogCollection.h"
 
 #include <opendatacon/IUI.h>
-
-#ifdef WIN32 
-const std::string DYNLIBPRE = "";
-const std::string DYNLIBEXT = ".dll";
-#define DYNLIBLOAD(a) LoadLibraryExA(a, 0, DWORD(0))
-#define DYNLIBGETSYM(a,b) GetProcAddress(a, b)
-#else
-const std::string DYNLIBPRE = "lib";
-#ifdef __APPLE__
-const std::string DYNLIBEXT = ".dylib";
-#else
-const std::string DYNLIBEXT = ".so";
-#endif
-#define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
-#define DYNLIBGETSYM(a,b) dlsym(a, b)
-#endif
-
 inline std::string GetLibFileName(const std::string LibName)
 {
 	return DYNLIBPRE + LibName + DYNLIBEXT;
@@ -68,21 +54,22 @@ class DataConcentrator: public ConfigParser, public IUIResponder
 {
 public:
 	DataConcentrator(std::string FileName);
-	~DataConcentrator();
+	//~DataConcentrator();
 
-	//std::unordered_map<std::string, std::shared_ptr<DataPort>> DataPorts;
     DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
     LogCollection AdvancedLoggers;
 
 	asiodnp3::DNP3Manager DNP3Mgr;
+	asio::io_service IOS;
+
+	std::unique_ptr<asio::io_service::work> ios_working;
+
 	openpal::LogFilters LOG_LEVEL;
 	AdvancedLogger AdvConsoleLog;//just prints messages to the console plus filtering (Adv)
 	LogToFile FileLog;//Prints all messages to a rolling set of log files.
 	AdvancedLogger AdvFileLog;
 	asiopal::LogFanoutHandler FanoutHandler;
-	asio::io_service IOS;
-	std::unique_ptr<asio::io_service::work> ios_working;
     std::unique_ptr<IUI> UI;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;

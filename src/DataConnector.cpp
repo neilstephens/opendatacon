@@ -30,6 +30,7 @@
 #include <opendnp3/LogLevels.h>
 #include "DataConnector.h"
 #include "IndexOffsetTransform.h"
+#include "ThresholdTransform.h"
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	IOHandler(aName),
@@ -47,41 +48,54 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 
 		for(Json::ArrayIndex n = 0; n < JConnections.size(); ++n)
 		{
-			if(JConnections[n]["Name"].isNull() || JConnections[n]["Port1"].isNull() || JConnections[n]["Port2"].isNull())
-			{
-				std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
-			}
-			auto ConName = JConnections[n]["Name"].asString();
-			auto ConPort1 = JConnections[n]["Port1"].asString();
-			auto ConPort2 = JConnections[n]["Port2"].asString();
-			if ((GetIOHandlers().count(ConPort1) == 0) || (GetIOHandlers().count(ConPort2) == 0))
-			{
-				std::cout << "Warning: invalid port on connection '" << ConName << "' skipping..." << std::endl;
-				continue;
-			}
-			Connections[ConName] = std::make_pair(GetIOHandlers()[ConPort1], GetIOHandlers()[ConPort2]);
-			//Subscribe to recieve events for the connection
-			GetIOHandlers()[ConPort1]->Subscribe(this, this->Name);
-			GetIOHandlers()[ConPort2]->Subscribe(this, this->Name);
-			//Add to the lookup table
-			SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
-			SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
+            try {
+                if(JConnections[n]["Name"].isNull() || JConnections[n]["Port1"].isNull() || JConnections[n]["Port2"].isNull())
+                {
+                    std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                }
+                auto ConName = JConnections[n]["Name"].asString();
+                auto ConPort1 = JConnections[n]["Port1"].asString();
+                auto ConPort2 = JConnections[n]["Port2"].asString();
+                if ((GetIOHandlers().count(ConPort1) == 0) || (GetIOHandlers().count(ConPort2) == 0))
+                {
+                    std::cout << "Warning: invalid port on connection '" << ConName << "' skipping..." << std::endl;
+                    continue;
+                }
+                Connections[ConName] = std::make_pair(GetIOHandlers()[ConPort1], GetIOHandlers()[ConPort2]);
+                //Subscribe to recieve events for the connection
+                GetIOHandlers()[ConPort1]->Subscribe(this, this->Name);
+                GetIOHandlers()[ConPort2]->Subscribe(this, this->Name);
+                //Add to the lookup table
+                SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
+                SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
+            } catch (std::exception e) {
+                std::cout<<"Warning: Exception raised when creating Connection from config: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+            }
 		}
 	}
 	if(!JSONRoot["Transforms"].isNull())
 	{
 		const Json::Value Transforms = JSONRoot["Transforms"];
 
-		for(Json::ArrayIndex n = 0; n < Transforms.size(); ++n)
-		{
-			if(Transforms[n]["Type"].isNull() || Transforms[n]["Sender"].isNull())
-			{
-				std::cout<<"Warning: invalid Transform config: need at least Type and Sender: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
-			}
+        for(Json::ArrayIndex n = 0; n < Transforms.size(); ++n)
+        {
+            try
+            {
+                if(Transforms[n]["Type"].isNull() || Transforms[n]["Sender"].isNull())
+                {
+                    std::cout<<"Warning: invalid Transform config: need at least Type and Sender: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                }
 
-			if(Transforms[n]["Type"].asString() == "IndexOffset")
-				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new IndexOffsetTransform(Transforms[n]["Parameters"].asString()));
-		}
+                if(Transforms[n]["Type"].asString() == "IndexOffset")
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new IndexOffsetTransform(Transforms[n]["Parameters"]));
+                if(Transforms[n]["Type"].asString() == "Threshold")
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new ThresholdTransform(Transforms[n]["Parameters"]));
+            }
+            catch (std::exception e)
+            {
+                std::cout<<"Warning: Exception raised when creating Transform from config: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+            }
+        }
 	}
 }
 
@@ -93,22 +107,28 @@ std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::Frozen
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
-std::future<opendnp3::CommandStatus> DataConnector::Event(bool connected, uint16_t index, const std::string& SenderName){ return EventT(connected, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName){ return EventT(state, index, SenderName); }
 
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event_obj, uint16_t index, const std::string& SenderName)
 {
 	if(!enabled)
 	{
-		auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_promise.get_future();
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	auto bounds = SenderConnectionsLookup.equal_range(SenderName);
@@ -122,9 +142,9 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 				pSendee = Connections[aMatch_it->second].first;
 
 			std::shared_ptr<T> new_event_obj(new T(event_obj));
+			bool pass_on = true;
 			if(ConnectionTransforms.count(SenderName))
 			{
-				bool pass_on = true;
 				for(Transform* Transform : ConnectionTransforms[SenderName])
 				{
 					if(!Transform->Event(*(new_event_obj.get()), index))
@@ -133,15 +153,25 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 						break;
 					}
 				}
-				if(!pass_on)
-				continue;
 			}
 
 			//return on the last connection
 			if(++aMatch_it != bounds.second)
-				pSendee->Event(*new_event_obj.get(), index, this->Name);
+			{
+				if(pass_on)
+					pSendee->Event(*new_event_obj.get(), index, this->Name);
+			}
 			else
-				return pSendee->Event(*new_event_obj.get(), index, this->Name);
+			{
+				if(pass_on)
+				{
+					return pSendee->Event(*new_event_obj.get(), index, this->Name);
+				}
+				else
+				{
+					return IOHandler::CommandFutureUndefined();
+				}
+			}
 		}
 	}
 	//no connection for sender if we get here
@@ -149,9 +179,7 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 	auto log_entry = openpal::LogEntry("DataConnector", openpal::logflags::WARN,"", msg.c_str(), -1);
 	pLoggers->Log(log_entry);
 
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-	return cmd_promise.get_future();
+	return IOHandler::CommandFutureUndefined();
 }
 
 void DataConnector::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)

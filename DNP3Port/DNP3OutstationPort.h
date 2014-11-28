@@ -37,24 +37,14 @@ class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler
 public:
 	DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 
-    //DNP3Port implementation
 	void Enable();
 	void Disable();
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
 
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
-
     const Json::Value GetCurrentState() const override;
     const Json::Value GetStatistics() const override;
-
-    //ICommandHandler implementation
-	opendnp3::CommandStatus Supports(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
+	//implement ISOEHandler
+	opendnp3::CommandStatus Supports(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){ return SupportsT(arCommand, aIndex); };
 	opendnp3::CommandStatus Perform(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
 	opendnp3::CommandStatus Supports(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
 	opendnp3::CommandStatus Perform(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
@@ -65,15 +55,38 @@ public:
 	opendnp3::CommandStatus Supports(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
 	opendnp3::CommandStatus Perform(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
 
-private:
-	asiodnp3::IOutstation* pOutstation;
-    asiodnp3::IChannel* pChannel;
-
-    template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
+	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
+	template<typename T, typename Q> std::future<opendnp3::CommandStatus> EventQ(Q& meas, uint16_t index, const std::string& SenderName);
 
+	//Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
+
+	std::future<opendnp3::CommandStatus> Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName);
+
+	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
+
+	asiodnp3::IOutstation* pOutstation;
+
+private:
 	void StateListener(opendnp3::ChannelState state);
+	void PollStats();
+	uint32_t lastRx;
+	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+	std::unique_ptr<Timer_t> pPollStatTimer;
 };
 
 #endif /* DNP3SERVERPORT_H_ */
