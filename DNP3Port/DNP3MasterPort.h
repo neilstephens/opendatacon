@@ -50,8 +50,16 @@ public:
 	void Enable();
 	void Disable();
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
+    
+    //Override DataPort functions for UI
+    const Json::Value GetStatistics() const override;
 
 	//implement ISOEHandler
+protected:
+    void Start() override final {}
+    void End() override final {}
+    
+public:
 	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas);
 	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<DoubleBitBinary, uint16_t>>& meas);
 	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Analog, uint16_t>>& meas);
@@ -61,9 +69,6 @@ public:
 	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<AnalogOutputStatus, uint16_t>>& meas);
 	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<OctetString, uint16_t>>& meas);
 	template<typename T> void LoadT(const IterableBuffer<IndexedValue<T, uint16_t>>& meas);
-
-    ///
-    const Json::Value GetStatistics() const override;
     
 	//Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
@@ -74,13 +79,10 @@ public:
 	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
+    //Implement IPollListener
 protected:
-	//implement IPollListener
 	void OnStateChange(opendnp3::PollState state);
-	//implement transactable
-	void Start() override final {}
-	void End() override final {}
-
+    
 private:
 	asiodnp3::IMaster* pMaster;
     

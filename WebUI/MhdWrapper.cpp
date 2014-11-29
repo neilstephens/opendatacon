@@ -134,8 +134,7 @@ int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr)
                                                (void *)jsoncstr,
                                                MHD_RESPMEM_MUST_COPY);
     MHD_add_response_header (response, "Content-Type", MimeTypeMap.at("json").c_str());
-    //ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-	ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);;
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     
     return ret;

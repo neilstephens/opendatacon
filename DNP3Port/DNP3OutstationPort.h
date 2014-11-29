@@ -41,9 +41,22 @@ public:
 	void Disable();
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
 
+    //Override DataPort functions for UI
     const Json::Value GetCurrentState() const override;
     const Json::Value GetStatistics() const override;
-	//implement ISOEHandler
+    
+	//Implement ICommandHandler, whicher version of the API
+    opendnp3::CommandStatus Select(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){ return SupportsT(arCommand, aIndex); };
+    opendnp3::CommandStatus Operate(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
+    opendnp3::CommandStatus Select(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
+    opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
+    opendnp3::CommandStatus Select(const opendnp3::AnalogOutputInt32& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
+    opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputInt32& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
+    opendnp3::CommandStatus Select(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
+    opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
+    opendnp3::CommandStatus Select(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
+    opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
+    
 	opendnp3::CommandStatus Supports(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){ return SupportsT(arCommand, aIndex); };
 	opendnp3::CommandStatus Perform(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
 	opendnp3::CommandStatus Supports(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
@@ -57,11 +70,12 @@ public:
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
-	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
-	template<typename T, typename Q> std::future<opendnp3::CommandStatus> EventQ(Q& meas, uint16_t index, const std::string& SenderName);
 
 	//Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName);
+    template<typename T> std::future<opendnp3::CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
+    template<typename T, typename Q> std::future<opendnp3::CommandStatus> EventQ(Q& meas, uint16_t index, const std::string& SenderName);
+
+    std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName);
@@ -79,10 +93,14 @@ public:
 
 	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 
-	asiodnp3::IOutstation* pOutstation;
-
+    //Implement IPollListener
+protected:
+    void OnStateChange(opendnp3::PollState state);
+    
 private:
-	void StateListener(opendnp3::ChannelState state);
+    asiodnp3::IOutstation* pOutstation;
+
+    void StateListener(opendnp3::ChannelState state);
 	void PollStats();
 	uint32_t lastRx;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

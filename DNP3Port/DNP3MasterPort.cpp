@@ -198,6 +198,13 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 											pConf->mAddrConf.IP,
 											pConf->mAddrConf.Port);
 	}
+    pChannel = TCPChannels[IPPort];
+    if (pChannel == nullptr)
+    {
+        std::cout << "TCP channel not found for masterstation '" << Name << std::endl;
+        return;
+    }
+
 	//Add a callback to get notified when the channel changes state
 	TCPChannels[IPPort]->AddStateListener(std::bind(&DNP3MasterPort::StateListener,this,std::placeholders::_1));
 
@@ -218,9 +225,15 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask(); //TODO: report/investigate bug - doesn't recognise response to integrity scan if not ALL_CLASSES
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
-
-	pMaster = TCPChannels[IPPort]->AddMaster(Name.c_str(), *this, asiodnp3::DefaultMasterApplication::Instance(), StackConfig);
-	LastState = opendnp3::ChannelState::CLOSED;
+    
+    pMaster = pChannel->AddMaster(Name.c_str(), *this, asiodnp3::DefaultMasterApplication::Instance(), StackConfig);
+    if (pMaster == nullptr)
+    {
+        std::cout << "Error creating masterstation '" << Name << std::endl;
+        return;
+    }
+    
+    LastState = opendnp3::ChannelState::CLOSED;
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)

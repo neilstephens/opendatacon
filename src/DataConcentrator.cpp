@@ -52,8 +52,8 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	LOG_LEVEL(opendnp3::levels::NORMAL),
 	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
 	FileLog("datacon_log"),
-    UI(new WebUI(10443)),
-	AdvFileLog(FileLog,LOG_LEVEL)
+	AdvFileLog(FileLog,LOG_LEVEL),
+    UI(new WebUI(10443))
 {
     //Configure the user interface
     UI->start();
