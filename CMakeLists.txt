@@ -61,39 +61,45 @@ include_directories(./JSON)
 
 add_definitions(-DASIO_STANDALONE)
 
-file(GLOB_RECURSE ODC_SRC ./ODC/*.cpp)
-add_library(ODC SHARED ${ODC_SRC})
-
-file(GLOB_RECURSE JSON_SRC ./JSON/*.cpp)
-add_library(JSON SHARED ${JSON_SRC})
-
+# OpenDNP3
 find_library(ASIODNP3_LIBRARY asiodnp3 lib)
 find_library(OPENDNP3_LIBRARY opendnp3 lib)
 find_library(ASIOPAL_LIBRARY asiopal lib)
 find_library(OPENPAL_LIBRARY openpal lib)
 
-file(GLOB_RECURSE DNP3Port_SRC  ./DNP3Port/*.cpp)
+# JSON Library
+file(GLOB_RECURSE JSON_SRC ./JSON/*.cpp ./JSON/*.h)
+add_library(JSON SHARED ${JSON_SRC})
+
+# ODC Library
+file(GLOB_RECURSE ODC_SRC ./ODC/*.cpp ./ODC/*.h)
+add_library(ODC SHARED ${ODC_SRC})
+target_link_libraries(ODC JSON ${ASIODNP3_LIBRARY} ${OPENDNP3_LIBRARY} ${ASIOPAL_LIBRARY} ${OPENPAL_LIBRARY})
+
+# DNP3 Port Library
+file(GLOB_RECURSE DNP3Port_SRC  ./DNP3Port/*.cpp ./DNP3Port/*.h)
 add_library(DNP3Port SHARED ${DNP3Port_SRC})
+target_link_libraries(DNP3Port ODC JSON ${ASIODNP3_LIBRARY} ${OPENDNP3_LIBRARY} ${ASIOPAL_LIBRARY} ${OPENPAL_LIBRARY})
 
-file(GLOB_RECURSE JSONPort_SRC ./JSONPort/*.cpp)
+# JSON Port Library
+file(GLOB_RECURSE JSONPort_SRC ./JSONPort/*.cpp ./JSONPort/*.h)
 add_library(JSONPort SHARED ${JSONPort_SRC})
+target_link_libraries(JSONPort ODC JSON ${OPENDNP3_LIBRARY} ${OPENPAL_LIBRARY})
 
+# WebUI Library
 find_package (MICROHTTPD)
 if (MICROHTTPD_FOUND)
 	include_directories(${MICROHTTPD_INCLUDE_DIR})
-	file(GLOB_RECURSE WebUI_SRC ./WebUI/*.cpp)
+	file(GLOB_RECURSE WebUI_SRC ./WebUI/*.cpp ./WebUI/*.h)
 	add_library(WebUI SHARED ${WebUI_SRC})
 	target_link_libraries(WebUI JSON ${MICROHTTPD_LIBRARY})
 else()
   message("libmicrohttpd not found, configuring without WebUI support.")
 endif()
 
-target_link_libraries(ODC JSON ${ASIODNP3_LIBRARY} ${OPENDNP3_LIBRARY} ${ASIOPAL_LIBRARY} ${OPENPAL_LIBRARY})
-target_link_libraries(DNP3Port ODC JSON ${ASIODNP3_LIBRARY} ${OPENDNP3_LIBRARY} ${ASIOPAL_LIBRARY} ${OPENPAL_LIBRARY})
-target_link_libraries(JSONPort ODC JSON ${OPENDNP3_LIBRARY} ${OPENPAL_LIBRARY})
-
-file(GLOB_RECURSE opendatacon_SRC  ./src/*.cpp)
+# Main opendatacon program
+file(GLOB_RECURSE opendatacon_SRC  ./src/*.cpp ./src/*.h)
 add_executable(opendatacon ${opendatacon_SRC} )
 #set_property(TARGET opendatacon PROPERTY RUNTIME_OUTPUT_DIRECTORY examples)
 set_property(TARGET opendatacon PROPERTY WORKING_DIRECTORY example)
-target_link_libraries(opendatacon LINK_PUBLIC ODC WebUI pthread)
+target_link_libraries(opendatacon LINK_PUBLIC ODC pthread)
