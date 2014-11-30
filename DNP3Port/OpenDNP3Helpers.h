@@ -89,4 +89,10 @@ T UpdateQuality(opendnp3::Database& database, uint8_t qual, uint16_t index)
 	return meas;
 }
 
+//template<typename T>
+opendnp3::DynamicPointIndexes ToIndexes(std::vector<uint32_t>& indexes)
+{
+    return opendnp3::DynamicPointIndexes(openpal::Indexable<uint32_t, uint32_t>(indexes.data(), indexes.size()));
+}
+
 #endif

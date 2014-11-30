@@ -160,14 +160,8 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents;	/// The number of counter events the outstation will buffer before overflowing
 
 	//contiguous points
-//	StackConfig.dbTemplate.numAnalog = pConf->pPointConf->AnalogIndicies.back();
-//	StackConfig.dbTemplate.numBinary = pConf->pPointConf->BinaryIndicies.back();
-
-	//noncontiguous points
-	auto AnaIndexable = openpal::Indexable<uint32_t, uint32_t>(pConf->pPointConf->AnalogIndicies.data(),pConf->pPointConf->AnalogIndicies.size());
-	auto BinIndexable = openpal::Indexable<uint32_t, uint32_t>(pConf->pPointConf->BinaryIndicies.data(),pConf->pPointConf->BinaryIndicies.size());
-	auto AnaIndexes = opendnp3::DynamicPointIndexes(AnaIndexable);
-	auto BinIndexes = opendnp3::DynamicPointIndexes(BinIndexable);
+	auto AnaIndexes = ToIndexes(pConf->pPointConf->AnalogIndicies);
+	auto BinIndexes = ToIndexes(pConf->pPointConf->BinaryIndicies);
 	StackConfig.dbTemplate = opendnp3::DatabaseTemplate(BinIndexes, opendnp3::PointIndexes::EMPTYINDEXES, AnaIndexes);
 
     auto TargetChan = TCPChannels[IPPort];
@@ -193,16 +187,17 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	lastRx = 0;
 	pPollStatTimer.reset(new Timer_t(*pIOS));
 
+    auto staticData = pOutstation->GetDatabase().staticData;
 	for(auto index : pConf->pPointConf->AnalogIndicies)
 	{
-		auto pos = AnaIndexes.operator opendnp3::PointIndexes().GetPosition(index);
-		pOutstation->GetDatabase().staticData.analogs.metadata[pos].clazz = pConf->pPointConf->AnalogClasses[index];
-		pOutstation->GetDatabase().staticData.analogs.metadata[pos].deadband = pConf->pPointConf->AnalogDeadbands[index];
+		auto pos = staticData.analogs.indexes.GetPosition(index);
+		staticData.analogs.metadata[pos].clazz = pConf->pPointConf->AnalogClasses[index];
+		staticData.analogs.metadata[pos].deadband = pConf->pPointConf->AnalogDeadbands[index];
 	}
 	for(auto index : pConf->pPointConf->BinaryIndicies)
 	{
-		auto pos = BinIndexes.operator opendnp3::PointIndexes().GetPosition(index);
-		pOutstation->GetDatabase().staticData.binaries.metadata[pos].clazz = pConf->pPointConf->BinaryClasses[index];
+		auto pos = staticData.binaries.indexes.GetPosition(index);
+		staticData.binaries.metadata[pos].clazz = pConf->pPointConf->BinaryClasses[index];
 	}
 }
 
@@ -213,21 +208,16 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
     Json::Value binaryValues;
     DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
     
-    //TODO: Has to be a better way to iterate over all database points
-    auto AnaIndexable = openpal::Indexable<uint32_t, uint32_t>(pConf->pPointConf->AnalogIndicies.data(),pConf->pPointConf->AnalogIndicies.size());
-	auto BinIndexable = openpal::Indexable<uint32_t, uint32_t>(pConf->pPointConf->BinaryIndicies.data(),pConf->pPointConf->BinaryIndicies.size());
-    auto AnaIndexes = opendnp3::DynamicPointIndexes(AnaIndexable);
-	auto BinIndexes = opendnp3::DynamicPointIndexes(BinIndexable);
-    
+    auto staticData = pOutstation->GetDatabase().staticData;
 	for(auto index : pConf->pPointConf->AnalogIndicies)
 	{
-		auto pos = AnaIndexes.operator opendnp3::PointIndexes().GetPosition(index);
-        analogValues[std::to_string(index)] = pOutstation->GetDatabase().staticData.analogs.values[pos].current.value;
+		auto pos = staticData.analogs.indexes.GetPosition(index);
+        analogValues[std::to_string(index)] = staticData.analogs.values[pos].current.value;
 	}
 	for(auto index : pConf->pPointConf->BinaryIndicies)
 	{
-		auto pos = BinIndexes.operator opendnp3::PointIndexes().GetPosition(index);
-        binaryValues[std::to_string(index)] = pOutstation->GetDatabase().staticData.binaries.values[pos].current.value;
+		auto pos = staticData.binaries.indexes.GetPosition(index);
+        binaryValues[std::to_string(index)] = staticData.binaries.values[pos].current.value;
 	}
 
     event["AnalogCurrent"] = analogValues;
