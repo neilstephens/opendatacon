@@ -34,6 +34,7 @@
 #include <opendatacon/DataPortCollection.h>
 #include "DataConnector.h"
 #include "DataConnectorCollection.h"
+#include "InterfaceCollection.h"
 
 #include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
@@ -59,6 +60,7 @@ public:
     DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
     LogCollection AdvancedLoggers;
+    InterfaceCollection Interfaces;
 
 	asiodnp3::DNP3Manager DNP3Mgr;
 	asio::io_service IOS;
@@ -70,7 +72,6 @@ public:
 	LogToFile FileLog;//Prints all messages to a rolling set of log files.
 	AdvancedLogger AdvFileLog;
 	asiopal::LogFanoutHandler FanoutHandler;
-    std::unique_ptr<IUI> UI;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void BuildOrRebuild();

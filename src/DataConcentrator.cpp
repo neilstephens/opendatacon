@@ -42,8 +42,6 @@
 #include "logging_cmds.h"
 #include "NullPort.h"
 
-#include "../WebUI/WebUI.h"
-
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
 	DNP3Mgr(std::thread::hardware_concurrency()),
@@ -52,15 +50,14 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	LOG_LEVEL(opendnp3::levels::NORMAL),
 	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
 	FileLog("datacon_log"),
-	AdvFileLog(FileLog,LOG_LEVEL),
-    UI(new WebUI(10443))
+	AdvFileLog(FileLog,LOG_LEVEL)
 {
-    //Configure the user interface
-    UI->start();
-    UI->AddResponder("/OpenDataCon", *this);
-    UI->AddResponder("/DataPorts", DataPorts);
-    UI->AddResponder("/DataConnectors", DataConnectors);
-    UI->AddResponder("/Loggers", AdvancedLoggers);
+    //Version
+    this->AddCommand("version", [this](const ParamCollection & params) { //"Print version information"
+        Json::Value result;
+        result["version"] = ODC_VERSION_STRING;
+        return result;
+    },"Return the version information of opendatacon.");
 
 	//fire up some worker threads
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
@@ -68,8 +65,11 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	AdvConsoleLog.AddIngoreAlways(".*"); //silence all console messages by default
 	DNP3Mgr.AddLogSubscriber(&AdvConsoleLog);
+    AdvancedLoggers["Console Log"] = std::shared_ptr<AdvancedLogger>(&AdvConsoleLog); // TODO: shouldn't be a shared_ptr, this is likely really bad
 	DNP3Mgr.AddLogSubscriber(&AdvFileLog);
+    AdvancedLoggers["File Log"] = std::shared_ptr<AdvancedLogger>(&AdvFileLog); // TODO: shouldn't be a shared_ptr, this is likely really bad
 
+    
 	//Parse the configs and create all the ports and connections
 	ProcessFile();
 
@@ -92,6 +92,68 @@ DataConcentrator::DataConcentrator(std::string FileName):
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
     if(!JSONRoot.isObject()) return;
+    
+    //Configure the user interface
+    if(!JSONRoot["Plugins"].isNull())
+    {
+        const Json::Value Plugins = JSONRoot["Plugins"];
+
+        for(Json::Value::ArrayIndex n = 0; n < Plugins.size(); ++n)
+        {
+            if(Plugins[n]["Type"].isNull() || Plugins[n]["Name"].isNull() || Plugins[n]["ConfFilename"].isNull())
+            {
+                std::cout<<"Warning: invalid plugin config: need at least Type, Name, ConfFilename: \n'"<<Plugins[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                continue;
+            }
+            
+            auto PluginName = Plugins[n]["Name"].asString();
+            if(Interfaces.count(PluginName) > 0)
+            {
+                std::cout<<"Warning: duplicate plugin: \n'"<<Plugins[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                continue;
+            }
+            
+            //Looks for a specific library (for libs that implement more than one class)
+            std::string libname;
+            if(!Plugins[n]["Library"].isNull())
+            {
+                libname = GetLibFileName(Plugins[n]["Library"].asString());
+            }
+            //Otherwise use the naming convention lib<Type>Plugin.so to find the default lib that implements a type of plugin
+            else
+            {
+                libname = GetLibFileName(Plugins[n]["Type"].asString());
+            }
+            
+            //try to load the lib
+            auto* pluginlib = DYNLIBLOAD(libname.c_str());
+            
+            if(pluginlib == nullptr)
+            {
+                std::cout << "Warning: failed to load library '"<<libname<<"' skipping plugin..."<<std::endl;
+                continue;
+            }
+            
+            //Our API says the library should export a creation function: IUI* new_<Type>Plugin(Name, Filename, Overrides)
+            //it should return a pointer to a heap allocated instance of a descendant of IUI
+            std::string new_funcname = "new_"+Plugins[n]["Type"].asString()+"Plugin";
+            auto new_plugin_func = (IUI*(*)(std::string, std::string, const Json::Value))DYNLIBGETSYM(pluginlib, new_funcname.c_str());
+            
+            if(new_plugin_func == nullptr)
+            {
+                std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for plugin type '"<<Plugins[n]["Type"].asString()<<"' skipping plugin..."<<std::endl;
+                continue;
+            }
+            
+            //call the creation function and wrap the returned pointer to a new plugin
+            Interfaces[PluginName] = std::unique_ptr<IUI>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]));
+            Interfaces[PluginName]->AddResponder("/OpenDataCon", *this);
+            Interfaces[PluginName]->AddResponder("/DataPorts", DataPorts);
+            Interfaces[PluginName]->AddResponder("/DataConnectors", DataConnectors);
+            Interfaces[PluginName]->AddResponder("/Loggers", AdvancedLoggers);
+        }
+    }
+    
 	if(!JSONRoot["LogFileSizekB"].isNull())
 		FileLog.SetLogFileSizekB(JSONRoot["LogFileSizekB"].asUInt());
 
@@ -127,48 +189,51 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			if(Ports[n]["Type"].isNull() || Ports[n]["Name"].isNull() || Ports[n]["ConfFilename"].isNull())
 			{
 				std::cout<<"Warning: invalid port config: need at least Type, Name, ConfFilename: \n'"<<Ports[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                continue;
 			}
-			else if(Ports[n]["Type"].asString() == "Null")
+			if(Ports[n]["Type"].asString() == "Null")
 			{
 				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+                continue;
 			}
-			else
-			{
-				//Looks for a specific library (for libs that implement more than one class)
-				std::string libname;
-				if(!Ports[n]["Library"].isNull())
-				{
-					libname = GetLibFileName(Ports[n]["Library"].asString());
-				}
-				//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
-				else
-				{
-					libname = GetLibFileName(Ports[n]["Type"].asString());
-				}
+            
+            //Looks for a specific library (for libs that implement more than one class)
+            std::string libname;
+            if(!Ports[n]["Library"].isNull())
+            {
+                libname = GetLibFileName(Ports[n]["Library"].asString());
+            }
+            //Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
+            else
+            {
+                libname = GetLibFileName(Ports[n]["Type"].asString());
+            }
 
-				//try to load the lib
-				auto* portlib = DYNLIBLOAD(libname.c_str());
+            //try to load the lib
+            auto* portlib = DYNLIBLOAD(libname.c_str());
 
-				if(portlib == nullptr)
-				{
-					std::cout << "Warning: failed to load library '"<<libname<<"' skipping port..."<<std::endl;
-					continue;
-				}
+            if(portlib == nullptr)
+            {
+                std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
+                DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+                continue;
+            }
 
-				//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
-				//it should return a pointer to a heap allocated instance of a descendant of DataPort
-				std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-				auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))DYNLIBGETSYM(portlib, new_funcname.c_str());
+            //Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
+            //it should return a pointer to a heap allocated instance of a descendant of DataPort
+            std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
+            auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))DYNLIBGETSYM(portlib, new_funcname.c_str());
 
-				if(new_port_func == nullptr)
-				{
-					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' skipping port..."<<std::endl;
-					continue;
-				}
+            if(new_port_func == nullptr)
+            {
+                std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' mapping to null port..."<<std::endl;
+                DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+                continue;
+            }
 
-				//call the creation function and wrap the returned pointer to a new port
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
-			}
+            //call the creation function and wrap the returned pointer to a new port
+            DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+        
 		}
 	}
 
@@ -199,6 +264,10 @@ void DataConcentrator::BuildOrRebuild()
 }
 void DataConcentrator::Run()
 {
+    for(auto& ui : Interfaces)
+    {
+        ui.second->start();
+    }
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		IOS.post([=]()
