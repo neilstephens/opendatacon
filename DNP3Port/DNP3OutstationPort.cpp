@@ -33,6 +33,7 @@
 #include <opendnp3/outstation/Database.h>
 #include <opendnp3/outstation/TimeTransaction.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
+#include <openpal/logging/LogLevels.h>
 #include "DNP3OutstationPort.h"
 
 #include "OpenDNP3Helpers.h"
@@ -45,6 +46,14 @@ void DNP3OutstationPort::Enable()
 {
 	if(enabled)
 		return;
+    if(nullptr == pOutstation)
+    {
+        std::string msg = Name + ": Port not configured.";
+        auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+        pLoggers->Log(log_entry);
+        
+        return;
+    }
 	pOutstation->Enable();
 	enabled = true;
 
@@ -165,7 +174,9 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
     
     if (TargetChan == nullptr)
     {
-        std::cout << "TCP channel not found for outstation '" << Name << std::endl;
+        std::string msg = Name + ": TCP channel not found for outstation.";
+        auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+        pLoggers->Log(log_entry);
         return;
     }
     
@@ -173,7 +184,9 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
     
     if (pOutstation == nullptr)
     {
-        std::cout << "Error creating outstation '" << Name << std::endl;
+        std::string msg = Name + ": Error creating outstation.";
+        auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+        pLoggers->Log(log_entry);
         return;
     }
 

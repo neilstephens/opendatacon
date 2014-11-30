@@ -37,7 +37,15 @@ void DNP3MasterPort::Enable()
 {
 	if(enabled)
 		return;
-
+    if(nullptr == pMaster)
+    {
+        std::string msg = Name + ": Port not configured.";
+        auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+        pLoggers->Log(log_entry);
+        
+        return;
+    }
+    
 	enabled = true;
 	PortDown();
 
@@ -201,7 +209,10 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
     pChannel = TCPChannels[IPPort];
     if (pChannel == nullptr)
     {
-        std::cout << "TCP channel not found for masterstation '" << Name << std::endl;
+        std::string msg = Name + ": TCP channel not found for masterstation.";
+        auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+        pLoggers->Log(log_entry);
+
         return;
     }
 
@@ -229,7 +240,10 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
     pMaster = pChannel->AddMaster(Name.c_str(), *this, asiodnp3::DefaultMasterApplication::Instance(), StackConfig);
     if (pMaster == nullptr)
     {
-        std::cout << "Error creating masterstation '" << Name << std::endl;
+        std::string msg = Name + ": Error creating masterstation.";
+        auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+        pLoggers->Log(log_entry);
+        
         return;
     }
     
