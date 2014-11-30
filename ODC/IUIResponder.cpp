@@ -37,6 +37,7 @@ const Json::Value IUIResponder::GenerateResult(const std::string& message)
 const Json::Value IUIResponder::RESULT_SUCCESS = GenerateResult("Success");
 const Json::Value IUIResponder::RESULT_BADPARAMETER = GenerateResult("Bad parameter");
 const Json::Value IUIResponder::RESULT_BADCOMMAND = GenerateResult("Bad command");
+const Json::Value IUIResponder::RESULT_BADPORT = GenerateResult("Bad port");
 
 Json::Value IUIResponder::GetCommandList()
 {

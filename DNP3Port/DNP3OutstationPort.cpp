@@ -38,6 +38,8 @@
 
 #include "OpenDNP3Helpers.h"
 
+#include "PointIndexesIterator.h"
+
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides)
 {};
@@ -188,7 +190,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	pPollStatTimer.reset(new Timer_t(*pIOS));
 
     auto staticData = pOutstation->GetDatabase().staticData;
-	for(auto index : pConf->pPointConf->AnalogIndicies)
+    for(auto index : pConf->pPointConf->AnalogIndicies)
 	{
 		auto pos = staticData.analogs.indexes.GetPosition(index);
 		staticData.analogs.metadata[pos].clazz = pConf->pPointConf->AnalogClasses[index];
@@ -206,6 +208,8 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
     Json::Value event;
     Json::Value analogValues;
     Json::Value binaryValues;
+    if (pOutstation == nullptr) return IUIResponder::RESULT_BADPORT;
+
     DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
     
     auto staticData = pOutstation->GetDatabase().staticData;
@@ -229,6 +233,7 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 const Json::Value DNP3OutstationPort::GetStatistics() const
 {
     Json::Value event;
+    if (pOutstation == nullptr) return IUIResponder::RESULT_BADPORT;
     
     auto StackStats = this->pOutstation->GetStackStatistics();
     

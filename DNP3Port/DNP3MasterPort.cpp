@@ -458,7 +458,8 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 const Json::Value DNP3MasterPort::GetStatistics() const
 {
     Json::Value event;
-    
+    if (pMaster == nullptr) return IUIResponder::RESULT_BADPORT;
+
     auto StackStats = this->pMaster->GetStackStatistics();
     
     event["numTransportErrorRx"] = StackStats.numTransportErrorRx;

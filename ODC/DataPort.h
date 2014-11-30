@@ -32,6 +32,8 @@
 #include "IOHandler.h"
 #include "ConfigParser.h"
 
+#include "IUIResponder.h"
+
 class DataPort: public IOHandler, public ConfigParser
 {
 public:
