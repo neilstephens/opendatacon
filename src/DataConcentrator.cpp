@@ -48,9 +48,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS)),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
-	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
+	AdvConsoleLog(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL)),
 	FileLog("datacon_log"),
-	AdvFileLog(FileLog,LOG_LEVEL)
+	AdvFileLog(new AdvancedLogger(FileLog,LOG_LEVEL))
 {
     //Version
     this->AddCommand("version", [this](const ParamCollection & params) { //"Print version information"
@@ -63,11 +63,11 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
 
-	AdvConsoleLog.AddIngoreAlways(".*"); //silence all console messages by default
-	DNP3Mgr.AddLogSubscriber(&AdvConsoleLog);
-    AdvancedLoggers["Console Log"] = std::shared_ptr<AdvancedLogger>(&AdvConsoleLog); // TODO: shouldn't be a shared_ptr, this is likely really bad
-	DNP3Mgr.AddLogSubscriber(&AdvFileLog);
-    AdvancedLoggers["File Log"] = std::shared_ptr<AdvancedLogger>(&AdvFileLog); // TODO: shouldn't be a shared_ptr, this is likely really bad
+	AdvConsoleLog->AddIngoreAlways(".*"); //silence all console messages by default
+	DNP3Mgr.AddLogSubscriber(AdvConsoleLog.get());
+    AdvancedLoggers["Console Log"] = AdvConsoleLog;
+	DNP3Mgr.AddLogSubscriber(AdvFileLog.get());
+    AdvancedLoggers["File Log"] = AdvFileLog;
 
     
 	//Parse the configs and create all the ports and connections
@@ -75,15 +75,15 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	for(auto& port : DataPorts)
 	{
-		port.second->AddLogSubscriber(&AdvConsoleLog);
-		port.second->AddLogSubscriber(&AdvFileLog);
+		port.second->AddLogSubscriber(AdvConsoleLog.get());
+		port.second->AddLogSubscriber(AdvFileLog.get());
 		port.second->SetIOS(&IOS);
 		port.second->SetLogLevel(LOG_LEVEL);
 	}
 	for(auto& conn : DataConnectors)
 	{
-		conn.second->AddLogSubscriber(&AdvConsoleLog);
-		conn.second->AddLogSubscriber(&AdvFileLog);
+		conn.second->AddLogSubscriber(AdvConsoleLog.get());
+		conn.second->AddLogSubscriber(AdvFileLog.get());
 		conn.second->SetIOS(&IOS);
 		conn.second->SetLogLevel(LOG_LEVEL);
 	}
@@ -176,8 +176,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			LOG_LEVEL = opendnp3::levels::NOTHING;
 		else
 			std::cout << "Warning: invalid LOG_LEVEL setting: '" << value << "' : ignoring and using 'NORMAL' log level." << std::endl;
-		AdvFileLog.SetLogLevel(LOG_LEVEL);
-		AdvConsoleLog.SetLogLevel(LOG_LEVEL);
+		AdvFileLog->SetLogLevel(LOG_LEVEL);
+		AdvConsoleLog->SetLogLevel(LOG_LEVEL);
 	}
 
 	if(!JSONRoot["Ports"].isNull())
@@ -292,19 +292,19 @@ void DataConcentrator::Run()
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control
-	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(AdvConsoleLog));
+	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(*AdvConsoleLog));
 	console.AddCmd("ignore_message",bound_func,"Enter regex to silence matching messages from the console logger.");
-	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(AdvConsoleLog));
+	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(*AdvConsoleLog));
 	console.AddCmd("unignore_message",bound_func,"Enter regex to remove from the console ignore list.");
-	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(AdvConsoleLog));
+	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(*AdvConsoleLog));
 	console.AddCmd("show_ignored",bound_func,"Shows all console message ignore regexes and how many messages they've matched.");
 
 	//file logging control
-	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(AdvFileLog));
+	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(*AdvFileLog));
 	console.AddCmd("ignore_file_message",bound_func,"Enter regex to silence matching messages from the file logger.");
-	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(AdvFileLog));
+	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(*AdvFileLog));
 	console.AddCmd("unignore_file_message",bound_func,"Enter regex to remove from the file ignore list.");
-	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(AdvFileLog));
+	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(*AdvFileLog));
 	console.AddCmd("show_file_ignored",bound_func,"Shows all file message ignore regexes and how many messages they've matched.");
 
 	//disable/enable/restart
