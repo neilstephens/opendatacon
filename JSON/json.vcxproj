@@ -108,6 +108,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>JSON_x64.def</ModuleDefinitionFile>
     </Link>
+    <PreBuildEvent>
+      <Command>xcopy /I /D "$(ProjectDir)\json\*.h" "$(SolutionDir)\include\$(ProjectName)"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>

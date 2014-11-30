@@ -32,4 +32,3 @@ EXPORTS
 	?StringToEventCounterResponse@@YA?AW4EventCounterResponse@opendnp3@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	?StringToEventBinaryResponse@@YA?AW4EventBinaryResponse@opendnp3@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	??0ConfigParser@@QEAA@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVValue@Json@@@Z
-

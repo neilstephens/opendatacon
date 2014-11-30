@@ -204,6 +204,7 @@
     <ClInclude Include="AddrConf.h" />
     <ClInclude Include="AdvancedLogger.h" />
     <ClInclude Include="Console.h" />
+    <ClInclude Include="LogCollection.h" />
     <ClInclude Include="logging_cmds.h" />
     <ClInclude Include="LogToFile.h" />
     <ClInclude Include="tinycon.h" />
@@ -218,6 +219,9 @@
     </ProjectReference>
     <ProjectReference Include="..\ODC\ODC.vcxproj">
       <Project>{6715f2d3-391f-4e19-bb2c-52c1fa102a4a}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\WebUI\WebUI.vcxproj">
+      <Project>{150a3bb1-b87d-4873-a2ad-8c0dee56c80f}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

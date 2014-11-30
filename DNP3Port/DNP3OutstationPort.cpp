@@ -193,7 +193,63 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	}
 }
 
-// Called by OpenDNP3 Thread Pool
+const Json::Value DNP3OutstationPort::GetCurrentState() const
+{
+    Json::Value event;
+    Json::Value analogValues;
+    Json::Value binaryValues;
+    DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+    
+    //TODO: Has to be a better way to iterate over all database points
+    auto AnaIndexable = openpal::Indexable<uint32_t, uint32_t>(pConf->pPointConf->AnalogIndicies.data(),pConf->pPointConf->AnalogIndicies.size());
+	auto BinIndexable = openpal::Indexable<uint32_t, uint32_t>(pConf->pPointConf->BinaryIndicies.data(),pConf->pPointConf->BinaryIndicies.size());
+    auto AnaIndexes = opendnp3::DynamicPointIndexes(AnaIndexable);
+	auto BinIndexes = opendnp3::DynamicPointIndexes(BinIndexable);
+    
+	for(auto index : pConf->pPointConf->AnalogIndicies)
+	{
+		auto pos = AnaIndexes.operator opendnp3::PointIndexes().GetPosition(index);
+        analogValues[std::to_string(index)] = pOutstation->GetDatabase().staticData.analogs.values[pos].current.value;
+	}
+	for(auto index : pConf->pPointConf->BinaryIndicies)
+	{
+		auto pos = BinIndexes.operator opendnp3::PointIndexes().GetPosition(index);
+        binaryValues[std::to_string(index)] = pOutstation->GetDatabase().staticData.binaries.values[pos].current.value;
+	}
+
+    event["AnalogCurrent"] = analogValues;
+    event["BinaryCurrent"] = binaryValues;
+    
+    return event;
+};
+
+const Json::Value DNP3OutstationPort::GetStatistics() const
+{
+    Json::Value event;
+    
+    auto StackStats = this->pOutstation->GetStackStatistics();
+    
+    event["numTransportErrorRx"] = StackStats.numTransportErrorRx;
+    event["numTransportRx"] = StackStats.numTransportRx;
+    event["numTransportTx"] = StackStats.numTransportTx;
+    
+    auto ChanStats = this->pChannel->GetChannelStatistics();
+    
+    /// Number of frames discared due to CRC errors
+	event["numCrcError"] = ChanStats.numCrcError;
+        
+    /// Number of frames transmitted
+    event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;
+        
+    /// Number of frames received
+    event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;
+		
+    /// Number of frames detected with bad / malformed contents
+    event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;
+    
+    return event;
+};
+
 template<typename T>
 inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {

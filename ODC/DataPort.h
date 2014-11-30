@@ -46,6 +46,16 @@ public:
 	virtual void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
 	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
 
+    virtual const Json::Value GetStatistics() const
+    {
+        return Json::Value();
+    };
+    
+    virtual const Json::Value GetCurrentState() const
+    {
+        return Json::Value();
+    };
+
 protected:
 	std::unique_ptr<DataPortConf> pConf;
 };

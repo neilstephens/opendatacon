@@ -45,8 +45,26 @@ EXPORTS
 	?parse@Reader@Json@@QEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEAVValue@2@_N@Z
 	?toStyledString@Value@Json@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ
 	?isUInt@Value@Json@@QEBA_NXZ	
+	??AValue@Json@@QEAAAEAV01@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+	?begin@Value@Json@@QEBA?AVValueConstIterator@2@XZ
+	?end@Value@Json@@QEBA?AVValueConstIterator@2@XZ
+	?deref@ValueIteratorBase@Json@@IEBAAEAVValue@2@XZ
+	?increment@ValueIteratorBase@Json@@IEAAXXZ
+	?isEqual@ValueIteratorBase@Json@@IEBA_NAEBV12@@Z
 	?isObject@Value@Json@@QEBA_NXZ
-	?isArray@Value@Json@@QEBA_NXZ
-	?isInt@Value@Json@@QEBA_NXZ
-	?asInt@Value@Json@@QEBAHXZ
-	?isObject@Value@Json@@QEBA_NXZ
+	??0Value@Json@@QEAA@I@Z
+	??0Value@Json@@QEAA@I@Z
+	??0Value@Json@@QEAA@N@Z
+	??0Value@Json@@QEAA@_N@Z
+	??0Value@Json@@QEAA@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+	??0Value@Json@@QEAA@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+	?append@Value@Json@@QEAAAEAV12@AEBV12@@Z
+	?append@Value@Json@@QEAAAEAV12@AEBV12@@Z
+	??0Value@Json@@QEAA@W4ValueType@1@@Z
+	??1Value@Json@@QEAA@XZ
+	??4Value@Json@@QEAAAEAV01@AEBV01@@Z
+	??1Writer@Json@@UEAA@XZ
+	??0FastWriter@Json@@QEAA@XZ
+	?write@FastWriter@Json@@UEAA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVValue@2@@Z
+	??0Value@Json@@QEAA@H@Z
+	??0Value@Json@@QEAA@PEBD@Z
