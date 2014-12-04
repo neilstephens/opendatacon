@@ -29,9 +29,10 @@
 #define opendatacon_ResponderMap_h
 
 #include "IUIResponder.h"
+#include <memory>
 
 template <class T>
-class ResponderMap : public std::unordered_map<std::string, std::shared_ptr<T>>, public IUIResponder
+class ResponderMap : public std::unordered_map<std::string, std::shared_ptr<T> >, public IUIResponder
 {
 public:
     ResponderMap()

@@ -27,7 +27,7 @@
 
 #include "WebUI.h"
 
-extern "C" WebUI* new_WebUIPlugin(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" IUI* new_WebUIPlugin(std::string Name, std::string File, const Json::Value Overrides)
 {
     std::string ip = "0.0.0.0";
     uint16_t port = 443;

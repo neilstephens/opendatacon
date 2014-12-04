@@ -34,7 +34,7 @@
 #include <opendatacon/DataPortCollection.h>
 #include "DataConnector.h"
 #include "DataConnectorCollection.h"
-#include "InterfaceCollection.h"
+#include <opendatacon/InterfaceCollection.h>
 
 #include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
