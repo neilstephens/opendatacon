@@ -59,11 +59,11 @@
 
 int main(int argc, char* argv[])
 {
-	std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
-
 	// Wrap everything in a try block.  Do this every time, 
 	// because exceptions will be thrown for problems.
-	try { 
+	try {
+		std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
+
 		TCLAP::CmdLine cmd("High performance asynchronous data concentrator", ' ', ODC_VERSION_STRING);
 		TCLAP::ValueArg<std::string> ConfigFileArg("c", "config", "Configuration file, specified as an absolute path or relative to the working directory.", false, "opendatacon.conf", "string");
 		cmd.add(ConfigFileArg);
