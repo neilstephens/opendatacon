@@ -68,3 +68,7 @@ EXPORTS
 	?write@FastWriter@Json@@UEAA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVValue@2@@Z
 	??0Value@Json@@QEAA@H@Z
 	??0Value@Json@@QEAA@PEBD@Z
+	?isArray@Value@Json@@QEBA_NXZ
+	?isInt@Value@Json@@QEBA_NXZ
+	?asInt@Value@Json@@QEBAHXZ
+

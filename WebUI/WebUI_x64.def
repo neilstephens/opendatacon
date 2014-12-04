@@ -19,5 +19,4 @@
  ; 
 LIBRARY WebUI
 EXPORTS
-	?start@WebUI@@UEAAHXZ
-	?stop@WebUI@@UEAAXXZ
+	new_WebUIPlugin

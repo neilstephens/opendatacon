@@ -19,4 +19,4 @@
  ; 
 LIBRARY WebUI
 EXPORTS
-	??0WebUI@@QAE@G@Z
+	new_WebUIPlugin
