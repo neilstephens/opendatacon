@@ -458,27 +458,22 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 const Json::Value DNP3MasterPort::GetStatistics() const
 {
     Json::Value event;
-    if (pMaster == nullptr) return IUIResponder::RESULT_BADPORT;
 
-    auto StackStats = this->pMaster->GetStackStatistics();
-    
-    event["numTransportErrorRx"] = StackStats.numTransportErrorRx;
-    event["numTransportRx"] = StackStats.numTransportRx;
-    event["numTransportTx"] = StackStats.numTransportTx;
-    
-    auto ChanStats = this->pChannel->GetChannelStatistics();
-    
-    /// Number of frames discared due to CRC errors
-	event["numCrcError"] = ChanStats.numCrcError;
-    
-    /// Number of frames transmitted
-    event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;
-    
-    /// Number of frames received
-    event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;
-    
-    /// Number of frames detected with bad / malformed contents
-    event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;
-    
+	if (pChannel != nullptr)
+	{
+		auto ChanStats = this->pChannel->GetChannelStatistics();
+		event["numCrcError"] = ChanStats.numCrcError;		/// Number of frames discared due to CRC errors
+		event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;		/// Number of frames transmitted
+		event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;		/// Number of frames received
+		event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;		/// Number of frames detected with bad / malformed contents
+	}
+	if (pMaster != nullptr)
+	{
+		auto StackStats = this->pMaster->GetStackStatistics();
+		event["numTransportErrorRx"] = StackStats.numTransportErrorRx;
+		event["numTransportRx"] = StackStats.numTransportRx;
+		event["numTransportTx"] = StackStats.numTransportTx;
+	}
+
     return event;
 };

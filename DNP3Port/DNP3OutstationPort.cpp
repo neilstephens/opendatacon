@@ -38,8 +38,6 @@
 
 #include "OpenDNP3Helpers.h"
 
-#include "PointIndexesIterator.h"
-
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides)
 {};
@@ -233,27 +231,21 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 const Json::Value DNP3OutstationPort::GetStatistics() const
 {
     Json::Value event;
-    if (pOutstation == nullptr) return IUIResponder::RESULT_BADPORT;
-    
-    auto StackStats = this->pOutstation->GetStackStatistics();
-    
-    event["numTransportErrorRx"] = StackStats.numTransportErrorRx;
-    event["numTransportRx"] = StackStats.numTransportRx;
-    event["numTransportTx"] = StackStats.numTransportTx;
-    
-    auto ChanStats = this->pChannel->GetChannelStatistics();
-    
-    /// Number of frames discared due to CRC errors
-	event["numCrcError"] = ChanStats.numCrcError;
-        
-    /// Number of frames transmitted
-    event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;
-        
-    /// Number of frames received
-    event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;
-		
-    /// Number of frames detected with bad / malformed contents
-    event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;
+	if (pChannel != nullptr)
+	{
+		auto ChanStats = this->pChannel->GetChannelStatistics();
+		event["numCrcError"] = ChanStats.numCrcError;		/// Number of frames discared due to CRC errors
+		event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;		/// Number of frames transmitted
+		event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;		/// Number of frames received
+		event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;		/// Number of frames detected with bad / malformed contents
+	}
+	if (pOutstation != nullptr)
+	{
+		auto StackStats = this->pOutstation->GetStackStatistics();
+		event["numTransportErrorRx"] = StackStats.numTransportErrorRx;
+		event["numTransportRx"] = StackStats.numTransportRx;
+		event["numTransportTx"] = StackStats.numTransportTx;
+	}
     
     return event;
 };
