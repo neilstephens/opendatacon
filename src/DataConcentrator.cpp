@@ -102,14 +102,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
         {
             if(Plugins[n]["Type"].isNull() || Plugins[n]["Name"].isNull() || Plugins[n]["ConfFilename"].isNull())
             {
-                std::cout<<"Warning: invalid plugin config: need at least Type, Name, ConfFilename: \n'"<<Plugins[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+				std::cout << "Warning: invalid plugin config: need at least Type, Name, ConfFilename: \n'" << Plugins[n].toStyledString() << "\n' : ignoring" << std::endl;
                 continue;
             }
             
             auto PluginName = Plugins[n]["Name"].asString();
             if(Interfaces.count(PluginName) > 0)
             {
-                std::cout<<"Warning: duplicate plugin: \n'"<<Plugins[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+				std::cout << PluginName << " Warning: ignoring duplicate plugin name." << std::endl;
                 continue;
             }
             
@@ -130,7 +130,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
             
             if(pluginlib == nullptr)
             {
-                std::cout << "Warning: failed to load library '"<<libname<<"' skipping plugin..."<<std::endl;
+				std::cout << PluginName << " Info: dynamic library load failed '" << libname << "' skipping plugin..." << std::endl;
+				std::cout << PluginName << " Error: failed to load plugin, skipping..." << std::endl;
                 continue;
             }
             
@@ -141,8 +142,9 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
             
             if(new_plugin_func == nullptr)
             {
-                std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for plugin type '"<<Plugins[n]["Type"].asString()<<"' skipping plugin..."<<std::endl;
-                continue;
+				std::cout << PluginName << " Info: failed to load symbol '" << new_funcname << "' in library '" << libname << "' " << LastSystemError() << std::endl;
+				std::cout << PluginName << " Error: failed to load plugin, skipping..." << std::endl;
+				continue;
             }
             
             //call the creation function and wrap the returned pointer to a new plugin

@@ -31,33 +31,75 @@
 
 /// Dynamic library loading
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-	const std::string DYNLIBPRE = "";
-	const std::string DYNLIBEXT = ".dll";
-	#define DYNLIBLOAD(a) LoadLibraryExA(a, 0, DWORD(0))
-	#define DYNLIBGETSYM(a,b) GetProcAddress(a, b)
+#include <windows.h>
+const std::string DYNLIBPRE = "";
+const std::string DYNLIBEXT = ".dll";
+#define DYNLIBLOAD(a) LoadLibraryExA(a, 0, DWORD(0))
+#define DYNLIBGETSYM(a,b) GetProcAddress(a, b)
+
+// Retrieve the system error message for the last-error code
+inline std::string LastSystemError()
+{
+	//void* lpMsgBuf = nullptr;
+	LPSTR lpMsgBuf = nullptr;
+	DWORD dw = GetLastError();
+
+	auto res = FormatMessageA(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		dw,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPSTR)&lpMsgBuf,
+		0,
+		NULL);
+	std::string message;
+	if (res > 0)
+	{
+		message = lpMsgBuf;
+		message.erase(std::remove(message.begin(), message.end(), '\n'), message.end());
+		message.erase(std::remove(message.begin(), message.end(), '\r'), message.end());
+	}
+	else
+	{
+		message = "Unknown error";
+	}
+
+	if (lpMsgBuf) LocalFree(lpMsgBuf);
+	return message;
+}
+
 #else
-	const std::string DYNLIBPRE = "lib";
-	#if defined(__APPLE__)
-		const std::string DYNLIBEXT = ".dylib";
-	#else
-		const std::string DYNLIBEXT = ".so";
-	#endif
-	#define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
-	#define DYNLIBGETSYM(a,b) dlsym(a, b)
+const std::string DYNLIBPRE = "lib";
+#if defined(__APPLE__)
+const std::string DYNLIBEXT = ".dylib";
+#else
+const std::string DYNLIBEXT = ".so";
+#endif
+#define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
+#define DYNLIBGETSYM(a,b) dlsym(a, b)
+
+// Retrieve the system error message for the last-error code
+inline std::string LastSystemError()
+{
+	char *error;
+	if ((error = dlerror()) != NULL)  {
+		return error;
+	}
+}
 #endif
 
 /// Posix file system directory manipulation - e.g. chdir
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-	#include <direct.h>
-	#define CHDIR(a) _chdir(a)
+#include <direct.h>
+#define CHDIR(a) _chdir(a)
 #else
-	#include <unistd.h>
-	#define CHDIR(a) chdir(a)
+#include <unistd.h>
+#define CHDIR(a) chdir(a)
 #endif
 
 #endif
 
 /// Implement strerror_r error to string equivalent for windows
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-	#define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
+#define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
 #endif
