@@ -60,6 +60,7 @@ private:
     std::string cert_pem;
     std::string key_pem;
     
+	bool useSSL = false;
     /* UI response handlers */
     std::unordered_map<std::string, const IUIResponder*> Responders;
 };
