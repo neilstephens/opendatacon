@@ -33,7 +33,6 @@
 #include <functional>
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/gen/ControlCode.h>
-#include <opendnp3/outstation/EventResponseConfig.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 
@@ -90,9 +89,9 @@ public:
 	uint32_t DemandCheckPeriodms; /// Time between checking Transport layer Rx traffic - signifying Demand to connect
 
 	// Default Event Response Types
-	opendnp3::EventBinaryResponse EventBinaryResponse;
-	opendnp3::EventAnalogResponse EventAnalogResponse;
-	opendnp3::EventCounterResponse EventCounterResponse;
+	opendnp3::StaticBinaryVariation EventBinaryResponse;
+	opendnp3::StaticAnalogVariation EventAnalogResponse;
+	opendnp3::StaticCounterVariation EventCounterResponse;
 
 	// Event buffer limits
 	uint16_t MaxBinaryEvents; /// The number of binary events the outstation will buffer before overflowing

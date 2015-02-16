@@ -26,9 +26,11 @@
 
 #ifndef OPENDNP3HELPERS_H_
 #define OPENDNP3HELPERS_H_
+#include <string>
 
 #include <opendnp3/outstation/Database.h>
 
+/*
 template <typename T>
 opendnp3::PointIndexes GetIndexes(const opendnp3::Database& database);
 
@@ -75,24 +77,25 @@ opendnp3::PointIndexes GetIndexes<opendnp3::AnalogOutputStatus>(const opendnp3::
 }
 
 template<typename T>
-T GetCurrentValue(opendnp3::Database& database, uint16_t index)
+T GetCurrentValue(opendnp3::IDatabase& database, uint16_t index)
 {
+	database.Modify()
 	auto idx = GetIndexes<T>(database).GetPosition(index);
 	return database.Values<T>()[idx].current;
 }
 
 template<typename T>
-T UpdateQuality(opendnp3::Database& database, uint8_t qual, uint16_t index)
+T UpdateQuality(opendnp3::IDatabase& database, uint8_t qual, uint16_t index)
 {
 	T meas(GetCurrentValue<T>(database, index));
 	meas.quality = qual;
 	return meas;
-}
+}*/
 
-//template<typename T>
-opendnp3::DynamicPointIndexes ToIndexes(std::vector<uint32_t>& indexes)
-{
-    return opendnp3::DynamicPointIndexes(openpal::Indexable<uint32_t, uint32_t>(indexes.data(), indexes.size()));
-}
+opendnp3::StaticBinaryVariation StringToEventBinaryResponse(const std::string& str);
+opendnp3::StaticAnalogVariation StringToEventAnalogResponse(const std::string& str);
+opendnp3::StaticCounterVariation StringToEventCounterResponse(const std::string& str);
+
+
 
 #endif

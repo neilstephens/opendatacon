@@ -29,7 +29,6 @@
 
 #include <unordered_map>
 #include <opendnp3/master/ISOEHandler.h>
-#include <opendnp3/master/IPollListener.h>
 #include <opendnp3/master/CommandResponse.h>
 #include <opendnp3/app/IterableBuffer.h>
 
@@ -37,7 +36,7 @@
 
 using namespace opendnp3;
 
-class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IPollListener
+class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler//, public opendnp3::IPollListener
 {
 public:
 	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
@@ -60,14 +59,17 @@ protected:
     void End() override final {}
     
 public:
-	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas);
-	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<DoubleBitBinary, uint16_t>>& meas);
-	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Analog, uint16_t>>& meas);
-	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Counter, uint16_t>>& meas);
-	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<FrozenCounter, uint16_t>>& meas);
-	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<BinaryOutputStatus, uint16_t>>& meas);
-	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<AnalogOutputStatus, uint16_t>>& meas);
-	void OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<OctetString, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<DoubleBitBinary, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Analog, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Counter, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<FrozenCounter, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryOutputStatus, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogOutputStatus, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<OctetString, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<TimeAndInterval, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryCommandEvent, uint16_t>>& meas);
+	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogCommandEvent, uint16_t>>& meas);
 	template<typename T> void LoadT(const IterableBuffer<IndexedValue<T, uint16_t>>& meas);
     
 	//Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
@@ -79,10 +81,6 @@ public:
 	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
-    //Implement IPollListener
-protected:
-	void OnStateChange(opendnp3::PollState state);
-    
 private:
 	asiodnp3::IMaster* pMaster;
     

@@ -29,8 +29,7 @@
 
 #include <iostream>
 #include <future>
-#include <opendnp3/master/ICommandCallback.h>
-#include <opendnp3/master/CommandResponse.h>
+#include <opendnp3/master/ITaskCallback.h>
 #include "CommandCorrespondant.h"
 
 class CommandCallbackPromise: public opendnp3::ICommandCallback
@@ -46,15 +45,14 @@ public:
 	{
 		switch(response.GetResult())
 		{
-			case opendnp3::CommandResult::RESPONSE_OK:
+			case opendnp3::TaskCompletion::SUCCESS:
 				mPromise.set_value(response.GetStatus());
 				break;
-			case opendnp3::CommandResult::TIMEOUT:
+			case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
 				mPromise.set_value(opendnp3::CommandStatus::TIMEOUT);
 				break;
-			case opendnp3::CommandResult::BAD_RESPONSE:
-			case opendnp3::CommandResult::NO_COMMS:
-			case opendnp3::CommandResult::QUEUE_FULL:
+			case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
+			case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
 			default:
 				mPromise.set_value(opendnp3::CommandStatus::UNDEFINED);
 				break;

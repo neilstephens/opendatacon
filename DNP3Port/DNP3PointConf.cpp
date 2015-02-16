@@ -28,7 +28,9 @@
 #include <algorithm>
 #include <opendnp3/app/ClassField.h>
 #include "DNP3PointConf.h"
-#include <opendatacon/util.h>
+#include "OpenDNP3Helpers.h"
+#include <iostream> // TODO: remove include, should be met using logging mechanism
+
 
 DNP3PointConf::DNP3PointConf(std::string FileName):
 	ConfigParser(FileName),
@@ -70,9 +72,9 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		WaitForCommandResponses(false),
 		DemandCheckPeriodms(2000),
 		// Default Event Response Types
-		EventBinaryResponse(opendnp3::EventBinaryResponse::Group2Var1),
-		EventAnalogResponse(opendnp3::EventAnalogResponse::Group32Var5),
-		EventCounterResponse(opendnp3::EventCounterResponse::Group22Var1),
+		EventBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var1),
+		EventAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
+		EventCounterResponse(opendnp3::StaticCounterVariation::Group20Var1),
 		// Event buffer limits
 		MaxBinaryEvents(1000),
 		MaxAnalogEvents(1000),
@@ -202,16 +204,20 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	if (!JSONRoot["OverrideControlCode"].isNull())
 	{
+		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_ON")
+			OverrideControlCode = opendnp3::ControlCode::PULSE_ON;
+		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_OFF")
+			OverrideControlCode = opendnp3::ControlCode::PULSE_OFF;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE")
-			OverrideControlCode = opendnp3::ControlCode::PULSE;
+			OverrideControlCode = opendnp3::ControlCode::PULSE_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "LATCH_OFF")
 			OverrideControlCode = opendnp3::ControlCode::LATCH_OFF;
 		if (JSONRoot["OverrideControlCode"].asString() == "LATCH_ON")
 			OverrideControlCode = opendnp3::ControlCode::LATCH_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_CLOSE")
-			OverrideControlCode = opendnp3::ControlCode::PULSE_CLOSE;
+			OverrideControlCode = opendnp3::ControlCode::CLOSE_PULSE_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_TRIP")
-			OverrideControlCode = opendnp3::ControlCode::PULSE_TRIP;
+			OverrideControlCode = opendnp3::ControlCode::TRIP_PULSE_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "NUL")
 			OverrideControlCode = opendnp3::ControlCode::NUL;
 	}

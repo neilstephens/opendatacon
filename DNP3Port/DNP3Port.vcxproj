@@ -178,6 +178,7 @@
     <ClCompile Include="DNP3PointConf.cpp" />
     <ClCompile Include="DNP3Port.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="OpenDNP3Helpers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\JSON\json.vcxproj">

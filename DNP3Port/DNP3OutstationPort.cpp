@@ -29,7 +29,6 @@
 #include <regex>
 #include <chrono>
 #include <asiopal/UTCTimeSource.h>
-#include <opendnp3/app/DynamicPointIndexes.h>
 #include <opendnp3/outstation/Database.h>
 #include <opendnp3/outstation/TimeTransaction.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
@@ -149,20 +148,13 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	StackConfig.outstation.params.solConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);/// Timeout for solicited confirms
 	StackConfig.outstation.params.unsolConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
 
-	// TODO: Expose default event responses for any new event types to be supported by opendatacon
-	StackConfig.outstation.defaultEventResponses.analog = pConf->pPointConf->EventAnalogResponse;
-	StackConfig.outstation.defaultEventResponses.binary = pConf->pPointConf->EventBinaryResponse;
-	StackConfig.outstation.defaultEventResponses.counter = pConf->pPointConf->EventCounterResponse;
-
 	// TODO: Expose event limits for any new event types to be supported by opendatacon
 	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents; /// The number of binary events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;	/// The number of analog events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents;	/// The number of counter events the outstation will buffer before overflowing
 
 	//contiguous points
-	auto AnaIndexes = ToIndexes(pConf->pPointConf->AnalogIndicies);
-	auto BinIndexes = ToIndexes(pConf->pPointConf->BinaryIndicies);
-	StackConfig.dbTemplate = opendnp3::DatabaseTemplate(BinIndexes, opendnp3::PointIndexes::EMPTYINDEXES, AnaIndexes);
+	StackConfig.dbTemplate = opendnp3::DatabaseTemplate(pConf->pPointConf->BinaryIndicies.size(), 0, pConf->pPointConf->AnalogIndicies.size());
 
     auto TargetChan = TCPChannels[IPPort];
     
@@ -187,17 +179,28 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	lastRx = 0;
 	pPollStatTimer.reset(new Timer_t(*pIOS));
 
-    auto staticData = pOutstation->GetDatabase().staticData;
-    for(auto index : pConf->pPointConf->AnalogIndicies)
+	auto configView = pOutstation->GetConfigView();
+	//TODO: range based for over ArrayView instead of AnalogIndicies
 	{
-		auto pos = staticData.analogs.indexes.GetPosition(index);
-		staticData.analogs.metadata[pos].clazz = pConf->pPointConf->AnalogClasses[index];
-		staticData.analogs.metadata[pos].deadband = pConf->pPointConf->AnalogDeadbands[index];
+		uint16_t rawIndex = 0;
+		for (auto index : pConf->pPointConf->AnalogIndicies)
+		{
+			configView.analogs[rawIndex].vIndex = index;
+			configView.analogs[rawIndex].variation = pConf->pPointConf->EventAnalogResponse;
+			configView.analogs[rawIndex].metadata.clazz = pConf->pPointConf->AnalogClasses[index];
+			configView.analogs[rawIndex].metadata.deadband = pConf->pPointConf->AnalogDeadbands[index];
+			++rawIndex;
+		}
 	}
-	for(auto index : pConf->pPointConf->BinaryIndicies)
 	{
-		auto pos = staticData.binaries.indexes.GetPosition(index);
-		staticData.binaries.metadata[pos].clazz = pConf->pPointConf->BinaryClasses[index];
+		uint16_t rawIndex = 0;
+		for (auto index : pConf->pPointConf->BinaryIndicies)
+		{
+			configView.binaries[rawIndex].vIndex = index;
+			configView.binaries[rawIndex].variation = pConf->pPointConf->EventBinaryResponse;
+			configView.binaries[rawIndex].metadata.clazz = pConf->pPointConf->BinaryClasses[index];
+			++rawIndex;
+		}
 	}
 }
 
@@ -210,18 +213,19 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 
     DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
     
-    auto staticData = pOutstation->GetDatabase().staticData;
-	for(auto index : pConf->pPointConf->AnalogIndicies)
+	auto configView = pOutstation->GetConfigView();
+	//TODO: implement range based for ArrayViews to enable implementation of the following 
+	/*
+	for (auto point : configView.analogs)
 	{
-		auto pos = staticData.analogs.indexes.GetPosition(index);
-        analogValues[std::to_string(index)] = staticData.analogs.values[pos].current.value;
+        analogValues[std::to_string(point.)] = staticData.analogs.values[pos].current.value;
 	}
 	for(auto index : pConf->pPointConf->BinaryIndicies)
 	{
 		auto pos = staticData.binaries.indexes.GetPosition(index);
         binaryValues[std::to_string(index)] = staticData.binaries.values[pos].current.value;
 	}
-
+	*/
     event["AnalogCurrent"] = analogValues;
     event["BinaryCurrent"] = binaryValues;
     
@@ -316,8 +320,14 @@ std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogOutpu
 template<typename T, typename Q>
 inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName)
 {
-	auto meas = UpdateQuality<T>(pOutstation->GetDatabase(), static_cast<uint8_t>(qual), index);
-	return EventT(meas, index, SenderName);
+	auto lambda = [&](const T& existing){ T newqual = existing; newqual.quality = static_cast<uint8_t>(qual); return newqual; };
+	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);
+	{//transaction scope
+		if (pOutstation->GetDatabase().Modify(modify, index, opendnp3::EventMode::Force))
+			return IOHandler::CommandFutureSuccess();
+		else
+			return IOHandler::CommandFutureUndefined();
+	}
 }
 
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
