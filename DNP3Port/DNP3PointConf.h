@@ -88,10 +88,15 @@ public:
 	bool WaitForCommandResponses; // when responding to a command, wait for downstream command responses, otherwise returns success
 	uint32_t DemandCheckPeriodms; /// Time between checking Transport layer Rx traffic - signifying Demand to connect
 
-	// Default Event Response Types
-	opendnp3::StaticBinaryVariation EventBinaryResponse;
-	opendnp3::StaticAnalogVariation EventAnalogResponse;
-	opendnp3::StaticCounterVariation EventCounterResponse;
+	// Default Static Variations
+	opendnp3::Binary::StaticVariation StaticBinaryResponse;
+	opendnp3::Analog::StaticVariation StaticAnalogResponse;
+	opendnp3::Counter::StaticVariation StaticCounterResponse;
+
+	// Default Event Variations
+	opendnp3::Binary::EventVariation EventBinaryResponse;
+	opendnp3::Analog::EventVariation EventAnalogResponse;
+	opendnp3::Counter::EventVariation EventCounterResponse;
 
 	// Event buffer limits
 	uint16_t MaxBinaryEvents; /// The number of binary events the outstation will buffer before overflowing

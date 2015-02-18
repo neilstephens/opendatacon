@@ -92,9 +92,13 @@ T UpdateQuality(opendnp3::IDatabase& database, uint8_t qual, uint16_t index)
 	return meas;
 }*/
 
-opendnp3::StaticBinaryVariation StringToEventBinaryResponse(const std::string& str);
-opendnp3::StaticAnalogVariation StringToEventAnalogResponse(const std::string& str);
-opendnp3::StaticCounterVariation StringToEventCounterResponse(const std::string& str);
+opendnp3::Binary::StaticVariation StringToStaticBinaryResponse(const std::string& str);
+opendnp3::Analog::StaticVariation StringToStaticAnalogResponse(const std::string& str);
+opendnp3::Counter::StaticVariation StringToStaticCounterResponse(const std::string& str);
+opendnp3::Binary::EventVariation StringToEventBinaryResponse(const std::string& str);
+opendnp3::Analog::EventVariation StringToEventAnalogResponse(const std::string& str);
+opendnp3::Counter::EventVariation StringToEventCounterResponse(const std::string& str);
+
 template <class ValueType, class IndexType>
 class ArrayViewIterator
 {

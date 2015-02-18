@@ -180,14 +180,15 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	pPollStatTimer.reset(new Timer_t(*pIOS));
 
 	auto configView = pOutstation->GetConfigView();
-	//TODO: range based for over ArrayView instead of AnalogIndicies
+
 	{
 		uint16_t rawIndex = 0;
 		for (auto index : pConf->pPointConf->AnalogIndicies)
 		{
 			configView.analogs[rawIndex].vIndex = index;
-			configView.analogs[rawIndex].variation = pConf->pPointConf->EventAnalogResponse;
+			configView.analogs[rawIndex].variation = pConf->pPointConf->StaticAnalogResponse;
 			configView.analogs[rawIndex].metadata.clazz = pConf->pPointConf->AnalogClasses[index];
+			configView.analogs[rawIndex].metadata.variation = pConf->pPointConf->EventAnalogResponse;
 			configView.analogs[rawIndex].metadata.deadband = pConf->pPointConf->AnalogDeadbands[index];
 			++rawIndex;
 		}
@@ -197,8 +198,9 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 		for (auto index : pConf->pPointConf->BinaryIndicies)
 		{
 			configView.binaries[rawIndex].vIndex = index;
-			configView.binaries[rawIndex].variation = pConf->pPointConf->EventBinaryResponse;
+			configView.binaries[rawIndex].variation = pConf->pPointConf->StaticBinaryResponse;
 			configView.binaries[rawIndex].metadata.clazz = pConf->pPointConf->BinaryClasses[index];
+			configView.binaries[rawIndex].metadata.variation = pConf->pPointConf->EventBinaryResponse;
 			++rawIndex;
 		}
 	}
@@ -214,18 +216,16 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
     DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
     
 	auto configView = pOutstation->GetConfigView();
-	//TODO: implement range based for ArrayViews to enable implementation of the following 
-	/*
+	
 	for (auto point : configView.analogs)
 	{
-        analogValues[std::to_string(point.)] = staticData.analogs.values[pos].current.value;
+		analogValues[std::to_string(point.vIndex)] = point.value.value;
 	}
-	for(auto index : pConf->pPointConf->BinaryIndicies)
+	for (auto point : configView.binaries)
 	{
-		auto pos = staticData.binaries.indexes.GetPosition(index);
-        binaryValues[std::to_string(index)] = staticData.binaries.values[pos].current.value;
+		binaryValues[std::to_string(point.vIndex)] = point.value.value;
 	}
-	*/
+	
     event["AnalogCurrent"] = analogValues;
     event["BinaryCurrent"] = binaryValues;
     
