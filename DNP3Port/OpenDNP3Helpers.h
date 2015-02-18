@@ -95,7 +95,52 @@ T UpdateQuality(opendnp3::IDatabase& database, uint8_t qual, uint16_t index)
 opendnp3::StaticBinaryVariation StringToEventBinaryResponse(const std::string& str);
 opendnp3::StaticAnalogVariation StringToEventAnalogResponse(const std::string& str);
 opendnp3::StaticCounterVariation StringToEventCounterResponse(const std::string& str);
+template <class ValueType, class IndexType>
+class ArrayViewIterator
+{
+public:
+	ArrayViewIterator(openpal::ArrayView<ValueType, IndexType>* data, IndexType pos)
+		: _pos(pos)
+		, _data(data)
+	{ }
 
+	bool
+		operator!= (const ArrayViewIterator<ValueType, IndexType>& other) const
+	{
+			return _pos != other._pos;
+		}
 
+	ValueType& operator* () const
+	{
+		return (*_data)[_pos];
+	}
+
+	const ArrayViewIterator& operator++ ()
+	{
+		++_pos;
+		// although not strictly necessary for a range-based for loop
+		// following the normal convention of returning a value from
+		// operator++ is a good idea.
+		return *this;
+	}
+
+private:
+	IndexType _pos;
+	openpal::ArrayView<ValueType, IndexType>* _data;
+};
+
+namespace openpal {
+	template <class ValueType, class IndexType>
+	ArrayViewIterator<ValueType, IndexType> begin(openpal::ArrayView<ValueType, IndexType>& data)
+	{
+		return ArrayViewIterator<ValueType, IndexType>(&data, 0);
+	}
+
+	template <class ValueType, class IndexType>
+	ArrayViewIterator<ValueType, IndexType> end(openpal::ArrayView<ValueType, IndexType>& data)
+	{
+		return ArrayViewIterator<ValueType, IndexType>(&data, data.Size());
+	}
+}
 
 #endif
