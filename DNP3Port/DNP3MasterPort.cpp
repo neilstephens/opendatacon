@@ -183,7 +183,6 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 											openpal::TimeDuration::Seconds(1),
 											openpal::TimeDuration::Seconds(300),
 											pConf->mAddrConf.IP,
-											"0.0.0.0",
 											pConf->mAddrConf.Port);
 	}
     pChannel = TCPChannels[IPPort];
