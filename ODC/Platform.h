@@ -74,6 +74,7 @@ const std::string DYNLIBPRE = "lib";
 const std::string DYNLIBEXT = ".dylib";
 #else
 const std::string DYNLIBEXT = ".so";
+#include <dlfcn.h>
 #endif
 #define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
 #define DYNLIBGETSYM(a,b) dlsym(a, b)
