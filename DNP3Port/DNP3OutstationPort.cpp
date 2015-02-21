@@ -134,8 +134,8 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 
 	// Link layer configuration
 	StackConfig.link.LocalAddr = pConf->mAddrConf.OutstationAddr;
-	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
+	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
 
@@ -159,9 +159,9 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 
 	StackConfig.dbTemplate = opendnp3::DatabaseTemplate(pConf->pPointConf->BinaryIndicies.size(), 0, pConf->pPointConf->AnalogIndicies.size());
 
-    auto TargetChan = TCPChannels[IPPort];
+	pChannel = TCPChannels[IPPort];
     
-    if (TargetChan == nullptr)
+	if (pChannel == nullptr)
     {
         std::string msg = Name + ": TCP channel not found for outstation.";
         auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::ERR, "", msg.c_str(), -1);
@@ -169,7 +169,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
         return;
     }
     
-	pOutstation = TargetChan->AddOutstation(Name.c_str(), *this, opendnp3::DefaultOutstationApplication::Instance(), StackConfig);
+	pOutstation = pChannel->AddOutstation(Name.c_str(), *this, opendnp3::DefaultOutstationApplication::Instance(), StackConfig);
     
     if (pOutstation == nullptr)
     {
@@ -245,6 +245,11 @@ const Json::Value DNP3OutstationPort::GetStatistics() const
 		event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;		/// Number of frames transmitted
 		event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;		/// Number of frames received
 		event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;		/// Number of frames detected with bad / malformed contents
+		event["numBytesRx"] = ChanStats.numBytesRx;
+		event["numBytesTx"] = ChanStats.numBytesTx;
+		event["numClose"] = ChanStats.numClose;
+		event["numOpen"] = ChanStats.numOpen;
+		event["numOpenFail"] = ChanStats.numOpenFail;
 	}
 	if (pOutstation != nullptr)
 	{
