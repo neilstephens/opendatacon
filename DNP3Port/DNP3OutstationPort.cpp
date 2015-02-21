@@ -29,8 +29,8 @@
 #include <regex>
 #include <chrono>
 #include <asiopal/UTCTimeSource.h>
+#include <asiodnp3/MeasUpdate.h>
 #include <opendnp3/outstation/Database.h>
-#include <opendnp3/outstation/TimeTransaction.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include <openpal/logging/LogLevels.h>
 #include "DNP3OutstationPort.h"
@@ -331,12 +331,10 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, 
 	auto lambda = [&](const T& existing){ T newqual = existing; newqual.quality = static_cast<uint8_t>(qual); return newqual; };
 	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);
 	{//transaction scope
-		opendnp3::Transaction tx(pOutstation->GetDatabase());
-		if (pOutstation->GetDatabase().Modify(modify, index, opendnp3::EventMode::Force))
-			return IOHandler::CommandFutureSuccess();
-		else
-			return IOHandler::CommandFutureUndefined();
+		asiodnp3::MeasUpdate tx(pOutstation);
+		tx.Modify(modify, index, opendnp3::EventMode::Force);
 	}
+	return IOHandler::CommandFutureSuccess();
 }
 
 std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
@@ -356,7 +354,7 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, 
 	}
 
 	{//transaction scope
-		opendnp3::TimeTransaction tx(pOutstation->GetDatabase(), asiopal::UTCTimeSource::Instance().Now());
+		asiodnp3::MeasUpdate tx(pOutstation);
 		tx.Update(meas, index);
 	}
 	return IOHandler::CommandFutureSuccess();
