@@ -326,6 +326,7 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, 
 	auto lambda = [&](const T& existing){ T newqual = existing; newqual.quality = static_cast<uint8_t>(qual); return newqual; };
 	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);
 	{//transaction scope
+		opendnp3::Transaction tx(pOutstation->GetDatabase());
 		if (pOutstation->GetDatabase().Modify(modify, index, opendnp3::EventMode::Force))
 			return IOHandler::CommandFutureSuccess();
 		else
