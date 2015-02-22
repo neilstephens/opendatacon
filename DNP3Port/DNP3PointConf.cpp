@@ -71,10 +71,14 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		UnsolConfirmTimeoutms(5000),
 		WaitForCommandResponses(false),
 		DemandCheckPeriodms(2000),
-		// Default Event Response Types
-		EventBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var1),
-		EventAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
-		EventCounterResponse(opendnp3::StaticCounterVariation::Group20Var1),
+		// Default Static Variations
+		StaticBinaryResponse(opendnp3::Binary::StaticVariation::Group1Var1),
+		StaticAnalogResponse(opendnp3::Analog::StaticVariation::Group30Var5),
+		StaticCounterResponse(opendnp3::Counter::StaticVariation::Group20Var1),
+		// Default Event Variations
+		EventBinaryResponse(opendnp3::Binary::EventVariation::Group2Var1),
+		EventAnalogResponse(opendnp3::Analog::EventVariation::Group32Var5),
+		EventCounterResponse(opendnp3::Counter::EventVariation::Group22Var1),
 		// Event buffer limits
 		MaxBinaryEvents(1000),
 		MaxAnalogEvents(1000),
@@ -238,7 +242,15 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot["DemandCheckPeriodms"].isNull())
 		DemandCheckPeriodms = JSONRoot["DemandCheckPeriodms"].asUInt();
 
-	// Default Event Response Types
+	// Default Static Variations
+	if (!JSONRoot["StaticBinaryResponse"].isNull())
+		StaticBinaryResponse = StringToStaticBinaryResponse(JSONRoot["StaticBinaryResponse"].asString());
+	if (!JSONRoot["StaticAnalogResponse"].isNull())
+		StaticAnalogResponse = StringToStaticAnalogResponse(JSONRoot["StaticAnalogResponse"].asString());
+	if (!JSONRoot["StaticCounterResponse"].isNull())
+		StaticCounterResponse = StringToStaticCounterResponse(JSONRoot["StaticCounterResponse"].asString());
+
+	// Default Event Variations
 	if (!JSONRoot["EventBinaryResponse"].isNull())
 		EventBinaryResponse = StringToEventBinaryResponse(JSONRoot["EventBinaryResponse"].asString());
 	if (!JSONRoot["EventAnalogResponse"].isNull())

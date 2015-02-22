@@ -183,6 +183,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 											openpal::TimeDuration::Seconds(1),
 											openpal::TimeDuration::Seconds(300),
 											pConf->mAddrConf.IP,
+											"0.0.0.0",
 											pConf->mAddrConf.Port);
 	}
     pChannel = TCPChannels[IPPort];
@@ -202,8 +203,8 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 
 	// Link layer configuration
 	StackConfig.link.LocalAddr = pConf->mAddrConf.MasterAddr;
-	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.OutstationAddr;
+	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
 
@@ -367,6 +368,11 @@ const Json::Value DNP3MasterPort::GetStatistics() const
 		event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;		/// Number of frames transmitted
 		event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;		/// Number of frames received
 		event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;		/// Number of frames detected with bad / malformed contents
+		event["numBytesRx"] = ChanStats.numBytesRx;
+		event["numBytesTx"] = ChanStats.numBytesTx;
+		event["numClose"] = ChanStats.numClose;
+		event["numOpen"] = ChanStats.numOpen;
+		event["numOpenFail"] = ChanStats.numOpenFail;
 	}
 	if (pMaster != nullptr)
 	{
