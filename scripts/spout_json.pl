@@ -60,11 +60,13 @@ while(1)
 	while(1)
 	{
 		Time::HiRes::usleep(100000);
+		$json3 =~ s/[0-9.]+/rand(100)/gsex;
 		unless(print $client_socket $json3)
 		{
 			last;
 		}
 		Time::HiRes::usleep(100000);
+		$json3 =~ s/[0-9.]+/rand(100)/gsex;
 		unless(print $client_socket $json4)
 		{
 			last;

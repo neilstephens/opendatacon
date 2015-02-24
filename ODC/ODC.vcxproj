@@ -117,7 +117,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -140,7 +140,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -167,7 +167,7 @@
       <Message>Copy public headers</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -188,28 +188,41 @@
     </Link>
     <ProjectReference />
     <PostBuildEvent>
-      <Command>copy $(ProjectDir)*.h $(SolutionDir)\include\opendatacon</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy public headers</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\OpenDataCon";</Command>
+      <Command>xcopy /Y /I /D "$(ProjectDir)*.h" "$(SolutionDir)\include\opendatacon"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ConfigParser.cpp" />
+    <ClCompile Include="DataPortCollection.cpp" />
+    <ClCompile Include="InterfaceCollection.cpp" />
     <ClCompile Include="IOHandler.cpp" />
+    <ClCompile Include="IUIResponder.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConfigParser.h" />
     <ClInclude Include="DataPointConf.h" />
     <ClInclude Include="DataPort.h" />
+    <ClInclude Include="DataPortCollection.h" />
     <ClInclude Include="DataPortConf.h" />
+    <ClInclude Include="InterfaceCollection.h" />
     <ClInclude Include="IOHandler.h" />
+    <ClInclude Include="IUI.h" />
+    <ClInclude Include="IUIResponder.h" />
+    <ClInclude Include="ParamCollection.h" />
+    <ClInclude Include="ResponderMap.h" />
+    <ClInclude Include="Platform.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="util.h" />
+    <ClInclude Include="Version.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\JSON\json.vcxproj">
