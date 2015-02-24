@@ -83,6 +83,7 @@ public:
             return IUIResponder::RESULT_BADPARAMETER;
         });
     }
+    virtual ~DataPortCollection(){};
 };
 
 #endif /* defined(__opendatacon__DataPortCollection__) */

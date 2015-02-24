@@ -100,7 +100,7 @@ public:
             return IUIResponder::RESULT_BADPARAMETER;
         }, "Shows all message ignore regexes and how many messages they've matched.");
     }
-
+    virtual ~LogCollection(){};
 };
 
 #endif

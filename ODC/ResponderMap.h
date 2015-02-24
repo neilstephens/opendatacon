@@ -53,6 +53,7 @@ public:
             return result;
         }, "", true);
     }
+    virtual ~ResponderMap(){};
 
     T* GetTarget(const ParamCollection & params)
     {

@@ -48,7 +48,7 @@ public:
 class IUIResponder
 {
 public:
-    
+    virtual ~IUIResponder(){};
     static const Json::Value GenerateResult(const std::string& message);
     
     static const Json::Value RESULT_SUCCESS;
