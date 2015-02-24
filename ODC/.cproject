@@ -20,7 +20,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.debug.1436440975" name="Debug" parent="cdt.managedbuild.config.gnu.so.debug" preannouncebuildStep="copy public headers" prebuildStep="cp -p ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
+				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.debug.1436440975" name="Debug" parent="cdt.managedbuild.config.gnu.so.debug" preannouncebuildStep="copy public headers" prebuildStep="cp -u --preserve=all ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
 					<folderInfo id="cdt.managedbuild.config.gnu.so.debug.1436440975." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.so.debug.528336686" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.so.debug">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.debug.1630357507" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.debug"/>
@@ -94,6 +94,7 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
+				<externalSettings containerId="dnp3;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -116,7 +117,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.2015955356" name="Release" parent="cdt.managedbuild.config.gnu.so.release" preannouncebuildStep="copy public headers" prebuildStep="cp -p ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
+				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.2015955356" name="Release" parent="cdt.managedbuild.config.gnu.so.release" preannouncebuildStep="copy public headers" prebuildStep="cp -u --preserve=all ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
 					<folderInfo id="cdt.managedbuild.config.gnu.so.release.2015955356." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.so.release.261687917" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.so.release">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.release.1039635327" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.release"/>
@@ -189,6 +190,7 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
+				<externalSettings containerId="dnp3;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -211,7 +213,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.debug.1436440975.863846925" name="Debug-rpi" parent="cdt.managedbuild.config.gnu.so.debug" preannouncebuildStep="copy public headers" prebuildStep="cp -p ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
+				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.debug.1436440975.863846925" name="Debug-rpi" parent="cdt.managedbuild.config.gnu.so.debug" preannouncebuildStep="copy public headers" prebuildStep="cp -u --preserve=all ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
 					<folderInfo id="cdt.managedbuild.config.gnu.so.debug.1436440975.863846925." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.so.debug.347071237" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.so.debug">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.debug.186412868" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.debug"/>
@@ -285,6 +287,7 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
+				<externalSettings containerId="dnp3-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -307,7 +310,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.2015955356.56322535" name="Release-rpi" parent="cdt.managedbuild.config.gnu.so.release" preannouncebuildStep="copy public headers" prebuildStep="cp -p ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
+				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.2015955356.56322535" name="Release-rpi" parent="cdt.managedbuild.config.gnu.so.release" preannouncebuildStep="copy public headers" prebuildStep="cp -u --preserve=all ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
 					<folderInfo id="cdt.managedbuild.config.gnu.so.release.2015955356.56322535." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.so.release.2061975943" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.so.release">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.release.572449886" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.release"/>
@@ -380,6 +383,7 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
+				<externalSettings containerId="dnp3-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 		</cconfiguration>
 		<cconfiguration id="cdt.managedbuild.config.gnu.so.release.2015955356.56322535.289956187">
@@ -401,7 +405,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.2015955356.56322535.289956187" name="Release-RHEL65" parent="cdt.managedbuild.config.gnu.so.release" preannouncebuildStep="copy public headers" prebuildStep="cp -p ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
+				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.2015955356.56322535.289956187" name="Release-RHEL65" parent="cdt.managedbuild.config.gnu.so.release" preannouncebuildStep="copy public headers" prebuildStep="cp -u --preserve=all ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
 					<folderInfo id="cdt.managedbuild.config.gnu.so.release.2015955356.56322535.289956187." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.so.release.1233248462" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.so.release">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.release.944234365" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.release"/>
@@ -474,7 +478,9 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
+				<externalSettings containerId="dnp3-RHEL;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
+			<storageModule moduleId="packages"/>
 		</cconfiguration>
 		<cconfiguration id="cdt.managedbuild.config.gnu.so.release.2015955356.893120307">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.so.release.2015955356.893120307" moduleId="org.eclipse.cdt.core.settings" name="Perf">
@@ -495,7 +501,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.2015955356.893120307" name="Perf" parent="cdt.managedbuild.config.gnu.so.release" preannouncebuildStep="copy public headers" prebuildStep="cp -p ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
+				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.2015955356.893120307" name="Perf" parent="cdt.managedbuild.config.gnu.so.release" preannouncebuildStep="copy public headers" prebuildStep="cp -u --preserve=all ${workspace_loc:/${ProjName}}/*.h ${workspace_loc:/opendatacon}/include/opendatacon/">
 					<folderInfo id="cdt.managedbuild.config.gnu.so.release.2015955356.893120307." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.so.release.1788734442" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.so.release">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.release.1549627910" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.release"/>
@@ -518,7 +524,7 @@
 								<option id="gnu.cpp.compiler.option.preprocessor.def.61606293" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="ASIO_STANDALONE=true"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.debugging.gprof.1504707336" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.debugging.gprof.1504707336" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.2087933462" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.so.release.1161938727" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.so.release">
@@ -569,6 +575,7 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSON" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
+				<externalSettings containerId="dnp3;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -581,7 +588,9 @@
 		<configuration configurationName="Release">
 			<resource resourceType="PROJECT" workspacePath="/JSONPort"/>
 		</configuration>
+		<configuration configurationName="Release-RHEL65"/>
 		<configuration configurationName="Release-rpi"/>
+		<configuration configurationName="Perf"/>
 		<configuration configurationName="Debug-rpi"/>
 		<configuration configurationName="Debug">
 			<resource resourceType="PROJECT" workspacePath="/JSONPort"/>

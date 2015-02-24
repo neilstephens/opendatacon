@@ -166,6 +166,7 @@
 								<option id="gnu.cpp.compiler.option.include.paths.415104574" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/microhttpd-rpi/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.769820667" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.190311219" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
@@ -184,6 +185,9 @@
 								<option id="gnu.cpp.link.option.libs.893980073" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="microhttpd"/>
 								</option>
+								<option id="gnu.cpp.link.option.paths.70381702" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/microhttpd-rpi/lib&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.2011810075" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -200,12 +204,10 @@
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
 		<cconfiguration id="cdt.managedbuild.config.gnu.so.release.1530350729.557533639">
-			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.so.release.1530350729.557533639" moduleId="org.eclipse.cdt.core.settings" name="Release-RHEL">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.so.release.1530350729.557533639" moduleId="org.eclipse.cdt.core.settings" name="Release-RHEL65">
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/WebUI"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/WebUI/Release-RHEL"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="WebUI" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -218,7 +220,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.1530350729.557533639" name="Release-RHEL" parent="cdt.managedbuild.config.gnu.so.release">
+				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.so.release.1530350729.557533639" name="Release-RHEL65" parent="cdt.managedbuild.config.gnu.so.release">
 					<folderInfo id="cdt.managedbuild.config.gnu.so.release.1530350729.557533639." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.so.release.29257640" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.so.release">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.so.release.2054526139" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.so.release"/>
@@ -232,7 +234,7 @@
 								<option id="gnu.cpp.compiler.option.include.paths.1731500352" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSON}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opendatacon/include}&quot;"/>
-									<listOptionValue builtIn="false" value="/usr/include"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/microhttpd-RHEL65/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1077274101" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1541411433" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
@@ -251,8 +253,8 @@
 								<option id="gnu.cpp.link.option.libs.1540738214" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="microhttpd"/>
 								</option>
-								<option id="gnu.cpp.link.option.paths.2027613209" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="/usr/lib/x86_64-linux-gnu"/>
+								<option id="gnu.cpp.link.option.paths.2027613209" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc}/microhttpd-RHEL65/lib&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1205432285" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
