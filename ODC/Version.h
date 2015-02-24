@@ -28,8 +28,8 @@
 #define ODC_VERSION_H_
 
 #define ODC_VERSION_MAJOR 0
-#define ODC_VERSION_MINOR 2
-#define ODC_VERSION_MICRO 6
+#define ODC_VERSION_MINOR 3
+#define ODC_VERSION_MICRO 0
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)

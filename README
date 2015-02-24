@@ -1,5 +1,10 @@
-opendatacon version 0.2.6
+opendatacon version 0.3.0
 
+0.3.0
+	- Updated DNP3Port to use measfix branch of opendnp3 (pending release of 2.0.1)
+	- Creation of interface to create UI plug-ins
+	- WebUI plug-in with SVG mimics (unstable)
+	
 0.2.6
 	- Preservation of point values when marking points bad quality due to downstream loss of comms
 
