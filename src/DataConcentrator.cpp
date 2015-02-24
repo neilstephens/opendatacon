@@ -24,12 +24,6 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#ifdef WIN32
-
-#else
-#include <dlfcn.h>
-#endif
-
 #include <thread>
 #include <asio.hpp>
 #include <asiodnp3/ConsoleLogger.h>
