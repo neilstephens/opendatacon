@@ -27,7 +27,6 @@
 #include <asiodnp3/DefaultMasterApplication.h>
 #include <opendnp3/app/ClassField.h>
 #include <opendnp3/app/MeasurementTypes.h>
-#include <opendnp3/app/DynamicPointIndexes.h>
 #include "DNP3MasterPort.h"
 #include "CommandCallbackPromise.h"
 #include <openpal/logging/LogLevels.h>
@@ -139,17 +138,9 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 		PortUp();
 	}
 
-	// Following a connection, do an integrity scan which will trigger an aissign class
-	//TODO: consider moving assign class to occur on stack enable, not comms up (in case channel is already up when stack is enabled causing this not to run)
 	if(state == opendnp3::ChannelState::OPEN)
 	{
-		if(pConf->pPointConf->DoAssignClassOnStartup)
-		{
-			//TODO: Do we need integrity scan or can we queue an assign class from here and rely on the startup integrity to happen first?
-			assign_class_sent = false;
-			IntegrityScan.SetStateListener(*this);
-			IntegrityScan.Demand();
-		}
+
 	}
 	else
 	{
@@ -179,18 +170,6 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 	LastState = state;
 }
 
-void DNP3MasterPort::OnStateChange(opendnp3::PollState state)
-{
-	if(assign_class_sent)
-		return;
-
-	if(state == opendnp3::PollState::SUCCESS)
-	{
-		// Mark that we've done an assign class
-		assign_class_sent = true;
-		SendAssignClass(std::promise<opendnp3::CommandStatus>());
-	}
-}
 void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -204,6 +183,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 											openpal::TimeDuration::Seconds(1),
 											openpal::TimeDuration::Seconds(300),
 											pConf->mAddrConf.IP,
+											"0.0.0.0",
 											pConf->mAddrConf.Port);
 	}
     pChannel = TCPChannels[IPPort];
@@ -223,8 +203,8 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 
 	// Link layer configuration
 	StackConfig.link.LocalAddr = pConf->mAddrConf.MasterAddr;
-	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.OutstationAddr;
+	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
 
@@ -264,14 +244,17 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 
 // Called by OpenDNP3 Thread Pool
 //implement ISOEHandler
-void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<DoubleBitBinary, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Analog, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<Counter, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<FrozenCounter, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<BinaryOutputStatus, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<AnalogOutputStatus, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderRecord& header, TimestampMode tsmode, const IterableBuffer<IndexedValue<OctetString, uint16_t>>& meas){/*LoadT(meas);*/ };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<DoubleBitBinary, uint16_t>>& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Analog, uint16_t>>& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Counter, uint16_t>>& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<FrozenCounter, uint16_t>>& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryOutputStatus, uint16_t>>& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogOutputStatus, uint16_t>>& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<OctetString, uint16_t>>& meas){/*LoadT(meas);*/ };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<TimeAndInterval, uint16_t>>& meas){/*LoadT(meas);*/ };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryCommandEvent, uint16_t>>& meas){/*LoadT(meas);*/ };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogCommandEvent, uint16_t>>& meas){/*LoadT(meas);*/ };
 
 template<typename T>
 inline void DNP3MasterPort::LoadT(const IterableBuffer<IndexedValue<T, uint16_t>>& meas)
@@ -331,87 +314,6 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 	return IOHandler::CommandFutureSuccess();
 }
 
-void DNP3MasterPort::SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_promise)
-{
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	//TODO: why enable the stack here?
-	pMaster->Enable();
-	stack_enabled = true;
-
-	//send out an assign class command
-	auto pFunctionProcessor = pMaster->GetFunctionProcessor();
-	std::vector<uint32_t> AnaClassVec[4], BinClassVec[4];
-	opendnp3::PointClass ClassArray[4] = {opendnp3::PointClass::Class0, opendnp3::PointClass::Class1, opendnp3::PointClass::Class2, opendnp3::PointClass::Class3};
-
-	for(auto index : pConf->pPointConf->AnalogIndicies)
-	{
-		switch(pConf->pPointConf->AnalogClasses[index])
-		{
-			case opendnp3::PointClass::Class0:
-				AnaClassVec[0].push_back(index);
-				break;
-			case opendnp3::PointClass::Class1:
-				AnaClassVec[1].push_back(index);
-				break;
-			case opendnp3::PointClass::Class2:
-				AnaClassVec[2].push_back(index);
-				break;
-			case opendnp3::PointClass::Class3:
-				AnaClassVec[3].push_back(index);
-				break;
-		}
-	}
-	for(auto index : pConf->pPointConf->BinaryIndicies)
-	{
-		switch(pConf->pPointConf->BinaryClasses[index])
-		{
-			case opendnp3::PointClass::Class0:
-				BinClassVec[0].push_back(index);
-				break;
-			case opendnp3::PointClass::Class1:
-				BinClassVec[1].push_back(index);
-				break;
-			case opendnp3::PointClass::Class2:
-				BinClassVec[2].push_back(index);
-				break;
-			case opendnp3::PointClass::Class3:
-				BinClassVec[3].push_back(index);
-				break;
-		}
-	}
-
-	std::array<std::shared_ptr<opendnp3::DynamicPointIndexes>, 4> pAnaDIndexClass, pBinDIndexClass;
-	std::array<std::shared_ptr<opendnp3::PointIndexes>, 4> pAnaPIndexClass, pBinPIndexClass;
-
-	for(size_t i = 0; i<4; i++)
-	{
-		if(AnaClassVec[i].size() > 0)
-		{
-			auto AnaClassIndexable = openpal::Indexable<uint32_t, uint32_t>(AnaClassVec[i].data(),AnaClassVec[i].size());
-			pAnaDIndexClass[i].reset(new opendnp3::DynamicPointIndexes(AnaClassIndexable));
-			pAnaPIndexClass[i].reset(new opendnp3::PointIndexes(*(pAnaDIndexClass[i].get())));
-			pFunctionProcessor->AssignClass(GroupVariation::Group30Var0, pAnaPIndexClass[i].get(), ClassArray[i]);
-		}
-		if(BinClassVec[i].size() > 0)
-		{
-			auto BinClassIndexable = openpal::Indexable<uint32_t, uint32_t>(BinClassVec[i].data(),BinClassVec[i].size());
-			pBinDIndexClass[i].reset(new opendnp3::DynamicPointIndexes(BinClassIndexable));
-			pBinPIndexClass[i].reset(new opendnp3::PointIndexes(*(pBinDIndexClass[i].get())));
-			pFunctionProcessor->AssignClass(GroupVariation::Group1Var0, pBinPIndexClass[i].get(), ClassArray[i]);
-		}
-	}
-
-	//copy all the shared pointers into a lambda to extend the life of all the heap allocated indexes
-	auto CleanupFunction = [this, pAnaDIndexClass, pBinDIndexClass, pAnaPIndexClass, pBinPIndexClass]
-	                        {
-								//do an integrity scan after assign class
-								IntegrityScan.Demand();
-	                        };
-
-	//once the command completes, the correspondant will clean everything up
-	pFunctionProcessor->AssignClassExecute(*CommandCorrespondant::GetCallback(std::move(cmd_promise),std::move(CleanupFunction)));
-}
-
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
 {
@@ -466,6 +368,11 @@ const Json::Value DNP3MasterPort::GetStatistics() const
 		event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;		/// Number of frames transmitted
 		event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;		/// Number of frames received
 		event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;		/// Number of frames detected with bad / malformed contents
+		event["numBytesRx"] = ChanStats.numBytesRx;
+		event["numBytesTx"] = ChanStats.numBytesTx;
+		event["numClose"] = ChanStats.numClose;
+		event["numOpen"] = ChanStats.numOpen;
+		event["numOpenFail"] = ChanStats.numOpenFail;
 	}
 	if (pMaster != nullptr)
 	{

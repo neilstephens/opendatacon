@@ -31,6 +31,7 @@
 #include "DataConnector.h"
 #include "IndexOffsetTransform.h"
 #include "ThresholdTransform.h"
+#include "RandTransform.h"
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	IOHandler(aName),
@@ -68,7 +69,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
                 //Add to the lookup table
                 SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
                 SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
-            } catch (std::exception e) {
+            } catch (std::exception& e) {
                 std::cout<<"Warning: Exception raised when creating Connection from config: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
             }
 		}
@@ -90,8 +91,10 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
                     ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new IndexOffsetTransform(Transforms[n]["Parameters"]));
                 if(Transforms[n]["Type"].asString() == "Threshold")
                     ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new ThresholdTransform(Transforms[n]["Parameters"]));
+                if(Transforms[n]["Type"].asString() == "Rand")
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new RandTransform(Transforms[n]["Parameters"]));
             }
-            catch (std::exception e)
+            catch (std::exception& e)
             {
                 std::cout<<"Warning: Exception raised when creating Transform from config: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
             }

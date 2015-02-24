@@ -74,6 +74,7 @@ const std::string DYNLIBPRE = "lib";
 const std::string DYNLIBEXT = ".dylib";
 #else
 const std::string DYNLIBEXT = ".so";
+#include <dlfcn.h>
 #endif
 #define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
 #define DYNLIBGETSYM(a,b) dlsym(a, b)
@@ -81,10 +82,14 @@ const std::string DYNLIBEXT = ".so";
 // Retrieve the system error message for the last-error code
 inline std::string LastSystemError()
 {
+	std::string message;
 	char *error;
-	if ((error = dlerror()) != NULL)  {
-		return error;
-	}
+	if ((error = dlerror()) != NULL)
+		message = error;
+	else
+		message = "Unknown error";
+
+	return message;
 }
 #endif
 

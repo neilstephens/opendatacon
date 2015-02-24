@@ -28,9 +28,6 @@ EXPORTS
 	?AddLogSubscriber@IOHandler@@QEAAXPEAVILogHandler@openpal@@@Z
 	?Subscribe@IOHandler@@QEAAXPEAV1@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	?GetIOHandlers@@YAAEAV?$unordered_map@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@PEAVIOHandler@@U?$hash@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@U?$equal_to@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@PEAVIOHandler@@@std@@@2@@std@@XZ
-	?StringToEventAnalogResponse@@YA?AW4EventAnalogResponse@opendnp3@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
-	?StringToEventCounterResponse@@YA?AW4EventCounterResponse@opendnp3@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
-	?StringToEventBinaryResponse@@YA?AW4EventBinaryResponse@opendnp3@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	??0ConfigParser@@QEAA@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVValue@Json@@@Z
 	?GetConfiguration@ConfigParser@@QEBA?BVValue@Json@@XZ
 	?GenerateResult@IUIResponder@@SA?BVValue@Json@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z

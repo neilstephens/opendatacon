@@ -20,9 +20,6 @@
 LIBRARY ODC
 EXPORTS
 	?extract_delimited_string@@YA_NAAV?$basic_istream@DU?$char_traits@D@std@@@std@@AAV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@2@@Z
-	?StringToEventAnalogResponse@@YA?AW4EventAnalogResponse@opendnp3@@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
-	?StringToEventCounterResponse@@YA?AW4EventCounterResponse@opendnp3@@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
-	?StringToEventBinaryResponse@@YA?AW4EventBinaryResponse@opendnp3@@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	??0IOHandler@@QAE@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
 	?SetIOS@IOHandler@@QAEXPAVio_service@asio@@@Z
 	?SetLogLevel@IOHandler@@QAEXVLogFilters@openpal@@@Z

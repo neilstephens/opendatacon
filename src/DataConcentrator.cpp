@@ -24,12 +24,6 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#ifdef WIN32
-
-#else
-#include <dlfcn.h>
-#endif
-
 #include <thread>
 #include <asio.hpp>
 #include <asiodnp3/ConsoleLogger.h>
@@ -142,7 +136,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
             
             if(new_plugin_func == nullptr)
             {
-				std::cout << PluginName << " Info: failed to load symbol '" << new_funcname << "' in library '" << libname << "' " << LastSystemError() << std::endl;
+				std::cout << PluginName << " Info: failed to load symbol '" << new_funcname << "' in library '" << libname << "' - " << LastSystemError() << std::endl;
 				std::cout << PluginName << " Error: failed to load plugin, skipping..." << std::endl;
 				continue;
             }

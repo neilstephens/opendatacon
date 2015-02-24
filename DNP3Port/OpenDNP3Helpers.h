@@ -26,9 +26,11 @@
 
 #ifndef OPENDNP3HELPERS_H_
 #define OPENDNP3HELPERS_H_
+#include <string>
 
 #include <opendnp3/outstation/Database.h>
 
+/*
 template <typename T>
 opendnp3::PointIndexes GetIndexes(const opendnp3::Database& database);
 
@@ -75,24 +77,74 @@ opendnp3::PointIndexes GetIndexes<opendnp3::AnalogOutputStatus>(const opendnp3::
 }
 
 template<typename T>
-T GetCurrentValue(opendnp3::Database& database, uint16_t index)
+T GetCurrentValue(opendnp3::IDatabase& database, uint16_t index)
 {
+	database.Modify()
 	auto idx = GetIndexes<T>(database).GetPosition(index);
 	return database.Values<T>()[idx].current;
 }
 
 template<typename T>
-T UpdateQuality(opendnp3::Database& database, uint8_t qual, uint16_t index)
+T UpdateQuality(opendnp3::IDatabase& database, uint8_t qual, uint16_t index)
 {
 	T meas(GetCurrentValue<T>(database, index));
 	meas.quality = qual;
 	return meas;
-}
+}*/
 
-//template<typename T>
-opendnp3::DynamicPointIndexes ToIndexes(std::vector<uint32_t>& indexes)
+opendnp3::Binary::StaticVariation StringToStaticBinaryResponse(const std::string& str);
+opendnp3::Analog::StaticVariation StringToStaticAnalogResponse(const std::string& str);
+opendnp3::Counter::StaticVariation StringToStaticCounterResponse(const std::string& str);
+opendnp3::Binary::EventVariation StringToEventBinaryResponse(const std::string& str);
+opendnp3::Analog::EventVariation StringToEventAnalogResponse(const std::string& str);
+opendnp3::Counter::EventVariation StringToEventCounterResponse(const std::string& str);
+
+template <class ValueType, class IndexType>
+class ArrayViewIterator
 {
-    return opendnp3::DynamicPointIndexes(openpal::Indexable<uint32_t, uint32_t>(indexes.data(), indexes.size()));
+public:
+	ArrayViewIterator(openpal::ArrayView<ValueType, IndexType>* data, IndexType pos)
+		: _pos(pos)
+		, _data(data)
+	{ }
+
+	bool
+		operator!= (const ArrayViewIterator<ValueType, IndexType>& other) const
+	{
+			return _pos != other._pos;
+		}
+
+	ValueType& operator* () const
+	{
+		return (*_data)[_pos];
+	}
+
+	const ArrayViewIterator& operator++ ()
+	{
+		++_pos;
+		// although not strictly necessary for a range-based for loop
+		// following the normal convention of returning a value from
+		// operator++ is a good idea.
+		return *this;
+	}
+
+private:
+	IndexType _pos;
+	openpal::ArrayView<ValueType, IndexType>* _data;
+};
+
+namespace openpal {
+	template <class ValueType, class IndexType>
+	ArrayViewIterator<ValueType, IndexType> begin(openpal::ArrayView<ValueType, IndexType>& data)
+	{
+		return ArrayViewIterator<ValueType, IndexType>(&data, 0);
+	}
+
+	template <class ValueType, class IndexType>
+	ArrayViewIterator<ValueType, IndexType> end(openpal::ArrayView<ValueType, IndexType>& data)
+	{
+		return ArrayViewIterator<ValueType, IndexType>(&data, data.Size());
+	}
 }
 
 #endif

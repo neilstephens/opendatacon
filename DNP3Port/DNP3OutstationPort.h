@@ -93,10 +93,6 @@ public:
 
 	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 
-    //Implement IPollListener
-protected:
-    void OnStateChange(opendnp3::PollState state);
-    
 private:
     asiodnp3::IOutstation* pOutstation;
 

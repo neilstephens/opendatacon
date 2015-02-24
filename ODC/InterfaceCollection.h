@@ -39,6 +39,7 @@ public:
     {
         
     }
+    virtual ~InterfaceCollection(){};
 };
 
 
