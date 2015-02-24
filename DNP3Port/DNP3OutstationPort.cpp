@@ -214,9 +214,8 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
     Json::Value event;
     Json::Value analogValues;
     Json::Value binaryValues;
-    if (pOutstation == nullptr) return IUIResponder::RESULT_BADPORT;
-
-    DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+    if (pOutstation == nullptr)
+    	return IUIResponder::RESULT_BADPORT;
     
 	auto configView = pOutstation->GetConfigView();
 	

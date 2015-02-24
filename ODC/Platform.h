@@ -82,10 +82,14 @@ const std::string DYNLIBEXT = ".so";
 // Retrieve the system error message for the last-error code
 inline std::string LastSystemError()
 {
+	std::string message;
 	char *error;
-	if ((error = dlerror()) != NULL)  {
-		return error;
-	}
+	if ((error = dlerror()) != NULL)
+		message = error;
+	else
+		message = "Unknown error";
+
+	return message;
 }
 #endif
 
