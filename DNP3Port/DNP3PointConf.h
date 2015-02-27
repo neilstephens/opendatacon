@@ -98,6 +98,10 @@ public:
 	opendnp3::Analog::EventVariation EventAnalogResponse;
 	opendnp3::Counter::EventVariation EventCounterResponse;
 
+	// Timestamp override options
+	typedef enum { ALWAYS, ZERO, NEVER } TimestampOverride_t;
+	TimestampOverride_t TimestampOverride;
+
 	// Event buffer limits
 	uint16_t MaxBinaryEvents; /// The number of binary events the outstation will buffer before overflowing
 	uint16_t MaxAnalogEvents;	/// The number of analog events the outstation will buffer before overflowing

@@ -31,6 +31,7 @@
 #include "CommandCallbackPromise.h"
 #include <openpal/logging/LogLevels.h>
 #include <array>
+#include <asiopal/UTCTimeSource.h>
 
 void DNP3MasterPort::Enable()
 {
@@ -73,21 +74,28 @@ void DNP3MasterPort::Disable()
 
 void DNP3MasterPort::PortUp()
 {
+	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	for (auto IOHandler_pair : Subscribers)
+	// Update the comms state point if configured
+	if (pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
 	{
-		// Update the comms state point if configured
-		std::string msg = Name + ": Updating comms state point to good";
-		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-
-		IOHandler_pair.second->Event(opendnp3::Binary(!pConf->pPointConf->mCommsPoint.first.value), pConf->pPointConf->mCommsPoint.second, this->Name);
+		for (auto IOHandler_pair : Subscribers)
+		{
+			{
+				std::string msg = Name + ": Updating comms state point to good";
+				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
+				pLoggers->Log(log_entry);
+			}
+			opendnp3::Binary commsUpEvent(!pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE), eventTime);
+			IOHandler_pair.second->Event(commsUpEvent, pConf->pPointConf->mCommsPoint.second, this->Name);
+		}
 	}
 }
 
 void DNP3MasterPort::PortDown()
 {
+	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	for (auto IOHandler_pair : Subscribers)
@@ -104,13 +112,16 @@ void DNP3MasterPort::PortDown()
 			IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST, index, this->Name);
 
 		// Update the comms state point if configured
+		if (pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
 		{
-			std::string msg = Name + ": Updating comms state point to bad";
-			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			{
+				std::string msg = Name + ": Updating comms state point to bad";
+				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
+				pLoggers->Log(log_entry);
+			}
+			opendnp3::Binary commsDownEvent(pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE), eventTime);
+			IOHandler_pair.second->Event(commsDownEvent, pConf->pPointConf->mCommsPoint.second, this->Name);
 		}
-
-		IOHandler_pair.second->Event(opendnp3::Binary(pConf->pPointConf->mCommsPoint.first.value), pConf->pPointConf->mCommsPoint.second, this->Name);
 	}
 }
 
