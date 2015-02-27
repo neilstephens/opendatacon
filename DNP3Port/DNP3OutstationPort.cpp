@@ -386,7 +386,6 @@ std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(ConnectState stat
 	{
 		return IOHandler::CommandFutureUndefined();
 	}
-	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
 	if (state == ConnectState::DISCONNECTED)
 	{
