@@ -332,7 +332,16 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, 
 		return IOHandler::CommandFutureUndefined();
 	}
 	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
-	auto lambda = [&](const T& existing){ T newqual = existing; newqual.quality = static_cast<uint8_t>(qual); newqual.time = eventTime; return newqual; };
+	auto lambda = [=](const T& existing)
+	{
+		//TODO: break out specialised templates for Binary types. The state bit for binary quality is 'reserved' for other currently supported types - preserving it will be OK for now
+		uint8_t state = existing.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::STATE);
+
+		T updated = existing;
+		updated.quality = static_cast<uint8_t>(qual) | state;
+		updated.time = eventTime;
+		return updated;
+	};
 	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);
 	{//transaction scope
 		asiodnp3::MeasUpdate tx(pOutstation);

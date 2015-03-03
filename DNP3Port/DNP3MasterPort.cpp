@@ -47,6 +47,7 @@ void DNP3MasterPort::Enable()
     }
     
 	enabled = true;
+	//initialise as comms down - in case they never come up
 	PortDown();
 
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -54,6 +55,8 @@ void DNP3MasterPort::Enable()
 	{
 		pMaster->Enable();
 		stack_enabled = true;
+		//TODO: this scan isn't needed if we remember and reinstate point quality in PortUp();
+		IntegrityScan.Demand();
 	}
 
 }
@@ -78,7 +81,7 @@ void DNP3MasterPort::PortUp()
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	// Update the comms state point if configured
-	if (pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
+	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
 	{
 		for (auto IOHandler_pair : Subscribers)
 		{
@@ -112,7 +115,7 @@ void DNP3MasterPort::PortDown()
 			IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST, index, this->Name);
 
 		// Update the comms state point if configured
-		if (pConf->pPointConf->mCommsPoint.first.quality == static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
+		if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
 		{
 			{
 				std::string msg = Name + ": Updating comms state point to bad";
@@ -147,11 +150,6 @@ void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
 	if (state == opendnp3::ChannelState::OPEN)
 	{
 		PortUp();
-	}
-
-	if(state == opendnp3::ChannelState::OPEN)
-	{
-
 	}
 	else
 	{
