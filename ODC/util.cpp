@@ -156,32 +156,3 @@ bool extract_delimited_string(istream& ist, string& extracted)
 //    return !(C1 == C2);
 //}
 
-opendnp3::EventBinaryResponse StringToEventBinaryResponse(const string& str)
-{
-	if(str == "Group2Var1") return opendnp3::EventBinaryResponse::Group2Var1;
-	if(str == "Group2Var2") return opendnp3::EventBinaryResponse::Group2Var2;
-	throw new std::runtime_error("Unknown event binary response type");
-}
-
-opendnp3::EventAnalogResponse StringToEventAnalogResponse(const string& str)
-{
-	if(str == "Group32Var1") return opendnp3::EventAnalogResponse::Group32Var1;
-	if(str == "Group32Var2") return opendnp3::EventAnalogResponse::Group32Var2;
-	if(str == "Group32Var3") return opendnp3::EventAnalogResponse::Group32Var3;
-	if(str == "Group32Var4") return opendnp3::EventAnalogResponse::Group32Var4;
-	if(str == "Group32Var5") return opendnp3::EventAnalogResponse::Group32Var5;
-	if(str == "Group32Var6") return opendnp3::EventAnalogResponse::Group32Var6;
-	if(str == "Group32Var7") return opendnp3::EventAnalogResponse::Group32Var7;
-	if(str == "Group32Var8") return opendnp3::EventAnalogResponse::Group32Var8;
-	throw new std::runtime_error("Unknown event analog response type");
-}
-
-opendnp3::EventCounterResponse StringToEventCounterResponse(const string& str)
-{
-	if(str == "Group22Var1") return opendnp3::EventCounterResponse::Group22Var1;
-	if(str == "Group22Var2") return opendnp3::EventCounterResponse::Group22Var2;
-	if(str == "Group22Var5") return opendnp3::EventCounterResponse::Group22Var5;
-	if(str == "Group22Var6") return opendnp3::EventCounterResponse::Group22Var6;
-	throw new std::runtime_error("Unknown event counter response type");
-}
-

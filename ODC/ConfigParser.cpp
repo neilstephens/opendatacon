@@ -57,6 +57,7 @@ void ConfigParser::ProcessFile()
 
 Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 {
+	Json::Value JSONRoot;
 	std::string Err;
 	if(!(JSONCache.count(FileName))) //not cached - read it in
 	{
@@ -78,4 +79,37 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 	return &JSONCache[FileName];
 }
 
+const Json::Value ConfigParser::GetConfiguration(const std::string& pFileName)
+{
+	if(JSONCache.count(pFileName))
+    {
+        return JSONCache[pFileName];
+    }
+    return Json::Value();
+}
 
+void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits)
+{
+    for(Json::Value InheritFile : Inherits)
+    {
+        Json::Value InheritRoot = ConfigParser::GetConfiguration(InheritFile.asString());
+        JSONRoot[InheritFile.asString()] = InheritRoot;
+        if (!(InheritRoot["Inherits"].isNull()))
+        {
+            AddInherits(JSONRoot, InheritRoot["Inherits"]);
+        }
+    }
+}
+
+const Json::Value ConfigParser::GetConfiguration() const
+{
+    Json::Value JSONRoot;
+    JSONRoot[ConfFilename] = GetConfiguration(ConfFilename);
+    if(!JSONRoot[ConfFilename]["Inherits"].isNull())
+    {
+        AddInherits(JSONRoot, JSONRoot[ConfFilename]["Inherits"]);
+    }
+    JSONRoot["ConfigOverrides"] = ConfOverrides;
+
+    return JSONRoot;
+}

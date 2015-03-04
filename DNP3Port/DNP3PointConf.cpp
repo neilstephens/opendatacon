@@ -28,7 +28,9 @@
 #include <algorithm>
 #include <opendnp3/app/ClassField.h>
 #include "DNP3PointConf.h"
-#include <opendatacon/util.h>
+#include "OpenDNP3Helpers.h"
+#include <iostream> // TODO: remove include, should be met using logging mechanism
+
 
 DNP3PointConf::DNP3PointConf(std::string FileName):
 	ConfigParser(FileName),
@@ -69,10 +71,15 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		UnsolConfirmTimeoutms(5000),
 		WaitForCommandResponses(false),
 		DemandCheckPeriodms(2000),
-		// Default Event Response Types
-		EventBinaryResponse(opendnp3::EventBinaryResponse::Group2Var1),
-		EventAnalogResponse(opendnp3::EventAnalogResponse::Group32Var5),
-		EventCounterResponse(opendnp3::EventCounterResponse::Group22Var1),
+		// Default Static Variations
+		StaticBinaryResponse(opendnp3::Binary::StaticVariation::Group1Var1),
+		StaticAnalogResponse(opendnp3::Analog::StaticVariation::Group30Var5),
+		StaticCounterResponse(opendnp3::Counter::StaticVariation::Group20Var1),
+		// Default Event Variations
+		EventBinaryResponse(opendnp3::Binary::EventVariation::Group2Var1),
+		EventAnalogResponse(opendnp3::Analog::EventVariation::Group32Var5),
+		EventCounterResponse(opendnp3::Counter::EventVariation::Group22Var1),
+		TimestampOverride(ZERO),
 		// Event buffer limits
 		MaxBinaryEvents(1000),
 		MaxAnalogEvents(1000),
@@ -202,16 +209,20 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	if (!JSONRoot["OverrideControlCode"].isNull())
 	{
+		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_ON")
+			OverrideControlCode = opendnp3::ControlCode::PULSE_ON;
+		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_OFF")
+			OverrideControlCode = opendnp3::ControlCode::PULSE_OFF;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE")
-			OverrideControlCode = opendnp3::ControlCode::PULSE;
+			OverrideControlCode = opendnp3::ControlCode::PULSE_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "LATCH_OFF")
 			OverrideControlCode = opendnp3::ControlCode::LATCH_OFF;
 		if (JSONRoot["OverrideControlCode"].asString() == "LATCH_ON")
 			OverrideControlCode = opendnp3::ControlCode::LATCH_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_CLOSE")
-			OverrideControlCode = opendnp3::ControlCode::PULSE_CLOSE;
+			OverrideControlCode = opendnp3::ControlCode::CLOSE_PULSE_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_TRIP")
-			OverrideControlCode = opendnp3::ControlCode::PULSE_TRIP;
+			OverrideControlCode = opendnp3::ControlCode::TRIP_PULSE_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "NUL")
 			OverrideControlCode = opendnp3::ControlCode::NUL;
 	}
@@ -232,13 +243,34 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot["DemandCheckPeriodms"].isNull())
 		DemandCheckPeriodms = JSONRoot["DemandCheckPeriodms"].asUInt();
 
-	// Default Event Response Types
+	// Default Static Variations
+	if (!JSONRoot["StaticBinaryResponse"].isNull())
+		StaticBinaryResponse = StringToStaticBinaryResponse(JSONRoot["StaticBinaryResponse"].asString());
+	if (!JSONRoot["StaticAnalogResponse"].isNull())
+		StaticAnalogResponse = StringToStaticAnalogResponse(JSONRoot["StaticAnalogResponse"].asString());
+	if (!JSONRoot["StaticCounterResponse"].isNull())
+		StaticCounterResponse = StringToStaticCounterResponse(JSONRoot["StaticCounterResponse"].asString());
+
+	// Default Event Variations
 	if (!JSONRoot["EventBinaryResponse"].isNull())
 		EventBinaryResponse = StringToEventBinaryResponse(JSONRoot["EventBinaryResponse"].asString());
 	if (!JSONRoot["EventAnalogResponse"].isNull())
 		EventAnalogResponse = StringToEventAnalogResponse(JSONRoot["EventAnalogResponse"].asString());
 	if (!JSONRoot["EventCounterResponse"].isNull())
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
+
+	// Timestamp Override Alternatives
+	if (!JSONRoot["TimestampOverride"].isNull())
+	{
+		if (JSONRoot["TimestampOverride"].asString() == "ALWAYS")
+			TimestampOverride = DNP3PointConf::TimestampOverride_t::ALWAYS;
+		else if (JSONRoot["TimestampOverride"].asString() == "ZERO")
+			TimestampOverride = DNP3PointConf::TimestampOverride_t::ZERO;
+		else if (JSONRoot["TimestampOverride"].asString() == "NEVER")
+			TimestampOverride = DNP3PointConf::TimestampOverride_t::NEVER;
+		else
+			std::cout << "Invalid TimestampOverride: " << JSONRoot["TimestampOverride"].asString() << ", should be ALWAYS, ZERO, or NEVER - defaulting to ZERO" << std::endl;
+	}
 
 	// Event buffer limits
 	if (!JSONRoot["MaxBinaryEvents"].isNull())

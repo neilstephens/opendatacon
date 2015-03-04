@@ -113,12 +113,15 @@ void AdvancedLogger::RemoveIgnore(const std::string& str)
 	}
 	std::cout<<"Ignore regex '"<<str<<"' not found - not removing anything"<<std::endl;
 }
-void AdvancedLogger::ShowIgnored()
+const Json::Value AdvancedLogger::ShowIgnored()
 {
+    Json::Value result;
 	for(auto ignored : IgnoreRepeats)
 	{
+        result[ignored.MessageRegex_string] = ignored.Count;
 		std::cout<<ignored.MessageRegex_string<<"\t\t silenced "<<ignored.Count<<" messages"<<std::endl;
 	}
+    return result;
 }
 void AdvancedLogger::SetLogLevel(openpal::LogFilters aLOG_LEVEL)
 {

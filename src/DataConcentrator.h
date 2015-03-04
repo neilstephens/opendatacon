@@ -30,6 +30,11 @@
 #include <asio.hpp>
 #include <unordered_map>
 #include <asiodnp3/DNP3Manager.h>
+#include <opendatacon/DataPort.h>
+#include <opendatacon/DataPortCollection.h>
+#include "DataConnector.h"
+#include "DataConnectorCollection.h"
+#include <opendatacon/InterfaceCollection.h>
 
 #include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
@@ -38,16 +43,24 @@
 #include "DataConnector.h"
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
+#include "LogCollection.h"
 
+#include <opendatacon/IUI.h>
 inline std::string GetLibFileName(const std::string LibName)
 {
 	return DYNLIBPRE + LibName + DYNLIBEXT;
 }
 
-class DataConcentrator: public ConfigParser
+class DataConcentrator: public ConfigParser, public IUIResponder
 {
 public:
 	DataConcentrator(std::string FileName);
+	//~DataConcentrator();
+
+    DataPortCollection DataPorts;
+	DataConnectorCollection DataConnectors;
+    LogCollection AdvancedLoggers;
+    InterfaceCollection Interfaces;
 
 	asiodnp3::DNP3Manager DNP3Mgr;
 	asio::io_service IOS;
@@ -55,13 +68,10 @@ public:
 	std::unique_ptr<asio::io_service::work> ios_working;
 
 	openpal::LogFilters LOG_LEVEL;
-	AdvancedLogger AdvConsoleLog;//just prints messages to the console plus filtering (Adv)
+	std::shared_ptr<AdvancedLogger> AdvConsoleLog;//just prints messages to the console plus filtering (Adv)
 	LogToFile FileLog;//Prints all messages to a rolling set of log files.
-	AdvancedLogger AdvFileLog;
+	std::shared_ptr<AdvancedLogger> AdvFileLog;
 	asiopal::LogFanoutHandler FanoutHandler;
-
-	std::unordered_map<std::string, std::shared_ptr<DataPort>> DataPorts;
-	std::unordered_map<std::string, std::shared_ptr<DataConnector>> DataConnectors;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void BuildOrRebuild();

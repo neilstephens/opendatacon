@@ -71,5 +71,8 @@
     <ClInclude Include="AdvancedLogger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LogCollection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

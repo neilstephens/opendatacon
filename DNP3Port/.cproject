@@ -92,7 +92,6 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSONPort" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -186,7 +185,6 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSONPort" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -281,7 +279,6 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSONPort" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
@@ -375,7 +372,6 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="JSONPort" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3-rpi;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 		</cconfiguration>
 		<cconfiguration id="cdt.managedbuild.config.gnu.so.release.2015955356.56322535.1416867881">
@@ -471,7 +467,6 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="ODC" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3-RHEL;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 		</cconfiguration>
 		<cconfiguration id="cdt.managedbuild.config.gnu.so.release.2015955356.1422233284">
@@ -517,7 +512,7 @@
 								<option id="gnu.cpp.compiler.option.preprocessor.def.64746018" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="ASIO_STANDALONE=true"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.debugging.gprof.19200675" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.debugging.gprof.19200675" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.831718499" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.so.release.1908131633" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.so.release">
@@ -568,7 +563,6 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="ODC" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="dnp3;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
 			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>

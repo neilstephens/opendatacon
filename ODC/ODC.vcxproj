@@ -201,15 +201,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ConfigParser.cpp" />
+    <ClCompile Include="DataPortCollection.cpp" />
+    <ClCompile Include="InterfaceCollection.cpp" />
     <ClCompile Include="IOHandler.cpp" />
+    <ClCompile Include="IUIResponder.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConfigParser.h" />
     <ClInclude Include="DataPointConf.h" />
     <ClInclude Include="DataPort.h" />
+    <ClInclude Include="DataPortCollection.h" />
     <ClInclude Include="DataPortConf.h" />
+    <ClInclude Include="InterfaceCollection.h" />
     <ClInclude Include="IOHandler.h" />
+    <ClInclude Include="IUI.h" />
+    <ClInclude Include="IUIResponder.h" />
+    <ClInclude Include="ParamCollection.h" />
+    <ClInclude Include="ResponderMap.h" />
     <ClInclude Include="Platform.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="util.h" />

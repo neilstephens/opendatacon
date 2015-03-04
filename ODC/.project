@@ -3,8 +3,6 @@
 	<name>ODC</name>
 	<comment></comment>
 	<projects>
-		<project>dnp3-2.0-RC1-rpi</project>
-		<project>JSON</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
