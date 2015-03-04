@@ -327,10 +327,25 @@ std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogOutpu
 template<typename T, typename Q>
 inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName)
 {
-	auto lambda = [&](const T& existing){ T newqual = existing; newqual.quality = static_cast<uint8_t>(qual); return newqual; };
+	if (!enabled)
+	{
+		return IOHandler::CommandFutureUndefined();
+	}
+	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	auto lambda = [=](const T& existing)
+	{
+		//TODO: break out specialised templates for Binary types. The state bit for binary quality is 'reserved' for other currently supported types - preserving it will be OK for now
+		uint8_t state = existing.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::STATE);
+
+		T updated = existing;
+		updated.quality = static_cast<uint8_t>(qual) | state;
+		updated.time = eventTime;
+		return updated;
+	};
 	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);
 	{//transaction scope
 		asiodnp3::MeasUpdate tx(pOutstation);
+		// TODO: confirm the timestamp used for the modify
 		tx.Modify(modify, index, opendnp3::EventMode::Force);
 	}
 	return IOHandler::CommandFutureSuccess();
@@ -351,10 +366,25 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, 
 	{
 		return IOHandler::CommandFutureUndefined();
 	}
+	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	{//transaction scope
 		asiodnp3::MeasUpdate tx(pOutstation);
-		tx.Update(meas, index);
+		//TODO: add config to re-timestamp (or not)
+
+		if (
+			(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
+			((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time == 0))
+			)
+		{
+			T newmeas(meas.value, meas.quality, eventTime);
+			tx.Update(newmeas, index);
+		}
+		else
+		{
+			tx.Update(meas, index);
+		}		
 	}
 	return IOHandler::CommandFutureSuccess();
 }

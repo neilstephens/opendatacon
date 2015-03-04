@@ -94,6 +94,13 @@ private:
 	inline void DoOverrideControlCode(T& arCommand){};
 	void PortUp();
 	void PortDown();
+	inline void EnableStack()
+	{
+		pMaster->Enable();
+		stack_enabled = true;
+		//TODO: this scan isn't needed if we remember quality on PortDown() and reinstate in PortUp();
+		IntegrityScan.Demand();
+	}
 	inline void DoOverrideControlCode(opendnp3::ControlRelayOutputBlock& arCommand)
 	{
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());

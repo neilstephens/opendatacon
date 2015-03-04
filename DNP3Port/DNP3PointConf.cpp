@@ -79,6 +79,7 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		EventBinaryResponse(opendnp3::Binary::EventVariation::Group2Var1),
 		EventAnalogResponse(opendnp3::Analog::EventVariation::Group32Var5),
 		EventCounterResponse(opendnp3::Counter::EventVariation::Group22Var1),
+		TimestampOverride(ZERO),
 		// Event buffer limits
 		MaxBinaryEvents(1000),
 		MaxAnalogEvents(1000),
@@ -257,6 +258,19 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		EventAnalogResponse = StringToEventAnalogResponse(JSONRoot["EventAnalogResponse"].asString());
 	if (!JSONRoot["EventCounterResponse"].isNull())
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
+
+	// Timestamp Override Alternatives
+	if (!JSONRoot["TimestampOverride"].isNull())
+	{
+		if (JSONRoot["TimestampOverride"].asString() == "ALWAYS")
+			TimestampOverride = DNP3PointConf::TimestampOverride_t::ALWAYS;
+		else if (JSONRoot["TimestampOverride"].asString() == "ZERO")
+			TimestampOverride = DNP3PointConf::TimestampOverride_t::ZERO;
+		else if (JSONRoot["TimestampOverride"].asString() == "NEVER")
+			TimestampOverride = DNP3PointConf::TimestampOverride_t::NEVER;
+		else
+			std::cout << "Invalid TimestampOverride: " << JSONRoot["TimestampOverride"].asString() << ", should be ALWAYS, ZERO, or NEVER - defaulting to ZERO" << std::endl;
+	}
 
 	// Event buffer limits
 	if (!JSONRoot["MaxBinaryEvents"].isNull())
