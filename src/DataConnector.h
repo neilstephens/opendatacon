@@ -60,11 +60,24 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
 
+	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
+    
+    virtual const Json::Value GetStatistics() const
+    {
+        return Json::Value();
+    };
+    
+    virtual const Json::Value GetCurrentState() const
+    {
+        return Json::Value();
+    };
 	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 
 	void Enable();
 	void Disable();
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
+    
+protected:
 	void ProcessElements(const Json::Value& JSONRoot);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
 

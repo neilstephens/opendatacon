@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Current State</title>
+        <script src="/js/jquery-1.11.1.min.js"></script>
+		<script src="/js/JsonDiff.js"></script>
+		<link href="/css/odc.css" rel="stylesheet">        
+		<link href="/css/jquery.treetable.css" rel="stylesheet" type="text/css" />
+		<link href="/css/jquery.treetable.theme.css" rel="stylesheet" />
+		<script src="/js/jquery.treetable.js"></script>				
+    </head>
+    <body>
+        <h1>Current State</h1>
+        <div id="CurrentStateDiv"></div>
+        <h1>Mimic</h1>
+        <svg id="mimic-svg" xmlns="http://www.w3.org/2000/svg" width="601.81927" height="725.12518"></svg>
+        <script>
+        	var urlhash = window.location.hash.substring(1);
+        	var hasharray = urlhash.split( '/' );
+        	
+        	var responder = hasharray[1];
+        	var target = hasharray[2];
+        	var command = "CurrentState";
+        	var posturl = responder + "/" + command;
+        	
+        	var mimicName = "dmc";
+        	var hasMimicUpdate = false;
+        	var isbuilt = false;
+        	
+        	function refreshValues(posturl, target)
+        	{
+				var getResponders = $.post( posturl, { Target : target } )
+					.done(function( data ) {
+						
+						if(isbuilt) {
+							UpdateJsonTree("", {"Value" : data});					
+						} else {
+							var statediv = document.getElementById("CurrentStateDiv");
+							var statetable = document.createElement('table');
+							statediv.appendChild(statetable);
+							BuildJsonTree(statetable, "", {"Value" : data});
+							$(statetable).treetable({ expandable: true });
+							isbuilt = true;
+						}
+						if(hasMimicUpdate) updateMimic(document.getElementById("mimic-svg"), data);
+					});
+        	}
+        	
+            // Send the data using post
+            $( document ).ready(function() {
+            	if (mimicName != "") {
+					var mimicSVG = 'mimics/'+mimicName+'.svg';
+					var mimicJS = 'mimics/'+mimicName+'.JS';
+				
+					jQuery.getScript(mimicJS)
+						.done(function() {
+							if (typeof updateMimic === 'function') {
+								hasMimicUpdate = true;
+							}					
+						}); 
+				
+					$('#mimic-svg').load(mimicSVG, null, function() { 
+						refreshValues(posturl, target);
+						setInterval(function(){refreshValues(posturl, target);}, 1000);
+					});
+				}
+            });
+        </script>
+    </body>
+</html>
