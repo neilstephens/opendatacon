@@ -52,12 +52,7 @@ void DNP3MasterPort::Enable()
 
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
-	{
-		pMaster->Enable();
-		stack_enabled = true;
-		//TODO: this scan isn't needed if we remember and reinstate point quality in PortUp();
-		IntegrityScan.Demand();
-	}
+		EnableStack();
 
 }
 void DNP3MasterPort::Disable()
@@ -313,9 +308,7 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 
 			pIOS->post([&]()
 			{
-				//enable the stack
-				pMaster->Enable();
-				stack_enabled = true;
+				EnableStack();
 			});
 		}
 	}
