@@ -49,10 +49,12 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 
 		for(Json::ArrayIndex n = 0; n < JConnections.size(); ++n)
 		{
-            try {
+            try
+            {
                 if(JConnections[n]["Name"].isNull() || JConnections[n]["Port1"].isNull() || JConnections[n]["Port2"].isNull())
                 {
                     std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                    continue;
                 }
                 auto ConName = JConnections[n]["Name"].asString();
                 auto ConPort1 = JConnections[n]["Port1"].asString();
@@ -69,7 +71,9 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
                 //Add to the lookup table
                 SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
                 SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
-            } catch (std::exception& e) {
+            }
+            catch (std::exception& e)
+            {
                 std::cout<<"Warning: Exception raised when creating Connection from config: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
             }
 		}
@@ -85,6 +89,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
                 if(Transforms[n]["Type"].isNull() || Transforms[n]["Sender"].isNull())
                 {
                     std::cout<<"Warning: invalid Transform config: need at least Type and Sender: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                    continue;
                 }
 
                 if(Transforms[n]["Type"].asString() == "IndexOffset")
@@ -140,11 +145,17 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 	{
 		for(auto aMatch_it = bounds.first;;)
 		{
+			//guess which one is the sendee
 			IOHandler* pSendee = Connections[aMatch_it->second].second;
+
+			//check if we were right and correct if need be
 			if(pSendee->Name == SenderName)
 				pSendee = Connections[aMatch_it->second].first;
 
+			//TODO: confirm this doesn't need to be a shared pointer - just allocate on stack
+			// It was a shared_ptr because it used to be captured in lambdas to call pSendee/Transform->Event() asynchronously
 			std::shared_ptr<T> new_event_obj(new T(event_obj));
+
 			bool pass_on = true;
 			if(ConnectionTransforms.count(SenderName))
 			{
@@ -159,6 +170,7 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 			}
 
 			//return on the last connection
+			//TODO: rewrite this to check all return values
 			if(++aMatch_it != bounds.second)
 			{
 				if(pass_on)
