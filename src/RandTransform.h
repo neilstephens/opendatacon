@@ -51,7 +51,7 @@ public:
 
 	bool Event(opendnp3::Analog& meas, uint16_t& index)
 	{
-		rand_t seed = (rand_t)((intptr_t)&meas);
+		static rand_t seed = (rand_t)((intptr_t)this);
 		meas.value = 100*ZERO_TO_ONE(seed);
 		return true;
 	};
