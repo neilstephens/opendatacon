@@ -146,6 +146,20 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 	//Do we have a connection for this sender?
 	if(bounds.first != bounds.second)//yes
 	{
+		auto new_event_obj(event_obj);
+		bool pass_on = true;
+		if(ConnectionTransforms.count(SenderName))
+		{
+			for(Transform* Transform : ConnectionTransforms[SenderName])
+			{
+				if(!Transform->Event(new_event_obj, index))
+				{
+					pass_on = false;
+					break;
+				}
+			}
+		}
+
 		for(auto aMatch_it = bounds.first;;)
 		{
 			//guess which one is the sendee
@@ -155,35 +169,18 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 			if(pSendee->Name == SenderName)
 				pSendee = Connections[aMatch_it->second].first;
 
-			//TODO: confirm this doesn't need to be a shared pointer - just allocate on stack
-			// It was a shared_ptr because it used to be captured in lambdas to call pSendee/Transform->Event() asynchronously
-			std::shared_ptr<T> new_event_obj(new T(event_obj));
-
-			bool pass_on = true;
-			if(ConnectionTransforms.count(SenderName))
-			{
-				for(Transform* Transform : ConnectionTransforms[SenderName])
-				{
-					if(!Transform->Event(*(new_event_obj.get()), index))
-					{
-						pass_on = false;
-						break;
-					}
-				}
-			}
-
 			//return on the last connection
 			//TODO: rewrite this to check all return values
 			if(++aMatch_it != bounds.second)
 			{
 				if(pass_on)
-					pSendee->Event(*new_event_obj.get(), index, this->Name);
+					pSendee->Event(new_event_obj, index, this->Name);
 			}
 			else
 			{
 				if(pass_on)
 				{
-					return pSendee->Event(*new_event_obj.get(), index, this->Name);
+					return pSendee->Event(new_event_obj, index, this->Name);
 				}
 				else
 				{
