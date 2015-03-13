@@ -46,6 +46,7 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		{
 			for (Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)
 			{
+				//TODO: make sure PointConfs[n]["Points"][k]["Index"] isn't Null
 				this->Analogs[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
 			}
 		}
