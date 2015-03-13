@@ -38,7 +38,7 @@ public:
 		Transform(params),
 		pass_on(false),
 		already_under(false),
-		threshold(DBL_MIN)
+		threshold(-DBL_MAX)
 	{
 		if(params["threshold_point_index"].isNull() || !params["threshold_point_index"].isUInt())
 		{
