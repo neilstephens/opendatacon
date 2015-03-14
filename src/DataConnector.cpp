@@ -147,20 +147,17 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 	if(bounds.first != bounds.second)//yes
 	{
 		auto new_event_obj(event_obj);
-		bool pass_on = true;
 		if(ConnectionTransforms.count(SenderName))
 		{
 			for(Transform* Transform : ConnectionTransforms[SenderName])
 			{
 				if(!Transform->Event(new_event_obj, index))
-				{
-					pass_on = false;
-					break;
-				}
+					return IOHandler::CommandFutureUndefined();
 			}
 		}
 
-		for(auto aMatch_it = bounds.first;;)
+		std::vector<std::future<opendnp3::CommandStatus>> returns;
+		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 		{
 			//guess which one is the sendee
 			IOHandler* pSendee = Connections[aMatch_it->second].second;
@@ -169,25 +166,14 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 			if(pSendee->Name == SenderName)
 				pSendee = Connections[aMatch_it->second].first;
 
-			//return on the last connection
-			//TODO: rewrite this to check all return values
-			if(++aMatch_it != bounds.second)
-			{
-				if(pass_on)
-					pSendee->Event(new_event_obj, index, this->Name);
-			}
-			else
-			{
-				if(pass_on)
-				{
-					return pSendee->Event(new_event_obj, index, this->Name);
-				}
-				else
-				{
-					return IOHandler::CommandFutureUndefined();
-				}
-			}
+			returns.push_back(pSendee->Event(new_event_obj, index, this->Name));
 		}
+		for(auto& ret : returns)
+		{
+			if(ret.get() != opendnp3::CommandStatus::SUCCESS)
+				return IOHandler::CommandFutureUndefined();
+		}
+		return std::move(returns.back());
 	}
 	//no connection for sender if we get here
 	std::string msg = "Connector '"+this->Name+"' discarding event from '"+SenderName+"' (No connection defined)";
