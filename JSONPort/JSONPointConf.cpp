@@ -35,6 +35,15 @@ JSONPointConf::JSONPointConf(std::string FileName):
 	ProcessFile();
 };
 
+inline bool check_index(const Json::Value& Point)
+{
+	if(Point["Index"].isNull())
+	{
+		std::cout<<"A point needs an \"Index\" : '"<<Point.toStyledString()<<"'"<<std::endl;
+		return false;
+	}
+	return true;
+}
 void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 {
     if(!JSONRoot.isObject()) return;
@@ -46,7 +55,8 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		{
 			for (Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)
 			{
-				//TODO: make sure PointConfs[n]["Points"][k]["Index"] isn't Null
+				if(!check_index(PointConfs[n]["Points"][k]))
+					continue;
 				this->Analogs[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
 			}
 		}
@@ -54,6 +64,8 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		{
 			for(Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)
 			{
+				if(!check_index(PointConfs[n]["Points"][k]))
+					continue;
 				this->Binaries[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
 			}
 		}
@@ -61,6 +73,8 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		{
 			for(Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)
 			{
+				if(!check_index(PointConfs[n]["Points"][k]))
+					continue;
 				this->Binaries[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
 			}
 		}

@@ -51,6 +51,10 @@ public:
 
 		if(!JSONRoot["Port"].isNull())
 			static_cast<JSONPortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asUInt();
+
+		//TODO: document this
+		if(!JSONRoot["RetryTimems"].isNull())
+			static_cast<JSONPortConf*>(pConf.get())->retry_time_ms = JSONRoot["RetryTimems"].asUInt();
 	};
 
 	virtual void Enable()=0;
