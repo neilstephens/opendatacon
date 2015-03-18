@@ -33,6 +33,7 @@
 #include "ThresholdTransform.h"
 #include "RandTransform.h"
 #include "RateLimitTransform.h"
+#include <opendatacon/Platform.h>
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	IOHandler(aName),
@@ -94,13 +95,60 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
                 }
 
                 if(Transforms[n]["Type"].asString() == "IndexOffset")
-                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new IndexOffsetTransform(Transforms[n]["Parameters"]));
+                {
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new IndexOffsetTransform(Transforms[n]["Parameters"])));
+                    continue;
+                }
                 if(Transforms[n]["Type"].asString() == "Threshold")
-                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new ThresholdTransform(Transforms[n]["Parameters"]));
+                {
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new ThresholdTransform(Transforms[n]["Parameters"])));
+                    continue;
+                }
                 if(Transforms[n]["Type"].asString() == "Rand")
-                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new RandTransform(Transforms[n]["Parameters"]));
+                {
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new RandTransform(Transforms[n]["Parameters"])));
+                    continue;
+                }
                 if(Transforms[n]["Type"].asString() == "RateLimit")
-                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new RateLimitTransform(Transforms[n]["Parameters"]));
+                {
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new RateLimitTransform(Transforms[n]["Parameters"])));
+                    continue;
+                }
+
+                //Looks for a specific library (for libs that implement more than one class)
+				std::string libname;
+				if(!Transforms[n]["Library"].isNull())
+				{
+					libname = GetLibFileName(Transforms[n]["Library"].asString());
+				}
+				//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
+				else
+				{
+					libname = GetLibFileName(Transforms[n]["Type"].asString());
+				}
+
+				//try to load the lib
+				auto* txlib = DYNLIBLOAD(libname.c_str());
+
+				if(txlib == nullptr)
+				{
+					std::cout << "Warning: failed to load library '"<<libname<<"' skipping transform..."<<std::endl;
+					continue;
+				}
+
+				//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
+				//it should return a pointer to a heap allocated instance of a descendant of Transform
+				std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
+				auto new_tx_func = (Transform*(*)(const Json::Value))DYNLIBGETSYM(txlib, new_funcname.c_str());
+
+				if(new_tx_func == nullptr)
+				{
+					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for transform type '"<<Transforms[n]["Type"].asString()<<"' skipping transform..."<<std::endl;
+					continue;
+				}
+
+				//call the creation function and wrap the returned pointer to a new port
+				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new_tx_func(Transforms[n]["Params"].asString())));
             }
             catch (std::exception& e)
             {
