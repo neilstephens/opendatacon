@@ -37,8 +37,7 @@ class WebUI : public IUI
 {
 public:
 	WebUI(uint16_t port);
-	~WebUI();
-    
+
     /* Implement IUI interface */
     void AddResponder(const std::string name, const IUIResponder& pResponder);
 	int start();
