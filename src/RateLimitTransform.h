@@ -35,43 +35,47 @@
 class RateLimitTransform: public Transform
 {
 public:
-	RateLimitTransform(Json::Value params):
-    Transform(params),
-    outputRateLimit(10),
-    updatePeriodms(100),
-    updatePeriodMultiplier(10)
-    {
-        std::string name = "DEFAULT";
-        if(!params["Name"].isNull() && params["Name"].isString())
-        {
-            name = params["Name"].asString();
-        }
-        if (rateStatsCollection.count(name))
-        {
-            rateStats = &rateStatsCollection[name];
-        }
-        else
-        {
-            rateStatsCollection.emplace(std::piecewise_construct,std::forward_as_tuple(name),std::forward_as_tuple());
-            rateStats = &rateStatsCollection[name];
-            rateStats->droppedUpdates = 0;
-            rateStats->inputRate = 0;
-            rateStats->outputRate = 0;
-            rateStats->nextUpdatems = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch + updatePeriodms;
-        }
-        
-        if(!params["outputRateLimit"].isNull() && params["outputRateLimit"].isUInt())
-        {
-            outputRateLimit = params["outputRateLimit"].asUInt();
-        }
-        if(!params["updatePeriodms"].isNull() && params["updatePeriodms"].isUInt())
-        {
-            outputRateLimit = params["updatePeriodms"].asUInt();
-        }
-        if(!params["updatePeriodMultiplier"].isNull() && params["updatePeriodMultiplier"].isUInt())
-        {
-            outputRateLimit = params["updatePeriodMultiplier"].asUInt();
-        }
+	RateLimitTransform(Json::Value params) :
+		Transform(params)
+	{
+		std::string name = "DEFAULT";
+		if (!params["Name"].isNull() && params["Name"].isString())
+		{
+			name = params["Name"].asString();
+		}
+		if (rateStatsCollection.count(name))
+		{
+			rateStats = &rateStatsCollection[name];
+		}
+		else
+		{
+			rateStatsCollection.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple());
+			rateStats = &rateStatsCollection[name];
+			rateStats->droppedUpdates = 0;
+			rateStats->inputRate = 0;
+			rateStats->outputRate = 0;		
+
+			if (!params["outputRateLimit"].isNull() && params["outputRateLimit"].isUInt())
+			{
+				rateStats->outputRateLimit = params["outputRateLimit"].asUInt();
+			}
+			else
+				rateStats->outputRateLimit = 10;
+			if (!params["updatePeriodms"].isNull() && params["updatePeriodms"].isUInt())
+			{
+				rateStats->updatePeriodms = params["updatePeriodms"].asUInt();
+			}
+			else
+				rateStats->updatePeriodms = 100;
+			if (!params["updatePeriodMultiplier"].isNull() && params["updatePeriodMultiplier"].isUInt())
+			{
+				rateStats->updatePeriodMultiplier = params["updatePeriodMultiplier"].asUInt();
+			}
+			else
+				rateStats->updatePeriodMultiplier = 10;
+
+			rateStats->nextUpdatems = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch + rateStats->updatePeriodms;
+		}
     };
 
 	bool Event(opendnp3::Binary& meas, uint16_t& index) { return CheckPass(meas); };
@@ -101,20 +105,20 @@ private:
         if (rateStats->nextUpdatems < eventTime)
         {
             // update nextUpdatems as soon as possible to reduce the likelihood of update overshoot
-            rateStats->nextUpdatems += updatePeriodms;
+			rateStats->nextUpdatems += rateStats->updatePeriodms;
             // reduce update count
-            rateStats->outputRate -= outputRateLimit;
+			rateStats->outputRate -= rateStats->outputRateLimit;
             // if we reduce the outputRate to below 0, reset to 0 and set nextUpdatems to in the future
             if (rateStats->outputRate < 0)
             {
-                rateStats->nextUpdatems = eventTime + updatePeriodms;
+				rateStats->nextUpdatems = eventTime + rateStats->updatePeriodms;
                 rateStats->outputRate = 0;
             }
             rateStats->inputRate = 0;
         }
         ++rateStats->inputRate;
         
-        if (rateStats->outputRate < outputRateLimit * updatePeriodMultiplier)
+		if (rateStats->outputRate < rateStats->outputRateLimit * rateStats->updatePeriodMultiplier)
         {
             ++rateStats->outputRate;
             return true;
@@ -125,17 +129,16 @@ private:
             return false;
         }
     }
-    
-    /// Parameters
-    uint32_t outputRateLimit; // maximum number of updates allowed per updatePeriodms
-    uint32_t updatePeriodms; // how often the limit is updated
-    uint16_t updatePeriodMultiplier; // how many update periods can be saved up for a burst of updates
-    
-    /// Runtime variables
+        
     struct rateStats_t
     {
-    public:
-        std::atomic_int_fast32_t outputRate; // current update count over the last second
+		/// Parameters
+		uint32_t outputRateLimit; // maximum number of updates allowed per updatePeriodms
+		uint32_t updatePeriodms; // how often the limit is updated
+		uint16_t updatePeriodMultiplier; // how many update periods can be saved up for a burst of updates
+
+		/// Runtime variables
+		std::atomic_int_fast32_t outputRate; // current update count over the last second
         std::atomic_int_fast32_t inputRate; // current input update rate
         std::atomic_uint_fast64_t droppedUpdates; // number of dropped updates
         std::atomic_uint_fast64_t nextUpdatems; // last time that updates were subtracted from the update count
