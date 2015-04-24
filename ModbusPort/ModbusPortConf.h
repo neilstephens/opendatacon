@@ -36,7 +36,7 @@ typedef enum {
     MANUAL
 } server_type_t;
 
-typedef struct
+struct ModbusAddrConf
 {
 	//Serial
 	std::string SerialDevice;
@@ -52,12 +52,25 @@ typedef struct
 	//Common
 	uint8_t OutstationAddr;
     server_type_t ServerType;
-} ModbusAddrConf;
+
+    ModbusAddrConf():
+    	SerialDevice(""),
+    	BaudRate(115200),
+    	Parity(NONE),
+    	DataBits(8),
+    	StopBits(1),
+    	IP(""),
+    	Port(502),
+    	OutstationAddr(1),
+    	ServerType(ONDEMAND)
+    {};
+};
 
 class ModbusPortConf: public DataPortConf
 {
 public:
-	ModbusPortConf(std::string FileName)
+	ModbusPortConf(std::string FileName):
+		mAddrConf()
 	{
 		pPointConf.reset(new ModbusPointConf(FileName));
 	};
