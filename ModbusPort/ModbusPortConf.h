@@ -38,8 +38,18 @@ typedef enum {
 
 typedef struct
 {
+	//Serial
+	std::string SerialDevice;
+	uint32_t BaudRate;
+	enum {NONE='N',EVEN='E',ODD='O'} Parity;
+	uint8_t DataBits;
+	uint8_t StopBits;
+
+	//IP
 	std::string IP;
 	uint16_t Port;
+
+	//Common
 	uint8_t OutstationAddr;
     server_type_t ServerType;
 } ModbusAddrConf;
