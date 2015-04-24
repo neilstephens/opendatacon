@@ -24,73 +24,132 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#ifdef WIN32
-
-#else
-#include <dlfcn.h>
-#endif
-
 #include <thread>
 #include <asio.hpp>
+#include <asiodnp3/ConsoleLogger.h>
 #include <opendnp3/LogLevels.h>
+
+#include <opendatacon/Version.h>
 
 #include "DataConcentrator.h"
 #include "Console.h"
-
-#include <asiodnp3/ConsoleLogger.h>
 #include "logging_cmds.h"
 #include "NullPort.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
 	DNP3Mgr(std::thread::hardware_concurrency()),
-	LOG_LEVEL(opendnp3::levels::NORMAL),
-	AdvConsoleLog(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),
-	FileLog("datacon_log"),
-	AdvFileLog(FileLog,LOG_LEVEL),
 	IOS(std::thread::hardware_concurrency()),
-	ios_working(new asio::io_service::work(IOS))
+	ios_working(new asio::io_service::work(IOS)),
+	LOG_LEVEL(opendnp3::levels::NORMAL),
+	AdvConsoleLog(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL)),
+	FileLog("datacon_log"),
+	AdvFileLog(new AdvancedLogger(FileLog,LOG_LEVEL))
 {
+    //Version
+    this->AddCommand("version", [this](const ParamCollection & params) { //"Print version information"
+        Json::Value result;
+        result["version"] = ODC_VERSION_STRING;
+        return result;
+    },"Return the version information of opendatacon.");
+
 	//fire up some worker threads
-	for(size_t i=0; i < std::thread::hardware_concurrency(); ++i)
+	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
 
-	AdvConsoleLog.AddIngoreAlways(".*"); //silence all console messages by default
-	DNP3Mgr.AddLogSubscriber(&AdvConsoleLog);
-	DNP3Mgr.AddLogSubscriber(&AdvFileLog);
+	AdvConsoleLog->AddIngoreAlways(".*"); //silence all console messages by default
+	DNP3Mgr.AddLogSubscriber(AdvConsoleLog.get());
+    AdvancedLoggers["Console Log"] = AdvConsoleLog;
+	DNP3Mgr.AddLogSubscriber(AdvFileLog.get());
+    AdvancedLoggers["File Log"] = AdvFileLog;
 
+    
 	//Parse the configs and create all the ports and connections
 	ProcessFile();
 
 	for(auto& port : DataPorts)
 	{
-		port.second->AddLogSubscriber(&AdvConsoleLog);
-		port.second->AddLogSubscriber(&AdvFileLog);
+		port.second->AddLogSubscriber(AdvConsoleLog.get());
+		port.second->AddLogSubscriber(AdvFileLog.get());
 		port.second->SetIOS(&IOS);
 		port.second->SetLogLevel(LOG_LEVEL);
 	}
 	for(auto& conn : DataConnectors)
 	{
-		conn.second->AddLogSubscriber(&AdvConsoleLog);
-		conn.second->AddLogSubscriber(&AdvFileLog);
+		conn.second->AddLogSubscriber(AdvConsoleLog.get());
+		conn.second->AddLogSubscriber(AdvFileLog.get());
 		conn.second->SetIOS(&IOS);
 		conn.second->SetLogLevel(LOG_LEVEL);
 	}
-}
-DataConcentrator::~DataConcentrator()
-{
-	//turn everything off
-	this->Shutdown();
-	DNP3Mgr.Shutdown();
-	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
-	ios_working.reset();
-	//help finish any work
-	IOS.run();
 }
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
     if(!JSONRoot.isObject()) return;
+    
+    //Configure the user interface
+    if(!JSONRoot["Plugins"].isNull())
+    {
+        const Json::Value Plugins = JSONRoot["Plugins"];
+
+        for(Json::Value::ArrayIndex n = 0; n < Plugins.size(); ++n)
+        {
+            if(Plugins[n]["Type"].isNull() || Plugins[n]["Name"].isNull() || Plugins[n]["ConfFilename"].isNull())
+            {
+				std::cout << "Warning: invalid plugin config: need at least Type, Name, ConfFilename: \n'" << Plugins[n].toStyledString() << "\n' : ignoring" << std::endl;
+                continue;
+            }
+            
+            auto PluginName = Plugins[n]["Name"].asString();
+            if(Interfaces.count(PluginName) > 0)
+            {
+				std::cout << PluginName << " Warning: ignoring duplicate plugin name." << std::endl;
+                continue;
+            }
+            
+            //Looks for a specific library (for libs that implement more than one class)
+            std::string libname;
+            if(!Plugins[n]["Library"].isNull())
+            {
+                libname = GetLibFileName(Plugins[n]["Library"].asString());
+            }
+            //Otherwise use the naming convention lib<Type>Plugin.so to find the default lib that implements a type of plugin
+            else
+            {
+                libname = GetLibFileName(Plugins[n]["Type"].asString());
+            }
+            
+            //try to load the lib
+            auto* pluginlib = DYNLIBLOAD(libname.c_str());
+            
+            if(pluginlib == nullptr)
+            {
+				std::cout << PluginName << " Info: dynamic library load failed '" << libname << "' skipping plugin..." << std::endl;
+				std::cout << PluginName << " Error: failed to load plugin, skipping..." << std::endl;
+                continue;
+            }
+            
+            //Our API says the library should export a creation function: IUI* new_<Type>Plugin(Name, Filename, Overrides)
+            //it should return a pointer to a heap allocated instance of a descendant of IUI
+            std::string new_funcname = "new_"+Plugins[n]["Type"].asString()+"Plugin";
+            auto new_plugin_func = (IUI*(*)(std::string, std::string, const Json::Value))DYNLIBGETSYM(pluginlib, new_funcname.c_str());
+            
+            if(new_plugin_func == nullptr)
+            {
+				std::cout << PluginName << " Info: failed to load symbol '" << new_funcname << "' in library '" << libname << "' - " << LastSystemError() << std::endl;
+				std::cout << PluginName << " Error: failed to load plugin, skipping..." << std::endl;
+				continue;
+            }
+            
+            //call the creation function and wrap the returned pointer to a new plugin
+            Interfaces[PluginName] = std::unique_ptr<IUI>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]));
+            Interfaces[PluginName]->AddResponder("/OpenDataCon", *this);
+            Interfaces[PluginName]->AddResponder("/DataPorts", DataPorts);
+            Interfaces[PluginName]->AddResponder("/DataConnectors", DataConnectors);
+            Interfaces[PluginName]->AddResponder("/Loggers", AdvancedLoggers);
+        }
+    }
+    
 	if(!JSONRoot["LogFileSizekB"].isNull())
 		FileLog.SetLogFileSizekB(JSONRoot["LogFileSizekB"].asUInt());
 
@@ -113,8 +172,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			LOG_LEVEL = opendnp3::levels::NOTHING;
 		else
 			std::cout << "Warning: invalid LOG_LEVEL setting: '" << value << "' : ignoring and using 'NORMAL' log level." << std::endl;
-		AdvFileLog.SetLogLevel(LOG_LEVEL);
-		AdvConsoleLog.SetLogLevel(LOG_LEVEL);
+		AdvFileLog->SetLogLevel(LOG_LEVEL);
+		AdvConsoleLog->SetLogLevel(LOG_LEVEL);
 	}
 
 	if(!JSONRoot["Ports"].isNull())
@@ -126,48 +185,51 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			if(Ports[n]["Type"].isNull() || Ports[n]["Name"].isNull() || Ports[n]["ConfFilename"].isNull())
 			{
 				std::cout<<"Warning: invalid port config: need at least Type, Name, ConfFilename: \n'"<<Ports[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                continue;
 			}
-			else if(Ports[n]["Type"].asString() == "Null")
+			if(Ports[n]["Type"].asString() == "Null")
 			{
 				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+                continue;
 			}
-			else
-			{
-				//Looks for a specific library (for libs that implement more than one class)
-				std::string libname;
-				if(!Ports[n]["Library"].isNull())
-				{
-					libname = GetLibFileName(Ports[n]["Library"].asString());
-				}
-				//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
-				else
-				{
-					libname = GetLibFileName(Ports[n]["Type"].asString());
-				}
+            
+            //Looks for a specific library (for libs that implement more than one class)
+            std::string libname;
+            if(!Ports[n]["Library"].isNull())
+            {
+                libname = GetLibFileName(Ports[n]["Library"].asString());
+            }
+            //Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
+            else
+            {
+                libname = GetLibFileName(Ports[n]["Type"].asString());
+            }
 
-				//try to load the lib
-				auto* portlib = DYNLIBLOAD(libname.c_str());
+            //try to load the lib
+            auto* portlib = DYNLIBLOAD(libname.c_str());
 
-				if(portlib == nullptr)
-				{
-					std::cout << "Warning: failed to load library '"<<libname<<"' skipping port..."<<std::endl;
-					continue;
-				}
+            if(portlib == nullptr)
+            {
+                std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
+                DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+                continue;
+            }
 
-				//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
-				//it should return a pointer to a heap allocated instance of a descendant of DataPort
-				std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-				auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))DYNLIBGETSYM(portlib, new_funcname.c_str());
+            //Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
+            //it should return a pointer to a heap allocated instance of a descendant of DataPort
+            std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
+            auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))DYNLIBGETSYM(portlib, new_funcname.c_str());
 
-				if(new_port_func == nullptr)
-				{
-					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' skipping port..."<<std::endl;
-					continue;
-				}
+            if(new_port_func == nullptr)
+            {
+                std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' mapping to null port..."<<std::endl;
+                DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+                continue;
+            }
 
-				//call the creation function and wrap the returned pointer to a new port
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
-			}
+            //call the creation function and wrap the returned pointer to a new port
+            DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+        
 		}
 	}
 
@@ -198,6 +260,10 @@ void DataConcentrator::BuildOrRebuild()
 }
 void DataConcentrator::Run()
 {
+    for(auto& ui : Interfaces)
+    {
+        ui.second->start();
+    }
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		IOS.post([=]()
@@ -218,23 +284,23 @@ void DataConcentrator::Run()
 	std::function<void (std::stringstream&)> bound_func;
 
 	//Version
-	bound_func = [](std::stringstream& ss){std::cout<<"Release 0.2.3"<<std::endl;};
+	bound_func = [](std::stringstream& ss){std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;};
 	console.AddCmd("version",bound_func,"Print version information");
 
 	//console logging control
-	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(AdvConsoleLog));
+	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(*AdvConsoleLog));
 	console.AddCmd("ignore_message",bound_func,"Enter regex to silence matching messages from the console logger.");
-	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(AdvConsoleLog));
+	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(*AdvConsoleLog));
 	console.AddCmd("unignore_message",bound_func,"Enter regex to remove from the console ignore list.");
-	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(AdvConsoleLog));
+	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(*AdvConsoleLog));
 	console.AddCmd("show_ignored",bound_func,"Shows all console message ignore regexes and how many messages they've matched.");
 
 	//file logging control
-	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(AdvFileLog));
+	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(*AdvFileLog));
 	console.AddCmd("ignore_file_message",bound_func,"Enter regex to silence matching messages from the file logger.");
-	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(AdvFileLog));
+	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(*AdvFileLog));
 	console.AddCmd("unignore_file_message",bound_func,"Enter regex to remove from the file ignore list.");
-	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(AdvFileLog));
+	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(*AdvFileLog));
 	console.AddCmd("show_file_ignored",bound_func,"Shows all file message ignore regexes and how many messages they've matched.");
 
 	//disable/enable/restart
@@ -252,7 +318,17 @@ void DataConcentrator::Run()
 	console.AddCmd("lsconns",bound_func,"List connectors matching a regex (by name)");
 
 	console.run();
-	Shutdown();
+
+	//turn everything off
+	this->Shutdown();
+	std::cout << "Shutting down DNP3 manager... ";
+	DNP3Mgr.Shutdown();
+	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
+	std::cout << "done" << std::endl << "Finishing any remaining work... ";
+	ios_working.reset();
+	//help finish any work
+	IOS.run();
+	std::cout << "done" << std::endl;
 }
 void DataConcentrator::RestartPortOrConn(std::stringstream& args)
 {
@@ -341,12 +417,15 @@ void DataConcentrator::ListConns(std::stringstream& args)
 }
 void DataConcentrator::Shutdown()
 {
-	for(auto& Name_n_Port : DataPorts)
-	{
-		Name_n_Port.second->Disable();
-	}
+	std::cout << "Disabling data connectors... ";
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
 	}
+	std::cout << "done" << std::endl << "Disabling data ports... ";
+	for(auto& Name_n_Port : DataPorts)
+	{
+		Name_n_Port.second->Disable();
+	}
+	std::cout << "done" << std::endl;
 }

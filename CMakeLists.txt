@@ -21,8 +21,8 @@ cmake_minimum_required (VERSION 2.8)
 project (opendatacon)
 # The version number.
 set (opendatacon_VERSION_MAJOR 0)
-set (opendatacon_VERSION_MINOR 2)
 set (opendatacon_VERSION_MINOR 3)
+set (opendatacon_VERSION_MINOR 0)
 
 # configure a header file to pass some of the CMake settings
 # to the source code
@@ -61,18 +61,17 @@ include_directories(./JSON)
 
 add_definitions(-DASIO_STANDALONE)
 
-file(GLOB_RECURSE ODC_SRC ./ODC/*.cpp)
-file(GLOB_RECURSE ODC_INC ./ODC/*.h)
+# OpenDNP3
 add_library(ODC SHARED ${ODC_SRC} ${ODC_INC})
-
-file(GLOB_RECURSE JSON_SRC ./JSON/*.cpp)
-file(GLOB_RECURSE JSON_INC ./JSON/*.h)
 add_library(JSON SHARED ${JSON_SRC} ${JSON_INC})
-
 find_library(ASIODNP3_LIBRARY asiodnp3 lib)
 find_library(OPENDNP3_LIBRARY opendnp3 lib)
 find_library(ASIOPAL_LIBRARY asiopal lib)
 find_library(OPENPAL_LIBRARY openpal lib)
+
+# JSON Library
+file(GLOB_RECURSE JSON_SRC ./JSON/*.cpp ./JSON/*.h)
+add_library(JSON SHARED ${JSON_SRC})
 
 file(GLOB ModbusPort_SRC  ./ModbusPort/*.cpp)
 file(GLOB ModbusPort_INC  ./ModbusPort/*.h)
@@ -81,27 +80,38 @@ file(GLOB LIBMODBUS_INC  ./ModbusPort/libmodbus/*.h)
 add_library(ModbusPort SHARED ${ModbusPort_SRC} ${ModbusPort_INC} ${LIBMODBUS_SRC} ${LIBMODBUS_INC})
 target_link_libraries(ModbusPort ODC JSON ${ASIODNP3_LIBRARY} ${OPENDNP3_LIBRARY} ${ASIOPAL_LIBRARY} ${OPENPAL_LIBRARY})
 
-file(GLOB_RECURSE DNP3Port_SRC  ./DNP3Port/*.cpp)
-file(GLOB_RECURSE DNP3Port_INC  ./DNP3Port/*.h)
 add_library(DNP3Port SHARED ${DNP3Port_SRC} ${DNP3Port_INC})
 target_link_libraries(DNP3Port ODC JSON ${ASIODNP3_LIBRARY} ${OPENDNP3_LIBRARY} ${ASIOPAL_LIBRARY} ${OPENPAL_LIBRARY})
-
-file(GLOB_RECURSE JSONPort_SRC ./JSONPort/*.cpp)
-file(GLOB_RECURSE JSONPort_INC ./JSONPort/*.h)
 add_library(JSONPort SHARED ${JSONPort_SRC} ${JSONPort_INC})
-
-#find_library(MICROHTTPD_LIBRARY microhttpd lib)
-#file(GLOB_RECURSE WebUI_SRC ./WebUI/*.cpp)
 #file(GLOB_RECURSE WebUI_INC ./WebUI/*.h)
-#add_library(WebUI SHARED ${WebUI_SRC})
-#target_link_libraries(WebUI JSON ${MICROHTTPD_LIBRARY})
 
+# ODC Library
+file(GLOB_RECURSE ODC_SRC ./ODC/*.cpp ./ODC/*.h)
+add_library(ODC SHARED ${ODC_SRC})
 target_link_libraries(ODC JSON ${ASIODNP3_LIBRARY} ${OPENDNP3_LIBRARY} ${ASIOPAL_LIBRARY} ${OPENPAL_LIBRARY})
+
+# DNP3 Port Library
+file(GLOB_RECURSE DNP3Port_SRC  ./DNP3Port/*.cpp ./DNP3Port/*.h)
+add_library(DNP3Port SHARED ${DNP3Port_SRC})
+
+# JSON Port Library
+file(GLOB_RECURSE JSONPort_SRC ./JSONPort/*.cpp ./JSONPort/*.h)
+add_library(JSONPort SHARED ${JSONPort_SRC})
 target_link_libraries(JSONPort ODC JSON ${OPENDNP3_LIBRARY} ${OPENPAL_LIBRARY})
 
-file(GLOB_RECURSE opendatacon_SRC ./src/*.cpp)
-file(GLOB_RECURSE opendatacon_INC ./src/*.h)
-add_executable(opendatacon ${opendatacon_SRC} ${opendatacon_INC})
+# WebUI Library
+find_package (MICROHTTPD)
+if (MICROHTTPD_FOUND)
+	include_directories(${MICROHTTPD_INCLUDE_DIR})
+	file(GLOB_RECURSE WebUI_SRC ./WebUI/*.cpp ./WebUI/*.h)
+	add_library(WebUI SHARED ${WebUI_SRC})
+	target_link_libraries(WebUI JSON ${MICROHTTPD_LIBRARY})
+else()
+  message("libmicrohttpd not found, configuring without WebUI support.")
+endif()
+
+# Main opendatacon program
+file(GLOB_RECURSE opendatacon_SRC  ./src/*.cpp ./src/*.h)
 #set_property(TARGET opendatacon PROPERTY RUNTIME_OUTPUT_DIRECTORY examples)
 set_property(TARGET opendatacon PROPERTY WORKING_DIRECTORY example)
 target_link_libraries(opendatacon LINK_PUBLIC ODC pthread)

@@ -31,6 +31,9 @@
 #include "DataConnector.h"
 #include "IndexOffsetTransform.h"
 #include "ThresholdTransform.h"
+#include "RandTransform.h"
+#include "RateLimitTransform.h"
+#include <opendatacon/Platform.h>
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	IOHandler(aName),
@@ -48,10 +51,12 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 
 		for(Json::ArrayIndex n = 0; n < JConnections.size(); ++n)
 		{
-            try {
+            try
+            {
                 if(JConnections[n]["Name"].isNull() || JConnections[n]["Port1"].isNull() || JConnections[n]["Port2"].isNull())
                 {
                     std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                    continue;
                 }
                 auto ConName = JConnections[n]["Name"].asString();
                 auto ConPort1 = JConnections[n]["Port1"].asString();
@@ -68,7 +73,9 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
                 //Add to the lookup table
                 SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
                 SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
-            } catch (std::exception e) {
+            }
+            catch (std::exception& e)
+            {
                 std::cout<<"Warning: Exception raised when creating Connection from config: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
             }
 		}
@@ -84,14 +91,66 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
                 if(Transforms[n]["Type"].isNull() || Transforms[n]["Sender"].isNull())
                 {
                     std::cout<<"Warning: invalid Transform config: need at least Type and Sender: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+                    continue;
                 }
 
                 if(Transforms[n]["Type"].asString() == "IndexOffset")
-                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new IndexOffsetTransform(Transforms[n]["Parameters"]));
+                {
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new IndexOffsetTransform(Transforms[n]["Parameters"])));
+                    continue;
+                }
                 if(Transforms[n]["Type"].asString() == "Threshold")
-                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(new ThresholdTransform(Transforms[n]["Parameters"]));
+                {
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new ThresholdTransform(Transforms[n]["Parameters"])));
+                    continue;
+                }
+                if(Transforms[n]["Type"].asString() == "Rand")
+                {
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new RandTransform(Transforms[n]["Parameters"])));
+                    continue;
+                }
+                if(Transforms[n]["Type"].asString() == "RateLimit")
+                {
+                    ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new RateLimitTransform(Transforms[n]["Parameters"])));
+                    continue;
+                }
+
+                //Looks for a specific library (for libs that implement more than one class)
+				std::string libname;
+				if(!Transforms[n]["Library"].isNull())
+				{
+					libname = GetLibFileName(Transforms[n]["Library"].asString());
+				}
+				//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
+				else
+				{
+					libname = GetLibFileName(Transforms[n]["Type"].asString());
+				}
+
+				//try to load the lib
+				auto* txlib = DYNLIBLOAD(libname.c_str());
+
+				if(txlib == nullptr)
+				{
+					std::cout << "Warning: failed to load library '"<<libname<<"' skipping transform..."<<std::endl;
+					continue;
+				}
+
+				//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
+				//it should return a pointer to a heap allocated instance of a descendant of Transform
+				std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
+				auto new_tx_func = (Transform*(*)(const Json::Value))DYNLIBGETSYM(txlib, new_funcname.c_str());
+
+				if(new_tx_func == nullptr)
+				{
+					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for transform type '"<<Transforms[n]["Type"].asString()<<"' skipping transform..."<<std::endl;
+					continue;
+				}
+
+				//call the creation function and wrap the returned pointer to a new port
+				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform>(new_tx_func(Transforms[n]["Params"].asString())));
             }
-            catch (std::exception e)
+            catch (std::exception& e)
             {
                 std::cout<<"Warning: Exception raised when creating Transform from config: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
             }
@@ -107,77 +166,69 @@ std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::Frozen
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
-std::future<opendnp3::CommandStatus> DataConnector::Event(bool connected, uint16_t index, const std::string& SenderName){ return EventT(connected, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName){ return EventT(state, index, SenderName); }
 
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event_obj, uint16_t index, const std::string& SenderName)
 {
 	if(!enabled)
 	{
-		auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_promise.get_future();
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	auto bounds = SenderConnectionsLookup.equal_range(SenderName);
 	//Do we have a connection for this sender?
 	if(bounds.first != bounds.second)//yes
 	{
-		for(auto aMatch_it = bounds.first;;)
+		auto new_event_obj(event_obj);
+		if(ConnectionTransforms.count(SenderName))
 		{
+			for(Transform* Transform : ConnectionTransforms[SenderName])
+			{
+				if(!Transform->Event(new_event_obj, index))
+					return IOHandler::CommandFutureUndefined();
+			}
+		}
+
+		std::vector<std::future<opendnp3::CommandStatus>> returns;
+		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
+		{
+			//guess which one is the sendee
 			IOHandler* pSendee = Connections[aMatch_it->second].second;
+
+			//check if we were right and correct if need be
 			if(pSendee->Name == SenderName)
 				pSendee = Connections[aMatch_it->second].first;
 
-			std::shared_ptr<T> new_event_obj(new T(event_obj));
-			bool pass_on = true;
-			if(ConnectionTransforms.count(SenderName))
-			{
-				for(Transform* Transform : ConnectionTransforms[SenderName])
-				{
-					if(!Transform->Event(*(new_event_obj.get()), index))
-					{
-						pass_on = false;
-						break;
-					}
-				}
-			}
-
-			//return on the last connection
-			if(++aMatch_it != bounds.second)
-			{
-				if(pass_on)
-					pSendee->Event(*new_event_obj.get(), index, this->Name);
-			}
-			else
-			{
-				if(pass_on)
-				{
-					return pSendee->Event(*new_event_obj.get(), index, this->Name);
-				}
-				else
-				{
-					auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-					cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-					return cmd_promise.get_future();
-				}
-			}
+			returns.push_back(pSendee->Event(new_event_obj, index, this->Name));
 		}
+		for(auto& ret : returns)
+		{
+			if(ret.get() != opendnp3::CommandStatus::SUCCESS)
+				return IOHandler::CommandFutureUndefined();
+		}
+		return std::move(returns.back());
 	}
 	//no connection for sender if we get here
 	std::string msg = "Connector '"+this->Name+"' discarding event from '"+SenderName+"' (No connection defined)";
 	auto log_entry = openpal::LogEntry("DataConnector", openpal::logflags::WARN,"", msg.c_str(), -1);
 	pLoggers->Log(log_entry);
 
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-	return cmd_promise.get_future();
+	return IOHandler::CommandFutureUndefined();
 }
 
 void DataConnector::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)

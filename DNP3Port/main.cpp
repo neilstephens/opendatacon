@@ -31,9 +31,8 @@ extern "C" DNP3MasterPort* new_DNP3MasterPort(std::string Name, std::string File
 {
 	return new DNP3MasterPort(Name,File,Overrides);
 }
+
 extern "C" DNP3OutstationPort* new_DNP3OutstationPort(std::string Name, std::string File, const Json::Value Overrides)
 {
 	return new DNP3OutstationPort(Name,File,Overrides);
 }
-
-

@@ -17,11 +17,12 @@
 /lib
 .directory
 WeatherStationBuild/*
-
 *.suo
 *.vcxproj.user
 *.opensdf
 *.sdf
-opendatacon.xcodeproj/xcuserdata
-opendatacon.xcodeproj/project.xcworkspace
+opendatacon.xcodeproj
 opendatacon.build
+opendatacon.build
+Release-RHEL65/
+/Perf

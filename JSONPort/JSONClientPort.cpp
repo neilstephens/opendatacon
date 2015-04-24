@@ -66,8 +66,8 @@ void JSONClientPort::ConnectCompletionHandler(asio::error_code err_code)
 		auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::INFO,"", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
 		//try again later
-		//TODO: add the timeout as a config item
-		pTCPRetryTimer.reset(new Timer_t(*pIOS, std::chrono::seconds(20)));
+		JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
+		pTCPRetryTimer.reset(new Timer_t(*pIOS, std::chrono::milliseconds(pConf->retry_time_ms)));
 		pTCPRetryTimer->async_wait(
 				[this](asio::error_code err_code)
 				{

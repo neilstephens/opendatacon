@@ -38,7 +38,7 @@ public:
 		if(!params["Offset"].isNull() && params["Offset"].isInt())
 			offset = params["Offset"].asInt();
 		else if(!params["offset"].isNull() && params["offset"].isInt())
-			offset = params["Offset"].asInt();
+			offset = params["offset"].asInt();
 		else
 			offset = 0;
 	};

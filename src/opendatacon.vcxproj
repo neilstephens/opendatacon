@@ -204,6 +204,7 @@
     <ClInclude Include="AddrConf.h" />
     <ClInclude Include="AdvancedLogger.h" />
     <ClInclude Include="Console.h" />
+    <ClInclude Include="LogCollection.h" />
     <ClInclude Include="logging_cmds.h" />
     <ClInclude Include="LogToFile.h" />
     <ClInclude Include="tinycon.h" />

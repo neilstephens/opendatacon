@@ -30,13 +30,16 @@
 #include <opendatacon/DataPort.h>
 #include "DNP3PointConf.h"
 
-typedef struct
+enum server_type_t {ONDEMAND,PERSISTENT,MANUAL};
+struct DNP3AddrConf
 {
 	std::string IP;
 	uint16_t Port;
 	uint16_t OutstationAddr;
 	uint16_t MasterAddr;
-}DNP3AddrConf;
+	server_type_t ServerType;
+	DNP3AddrConf() :IP("0.0.0.0"), Port(20000), OutstationAddr(1), MasterAddr(0), ServerType(server_type_t::ONDEMAND){};
+};
 
 class DNP3PortConf: public DataPortConf
 {
