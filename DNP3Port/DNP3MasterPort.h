@@ -85,6 +85,7 @@ private:
 	asiodnp3::IMaster* pMaster;
     
 	bool stack_enabled;
+	std::map<std::string,bool> connection_demands;
 	bool assign_class_sent;
 	opendnp3::ChannelState LastState;
 	opendnp3::MasterScan IntegrityScan;

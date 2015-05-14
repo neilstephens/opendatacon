@@ -78,11 +78,16 @@ void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
 	if(!enabled)
 		return;
 
-	//This has been replaced by a stack statistics poller - so connect events are sent on application layer connection instead of comms layer
-	//for(auto IOHandler_pair : Subscribers)
-	//{
-		//IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
-	//}
+	//connection events are taken care of by a stack statistics poller - so connect events are sent on application layer connection instead of comms layer.
+	//But disconnect events are still here on comms layer
+	if(state != opendnp3::ChannelState::OPEN)
+	{
+		for(auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
+		}
+	}
+
 }
 
 void DNP3OutstationPort::PollStats()

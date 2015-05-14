@@ -296,11 +296,13 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 		IntegrityScan.Demand();
 	}
 
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
 	// If an upstream port is connected, attempt a connection (if on demand)
-	if (!stack_enabled && state == ConnectState::CONNECTED)
+	if (state == ConnectState::CONNECTED)
 	{
-		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-		if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+		connection_demands[SenderName] = true;
+		if (!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
 			std::string msg = Name + ": upstream port connected, performing on-demand connection.";
 			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
@@ -309,6 +311,28 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 			pIOS->post([&]()
 			{
 				EnableStack();
+			});
+		}
+	}
+
+	// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
+	if (stack_enabled && state == ConnectState::DISCONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+	{
+		connection_demands[SenderName] = false;
+		bool any_demands = false;
+		for(auto demand : connection_demands)
+		{
+			if(demand.second)
+			{
+				any_demands = true;
+				break;
+			}
+		}
+		if(!any_demands)
+		{
+			pIOS->post([&]()
+			{
+				PortDown();
 			});
 		}
 	}
