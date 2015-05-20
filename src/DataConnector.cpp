@@ -203,7 +203,7 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 		auto new_event_obj(event_obj);
 		if(ConnectionTransforms.count(SenderName))
 		{
-			for(Transform* Transform : ConnectionTransforms[SenderName])
+			for(auto& Transform : ConnectionTransforms[SenderName])
 			{
 				if(!Transform->Event(new_event_obj, index))
 					return IOHandler::CommandFutureUndefined();
