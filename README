@@ -1,5 +1,13 @@
 opendatacon version 0.3.0
 
+0.3.1
+	- (Dis)Connection event (de)muxing
+	- Lack-of-demand connection dropping for ONDEMAND DNP3MasterPort
+	- New RateLimitTransform
+	- Transform library API
+	- Empty config filenames allowed, to allow entire config in overrides
+	- Bugfixes 
+
 0.3.0
 	- Updated DNP3Port to use opendnp3 2.0.1-RC2
 	- Creation of interface to create UI plug-ins
