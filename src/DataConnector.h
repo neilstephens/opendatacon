@@ -60,7 +60,7 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
 
-	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
     
     virtual const Json::Value GetStatistics() const
     {
@@ -71,7 +71,6 @@ public:
     {
         return Json::Value();
     };
-	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 
 	void Enable();
 	void Disable();
@@ -83,7 +82,7 @@ protected:
 
 	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*>> Connections;
 	std::multimap<std::string,std::string> SenderConnectionsLookup;
-	std::unordered_map<std::string,std::vector<Transform*>> ConnectionTransforms;
+	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform>>> ConnectionTransforms;
 };
 
 #endif /* DATACONNECTOR_H_ */

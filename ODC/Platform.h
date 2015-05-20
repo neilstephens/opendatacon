@@ -70,11 +70,11 @@ inline std::string LastSystemError()
 
 #else
 const std::string DYNLIBPRE = "lib";
+#include <dlfcn.h>
 #if defined(__APPLE__)
 const std::string DYNLIBEXT = ".dylib";
 #else
 const std::string DYNLIBEXT = ".so";
-#include <dlfcn.h>
 #endif
 #define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
 #define DYNLIBGETSYM(a,b) dlsym(a, b)
@@ -102,9 +102,15 @@ inline std::string LastSystemError()
 #define CHDIR(a) chdir(a)
 #endif
 
-#endif
-
 /// Implement strerror_r error to string equivalent for windows
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 #define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
+#endif
+
+
+inline std::string GetLibFileName(const std::string LibName)
+{
+	return DYNLIBPRE + LibName + DYNLIBEXT;
+}
+
 #endif

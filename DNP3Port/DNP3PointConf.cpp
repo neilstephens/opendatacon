@@ -186,6 +186,15 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot["TaskRetryPeriodms"].isNull())
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();
 
+	// Comms Point Configuration
+	if (JSONRoot["CommsPoint"].isNull() || JSONRoot["CommsPoint"]["Index"].isNull())
+		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
+	else
+	{
+		mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
+	}
+
 	// Master Station scanning configuration
 	if (!JSONRoot["IntegrityScanRatems"].isNull())
 		IntegrityScanRatems = JSONRoot["IntegrityScanRatems"].asUInt();
@@ -280,15 +289,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot["MaxCounterEvents"].isNull())
 		MaxCounterEvents = JSONRoot["MaxCounterEvents"].asUInt();
 
-	// Comms Point Configuration
-	if (JSONRoot["CommsPoint"].isNull() || JSONRoot["CommsPoint"]["Index"].isNull())
-		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
-	else
-	{
-		mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
-		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
-	}
-
+	//common point configuration
 	if(!JSONRoot["Analogs"].isNull())
 	{
 		const auto Analogs = JSONRoot["Analogs"];

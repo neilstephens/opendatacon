@@ -78,11 +78,16 @@ void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
 	if(!enabled)
 		return;
 
-	//This has been replaced by a stack statistics poller - so connect events are sent on application layer connection instead of comms layer
-	//for(auto IOHandler_pair : Subscribers)
-	//{
-		//IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
-	//}
+	//connection events are taken care of by a stack statistics poller - so connect events are sent on application layer connection instead of comms layer.
+	//But disconnect events are still here on comms layer
+	if(state != opendnp3::ChannelState::OPEN)
+	{
+		for(auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
+		}
+	}
+
 }
 
 void DNP3OutstationPort::PollStats()
@@ -127,7 +132,6 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 											pConf->mAddrConf.Port);
 	}
 
-	//FIXME: change this to listen to the state of the outstation, not it's channel, if there is a callback interface added to the outstation in the future
 	TCPChannels[IPPort]->AddStateListener(std::bind(&DNP3OutstationPort::StateListener,this,std::placeholders::_1));
 
 	opendnp3::OutstationStackConfig StackConfig;
@@ -146,11 +150,11 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	StackConfig.outstation.params.typesAllowedInClass0 = opendnp3::StaticTypeBitField::AllTypes(); /// TODO: Create parameter
 	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest; 	/// The maximum number of controls the outstation will attempt to process from a single APDU
 	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize; /// The maximum fragment size the outstation will use for fragments it sends
-	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize; /// The maximum fragment size the outstation will use for fragments it sends TODO: add as own parameter
+	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize; /// The maximum fragment size the outstation will use for fragments it sends
 	StackConfig.outstation.params.selectTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SelectTimeoutms);/// How long the outstation will allow an operate to proceed after a prior select
 	StackConfig.outstation.params.solConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);/// Timeout for solicited confirms
 	StackConfig.outstation.params.unsolConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
-	StackConfig.outstation.params.unsolRetryTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited retried TODO: add as own parameter
+	StackConfig.outstation.params.unsolRetryTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited retried
 
 	// TODO: Expose event limits for any new event types to be supported by opendatacon
 	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents; /// The number of binary events the outstation will buffer before overflowing
@@ -267,8 +271,6 @@ inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint1
 	if(!enabled)
 		return opendnp3::CommandStatus::UNDEFINED;
 
-	//FIXME: this is meant to return if we support the type of command
-	//at the moment we just return success if it's configured as a control
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(std::is_same<T,opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
 	{
@@ -371,7 +373,6 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, 
 
 	{//transaction scope
 		asiodnp3::MeasUpdate tx(pOutstation);
-		//TODO: add config to re-timestamp (or not)
 
 		if (
 			(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
@@ -389,7 +390,7 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, 
 	return IOHandler::CommandFutureSuccess();
 }
 
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(ConnectState state, uint16_t index, const std::string& SenderName)
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
 	if (!enabled)
 	{
