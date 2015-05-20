@@ -91,7 +91,7 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName);
 
-	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName);
 
 private:
     asiodnp3::IOutstation* pOutstation;

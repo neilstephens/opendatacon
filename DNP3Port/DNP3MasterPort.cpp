@@ -279,7 +279,7 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::Analo
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 
-std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, uint16_t index, const std::string& SenderName)
+std::future<opendnp3::CommandStatus> DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
 	if(!enabled)
 	{
@@ -299,42 +299,26 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::Event(ConnectState state, u
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	// If an upstream port is connected, attempt a connection (if on demand)
-	if (state == ConnectState::CONNECTED)
+	if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 	{
-		connection_demands[SenderName] = true;
-		if (!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-		{
-			std::string msg = Name + ": upstream port connected, performing on-demand connection.";
-			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+		std::string msg = Name + ": upstream port connected, performing on-demand connection.";
+		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
 
-			pIOS->post([&]()
-			{
-				EnableStack();
-			});
-		}
+		pIOS->post([&]()
+		{
+			EnableStack();
+		});
 	}
 
 	// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
 	if (stack_enabled && state == ConnectState::DISCONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 	{
-		connection_demands[SenderName] = false;
-		bool any_demands = false;
-		for(auto demand : connection_demands)
+		pIOS->post([&]()
 		{
-			if(demand.second)
-			{
-				any_demands = true;
-				break;
-			}
-		}
-		if(!any_demands)
-		{
-			pIOS->post([&]()
-			{
-				PortDown();
-			});
-		}
+			DisableStack();
+			PortDown();
+		});
 	}
 
 	return IOHandler::CommandFutureSuccess();

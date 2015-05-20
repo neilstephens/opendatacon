@@ -78,14 +78,14 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
+
+	std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName);
 
 private:
 	asiodnp3::IMaster* pMaster;
     
 	bool stack_enabled;
-	std::map<std::string,bool> connection_demands;
 	bool assign_class_sent;
 	opendnp3::ChannelState LastState;
 	opendnp3::MasterScan IntegrityScan;
@@ -101,6 +101,11 @@ private:
 		stack_enabled = true;
 		//TODO: this scan isn't needed if we remember quality on PortDown() and reinstate in PortUp();
 		IntegrityScan.Demand();
+	}
+	inline void DisableStack()
+	{
+		pMaster->Disable();
+		stack_enabled = false;
 	}
 	inline void DoOverrideControlCode(opendnp3::ControlRelayOutputBlock& arCommand)
 	{
