@@ -50,7 +50,8 @@ void ConfigParser::ProcessInherits(const std::string& FileName)
 
 void ConfigParser::ProcessFile()
 {
-	ProcessInherits(ConfFilename);
+	if(!ConfFilename.empty())
+		ProcessInherits(ConfFilename);
 	if(!ConfOverrides.isNull())
 		ProcessElements(ConfOverrides);
 }
