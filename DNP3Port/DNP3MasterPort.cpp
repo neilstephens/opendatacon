@@ -124,54 +124,43 @@ void DNP3MasterPort::PortDown()
 }
 
 // Called by OpenDNP3 Thread Pool
-void DNP3MasterPort::StateListener(opendnp3::ChannelState state)
+void DNP3MasterPort::LinkStatusListener(opendnp3::LinkStatus status)
 {
-	// StateListener gets called even if this port is disabled (if the port's channel changes state)
-	if (!stack_enabled)
+	if(status == opendnp3::LinkStatus::RESET)
 	{
-		LastState = state;
-		return;
+		// Update the comms state point and qualities
+		PortUp();
 	}
-
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
-	// If we've exited the connected state, mark points as bad quality
-	if (LastState == opendnp3::ChannelState::OPEN)
+	else if(status == opendnp3::LinkStatus::UNRESET)
 	{
 		PortDown();
-	}
 
-	// Update the comms state point if configured
-	if (state == opendnp3::ChannelState::OPEN)
-	{
-		PortUp();
+		// Notify subscribers that a disconnect event has occured
+		for (auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
+		}
+
+		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
+		{
+			std::string msg = Name + ": disabling stack following disconnect on non-persistent port.";
+			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+
+			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
+			pIOS->post([&]()
+			{
+				DisableStack();
+			});
+		}
 	}
 	else
 	{
-		// This represents a transition from connected to disconnected
-		if (state == opendnp3::ChannelState::WAITING && LastState == opendnp3::ChannelState::OPEN)
-		{
-			if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT)
-			{
-				std::string msg = Name + ": disabling stack following disconnect on non-persistent port.";
-				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
-				pLoggers->Log(log_entry);
-
-				// For all but persistent connections, disable the master station and don't reconnect
-				pIOS->post([&]()
-				{
-					stack_enabled = false;
-					pMaster->Disable();
-				});
-				// Notify subscribers that a disconnect event has occured
-				for (auto IOHandler_pair : Subscribers)
-				{
-					IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
-				}
-			}
-		}
+		std::string msg = Name + ": Unknown link status reported from stack.";
+        auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::WARN, "", msg.c_str(), -1);
+        pLoggers->Log(log_entry);
 	}
-	LastState = state;
 }
 
 void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
@@ -185,7 +174,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	{
 		TCPChannels[IPPort] = DNP3Mgr.AddTCPClient(log_id.c_str(), LOG_LEVEL.GetBitfield(),
 											openpal::TimeDuration::Seconds(1),
-											openpal::TimeDuration::Seconds(300),
+											openpal::TimeDuration::Seconds(30),
 											pConf->mAddrConf.IP,
 											"0.0.0.0",
 											pConf->mAddrConf.Port);
@@ -200,9 +189,6 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
         return;
     }
 
-	//Add a callback to get notified when the channel changes state
-	TCPChannels[IPPort]->AddStateListener(std::bind(&DNP3MasterPort::StateListener,this,std::placeholders::_1));
-
 	opendnp3::MasterStackConfig StackConfig;
 
 	// Link layer configuration
@@ -211,6 +197,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
+	StackConfig.link.StatusCallback = std::bind(&DNP3MasterPort::LinkStatusListener,this,std::placeholders::_1);
 
 	// Master station configuration
 	StackConfig.master.responseTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->MasterResponseTimeoutms);
@@ -230,8 +217,6 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
         
         return;
     }
-    
-    LastState = opendnp3::ChannelState::CLOSED;
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)

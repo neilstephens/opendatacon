@@ -29,6 +29,7 @@
 
 #include <unordered_map>
 #include <opendnp3/outstation/ICommandHandler.h>
+#include <opendnp3/link/LinkStatus.h>
 
 #include "DNP3Port.h"
 
@@ -96,11 +97,7 @@ public:
 private:
     asiodnp3::IOutstation* pOutstation;
 
-    void StateListener(opendnp3::ChannelState state);
-	void PollStats();
-	uint32_t lastRx;
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pPollStatTimer;
+    void LinkStatusListener(opendnp3::LinkStatus status);
 };
 
 #endif /* DNP3SERVERPORT_H_ */

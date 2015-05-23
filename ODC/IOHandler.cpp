@@ -60,21 +60,20 @@ void IOHandler::SetIOS(asio::io_service* ios_ptr)
 	pIOS = ios_ptr;
 }
 
+inline bool IOHandler::InDemand()
+{
+	for(auto demand : connection_demands)
+		if(demand.second)
+			return true;
+	return false;
+}
+
 bool IOHandler::MuxConnectionEvents(ConnectState state, const std::string& SenderName)
 {
 	if (state == ConnectState::DISCONNECTED)
 	{
 		connection_demands[SenderName] = false;
-		bool any_demands = false;
-		for(auto demand : connection_demands)
-		{
-			if(demand.second)
-			{
-				any_demands = true;
-				break;
-			}
-		}
-		return !any_demands;
+		return !InDemand();
 	}
 	else if (state == ConnectState::CONNECTED)
 	{
