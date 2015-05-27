@@ -46,6 +46,7 @@ public:
 	// DNP3 Link Configuration
 	uint32_t LinkNumRetry;
 	uint32_t LinkTimeoutms;
+	uint32_t LinkKeepAlivems;
 	bool LinkUseConfirms;
 
 	/// Common application stack configuration
@@ -86,7 +87,6 @@ public:
 	uint32_t SolConfirmTimeoutms; /// Timeout for solicited confirms
 	uint32_t UnsolConfirmTimeoutms; /// Timeout for unsolicited confirms
 	bool WaitForCommandResponses; // when responding to a command, wait for downstream command responses, otherwise returns success
-	uint32_t DemandCheckPeriodms; /// Time between checking Transport layer Rx traffic - signifying Demand to connect
 
 	// Default Static Variations
 	opendnp3::Binary::StaticVariation StaticBinaryResponse;

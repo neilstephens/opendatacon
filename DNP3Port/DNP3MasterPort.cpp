@@ -126,12 +126,12 @@ void DNP3MasterPort::PortDown()
 // Called by OpenDNP3 Thread Pool
 void DNP3MasterPort::LinkStatusListener(opendnp3::LinkStatus status)
 {
-	if(status == opendnp3::LinkStatus::RESET)
+	if(status != opendnp3::LinkStatus::TIMEOUT)
 	{
 		// Update the comms state point and qualities
 		PortUp();
 	}
-	else if(status == opendnp3::LinkStatus::UNRESET)
+	else if(status == opendnp3::LinkStatus::UNRESET || status == opendnp3::LinkStatus::RESET)
 	{
 		PortDown();
 
@@ -196,8 +196,8 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.OutstationAddr;
 	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	StackConfig.link.KeepAlive = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
 	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
-	StackConfig.link.StatusCallback = std::bind(&DNP3MasterPort::LinkStatusListener,this,std::placeholders::_1);
 
 	// Master station configuration
 	StackConfig.master.responseTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->MasterResponseTimeoutms);
@@ -217,6 +217,10 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
         
         return;
     }
+    pMaster->AddLinkStatusListener([&](opendnp3::LinkStatus status)
+    		{
+    			LinkStatusListener(status);
+    		});
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)

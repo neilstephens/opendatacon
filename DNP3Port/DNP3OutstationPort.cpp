@@ -76,14 +76,14 @@ void DNP3OutstationPort::LinkStatusListener(opendnp3::LinkStatus status)
 	if(!enabled)
 		return;
 
-	if(status == opendnp3::LinkStatus::UNRESET)
+	if(status == opendnp3::LinkStatus::TIMEOUT)
 	{
 		for(auto IOHandler_pair : Subscribers)
 		{
 			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
 		}
 	}
-	else if(status == opendnp3::LinkStatus::RESET)
+	else if(status == opendnp3::LinkStatus::RESET || status == opendnp3::LinkStatus::UNRESET)
 	{
 		for(auto IOHandler_pair : Subscribers)
 		{
@@ -121,8 +121,8 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
 	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	StackConfig.link.KeepAlive = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
 	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
-	StackConfig.link.StatusCallback = std::bind(&DNP3OutstationPort::LinkStatusListener,this,std::placeholders::_1);
 
 	// Outstation parameters
 	StackConfig.outstation.params.indexMode = opendnp3::IndexMode::Discontiguous;
@@ -163,6 +163,11 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
         pLoggers->Log(log_entry);
         return;
     }
+
+     pOutstation->AddLinkStatusListener([&](opendnp3::LinkStatus status)
+    		{
+    			LinkStatusListener(status);
+    		});
 
 	auto configView = pOutstation->GetConfigView();
 
