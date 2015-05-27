@@ -37,7 +37,8 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		// DNP3 Link Configuration
 		LinkNumRetry(0),
 		LinkTimeoutms(1000),
-		LinkUseConfirms(true),
+		LinkKeepAlivems(0),
+		LinkUseConfirms(false),
 		// Common application stack configuration
 		EnableUnsol(true),
 		UnsolClass1(false),
@@ -70,7 +71,6 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 		SolConfirmTimeoutms(5000),
 		UnsolConfirmTimeoutms(5000),
 		WaitForCommandResponses(false),
-		DemandCheckPeriodms(2000),
 		// Default Static Variations
 		StaticBinaryResponse(opendnp3::Binary::StaticVariation::Group1Var1),
 		StaticAnalogResponse(opendnp3::Analog::StaticVariation::Group30Var5),
@@ -146,6 +146,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		LinkNumRetry = JSONRoot["LinkNumRetry"].asUInt();
 	if (!JSONRoot["LinkTimeoutms"].isNull())
 		LinkTimeoutms = JSONRoot["LinkTimeoutms"].asUInt();
+	if (!JSONRoot["LinkKeepAlivems"].isNull())
+		LinkKeepAlivems = JSONRoot["LinkKeepAlivems"].asUInt();
 	if (!JSONRoot["LinkUseConfirms"].isNull())
 		LinkUseConfirms = JSONRoot["LinkUseConfirms"].asBool();
 	if (!JSONRoot["UseConfirms"].isNull())
@@ -249,8 +251,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolConfirmTimeoutms = JSONRoot["UnsolConfirmTimeoutms"].asUInt();
 	if (!JSONRoot["WaitForCommandResponses"].isNull())
 		WaitForCommandResponses = JSONRoot["WaitForCommandResponses"].asBool();
-	if (!JSONRoot["DemandCheckPeriodms"].isNull())
-		DemandCheckPeriodms = JSONRoot["DemandCheckPeriodms"].asUInt();
 
 	// Default Static Variations
 	if (!JSONRoot["StaticBinaryResponse"].isNull())
