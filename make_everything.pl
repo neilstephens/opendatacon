@@ -7,6 +7,8 @@ my @subdirs = File::Find::Rule->directory->in("./");
 
 open MAKELOG, ">make.log";
 
+`cp -u -a ODC/*.h include/`;
+
 my %build_order = 
 (
 	"JSON" => 0,
