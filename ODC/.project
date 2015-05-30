@@ -3,6 +3,9 @@
 	<name>ODC</name>
 	<comment></comment>
 	<projects>
+		<project>dnp3-rpi</project>
+		<project>dnp3-RHEL</project>
+		<project>dnp3-RHEL-Debug</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

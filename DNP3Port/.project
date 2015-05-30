@@ -3,7 +3,6 @@
 	<name>DNP3Port</name>
 	<comment></comment>
 	<projects>
-		<project>ODC</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
