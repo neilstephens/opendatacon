@@ -7,7 +7,7 @@ my @subdirs = File::Find::Rule->directory->in("./");
 
 open MAKELOG, ">make.log";
 
-`cp -u -a ODC/*.h include/`;
+`cp -u -a ODC/*.h include/opendatacon/`;
 
 my %build_order = 
 (
