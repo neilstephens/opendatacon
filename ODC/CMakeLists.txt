@@ -17,46 +17,36 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-project(opendatacon)
+project(ODC)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(src SRC_LIST)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
+aux_source_directory(. SRC_LIST)
+add_library(${PROJECT_NAME} SHARED ${SRC_LIST})
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     if(CMAKE_CXX_COMPILER MATCHES "rpi")
         set(MY_CONFIG_POSTFIX "-rpi-Debug")
-        set(MY_BUILD_CONFIG "Debug-rpi")
     elseif(CMAKE_CXX_COMPILER MATCHES "RHEL65")
         set(MY_CONFIG_POSTFIX "-RHEL-Debug")
-        set(MY_BUILD_CONFIG "Debug-RHEL65")
     else()
         set(MY_CONFIG_POSTFIX "-Debug")
-        set(MY_BUILD_CONFIG "Debug")
     endif()
 else()
     if(CMAKE_CXX_COMPILER MATCHES "rpi")
         set(MY_CONFIG_POSTFIX "-rpi")
-        set(MY_BUILD_CONFIG "Release-rpi")
     elseif(CMAKE_CXX_COMPILER MATCHES "RHEL65")
         set(MY_CONFIG_POSTFIX "-RHEL")
-		set(MY_BUILD_CONFIG "Release-RHEL65")
     else()
         set(MY_CONFIG_POSTFIX "")
-        set(MY_BUILD_CONFIG "Release")
     endif()
 endif()
 
 include_directories(
-    "include"
-    "JSON"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"../asio/include/"
-	"../tclap/include/"
+    "../include"
+    "../JSON"
+	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
+	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
+	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
+	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
+	"../../asio/include/"
 )
-link_directories("${PROJECT_SOURCE_DIR}/ODC/${MY_BUILD_CONFIG}" "${PROJECT_SOURCE_DIR}/JSON/${MY_BUILD_CONFIG}"
-"${PROJECT_SOURCE_DIR}/../dnp3${MY_CONFIG_POSTFIX}/.libs")
-link_libraries(ODC JSON asiopal openpal asiodnp3 opendnp3 pthread dl)
-add_executable(${PROJECT_NAME} ${SRC_LIST})
