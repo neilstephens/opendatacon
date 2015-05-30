@@ -48,13 +48,8 @@ public:
             if (auto target = GetTarget(params)) return target->GetStatistics();
             return IUIResponder::RESULT_BADPARAMETER;
         });
-        this->AddCommand("Status", [this](const ParamCollection & params) -> const Json::Value {
-            if (auto target = GetTarget(params))
-            {
-                Json::Value result;
-                result["Result"] = target->enabled;
-                return result;
-            }
+        this->AddCommand("Status", [this](const ParamCollection & params) {
+            if (auto target = GetTarget(params)) return target->GetStatus();
             return IUIResponder::RESULT_BADPARAMETER;
         });
         this->AddCommand("Enable", [this](const ParamCollection & params) -> const Json::Value {

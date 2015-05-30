@@ -126,6 +126,7 @@ void DNP3MasterPort::PortDown()
 // Called by OpenDNP3 Thread Pool
 void DNP3MasterPort::LinkStatusListener(opendnp3::LinkStatus status)
 {
+    this->status = status;
 	if(status != opendnp3::LinkStatus::TIMEOUT)
 	{
 		// Update the comms state point and qualities
@@ -356,6 +357,7 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 	return IOHandler::CommandFutureUndefined();
 }
 
+//DataPort function for UI
 const Json::Value DNP3MasterPort::GetStatistics() const
 {
     Json::Value event;

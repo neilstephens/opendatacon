@@ -73,9 +73,7 @@ void DNP3OutstationPort::Disable()
 // Called by OpenDNP3 Thread Pool
 void DNP3OutstationPort::LinkStatusListener(opendnp3::LinkStatus status)
 {
-	if(!enabled)
-		return;
-
+    this->status = status;
 	if(status == opendnp3::LinkStatus::TIMEOUT)
 	{
 		for(auto IOHandler_pair : Subscribers)
@@ -196,6 +194,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	}
 }
 
+//DataPort function for UI
 const Json::Value DNP3OutstationPort::GetCurrentState() const
 {
     Json::Value event;
@@ -221,6 +220,7 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
     return event;
 };
 
+//DataPort function for UI
 const Json::Value DNP3OutstationPort::GetStatistics() const
 {
     Json::Value event;

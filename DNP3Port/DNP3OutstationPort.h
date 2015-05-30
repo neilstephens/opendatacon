@@ -29,7 +29,6 @@
 
 #include <unordered_map>
 #include <opendnp3/outstation/ICommandHandler.h>
-#include <opendnp3/gen/LinkStatus.h>
 
 #include "DNP3Port.h"
 
@@ -96,7 +95,6 @@ public:
 
 private:
     asiodnp3::IOutstation* pOutstation;
-
     void LinkStatusListener(opendnp3::LinkStatus status);
 };
 
