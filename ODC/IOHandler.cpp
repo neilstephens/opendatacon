@@ -25,7 +25,7 @@
  */
 
 #include <openpal/logging/LogLevels.h>
-#include "IOHandler.h"
+#include <opendatacon/IOHandler.h>
 
 std::unordered_map<std::string,IOHandler*> IOHandler::IOHandlers;
 
