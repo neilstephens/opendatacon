@@ -42,8 +42,7 @@ public:
 	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
 		DNP3Port(aName, aConfFilename, aConfOverrides),
 		stack_enabled(false),
-		assign_class_sent(false),
-		LastState(opendnp3::ChannelState::CLOSED)
+		assign_class_sent(false)
 	{};
 
 	void Enable();
@@ -87,10 +86,9 @@ private:
     
 	bool stack_enabled;
 	bool assign_class_sent;
-	opendnp3::ChannelState LastState;
 	opendnp3::MasterScan IntegrityScan;
 	void SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_promise);
-	void StateListener(opendnp3::ChannelState state);
+	void LinkStatusListener(opendnp3::LinkStatus status);
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){};
 	void PortUp();
@@ -104,8 +102,8 @@ private:
 	}
 	inline void DisableStack()
 	{
-		pMaster->Disable();
 		stack_enabled = false;
+		pMaster->Disable();
 	}
 	inline void DoOverrideControlCode(opendnp3::ControlRelayOutputBlock& arCommand)
 	{

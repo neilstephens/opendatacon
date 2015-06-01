@@ -60,8 +60,6 @@ void DNP3OutstationPort::Enable()
 	{
 		IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
 	}
-
-	pIOS->post([this](){ PollStats(); });
 }
 void DNP3OutstationPort::Disable()
 {
@@ -73,47 +71,33 @@ void DNP3OutstationPort::Disable()
 }
 
 // Called by OpenDNP3 Thread Pool
-void DNP3OutstationPort::StateListener(opendnp3::ChannelState state)
+void DNP3OutstationPort::LinkStatusListener(opendnp3::LinkStatus status)
 {
-	if(!enabled)
-		return;
-
-	//connection events are taken care of by a stack statistics poller - so connect events are sent on application layer connection instead of comms layer.
-	//But disconnect events are still here on comms layer
-	if(state != opendnp3::ChannelState::OPEN)
+    this->status = status;
+    if(status == opendnp3::LinkStatus::UNRESET)
+    {
+        for(auto IOHandler_pair : Subscribers)
+        {
+            IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+        }
+    }
+    else if(status == opendnp3::LinkStatus::TIMEOUT)
+    {
+        for(auto IOHandler_pair : Subscribers)
+        {
+            IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
+        }
+    }
+    else if(status == opendnp3::LinkStatus::RESET)
+    {
+        //TODO: track a new statistic - reset count
+    }
+	else
 	{
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
-		}
+		std::string msg = Name + ": Unknown link status reported from stack.";
+        auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::WARN, "", msg.c_str(), -1);
+        pLoggers->Log(log_entry);
 	}
-
-}
-
-void DNP3OutstationPort::PollStats()
-{
-	if(!enabled)
-		return;
-	
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	auto period = pConf->pPointConf->DemandCheckPeriodms;
-
-	// Don't perform demand checks if period == 0
-	if (period == 0) return;
-
-	auto stats = pOutstation->GetStackStatistics();
-
-	if(stats.numTransportRx > lastRx)
-	{
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
-		}
-	}
-	lastRx = stats.numTransportRx;
-
-	pPollStatTimer->expires_from_now(std::chrono::milliseconds(period));
-	pPollStatTimer->async_wait(std::bind(&DNP3OutstationPort::PollStats,this));
 }
 
 void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
@@ -132,8 +116,6 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 											pConf->mAddrConf.Port);
 	}
 
-	TCPChannels[IPPort]->AddStateListener(std::bind(&DNP3OutstationPort::StateListener,this,std::placeholders::_1));
-
 	opendnp3::OutstationStackConfig StackConfig;
 
 	// Link layer configuration
@@ -141,6 +123,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
 	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	StackConfig.link.KeepAlive = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
 	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
 
 	// Outstation parameters
@@ -183,8 +166,10 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
         return;
     }
 
-	lastRx = 0;
-	pPollStatTimer.reset(new Timer_t(*pIOS));
+     pOutstation->AddLinkStatusListener([&](opendnp3::LinkStatus status)
+    		{
+    			LinkStatusListener(status);
+    		});
 
 	auto configView = pOutstation->GetConfigView();
 
@@ -213,6 +198,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	}
 }
 
+//DataPort function for UI
 const Json::Value DNP3OutstationPort::GetCurrentState() const
 {
     Json::Value event;
@@ -238,6 +224,7 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
     return event;
 };
 
+//DataPort function for UI
 const Json::Value DNP3OutstationPort::GetStatistics() const
 {
     Json::Value event;

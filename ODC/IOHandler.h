@@ -162,6 +162,7 @@ public:
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;
 
 protected:
+	bool InDemand();
 	std::map<std::string,bool> connection_demands;
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
 };

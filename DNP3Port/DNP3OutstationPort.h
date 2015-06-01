@@ -95,12 +95,7 @@ public:
 
 private:
     asiodnp3::IOutstation* pOutstation;
-
-    void StateListener(opendnp3::ChannelState state);
-	void PollStats();
-	uint32_t lastRx;
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pPollStatTimer;
+    void LinkStatusListener(opendnp3::LinkStatus status);
 };
 
 #endif /* DNP3SERVERPORT_H_ */

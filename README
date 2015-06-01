@@ -1,4 +1,8 @@
-opendatacon version 0.3.0
+opendatacon version 0.3.2
+
+0.3.2
+	-Datalink layer status on DNP3Port(s)
+	-Datalink layer keepalives
 
 0.3.1
 	- (Dis)Connection event (de)muxing

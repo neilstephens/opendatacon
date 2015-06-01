@@ -28,6 +28,7 @@
 #define DNP3PORT_H_
 
 #include <opendatacon/DataPort.h>
+#include <opendnp3/gen/LinkStatus.h>
 #include "DNP3PortConf.h"
 
 class DNP3Port: public DataPort
@@ -38,6 +39,9 @@ public:
 	virtual void Enable()=0;
 	virtual void Disable()=0;
 	virtual void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
+
+    //Override DataPort for UI
+    const Json::Value GetStatus() const override;
 
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); };
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); };
@@ -67,6 +71,7 @@ public:
 protected:
     asiodnp3::IChannel* pChannel;    
 	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
+    opendnp3::LinkStatus status;
 
 };
 

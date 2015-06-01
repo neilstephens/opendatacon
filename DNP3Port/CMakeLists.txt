@@ -17,9 +17,9 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-project(opendatacon)
+project(DNP3Port)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(src SRC_LIST)
+aux_source_directory(. SRC_LIST)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -47,16 +47,15 @@ else()
 endif()
 
 include_directories(
-    "include"
-    "JSON"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"../asio/include/"
-	"../tclap/include/"
+	"../JSON"
+	"../include"
+	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
+	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
+	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
+	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
+	"../../asio/include/"
 )
-link_directories("${PROJECT_SOURCE_DIR}/ODC/${MY_BUILD_CONFIG}" "${PROJECT_SOURCE_DIR}/JSON/${MY_BUILD_CONFIG}"
-"${PROJECT_SOURCE_DIR}/../dnp3${MY_CONFIG_POSTFIX}/.libs")
-link_libraries(ODC JSON asiopal openpal asiodnp3 opendnp3 pthread dl)
-add_executable(${PROJECT_NAME} ${SRC_LIST})
+link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}"
+"${PROJECT_SOURCE_DIR}/../../dnp3${MY_CONFIG_POSTFIX}/.libs")
+link_libraries(ODC asiopal openpal asiodnp3 opendnp3)
+add_library(${PROJECT_NAME} SHARED ${SRC_LIST})

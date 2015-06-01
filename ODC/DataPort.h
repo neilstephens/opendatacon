@@ -68,6 +68,11 @@ public:
         return Json::Value();
     };
 
+    virtual const Json::Value GetStatus() const
+    {
+        return Json::Value();
+    };
+
 protected:
 	std::unique_ptr<DataPortConf> pConf;
 };

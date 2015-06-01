@@ -3,7 +3,6 @@
 	<name>opendatacon</name>
 	<comment></comment>
 	<projects>
-		<project>ODC</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
