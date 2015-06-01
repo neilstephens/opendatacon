@@ -74,20 +74,24 @@ void DNP3OutstationPort::Disable()
 void DNP3OutstationPort::LinkStatusListener(opendnp3::LinkStatus status)
 {
     this->status = status;
-	if(status == opendnp3::LinkStatus::TIMEOUT)
-	{
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
-		}
-	}
-	else if(status == opendnp3::LinkStatus::RESET || status == opendnp3::LinkStatus::UNRESET)
-	{
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
-		}
-	}
+    if(status == opendnp3::LinkStatus::UNRESET)
+    {
+        for(auto IOHandler_pair : Subscribers)
+        {
+            IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+        }
+    }
+    else if(status == opendnp3::LinkStatus::TIMEOUT)
+    {
+        for(auto IOHandler_pair : Subscribers)
+        {
+            IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
+        }
+    }
+    else if(status == opendnp3::LinkStatus::RESET)
+    {
+        //TODO: track a new statistic - reset count
+    }
 	else
 	{
 		std::string msg = Name + ": Unknown link status reported from stack.";
