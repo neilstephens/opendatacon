@@ -6,6 +6,8 @@ use warnings;
 
 open VERSION_FILE, "<../include/opendatacon/Version.h" or die "Can't open version file: $!\n";
 
+my $location = ($ARGV[0] or "../../ODC_builds");
+
 my $major;
 my $minor;
 my $micro;
@@ -69,14 +71,15 @@ $build_configs{"Release-RHEL65"}{"DNP3Libs"} = "../../dnp3-RHEL/.libs/*.so*";
 $build_configs{"Release-RHEL65"}{"STDLibs"} = "~/x-tools/x86_64-RHEL65-linux-gnu/x86_64-RHEL65-linux-gnu/sysroot/lib/libstdc++.so*";
 $build_configs{"Release-RHEL65"}{"MHLibs"} = "../../microhttpd-RHEL/lib/libmicrohttpd.so*";
 
-system("mkdir ../../ODC_builds/$version") and die "Couldn't make build dir: $!\n";
-
 foreach my $build_config_key (keys %build_configs)
 {
 	print "$build_config_key...\n";
 	#make build dir
-	my $build_dir = "../../ODC_builds/$version/ODC-$version-".$build_configs{$build_config_key}{"Platform"}.$build_configs{$build_config_key}{"Flavour"};
-	system("cp -R ../../ODC-pack-common $build_dir") and die "Failed to make build dir '$build_dir': $!\n";
+	my $build_dir = "$location/$version/ODC-$version-".$build_configs{$build_config_key}{"Platform"}.$build_configs{$build_config_key}{"Flavour"};
+	system("mkdir -p $build_dir/libs") and die "Failed to make build dir '$build_dir': $!\n";
+	
+	#copy daemon and init script
+	system("cp -a ../install/daemon/* ../install/init/* $build_dir/ && mv $build_dir/opendatacon $build_dir/opendatacon.delete_this_ext_initscript") and die "Failed to copy daemon and init: $!\n";
 	
 	#copy stdlib
 	system("cp -a ".$build_configs{$build_config_key}{"STDLibs"}." $build_dir/libs/") and die "Failed to copy std libs for '$build_dir': $!\n";
@@ -101,7 +104,7 @@ foreach my $build_config_key (keys %build_configs)
 	
 	#zip it up
 	my $rel_dir = "ODC-$version-".$build_configs{$build_config_key}{"Platform"}.$build_configs{$build_config_key}{"Flavour"};
-	system("(cd ../../ODC_builds/$version && tar -caf $rel_dir.tar.gz $rel_dir)") and die "Failed to zip $build_dir: $!\n";
+	system("(cd $location/$version && tar -caf $rel_dir.tar.gz $rel_dir)") and die "Failed to zip $build_dir: $!\n";
 	system("md5sum $build_dir.tar.gz > $build_dir.tar.gz.md5") and die "Failed to md5sum $build_dir.tar.gz: $!\n";
 	
 }
