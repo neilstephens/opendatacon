@@ -127,12 +127,12 @@ void DNP3MasterPort::PortDown()
 void DNP3MasterPort::LinkStatusListener(opendnp3::LinkStatus status)
 {
     this->status = status;
-	if(status != opendnp3::LinkStatus::TIMEOUT)
+    if(status == opendnp3::LinkStatus::UNRESET)
 	{
 		// Update the comms state point and qualities
 		PortUp();
 	}
-	else if(status == opendnp3::LinkStatus::UNRESET || status == opendnp3::LinkStatus::RESET)
+    else if(status == opendnp3::LinkStatus::TIMEOUT)
 	{
 		PortDown();
 
@@ -156,6 +156,10 @@ void DNP3MasterPort::LinkStatusListener(opendnp3::LinkStatus status)
 			});
 		}
 	}
+    else if(status == opendnp3::LinkStatus::RESET)
+    {
+        //TODO: track a statistic - reset count
+    }
 	else
 	{
 		std::string msg = Name + ": Unknown link status reported from stack.";
