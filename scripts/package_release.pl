@@ -92,7 +92,8 @@ foreach my $build_config_key (keys %build_configs)
 	
 	#copy opendatacon
 	system("cp -a ../$build_config_key/opendatacon $build_dir/") and die "Failed to copy opendatacon exe for '$build_dir': $!\n";
-
+	system("cp -a ../README $build_dir/") and die "Failed to copy opendatacon README '$build_dir': $!\n";
+        system("cp -a ../include $build_dir/") and die "Failed to copy API headers for '$build_dir': $!\n";
 	for my $lib ("ODC","JSON","JSONPort","DNP3Port","WebUI")
 	{
 		#copy lib
