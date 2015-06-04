@@ -60,7 +60,7 @@ void IOHandler::SetIOS(asio::io_service* ios_ptr)
 	pIOS = ios_ptr;
 }
 
-inline bool IOHandler::InDemand()
+bool IOHandler::InDemand()
 {
 	for(auto demand : connection_demands)
 		if(demand.second)
