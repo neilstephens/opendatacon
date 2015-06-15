@@ -29,9 +29,7 @@
 #include <regex>
 #include <chrono>
 #include <asiopal/UTCTimeSource.h>
-#include <opendnp3/app/DynamicPointIndexes.h>
 #include <opendnp3/outstation/Database.h>
-#include <opendnp3/outstation/TimeTransaction.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include "ModbusOutstationPort.h"
 
@@ -111,9 +109,19 @@ void ModbusOutstationPort::StateListener(opendnp3::ChannelState state)
 	if(!enabled)
 		return;
 
-	for(auto IOHandler_pair : Subscribers)
+	if(state == opendnp3::ChannelState::OPEN)
 	{
-		IOHandler_pair.second->Event((state == opendnp3::ChannelState::OPEN), 0, this->Name);
+		for(auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+		}
+	}
+	else
+	{
+		for(auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
+		}
 	}
 }
 void ModbusOutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)

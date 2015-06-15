@@ -421,7 +421,7 @@ opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::ControlRel
     int rc;
     if (
         (command.functionCode == ControlCode::LATCH_OFF) ||
-        (command.functionCode == ControlCode::PULSE_TRIP)
+	  (command.functionCode == ControlCode::TRIP_PULSE_ON)
         )
     {
         rc = modbus_write_bit(mb, index, false);

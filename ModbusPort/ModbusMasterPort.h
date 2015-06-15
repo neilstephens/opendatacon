@@ -29,12 +29,11 @@
 
 #include <queue>
 #include <opendnp3/master/ISOEHandler.h>
-#include <opendnp3/master/IPollListener.h>
 #include <opendnp3/master/CommandResponse.h>
 #include <opendnp3/app/IterableBuffer.h>
 
 #include "ModbusPort.h"
-#include "ASIOScheduler.h"
+#include <opendatacon/ASIOScheduler.h>
 
 using namespace opendnp3;
 

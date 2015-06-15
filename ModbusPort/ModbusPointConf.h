@@ -33,7 +33,6 @@
 #include <functional>
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/gen/ControlCode.h>
-#include <opendnp3/outstation/EventResponseConfig.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 

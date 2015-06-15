@@ -56,7 +56,7 @@ public:
 
     void schedule()
     {
-        nextpoll = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(periodms);
+	  nextpoll = std::chrono::steady_clock::now() + std::chrono::milliseconds(periodms);
     }
     
     void reschedule()
@@ -66,7 +66,7 @@ public:
 
     uint32_t periodms;
     std::function<void(void)> action;
-    std::chrono::high_resolution_clock::time_point nextpoll;
+    std::chrono::steady_clock::time_point nextpoll;
 };
 
 class ASIOSchedulerTaskComparison
@@ -89,7 +89,7 @@ class ASIOScheduler
 public:
     ASIOScheduler(asio::io_service& io_service) :
     running(false),
-    aTimer(io_service)
+    mTimer(io_service)
     {
     }
     
@@ -105,8 +105,8 @@ public:
         running = true;
         ASIOSchedulerTask* task = Schedule.top();
         
-        aTimer.expires_at(task->nextpoll);
-        aTimer.async_wait(
+	  mTimer.expires_at(task->nextpoll);
+	  mTimer.async_wait(
                            [this](asio::error_code err_code)
                            {
                                if(err_code != asio::error::operation_aborted)
@@ -127,7 +127,7 @@ public:
     void Stop()
     {
         running = false;
-        aTimer.cancel();
+	  mTimer.cancel();
     }
     
     void Clear()
@@ -154,7 +154,7 @@ private:
     typedef std::priority_queue<ASIOSchedulerTask*, std::vector<ASIOSchedulerTask*>, ASIOSchedulerTaskComparison> ScheduleType;
     ScheduleType Schedule;
     typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-    Timer_t aTimer;
+    Timer_t mTimer;
 };
 
 #endif /* defined(__opendatacon__ASIOScheduler__) */
