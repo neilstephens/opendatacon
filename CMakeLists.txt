@@ -64,6 +64,7 @@ add_subdirectory(JSON)
 add_subdirectory(ODC)
 add_subdirectory(DNP3Port)
 add_subdirectory(JSONPort)
+add_subdirectory(ModbusPort)
 add_subdirectory(WebUI)
 
 include_directories(
