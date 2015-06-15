@@ -30,7 +30,6 @@
 #include <vector>
 #include <unordered_map>
 #include <functional>
-#include <opendnp3/app/MeasurementTypes.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 #include <json/json.h>

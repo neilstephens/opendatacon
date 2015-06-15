@@ -180,7 +180,13 @@ std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::Analog
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<opendnp3::CommandStatus> DataConnector::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
-std::future<opendnp3::CommandStatus> DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName){ return EventT(state, index, SenderName); }
+std::future<opendnp3::CommandStatus> DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName)
+{
+	if(MuxConnectionEvents(state, SenderName))
+		return EventT(state, index, SenderName);
+	else
+		return IOHandler::CommandFutureUndefined();
+}
 
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event_obj, uint16_t index, const std::string& SenderName)
@@ -197,7 +203,7 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 		auto new_event_obj(event_obj);
 		if(ConnectionTransforms.count(SenderName))
 		{
-			for(Transform* Transform : ConnectionTransforms[SenderName])
+			for(auto& Transform : ConnectionTransforms[SenderName])
 			{
 				if(!Transform->Event(new_event_obj, index))
 					return IOHandler::CommandFutureUndefined();

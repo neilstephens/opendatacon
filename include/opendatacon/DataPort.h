@@ -48,12 +48,27 @@ public:
 	virtual void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
 	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
 
+	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) final
+	{
+		if(MuxConnectionEvents(state, SenderName))
+			return ConnectionEvent(state, SenderName);
+		else
+			return IOHandler::CommandFutureUndefined();
+	};
+
+	virtual std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) = 0;
+
     virtual const Json::Value GetStatistics() const
     {
         return Json::Value();
     };
     
     virtual const Json::Value GetCurrentState() const
+    {
+        return Json::Value();
+    };
+
+    virtual const Json::Value GetStatus() const
     {
         return Json::Value();
     };

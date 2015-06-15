@@ -25,7 +25,7 @@
 //  
 //
 
-#include "IUIResponder.h"
+#include <opendatacon/IUIResponder.h>
 
 const Json::Value IUIResponder::GenerateResult(const std::string& message)
 {

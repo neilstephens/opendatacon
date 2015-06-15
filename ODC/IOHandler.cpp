@@ -25,7 +25,7 @@
  */
 
 #include <openpal/logging/LogLevels.h>
-#include "IOHandler.h"
+#include <opendatacon/IOHandler.h>
 
 std::unordered_map<std::string,IOHandler*> IOHandler::IOHandlers;
 
@@ -58,4 +58,28 @@ void IOHandler::SetLogLevel(openpal::LogFilters LOG_LEVEL)
 void IOHandler::SetIOS(asio::io_service* ios_ptr)
 {
 	pIOS = ios_ptr;
+}
+
+bool IOHandler::InDemand()
+{
+	for(auto demand : connection_demands)
+		if(demand.second)
+			return true;
+	return false;
+}
+
+bool IOHandler::MuxConnectionEvents(ConnectState state, const std::string& SenderName)
+{
+	if (state == ConnectState::DISCONNECTED)
+	{
+		connection_demands[SenderName] = false;
+		return !InDemand();
+	}
+	else if (state == ConnectState::CONNECTED)
+	{
+		bool new_demand = !connection_demands[SenderName];
+		connection_demands[SenderName] = true;
+		return new_demand;
+	}
+	return true;
 }

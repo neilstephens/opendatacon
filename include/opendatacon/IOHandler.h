@@ -29,6 +29,7 @@
 
 #include <future>
 #include <unordered_map>
+#include <map>
 #include <asio.hpp>
 #include <asiopal/LogFanoutHandler.h>
 #include <asiodnp3/DNP3Manager.h>
@@ -159,6 +160,11 @@ public:
 	// Don't access the following from outside this dll under Windows
 	// due to static issues use GetIOHandlers to return the right reference instead
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;
+
+protected:
+	bool InDemand();
+	std::map<std::string,bool> connection_demands;
+	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
 };
 
 std::unordered_map<std::string, IOHandler*>& GetIOHandlers();

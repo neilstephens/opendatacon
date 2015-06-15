@@ -46,10 +46,6 @@
 #include "LogCollection.h"
 
 #include <opendatacon/IUI.h>
-inline std::string GetLibFileName(const std::string LibName)
-{
-	return DYNLIBPRE + LibName + DYNLIBEXT;
-}
 
 class DataConcentrator: public ConfigParser, public IUIResponder
 {

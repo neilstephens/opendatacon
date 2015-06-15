@@ -24,7 +24,7 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include "util.h"
+#include <opendatacon/util.h>
 #include <regex>
 
 using namespace std;

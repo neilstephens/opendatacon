@@ -29,13 +29,33 @@
 std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::TCPChannels;
 
 DNP3Port::DNP3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-		DataPort(aName, aConfFilename, aConfOverrides)
+        DataPort(aName, aConfFilename, aConfOverrides),
+        status(opendnp3::LinkStatus::TIMEOUT)
 {
 	//the creation of a new DNP3PortConf will get the point details
 	pConf.reset(new DNP3PortConf(ConfFilename));
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
+};
+
+//DataPort function for UI
+const Json::Value DNP3Port::GetStatus() const
+{
+    auto ret_val = Json::Value();
+
+    if(!enabled)
+        ret_val["Result"] = "Port disabled";
+    else if(status == opendnp3::LinkStatus::TIMEOUT)
+        ret_val["Result"] = "Port enabled - link down";
+    else if(status == opendnp3::LinkStatus::RESET)
+        ret_val["Result"] = "Port enabled - link up (reset)";
+    else if(status == opendnp3::LinkStatus::UNRESET)
+        ret_val["Result"] = "Port enabled - link up (unreset)";
+    else
+        ret_val["Result"] = "Port enabled - link status unknown";
+
+    return ret_val;
 };
 
 void DNP3Port::ProcessElements(const Json::Value& JSONRoot)

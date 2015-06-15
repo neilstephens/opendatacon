@@ -26,7 +26,7 @@
 
 #include <fstream>
 #include <iostream>
-#include "ConfigParser.h"
+#include <opendatacon/ConfigParser.h>
 
 std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
 
@@ -50,7 +50,8 @@ void ConfigParser::ProcessInherits(const std::string& FileName)
 
 void ConfigParser::ProcessFile()
 {
-	ProcessInherits(ConfFilename);
+	if(!ConfFilename.empty())
+		ProcessInherits(ConfFilename);
 	if(!ConfOverrides.isNull())
 		ProcessElements(ConfOverrides);
 }
