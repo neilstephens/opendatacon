@@ -32,5 +32,6 @@ include_directories(
 	"${ASIO_HOME}/asio/include/"
 )
 
+link_libraries(JSON)
 add_library(${PROJECT_NAME} SHARED ${ODC_SRC})
 

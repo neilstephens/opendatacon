@@ -32,6 +32,13 @@
 #include "ModbusMasterPort.h"
 #include <array>
 
+ModbusMasterPort::~ModbusMasterPort()
+{
+	Disable();
+	if (mb != nullptr)
+		modbus_free(mb);
+}
+
 void ModbusMasterPort::Enable()
 {
 	if(enabled) return;
@@ -95,7 +102,7 @@ void ModbusMasterPort::Connect()
     modbus_set_slave(mb, pConf->mAddrConf.OutstationAddr);
     
     uint8_t tab_bytes[64];
-    int rc = modbus_report_slave_id(mb, 64, tab_bytes);
+    int rc = modbus_report_slave_id(mb, tab_bytes);
     if (rc > 1)
     {
         std::string msg = Name + "Run Status Indicator: %s" + (tab_bytes[1] ? "ON" : "OFF");
@@ -225,7 +232,6 @@ CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& 
         case EMBXSBUSY:                 //return "Slave device or server is busy";
         case EMBXNACK:                  //return "Negative acknowledge";
         case EMBXGPATH:                 //return "Gateway path unavailable";
-        case EMBBADSLAVE:               //return "Response not from requested slave";
         default:
             return opendnp3::CommandStatus::UNDEFINED;
     }
@@ -234,19 +240,53 @@ CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& 
 void ModbusMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-	auto IPPort = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
-	auto log_id = "mast_"+IPPort;
 
-    //TODO: collect these on a collection of modbus tcp connections
-    char service[6];
-    sprintf(service, "%i", pConf->mAddrConf.Port);
-    mb = modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), service);
-    if (mb == NULL) {
-        std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-        auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-        return;
-    }
+	std::string log_id;
+
+	if(pConf->mAddrConf.IP != "")
+	{
+		log_id = "mast_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
+
+		//TODO: collect these on a collection of modbus tcp connections
+		mb = modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
+		if (mb == NULL)
+		{
+			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
+			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+			//TODO: should this throw an exception instead of return?
+			return;
+		}
+	}
+	else if(pConf->mAddrConf.SerialDevice != "")
+	{
+		log_id = "mast_" + pConf->mAddrConf.SerialDevice;
+		mb = modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
+		if (mb == NULL)
+		{
+			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
+			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+			//TODO: should this throw an exception instead of return?
+			return;
+		}
+		if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
+		{
+			std::string msg = Name + ": Stack error: 'Failed to set Modbus serial mode to RS232'";
+			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+			//TODO: should this throw an exception instead of return?
+			return;
+		}
+	}
+	else
+	{
+		std::string msg = Name + ": No IP address or serial device defined";
+		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		//TODO: should this throw an exception instead of return?
+		return;
+	}
 }
 
 void ModbusMasterPort::DoPoll(uint32_t pollgroup)
@@ -362,7 +402,7 @@ std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::Ana
 std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(bool connected, uint16_t index, const std::string& SenderName)
+std::future<opendnp3::CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state, uint16_t index, const std::string& SenderName)
 {
     ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -375,15 +415,15 @@ std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(bool connected, uin
 		return cmd_future;
 	}
 
-	//connected == true means something upstream has connected
-	if(connected)
+	//something upstream has connected
+	if(state == ConnectState::CONNECTED)
 	{
-        // Only change stack state if it is an on demand server
-        if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-        {
-            this->Connect();
-        }
-    }
+		// Only change stack state if it is an on demand server
+		if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+		{
+			this->Connect();
+		}
+	}
 
 	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
 	return cmd_future;

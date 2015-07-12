@@ -39,6 +39,14 @@ ModbusOutstationPort::ModbusOutstationPort(std::string aName, std::string aConfF
 	ModbusPort(aName, aConfFilename, aConfOverrides)
 {};
 
+ModbusOutstationPort::~ModbusOutstationPort()
+{
+	Disable();
+	if (mb != nullptr)
+		modbus_free(mb);
+	if (mb_mapping != nullptr)
+		modbus_mapping_free(mb_mapping);
+}
 
 void ModbusOutstationPort::Enable()
 {
@@ -127,34 +135,68 @@ void ModbusOutstationPort::StateListener(opendnp3::ChannelState state)
 void ModbusOutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-	auto IPPort = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
-	auto log_id = "outst_"+IPPort;
 
-    //TODO: collect these on a collection of modbus tcp connections
-    char service[6];
-    sprintf(service, "%i", pConf->mAddrConf.Port);
-    mb = modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), service);
-    if (mb == NULL) {
-        std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-        auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-        return;
-    }
+	std::string log_id;
 
-    /* The fist value of each array is accessible from the 0 address. */
-    /*
-    mb_mapping = modbus_mapping_new(BITS_ADDRESS + BITS_NB,
-                                    INPUT_BITS_ADDRESS + INPUT_BITS_NB,
-                                    REGISTERS_ADDRESS + REGISTERS_NB,
-                                    INPUT_REGISTERS_ADDRESS + INPUT_REGISTERS_NB);
-    if (mb_mapping == NULL) {
-        fprintf(stderr, "Failed to allocate the mapping: %s\n",
-                modbus_strerror(errno));
-        modbus_free(ctx);
-        return -1;
-    }
-    */
-    //TODO: modbus_mapping_free
+	if(pConf->mAddrConf.IP != "")
+	{
+		log_id = "outst_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
+
+		//TODO: collect these on a collection of modbus tcp connections
+		mb = modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
+		if (mb == NULL)
+		{
+			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
+			auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+			//TODO: should this throw an exception instead of return?
+			return;
+		}
+	}
+	else if(pConf->mAddrConf.SerialDevice != "")
+	{
+		log_id = "outst_" + pConf->mAddrConf.SerialDevice;
+		mb = modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
+		if (mb == NULL)
+		{
+			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
+			auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+			//TODO: should this throw an exception instead of return?
+			return;
+		}
+		if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
+		{
+			std::string msg = Name + ": Stack error: 'Failed to set Modbus serial mode to RS232'";
+			auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+			//TODO: should this throw an exception instead of return?
+			return;
+		}
+	}
+	else
+	{
+		std::string msg = Name + ": No IP interface or serial device defined";
+		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		//TODO: should this throw an exception instead of return?
+		return;
+	}
+
+
+	//Allocate memory for bits, input bits, registers, and input registers */
+	mb_mapping = modbus_mapping_new(pConf->pPointConf->BitIndicies.Total(),
+						  pConf->pPointConf->InputBitIndicies.Total(),
+						  pConf->pPointConf->RegIndicies.Total(),
+						  pConf->pPointConf->InputRegIndicies.Total());
+	if (mb_mapping == NULL)
+	{
+		std::string msg = Name + ": Failed to allocate the modbus register mapping: " + std::string(modbus_strerror(errno));
+		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		//TODO: should this throw an exception instead of return?
+		return;
+	}
 }
 
 template<typename T>
@@ -215,6 +257,16 @@ std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3:
 std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
 
 template<typename T>
+int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
+{
+	for(auto group : aCollection)
+		for(auto group_index = group.start; group_index < group.start + group.count; group_index++)
+			if(group_index + group.index_offset == index)
+				return (int)group_index;
+	return -1;
+}
+
+template<typename T>
 inline std::future<opendnp3::CommandStatus> ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
 {
 	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
@@ -225,9 +277,34 @@ inline std::future<opendnp3::CommandStatus> ModbusOutstationPort::EventT(T& meas
 		return cmd_promise.get_future();
 	}
 
-	{//transaction scope
+	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
-    }
+	if(std::is_same<T,opendnp3::Analog>::value)
+	{
+		int map_index = find_index(pConf->pPointConf->InputRegIndicies, index);
+		if(map_index >= 0)
+			*(mb_mapping->tab_input_registers + map_index) = (uint16_t)meas.value;
+		else
+		{
+			map_index = find_index(pConf->pPointConf->RegIndicies, index);
+			if(map_index >= 0)
+				*(mb_mapping->tab_registers + map_index) = (uint16_t)meas.value;
+		}
+	}
+	else if(std::is_same<T,opendnp3::Binary>::value)
+	{
+		int map_index = find_index(pConf->pPointConf->InputBitIndicies, index);
+		if(map_index >= 0)
+			*(mb_mapping->tab_input_bits + index) = (uint8_t)meas.value;
+		else
+		{
+			map_index = find_index(pConf->pPointConf->BitIndicies, index);
+			if(map_index >= 0)
+				*(mb_mapping->tab_bits + index) = (uint8_t)meas.value;
+		}
+	}
+	//TODO: impl other types
+
 	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
 	return cmd_promise.get_future();
 }

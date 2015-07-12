@@ -35,36 +35,6 @@ ModbusPointConf::ModbusPointConf(std::string FileName):
 	ProcessFile();
 }
 
-opendnp3::PointClass GetClass(Json::Value JPoint)
-{
-	opendnp3::PointClass clazz = opendnp3::PointClass::Class1;
-	if(!JPoint["Class"].isNull())
-	{
-		if(JPoint["Class"].isUInt())
-		{
-			switch(JPoint["Class"].asUInt())
-			{
-				case 0:
-					clazz = opendnp3::PointClass::Class0;
-					break;
-				case 1:
-					clazz = opendnp3::PointClass::Class1;
-					break;
-				case 2:
-					clazz = opendnp3::PointClass::Class2;
-					break;
-				case 3:
-					clazz = opendnp3::PointClass::Class3;
-					break;
-				default:
-					std::cout<<"Invalid class for Point: '"<<JPoint.toStyledString()<<"'"<<std::endl;
-					break;
-			}
-		}
-	}
-	return clazz;
-}
-
 template<class T>
 T GetStartVal(const Json::Value& value);
 
@@ -108,9 +78,11 @@ void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGrou
             startval = GetStartVal<T>(Ranges[n]["StartVal"]);
         }
         
-        size_t start, stop;
+	  size_t start, stop, offset = 0;
         if(!Ranges[n]["Index"].isNull())
             start = stop = Ranges[n]["Index"].asUInt();
+	  if(!Ranges[n]["IndexOffset"].isNull())
+		offset = Ranges[n]["IndexOffset"].asUInt();
         else if(!Ranges[n]["Range"]["Start"].isNull() && !Ranges[n]["Range"]["Stop"].isNull())
         {
             start = Ranges[n]["Range"]["Start"].asUInt();
@@ -118,19 +90,17 @@ void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGrou
             //TODO: propper error logging
             if (start > stop)
             {
-                std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Ranges[n].toStyledString()<<"'"<<std::endl;
+		    std::cout<<"Invalid range: Start > Stop: '"<<Ranges[n].toStyledString()<<"'"<<std::endl;
                 continue;
             }
         }
         else
         {
             std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Ranges[n].toStyledString()<<"'"<<std::endl;
-            start = 1;
-            stop = 0;
             continue;
         }
         
-        ReadGroup.emplace_back(start,stop-start+1,pollgroup,startval);
+	  ReadGroup.emplace_back(start,stop-start+1,pollgroup,startval,offset);
     }
 }
 

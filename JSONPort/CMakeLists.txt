@@ -32,7 +32,6 @@ include_directories(
 	"${ASIO_HOME}/asio/include/"
 )
 
-link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}")
 link_libraries(ODC)
 
 add_library(${PROJECT_NAME} SHARED ${JSONPort_SRC})

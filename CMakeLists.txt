@@ -33,20 +33,6 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
         set(MY_CONFIG_POSTFIX "-Debug")
         set(MY_BUILD_CONFIG "Debug")
     endif()
-add_library(ODC SHARED ${ODC_SRC} ${ODC_INC})
-add_library(JSON SHARED ${JSON_SRC} ${JSON_INC})
-file(GLOB ModbusPort_SRC  ./ModbusPort/*.cpp)
-file(GLOB ModbusPort_INC  ./ModbusPort/*.h)
-file(GLOB LIBMODBUS_SRC  ./ModbusPort/libmodbus/*.c)
-file(GLOB LIBMODBUS_INC  ./ModbusPort/libmodbus/*.h)
-add_library(ModbusPort SHARED ${ModbusPort_SRC} ${ModbusPort_INC} ${LIBMODBUS_SRC} ${LIBMODBUS_INC})
-target_link_libraries(ModbusPort ODC JSON ${ASIODNP3_LIBRARY} ${OPENDNP3_LIBRARY} ${ASIOPAL_LIBRARY} ${OPENPAL_LIBRARY})
-
-add_library(DNP3Port SHARED ${DNP3Port_SRC} ${DNP3Port_INC})
-target_link_libraries(DNP3Port ODC JSON ${ASIODNP3_LIBRARY} ${OPENDNP3_LIBRARY} ${ASIOPAL_LIBRARY} ${OPENPAL_LIBRARY})
-add_library(JSONPort SHARED ${JSONPort_SRC} ${JSONPort_INC})
-#file(GLOB_RECURSE WebUI_INC ./WebUI/*.h)
-
 else()
     if(CMAKE_CXX_COMPILER MATCHES "rpi")
         set(MY_CONFIG_POSTFIX "-rpi")
@@ -66,6 +52,27 @@ add_subdirectory(DNP3Port)
 add_subdirectory(JSONPort)
 add_subdirectory(ModbusPort)
 add_subdirectory(WebUI)
+
+# skip the full RPATH for the build tree
+SET(CMAKE_SKIP_BUILD_RPATH  TRUE)
+
+# when building use the install RPATH already
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
+# the RPATH to be used when installing
+SET(CMAKE_INSTALL_RPATH
+	"\$ORIGIN:"
+	"\$ORIGIN/libs:"
+	"\$ORIGIN/JSON:"
+	"\$ORIGIN/ODC:"
+	"\$ORIGIN/DNP3Port:"
+	"\$ORIGIN/JSONPort:"
+	"\$ORIGIN/ModbusPort:"
+	"\$ORIGIN/WebUI")
+
+# don't add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 include_directories(
 	"include"

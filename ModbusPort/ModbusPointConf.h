@@ -59,11 +59,12 @@ template<class T>
 class ModbusReadGroup
 {
 public:
-    ModbusReadGroup(uint32_t start_, uint32_t count_, uint32_t pollgroup_, const T& startval_) :
+    ModbusReadGroup(uint32_t start_, uint32_t count_, uint32_t pollgroup_, const T& startval_, uint32_t offset) :
         start(start_),
         count(count_),
         pollgroup(pollgroup_),
-        startval(startval_)
+	  startval(startval_),
+	  index_offset(offset)
     { };
     
     bool operator<(const ModbusReadGroup& other) const
@@ -74,13 +75,24 @@ public:
     uint32_t start;
     uint32_t count;
     uint32_t pollgroup;
+    uint32_t index_offset;
     T startval;
+
 };
 
 template<class T>
 class ModbusReadGroupCollection : public std::vector<ModbusReadGroup<T>>
 {
-    
+public:
+	size_t Total()
+	{
+		size_t total = 0;
+		for(auto element : *this)
+		{
+			total += element.count;
+		}
+		return total;
+	}
 };
 
 class ModbusPointConf: public ConfigParser

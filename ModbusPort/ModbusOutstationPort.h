@@ -30,12 +30,14 @@
 #include <unordered_map>
 #include <opendnp3/outstation/ICommandHandler.h>
 
+#include <modbus/modbus.h>
 #include "ModbusPort.h"
 
 class ModbusOutstationPort: public ModbusPort, public opendnp3::ICommandHandler
 {
 public:
 	ModbusOutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	~ModbusOutstationPort();
 
 	void Enable();
 	void Disable();
@@ -75,14 +77,14 @@ public:
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
 
-	//ModbusOutstationType* pOutstation;
     
     void Connect();
     void Disconnect();
 
 private:
 	void StateListener(opendnp3::ChannelState state);
-    modbus_t *mb;    
+	modbus_t *mb;
+	modbus_mapping_t *mb_mapping;
 };
 
 #endif /* ModbusSERVERPORT_H_ */

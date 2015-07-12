@@ -41,6 +41,27 @@ ModbusPort::ModbusPort(std::string aName, std::string aConfFilename, const Json:
 void ModbusPort::ProcessElements(const Json::Value& JSONRoot)
 {
     if(!JSONRoot.isObject()) return;
+    
+	if(!JSONRoot["SerialDevice"].isNull())
+		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.SerialDevice = JSONRoot["SerialDevice"].asString();
+	if(!JSONRoot["BaudRate"].isNull())
+		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.BaudRate = JSONRoot["BaudRate"].asUInt();
+	if(!JSONRoot["Parity"].isNull())
+	{
+		if(JSONRoot["Parity"].asString() == "EVEN")
+			static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.Parity = SerialParity::EVEN;
+		else if(JSONRoot["Parity"].asString() == "ODD")
+			static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.Parity = SerialParity::ODD;
+		else if(JSONRoot["Parity"].asString() == "NONE")
+			static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.Parity = SerialParity::NONE;
+		else
+			std::cout << "Warning: Invalid Modbus port parity: " << JSONRoot["Parity"].asString() << ", should be EVEN, ODD, or NONE."<< std::endl;
+	}
+	if(!JSONRoot["DataBits"].isNull())
+		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.DataBits = JSONRoot["DataBits"].asUInt();
+	if(!JSONRoot["StopBits"].isNull())
+		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.StopBits = JSONRoot["StopBits"].asUInt();
+    
 	if(!JSONRoot["IP"].isNull())
 		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
 

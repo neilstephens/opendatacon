@@ -32,6 +32,7 @@
 #include <opendnp3/master/CommandResponse.h>
 #include <opendnp3/app/IterableBuffer.h>
 
+#include <modbus/modbus.h>
 #include "ModbusPort.h"
 #include <opendatacon/ASIOScheduler.h>
 
@@ -79,11 +80,7 @@ public:
         mb(nullptr)
 	{};
     
-    ~ModbusMasterPort()
-    {
-        Disable();
-        if (mb != nullptr) modbus_free(mb);
-    }
+    ~ModbusMasterPort();
 
     // Implement ModbusPort
 	void Enable();
@@ -98,7 +95,7 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(bool connected, uint16_t index, const std::string& SenderName);
+	std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
     

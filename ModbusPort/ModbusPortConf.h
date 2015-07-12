@@ -36,12 +36,14 @@ typedef enum {
     MANUAL
 } server_type_t;
 
+enum class SerialParity : char {NONE='N',EVEN='E',ODD='O'};
+
 struct ModbusAddrConf
 {
 	//Serial
 	std::string SerialDevice;
 	uint32_t BaudRate;
-	enum {NONE='N',EVEN='E',ODD='O'} Parity;
+	SerialParity Parity;
 	uint8_t DataBits;
 	uint8_t StopBits;
 
@@ -56,7 +58,7 @@ struct ModbusAddrConf
     ModbusAddrConf():
     	SerialDevice(""),
     	BaudRate(115200),
-    	Parity(NONE),
+	Parity(SerialParity::NONE),
     	DataBits(8),
     	StopBits(1),
     	IP(""),

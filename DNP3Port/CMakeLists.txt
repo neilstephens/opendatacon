@@ -32,7 +32,6 @@ include_directories(
 	"${ASIO_HOME}/asio/include/"
 )
 
-link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}"
-"${PROJECT_SOURCE_DIR}/../../dnp3${MY_CONFIG_POSTFIX}/.libs")
+link_directories("${PROJECT_SOURCE_DIR}/../../dnp3${MY_CONFIG_POSTFIX}/.libs")
 link_libraries(ODC asiopal openpal asiodnp3 opendnp3)
 add_library(${PROJECT_NAME} SHARED ${DNP3Port_SRC})

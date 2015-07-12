@@ -30,8 +30,6 @@
 #include <opendatacon/DataPort.h>
 #include "ModbusPortConf.h"
 
-#include "libmodbus/modbus-tcp.h"
-
 class ModbusPort: public DataPort
 {
 public:
