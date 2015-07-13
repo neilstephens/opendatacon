@@ -30,8 +30,10 @@ include_directories(
 	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
 	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
 	"${ASIO_HOME}/asio/include/"
+	"${MODBUS_HOME}/modbus${MY_CONFIG_POSTFIX}/include"
 )
 
+link_directories("${MODBUS_HOME}/modbus${MY_CONFIG_POSTFIX}/lib")
 link_libraries(ODC modbus)
 
 add_library(${PROJECT_NAME} SHARED ${ModbusPort_SRC})
