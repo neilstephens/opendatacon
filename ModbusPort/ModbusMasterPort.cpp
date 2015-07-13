@@ -402,7 +402,7 @@ std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::Ana
 std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
 
-std::future<opendnp3::CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state, uint16_t index, const std::string& SenderName)
+std::future<opendnp3::CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
     ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
