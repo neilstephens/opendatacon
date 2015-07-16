@@ -46,17 +46,22 @@ else()
     endif()
 endif()
 
+add_subdirectory(JSON)
+add_subdirectory(ODC)
+add_subdirectory(DNP3Port)
+add_subdirectory(JSONPort)
+add_subdirectory(WebUI)
+
 include_directories(
-    "include"
-    "JSON"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"../asio/include/"
-	"../tclap/include/"
+	"include"
+	"JSON"
+	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
+	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
+	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
+	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
+	"${ASIO_HOME}/asio/include/"
+	"${TCLAP_HOME}/tclap/include/"
 )
-link_directories("${PROJECT_SOURCE_DIR}/ODC/${MY_BUILD_CONFIG}" "${PROJECT_SOURCE_DIR}/JSON/${MY_BUILD_CONFIG}"
-"${PROJECT_SOURCE_DIR}/../dnp3${MY_CONFIG_POSTFIX}/.libs")
+link_directories("${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/.libs")
 link_libraries(ODC JSON asiopal openpal asiodnp3 opendnp3 pthread dl)
 add_executable(${PROJECT_NAME} ${SRC_LIST})

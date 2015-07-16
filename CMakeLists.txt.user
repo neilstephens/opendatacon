@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.0.1, 2015-05-30T23:30:28. -->
+<!-- Written by QtCreator 3.0.1, 2015-06-01T13:16:11. -->
 <qtcreator>
  <data>
   <variable>ProjectExplorer.Project.ActiveTarget</variable>
@@ -18,13 +18,7 @@
      <value type="QByteArray" key="CurrentPreferences">CppGlobal</value>
     </valuemap>
    </valuemap>
-   <valuemap type="QVariantMap" key="EditorConfiguration.CodeStyle.1">
-    <value type="QString" key="language">QmlJS</value>
-    <valuemap type="QVariantMap" key="value">
-     <value type="QByteArray" key="CurrentPreferences">QmlJSGlobal</value>
-    </valuemap>
-   </valuemap>
-   <value type="int" key="EditorConfiguration.CodeStyle.Count">2</value>
+   <value type="int" key="EditorConfiguration.CodeStyle.Count">1</value>
    <value type="QByteArray" key="EditorConfiguration.Codec">UTF-8</value>
    <value type="bool" key="EditorConfiguration.ConstrainTooltips">false</value>
    <value type="int" key="EditorConfiguration.IndentSize">4</value>
@@ -54,12 +48,12 @@
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">ubuntu</value>
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ubuntu</value>
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{b9bf33e1-9854-4255-8270-f0c286ee98b1}</value>
-   <value type="int" key="ProjectExplorer.Target.ActiveBuildConfiguration">3</value>
+   <value type="int" key="ProjectExplorer.Target.ActiveBuildConfiguration">0</value>
    <value type="int" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
-   <value type="int" key="ProjectExplorer.Target.ActiveRunConfiguration">2</value>
+   <value type="int" key="ProjectExplorer.Target.ActiveRunConfiguration">1</value>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.0">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Release</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Release '-DDNP3_HOME=~/qtc_projects' '-DASIO_HOME=~/qtc_projects' '-DMICROHTTPD_HOME=~/qtc_projects' '-DTCLAP_HOME=~/qtc_projects'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Release</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -102,7 +96,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.1">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_BUILD_TYPE=Release</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_BUILD_TYPE=Release '-DDNP3_HOME=~/qtc_projects' '-DASIO_HOME=~/qtc_projects' '-DMICROHTTPD_HOME=~/qtc_projects' '-DTCLAP_HOME=~/qtc_projects'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Release-rpi</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -145,7 +139,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.2">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../RHEL65-toolchain.cmake -DCMAKE_BUILD_TYPE=Release</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../RHEL65-toolchain.cmake -DCMAKE_BUILD_TYPE=Release '-DDNP3_HOME=~/qtc_projects' '-DASIO_HOME=~/qtc_projects' '-DMICROHTTPD_HOME=~/qtc_projects' '-DTCLAP_HOME=~/qtc_projects'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Release-RHEL65</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -188,7 +182,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.3">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Debug</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Debug '-DDNP3_HOME=~/qtc_projects' '-DASIO_HOME=~/qtc_projects' '-DMICROHTTPD_HOME=~/qtc_projects' '-DTCLAP_HOME=~/qtc_projects'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Debug</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -231,7 +225,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.4">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_BUILD_TYPE=Debug</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_BUILD_TYPE=Debug '-DDNP3_HOME=~/qtc_projects' '-DASIO_HOME=~/qtc_projects' '-DMICROHTTPD_HOME=~/qtc_projects' '-DTCLAP_HOME=~/qtc_projects'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Debug-rpi</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -274,7 +268,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.5">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../RHEL65-toolchain.cmake -DCMAKE_BUILD_TYPE=Debug</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../RHEL65-toolchain.cmake -DCMAKE_BUILD_TYPE=Debug '-DDNP3_HOME=~/qtc_projects' '-DASIO_HOME=~/qtc_projects' '-DMICROHTTPD_HOME=~/qtc_projects' '-DTCLAP_HOME=~/qtc_projects'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Debug-RHEL65</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -417,15 +411,13 @@
      <value type="int">14</value>
     </valuelist>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
-    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes">
-     <value type="QString">LD_LIBRARY_PATH=/home/knarl/dnp3_2.0.1_workspace/dnp3-Debug/.libs:/home/knarl/qtc_projects/opendatacon/ODC/Debug/:/home/knarl/qtc_projects/opendatacon/JSON/Debug/:/home/knarl/qtc_projects/opendatacon/WebUI/Debug/:/home/knarl/qtc_projects/opendatacon/DNP3Port/Debug/:/home/knarl/qtc_projects/opendatacon/JSONPort/Debug/</value>
-    </valuelist>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="QString" key="ProjectExplorer.CustomExecutableRunConfiguration.Arguments"></value>
     <value type="QString" key="ProjectExplorer.CustomExecutableRunConfiguration.Executable">%{buildDir}/opendatacon</value>
     <value type="bool" key="ProjectExplorer.CustomExecutableRunConfiguration.UseTerminal">true</value>
     <value type="QString" key="ProjectExplorer.CustomExecutableRunConfiguration.WorkingDirectory">/home/knarl/qtc_projects/opendatacon/example/non-demand</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Run %{buildDir}/opendatacon</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">opendatacon ONDEMAND</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.CustomExecutableRunConfiguration</value>
     <value type="uint" key="RunConfiguration.QmlDebugServerPort">3768</value>
     <value type="bool" key="RunConfiguration.UseCppDebugger">true</value>
@@ -470,15 +462,13 @@
      <value type="int">14</value>
     </valuelist>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
-    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes">
-     <value type="QString">LD_LIBRARY_PATH=/home/knarl/dnp3_2.0.1_workspace/dnp3-Debug/.libs:/home/knarl/qtc_projects/opendatacon/ODC/Debug/:/home/knarl/qtc_projects/opendatacon/JSON/Debug/:/home/knarl/qtc_projects/opendatacon/WebUI/Debug/:/home/knarl/qtc_projects/opendatacon/DNP3Port/Debug/:/home/knarl/qtc_projects/opendatacon/JSONPort/Debug/</value>
-    </valuelist>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="QString" key="ProjectExplorer.CustomExecutableRunConfiguration.Arguments"></value>
     <value type="QString" key="ProjectExplorer.CustomExecutableRunConfiguration.Executable">%{buildDir}/opendatacon</value>
     <value type="bool" key="ProjectExplorer.CustomExecutableRunConfiguration.UseTerminal">true</value>
     <value type="QString" key="ProjectExplorer.CustomExecutableRunConfiguration.WorkingDirectory">/home/knarl/qtc_projects/opendatacon/example/multiplex</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Run %{buildDir}/opendatacon</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Run %{buildDir}/opendatacon2</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">opendatacon Multiplex</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.CustomExecutableRunConfiguration</value>
     <value type="uint" key="RunConfiguration.QmlDebugServerPort">3768</value>
     <value type="bool" key="RunConfiguration.UseCppDebugger">true</value>

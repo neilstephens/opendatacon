@@ -26,7 +26,7 @@
 
 #include <fstream>
 #include <iostream>
-#include "ConfigParser.h"
+#include <opendatacon/ConfigParser.h>
 
 std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
 

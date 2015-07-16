@@ -6,35 +6,29 @@ use File::Find::Rule;
 my @subdirs = File::Find::Rule->directory->in("./");
 
 open MAKELOG, ">make.log";
-
-`cp -u -a ODC/*.h include/opendatacon/`;
-
-my %build_order = 
-(
-	"JSON" => 0,
-	"ODC" => 1,
-	"opendatacon" => 2,
-	"DNP3Port" => 3,
-	"JSONPort" => 4,
-	"WebUI" => 5
-);
-my $projects = join("|",keys %build_order);
+my $failed = 0;
 
 my %subdirs_hash;
 foreach my $dir (@subdirs)
 {
-	if(("opendatacon/".$dir) =~ /($projects)\/(Debug|Release)(-rpi|-RHEL65)?$/)
+	if($dir =~ /(Debug|Release)(-rpi|-RHEL65)?$/)
 	{
-		$subdirs_hash{$dir} = $build_order{$1};
+		my $out = `(cd $dir && echo "\\n\\n--------------------\\n$dir" && date && echo "--------------------\\n" && make 2>&1)`;
+		if(${^CHILD_ERROR_NATIVE})
+		{
+			$failed = 1;
+		}
+		print $out;
+		print MAKELOG $out;
 	}
 }
 
-foreach my $dir (sort {$subdirs_hash{$a}<=>$subdirs_hash{$b}} (keys %subdirs_hash))
+if($failed == 1)
 {
-	my $out = `(cd $dir && echo "$dir" && date && make 2>&1)`;
-	print MAKELOG $out;
-	if(${^CHILD_ERROR_NATIVE})
-	{
-		print $out;
-	}
+	print "\n\n\n FAIL !!!!!!!!!!!!!! \n\n\n";
 }
+else
+{
+	print "\n\n\n DONE \n\n\n";
+}
+

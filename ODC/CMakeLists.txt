@@ -20,33 +20,17 @@
 project(ODC)
 cmake_minimum_required(VERSION 2.8)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
-aux_source_directory(. SRC_LIST)
-add_library(${PROJECT_NAME} SHARED ${SRC_LIST})
-
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    if(CMAKE_CXX_COMPILER MATCHES "rpi")
-        set(MY_CONFIG_POSTFIX "-rpi-Debug")
-    elseif(CMAKE_CXX_COMPILER MATCHES "RHEL65")
-        set(MY_CONFIG_POSTFIX "-RHEL-Debug")
-    else()
-        set(MY_CONFIG_POSTFIX "-Debug")
-    endif()
-else()
-    if(CMAKE_CXX_COMPILER MATCHES "rpi")
-        set(MY_CONFIG_POSTFIX "-rpi")
-    elseif(CMAKE_CXX_COMPILER MATCHES "RHEL65")
-        set(MY_CONFIG_POSTFIX "-RHEL")
-    else()
-        set(MY_CONFIG_POSTFIX "")
-    endif()
-endif()
+aux_source_directory(. ODC_SRC)
 
 include_directories(
-    "../include"
-    "../JSON"
-	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"../../dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"../../asio/include/"
+	"../JSON"
+	"../include"
+	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
+	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
+	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
+	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
+	"${ASIO_HOME}/asio/include/"
 )
+
+add_library(${PROJECT_NAME} SHARED ${ODC_SRC})
+
