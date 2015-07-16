@@ -51,6 +51,8 @@ add_subdirectory(ODC)
 add_subdirectory(DNP3Port)
 add_subdirectory(JSONPort)
 add_subdirectory(WebUI)
+add_subdirectory(tests)
+
 # skip the full RPATH for the build tree
 SET(CMAKE_SKIP_BUILD_RPATH  TRUE)
 # when building use the install RPATH already

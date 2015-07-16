@@ -17,23 +17,23 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */ 
-/*
-* Version.h
-*
-*  Created on: 26/11/2014
-*      Author: Alan Murray
-*/
+/**
+ */
+#include <catch.hpp>
 
-#ifndef ODC_VERSION_H_
-#define ODC_VERSION_H_
+#include "DNP3OutstationPort.h"
+#include "DNP3MasterPort.h"
 
-#define ODC_VERSION_MAJOR 0
-#define ODC_VERSION_MINOR 3
-#define ODC_VERSION_MICRO 3
+#define SUITE(name) "DNP3PortEndToEndTestSuite - " name
 
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
+TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
+{
+    DNP3MasterPort MPUT("MasterUnderTest", "", "{}");
+    DNP3OutstationPort OPUT("OutstationUnderTest", "", "{}");
 
-#define ODC_VERSION_STRING "" STR(ODC_VERSION_MAJOR) "." STR(ODC_VERSION_MINOR) "." STR(ODC_VERSION_MICRO)
+    MPUT.Enable();
+    OPUT.Enable();
 
-#endif
+    auto mstatus = MPUT.GetStatus();
+    auto ostatus = OPUT.GetStatus();
+}

@@ -1,4 +1,9 @@
-opendatacon version 0.3.2
+opendatacon version 0.3.3
+
+0.3.3
+	- README and headers now packaged in linux build archives
+	- Built against opendnp3 with link layer state machine bugfix, and keepalive fix
+	- Bugfix for crashing release builds (unknown symbol IOHandler::InDemand())
 
 0.3.2
 	-Datalink layer status on DNP3Port(s)
