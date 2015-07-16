@@ -17,4 +17,4 @@ make.log
 scripts/gmon.out
 scripts/perf.svgz
 example/
-
+.deps/
