@@ -51,6 +51,7 @@ add_subdirectory(ODC)
 add_subdirectory(DNP3Port)
 add_subdirectory(JSONPort)
 add_subdirectory(WebUI)
+add_subdirectory(tests)
 
 include_directories(
 	"include"
