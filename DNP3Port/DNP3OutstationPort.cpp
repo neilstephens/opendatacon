@@ -38,7 +38,8 @@
 #include "OpenDNP3Helpers.h"
 
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	DNP3Port(aName, aConfFilename, aConfOverrides)
+	DNP3Port(aName, aConfFilename, aConfOverrides),
+    pOutstation(nullptr)
 {};
 
 void DNP3OutstationPort::Enable()
