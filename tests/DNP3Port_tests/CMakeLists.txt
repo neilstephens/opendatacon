@@ -23,9 +23,10 @@ aux_source_directory(. ${PROJECT_NAME}_SRC)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
-	../catch
-	../../include
-	../../DNP3Port
+	"../catch"
+	"../../include"
+	"../../JSON"
+	"../../DNP3Port"
 	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
 	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
 	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
@@ -34,6 +35,6 @@ include_directories(
 )
 
 link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}"
-"${PROJECT_SOURCE_DIR}/../../dnp3${MY_CONFIG_POSTFIX}/.libs")
-link_libraries(ODC JSON DNP3Port)
+"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/.libs")
+link_libraries(ODC JSON DNP3Port pthread)
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
