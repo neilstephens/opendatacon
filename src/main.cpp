@@ -34,11 +34,8 @@
  * 		-save config to file
  * 	-add maintenance commands:
  * 		-enable/disable/restart ports/connectors/connections
- * 	-remove the need for DNP3Manager and two threadpools?
- * 		-DataConcentrator class can do it all
- * 	-implement plugin architecture - the following should be plugins:
- * 		-DataPort implementations - DONE
- * 		-Transform implementations
+ * 	-remove the need for two threadpools?
+ * 		-Mod to DNP3Manager to use existing io_service?
  * 	-add a network interface to the console
  *	-network logging
  *	-daemon mode
@@ -83,7 +80,8 @@ int main(int argc, char* argv[])
 				const size_t strmax = 80;
 				char buf[strmax];
 				strerror_r(errno, buf, strmax);
-				throw std::runtime_error(buf);
+				std::string msg = "Unable to change working directory to '"+PathName+"' : "+buf;
+				throw std::runtime_error(msg);
 			}
 		}
 
