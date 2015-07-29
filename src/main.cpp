@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
 		TheDataConcentrator->Run();
 		std::cout << "opendatacon version " << ODC_VERSION_STRING << " shutdown cleanly." << std::endl;
 	}
-	catch (TCLAP::ArgException &e)	// catch any exceptions
+	catch (TCLAP::ArgException &e) // catch any exceptions
 	{
 		std::cerr << "Command line error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 1;

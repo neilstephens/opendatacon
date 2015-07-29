@@ -75,4 +75,4 @@ protected:
 
 };
 
-#endif/* DNP3PORT_H_ */
+#endif /* DNP3PORT_H_ */

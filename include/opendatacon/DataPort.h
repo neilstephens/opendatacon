@@ -77,4 +77,4 @@ protected:
 	std::unique_ptr<DataPortConf> pConf;
 };
 
-#endif/* DATAPORT_H_ */
+#endif /* DATAPORT_H_ */

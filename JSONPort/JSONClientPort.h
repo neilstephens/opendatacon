@@ -51,4 +51,4 @@ private:
 	void Read();
 };
 
-#endif/* JSONCLIENTDATAPORT_H_ */
+#endif /* JSONCLIENTDATAPORT_H_ */

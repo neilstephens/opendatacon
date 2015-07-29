@@ -29,7 +29,7 @@
 #include <opendnp3/app/ClassField.h>
 #include "DNP3PointConf.h"
 #include "OpenDNP3Helpers.h"
-#include <iostream>	// TODO: remove include, should be met using logging mechanism
+#include <iostream> // TODO: remove include, should be met using logging mechanism
 
 
 DNP3PointConf::DNP3PointConf(std::string FileName):
@@ -45,8 +45,8 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 	UnsolClass2(false),
 	UnsolClass3(false),
 	// Master Station configuration
-	MasterResponseTimeoutms(5000),		/// Application layer response timeout
-	MasterRespondTimeSync(true),			/// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	MasterResponseTimeoutms(5000), /// Application layer response timeout
+	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	DoUnsolOnStartup(true),
 	/// Which classes should be requested in a startup integrity scan
 	StartupIntegrityClass0(true),
@@ -331,7 +331,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				if(!Analogs[n]["StartVal"].isNull())
 				{
 					std::string start_val = Analogs[n]["StartVal"].asString();
-					if(start_val == "D")		//delete this index
+					if(start_val == "D") //delete this index
 					{
 						if(AnalogStartVals.count(index))
 							AnalogStartVals.erase(index);
@@ -392,7 +392,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				if(!Binaries[n]["StartVal"].isNull())
 				{
 					std::string start_val = Binaries[n]["StartVal"].asString();
-					if(start_val == "D")		//delete this index
+					if(start_val == "D") //delete this index
 					{
 						if(BinaryStartVals.count(index))
 							BinaryStartVals.erase(index);

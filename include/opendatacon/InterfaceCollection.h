@@ -42,4 +42,4 @@ public:
 
 
 
-#endif/* defined(__opendatacon__InterfaceCollection__) */
+#endif /* defined(__opendatacon__InterfaceCollection__) */

@@ -53,4 +53,4 @@ public:
 	DNP3AddrConf mAddrConf;
 };
 
-#endif/* DNP3OUTSTATIONPORTCONF_H_ */
+#endif /* DNP3OUTSTATIONPORTCONF_H_ */

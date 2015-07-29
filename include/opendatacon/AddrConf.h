@@ -44,4 +44,4 @@ typedef struct
 	uint16_t Port;
 }JSONAddrConf;
 
-#endif/* ADDRCONF_H_ */
+#endif /* ADDRCONF_H_ */

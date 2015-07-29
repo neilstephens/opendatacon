@@ -60,7 +60,7 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 {
 	Json::Value JSONRoot;
 	std::string Err;
-	if(!(JSONCache.count(FileName)))	//not cached - read it in
+	if(!(JSONCache.count(FileName))) //not cached - read it in
 	{
 		std::ifstream fin(FileName);
 		if (fin.fail())

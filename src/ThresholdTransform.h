@@ -94,4 +94,4 @@ public:
 	double threshold;
 };
 
-#endif/* THRESHOLDTRANSFORM_H_ */
+#endif /* THRESHOLDTRANSFORM_H_ */

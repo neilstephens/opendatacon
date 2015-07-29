@@ -47,7 +47,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	AdvFileLog(new AdvancedLogger(FileLog,LOG_LEVEL))
 {
 	//Version
-	this->AddCommand("version", [this](const ParamCollection &params) {	//"Print version information"
+	this->AddCommand("version", [this](const ParamCollection &params) { //"Print version information"
 	                       Json::Value result;
 	                       result["version"] = ODC_VERSION_STRING;
 	                       return result;
@@ -57,7 +57,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
 
-	AdvConsoleLog->AddIngoreAlways(".*");	//silence all console messages by default
+	AdvConsoleLog->AddIngoreAlways(".*"); //silence all console messages by default
 	DNP3Mgr.AddLogSubscriber(AdvConsoleLog.get());
 	AdvancedLoggers["Console Log"] = AdvConsoleLog;
 	DNP3Mgr.AddLogSubscriber(AdvFileLog.get());

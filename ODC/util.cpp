@@ -64,7 +64,7 @@ bool extract_delimited_string(istream& ist, string& extracted)
 	char delim;
 	//The first char is the delimiter
 	if(!(ist>>delim))
-		return true;	//nothing to extract - return successfully extracted nothing
+		return true; //nothing to extract - return successfully extracted nothing
 	char ch;
 	while(ist.get(ch))
 	{

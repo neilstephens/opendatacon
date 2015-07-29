@@ -88,4 +88,4 @@ public:
 	virtual ~DataConnectorCollection(){};
 };
 
-#endif/* defined(__opendatacon__DataConectorCollection__) */
+#endif /* defined(__opendatacon__DataConectorCollection__) */

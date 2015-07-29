@@ -119,12 +119,12 @@ int Console::trigger (std::string s)
 
 int Console::hotkeys(char c)
 {
-	if (c == 3 /*CTRL-C*/)	//TODO: check this value is cross-platform and macro it.
+	if (c == 3 /*CTRL-C*/) //TODO: check this value is cross-platform and macro it.
 	{
 		trigger("exit");
 		return 1;
 	}
-	if (c == TAB)	//auto complete/list
+	if (c == TAB) //auto complete/list
 	{
 		//store what's been entered so far
 		std::string partial_cmd;
@@ -142,7 +142,7 @@ int Console::hotkeys(char c)
 		if(matching_cmds.size())
 		{
 			//we want to see how many chars all the matches have in common
-			auto common_length = partial_cmd.size()-1;	//starting from what we already know matched
+			auto common_length = partial_cmd.size()-1; //starting from what we already know matched
 
 			if(matching_cmds.size()==1)
 				common_length=matching_cmds.back().size();

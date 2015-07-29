@@ -89,4 +89,4 @@ public:
 	std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); };
 };
 
-#endif/* NULLPORT_H_ */
+#endif /* NULLPORT_H_ */

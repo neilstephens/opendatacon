@@ -133,15 +133,15 @@ private:
 	struct rateStats_t
 	{
 		/// Parameters
-		uint32_t outputRateLimit;	// maximum number of updates allowed per updatePeriodms
-		uint32_t updatePeriodms;	// how often the limit is updated
-		uint16_t updatePeriodMultiplier;	// how many update periods can be saved up for a burst of updates
+		uint32_t outputRateLimit;        // maximum number of updates allowed per updatePeriodms
+		uint32_t updatePeriodms;         // how often the limit is updated
+		uint16_t updatePeriodMultiplier; // how many update periods can be saved up for a burst of updates
 
 		/// Runtime variables
-		std::atomic_int_fast32_t outputRate;	// current update count over the last second
-		std::atomic_int_fast32_t inputRate;	// current input update rate
-		std::atomic_uint_fast64_t droppedUpdates;	// number of dropped updates
-		std::atomic_uint_fast64_t nextUpdatems;	// last time that updates were subtracted from the update count
+		std::atomic_int_fast32_t outputRate;      // current update count over the last second
+		std::atomic_int_fast32_t inputRate;       // current input update rate
+		std::atomic_uint_fast64_t droppedUpdates; // number of dropped updates
+		std::atomic_uint_fast64_t nextUpdatems;   // last time that updates were subtracted from the update count
 
 	};
 
@@ -152,4 +152,4 @@ private:
 
 std::unordered_map<std::string, RateLimitTransform::rateStats_t> RateLimitTransform::rateStatsCollection;
 
-#endif/* RATELIMITTRANSFORM_H_ */
+#endif /* RATELIMITTRANSFORM_H_ */

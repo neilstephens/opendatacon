@@ -85,4 +85,4 @@ protected:
 	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform> > > ConnectionTransforms;
 };
 
-#endif/* DATACONNECTOR_H_ */
+#endif /* DATACONNECTOR_H_ */

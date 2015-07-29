@@ -35,4 +35,4 @@ void cmd_ignore_message(std::stringstream& args, AdvancedLogger& AdvLog);
 void cmd_unignore_message(std::stringstream& args, AdvancedLogger& AdvLog);
 void cmd_show_ignored(std::stringstream& args, AdvancedLogger& AdvLog);
 
-#endif/* LOGGING_CMDS_H_ */
+#endif /* LOGGING_CMDS_H_ */

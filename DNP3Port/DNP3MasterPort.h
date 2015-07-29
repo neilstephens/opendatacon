@@ -36,7 +36,7 @@
 
 using namespace opendnp3;
 
-class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler	//, public opendnp3::IPollListener
+class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler //, public opendnp3::IPollListener
 {
 public:
 	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
@@ -117,4 +117,4 @@ private:
 	};
 };
 
-#endif/* DNP3CLIENTPORT_H_ */
+#endif /* DNP3CLIENTPORT_H_ */

@@ -98,4 +98,4 @@ private:
 	void LinkStatusListener(opendnp3::LinkStatus status);
 };
 
-#endif/* DNP3SERVERPORT_H_ */
+#endif /* DNP3SERVERPORT_H_ */

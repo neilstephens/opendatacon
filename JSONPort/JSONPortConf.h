@@ -51,4 +51,4 @@ public:
 	unsigned int retry_time_ms;
 };
 
-#endif/* JSONPORTCONF_H_ */
+#endif /* JSONPORTCONF_H_ */
