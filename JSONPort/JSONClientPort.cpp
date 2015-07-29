@@ -116,14 +116,14 @@ void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
 		{
 			count_open_braces++;
 			if(count_open_braces == 1)
-				braced.clear();		//discard anything before the first brace
+				braced.clear(); //discard anything before the first brace
 		}
 		if(ch=='}')
 		{
 			count_close_braces++;
 			if(count_close_braces > count_open_braces)
 			{
-				braced.clear();		//discard because it must be outside matched braces
+				braced.clear(); //discard because it must be outside matched braces
 				count_close_braces = count_open_braces = 0;
 			}
 		}
@@ -140,7 +140,7 @@ void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
 	for(auto ch : braced)
 		buf.sputc(ch);
 
-	if(!err_code)	//not eof - read more
+	if(!err_code) //not eof - read more
 		Read();
 	else
 	{
@@ -154,7 +154,7 @@ void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
 //Here we parse it and extract any paths that match our point config
 void JSONClientPort::ProcessBraced(std::string braced)
 {
-	Json::Value JSONRoot;		// will contain the root value after parsing.
+	Json::Value JSONRoot; // will contain the root value after parsing.
 	Json::Reader JSONReader;
 	bool parsing_success = JSONReader.parse(braced, JSONRoot);
 	if (parsing_success)

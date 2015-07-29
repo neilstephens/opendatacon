@@ -106,7 +106,7 @@ int ReturnFile(struct MHD_Connection *connection,
 	}
 	else
 	{
-		response = MHD_create_response_from_callback(buf.st_size, 32 * 1024,	/* 32k PAGE_NOT_FOUND size */
+		response = MHD_create_response_from_callback(buf.st_size, 32 * 1024, /* 32k PAGE_NOT_FOUND size */
 		                                             &file_reader, file,
 		                                             &file_free_callback);
 		if (response == nullptr)
@@ -202,14 +202,14 @@ std::string post_unescape(const char *val)
 
 static int
 iterate_post (void *coninfo_cls,
-              enum MHD_ValueKind kind,	//MHD_POSTDATA_KIND
-              const char *key,// POST KEY
+              enum MHD_ValueKind kind, //MHD_POSTDATA_KIND
+              const char *key,         // POST KEY
               const char *filename,
               const char *content_type,
               const char *transfer_encoding,
-              const char *data,	// POST VALUE
+              const char *data, // POST VALUE
               uint64_t off,
-              size_t size	// POST VALUE LENGTH
+              size_t size // POST VALUE LENGTH
               )
 {
 	struct connection_info_struct* con_info = (connection_info_struct*) coninfo_cls;

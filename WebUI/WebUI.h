@@ -64,4 +64,4 @@ private:
 	std::unordered_map<std::string, const IUIResponder*> Responders;
 };
 
-#endif/* defined(__opendatacon__WebUI__) */
+#endif /* defined(__opendatacon__WebUI__) */

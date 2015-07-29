@@ -28,6 +28,6 @@
 #define DATAPOINTCONF_H_
 
 class DataPointConf
-{};				//Base class
+{}; //Base class
 
-#endif/* DATAPOINTCONF_H_ */
+#endif /* DATAPOINTCONF_H_ */

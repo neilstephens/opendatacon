@@ -81,4 +81,4 @@ public:
 	virtual ~DataPortCollection(){};
 };
 
-#endif/* defined(__opendatacon__DataPortCollection__) */
+#endif /* defined(__opendatacon__DataPortCollection__) */

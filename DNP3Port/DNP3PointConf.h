@@ -57,9 +57,9 @@ public:
 	bool UnsolClass3;
 
 	// Master Station configuration
-	uint32_t MasterResponseTimeoutms;	/// Application layer response timeout
-	bool MasterRespondTimeSync;	/// If true, the master will do time syncs when it sees the time IIN bit from the outstation
-	bool DoUnsolOnStartup;	/// If true, the master will enable unsol on startup
+	uint32_t MasterResponseTimeoutms; /// Application layer response timeout
+	bool MasterRespondTimeSync;       /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	bool DoUnsolOnStartup;            /// If true, the master will enable unsol on startup
 	/// Which classes should be requested in a startup integrity scan
 	uint8_t GetStartupIntegrityClassMask();
 	bool StartupIntegrityClass0;
@@ -83,10 +83,10 @@ public:
 	// Outstation configuration
 	uint8_t MaxControlsPerRequest;
 	uint32_t MaxTxFragSize;
-	uint32_t SelectTimeoutms;	/// How long the outstation will allow an operate to proceed after a prior select
-	uint32_t SolConfirmTimeoutms;		/// Timeout for solicited confirms
-	uint32_t UnsolConfirmTimeoutms;	/// Timeout for unsolicited confirms
-	bool WaitForCommandResponses;		// when responding to a command, wait for downstream command responses, otherwise returns success
+	uint32_t SelectTimeoutms;       /// How long the outstation will allow an operate to proceed after a prior select
+	uint32_t SolConfirmTimeoutms;   /// Timeout for solicited confirms
+	uint32_t UnsolConfirmTimeoutms; /// Timeout for unsolicited confirms
+	bool WaitForCommandResponses;   // when responding to a command, wait for downstream command responses, otherwise returns success
 
 	// Default Static Variations
 	opendnp3::Binary::StaticVariation StaticBinaryResponse;
@@ -103,9 +103,9 @@ public:
 	TimestampOverride_t TimestampOverride;
 
 	// Event buffer limits
-	uint16_t MaxBinaryEvents;	/// The number of binary events the outstation will buffer before overflowing
-	uint16_t MaxAnalogEvents;		/// The number of analog events the outstation will buffer before overflowing
-	uint16_t MaxCounterEvents;		/// The number of counter events the outstation will buffer before overflowing
+	uint16_t MaxBinaryEvents;  /// The number of binary events the outstation will buffer before overflowing
+	uint16_t MaxAnalogEvents;  /// The number of analog events the outstation will buffer before overflowing
+	uint16_t MaxCounterEvents; /// The number of counter events the outstation will buffer before overflowing
 
 	// Point Configuration
 	std::pair<opendnp3::Binary, size_t> mCommsPoint;
@@ -119,4 +119,4 @@ public:
 	std::vector<uint32_t> ControlIndicies;
 };
 
-#endif/* DNP3POINTCONF_H_ */
+#endif /* DNP3POINTCONF_H_ */

@@ -28,6 +28,6 @@
 #define DATAPORTCONF_H_
 
 class DataPortConf
-{};				//base class
+{}; //base class
 
-#endif/* DATAPORTCONF_H_ */
+#endif /* DATAPORTCONF_H_ */

@@ -198,7 +198,7 @@ inline std::future<opendnp3::CommandStatus> DataConnector::EventT(const T& event
 
 	auto bounds = SenderConnectionsLookup.equal_range(SenderName);
 	//Do we have a connection for this sender?
-	if(bounds.first != bounds.second)	//yes
+	if(bounds.first != bounds.second) //yes
 	{
 		auto new_event_obj(event_obj);
 		if(ConnectionTransforms.count(SenderName))

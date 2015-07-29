@@ -42,7 +42,7 @@ public:
 	UICommand(const UIFunction& func, const std::string& desc, const bool hide): function(func), description(desc), hidden(hide) {};
 	UIFunction function;
 	std::string description;
-	bool hidden;// if true, command is not listed during a call to GetCommandList
+	bool hidden; // if true, command is not listed during a call to GetCommandList
 };
 
 class IUIResponder
@@ -64,4 +64,4 @@ private:
 	std::unordered_map<std::string, UICommand> commands;
 };
 
-#endif/* defined(__opendatacon__IUIResponder__) */
+#endif /* defined(__opendatacon__IUIResponder__) */

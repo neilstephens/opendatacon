@@ -53,4 +53,4 @@ private:
 	static std::unordered_map<std::string,Json::Value> JSONCache;
 };
 
-#endif/* CONFIGPARSER_H_ */
+#endif /* CONFIGPARSER_H_ */

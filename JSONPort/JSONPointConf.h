@@ -46,4 +46,4 @@ public:
 	std::map<uint16_t, Json::Value> Controls;
 };
 
-#endif/* JSONPOINTCONF_H_ */
+#endif /* JSONPOINTCONF_H_ */

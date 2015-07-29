@@ -43,4 +43,4 @@ private:
 	static std::unordered_map<CommandCallbackPromise*, std::shared_ptr<CommandCallbackPromise> > Callbacks;
 };
 
-#endif/* COMMANDCORRESPONDANT_H_ */
+#endif /* COMMANDCORRESPONDANT_H_ */

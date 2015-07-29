@@ -46,8 +46,8 @@
 #include <stdint.h>
 typedef SSIZE_T ssize_t;
 //#define S_ISREG(a) true
-#define S_ISREG(m)      (((m) & S_IFMT) == S_IFREG)		// regular file
-#include <sys/types.h>	// off_t, ssize_t
+#define S_ISREG(m)      (((m) & S_IFMT) == S_IFREG) // regular file
+#include <sys/types.h>                              // off_t, ssize_t
 #define MHD_PLATFORM_H
 #else
 inline void fopen_s(FILE** file, const char * name, const char * mode)
@@ -86,4 +86,4 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 int ReturnFile(struct MHD_Connection *connection, const char *url);
 int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr);
 
-#endif/* defined(__opendatacon__MhdWrapper__) */
+#endif /* defined(__opendatacon__MhdWrapper__) */

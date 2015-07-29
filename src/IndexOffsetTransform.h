@@ -69,4 +69,4 @@ public:
 	int offset;
 };
 
-#endif/* INDEXOFFSETTRANSFORM_H_ */
+#endif /* INDEXOFFSETTRANSFORM_H_ */

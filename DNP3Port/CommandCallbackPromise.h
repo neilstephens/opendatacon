@@ -68,4 +68,4 @@ private:
 
 };
 
-#endif/* COMMANDCALLBACKPROMISE_H_ */
+#endif /* COMMANDCALLBACKPROMISE_H_ */
