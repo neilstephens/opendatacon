@@ -50,6 +50,7 @@ add_subdirectory(JSON)
 add_subdirectory(ODC)
 add_subdirectory(DNP3Port)
 add_subdirectory(JSONPort)
+add_subdirectory(SimPort)
 add_subdirectory(WebUI)
 add_subdirectory(tests)
 
