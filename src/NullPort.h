@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * NullPort.h
  *
@@ -30,27 +30,27 @@
 #include <opendatacon/DataPort.h>
 
 /* The equivalent of /dev/null as a DataPort */
-class NullPort : public DataPort
+class NullPort: public DataPort
 {
 private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	std::unique_ptr<Timer_t> pTimer;
 public:
-	NullPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
+	NullPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 		DataPort(aName, aConfFilename, aConfOverrides)
 	{};
 	void Enable()
 	{
 		pTimer.reset(new Timer_t(*pIOS, std::chrono::seconds(3)));
 		pTimer->async_wait(
-			[this](asio::error_code err_code)
-		{
-			for (auto IOHandler_pair : Subscribers)
-			{
-				IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
-				IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
-			}
-		});
+		      [this](asio::error_code err_code)
+		      {
+		            for (auto IOHandler_pair: Subscribers)
+		            {
+		                  IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
+		                  IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+				}
+			});
 		return;
 	};
 	void Disable()
@@ -89,4 +89,4 @@ public:
 	std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); };
 };
 
-#endif /* NULLPORT_H_ */
+#endif/* NULLPORT_H_ */

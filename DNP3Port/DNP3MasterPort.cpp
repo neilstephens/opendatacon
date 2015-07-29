@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * DNP3ClientPort.cpp
  *
@@ -37,15 +37,15 @@ void DNP3MasterPort::Enable()
 {
 	if(enabled)
 		return;
-    if(nullptr == pMaster)
-    {
-        std::string msg = Name + ": Port not configured.";
-        auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-        
-        return;
-    }
-    
+	if(nullptr == pMaster)
+	{
+		std::string msg = Name + ": Port not configured.";
+		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+
+		return;
+	}
+
 	enabled = true;
 	//initialise as comms down - in case they never come up
 	PortDown();
@@ -126,13 +126,13 @@ void DNP3MasterPort::PortDown()
 // Called by OpenDNP3 Thread Pool
 void DNP3MasterPort::LinkStatusListener(opendnp3::LinkStatus status)
 {
-    this->status = status;
-    if(status == opendnp3::LinkStatus::UNRESET)
+	this->status = status;
+	if(status == opendnp3::LinkStatus::UNRESET)
 	{
 		// Update the comms state point and qualities
 		PortUp();
 	}
-    else if(status == opendnp3::LinkStatus::TIMEOUT)
+	else if(status == opendnp3::LinkStatus::TIMEOUT)
 	{
 		PortDown();
 
@@ -151,20 +151,20 @@ void DNP3MasterPort::LinkStatusListener(opendnp3::LinkStatus status)
 
 			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
 			pIOS->post([&]()
-			{
-				DisableStack();
-			});
+			           {
+			                 DisableStack();
+				     });
 		}
 	}
-    else if(status == opendnp3::LinkStatus::RESET)
-    {
-        //TODO: track a statistic - reset count
-    }
+	else if(status == opendnp3::LinkStatus::RESET)
+	{
+		//TODO: track a statistic - reset count
+	}
 	else
 	{
 		std::string msg = Name + ": Unknown link status reported from stack.";
-        auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::WARN, "", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
+		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::WARN, "", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
 	}
 }
 
@@ -178,21 +178,21 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	if(!TCPChannels.count(IPPort))
 	{
 		TCPChannels[IPPort] = DNP3Mgr.AddTCPClient(log_id.c_str(), LOG_LEVEL.GetBitfield(),
-											openpal::TimeDuration::Seconds(1),
-											openpal::TimeDuration::Seconds(30),
-											pConf->mAddrConf.IP,
-											"0.0.0.0",
-											pConf->mAddrConf.Port);
+		                                           openpal::TimeDuration::Seconds(1),
+		                                           openpal::TimeDuration::Seconds(30),
+		                                           pConf->mAddrConf.IP,
+		                                           "0.0.0.0",
+		                                           pConf->mAddrConf.Port);
 	}
-    pChannel = TCPChannels[IPPort];
-    if (pChannel == nullptr)
-    {
-        std::string msg = Name + ": TCP channel not found for masterstation.";
-        auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
+	pChannel = TCPChannels[IPPort];
+	if (pChannel == nullptr)
+	{
+		std::string msg = Name + ": TCP channel not found for masterstation.";
+		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
 
-        return;
-    }
+		return;
+	}
 
 	opendnp3::MasterStackConfig StackConfig;
 
@@ -209,29 +209,29 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ? TimeSyncMode::SerialTimeSync : TimeSyncMode::None;
 	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask(); //TODO: report/investigate bug - doesn't recognise response to integrity scan if not ALL_CLASSES
+	StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask();	//TODO: report/investigate bug - doesn't recognise response to integrity scan if not ALL_CLASSES
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
-    
-    pMaster = pChannel->AddMaster(Name.c_str(), *this, asiodnp3::DefaultMasterApplication::Instance(), StackConfig);
-    if (pMaster == nullptr)
-    {
-        std::string msg = Name + ": Error creating masterstation.";
-        auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-        
-        return;
-    }
-    pMaster->AddLinkStatusListener([&](opendnp3::LinkStatus status)
-    		{
-    			LinkStatusListener(status);
-    		});
+
+	pMaster = pChannel->AddMaster(Name.c_str(), *this, asiodnp3::DefaultMasterApplication::Instance(), StackConfig);
+	if (pMaster == nullptr)
+	{
+		std::string msg = Name + ": Error creating masterstation.";
+		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+
+		return;
+	}
+	pMaster->AddLinkStatusListener([&](opendnp3::LinkStatus status)
+	                               {
+	                                     LinkStatusListener(status);
+						 });
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)
 		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems));
 	else
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Minutes(600000000)); //ten million hours
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Minutes(600000000));	//ten million hours
 	if(pConf->pPointConf->EventClass1ScanRatems > 0)
 		pMaster->AddClassScan(opendnp3::ClassField::CLASS_1, openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems));
 	if(pConf->pPointConf->EventClass2ScanRatems > 0)
@@ -242,28 +242,28 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 
 // Called by OpenDNP3 Thread Pool
 //implement ISOEHandler
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Binary, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<DoubleBitBinary, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Analog, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Counter, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<FrozenCounter, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryOutputStatus, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogOutputStatus, uint16_t>>& meas){ LoadT(meas); };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<OctetString, uint16_t>>& meas){/*LoadT(meas);*/ };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<TimeAndInterval, uint16_t>>& meas){/*LoadT(meas);*/ };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryCommandEvent, uint16_t>>& meas){/*LoadT(meas);*/ };
-void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogCommandEvent, uint16_t>>& meas){/*LoadT(meas);*/ };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Binary, uint16_t> >& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<DoubleBitBinary, uint16_t> >& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Analog, uint16_t> >& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Counter, uint16_t> >& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<FrozenCounter, uint16_t> >& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryOutputStatus, uint16_t> >& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogOutputStatus, uint16_t> >& meas){ LoadT(meas); };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<OctetString, uint16_t> >& meas){ /*LoadT(meas);*/ };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<TimeAndInterval, uint16_t> >& meas){	/*LoadT(meas);*/ };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryCommandEvent, uint16_t> >& meas){ /*LoadT(meas);*/ };
+void DNP3MasterPort::OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogCommandEvent, uint16_t> >& meas){ /*LoadT(meas);*/ };
 
 template<typename T>
-inline void DNP3MasterPort::LoadT(const IterableBuffer<IndexedValue<T, uint16_t>>& meas)
+inline void DNP3MasterPort::LoadT(const IterableBuffer<IndexedValue<T, uint16_t> >& meas)
 {
-	meas.foreach([&](const IndexedValue<T, uint16_t>& pair)
-	{
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(pair.value,pair.index,this->Name);
-		}
-	});
+	meas.foreach([&](const IndexedValue<T, uint16_t>&pair)
+	             {
+	                   for(auto IOHandler_pair: Subscribers)
+	                   {
+	                         IOHandler_pair.second->Event(pair.value,pair.index,this->Name);
+				 }
+			 });
 }
 
 //Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
@@ -300,19 +300,19 @@ std::future<opendnp3::CommandStatus> DNP3MasterPort::ConnectionEvent(ConnectStat
 		pLoggers->Log(log_entry);
 
 		pIOS->post([&]()
-		{
-			EnableStack();
-		});
+		           {
+		                 EnableStack();
+			     });
 	}
 
 	// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
 	if (stack_enabled && state == ConnectState::DISCONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 	{
 		pIOS->post([&]()
-		{
-			DisableStack();
-			PortDown();
-		});
+		           {
+		                 DisableStack();
+		                 PortDown();
+			     });
 	}
 
 	return IOHandler::CommandFutureSuccess();
@@ -364,15 +364,15 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 //DataPort function for UI
 const Json::Value DNP3MasterPort::GetStatistics() const
 {
-    Json::Value event;
+	Json::Value event;
 
 	if (pChannel != nullptr)
 	{
 		auto ChanStats = this->pChannel->GetChannelStatistics();
-		event["numCrcError"] = ChanStats.numCrcError;		/// Number of frames discared due to CRC errors
-		event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;		/// Number of frames transmitted
-		event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;		/// Number of frames received
-		event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;		/// Number of frames detected with bad / malformed contents
+		event["numCrcError"] = ChanStats.numCrcError;			/// Number of frames discared due to CRC errors
+		event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;				/// Number of frames transmitted
+		event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;				/// Number of frames received
+		event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx;				/// Number of frames detected with bad / malformed contents
 		event["numBytesRx"] = ChanStats.numBytesRx;
 		event["numBytesTx"] = ChanStats.numBytesTx;
 		event["numClose"] = ChanStats.numClose;
@@ -387,5 +387,5 @@ const Json::Value DNP3MasterPort::GetStatistics() const
 		event["numTransportTx"] = StackStats.numTransportTx;
 	}
 
-    return event;
+	return event;
 };

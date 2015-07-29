@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * JSONClientDataPort.cpp
  *
@@ -34,9 +34,7 @@ JSONClientPort::JSONClientPort(std::string aName, std::string aConfFilename, con
 {};
 
 void JSONClientPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
-{
-
-}
+{}
 
 void JSONClientPort::Enable()
 {
@@ -69,11 +67,11 @@ void JSONClientPort::ConnectCompletionHandler(asio::error_code err_code)
 		JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
 		pTCPRetryTimer.reset(new Timer_t(*pIOS, std::chrono::milliseconds(pConf->retry_time_ms)));
 		pTCPRetryTimer->async_wait(
-				[this](asio::error_code err_code)
-				{
-					if(err_code != asio::error::operation_aborted)
-						Enable();
-				});
+		      [this](asio::error_code err_code)
+		      {
+		            if(err_code != asio::error::operation_aborted)
+					Enable();
+			});
 		return;
 	}
 	std::string msg = Name+": Connect success!";
@@ -118,14 +116,14 @@ void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
 		{
 			count_open_braces++;
 			if(count_open_braces == 1)
-				braced.clear(); //discard anything before the first brace
+				braced.clear();		//discard anything before the first brace
 		}
 		if(ch=='}')
 		{
 			count_close_braces++;
 			if(count_close_braces > count_open_braces)
 			{
-				braced.clear(); //discard because it must be outside matched braces
+				braced.clear();		//discard because it must be outside matched braces
 				count_close_braces = count_open_braces = 0;
 			}
 		}
@@ -142,7 +140,7 @@ void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
 	for(auto ch : braced)
 		buf.sputc(ch);
 
-	if(!err_code)//not eof - read more
+	if(!err_code)	//not eof - read more
 		Read();
 	else
 	{
@@ -156,7 +154,7 @@ void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
 //Here we parse it and extract any paths that match our point config
 void JSONClientPort::ProcessBraced(std::string braced)
 {
-	Json::Value JSONRoot;   // will contain the root value after parsing.
+	Json::Value JSONRoot;		// will contain the root value after parsing.
 	Json::Reader JSONReader;
 	bool parsing_success = JSONReader.parse(braced, JSONRoot);
 	if (parsing_success)
@@ -171,7 +169,7 @@ void JSONClientPort::ProcessBraced(std::string braced)
 			auto val = JSONRoot;
 			//traverse
 			for(unsigned int n = 0; n < nodes.size(); ++n)
-				if((val = val[nodes[n].asCString()]).isNull())break;
+				if((val = val[nodes[n].asCString()]).isNull()) break;
 			return val;
 		};
 

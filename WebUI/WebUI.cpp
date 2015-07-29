@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,13 +16,13 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 //
 //  WebUI.cpp
 //  opendatacon
 //
 //  Created by Alan Murray on 06/09/2014.
-//  
+//
 //
 
 #include "WebUI.h"
@@ -101,40 +101,40 @@ std::string load_key(const char *filename)
 	std::ifstream in;
 	in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	in.open(filename, std::ios::in | std::ios::binary);
-    std::string contents;
-    in.seekg(0, std::ios::end);
-    contents.resize(in.tellg());
-    in.seekg(0, std::ios::beg);
-    in.read(&contents[0], contents.size());
-    in.close();
-    return(contents);
+	std::string contents;
+	in.seekg(0, std::ios::end);
+	contents.resize(in.tellg());
+	in.seekg(0, std::ios::beg);
+	in.read(&contents[0], contents.size());
+	in.close();
+	return(contents);
 }
 
-WebUI::WebUI(uint16_t pPort) :
-    d(nullptr),
-    port(pPort)
+WebUI::WebUI(uint16_t pPort):
+	d(nullptr),
+	port(pPort)
 {
-    try
-    {
-        key_pem = load_key("server.key");
-        cert_pem = load_key("server.pem");
-    }
-    catch (std::exception e)
-    {
-        std::cout << "The key/certificate files could not be read. Reverting to default certificate.\n" << std::endl;
-        cert_pem = default_cert_pem;
-        key_pem = default_key_pem;
-    }
+	try
+	{
+		key_pem = load_key("server.key");
+		cert_pem = load_key("server.pem");
+	}
+	catch (std::exception e)
+	{
+		std::cout << "The key/certificate files could not be read. Reverting to default certificate.\n" << std::endl;
+		cert_pem = default_cert_pem;
+		key_pem = default_key_pem;
+	}
 }
 
 void WebUI::AddResponder(const std::string name, const IUIResponder& pResponder)
 {
-    Responders[name] = &pResponder;
+	Responders[name] = &pResponder;
 }
 
 
 /* HTTP access handler call back */
-int	WebUI::http_ahc(void *cls,
+int WebUI::http_ahc(void *cls,
                     struct MHD_Connection *connection,
                     const char *url,
                     const char *method,
@@ -143,66 +143,66 @@ int	WebUI::http_ahc(void *cls,
                     size_t *upload_data_size,
                     void **con_cls)
 {
-    struct connection_info_struct *con_info;
+	struct connection_info_struct *con_info;
 
-    //
-    if(nullptr == *con_cls)
-    {
-        return CreateNewRequest(cls,
-                                connection,
-                                url,
-                                method,
-                                version,
-                                upload_data,
-                                upload_data_size,
-                                con_cls);
-    }
-    
-    ParamCollection params;
+	//
+	if(nullptr == *con_cls)
+	{
+		return CreateNewRequest(cls,
+		                        connection,
+		                        url,
+		                        method,
+		                        version,
+		                        upload_data,
+		                        upload_data_size,
+		                        con_cls);
+	}
 
-    if (0 == strcmp(method, "POST"))
-    {
-        con_info = (connection_info_struct*)*con_cls;
-        
-        if (*upload_data_size != 0)
-        {
-            MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
-            *upload_data_size = 0;
-            
-            return MHD_YES;
-        }
-        if (con_info)
-        {
-            params = con_info->PostValues;
-        }
-    }
-    
-    const std::string ResponderName = GetPath(url);
-    if (Responders.count(ResponderName))
-    {
-        const std::string command = GetFile(&url[ResponderName.length()]);
+	ParamCollection params;
 
-        Json::FastWriter jsonout;
-        Json::Value event;
-        
-        event = Responders[ResponderName]->ExecuteCommand(command, params);
-        
-        std::string jsonstring = jsonout.write(event);
-        const char* jsoncstr = jsonstring.c_str();
-        
-        return ReturnJSON(connection, jsoncstr);
-    }
-    else
-    {
-        if (strlen(url) == 1)
-        {
-            return ReturnFile(connection, ROOTPAGE);
-        }
-        else
-        {
-            return ReturnFile(connection, url);
-        }
-    }
+	if (0 == strcmp(method, "POST"))
+	{
+		con_info = (connection_info_struct*)*con_cls;
+
+		if (*upload_data_size != 0)
+		{
+			MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
+			*upload_data_size = 0;
+
+			return MHD_YES;
+		}
+		if (con_info)
+		{
+			params = con_info->PostValues;
+		}
+	}
+
+	const std::string ResponderName = GetPath(url);
+	if (Responders.count(ResponderName))
+	{
+		const std::string command = GetFile(&url[ResponderName.length()]);
+
+		Json::FastWriter jsonout;
+		Json::Value event;
+
+		event = Responders[ResponderName]->ExecuteCommand(command, params);
+
+		std::string jsonstring = jsonout.write(event);
+		const char* jsoncstr = jsonstring.c_str();
+
+		return ReturnJSON(connection, jsoncstr);
+	}
+	else
+	{
+		if (strlen(url) == 1)
+		{
+			return ReturnFile(connection, ROOTPAGE);
+		}
+		else
+		{
+			return ReturnFile(connection, url);
+		}
+	}
 }
 
 int WebUI::start()
@@ -210,40 +210,40 @@ int WebUI::start()
 	if (useSSL)
 	{
 		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG | MHD_USE_SSL,
-			port, // Port to bind to
-			nullptr, // callback to call to check which clients allowed to connect
-			nullptr, // extra argument to apc
-			&ahc, // handler called for all requests
-			this, // extra argument to dh
-			MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
-			MHD_OPTION_CONNECTION_TIMEOUT, 256,
-			MHD_OPTION_HTTPS_MEM_KEY, key_pem.c_str(),
-			MHD_OPTION_HTTPS_MEM_CERT, cert_pem.c_str(),
-			MHD_OPTION_END);
+		                     port,	// Port to bind to
+		                     nullptr,	// callback to call to check which clients allowed to connect
+		                     nullptr,	// extra argument to apc
+		                     &ahc,	// handler called for all requests
+		                     this,	// extra argument to dh
+		                     MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this,	// completed handler and extra argument
+		                     MHD_OPTION_CONNECTION_TIMEOUT, 256,
+		                     MHD_OPTION_HTTPS_MEM_KEY, key_pem.c_str(),
+		                     MHD_OPTION_HTTPS_MEM_CERT, cert_pem.c_str(),
+		                     MHD_OPTION_END);
 	}
 	else
 	{
 		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG,
-			port, // Port to bind to
-			nullptr, // callback to call to check which clients allowed to connect
-			nullptr, // extra argument to apc
-			&ahc, // handler called for all requests
-			this, // extra argument to dh
-			MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
-			MHD_OPTION_CONNECTION_TIMEOUT, 256,
-			MHD_OPTION_END);
+		                     port,	// Port to bind to
+		                     nullptr,	// callback to call to check which clients allowed to connect
+		                     nullptr,	// extra argument to apc
+		                     &ahc,	// handler called for all requests
+		                     this,	// extra argument to dh
+		                     MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this,	// completed handler and extra argument
+		                     MHD_OPTION_CONNECTION_TIMEOUT, 256,
+		                     MHD_OPTION_END);
 	}
-    
-    if (d == nullptr)
-        return 1;
-    return 0;
+
+	if (d == nullptr)
+		return 1;
+	return 0;
 }
 
 void WebUI::stop()
 {
-    if (d == nullptr) return;
-    MHD_stop_daemon(d);
-    d = nullptr;
+	if (d == nullptr) return;
+	MHD_stop_daemon(d);
+	d = nullptr;
 }
 
 

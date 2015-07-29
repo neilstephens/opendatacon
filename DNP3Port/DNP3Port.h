@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * DNP3Port.h
  *
@@ -40,8 +40,8 @@ public:
 	virtual void Disable()=0;
 	virtual void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
 
-    //Override DataPort for UI
-    const Json::Value GetStatus() const override;
+	//Override DataPort for UI
+	const Json::Value GetStatus() const override;
 
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); };
 	virtual std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); };
@@ -69,10 +69,10 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot);
 
 protected:
-    asiodnp3::IChannel* pChannel;    
+	asiodnp3::IChannel* pChannel;
 	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
-    opendnp3::LinkStatus status;
+	opendnp3::LinkStatus status;
 
 };
 
-#endif /* DNP3PORT_H_ */
+#endif/* DNP3PORT_H_ */

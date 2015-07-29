@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * DNP3OutstationPortConf.h
  *
@@ -38,7 +38,7 @@ struct DNP3AddrConf
 	uint16_t OutstationAddr;
 	uint16_t MasterAddr;
 	server_type_t ServerType;
-	DNP3AddrConf() :IP("0.0.0.0"), Port(20000), OutstationAddr(1), MasterAddr(0), ServerType(server_type_t::ONDEMAND){};
+	DNP3AddrConf(): IP("0.0.0.0"), Port(20000), OutstationAddr(1), MasterAddr(0), ServerType(server_type_t::ONDEMAND){};
 };
 
 class DNP3PortConf: public DataPortConf
@@ -53,4 +53,4 @@ public:
 	DNP3AddrConf mAddrConf;
 };
 
-#endif /* DNP3OUTSTATIONPORTCONF_H_ */
+#endif/* DNP3OUTSTATIONPORTCONF_H_ */

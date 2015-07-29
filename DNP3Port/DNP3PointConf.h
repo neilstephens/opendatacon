@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * DNP3PointConf.h
  *
@@ -57,9 +57,9 @@ public:
 	bool UnsolClass3;
 
 	// Master Station configuration
-	uint32_t MasterResponseTimeoutms; /// Application layer response timeout
-	bool MasterRespondTimeSync; /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
-	bool DoUnsolOnStartup; /// If true, the master will enable unsol on startup
+	uint32_t MasterResponseTimeoutms;	/// Application layer response timeout
+	bool MasterRespondTimeSync;	/// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	bool DoUnsolOnStartup;	/// If true, the master will enable unsol on startup
 	/// Which classes should be requested in a startup integrity scan
 	uint8_t GetStartupIntegrityClassMask();
 	bool StartupIntegrityClass0;
@@ -81,12 +81,12 @@ public:
 	bool DoAssignClassOnStartup;
 
 	// Outstation configuration
-	uint8_t	MaxControlsPerRequest;
+	uint8_t MaxControlsPerRequest;
 	uint32_t MaxTxFragSize;
-	uint32_t SelectTimeoutms; /// How long the outstation will allow an operate to proceed after a prior select
-	uint32_t SolConfirmTimeoutms; /// Timeout for solicited confirms
-	uint32_t UnsolConfirmTimeoutms; /// Timeout for unsolicited confirms
-	bool WaitForCommandResponses; // when responding to a command, wait for downstream command responses, otherwise returns success
+	uint32_t SelectTimeoutms;	/// How long the outstation will allow an operate to proceed after a prior select
+	uint32_t SolConfirmTimeoutms;		/// Timeout for solicited confirms
+	uint32_t UnsolConfirmTimeoutms;	/// Timeout for unsolicited confirms
+	bool WaitForCommandResponses;		// when responding to a command, wait for downstream command responses, otherwise returns success
 
 	// Default Static Variations
 	opendnp3::Binary::StaticVariation StaticBinaryResponse;
@@ -103,9 +103,9 @@ public:
 	TimestampOverride_t TimestampOverride;
 
 	// Event buffer limits
-	uint16_t MaxBinaryEvents; /// The number of binary events the outstation will buffer before overflowing
-	uint16_t MaxAnalogEvents;	/// The number of analog events the outstation will buffer before overflowing
-	uint16_t MaxCounterEvents;	/// The number of counter events the outstation will buffer before overflowing
+	uint16_t MaxBinaryEvents;	/// The number of binary events the outstation will buffer before overflowing
+	uint16_t MaxAnalogEvents;		/// The number of analog events the outstation will buffer before overflowing
+	uint16_t MaxCounterEvents;		/// The number of counter events the outstation will buffer before overflowing
 
 	// Point Configuration
 	std::pair<opendnp3::Binary, size_t> mCommsPoint;
@@ -119,4 +119,4 @@ public:
 	std::vector<uint32_t> ControlIndicies;
 };
 
-#endif /* DNP3POINTCONF_H_ */
+#endif/* DNP3POINTCONF_H_ */

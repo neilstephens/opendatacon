@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * DNP3PointConf.cpp
  *
@@ -29,61 +29,61 @@
 #include <opendnp3/app/ClassField.h>
 #include "DNP3PointConf.h"
 #include "OpenDNP3Helpers.h"
-#include <iostream> // TODO: remove include, should be met using logging mechanism
+#include <iostream>	// TODO: remove include, should be met using logging mechanism
 
 
 DNP3PointConf::DNP3PointConf(std::string FileName):
 	ConfigParser(FileName),
-		// DNP3 Link Configuration
-		LinkNumRetry(0),
-		LinkTimeoutms(1000),
-		LinkKeepAlivems(0),
-		LinkUseConfirms(false),
-		// Common application stack configuration
-		EnableUnsol(true),
-		UnsolClass1(false),
-		UnsolClass2(false),
-		UnsolClass3(false),
-		// Master Station configuration
-		MasterResponseTimeoutms(5000), /// Application layer response timeout
-		MasterRespondTimeSync(true), /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
-		DoUnsolOnStartup(true),
-		/// Which classes should be requested in a startup integrity scan
-		StartupIntegrityClass0(true),
-		StartupIntegrityClass1(true),
-		StartupIntegrityClass2(true),
-		StartupIntegrityClass3(true),
-		/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
-		IntegrityOnEventOverflowIIN(true),
-		/// Time delay beforce retrying a failed task
-		TaskRetryPeriodms(5000),
-		// Master Station scanning configuration
-		IntegrityScanRatems(3600000),
-		EventClass1ScanRatems(1000),
-		EventClass2ScanRatems(1000),
-		EventClass3ScanRatems(1000),
-		OverrideControlCode(opendnp3::ControlCode::UNDEFINED),
-		DoAssignClassOnStartup(false),
-		// Outstation configuration
-		MaxControlsPerRequest(16),
-		MaxTxFragSize(2048),
-		SelectTimeoutms(10000),
-		SolConfirmTimeoutms(5000),
-		UnsolConfirmTimeoutms(5000),
-		WaitForCommandResponses(false),
-		// Default Static Variations
-		StaticBinaryResponse(opendnp3::Binary::StaticVariation::Group1Var1),
-		StaticAnalogResponse(opendnp3::Analog::StaticVariation::Group30Var5),
-		StaticCounterResponse(opendnp3::Counter::StaticVariation::Group20Var1),
-		// Default Event Variations
-		EventBinaryResponse(opendnp3::Binary::EventVariation::Group2Var1),
-		EventAnalogResponse(opendnp3::Analog::EventVariation::Group32Var5),
-		EventCounterResponse(opendnp3::Counter::EventVariation::Group22Var1),
-		TimestampOverride(ZERO),
-		// Event buffer limits
-		MaxBinaryEvents(1000),
-		MaxAnalogEvents(1000),
-		MaxCounterEvents(1000)
+	// DNP3 Link Configuration
+	LinkNumRetry(0),
+	LinkTimeoutms(1000),
+	LinkKeepAlivems(0),
+	LinkUseConfirms(false),
+	// Common application stack configuration
+	EnableUnsol(true),
+	UnsolClass1(false),
+	UnsolClass2(false),
+	UnsolClass3(false),
+	// Master Station configuration
+	MasterResponseTimeoutms(5000),		/// Application layer response timeout
+	MasterRespondTimeSync(true),			/// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	DoUnsolOnStartup(true),
+	/// Which classes should be requested in a startup integrity scan
+	StartupIntegrityClass0(true),
+	StartupIntegrityClass1(true),
+	StartupIntegrityClass2(true),
+	StartupIntegrityClass3(true),
+	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
+	IntegrityOnEventOverflowIIN(true),
+	/// Time delay beforce retrying a failed task
+	TaskRetryPeriodms(5000),
+	// Master Station scanning configuration
+	IntegrityScanRatems(3600000),
+	EventClass1ScanRatems(1000),
+	EventClass2ScanRatems(1000),
+	EventClass3ScanRatems(1000),
+	OverrideControlCode(opendnp3::ControlCode::UNDEFINED),
+	DoAssignClassOnStartup(false),
+	// Outstation configuration
+	MaxControlsPerRequest(16),
+	MaxTxFragSize(2048),
+	SelectTimeoutms(10000),
+	SolConfirmTimeoutms(5000),
+	UnsolConfirmTimeoutms(5000),
+	WaitForCommandResponses(false),
+	// Default Static Variations
+	StaticBinaryResponse(opendnp3::Binary::StaticVariation::Group1Var1),
+	StaticAnalogResponse(opendnp3::Analog::StaticVariation::Group30Var5),
+	StaticCounterResponse(opendnp3::Counter::StaticVariation::Group20Var1),
+	// Default Event Variations
+	EventBinaryResponse(opendnp3::Binary::EventVariation::Group2Var1),
+	EventAnalogResponse(opendnp3::Analog::EventVariation::Group32Var5),
+	EventCounterResponse(opendnp3::Counter::EventVariation::Group22Var1),
+	TimestampOverride(ZERO),
+	// Event buffer limits
+	MaxBinaryEvents(1000),
+	MaxAnalogEvents(1000),
+	MaxCounterEvents(1000)
 {
 	ProcessFile();
 }
@@ -139,7 +139,7 @@ opendnp3::PointClass GetClass(Json::Value JPoint)
 
 void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 {
-    if(!JSONRoot.isObject()) return;
+	if(!JSONRoot.isObject()) return;
 
 	// DNP3 Link Configuration
 	if (!JSONRoot["LinkNumRetry"].isNull())
@@ -318,7 +318,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			for(auto index = start; index <= stop; index++)
 			{
 				bool exists = false;
-				for(auto existing_index: AnalogIndicies)
+				for(auto existing_index : AnalogIndicies)
 					if(existing_index == index)
 						exists = true;
 
@@ -331,7 +331,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				if(!Analogs[n]["StartVal"].isNull())
 				{
 					std::string start_val = Analogs[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
+					if(start_val == "D")		//delete this index
 					{
 						if(AnalogStartVals.count(index))
 							AnalogStartVals.erase(index);
@@ -380,7 +380,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			{
 
 				bool exists = false;
-				for(auto existing_index: BinaryIndicies)
+				for(auto existing_index : BinaryIndicies)
 					if(existing_index == index)
 						exists = true;
 
@@ -392,7 +392,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				if(!Binaries[n]["StartVal"].isNull())
 				{
 					std::string start_val = Binaries[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
+					if(start_val == "D")		//delete this index
 					{
 						if(BinaryStartVals.count(index))
 							BinaryStartVals.erase(index);
@@ -440,7 +440,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			{
 
 				bool exists = false;
-				for(auto existing_index: ControlIndicies)
+				for(auto existing_index : ControlIndicies)
 					if(existing_index == index)
 						exists = true;
 

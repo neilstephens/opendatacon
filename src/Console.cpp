@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,14 +16,14 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 #include "Console.h"
 #include <fstream>
 #include <iomanip>
 #include <exception>
 #include <csignal>
 
-Console::Console(std::string s):tinyConsole(s)
+Console::Console(std::string s): tinyConsole(s)
 {
 	sig_quit_p = std::bind(&Console::quit, this);
 	signal(SIGINT,&sig_quit);
@@ -33,8 +33,7 @@ Console::Console(std::string s):tinyConsole(s)
 }
 
 Console::~Console(void)
-{
-}
+{}
 
 void Console::sig_quit(int signum)
 {
@@ -120,12 +119,12 @@ int Console::trigger (std::string s)
 
 int Console::hotkeys(char c)
 {
-	if (c == 3/*CTRL-C*/)//TODO: check this value is cross-platform and macro it.
+	if (c == 3 /*CTRL-C*/)	//TODO: check this value is cross-platform and macro it.
 	{
 		trigger("exit");
 		return 1;
 	}
-	if (c == TAB)//auto complete/list
+	if (c == TAB)	//auto complete/list
 	{
 		//store what's been entered so far
 		std::string partial_cmd;
@@ -138,19 +137,19 @@ int Console::hotkeys(char c)
 			if(strncmp(cmd.first.c_str(),partial_cmd.c_str(),partial_cmd.size())==0)
 				matching_cmds.push_back(cmd.first.c_str());
 		}
-		
+
 		//any matches?
 		if(matching_cmds.size())
 		{
 			//we want to see how many chars all the matches have in common
-			auto common_length = partial_cmd.size()-1;//starting from what we already know matched
+			auto common_length = partial_cmd.size()-1;	//starting from what we already know matched
 
 			if(matching_cmds.size()==1)
 				common_length=matching_cmds.back().size();
 			else
 			{
 				bool common = true;
-				//iterate over each character while it's common to all 
+				//iterate over each character while it's common to all
 				while(common)
 				{
 					common_length++;
@@ -165,7 +164,7 @@ int Console::hotkeys(char c)
 					}
 				}
 			}
-			
+
 			//auto-complete common chars
 			if(common_length > partial_cmd.size())
 			{
@@ -187,11 +186,11 @@ int Console::hotkeys(char c)
 			//if there's just one match, we just auto-completed it. Now print a trailing space.
 			if(matching_cmds.size() == 1)
 			{
-					std::cout<<' ';
-					buffer.push_back(' ');
-					line_pos++;
+				std::cout<<' ';
+				buffer.push_back(' ');
+				line_pos++;
 			}
-			
+
 		}
 
 		return 1;

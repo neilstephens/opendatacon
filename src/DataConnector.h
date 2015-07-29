@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * DataConnector.h
  *
@@ -61,28 +61,28 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
 
 	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
-    
-    virtual const Json::Value GetStatistics() const
-    {
-        return Json::Value();
-    };
-    
-    virtual const Json::Value GetCurrentState() const
-    {
-        return Json::Value();
-    };
+
+	virtual const Json::Value GetStatistics() const
+	{
+		return Json::Value();
+	};
+
+	virtual const Json::Value GetCurrentState() const
+	{
+		return Json::Value();
+	};
 
 	void Enable();
 	void Disable();
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
-    
+
 protected:
 	void ProcessElements(const Json::Value& JSONRoot);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
 
-	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*>> Connections;
+	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*> > Connections;
 	std::multimap<std::string,std::string> SenderConnectionsLookup;
-	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform>>> ConnectionTransforms;
+	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform> > > ConnectionTransforms;
 };
 
-#endif /* DATACONNECTOR_H_ */
+#endif/* DATACONNECTOR_H_ */

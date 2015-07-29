@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 #include "AdvancedLogger.h"
 
 AdvancedLogger::AdvancedLogger(openpal::ILogHandler& aBaseLogger, openpal::LogFilters aLOG_LEVEL):
@@ -41,8 +41,8 @@ void AdvancedLogger::Log(const openpal::LogEntry& arEntry)
 			++(reg.Count);
 			if (reg.Count == 1 || (DoLog == true && (reg.Decimate > 0 || reg.IgnoreDuration.GetMilliseconds() > 0)))
 			{
-				std::string message = std::to_string(reg.Count)+" instance(s) of message - ignoring subsequent "+((reg.Decimate > 0)?std::to_string(reg.Decimate-1)+" ":"")+"similar messages"
-						+((reg.IgnoreDuration.GetMilliseconds() > 0)?"for "+std::to_string(reg.IgnoreDuration.GetMilliseconds()/60000)+" minutes ":"") +":\n"+arEntry.GetMessage();
+				std::string message = std::to_string(reg.Count)+" instance(s) of message - ignoring subsequent "+((reg.Decimate > 0) ? std::to_string(reg.Decimate-1)+" " : "")+"similar messages"
+				                      +((reg.IgnoreDuration.GetMilliseconds() > 0) ? "for "+std::to_string(reg.IgnoreDuration.GetMilliseconds()/60000)+" minutes " : "") +":\n"+arEntry.GetMessage();
 				ToPrint = openpal::LogEntry(arEntry.GetAlias(), arEntry.GetFilters(), arEntry.GetLocation(),message.c_str(),arEntry.GetErrorCode());
 				reg.PrintTime = asiopal::UTCTimeSource::Instance().Now();
 			}
@@ -115,13 +115,13 @@ void AdvancedLogger::RemoveIgnore(const std::string& str)
 }
 const Json::Value AdvancedLogger::ShowIgnored()
 {
-    Json::Value result;
+	Json::Value result;
 	for(auto ignored : IgnoreRepeats)
 	{
-        result[ignored.MessageRegex_string] = ignored.Count;
+		result[ignored.MessageRegex_string] = ignored.Count;
 		std::cout<<ignored.MessageRegex_string<<"\t\t silenced "<<ignored.Count<<" messages"<<std::endl;
 	}
-    return result;
+	return result;
 }
 void AdvancedLogger::SetLogLevel(openpal::LogFilters aLOG_LEVEL)
 {
