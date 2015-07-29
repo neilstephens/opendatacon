@@ -14,7 +14,7 @@ sub wanted
 	{
 		return;
 	}
-	if(($File::Find::name =~ /\.cpp$|\.h$/i) and not ($File::Find::name =~ /catch\.hpp$|json|tinycon|libmodbus/))
+	if(($File::Find::name =~ /\.cpp$|\.h$/i) and not ($File::Find::name =~ /catch\.hpp$|json|tinycon|libmodbus|^\.\/Release|^\.\/Debug/))
 	{
 		$cmd = "uncrustify -c uncrustify.cfg --replace --no-backup ".$File::Find::name;
 		if(system($cmd))
