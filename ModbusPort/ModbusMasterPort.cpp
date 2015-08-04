@@ -254,8 +254,7 @@ void ModbusMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::L
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
 			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
-			//TODO: should this throw an exception instead of return?
-			return;
+			throw std::runtime_error(msg);
 		}
 	}
 	else if(pConf->mAddrConf.SerialDevice != "")
@@ -267,25 +266,24 @@ void ModbusMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::L
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
 			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
-			//TODO: should this throw an exception instead of return?
-			return;
+			throw std::runtime_error(msg);
 		}
-		if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
-		{
-			std::string msg = Name + ": Stack error: 'Failed to set Modbus serial mode to RS232'";
-			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-			//TODO: should this throw an exception instead of return?
-			return;
-		}
+
+//Not needed? - doesn't work at least
+//		if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232) == -1)
+//		{
+//			std::string msg = Name + ": Stack error: 'Failed to set Modbus serial mode to RS232'";
+//			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+//			pLoggers->Log(log_entry);
+//			throw std::runtime_error(msg);
+//		}
 	}
 	else
 	{
 		std::string msg = Name + ": No IP address or serial device defined";
 		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
-		//TODO: should this throw an exception instead of return?
-		return;
+		throw std::runtime_error(msg);
 	}
 }
 

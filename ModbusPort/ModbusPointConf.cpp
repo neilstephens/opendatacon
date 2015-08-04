@@ -79,10 +79,11 @@ void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGrou
         }
         
 	  size_t start, stop, offset = 0;
+	  if(!Ranges[n]["IndexOffset"].isNull())
+		offset = Ranges[n]["IndexOffset"].asInt();
+
         if(!Ranges[n]["Index"].isNull())
             start = stop = Ranges[n]["Index"].asUInt();
-	  if(!Ranges[n]["IndexOffset"].isNull())
-		offset = Ranges[n]["IndexOffset"].asUInt();
         else if(!Ranges[n]["Range"]["Start"].isNull() && !Ranges[n]["Range"]["Stop"].isNull())
         {
             start = Ranges[n]["Range"]["Start"].asUInt();
