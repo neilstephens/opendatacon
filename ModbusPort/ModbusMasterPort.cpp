@@ -37,6 +37,8 @@ ModbusMasterPort::~ModbusMasterPort()
 	Disable();
 	if (mb != nullptr)
 		modbus_free(mb);
+	if (modbus_read_buffer != nullptr)
+		free(modbus_read_buffer);
 }
 
 void ModbusMasterPort::Enable()
@@ -100,15 +102,16 @@ void ModbusMasterPort::Connect()
     }
     
     modbus_set_slave(mb, pConf->mAddrConf.OutstationAddr);
-    
-    uint8_t tab_bytes[64];
-    int rc = modbus_report_slave_id(mb, tab_bytes);
-    if (rc > 1)
-    {
-        std::string msg = Name + "Run Status Indicator: %s" + (tab_bytes[1] ? "ON" : "OFF");
-        auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-    }
+
+// doesn't work - at least not with my serial RTU
+//    uint8_t tab_bytes[64];
+//    int rc = modbus_report_slave_id(mb, tab_bytes);
+//    if (rc > 1)
+//    {
+//	    std::string msg = Name + "Run Status Indicator: %s" + (tab_bytes[1] ? "ON" : "OFF");
+//	    auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
+//	    pLoggers->Log(log_entry);
+//    }
     
     PollScheduler->Clear();
     for(auto pg : pConf->pPointConf->PollGroups)
@@ -144,41 +147,25 @@ void ModbusMasterPort::Disconnect()
     ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
     for(auto IOHandler_pair : Subscribers)
     {
-        // Modbus function code 0x01 (read coil status)
-        for(auto range : pConf->pPointConf->BitIndicies)
-        {
-            for(uint16_t index = range.start; index < range.start + range.count; index++ )
-            {
-                IOHandler_pair.second->Event(opendnp3::BinaryOutputStatus(false,static_cast<uint8_t>(opendnp3::BinaryOutputStatusQuality::COMM_LOST)),index,this->Name);
-            }
-        }
+	    // Modbus function code 0x01 (read coil status)
+	    for(auto range : pConf->pPointConf->BitIndicies)
+		    for(uint16_t index = range.start; index < range.start + range.count; index++ )
+			    IOHandler_pair.second->Event(opendnp3::BinaryQuality::COMM_LOST, index, this->Name);
         
-        // Modbus function code 0x02 (read input status)
-        for(auto range : pConf->pPointConf->BitIndicies)
-        {
-            for(uint16_t index = range.start; index < range.start + range.count; index++ )
-            {
-                IOHandler_pair.second->Event(opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST)),index,this->Name);
-            }
-        }
-        
-        // Modbus function code 0x03 (read holding registers)
-        for(auto range : pConf->pPointConf->RegIndicies)
-        {
-            for(uint16_t index = range.start; index < range.start + range.count; index++ )
-            {
-                IOHandler_pair.second->Event(opendnp3::AnalogOutputStatus(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),index,this->Name);
-            }
-        }
-        
-        // Modbus function code 0x04 (read input registers)
-        for(auto range : pConf->pPointConf->InputRegIndicies)
-        {
-            for(uint16_t index = range.start; index < range.start + range.count; index++ )
-            {
-                IOHandler_pair.second->Event(opendnp3::Analog(0.0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),index,this->Name);
-            }
-        }
+	    // Modbus function code 0x02 (read input status)
+	    for(auto range : pConf->pPointConf->InputBitIndicies)
+		    for(uint16_t index = range.start; index < range.start + range.count; index++ )
+			    IOHandler_pair.second->Event(opendnp3::BinaryQuality::COMM_LOST, index, this->Name);
+
+	    // Modbus function code 0x03 (read holding registers)
+	    for(auto range : pConf->pPointConf->RegIndicies)
+		    for(uint16_t index = range.start; index < range.start + range.count; index++ )
+			    IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST,index,this->Name);
+
+	    // Modbus function code 0x04 (read input registers)
+	    for(auto range : pConf->pPointConf->InputRegIndicies)
+		    for(uint16_t index = range.start; index < range.start + range.count; index++ )
+			    IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST,index,this->Name);
     }
 }
 
@@ -188,26 +175,26 @@ void ModbusMasterPort::HandleError(int errnum, const std::string& source)
     auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
     pLoggers->Log(log_entry);
 
-    // If not a modbus error, tear down the connection
-    if (errnum < MODBUS_ENOBASE)
-    {
-        this->Disconnect();
+    // If not a modbus error, tear down the connection?
+//    if (errnum < MODBUS_ENOBASE)
+//    {
+//        this->Disconnect();
         
-        ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+//        ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
-        // Try and re-connect if a persistent connection
-        if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
-        {
-            //try again later
-            pTCPRetryTimer->expires_from_now(std::chrono::seconds(5));
-            pTCPRetryTimer->async_wait(
-                                       [this](asio::error_code err_code)
-                                       {
-                                           if(err_code != asio::error::operation_aborted)
-                                               this->Connect();
-                                       });
-        }
-    }
+//        // Try and re-connect if a persistent connection
+//        if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
+//        {
+//            //try again later
+//            pTCPRetryTimer->expires_from_now(std::chrono::seconds(5));
+//            pTCPRetryTimer->async_wait(
+//                                       [this](asio::error_code err_code)
+//                                       {
+//                                           if(err_code != asio::error::operation_aborted)
+//                                               this->Connect();
+//                                       });
+//        }
+//    }
 }
 
 CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& source)
@@ -288,9 +275,7 @@ void ModbusMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::L
 }
 
 void ModbusMasterPort::DoPoll(uint32_t pollgroup)
-{
-    uint8_t tab_bits[64];
-    uint16_t tab_reg[64];
+{   
     if(!enabled) return;
     
     auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
@@ -299,8 +284,16 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
     // Modbus function code 0x01 (read coil status)
     for(auto range : pConf->pPointConf->BitIndicies)
     {
-        if (pollgroup && (range.pollgroup != pollgroup)) continue;
-        rc = modbus_read_bits(mb, range.start, range.count, tab_bits);
+	  if (pollgroup && (range.pollgroup != pollgroup))
+		  continue;
+	  if (range.count > modbus_read_buffer_size)
+	  {
+		  if(modbus_read_buffer != nullptr)
+			  free(modbus_read_buffer);
+		  modbus_read_buffer = malloc(range.count);
+		  modbus_read_buffer_size = range.count;
+	  }
+	  rc = modbus_read_bits(mb, range.start, range.count, (uint8_t*)modbus_read_buffer);
         if (rc == -1)
         {
             HandleError(errno, "read bits poll");
@@ -313,7 +306,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
             {
                 for(auto IOHandler_pair : Subscribers)
                 {
-                    IOHandler_pair.second->Event(opendnp3::BinaryOutputStatus(tab_bits[i] != false),index,this->Name);
+			  IOHandler_pair.second->Event(opendnp3::BinaryOutputStatus(((uint8_t*)modbus_read_buffer)[i] != false),index,this->Name);
                 }
                 ++index;
             }
@@ -321,10 +314,18 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
     }
     
     // Modbus function code 0x02 (read input status)
-    for(auto range : pConf->pPointConf->BitIndicies)
+    for(auto range : pConf->pPointConf->InputBitIndicies)
     {
-        if (pollgroup && (range.pollgroup != pollgroup)) continue;
-        rc = modbus_read_input_bits(mb, range.start, range.count, tab_bits);
+	  if (pollgroup && (range.pollgroup != pollgroup))
+		  continue;
+	  if (range.count > modbus_read_buffer_size)
+	  {
+		  if(modbus_read_buffer != nullptr)
+			  free(modbus_read_buffer);
+		  modbus_read_buffer = malloc(range.count);
+		  modbus_read_buffer_size = range.count;
+	  }
+	  rc = modbus_read_input_bits(mb, range.start, range.count, (uint8_t*)modbus_read_buffer);
         if (rc == -1)
         {
             HandleError(errno, "read input bits poll");
@@ -337,7 +338,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
             {
                 for(auto IOHandler_pair : Subscribers)
                 {
-                    IOHandler_pair.second->Event(opendnp3::Binary(tab_bits[i] != false),index,this->Name);
+			  IOHandler_pair.second->Event(opendnp3::Binary(((uint8_t*)modbus_read_buffer)[i] != false),index,this->Name);
                 }
                 ++index;
             }
@@ -347,8 +348,16 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
     // Modbus function code 0x03 (read holding registers)
     for(auto range : pConf->pPointConf->RegIndicies)
     {
-        if (pollgroup && (range.pollgroup != pollgroup)) continue;
-        rc = modbus_read_registers(mb, range.start, range.count, tab_reg);
+	  if (pollgroup && (range.pollgroup != pollgroup))
+		  continue;
+	  if (range.count*2 > modbus_read_buffer_size)
+	  {
+		  if(modbus_read_buffer != nullptr)
+			  free(modbus_read_buffer);
+		  modbus_read_buffer = malloc(range.count*2);
+		  modbus_read_buffer_size = range.count*2;
+	  }
+	  rc = modbus_read_registers(mb, range.start, range.count, (uint16_t*)modbus_read_buffer);
         if (rc == -1)
         {
             HandleError(errno, "read registers poll");
@@ -361,7 +370,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
             {
                 for(auto IOHandler_pair : Subscribers)
                 {
-                    IOHandler_pair.second->Event(opendnp3::AnalogOutputInt16(tab_reg[i]),index,this->Name);
+			  IOHandler_pair.second->Event(opendnp3::AnalogOutputInt16(((uint16_t*)modbus_read_buffer)[i]),index,this->Name);
                 }
                 ++index;
             }
@@ -371,8 +380,16 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
     // Modbus function code 0x04 (read input registers)
     for(auto range : pConf->pPointConf->InputRegIndicies)
     {
-        if (pollgroup && (range.pollgroup != pollgroup)) continue;
-        rc = modbus_read_input_registers(mb, range.start, range.count, tab_reg);
+	  if (pollgroup && (range.pollgroup != pollgroup))
+		  continue;
+	  if (range.count*2 > modbus_read_buffer_size)
+	  {
+		  if(modbus_read_buffer != nullptr)
+			  free(modbus_read_buffer);
+		  modbus_read_buffer = malloc(range.count*2);
+		  modbus_read_buffer_size = range.count*2;
+	  }
+	  rc = modbus_read_input_registers(mb, range.start, range.count, (uint16_t*)modbus_read_buffer);
         if (rc == -1)
         {
             HandleError(errno, "read input registers poll");
@@ -385,7 +402,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
             {
                 for(auto IOHandler_pair : Subscribers)
                 {
-                    IOHandler_pair.second->Event(opendnp3::Analog(tab_reg[i]),index,this->Name);
+			  IOHandler_pair.second->Event(opendnp3::Analog(((uint16_t*)modbus_read_buffer)[i]),index,this->Name);
                 }
                 ++index;
             }
@@ -430,15 +447,12 @@ std::future<opendnp3::CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectSt
 ModbusReadGroup<opendnp3::Binary>* ModbusMasterPort::GetRange(uint16_t index)
 {
     ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-    ModbusReadGroup<opendnp3::Binary>* TargetRange = nullptr;
-    for(auto range : pConf->pPointConf->BitIndicies)
+    for(auto& range : pConf->pPointConf->BitIndicies)
     {
         if (index < range.start) continue;
         if (index > range.start + range.count) continue;
-        TargetRange = &range;
-        break;
+	  return &range;
     }
-    return TargetRange;
 }
 
 template<>

@@ -77,7 +77,9 @@ class ModbusMasterPort: public ModbusPort
 public:
 	ModbusMasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
 		ModbusPort(aName, aConfFilename, aConfOverrides),
-        mb(nullptr)
+	  mb(nullptr),
+	modbus_read_buffer(nullptr),
+	  modbus_read_buffer_size(0)
 	{};
     
     ~ModbusMasterPort();
@@ -112,6 +114,8 @@ private:
     ModbusReadGroup<opendnp3::Binary>* GetRange(uint16_t index);
     
     modbus_t *mb;
+    void* modbus_read_buffer;
+    size_t modbus_read_buffer_size;
     typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
     std::unique_ptr<Timer_t> pTCPRetryTimer;
     std::unique_ptr<ASIOScheduler> PollScheduler;
