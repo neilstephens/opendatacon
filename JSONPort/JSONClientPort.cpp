@@ -169,9 +169,12 @@ void JSONClientPort::ProcessBraced(std::string braced)
 			auto val = JSONRoot;
 			//traverse
 			for(unsigned int n = 0; n < nodes.size(); ++n)
-				if((val = val[nodes[n].asCString()]).isNull()) break;
+				if((val = val[nodes[n].asCString()]).isNull())
+					break;
 			return val;
 		};
+
+		Json::Value timestamp_val = TraversePath(pConf->pPointConf->TimestampPath);
 
 		for(auto& point_pair : pConf->pPointConf->Analogs)
 		{
@@ -180,7 +183,7 @@ void JSONClientPort::ProcessBraced(std::string braced)
 			if(!val.isNull())
 			{
 				if(val.isNumeric())
-					LoadT(opendnp3::Analog(val.asDouble(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE)),point_pair.first);
+					LoadT(opendnp3::Analog(val.asDouble(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
 				else if(val.isString())
 				{
 					double value;
@@ -190,10 +193,10 @@ void JSONClientPort::ProcessBraced(std::string braced)
 					}
 					catch(std::exception&)
 					{
-						LoadT(opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),point_pair.first);
+						LoadT(opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),point_pair.first, timestamp_val);
 						continue;
 					}
-					LoadT(opendnp3::Analog(value,static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE)),point_pair.first);
+					LoadT(opendnp3::Analog(value,static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
 				}
 			}
 		}
@@ -225,7 +228,7 @@ void JSONClientPort::ProcessBraced(std::string braced)
 				else
 					qual = opendnp3::BinaryQuality::COMM_LOST;
 
-				LoadT(opendnp3::Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first);
+				LoadT(opendnp3::Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first,timestamp_val);
 			}
 		}
 		//TODO: implement controls
@@ -238,11 +241,16 @@ void JSONClientPort::ProcessBraced(std::string braced)
 	}
 }
 template<typename T>
-inline void JSONClientPort::LoadT(T meas, uint16_t index)
+inline void JSONClientPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 {
 	std::string msg = "Measurement Event '"+std::string(typeid(meas).name())+"'";
 	auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::DBG,"", msg.c_str(), -1);
 	pLoggers->Log(log_entry);
+
+	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
+	{
+		meas = T(meas.value, meas.quality, timestamp_val.asUInt64());
+	}
 
 	for(auto IOHandler_pair : Subscribers)
 		IOHandler_pair.second->Event(meas, index, this->Name);
