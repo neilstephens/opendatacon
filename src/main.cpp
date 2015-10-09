@@ -80,8 +80,8 @@ int main(int argc, char* argv[])
 			{
 				const size_t strmax = 80;
 				char buf[strmax];
-				strerror_r(errno, buf, strmax);
-				std::string msg = "Unable to change working directory to '"+PathName+"' : "+buf;
+				char* str = strerror_r(errno, buf, strmax);
+				std::string msg = "Unable to change working directory to '"+PathName+"' : "+str;
 				throw std::runtime_error(msg);
 			}
 		}
