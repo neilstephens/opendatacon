@@ -42,6 +42,7 @@ public:
 		ConfigParser(aConfFilename, aConfOverrides),
 		pConf(nullptr)
 	{};
+	virtual ~DataPort(){};
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
