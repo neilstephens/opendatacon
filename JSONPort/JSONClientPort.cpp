@@ -215,7 +215,7 @@ void JSONClientPort::ProcessBraced(std::string braced)
 						if (!true_val && (val != point_pair.second["FalseVal"]))
 							qual = opendnp3::BinaryQuality::COMM_LOST;
 				}
-				else if(!point_pair.second["FlaseVal"].isNull())
+				else if(!point_pair.second["FalseVal"].isNull())
 					true_val = !(val == point_pair.second["FalseVal"]);
 				else if(val.isNumeric() || val.isBool())
 					true_val = val.asBool();
