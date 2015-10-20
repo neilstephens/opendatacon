@@ -30,6 +30,7 @@ std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::TCPChannels;
 
 DNP3Port::DNP3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
+	pChannel(nullptr),
 	status(opendnp3::LinkStatus::TIMEOUT)
 {
 	//the creation of a new DNP3PortConf will get the point details
