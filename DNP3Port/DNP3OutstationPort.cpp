@@ -206,7 +206,7 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 	Json::Value analogValues;
 	Json::Value binaryValues;
 	if (pOutstation == nullptr)
-		return IUIResponder::RESULT_BADPORT;
+		return IUIResponder::GenerateResult("Bad port");
 
 	auto configView = pOutstation->GetConfigView();
 

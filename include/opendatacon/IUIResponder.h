@@ -51,11 +51,6 @@ public:
 	virtual ~IUIResponder(){};
 	static const Json::Value GenerateResult(const std::string& message);
 
-	static const Json::Value RESULT_SUCCESS;
-	static const Json::Value RESULT_BADPARAMETER;
-	static const Json::Value RESULT_BADCOMMAND;
-	static const Json::Value RESULT_BADPORT;
-
 	virtual Json::Value GetCommandList();
 	virtual Json::Value ExecuteCommand(const std::string& arCommandName, const ParamCollection& params) const;
 	void AddCommand(const std::string& arCommandName, UIFunction arCommand, const std::string& desc = "", const bool hide = false);

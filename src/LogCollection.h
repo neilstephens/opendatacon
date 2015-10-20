@@ -78,9 +78,9 @@ public:
 		                                   return IUIResponder::GenerateResult("Please supply a regex filter");
 						     }
 		                             target->AddIngoreAlways(mregex);
-		                             return IUIResponder::RESULT_SUCCESS;
+									 return IUIResponder::GenerateResult("Success");
 					     }
-		                       return IUIResponder::RESULT_BADPARAMETER;
+							   return IUIResponder::GenerateResult("Bad parameter");
 				     }, "Enter regex to silence matching messages from the logger.");
 		this->AddCommand("unignore", [this](const ParamCollection &params) {
 		                       if(auto target = GetTarget(params))
@@ -88,16 +88,16 @@ public:
 		                             std::stringstream filter;
 		                             filter << params.at("filter");
 		                             cmd_unignore_message(filter,*target);
-		                             return IUIResponder::RESULT_SUCCESS;
+									 return IUIResponder::GenerateResult("Success");
 					     }
-		                       return IUIResponder::RESULT_BADPARAMETER;
+							   return IUIResponder::GenerateResult("Bad parameter");
 				     }, "Enter regex to remove from the ignore list.");
 		this->AddCommand("ShowFilters", [this](const ParamCollection &params) {
 		                       if(auto target = GetTarget(params))
 		                       {
 		                             return target->ShowIgnored();
 					     }
-		                       return IUIResponder::RESULT_BADPARAMETER;
+							   return IUIResponder::GenerateResult("Bad parameter");
 				     }, "Shows all message ignore regexes and how many messages they've matched.");
 	}
 	virtual ~LogCollection(){};

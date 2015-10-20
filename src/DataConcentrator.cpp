@@ -249,10 +249,12 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 }
 void DataConcentrator::BuildOrRebuild()
 {
+	std::cout << "Ports" << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
 	}
+	std::cout << "Connectors" << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
