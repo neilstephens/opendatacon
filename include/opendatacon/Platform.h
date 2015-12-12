@@ -104,7 +104,11 @@ inline std::string LastSystemError()
 
 /// Implement strerror_r error to string equivalent for windows
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-#define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
+inline char* strerror_r(int therr, char* buf, size_t len)
+{
+	strerror_s(buf, len, therr);
+	return buf;
+}
 #endif
 
 
