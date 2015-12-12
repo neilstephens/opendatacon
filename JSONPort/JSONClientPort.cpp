@@ -31,7 +31,7 @@
 
 JSONClientPort::JSONClientPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	JSONPort(aName, aConfFilename, aConfOverrides)
-{};
+{}
 
 void JSONClientPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {}
@@ -55,7 +55,7 @@ void JSONClientPort::Enable()
 		pLoggers->Log(log_entry);
 		return;
 	}
-};
+}
 void JSONClientPort::ConnectCompletionHandler(asio::error_code err_code)
 {
 	if(err_code)
@@ -249,7 +249,7 @@ inline void JSONClientPort::LoadT(T meas, uint16_t index, Json::Value timestamp_
 
 	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
 	{
-		meas = T(meas.value, meas.quality, timestamp_val.asUInt64());
+		meas = T(meas.value, meas.quality, opendnp3::DNPTime(timestamp_val.asUInt64()));
 	}
 
 	for(auto IOHandler_pair : Subscribers)
@@ -263,4 +263,4 @@ void JSONClientPort::Disable()
 	//shutdown and close socket by using destructor
 	pSock.reset(nullptr);
 	enabled = false;
-};
+}

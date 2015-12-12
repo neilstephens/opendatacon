@@ -21,16 +21,16 @@ project(ODC)
 cmake_minimum_required(VERSION 2.8)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 aux_source_directory(. ODC_SRC)
+set(ODC_SRC "${ODC_SRC}" "ODC_x64.def")
 
 include_directories(
 	"../JSON"
 	"../include"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"${ASIO_HOME}/asio/include/"
+	"${DNP3_HOME}/cpp/libs/include/"
+	"${ASIO_HOME}/include/"
 )
 
+link_directories("${DNP3_HOME}/${MY_BUILD_CONFIG}")
+link_libraries(JSON asiopal)
 add_library(${PROJECT_NAME} SHARED ${ODC_SRC})
 

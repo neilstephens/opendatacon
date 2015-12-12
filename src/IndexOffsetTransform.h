@@ -64,7 +64,7 @@ public:
 			return true;
 		}
 		return false;
-	};
+	}
 
 	int offset;
 };

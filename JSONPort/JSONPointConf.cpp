@@ -33,7 +33,7 @@ JSONPointConf::JSONPointConf(std::string FileName):
 	ConfigParser(FileName)
 {
 	ProcessFile();
-};
+}
 
 inline bool check_index(const Json::Value& Point)
 {
@@ -88,4 +88,4 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 	return;
-};
+}

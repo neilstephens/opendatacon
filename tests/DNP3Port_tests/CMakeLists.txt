@@ -27,14 +27,11 @@ include_directories(
 	"../../include"
 	"../../JSON"
 	"../../DNP3Port"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"${ASIO_HOME}/asio/include/"
+	"${DNP3_HOME}/cpp/libs/include"
+	"${ASIO_HOME}/include"
 )
 
-link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}"
-"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/.libs")
+link_directories("${PROJECT_SOURCE_DIR}/../../ODC/${MY_BUILD_CONFIG}"
+"${DNP3_HOME}/${MY_BUILD_CONFIG}")
 link_libraries(ODC JSON DNP3Port pthread)
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})

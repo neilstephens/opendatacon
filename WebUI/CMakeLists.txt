@@ -20,15 +20,17 @@
 project(WebUI)
 cmake_minimum_required(VERSION 2.8)
 aux_source_directory(. WebUI_SRC)
+set(WebUI_SRC "${WebUI_SRC}" "WebUI_x64.def")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
 	"../include"
 	"../JSON"
-	"${MICROHTTPD_HOME}/microhttpd${MY_CONFIG_POSTFIX}/include"
+	"${MICROHTTPD_HOME}/include"
 )
 
-link_directories("${MICROHTTPD_HOME}/microhttpd${MY_CONFIG_POSTFIX}/lib")
+link_directories("${MICROHTTPD_HOME}/${MY_BUILD_CONFIG}/lib"
+"${DNP3_HOME}/${MY_BUILD_CONFIG}")
 link_libraries(ODC microhttpd)
 
 add_library(${PROJECT_NAME} SHARED ${WebUI_SRC})

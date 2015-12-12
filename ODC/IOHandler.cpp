@@ -49,7 +49,7 @@ void IOHandler::Subscribe(IOHandler* pIOHandler, std::string aName)
 
 void IOHandler::AddLogSubscriber(openpal::ILogHandler* logger)
 {
-	pLoggers->Subscribe(logger);
+	pLoggers->Subscribe(*logger);
 }
 void IOHandler::SetLogLevel(openpal::LogFilters LOG_LEVEL)
 {

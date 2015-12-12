@@ -72,7 +72,7 @@ protected:
 	asiodnp3::IChannel* pChannel;
 	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
 	opendnp3::LinkStatus status;
-
+	bool link_dead;
 };
 
 #endif /* DNP3PORT_H_ */

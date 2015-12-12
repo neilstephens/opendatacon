@@ -58,9 +58,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		std::thread([&](){IOS.run();}).detach();
 
 	AdvConsoleLog->AddIngoreAlways(".*"); //silence all console messages by default
-	DNP3Mgr.AddLogSubscriber(AdvConsoleLog.get());
+	DNP3Mgr.AddLogSubscriber(*AdvConsoleLog.get());
 	AdvancedLoggers["Console Log"] = AdvConsoleLog;
-	DNP3Mgr.AddLogSubscriber(AdvFileLog.get());
+	DNP3Mgr.AddLogSubscriber(*AdvFileLog.get());
 	AdvancedLoggers["File Log"] = AdvFileLog;
 
 

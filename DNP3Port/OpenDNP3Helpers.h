@@ -28,7 +28,8 @@
 #define OPENDNP3HELPERS_H_
 #include <string>
 
-#include <opendnp3/outstation/Database.h>
+#include <opendnp3/app/MeasurementTypes.h>
+#include <openpal/container/ArrayView.h>
 
 /*
 template <typename T>

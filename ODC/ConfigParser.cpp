@@ -33,7 +33,7 @@ std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
 ConfigParser::ConfigParser(const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	ConfFilename(aConfFilename),
 	ConfOverrides(aConfOverrides)
-{};
+{}
 
 void ConfigParser::ProcessInherits(const std::string& FileName)
 {
