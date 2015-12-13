@@ -161,8 +161,8 @@ void DNP3MasterPort::OnKeepAliveFailure()
 
 			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
 			pIOS->post([&]()
-				     {
-					     DisableStack();
+			           {
+			                 DisableStack();
 				     });
 		}
 	}
@@ -189,7 +189,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	if(!TCPChannels.count(IPPort))
 	{
 		TCPChannels[IPPort] = DNP3Mgr.AddTCPClient(log_id.c_str(), LOG_LEVEL.GetBitfield(),
-									 opendnp3::ChannelRetry::Default(),
+		                                           opendnp3::ChannelRetry::Default(),
 		                                           pConf->mAddrConf.IP,
 		                                           "0.0.0.0",
 		                                           pConf->mAddrConf.Port);
@@ -268,12 +268,12 @@ template<typename T>
 inline void DNP3MasterPort::LoadT(const ICollection<Indexed<T> >& meas)
 {
 	meas.ForeachItem([&](const Indexed<T>&pair)
-	             {
-	                   for(auto IOHandler_pair: Subscribers)
-	                   {
-	                         IOHandler_pair.second->Event(pair.value,pair.index,this->Name);
-				 }
-			 });
+	                 {
+	                       for(auto IOHandler_pair: Subscribers)
+	                       {
+	                             IOHandler_pair.second->Event(pair.value,pair.index,this->Name);
+				     }
+			     });
 }
 
 //Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED

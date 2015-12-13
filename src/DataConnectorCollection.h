@@ -40,15 +40,15 @@ public:
 	{
 		this->AddCommand("Configuration", [this](const ParamCollection &params) {
 		                       if (auto target = GetTarget(params)) return target->GetConfiguration();
-							   return IUIResponder::GenerateResult("Bad parameter");
+		                       return IUIResponder::GenerateResult("Bad parameter");
 				     });
 		this->AddCommand("CurrentState", [this](const ParamCollection &params) {
 		                       if (auto target = GetTarget(params)) return target->GetCurrentState();
-							   return IUIResponder::GenerateResult("Bad parameter");
+		                       return IUIResponder::GenerateResult("Bad parameter");
 				     });
 		this->AddCommand("Statistics", [this](const ParamCollection &params) {
 		                       if (auto target = GetTarget(params)) return target->GetStatistics();
-							   return IUIResponder::GenerateResult("Bad parameter");
+		                       return IUIResponder::GenerateResult("Bad parameter");
 				     });
 		this->AddCommand("Status", [this](const ParamCollection &params)->const Json::Value {
 		                       if (auto target = GetTarget(params))
@@ -57,7 +57,7 @@ public:
 		                             result["Result"] = target->enabled;
 		                             return result;
 					     }
-							   return IUIResponder::GenerateResult("Bad parameter");
+		                       return IUIResponder::GenerateResult("Bad parameter");
 				     });
 		this->AddCommand("Enable", [this](const ParamCollection &params)->const Json::Value {
 		                       if (auto target = GetTarget(params))
@@ -65,24 +65,24 @@ public:
 		                             target->Enable();
 		                             return IUIResponder::GenerateResult("Success");
 					     }
-							   return IUIResponder::GenerateResult("Bad parameter");
+		                       return IUIResponder::GenerateResult("Bad parameter");
 				     });
 		this->AddCommand("Disable", [this](const ParamCollection &params)->const Json::Value {
 		                       if (auto target = GetTarget(params))
 		                       {
 		                             target->Disable();
-									 return IUIResponder::GenerateResult("Success");
+		                             return IUIResponder::GenerateResult("Success");
 					     }
-							   return IUIResponder::GenerateResult("Bad parameter");
+		                       return IUIResponder::GenerateResult("Bad parameter");
 				     });
 		this->AddCommand("Restart", [this](const ParamCollection &params)->const Json::Value {
 		                       if (auto target = GetTarget(params))
 		                       {
 		                             target->Disable();
 		                             target->Enable();
-									 return IUIResponder::GenerateResult("Success");
+		                             return IUIResponder::GenerateResult("Success");
 					     }
-							   return IUIResponder::GenerateResult("Bad parameter");
+		                       return IUIResponder::GenerateResult("Bad parameter");
 				     });
 	}
 	virtual ~DataConnectorCollection(){};

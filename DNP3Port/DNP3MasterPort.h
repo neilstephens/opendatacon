@@ -67,7 +67,7 @@ protected:
 public:
 	//virtual void Process(const HeaderInfo& info, const ICollection<Indexed<Binary>>& values) = 0;
 
-	void Process(const HeaderInfo& info, const ICollection<Indexed<Binary>>& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<Binary> >& meas);
 	void Process(const HeaderInfo& info, const ICollection<Indexed<DoubleBitBinary> >& meas);
 	void Process(const HeaderInfo& info, const ICollection<Indexed<Analog> >& meas);
 	void Process(const HeaderInfo& info, const ICollection<Indexed<Counter> >& meas);
@@ -78,7 +78,7 @@ public:
 	void Process(const HeaderInfo& info, const ICollection<Indexed<TimeAndInterval> >& meas);
 	void Process(const HeaderInfo& info, const ICollection<Indexed<BinaryCommandEvent> >& meas);
 	void Process(const HeaderInfo& info, const ICollection<Indexed<AnalogCommandEvent> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<SecurityStat>>& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<SecurityStat> >& meas);
 	template<typename T> void LoadT(const ICollection<Indexed<T> >& meas);
 
 	//Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED

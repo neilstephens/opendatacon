@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * ModbusOutstationPort.cpp
  *
@@ -49,66 +49,66 @@ ModbusOutstationPort::~ModbusOutstationPort()
 
 void ModbusOutstationPort::Enable()
 {
-    if(enabled) return;
-    enabled = true;
-    
-    ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-    
-    // Only change stack state if it is a persistent server
-    if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
-    {
-        this->Connect();
-    }
-    
+	if(enabled) return;
+	enabled = true;
+
+	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+
+	// Only change stack state if it is a persistent server
+	if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
+	{
+		this->Connect();
+	}
+
 }
 
 void ModbusOutstationPort::Connect()
 {
-    if(!enabled) return;
-    if (stack_enabled) return;
-    
-    stack_enabled = true;
-    
-    if (mb == NULL)
-    {
-        std::string msg = Name+": Connect error: 'Modbus stack failed'";
-        auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-        return;
-    }
-    
-    int s = modbus_tcp_pi_listen(mb, 1);
-    if (s == -1)
-    {
-        std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
-        auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-        return;
-    }
-    
-    int r = modbus_tcp_pi_accept(mb, &s);
-    if (r == -1)
-    {
-        std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
-        auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-        pLoggers->Log(log_entry);
-        return;
-    }
+	if(!enabled) return;
+	if (stack_enabled) return;
+
+	stack_enabled = true;
+
+	if (mb == NULL)
+	{
+		std::string msg = Name+": Connect error: 'Modbus stack failed'";
+		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		return;
+	}
+
+	int s = modbus_tcp_pi_listen(mb, 1);
+	if (s == -1)
+	{
+		std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
+		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		return;
+	}
+
+	int r = modbus_tcp_pi_accept(mb, &s);
+	if (r == -1)
+	{
+		std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
+		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		return;
+	}
 }
 
 void ModbusOutstationPort::Disable()
 {
-    //cancel the retry timers (otherwise it would tie up the io_service on shutdown)
-    Disconnect();
-    enabled = false;
+	//cancel the retry timers (otherwise it would tie up the io_service on shutdown)
+	Disconnect();
+	enabled = false;
 }
 
 void ModbusOutstationPort::Disconnect()
 {
-    if (!stack_enabled) return;
-    stack_enabled = false;
-    
-    if(mb != nullptr) modbus_close(mb);
+	if (!stack_enabled) return;
+	stack_enabled = false;
+
+	if(mb != nullptr) modbus_close(mb);
 }
 
 void ModbusOutstationPort::StateListener(opendnp3::ChannelState state)
@@ -185,9 +185,9 @@ void ModbusOutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpa
 
 	//Allocate memory for bits, input bits, registers, and input registers */
 	mb_mapping = modbus_mapping_new(pConf->pPointConf->BitIndicies.Total(),
-						  pConf->pPointConf->InputBitIndicies.Total(),
-						  pConf->pPointConf->RegIndicies.Total(),
-						  pConf->pPointConf->InputRegIndicies.Total());
+	                                pConf->pPointConf->InputBitIndicies.Total(),
+	                                pConf->pPointConf->RegIndicies.Total(),
+	                                pConf->pPointConf->InputRegIndicies.Total());
 	if (mb_mapping == NULL)
 	{
 		std::string msg = Name + ": Failed to allocate the modbus register mapping: " + std::string(modbus_strerror(errno));
@@ -209,11 +209,11 @@ inline opendnp3::CommandStatus ModbusOutstationPort::SupportsT(T& arCommand, uin
 	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 	if(std::is_same<T,opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
 	{
-        /*
-		for(auto index : pConf->pPointConf->ControlIndicies)
-			if(index == aIndex)
-				return opendnp3::CommandStatus::SUCCESS;
-         */
+		/*
+		        for(auto index : pConf->pPointConf->ControlIndicies)
+		                if(index == aIndex)
+		                        return opendnp3::CommandStatus::SUCCESS;
+		 */
 	}
 	return opendnp3::CommandStatus::NOT_SUPPORTED;
 }
@@ -224,7 +224,7 @@ inline opendnp3::CommandStatus ModbusOutstationPort::PerformT(T& arCommand, uint
 		return opendnp3::CommandStatus::UNDEFINED;
 
 	//container to store our async futures
-	std::vector<std::future<opendnp3::CommandStatus>> future_results;
+	std::vector<std::future<opendnp3::CommandStatus> > future_results;
 
 	for(auto IOHandler_pair : Subscribers)
 	{

@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * main.cpp
  *
@@ -29,10 +29,10 @@
 
 extern "C" ModbusMasterPort* new_ModbusMasterPort(std::string Name, std::string File, const Json::Value Overrides)
 {
-    return new ModbusMasterPort(Name,File,Overrides);
+	return new ModbusMasterPort(Name,File,Overrides);
 }
 
 extern "C" ModbusOutstationPort* new_ModbusOutstationPort(std::string Name, std::string File, const Json::Value Overrides)
 {
-    return new ModbusOutstationPort(Name,File,Overrides);
+	return new ModbusOutstationPort(Name,File,Overrides);
 }

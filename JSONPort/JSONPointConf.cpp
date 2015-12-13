@@ -46,10 +46,10 @@ inline bool check_index(const Json::Value& Point)
 }
 void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 {
-	if(!JSONRoot.isObject()) return;
-	    return;
+	if(!JSONRoot.isObject())
+		return;
 
-    this->TimestampPath = JSONRoot["TimestampPath"];
+	this->TimestampPath = JSONRoot["TimestampPath"];
 
 	const Json::Value PointConfs = JSONRoot["JSONPointConf"];
 	for (Json::ArrayIndex n = 0; n < PointConfs.size(); ++n) // Iterates over the sequence of point groups (grouped by type).
