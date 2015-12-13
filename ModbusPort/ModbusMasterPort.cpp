@@ -411,11 +411,11 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 }
 
 //Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); };
+std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
 std::future<opendnp3::CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
@@ -449,10 +449,10 @@ ModbusReadGroup<opendnp3::Binary>* ModbusMasterPort::GetRange(uint16_t index)
     ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
     for(auto& range : pConf->pPointConf->BitIndicies)
     {
-        if (index < range.start) continue;
-        if (index > range.start + range.count) continue;
-	  return &range;
+	  if ((index >= range.start) && (index < range.start + range.count))
+		return &range;
     }
+    return nullptr;
 }
 
 template<>

@@ -75,9 +75,8 @@ public:
     uint32_t start;
     uint32_t count;
     uint32_t pollgroup;
-    uint32_t index_offset;
     T startval;
-
+    uint32_t index_offset;
 };
 
 template<class T>

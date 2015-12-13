@@ -36,7 +36,7 @@ ModbusPort::ModbusPort(std::string aName, std::string aConfFilename, const Json:
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
-};
+}
 
 void ModbusPort::ProcessElements(const Json::Value& JSONRoot)
 {
@@ -80,5 +80,5 @@ void ModbusPort::ProcessElements(const Json::Value& JSONRoot)
         else //if (JSONRoot["ServerType"].asString()=="MANUAL")
             static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::MANUAL;
     }
-};
+}
 

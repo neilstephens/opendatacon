@@ -36,7 +36,7 @@
 
 ModbusOutstationPort::ModbusOutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	ModbusPort(aName, aConfFilename, aConfOverrides)
-{};
+{}
 
 ModbusOutstationPort::~ModbusOutstationPort()
 {
@@ -247,13 +247,13 @@ inline opendnp3::CommandStatus ModbusOutstationPort::PerformT(T& arCommand, uint
 	return opendnp3::CommandStatus::SUCCESS;
 }
 
-std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
+std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> ModbusOutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 
 template<typename T>
 int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
