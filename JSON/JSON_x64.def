@@ -71,4 +71,5 @@ EXPORTS
 	?isArray@Value@Json@@QEBA_NXZ
 	?isInt@Value@Json@@QEBA_NXZ
 	?asInt@Value@Json@@QEBAHXZ
-
+	?asUInt64@Value@Json@@QEBA_KXZ
+	?isUInt64@Value@Json@@QEBA_NXZ
