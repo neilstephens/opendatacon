@@ -29,8 +29,6 @@
 
 #include <queue>
 #include <opendnp3/master/ISOEHandler.h>
-#include <opendnp3/master/CommandResponse.h>
-#include <opendnp3/app/IterableBuffer.h>
 
 #include <modbus/modbus.h>
 #include "ModbusPort.h"

@@ -25,15 +25,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 include_directories(
 	"../include"
 	"../JSON"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"${ASIO_HOME}/asio/include/"
-	"${MODBUS_HOME}/modbus${MY_CONFIG_POSTFIX}/include"
+	"${DNP3_HOME}/cpp/libs/include/"
+	"${ASIO_HOME}/include/"
+	"${MODBUS_HOME}/include"
 )
 
-link_directories("${MODBUS_HOME}/modbus${MY_CONFIG_POSTFIX}/lib")
+link_directories("${MODBUS_HOME}/${MY_BUILD_CONFIG}/lib"
+"${DNP3_HOME}/${MY_BUILD_CONFIG}")
 link_libraries(ODC modbus)
 
 add_library(${PROJECT_NAME} SHARED ${ModbusPort_SRC})

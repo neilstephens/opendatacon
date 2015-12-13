@@ -28,12 +28,11 @@
 #define ModbusSERVERPORT_H_
 
 #include <unordered_map>
-#include <opendnp3/outstation/ICommandHandler.h>
 
 #include <modbus/modbus.h>
 #include "ModbusPort.h"
 
-class ModbusOutstationPort: public ModbusPort, public opendnp3::ICommandHandler
+class ModbusOutstationPort: public ModbusPort
 {
 public:
 	ModbusOutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
@@ -42,28 +41,6 @@ public:
 	void Enable();
 	void Disable();
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
-
-	opendnp3::CommandStatus Select(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){ return SupportsT(arCommand, aIndex); };
-	opendnp3::CommandStatus Operate(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
-	opendnp3::CommandStatus Select(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
-	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
-	opendnp3::CommandStatus Select(const opendnp3::AnalogOutputInt32& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
-	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputInt32& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
-	opendnp3::CommandStatus Select(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
-	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
-	opendnp3::CommandStatus Select(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
-	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
-
-	opendnp3::CommandStatus Supports(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
-	opendnp3::CommandStatus Perform(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
-	opendnp3::CommandStatus Supports(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
-	opendnp3::CommandStatus Perform(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
-	opendnp3::CommandStatus Supports(const opendnp3::AnalogOutputInt32& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
-	opendnp3::CommandStatus Perform(const opendnp3::AnalogOutputInt32& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
-	opendnp3::CommandStatus Supports(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
-	opendnp3::CommandStatus Perform(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
-	opendnp3::CommandStatus Supports(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex){return SupportsT(arCommand,aIndex);};
-	opendnp3::CommandStatus Perform(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex){return PerformT(arCommand,aIndex);};
 
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);
@@ -78,8 +55,8 @@ public:
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
 
     
-    void Connect();
-    void Disconnect();
+	void Connect();
+	void Disconnect();
 
 private:
 	void StateListener(opendnp3::ChannelState state);

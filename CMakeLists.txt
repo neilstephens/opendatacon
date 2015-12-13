@@ -20,13 +20,16 @@
 project(opendatacon)
 cmake_minimum_required(VERSION 2.8)
 aux_source_directory(src SRC_LIST)
+file(GLOB INCL_LIST include/opendatacon/*.h)
+set(SRC_LIST "${SRC_LIST}" "${INCL_LIST}")
 
 # various optional libraries and projects
 option(FULL "Build all optional projects (DNP3Port, JSONPort, Tests, WebUI)" ON)
 option(TEST "Build tests" OFF)
 option(WEBUI "Build the http(s) web user interface" OFF)
 option(DNP3PORT "Build DNP3 Port" OFF)
-option(JSONPORT "Build DNP3 Port" OFF)
+option(JSONPORT "Build JSON Port" OFF)
+option(MODBUSPORT "Build Modbus Port" OFF)
 
 # other options off-by-default that you can enable
 option(WERROR "Set all warnings to errors" OFF)
@@ -37,6 +40,7 @@ if(FULL)
 	set(WEBUI ON)
 	set(DNP3PORT ON)
 	set(JSONPORT ON)
+	set(MODBUSPORT ON)
 endif()
 
 if(WIN32)

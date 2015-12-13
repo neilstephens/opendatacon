@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.0.1, 2015-06-01T13:16:11. -->
+<!-- Written by QtCreator 3.0.1, 2015-12-13T11:28:39. -->
 <qtcreator>
  <data>
   <variable>ProjectExplorer.Project.ActiveTarget</variable>
@@ -54,12 +54,12 @@
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">ubuntu</value>
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ubuntu</value>
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{b9bf33e1-9854-4255-8270-f0c286ee98b1}</value>
-   <value type="int" key="ProjectExplorer.Target.ActiveBuildConfiguration">2</value>
+   <value type="int" key="ProjectExplorer.Target.ActiveBuildConfiguration">1</value>
    <value type="int" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
    <value type="int" key="ProjectExplorer.Target.ActiveRunConfiguration">2</value>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.0">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Release -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Release -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON -DMODBUSPORT=ON '-DMODBUS_HOME=~/qtc_projects/modbus' '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Release</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -102,7 +102,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.1">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd-rpi' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON -DMODBUSPORT=ON '-DMODBUS_HOME=~/qtc_projects/modbus-rpi' '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd-rpi' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Release-rpi</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -145,7 +145,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.2">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../RHEL65-toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd-RHEL' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../RHEL65-toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON -DMODBUSPORT=OFF '-DMODBUS_HOME=~/qtc_projects/modbus-RHEL' '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd-RHEL' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Release-RHEL65</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -188,7 +188,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.3">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Debug -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Debug -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON -DMODBUSPORT=ON '-DMODBUS_HOME=~/qtc_projects/modbus' '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Debug</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -231,7 +231,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.4">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd-rpi' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON -DMODBUSPORT=ON '-DMODBUS_HOME=~/qtc_projects/modbus-rpi -DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd-rpi' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Debug-rpi</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
@@ -274,7 +274,7 @@
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.5">
     <value type="bool" key="CMakeProjectManager.CMakeBuildConfiguration.UseNinja">false</value>
-    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../RHEL65-toolchain.cmake -DCMAKE_BUILD_TYPE=Debug -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd-RHEL' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
+    <value type="QString" key="CMakeProjectManager.CMakeBuildConfiguration.UserArguments">-DCMAKE_TOOLCHAIN_FILE=../RHEL65-toolchain.cmake -DCMAKE_BUILD_TYPE=Debug -DFULL=OFF -DDNP3PORT=ON -DJSONPORT=ON -DWEBUI=ON -DMODBUSPORT=OFF '-DMODBUS_HOME=~/qtc_projects/modbus-RHEL' '-DDNP3_HOME=~/qtc_projects/dnp3-cmake' '-DASIO_HOME=~/qtc_projects/asio' '-DMICROHTTPD_HOME=~/qtc_projects/microhttpd-RHEL' '-DTCLAP_HOME=~/qtc_projects/tclap'</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/knarl/qtc_projects/opendatacon/Debug-RHEL65</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
