@@ -31,6 +31,6 @@ include_directories(
 )
 
 link_directories("${DNP3_HOME}/${MY_BUILD_CONFIG}")
-link_libraries(JSON asiopal)
+link_libraries(JSON)
 add_library(${PROJECT_NAME} SHARED ${ODC_SRC})
 
