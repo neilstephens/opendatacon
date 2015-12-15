@@ -120,7 +120,7 @@ if(MODBUSPORT)
 	add_subdirectory(ModbusPort)
 endif()
 if(SIMPORT)
-	add_subdirectory(tests)
+	add_subdirectory(SimPort)
 endif()	
 
 # skip the full RPATH for the build tree
