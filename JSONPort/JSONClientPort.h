@@ -47,7 +47,7 @@ private:
 	void ConnectCompletionHandler(asio::error_code err_code);
 	void ReadCompletionHandler(asio::error_code err_code);
 	void ProcessBraced(std::string braced);
-	template<typename T> void LoadT(T meas, uint16_t index);
+	template<typename T> void LoadT(T meas, uint16_t index, Json::Value timestamp_val);
 	void Read();
 };
 

@@ -1,0 +1,2154 @@
+// !$*UTF8*$!
+{
+       archiveVersion = 1;
+       classes = {
+       };
+       objectVersion = 46;
+       objects = {
+
+/* Begin PBXAggregateTarget section */
+              6001F2EF14F84EB9A0DC9A02 /* ALL_BUILD */ = {
+                     isa = PBXAggregateTarget;
+                     buildConfigurationList = 2229D93CA8B644038B1FF496 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */;
+                     buildPhases = (
+                            F3678AD52E2448EEB0ACC9E0 /* CMake Rules */,
+                     );
+                     dependencies = (
+                            6C4DB6712158487BA4A9925A /* PBXTargetDependency */,
+                            F412B8A127A74E9BA588382E /* PBXTargetDependency */,
+                            1E143D59CECE47A4AF69652F /* PBXTargetDependency */,
+                            C7F3A67BB38F4704BBED0864 /* PBXTargetDependency */,
+                            6076261EF76E468892724311 /* PBXTargetDependency */,
+                            945D55B95E9A44A3A4EE17E9 /* PBXTargetDependency */,
+                            04DD145786CB408CB6440362 /* PBXTargetDependency */,
+                     );
+                     name = ALL_BUILD;
+                     productName = ALL_BUILD;
+              };
+              4116574DBEF44BB785802974 /* ZERO_CHECK */ = {
+                     isa = PBXAggregateTarget;
+                     buildConfigurationList = 06286512BD2D4F5E90F709D8 /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */;
+                     buildPhases = (
+                            329B19069D4E462D878E9FB9 /* CMake Rules */,
+                     );
+                     dependencies = (
+                     );
+                     name = ZERO_CHECK;
+                     productName = ZERO_CHECK;
+              };
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+4E100CEE44EB42B6B5F2A50B /* /Users/admin/source/opendatacon/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */; settings = { COMPILER_FLAGS = ""; }; };
+2FA4D173F78B4EBE9C3BBDCB /* /Users/admin/source/opendatacon/DNP3Port/CommandCallbackPromise.h */ = {isa = PBXBuildFile; fileRef = E6EF2CDE147046E0B83BAFD1 /* /Users/admin/source/opendatacon/DNP3Port/CommandCallbackPromise.h */; settings = { COMPILER_FLAGS = ""; }; };
+1C2C9E70F69C4219BADA89DB /* /Users/admin/source/opendatacon/DNP3Port/CommandCorrespondant.cpp */ = {isa = PBXBuildFile; fileRef = 13F26D3BDFF04486A0DE09CE /* /Users/admin/source/opendatacon/DNP3Port/CommandCorrespondant.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+699D3AC96F0C4F21B72CC73F /* /Users/admin/source/opendatacon/DNP3Port/CommandCorrespondant.h */ = {isa = PBXBuildFile; fileRef = 1F02C48084214CCF84A1E193 /* /Users/admin/source/opendatacon/DNP3Port/CommandCorrespondant.h */; settings = { COMPILER_FLAGS = ""; }; };
+EFB738728BB24305A823FD37 /* /Users/admin/source/opendatacon/DNP3Port/DNP3MasterPort.cpp */ = {isa = PBXBuildFile; fileRef = 2F21B3455D64491AAC727A18 /* /Users/admin/source/opendatacon/DNP3Port/DNP3MasterPort.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+604848E9A3954B04AF1C49E9 /* /Users/admin/source/opendatacon/DNP3Port/DNP3MasterPort.h */ = {isa = PBXBuildFile; fileRef = 81283DF918F64914BD674891 /* /Users/admin/source/opendatacon/DNP3Port/DNP3MasterPort.h */; settings = { COMPILER_FLAGS = ""; }; };
+9AE312CBD64B482B927F2306 /* /Users/admin/source/opendatacon/DNP3Port/DNP3OutstationPort.cpp */ = {isa = PBXBuildFile; fileRef = 5DA61FEC0FDE4AAA8C12B904 /* /Users/admin/source/opendatacon/DNP3Port/DNP3OutstationPort.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+5F1D8FEB2A5B401A96386426 /* /Users/admin/source/opendatacon/DNP3Port/DNP3OutstationPort.h */ = {isa = PBXBuildFile; fileRef = 1E17F90B97E842078F0A3283 /* /Users/admin/source/opendatacon/DNP3Port/DNP3OutstationPort.h */; settings = { COMPILER_FLAGS = ""; }; };
+4F3044B6C989430A83D53CEC /* /Users/admin/source/opendatacon/DNP3Port/DNP3PointConf.cpp */ = {isa = PBXBuildFile; fileRef = 6BA8505BEF054913AB2061FC /* /Users/admin/source/opendatacon/DNP3Port/DNP3PointConf.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+1B890372B0AA4F80A76C34FF /* /Users/admin/source/opendatacon/DNP3Port/DNP3PointConf.h */ = {isa = PBXBuildFile; fileRef = 7B052C21133C43A4BDBFC3FC /* /Users/admin/source/opendatacon/DNP3Port/DNP3PointConf.h */; settings = { COMPILER_FLAGS = ""; }; };
+D0220E3E83254CC28E679FE2 /* /Users/admin/source/opendatacon/DNP3Port/DNP3Port.cpp */ = {isa = PBXBuildFile; fileRef = 4C9880F8B95A4FDFAA5155E5 /* /Users/admin/source/opendatacon/DNP3Port/DNP3Port.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+D52C2517C5504F44844DB44F /* /Users/admin/source/opendatacon/DNP3Port/DNP3Port.h */ = {isa = PBXBuildFile; fileRef = 616FEC2608D1482D9DE14832 /* /Users/admin/source/opendatacon/DNP3Port/DNP3Port.h */; settings = { COMPILER_FLAGS = ""; }; };
+CC45E001B4E54B8E8575467B /* /Users/admin/source/opendatacon/DNP3Port/DNP3PortConf.h */ = {isa = PBXBuildFile; fileRef = 7719E45E5E164E14B75C3504 /* /Users/admin/source/opendatacon/DNP3Port/DNP3PortConf.h */; settings = { COMPILER_FLAGS = ""; }; };
+4591760FDFEB4C80B429F138 /* /Users/admin/source/opendatacon/DNP3Port/main.cpp */ = {isa = PBXBuildFile; fileRef = ACC14FD1497B4C72939ECEBB /* /Users/admin/source/opendatacon/DNP3Port/main.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+D4F5E7CBA7A74502B66B1495 /* /Users/admin/source/opendatacon/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */; settings = { COMPILER_FLAGS = ""; }; };
+0AEB8EB6D97E494B8EC489FB /* /Users/admin/source/opendatacon/JSON/json/json-forwards.h */ = {isa = PBXBuildFile; fileRef = 227E77894F664895ACB4A4C3 /* /Users/admin/source/opendatacon/JSON/json/json-forwards.h */; settings = { COMPILER_FLAGS = ""; }; };
+14F3F9EE79D643D397C1010A /* /Users/admin/source/opendatacon/JSON/json/json.h */ = {isa = PBXBuildFile; fileRef = 59125BC383EE48A688D254F2 /* /Users/admin/source/opendatacon/JSON/json/json.h */; settings = { COMPILER_FLAGS = ""; }; };
+18863C6DB96E4C1DA08D7837 /* /Users/admin/source/opendatacon/JSON/jsoncpp.cpp */ = {isa = PBXBuildFile; fileRef = F09B19E16E36403A9422F9B4 /* /Users/admin/source/opendatacon/JSON/jsoncpp.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+1CA6CD3A5291430EA5EB0E8D /* /Users/admin/source/opendatacon/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */; settings = { COMPILER_FLAGS = ""; }; };
+43321C6A2A9E49F79735BDF6 /* /Users/admin/source/opendatacon/JSONPort/JSONClientPort.cpp */ = {isa = PBXBuildFile; fileRef = 01A7E2BC82C04A8995681745 /* /Users/admin/source/opendatacon/JSONPort/JSONClientPort.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+4116B14BEDAF46669EC8FBE1 /* /Users/admin/source/opendatacon/JSONPort/JSONClientPort.h */ = {isa = PBXBuildFile; fileRef = 058C1A27523546B8A53BB886 /* /Users/admin/source/opendatacon/JSONPort/JSONClientPort.h */; settings = { COMPILER_FLAGS = ""; }; };
+23F181A0AF3C4177ADBE60CE /* /Users/admin/source/opendatacon/JSONPort/JSONPointConf.cpp */ = {isa = PBXBuildFile; fileRef = 79379E5ECAFA416EBD435E25 /* /Users/admin/source/opendatacon/JSONPort/JSONPointConf.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+F8B72925126F4A27B4348563 /* /Users/admin/source/opendatacon/JSONPort/JSONPointConf.h */ = {isa = PBXBuildFile; fileRef = EF06B1B31F7E4065A30D4105 /* /Users/admin/source/opendatacon/JSONPort/JSONPointConf.h */; settings = { COMPILER_FLAGS = ""; }; };
+A9B30CE91A8345E18D1F270A /* /Users/admin/source/opendatacon/JSONPort/JSONPort.h */ = {isa = PBXBuildFile; fileRef = 3E3C8707DD144A4D9E957723 /* /Users/admin/source/opendatacon/JSONPort/JSONPort.h */; settings = { COMPILER_FLAGS = ""; }; };
+8FCCABA0DB26480DB32DC1ED /* /Users/admin/source/opendatacon/JSONPort/JSONPortConf.cpp */ = {isa = PBXBuildFile; fileRef = 0D8F42E644D9409EBF364A50 /* /Users/admin/source/opendatacon/JSONPort/JSONPortConf.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+F16D78B595974F90B4C39F47 /* /Users/admin/source/opendatacon/JSONPort/JSONPortConf.h */ = {isa = PBXBuildFile; fileRef = C37BA4EBD7534FA68AE284C4 /* /Users/admin/source/opendatacon/JSONPort/JSONPortConf.h */; settings = { COMPILER_FLAGS = ""; }; };
+0D4BD8D3BCE94339A4108B2B /* /Users/admin/source/opendatacon/JSONPort/main.cpp */ = {isa = PBXBuildFile; fileRef = 0864EAD84D3645DE8084F0B5 /* /Users/admin/source/opendatacon/JSONPort/main.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+C47A5A0CDA334ACBABEB0C16 /* /Users/admin/source/opendatacon/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */; settings = { COMPILER_FLAGS = ""; }; };
+26E32252387A4452ABA46666 /* /Users/admin/source/opendatacon/ModbusPort/ModbusMasterPort.cpp */ = {isa = PBXBuildFile; fileRef = E5AC56E59A6E42AEB0CF899D /* /Users/admin/source/opendatacon/ModbusPort/ModbusMasterPort.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+0906CFDDFD514CA6A4D37D08 /* /Users/admin/source/opendatacon/ModbusPort/ModbusMasterPort.h */ = {isa = PBXBuildFile; fileRef = 0CF0EF726E6B47EC8015FB43 /* /Users/admin/source/opendatacon/ModbusPort/ModbusMasterPort.h */; settings = { COMPILER_FLAGS = ""; }; };
+978F3A4296C4406DBCFC73CE /* /Users/admin/source/opendatacon/ModbusPort/ModbusOutstationPort.cpp */ = {isa = PBXBuildFile; fileRef = 06103F6D11814EA8B2B583E1 /* /Users/admin/source/opendatacon/ModbusPort/ModbusOutstationPort.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+9483E9CD7E5A4995AAAB84A5 /* /Users/admin/source/opendatacon/ModbusPort/ModbusOutstationPort.h */ = {isa = PBXBuildFile; fileRef = F6464859EB87404AA3FF0A2A /* /Users/admin/source/opendatacon/ModbusPort/ModbusOutstationPort.h */; settings = { COMPILER_FLAGS = ""; }; };
+83ACEF92C975403F8EFA3DD2 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPointConf.cpp */ = {isa = PBXBuildFile; fileRef = 3A6F5F398E06447389220005 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPointConf.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+4C69EB17D4D0407AB3B41B42 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPointConf.h */ = {isa = PBXBuildFile; fileRef = 74A486A12B5F4CBBAB1A967B /* /Users/admin/source/opendatacon/ModbusPort/ModbusPointConf.h */; settings = { COMPILER_FLAGS = ""; }; };
+5F97DACF7D484B9C85854CA7 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPort.cpp */ = {isa = PBXBuildFile; fileRef = FAAD2E9171C04102A3FAF9F6 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPort.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+6044C57242854A0BBBDFD2D0 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPort.h */ = {isa = PBXBuildFile; fileRef = 0620AFA5B1554BF1B155FADB /* /Users/admin/source/opendatacon/ModbusPort/ModbusPort.h */; settings = { COMPILER_FLAGS = ""; }; };
+6EBA67666A794D629E6D2779 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPortConf.h */ = {isa = PBXBuildFile; fileRef = 3122611F2BFD45F09F1366B3 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPortConf.h */; settings = { COMPILER_FLAGS = ""; }; };
+888F28E1071F49BEB7C6DFD2 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-data.c */ = {isa = PBXBuildFile; fileRef = 4959B76687B04E2EABB3F412 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-data.c */; settings = { COMPILER_FLAGS = ""; }; };
+CCE3727A3F5A4B7888B66C6D /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-private.h */ = {isa = PBXBuildFile; fileRef = A879721A4E834694862611D3 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-private.h */; settings = { COMPILER_FLAGS = ""; }; };
+315DC0A9060A43FCA35A0E83 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu-private.h */ = {isa = PBXBuildFile; fileRef = 98A82904B9774B989BC91969 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu-private.h */; settings = { COMPILER_FLAGS = ""; }; };
+6B2B81EEE64E41F681CA5867 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu.c */ = {isa = PBXBuildFile; fileRef = A40FE7FCD3ED4E34A066C8E7 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu.c */; settings = { COMPILER_FLAGS = ""; }; };
+34F4A2C679E14DE38346F4E9 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu.h */ = {isa = PBXBuildFile; fileRef = 24C5ACA6A7D94F5E94333504 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu.h */; settings = { COMPILER_FLAGS = ""; }; };
+0571A593C7BF48A1B2D32DCC /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp-private.h */ = {isa = PBXBuildFile; fileRef = 4273F0953259496281E9235D /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp-private.h */; settings = { COMPILER_FLAGS = ""; }; };
+914FCAD8AD654A269C122222 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp.c */ = {isa = PBXBuildFile; fileRef = 7DAF1D0B2EF04DEA9193BB80 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp.c */; settings = { COMPILER_FLAGS = ""; }; };
+15637144D8124E73B5786718 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp.h */ = {isa = PBXBuildFile; fileRef = 2442B8645EB54C6D8913A710 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp.h */; settings = { COMPILER_FLAGS = ""; }; };
+19BE0556B9DB47A68F521D1D /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-version.h */ = {isa = PBXBuildFile; fileRef = D22AF9829CDF4C92B262DD93 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-version.h */; settings = { COMPILER_FLAGS = ""; }; };
+AFDA98DAE8F84026BAFFF05A /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus.c */ = {isa = PBXBuildFile; fileRef = 7E6BF267518746C9A564A520 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus.c */; settings = { COMPILER_FLAGS = ""; }; };
+33218775BDAE400692908EE3 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus.h */ = {isa = PBXBuildFile; fileRef = C13F5A9900E042CF958EF5D0 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus.h */; settings = { COMPILER_FLAGS = ""; }; };
+0ADE704B9A314A1C81EFAC5F /* /Users/admin/source/opendatacon/ModbusPort/main.cpp */ = {isa = PBXBuildFile; fileRef = 001F3C948019464E9FB05530 /* /Users/admin/source/opendatacon/ModbusPort/main.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+371341058E554931ABC21C4B /* /Users/admin/source/opendatacon/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */; settings = { COMPILER_FLAGS = ""; }; };
+358DEC2853244A8E92017327 /* /Users/admin/source/opendatacon/ODC/ASIOScheduler.cpp */ = {isa = PBXBuildFile; fileRef = A9D18D0C31CC4F498A02F608 /* /Users/admin/source/opendatacon/ODC/ASIOScheduler.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+F4958386B36D494A9E7B816B /* /Users/admin/source/opendatacon/ODC/ASIOScheduler.h */ = {isa = PBXBuildFile; fileRef = 014B1D0AAA9845ED94F68B53 /* /Users/admin/source/opendatacon/ODC/ASIOScheduler.h */; settings = { COMPILER_FLAGS = ""; }; };
+3F6DB2449D184C758A727F66 /* /Users/admin/source/opendatacon/ODC/ConfigParser.cpp */ = {isa = PBXBuildFile; fileRef = 4E5F142691E047F789D452F6 /* /Users/admin/source/opendatacon/ODC/ConfigParser.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+8CCEF3D628124138B004079C /* /Users/admin/source/opendatacon/ODC/ConfigParser.h */ = {isa = PBXBuildFile; fileRef = FFCA02A3F3FB46F28B34164A /* /Users/admin/source/opendatacon/ODC/ConfigParser.h */; settings = { COMPILER_FLAGS = ""; }; };
+AF563D1BACE54CCDAD9B09A0 /* /Users/admin/source/opendatacon/ODC/DataPointConf.h */ = {isa = PBXBuildFile; fileRef = A02C7ABE4C5C4AE2BFDE6165 /* /Users/admin/source/opendatacon/ODC/DataPointConf.h */; settings = { COMPILER_FLAGS = ""; }; };
+48F803894E1D4BFEAEADCD4B /* /Users/admin/source/opendatacon/ODC/DataPort.h */ = {isa = PBXBuildFile; fileRef = 26FD834529F54D8CAAF3CB96 /* /Users/admin/source/opendatacon/ODC/DataPort.h */; settings = { COMPILER_FLAGS = ""; }; };
+DB49EF2A986443E199DE321A /* /Users/admin/source/opendatacon/ODC/DataPortConf.h */ = {isa = PBXBuildFile; fileRef = 56A9D60D6B384629AA398F12 /* /Users/admin/source/opendatacon/ODC/DataPortConf.h */; settings = { COMPILER_FLAGS = ""; }; };
+02E7843BBFAE4D0FA5821821 /* /Users/admin/source/opendatacon/ODC/IOHandler.cpp */ = {isa = PBXBuildFile; fileRef = 98AA78BF487B42B2B04D7C91 /* /Users/admin/source/opendatacon/ODC/IOHandler.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+FF2F1B2780654789B5894E6A /* /Users/admin/source/opendatacon/ODC/IOHandler.h */ = {isa = PBXBuildFile; fileRef = 7008E934D94744FD8CFF7248 /* /Users/admin/source/opendatacon/ODC/IOHandler.h */; settings = { COMPILER_FLAGS = ""; }; };
+8C6B2005F7804DB7BD5A0968 /* /Users/admin/source/opendatacon/ODC/Transform.h */ = {isa = PBXBuildFile; fileRef = 47081453E5DD4602869124A1 /* /Users/admin/source/opendatacon/ODC/Transform.h */; settings = { COMPILER_FLAGS = ""; }; };
+EBE6DBF04B444D3C8D11234C /* /Users/admin/source/opendatacon/ODC/util.cpp */ = {isa = PBXBuildFile; fileRef = 4947FD794D9E4B7A94A750CD /* /Users/admin/source/opendatacon/ODC/util.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+EF74AB590FA448FDA7EFB34E /* /Users/admin/source/opendatacon/ODC/util.h */ = {isa = PBXBuildFile; fileRef = 08CF854EA3624AD48E5B177C /* /Users/admin/source/opendatacon/ODC/util.h */; settings = { COMPILER_FLAGS = ""; }; };
+4C888DA2156B48EDB9AA9100 /* /Users/admin/source/opendatacon/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */; settings = { COMPILER_FLAGS = ""; }; };
+2005350C53654F56BED15049 /* /Users/admin/source/opendatacon/src/AdvancedLogger.cpp */ = {isa = PBXBuildFile; fileRef = 6965928848E64241832BFCFD /* /Users/admin/source/opendatacon/src/AdvancedLogger.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+6548E34E30184DF1B4342773 /* /Users/admin/source/opendatacon/src/AdvancedLogger.h */ = {isa = PBXBuildFile; fileRef = 12E9D2D615A54F5694016867 /* /Users/admin/source/opendatacon/src/AdvancedLogger.h */; settings = { COMPILER_FLAGS = ""; }; };
+6CD5945F816547C69C4BC8A4 /* /Users/admin/source/opendatacon/src/Console.cpp */ = {isa = PBXBuildFile; fileRef = 2145B10E5AB6436982AC3AB1 /* /Users/admin/source/opendatacon/src/Console.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+56D475CF136D4BA8B75C6248 /* /Users/admin/source/opendatacon/src/Console.h */ = {isa = PBXBuildFile; fileRef = 0266ECCF38374A918F80A9B8 /* /Users/admin/source/opendatacon/src/Console.h */; settings = { COMPILER_FLAGS = ""; }; };
+FB7EC00881C04D398B21294D /* /Users/admin/source/opendatacon/src/DataConcentrator.cpp */ = {isa = PBXBuildFile; fileRef = 6EC7D9AAC30C4B0DA08E34F4 /* /Users/admin/source/opendatacon/src/DataConcentrator.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+3792C0BF699B41F2BEE6E38D /* /Users/admin/source/opendatacon/src/DataConcentrator.h */ = {isa = PBXBuildFile; fileRef = AEB7A8F4AF6142C6B1338EB4 /* /Users/admin/source/opendatacon/src/DataConcentrator.h */; settings = { COMPILER_FLAGS = ""; }; };
+2D634AEBBADF4F1292A358C2 /* /Users/admin/source/opendatacon/src/DataConnector.cpp */ = {isa = PBXBuildFile; fileRef = CB7CEEC7AD0C4CFDA704E807 /* /Users/admin/source/opendatacon/src/DataConnector.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+CD7CC906359541879F7B946B /* /Users/admin/source/opendatacon/src/DataConnector.h */ = {isa = PBXBuildFile; fileRef = 04D0C5C202314383B8A68BA5 /* /Users/admin/source/opendatacon/src/DataConnector.h */; settings = { COMPILER_FLAGS = ""; }; };
+D24894BCF24B4F99A008A2E2 /* /Users/admin/source/opendatacon/src/IndexMapTransform.h */ = {isa = PBXBuildFile; fileRef = 9FF22C636F65466681DF9C04 /* /Users/admin/source/opendatacon/src/IndexMapTransform.h */; settings = { COMPILER_FLAGS = ""; }; };
+9F0F3C69228742F09D9CC764 /* /Users/admin/source/opendatacon/src/IndexOffsetTransform.h */ = {isa = PBXBuildFile; fileRef = 61B37F68168E4071853D7A94 /* /Users/admin/source/opendatacon/src/IndexOffsetTransform.h */; settings = { COMPILER_FLAGS = ""; }; };
+20590CD5C98D4EAD9DA6A5FA /* /Users/admin/source/opendatacon/src/LogToFile.cpp */ = {isa = PBXBuildFile; fileRef = 52DFD7F478A94A14A47A024A /* /Users/admin/source/opendatacon/src/LogToFile.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+520C4844CE1E461399F5E3F5 /* /Users/admin/source/opendatacon/src/LogToFile.h */ = {isa = PBXBuildFile; fileRef = 13E867EDDF0D4BD9B657E90C /* /Users/admin/source/opendatacon/src/LogToFile.h */; settings = { COMPILER_FLAGS = ""; }; };
+9D79D7D5DA934416868CED8E /* /Users/admin/source/opendatacon/src/NullPort.h */ = {isa = PBXBuildFile; fileRef = 04137F52A3624DDEB7BBD5F6 /* /Users/admin/source/opendatacon/src/NullPort.h */; settings = { COMPILER_FLAGS = ""; }; };
+121A5BCEDA244E07864768DF /* /Users/admin/source/opendatacon/src/ThresholdTransform.h */ = {isa = PBXBuildFile; fileRef = 8B8A52F86B5F4E0D8DD81AEE /* /Users/admin/source/opendatacon/src/ThresholdTransform.h */; settings = { COMPILER_FLAGS = ""; }; };
+8287237B5F1C4B8887610286 /* /Users/admin/source/opendatacon/src/logging_cmds.cpp */ = {isa = PBXBuildFile; fileRef = E0A3D1CD12B2437C9732EEE0 /* /Users/admin/source/opendatacon/src/logging_cmds.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+A528C0728F1C406CA9FFB521 /* /Users/admin/source/opendatacon/src/logging_cmds.h */ = {isa = PBXBuildFile; fileRef = 66D2DB9E69144963860E6E3F /* /Users/admin/source/opendatacon/src/logging_cmds.h */; settings = { COMPILER_FLAGS = ""; }; };
+A4A2C4AF627A4B369AF24D69 /* /Users/admin/source/opendatacon/src/main.cpp */ = {isa = PBXBuildFile; fileRef = 1F8CA92EA959457EA64B010D /* /Users/admin/source/opendatacon/src/main.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+3F5053B6225B47B68D0447C5 /* /Users/admin/source/opendatacon/src/tinycon.cpp */ = {isa = PBXBuildFile; fileRef = E1E2DB78FC5B4C48A38CC08E /* /Users/admin/source/opendatacon/src/tinycon.cpp */; settings = { COMPILER_FLAGS = ""; }; };
+843BE310C890470DB84757DA /* /Users/admin/source/opendatacon/src/tinycon.h */ = {isa = PBXBuildFile; fileRef = D09E6A63841547B488BCB2E5 /* /Users/admin/source/opendatacon/src/tinycon.h */; settings = { COMPILER_FLAGS = ""; }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXBuildStyle section */
+              B7875A018752419FAB216574 /*  */ = {
+                     isa = PBXBuildStyle;
+              };
+              9610B962161A4FFC91B36B71 /* Debug */ = {
+                     isa = PBXBuildStyle;
+                     buildSettings = {
+                            COPY_PHASE_STRIP = NO;
+                     };
+                     name = Debug;
+              };
+              1957323BB8CE4B7591916ACD /* Release */ = {
+                     isa = PBXBuildStyle;
+                     buildSettings = {
+                            COPY_PHASE_STRIP = NO;
+                     };
+                     name = Release;
+              };
+              637CA94E741C4B6689DCA58F /* MinSizeRel */ = {
+                     isa = PBXBuildStyle;
+                     buildSettings = {
+                            COPY_PHASE_STRIP = NO;
+                     };
+                     name = MinSizeRel;
+              };
+              43B98839B5274ED0AB849401 /* RelWithDebInfo */ = {
+                     isa = PBXBuildStyle;
+                     buildSettings = {
+                            COPY_PHASE_STRIP = NO;
+                     };
+                     name = RelWithDebInfo;
+              };
+/* End PBXBuildStyle section */
+
+/* Begin PBXContainerItemProxy section */
+              51060D0AA34A4EB0B8C231AC /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = FF59930612D346368F6E7F85;
+                     remoteInfo = ODC;
+              };
+              03A62B6E46F442958458A3E6 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 5E1F2CCD16944789A043BB5E;
+                     remoteInfo = JSON;
+              };
+              939DFA678796438BAF0A2FB2 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 6F518CC2060E4727951690CA;
+                     remoteInfo = ModbusPort;
+              };
+              919F7D7045F546FA826FEDFC /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 9289B6CE25084FEDBD5FFFBE;
+                     remoteInfo = DNP3Port;
+              };
+              95A44C2C17A9438685295080 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 5AD83BA8460D49C993E1CE7B;
+                     remoteInfo = JSONPort;
+              };
+              F0035D89B7084E97B0C703E2 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = D1AC122EBE924EF2972BF26B;
+                     remoteInfo = opendatacon;
+              };
+              3D55B8DCDF504279966BA76A /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 4116574DBEF44BB785802974;
+                     remoteInfo = ZERO_CHECK;
+              };
+              C38A4B57CEB04027A9351DA4 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = FF59930612D346368F6E7F85;
+                     remoteInfo = ODC;
+              };
+              145EC3E23F2E4A4CAC14E5A6 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 5E1F2CCD16944789A043BB5E;
+                     remoteInfo = JSON;
+              };
+              E21750B2CC5C49F0AAA289A4 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 4116574DBEF44BB785802974;
+                     remoteInfo = ZERO_CHECK;
+              };
+              8F2BE7B1991A48C6B3F5326F /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 4116574DBEF44BB785802974;
+                     remoteInfo = ZERO_CHECK;
+              };
+              C5C853749C024C7C8F6CE868 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = FF59930612D346368F6E7F85;
+                     remoteInfo = ODC;
+              };
+              28F63BA3AE2542B38A909C97 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 5E1F2CCD16944789A043BB5E;
+                     remoteInfo = JSON;
+              };
+              7C20ADEAA2E24CA388E7F514 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 4116574DBEF44BB785802974;
+                     remoteInfo = ZERO_CHECK;
+              };
+              43BF3D2E03E443989158F00C /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = FF59930612D346368F6E7F85;
+                     remoteInfo = ODC;
+              };
+              4C38E9233FFA45DDB3D1D0C3 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 5E1F2CCD16944789A043BB5E;
+                     remoteInfo = JSON;
+              };
+              8C7108B9FAD14EBBBD578101 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 4116574DBEF44BB785802974;
+                     remoteInfo = ZERO_CHECK;
+              };
+              BC1BE4C09F024E5BB3DC3151 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 5E1F2CCD16944789A043BB5E;
+                     remoteInfo = JSON;
+              };
+              B86BD9F3D368499297D64A37 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 4116574DBEF44BB785802974;
+                     remoteInfo = ZERO_CHECK;
+              };
+              5B377DDBEE1F4BC4BEE7E51D /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = FF59930612D346368F6E7F85;
+                     remoteInfo = ODC;
+              };
+              EF035F4EFDC44C9A9E98EE90 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 5E1F2CCD16944789A043BB5E;
+                     remoteInfo = JSON;
+              };
+              A2C6CC50D07C4C378043AA00 /* PBXContainerItemProxy */ = {
+                     isa = PBXContainerItemProxy;
+                     containerPortal = D25DA496F15D49F1BC704620 /* Project object */;
+                     proxyType = 1;
+                     remoteGlobalIDString = 4116574DBEF44BB785802974;
+                     remoteInfo = ZERO_CHECK;
+              };
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = "sourcecode.text"; fileEncoding = 4; name = "CMakeLists.txt"; path = "CMakeLists.txt"; sourceTree = SOURCE_ROOT; };
+E6EF2CDE147046E0B83BAFD1 /* /Users/admin/source/opendatacon/DNP3Port/CommandCallbackPromise.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "CommandCallbackPromise.h"; path = "DNP3Port/CommandCallbackPromise.h"; sourceTree = SOURCE_ROOT; };
+13F26D3BDFF04486A0DE09CE /* /Users/admin/source/opendatacon/DNP3Port/CommandCorrespondant.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "CommandCorrespondant.cpp"; path = "DNP3Port/CommandCorrespondant.cpp"; sourceTree = SOURCE_ROOT; };
+1F02C48084214CCF84A1E193 /* /Users/admin/source/opendatacon/DNP3Port/CommandCorrespondant.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "CommandCorrespondant.h"; path = "DNP3Port/CommandCorrespondant.h"; sourceTree = SOURCE_ROOT; };
+2F21B3455D64491AAC727A18 /* /Users/admin/source/opendatacon/DNP3Port/DNP3MasterPort.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "DNP3MasterPort.cpp"; path = "DNP3Port/DNP3MasterPort.cpp"; sourceTree = SOURCE_ROOT; };
+81283DF918F64914BD674891 /* /Users/admin/source/opendatacon/DNP3Port/DNP3MasterPort.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DNP3MasterPort.h"; path = "DNP3Port/DNP3MasterPort.h"; sourceTree = SOURCE_ROOT; };
+5DA61FEC0FDE4AAA8C12B904 /* /Users/admin/source/opendatacon/DNP3Port/DNP3OutstationPort.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "DNP3OutstationPort.cpp"; path = "DNP3Port/DNP3OutstationPort.cpp"; sourceTree = SOURCE_ROOT; };
+1E17F90B97E842078F0A3283 /* /Users/admin/source/opendatacon/DNP3Port/DNP3OutstationPort.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DNP3OutstationPort.h"; path = "DNP3Port/DNP3OutstationPort.h"; sourceTree = SOURCE_ROOT; };
+6BA8505BEF054913AB2061FC /* /Users/admin/source/opendatacon/DNP3Port/DNP3PointConf.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "DNP3PointConf.cpp"; path = "DNP3Port/DNP3PointConf.cpp"; sourceTree = SOURCE_ROOT; };
+7B052C21133C43A4BDBFC3FC /* /Users/admin/source/opendatacon/DNP3Port/DNP3PointConf.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DNP3PointConf.h"; path = "DNP3Port/DNP3PointConf.h"; sourceTree = SOURCE_ROOT; };
+4C9880F8B95A4FDFAA5155E5 /* /Users/admin/source/opendatacon/DNP3Port/DNP3Port.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "DNP3Port.cpp"; path = "DNP3Port/DNP3Port.cpp"; sourceTree = SOURCE_ROOT; };
+616FEC2608D1482D9DE14832 /* /Users/admin/source/opendatacon/DNP3Port/DNP3Port.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DNP3Port.h"; path = "DNP3Port/DNP3Port.h"; sourceTree = SOURCE_ROOT; };
+7719E45E5E164E14B75C3504 /* /Users/admin/source/opendatacon/DNP3Port/DNP3PortConf.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DNP3PortConf.h"; path = "DNP3Port/DNP3PortConf.h"; sourceTree = SOURCE_ROOT; };
+ACC14FD1497B4C72939ECEBB /* /Users/admin/source/opendatacon/DNP3Port/main.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "main.cpp"; path = "DNP3Port/main.cpp"; sourceTree = SOURCE_ROOT; };
+FA7A58B765344D78BCFB100D /* DNP3Port */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; path = "libDNP3Port.dylib"; refType = 0; sourceTree = BUILT_PRODUCTS_DIR; };
+227E77894F664895ACB4A4C3 /* /Users/admin/source/opendatacon/JSON/json/json-forwards.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "json-forwards.h"; path = "JSON/json/json-forwards.h"; sourceTree = SOURCE_ROOT; };
+59125BC383EE48A688D254F2 /* /Users/admin/source/opendatacon/JSON/json/json.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "json.h"; path = "JSON/json/json.h"; sourceTree = SOURCE_ROOT; };
+F09B19E16E36403A9422F9B4 /* /Users/admin/source/opendatacon/JSON/jsoncpp.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "jsoncpp.cpp"; path = "JSON/jsoncpp.cpp"; sourceTree = SOURCE_ROOT; };
+01183043151A4D90B78B1738 /* JSON */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; path = "libJSON.dylib"; refType = 0; sourceTree = BUILT_PRODUCTS_DIR; };
+01A7E2BC82C04A8995681745 /* /Users/admin/source/opendatacon/JSONPort/JSONClientPort.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "JSONClientPort.cpp"; path = "JSONPort/JSONClientPort.cpp"; sourceTree = SOURCE_ROOT; };
+058C1A27523546B8A53BB886 /* /Users/admin/source/opendatacon/JSONPort/JSONClientPort.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "JSONClientPort.h"; path = "JSONPort/JSONClientPort.h"; sourceTree = SOURCE_ROOT; };
+79379E5ECAFA416EBD435E25 /* /Users/admin/source/opendatacon/JSONPort/JSONPointConf.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "JSONPointConf.cpp"; path = "JSONPort/JSONPointConf.cpp"; sourceTree = SOURCE_ROOT; };
+EF06B1B31F7E4065A30D4105 /* /Users/admin/source/opendatacon/JSONPort/JSONPointConf.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "JSONPointConf.h"; path = "JSONPort/JSONPointConf.h"; sourceTree = SOURCE_ROOT; };
+3E3C8707DD144A4D9E957723 /* /Users/admin/source/opendatacon/JSONPort/JSONPort.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "JSONPort.h"; path = "JSONPort/JSONPort.h"; sourceTree = SOURCE_ROOT; };
+0D8F42E644D9409EBF364A50 /* /Users/admin/source/opendatacon/JSONPort/JSONPortConf.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "JSONPortConf.cpp"; path = "JSONPort/JSONPortConf.cpp"; sourceTree = SOURCE_ROOT; };
+C37BA4EBD7534FA68AE284C4 /* /Users/admin/source/opendatacon/JSONPort/JSONPortConf.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "JSONPortConf.h"; path = "JSONPort/JSONPortConf.h"; sourceTree = SOURCE_ROOT; };
+0864EAD84D3645DE8084F0B5 /* /Users/admin/source/opendatacon/JSONPort/main.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "main.cpp"; path = "JSONPort/main.cpp"; sourceTree = SOURCE_ROOT; };
+FD6F2F0F17F046DDBFDF9E92 /* JSONPort */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; path = "libJSONPort.dylib"; refType = 0; sourceTree = BUILT_PRODUCTS_DIR; };
+E5AC56E59A6E42AEB0CF899D /* /Users/admin/source/opendatacon/ModbusPort/ModbusMasterPort.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "ModbusMasterPort.cpp"; path = "ModbusPort/ModbusMasterPort.cpp"; sourceTree = SOURCE_ROOT; };
+0CF0EF726E6B47EC8015FB43 /* /Users/admin/source/opendatacon/ModbusPort/ModbusMasterPort.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "ModbusMasterPort.h"; path = "ModbusPort/ModbusMasterPort.h"; sourceTree = SOURCE_ROOT; };
+06103F6D11814EA8B2B583E1 /* /Users/admin/source/opendatacon/ModbusPort/ModbusOutstationPort.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "ModbusOutstationPort.cpp"; path = "ModbusPort/ModbusOutstationPort.cpp"; sourceTree = SOURCE_ROOT; };
+F6464859EB87404AA3FF0A2A /* /Users/admin/source/opendatacon/ModbusPort/ModbusOutstationPort.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "ModbusOutstationPort.h"; path = "ModbusPort/ModbusOutstationPort.h"; sourceTree = SOURCE_ROOT; };
+3A6F5F398E06447389220005 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPointConf.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "ModbusPointConf.cpp"; path = "ModbusPort/ModbusPointConf.cpp"; sourceTree = SOURCE_ROOT; };
+74A486A12B5F4CBBAB1A967B /* /Users/admin/source/opendatacon/ModbusPort/ModbusPointConf.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "ModbusPointConf.h"; path = "ModbusPort/ModbusPointConf.h"; sourceTree = SOURCE_ROOT; };
+FAAD2E9171C04102A3FAF9F6 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPort.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "ModbusPort.cpp"; path = "ModbusPort/ModbusPort.cpp"; sourceTree = SOURCE_ROOT; };
+0620AFA5B1554BF1B155FADB /* /Users/admin/source/opendatacon/ModbusPort/ModbusPort.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "ModbusPort.h"; path = "ModbusPort/ModbusPort.h"; sourceTree = SOURCE_ROOT; };
+3122611F2BFD45F09F1366B3 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPortConf.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "ModbusPortConf.h"; path = "ModbusPort/ModbusPortConf.h"; sourceTree = SOURCE_ROOT; };
+4959B76687B04E2EABB3F412 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-data.c */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.c"; fileEncoding = 4; name = "modbus-data.c"; path = "ModbusPort/libmodbus/modbus-data.c"; sourceTree = SOURCE_ROOT; };
+A879721A4E834694862611D3 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-private.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "modbus-private.h"; path = "ModbusPort/libmodbus/modbus-private.h"; sourceTree = SOURCE_ROOT; };
+98A82904B9774B989BC91969 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu-private.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "modbus-rtu-private.h"; path = "ModbusPort/libmodbus/modbus-rtu-private.h"; sourceTree = SOURCE_ROOT; };
+A40FE7FCD3ED4E34A066C8E7 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu.c */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.c"; fileEncoding = 4; name = "modbus-rtu.c"; path = "ModbusPort/libmodbus/modbus-rtu.c"; sourceTree = SOURCE_ROOT; };
+24C5ACA6A7D94F5E94333504 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "modbus-rtu.h"; path = "ModbusPort/libmodbus/modbus-rtu.h"; sourceTree = SOURCE_ROOT; };
+4273F0953259496281E9235D /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp-private.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "modbus-tcp-private.h"; path = "ModbusPort/libmodbus/modbus-tcp-private.h"; sourceTree = SOURCE_ROOT; };
+7DAF1D0B2EF04DEA9193BB80 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp.c */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.c"; fileEncoding = 4; name = "modbus-tcp.c"; path = "ModbusPort/libmodbus/modbus-tcp.c"; sourceTree = SOURCE_ROOT; };
+2442B8645EB54C6D8913A710 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "modbus-tcp.h"; path = "ModbusPort/libmodbus/modbus-tcp.h"; sourceTree = SOURCE_ROOT; };
+D22AF9829CDF4C92B262DD93 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-version.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "modbus-version.h"; path = "ModbusPort/libmodbus/modbus-version.h"; sourceTree = SOURCE_ROOT; };
+7E6BF267518746C9A564A520 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus.c */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.c"; fileEncoding = 4; name = "modbus.c"; path = "ModbusPort/libmodbus/modbus.c"; sourceTree = SOURCE_ROOT; };
+C13F5A9900E042CF958EF5D0 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "modbus.h"; path = "ModbusPort/libmodbus/modbus.h"; sourceTree = SOURCE_ROOT; };
+001F3C948019464E9FB05530 /* /Users/admin/source/opendatacon/ModbusPort/main.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "main.cpp"; path = "ModbusPort/main.cpp"; sourceTree = SOURCE_ROOT; };
+98272EE924EF4552B657110D /* ModbusPort */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; path = "libModbusPort.dylib"; refType = 0; sourceTree = BUILT_PRODUCTS_DIR; };
+A9D18D0C31CC4F498A02F608 /* /Users/admin/source/opendatacon/ODC/ASIOScheduler.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "ASIOScheduler.cpp"; path = "ODC/ASIOScheduler.cpp"; sourceTree = SOURCE_ROOT; };
+014B1D0AAA9845ED94F68B53 /* /Users/admin/source/opendatacon/ODC/ASIOScheduler.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "ASIOScheduler.h"; path = "ODC/ASIOScheduler.h"; sourceTree = SOURCE_ROOT; };
+4E5F142691E047F789D452F6 /* /Users/admin/source/opendatacon/ODC/ConfigParser.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "ConfigParser.cpp"; path = "ODC/ConfigParser.cpp"; sourceTree = SOURCE_ROOT; };
+FFCA02A3F3FB46F28B34164A /* /Users/admin/source/opendatacon/ODC/ConfigParser.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "ConfigParser.h"; path = "ODC/ConfigParser.h"; sourceTree = SOURCE_ROOT; };
+A02C7ABE4C5C4AE2BFDE6165 /* /Users/admin/source/opendatacon/ODC/DataPointConf.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DataPointConf.h"; path = "ODC/DataPointConf.h"; sourceTree = SOURCE_ROOT; };
+26FD834529F54D8CAAF3CB96 /* /Users/admin/source/opendatacon/ODC/DataPort.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DataPort.h"; path = "ODC/DataPort.h"; sourceTree = SOURCE_ROOT; };
+56A9D60D6B384629AA398F12 /* /Users/admin/source/opendatacon/ODC/DataPortConf.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DataPortConf.h"; path = "ODC/DataPortConf.h"; sourceTree = SOURCE_ROOT; };
+98AA78BF487B42B2B04D7C91 /* /Users/admin/source/opendatacon/ODC/IOHandler.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "IOHandler.cpp"; path = "ODC/IOHandler.cpp"; sourceTree = SOURCE_ROOT; };
+7008E934D94744FD8CFF7248 /* /Users/admin/source/opendatacon/ODC/IOHandler.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "IOHandler.h"; path = "ODC/IOHandler.h"; sourceTree = SOURCE_ROOT; };
+47081453E5DD4602869124A1 /* /Users/admin/source/opendatacon/ODC/Transform.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "Transform.h"; path = "ODC/Transform.h"; sourceTree = SOURCE_ROOT; };
+4947FD794D9E4B7A94A750CD /* /Users/admin/source/opendatacon/ODC/util.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "util.cpp"; path = "ODC/util.cpp"; sourceTree = SOURCE_ROOT; };
+08CF854EA3624AD48E5B177C /* /Users/admin/source/opendatacon/ODC/util.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "util.h"; path = "ODC/util.h"; sourceTree = SOURCE_ROOT; };
+2EF59ACEB83B4165A07C455A /* ODC */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; path = "libODC.dylib"; refType = 0; sourceTree = BUILT_PRODUCTS_DIR; };
+6965928848E64241832BFCFD /* /Users/admin/source/opendatacon/src/AdvancedLogger.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "AdvancedLogger.cpp"; path = "src/AdvancedLogger.cpp"; sourceTree = SOURCE_ROOT; };
+12E9D2D615A54F5694016867 /* /Users/admin/source/opendatacon/src/AdvancedLogger.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "AdvancedLogger.h"; path = "src/AdvancedLogger.h"; sourceTree = SOURCE_ROOT; };
+2145B10E5AB6436982AC3AB1 /* /Users/admin/source/opendatacon/src/Console.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "Console.cpp"; path = "src/Console.cpp"; sourceTree = SOURCE_ROOT; };
+0266ECCF38374A918F80A9B8 /* /Users/admin/source/opendatacon/src/Console.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "Console.h"; path = "src/Console.h"; sourceTree = SOURCE_ROOT; };
+6EC7D9AAC30C4B0DA08E34F4 /* /Users/admin/source/opendatacon/src/DataConcentrator.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "DataConcentrator.cpp"; path = "src/DataConcentrator.cpp"; sourceTree = SOURCE_ROOT; };
+AEB7A8F4AF6142C6B1338EB4 /* /Users/admin/source/opendatacon/src/DataConcentrator.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DataConcentrator.h"; path = "src/DataConcentrator.h"; sourceTree = SOURCE_ROOT; };
+CB7CEEC7AD0C4CFDA704E807 /* /Users/admin/source/opendatacon/src/DataConnector.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "DataConnector.cpp"; path = "src/DataConnector.cpp"; sourceTree = SOURCE_ROOT; };
+04D0C5C202314383B8A68BA5 /* /Users/admin/source/opendatacon/src/DataConnector.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "DataConnector.h"; path = "src/DataConnector.h"; sourceTree = SOURCE_ROOT; };
+9FF22C636F65466681DF9C04 /* /Users/admin/source/opendatacon/src/IndexMapTransform.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "IndexMapTransform.h"; path = "src/IndexMapTransform.h"; sourceTree = SOURCE_ROOT; };
+61B37F68168E4071853D7A94 /* /Users/admin/source/opendatacon/src/IndexOffsetTransform.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "IndexOffsetTransform.h"; path = "src/IndexOffsetTransform.h"; sourceTree = SOURCE_ROOT; };
+52DFD7F478A94A14A47A024A /* /Users/admin/source/opendatacon/src/LogToFile.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "LogToFile.cpp"; path = "src/LogToFile.cpp"; sourceTree = SOURCE_ROOT; };
+13E867EDDF0D4BD9B657E90C /* /Users/admin/source/opendatacon/src/LogToFile.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "LogToFile.h"; path = "src/LogToFile.h"; sourceTree = SOURCE_ROOT; };
+04137F52A3624DDEB7BBD5F6 /* /Users/admin/source/opendatacon/src/NullPort.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "NullPort.h"; path = "src/NullPort.h"; sourceTree = SOURCE_ROOT; };
+8B8A52F86B5F4E0D8DD81AEE /* /Users/admin/source/opendatacon/src/ThresholdTransform.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "ThresholdTransform.h"; path = "src/ThresholdTransform.h"; sourceTree = SOURCE_ROOT; };
+E0A3D1CD12B2437C9732EEE0 /* /Users/admin/source/opendatacon/src/logging_cmds.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "logging_cmds.cpp"; path = "src/logging_cmds.cpp"; sourceTree = SOURCE_ROOT; };
+66D2DB9E69144963860E6E3F /* /Users/admin/source/opendatacon/src/logging_cmds.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "logging_cmds.h"; path = "src/logging_cmds.h"; sourceTree = SOURCE_ROOT; };
+1F8CA92EA959457EA64B010D /* /Users/admin/source/opendatacon/src/main.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "main.cpp"; path = "src/main.cpp"; sourceTree = SOURCE_ROOT; };
+E1E2DB78FC5B4C48A38CC08E /* /Users/admin/source/opendatacon/src/tinycon.cpp */ = {isa = PBXFileReference; explicitFileType = "sourcecode.cpp.cpp"; fileEncoding = 4; name = "tinycon.cpp"; path = "src/tinycon.cpp"; sourceTree = SOURCE_ROOT; };
+D09E6A63841547B488BCB2E5 /* /Users/admin/source/opendatacon/src/tinycon.h */ = {isa = PBXFileReference; explicitFileType = "sourcecode.c.h"; fileEncoding = 4; name = "tinycon.h"; path = "src/tinycon.h"; sourceTree = SOURCE_ROOT; };
+C453F173668D43DFA4273CA8 /* opendatacon */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; path = opendatacon; refType = 0; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+              2623B0B3D054422EBFE52BA9  = {
+                     isa = PBXGroup;
+                     children = (
+                            6FDAE84488354856B5434716 /* Sources */,
+                            1B30DCF537494AFBAA5AC31D /* Resources */,
+                            A7A78421A25C425F8AA55034 /* Products */,
+                     );
+                     sourceTree = "<group>";
+              };
+              6FDAE84488354856B5434716 /* Sources */ = {
+                     isa = PBXGroup;
+                     children = (
+                            9D407E3A1F0C4046831A0589 /* ALL_BUILD */,
+                            1DCDEBCCBFD642308F4BE3DF /* DNP3Port */,
+                            975DCD368C8942938D0AAAF3 /* JSON */,
+                            85152D375BC340ED8C90EBC9 /* JSONPort */,
+                            5981D3D54EA8490AB5103FD1 /* ModbusPort */,
+                            3DB2BB84CD2C4C3A97EB3707 /* ODC */,
+                            15BD741D6AF24E56B8F0882B /* ZERO_CHECK */,
+                            2B51461B0DBD4510BA78EFF4 /* opendatacon */,
+                     );
+                     name = Sources;
+                     sourceTree = "<group>";
+              };
+              1B30DCF537494AFBAA5AC31D /* Resources */ = {
+                     isa = PBXGroup;
+                     children = (
+                     );
+                     name = Resources;
+                     sourceTree = "<group>";
+              };
+              9D407E3A1F0C4046831A0589 /* ALL_BUILD */ = {
+                     isa = PBXGroup;
+                     children = (
+                            95288673665544C09D66E95B /* CMake Rules */,
+                            62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */,
+                     );
+                     name = ALL_BUILD;
+                     sourceTree = "<group>";
+              };
+              95288673665544C09D66E95B /* CMake Rules */ = {
+                     isa = PBXGroup;
+                     children = (
+                     );
+                     name = "CMake Rules";
+                     sourceTree = "<group>";
+              };
+              1DCDEBCCBFD642308F4BE3DF /* DNP3Port */ = {
+                     isa = PBXGroup;
+                     children = (
+                            4E2E7F07E1334597B36C8549 /* Source Files */,
+                            2F762C1AFAC34EAB9CCFB471 /* Header Files */,
+                            62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */,
+                     );
+                     name = DNP3Port;
+                     sourceTree = "<group>";
+              };
+              4E2E7F07E1334597B36C8549 /* Source Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            13F26D3BDFF04486A0DE09CE /* /Users/admin/source/opendatacon/DNP3Port/CommandCorrespondant.cpp */,
+                            2F21B3455D64491AAC727A18 /* /Users/admin/source/opendatacon/DNP3Port/DNP3MasterPort.cpp */,
+                            5DA61FEC0FDE4AAA8C12B904 /* /Users/admin/source/opendatacon/DNP3Port/DNP3OutstationPort.cpp */,
+                            6BA8505BEF054913AB2061FC /* /Users/admin/source/opendatacon/DNP3Port/DNP3PointConf.cpp */,
+                            4C9880F8B95A4FDFAA5155E5 /* /Users/admin/source/opendatacon/DNP3Port/DNP3Port.cpp */,
+                            ACC14FD1497B4C72939ECEBB /* /Users/admin/source/opendatacon/DNP3Port/main.cpp */,
+                     );
+                     name = "Source Files";
+                     sourceTree = "<group>";
+              };
+              2F762C1AFAC34EAB9CCFB471 /* Header Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            E6EF2CDE147046E0B83BAFD1 /* /Users/admin/source/opendatacon/DNP3Port/CommandCallbackPromise.h */,
+                            1F02C48084214CCF84A1E193 /* /Users/admin/source/opendatacon/DNP3Port/CommandCorrespondant.h */,
+                            81283DF918F64914BD674891 /* /Users/admin/source/opendatacon/DNP3Port/DNP3MasterPort.h */,
+                            1E17F90B97E842078F0A3283 /* /Users/admin/source/opendatacon/DNP3Port/DNP3OutstationPort.h */,
+                            7B052C21133C43A4BDBFC3FC /* /Users/admin/source/opendatacon/DNP3Port/DNP3PointConf.h */,
+                            616FEC2608D1482D9DE14832 /* /Users/admin/source/opendatacon/DNP3Port/DNP3Port.h */,
+                            7719E45E5E164E14B75C3504 /* /Users/admin/source/opendatacon/DNP3Port/DNP3PortConf.h */,
+                     );
+                     name = "Header Files";
+                     sourceTree = "<group>";
+              };
+              975DCD368C8942938D0AAAF3 /* JSON */ = {
+                     isa = PBXGroup;
+                     children = (
+                            D4C9086F258749D89F6AEDE3 /* Source Files */,
+                            C46409EDEB6F4B32B59E9780 /* Header Files */,
+                            62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */,
+                     );
+                     name = JSON;
+                     sourceTree = "<group>";
+              };
+              D4C9086F258749D89F6AEDE3 /* Source Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            F09B19E16E36403A9422F9B4 /* /Users/admin/source/opendatacon/JSON/jsoncpp.cpp */,
+                     );
+                     name = "Source Files";
+                     sourceTree = "<group>";
+              };
+              C46409EDEB6F4B32B59E9780 /* Header Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            227E77894F664895ACB4A4C3 /* /Users/admin/source/opendatacon/JSON/json/json-forwards.h */,
+                            59125BC383EE48A688D254F2 /* /Users/admin/source/opendatacon/JSON/json/json.h */,
+                     );
+                     name = "Header Files";
+                     sourceTree = "<group>";
+              };
+              85152D375BC340ED8C90EBC9 /* JSONPort */ = {
+                     isa = PBXGroup;
+                     children = (
+                            452B1C153BC344B787C93B1C /* Source Files */,
+                            9C6F3A97137A4DC6ADCE9273 /* Header Files */,
+                            62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */,
+                     );
+                     name = JSONPort;
+                     sourceTree = "<group>";
+              };
+              452B1C153BC344B787C93B1C /* Source Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            01A7E2BC82C04A8995681745 /* /Users/admin/source/opendatacon/JSONPort/JSONClientPort.cpp */,
+                            79379E5ECAFA416EBD435E25 /* /Users/admin/source/opendatacon/JSONPort/JSONPointConf.cpp */,
+                            0D8F42E644D9409EBF364A50 /* /Users/admin/source/opendatacon/JSONPort/JSONPortConf.cpp */,
+                            0864EAD84D3645DE8084F0B5 /* /Users/admin/source/opendatacon/JSONPort/main.cpp */,
+                     );
+                     name = "Source Files";
+                     sourceTree = "<group>";
+              };
+              9C6F3A97137A4DC6ADCE9273 /* Header Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            058C1A27523546B8A53BB886 /* /Users/admin/source/opendatacon/JSONPort/JSONClientPort.h */,
+                            EF06B1B31F7E4065A30D4105 /* /Users/admin/source/opendatacon/JSONPort/JSONPointConf.h */,
+                            3E3C8707DD144A4D9E957723 /* /Users/admin/source/opendatacon/JSONPort/JSONPort.h */,
+                            C37BA4EBD7534FA68AE284C4 /* /Users/admin/source/opendatacon/JSONPort/JSONPortConf.h */,
+                     );
+                     name = "Header Files";
+                     sourceTree = "<group>";
+              };
+              5981D3D54EA8490AB5103FD1 /* ModbusPort */ = {
+                     isa = PBXGroup;
+                     children = (
+                            03A14E8633E942569F7D93A0 /* Source Files */,
+                            BFA98A41C8DD43CA8201A769 /* Header Files */,
+                            62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */,
+                     );
+                     name = ModbusPort;
+                     sourceTree = "<group>";
+              };
+              03A14E8633E942569F7D93A0 /* Source Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            E5AC56E59A6E42AEB0CF899D /* /Users/admin/source/opendatacon/ModbusPort/ModbusMasterPort.cpp */,
+                            06103F6D11814EA8B2B583E1 /* /Users/admin/source/opendatacon/ModbusPort/ModbusOutstationPort.cpp */,
+                            3A6F5F398E06447389220005 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPointConf.cpp */,
+                            FAAD2E9171C04102A3FAF9F6 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPort.cpp */,
+                            4959B76687B04E2EABB3F412 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-data.c */,
+                            A40FE7FCD3ED4E34A066C8E7 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu.c */,
+                            7DAF1D0B2EF04DEA9193BB80 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp.c */,
+                            7E6BF267518746C9A564A520 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus.c */,
+                            001F3C948019464E9FB05530 /* /Users/admin/source/opendatacon/ModbusPort/main.cpp */,
+                     );
+                     name = "Source Files";
+                     sourceTree = "<group>";
+              };
+              BFA98A41C8DD43CA8201A769 /* Header Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            0CF0EF726E6B47EC8015FB43 /* /Users/admin/source/opendatacon/ModbusPort/ModbusMasterPort.h */,
+                            F6464859EB87404AA3FF0A2A /* /Users/admin/source/opendatacon/ModbusPort/ModbusOutstationPort.h */,
+                            74A486A12B5F4CBBAB1A967B /* /Users/admin/source/opendatacon/ModbusPort/ModbusPointConf.h */,
+                            0620AFA5B1554BF1B155FADB /* /Users/admin/source/opendatacon/ModbusPort/ModbusPort.h */,
+                            3122611F2BFD45F09F1366B3 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPortConf.h */,
+                            A879721A4E834694862611D3 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-private.h */,
+                            98A82904B9774B989BC91969 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu-private.h */,
+                            24C5ACA6A7D94F5E94333504 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu.h */,
+                            4273F0953259496281E9235D /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp-private.h */,
+                            2442B8645EB54C6D8913A710 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp.h */,
+                            D22AF9829CDF4C92B262DD93 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-version.h */,
+                            C13F5A9900E042CF958EF5D0 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus.h */,
+                     );
+                     name = "Header Files";
+                     sourceTree = "<group>";
+              };
+              3DB2BB84CD2C4C3A97EB3707 /* ODC */ = {
+                     isa = PBXGroup;
+                     children = (
+                            B04D0896C3FE476F86F98DD0 /* Source Files */,
+                            29B2A6432C83420C8B221CA9 /* Header Files */,
+                            62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */,
+                     );
+                     name = ODC;
+                     sourceTree = "<group>";
+              };
+              B04D0896C3FE476F86F98DD0 /* Source Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            A9D18D0C31CC4F498A02F608 /* /Users/admin/source/opendatacon/ODC/ASIOScheduler.cpp */,
+                            4E5F142691E047F789D452F6 /* /Users/admin/source/opendatacon/ODC/ConfigParser.cpp */,
+                            98AA78BF487B42B2B04D7C91 /* /Users/admin/source/opendatacon/ODC/IOHandler.cpp */,
+                            4947FD794D9E4B7A94A750CD /* /Users/admin/source/opendatacon/ODC/util.cpp */,
+                     );
+                     name = "Source Files";
+                     sourceTree = "<group>";
+              };
+              29B2A6432C83420C8B221CA9 /* Header Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            014B1D0AAA9845ED94F68B53 /* /Users/admin/source/opendatacon/ODC/ASIOScheduler.h */,
+                            FFCA02A3F3FB46F28B34164A /* /Users/admin/source/opendatacon/ODC/ConfigParser.h */,
+                            A02C7ABE4C5C4AE2BFDE6165 /* /Users/admin/source/opendatacon/ODC/DataPointConf.h */,
+                            26FD834529F54D8CAAF3CB96 /* /Users/admin/source/opendatacon/ODC/DataPort.h */,
+                            56A9D60D6B384629AA398F12 /* /Users/admin/source/opendatacon/ODC/DataPortConf.h */,
+                            7008E934D94744FD8CFF7248 /* /Users/admin/source/opendatacon/ODC/IOHandler.h */,
+                            47081453E5DD4602869124A1 /* /Users/admin/source/opendatacon/ODC/Transform.h */,
+                            08CF854EA3624AD48E5B177C /* /Users/admin/source/opendatacon/ODC/util.h */,
+                     );
+                     name = "Header Files";
+                     sourceTree = "<group>";
+              };
+              15BD741D6AF24E56B8F0882B /* ZERO_CHECK */ = {
+                     isa = PBXGroup;
+                     children = (
+                            D7D8AB1B097B4633BA532249 /* CMake Rules */,
+                            62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */,
+                     );
+                     name = ZERO_CHECK;
+                     sourceTree = "<group>";
+              };
+              D7D8AB1B097B4633BA532249 /* CMake Rules */ = {
+                     isa = PBXGroup;
+                     children = (
+                     );
+                     name = "CMake Rules";
+                     sourceTree = "<group>";
+              };
+              2B51461B0DBD4510BA78EFF4 /* opendatacon */ = {
+                     isa = PBXGroup;
+                     children = (
+                            03B666FAACCF44E59DF9177C /* Source Files */,
+                            7DF61AC4CE8642ABB9359F98 /* Header Files */,
+                            62D297C6EECE4AE18B153C8A /* /Users/admin/source/opendatacon/CMakeLists.txt */,
+                     );
+                     name = opendatacon;
+                     sourceTree = "<group>";
+              };
+              03B666FAACCF44E59DF9177C /* Source Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            6965928848E64241832BFCFD /* /Users/admin/source/opendatacon/src/AdvancedLogger.cpp */,
+                            2145B10E5AB6436982AC3AB1 /* /Users/admin/source/opendatacon/src/Console.cpp */,
+                            6EC7D9AAC30C4B0DA08E34F4 /* /Users/admin/source/opendatacon/src/DataConcentrator.cpp */,
+                            CB7CEEC7AD0C4CFDA704E807 /* /Users/admin/source/opendatacon/src/DataConnector.cpp */,
+                            52DFD7F478A94A14A47A024A /* /Users/admin/source/opendatacon/src/LogToFile.cpp */,
+                            E0A3D1CD12B2437C9732EEE0 /* /Users/admin/source/opendatacon/src/logging_cmds.cpp */,
+                            1F8CA92EA959457EA64B010D /* /Users/admin/source/opendatacon/src/main.cpp */,
+                            E1E2DB78FC5B4C48A38CC08E /* /Users/admin/source/opendatacon/src/tinycon.cpp */,
+                     );
+                     name = "Source Files";
+                     sourceTree = "<group>";
+              };
+              7DF61AC4CE8642ABB9359F98 /* Header Files */ = {
+                     isa = PBXGroup;
+                     children = (
+                            12E9D2D615A54F5694016867 /* /Users/admin/source/opendatacon/src/AdvancedLogger.h */,
+                            0266ECCF38374A918F80A9B8 /* /Users/admin/source/opendatacon/src/Console.h */,
+                            AEB7A8F4AF6142C6B1338EB4 /* /Users/admin/source/opendatacon/src/DataConcentrator.h */,
+                            04D0C5C202314383B8A68BA5 /* /Users/admin/source/opendatacon/src/DataConnector.h */,
+                            9FF22C636F65466681DF9C04 /* /Users/admin/source/opendatacon/src/IndexMapTransform.h */,
+                            61B37F68168E4071853D7A94 /* /Users/admin/source/opendatacon/src/IndexOffsetTransform.h */,
+                            13E867EDDF0D4BD9B657E90C /* /Users/admin/source/opendatacon/src/LogToFile.h */,
+                            04137F52A3624DDEB7BBD5F6 /* /Users/admin/source/opendatacon/src/NullPort.h */,
+                            8B8A52F86B5F4E0D8DD81AEE /* /Users/admin/source/opendatacon/src/ThresholdTransform.h */,
+                            66D2DB9E69144963860E6E3F /* /Users/admin/source/opendatacon/src/logging_cmds.h */,
+                            D09E6A63841547B488BCB2E5 /* /Users/admin/source/opendatacon/src/tinycon.h */,
+                     );
+                     name = "Header Files";
+                     sourceTree = "<group>";
+              };
+              A7A78421A25C425F8AA55034 /* Products */ = {
+                     isa = PBXGroup;
+                     children = (
+                            FA7A58B765344D78BCFB100D /* DNP3Port */,
+                            01183043151A4D90B78B1738 /* JSON */,
+                            FD6F2F0F17F046DDBFDF9E92 /* JSONPort */,
+                            98272EE924EF4552B657110D /* ModbusPort */,
+                            2EF59ACEB83B4165A07C455A /* ODC */,
+                            C453F173668D43DFA4273CA8 /* opendatacon */,
+                     );
+                     name = Products;
+                     sourceTree = "<group>";
+              };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+              9289B6CE25084FEDBD5FFFBE /* DNP3Port */ = {
+                     isa = PBXNativeTarget;
+                     buildConfigurationList = 1284EEDB72814357A218C1BB /* Build configuration list for PBXNativeTarget "DNP3Port" */;
+                     buildPhases = (
+                            221779A7B8A1468295D561F0 /* Sources */,
+                            F1E8A91998CD4DC9BE0334AC /* CMake PostBuild Rules */,
+                     );
+                     buildRules = (
+                     );
+                     dependencies = (
+                            719CB819BDC8428FA2CD12CE /* PBXTargetDependency */,
+                            A93F570A85D94C228BDBA660 /* PBXTargetDependency */,
+                            48D8621FA84F4851ACBD05D1 /* PBXTargetDependency */,
+                     );
+                     name = DNP3Port;
+                     productName = DNP3Port;
+                     productReference = FA7A58B765344D78BCFB100D /* DNP3Port */;
+                     productType = "com.apple.product-type.library.dynamic";
+              };
+              5E1F2CCD16944789A043BB5E /* JSON */ = {
+                     isa = PBXNativeTarget;
+                     buildConfigurationList = CC92E85807EE4A49ADA37F87 /* Build configuration list for PBXNativeTarget "JSON" */;
+                     buildPhases = (
+                            89E0846AADE14F45814BD491 /* Sources */,
+                            2F6D970174874191A7F7D8DA /* CMake PostBuild Rules */,
+                     );
+                     buildRules = (
+                     );
+                     dependencies = (
+                            1AD170C49A664548958B360E /* PBXTargetDependency */,
+                     );
+                     name = JSON;
+                     productName = JSON;
+                     productReference = 01183043151A4D90B78B1738 /* JSON */;
+                     productType = "com.apple.product-type.library.dynamic";
+              };
+              5AD83BA8460D49C993E1CE7B /* JSONPort */ = {
+                     isa = PBXNativeTarget;
+                     buildConfigurationList = F3A60E58C6B04A35B46A2B53 /* Build configuration list for PBXNativeTarget "JSONPort" */;
+                     buildPhases = (
+                            A8BDA859721645E0BEE89675 /* Sources */,
+                            CEDDCA4FD76C497E93860B4B /* CMake PostBuild Rules */,
+                     );
+                     buildRules = (
+                     );
+                     dependencies = (
+                            3FF72B6AD34441F2B147DF72 /* PBXTargetDependency */,
+                            4AC2DDBC0AAA40DDBDBD52C7 /* PBXTargetDependency */,
+                            1401415ED1AC4CA49F9996A2 /* PBXTargetDependency */,
+                     );
+                     name = JSONPort;
+                     productName = JSONPort;
+                     productReference = FD6F2F0F17F046DDBFDF9E92 /* JSONPort */;
+                     productType = "com.apple.product-type.library.dynamic";
+              };
+              6F518CC2060E4727951690CA /* ModbusPort */ = {
+                     isa = PBXNativeTarget;
+                     buildConfigurationList = 6B50317534EB479BA21BD5E4 /* Build configuration list for PBXNativeTarget "ModbusPort" */;
+                     buildPhases = (
+                            A994EA188974489099164CEC /* Sources */,
+                            7248EDC93CC24222979B7A04 /* CMake PostBuild Rules */,
+                     );
+                     buildRules = (
+                     );
+                     dependencies = (
+                            D89F90C9B6D74270939C903B /* PBXTargetDependency */,
+                            055E21E2338743FDB78030E4 /* PBXTargetDependency */,
+                            FA6C1D0959BE4B44B292F57A /* PBXTargetDependency */,
+                     );
+                     name = ModbusPort;
+                     productName = ModbusPort;
+                     productReference = 98272EE924EF4552B657110D /* ModbusPort */;
+                     productType = "com.apple.product-type.library.dynamic";
+              };
+              FF59930612D346368F6E7F85 /* ODC */ = {
+                     isa = PBXNativeTarget;
+                     buildConfigurationList = 62C8CB33C3904894A5365E82 /* Build configuration list for PBXNativeTarget "ODC" */;
+                     buildPhases = (
+                            4668D9BCA19A477C8648FF6E /* Sources */,
+                            068DF29C51AE42DFAC28D9B7 /* CMake PostBuild Rules */,
+                     );
+                     buildRules = (
+                     );
+                     dependencies = (
+                            06E991A20E424CC9B51254DC /* PBXTargetDependency */,
+                            82E1AA2E43444C78BD980C81 /* PBXTargetDependency */,
+                     );
+                     name = ODC;
+                     productName = ODC;
+                     productReference = 2EF59ACEB83B4165A07C455A /* ODC */;
+                     productType = "com.apple.product-type.library.dynamic";
+              };
+              D1AC122EBE924EF2972BF26B /* opendatacon */ = {
+                     isa = PBXNativeTarget;
+                     buildConfigurationList = 7999FB24C0AD4C398C0B9A46 /* Build configuration list for PBXNativeTarget "opendatacon" */;
+                     buildPhases = (
+                            0FB58F3A7FFB46C39D4C75A7 /* Sources */,
+                     );
+                     buildRules = (
+                     );
+                     dependencies = (
+                            9934D93BEA504B9EAB6B95DB /* PBXTargetDependency */,
+                            2858EBE9D4DC4F9BA83FA091 /* PBXTargetDependency */,
+                            00C4F19432174032AA2CD163 /* PBXTargetDependency */,
+                     );
+                     name = opendatacon;
+                     productName = opendatacon;
+                     productReference = C453F173668D43DFA4273CA8 /* opendatacon */;
+                     productType = "com.apple.product-type.tool";
+              };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+              D25DA496F15D49F1BC704620 /* Project object */ = {
+                     isa = PBXProject;
+                     attributes = {
+                            BuildIndependentTargetsInParallel = YES;
+                     };
+                     buildConfigurationList = 84EAB9FE00E447A3B868C386 /* Build configuration list for PBXProject  "opendatacon" */;
+                     buildSettings = {
+                     };
+                     buildStyles = (
+                            9610B962161A4FFC91B36B71 /* Debug */,
+                            1957323BB8CE4B7591916ACD /* Release */,
+                            637CA94E741C4B6689DCA58F /* MinSizeRel */,
+                            43B98839B5274ED0AB849401 /* RelWithDebInfo */,
+                     );
+                     compatibilityVersion = "Xcode 3.2";
+                     hasScannedForEncodings = 0;
+                     mainGroup = 2623B0B3D054422EBFE52BA9;
+                     projectDirPath = ".";
+                     projectRoot = "";
+                     targets = (
+                            6001F2EF14F84EB9A0DC9A02 /* ALL_BUILD */,
+                            9289B6CE25084FEDBD5FFFBE /* DNP3Port */,
+                            5E1F2CCD16944789A043BB5E /* JSON */,
+                            5AD83BA8460D49C993E1CE7B /* JSONPort */,
+                            6F518CC2060E4727951690CA /* ModbusPort */,
+                            FF59930612D346368F6E7F85 /* ODC */,
+                            4116574DBEF44BB785802974 /* ZERO_CHECK */,
+                            D1AC122EBE924EF2972BF26B /* opendatacon */,
+                     );
+              };
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+              ADE1D525701647CE90321B95 /*  */ = {
+                     isa = PBXShellScriptBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                     );
+                     inputPaths = (
+                     );
+                     outputPaths = (
+                     );
+                     runOnlyForDeploymentPostprocessing = 0;
+                     shellPath = /bin/sh;
+                     shellScript = "# shell script goes here
+exit 0";
+                     showEnvVarsInLog = 0;
+              };
+              F3678AD52E2448EEB0ACC9E0 /* CMake Rules */ = {
+                     isa = PBXShellScriptBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                     );
+                     name = "CMake Rules";
+                     runOnlyForDeploymentPostprocessing = 0;
+                     shellPath = /bin/sh;
+                     shellScript = "make -C /Users/admin/source/opendatacon -f /Users/admin/source/opendatacon/CMakeScripts/ALL_BUILD_cmakeRulesBuildPhase.make$CONFIGURATION all";
+                     showEnvVarsInLog = 0;
+              };
+              F1E8A91998CD4DC9BE0334AC /* CMake PostBuild Rules */ = {
+                     isa = PBXShellScriptBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                     );
+                     name = "CMake PostBuild Rules";
+                     runOnlyForDeploymentPostprocessing = 0;
+                     shellPath = /bin/sh;
+                     shellScript = "make -C /Users/admin/source/opendatacon -f /Users/admin/source/opendatacon/CMakeScripts/DNP3Port_postBuildPhase.make$CONFIGURATION all";
+                     showEnvVarsInLog = 0;
+              };
+              2F6D970174874191A7F7D8DA /* CMake PostBuild Rules */ = {
+                     isa = PBXShellScriptBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                     );
+                     name = "CMake PostBuild Rules";
+                     runOnlyForDeploymentPostprocessing = 0;
+                     shellPath = /bin/sh;
+                     shellScript = "make -C /Users/admin/source/opendatacon -f /Users/admin/source/opendatacon/CMakeScripts/JSON_postBuildPhase.make$CONFIGURATION all";
+                     showEnvVarsInLog = 0;
+              };
+              CEDDCA4FD76C497E93860B4B /* CMake PostBuild Rules */ = {
+                     isa = PBXShellScriptBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                     );
+                     name = "CMake PostBuild Rules";
+                     runOnlyForDeploymentPostprocessing = 0;
+                     shellPath = /bin/sh;
+                     shellScript = "make -C /Users/admin/source/opendatacon -f /Users/admin/source/opendatacon/CMakeScripts/JSONPort_postBuildPhase.make$CONFIGURATION all";
+                     showEnvVarsInLog = 0;
+              };
+              7248EDC93CC24222979B7A04 /* CMake PostBuild Rules */ = {
+                     isa = PBXShellScriptBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                     );
+                     name = "CMake PostBuild Rules";
+                     runOnlyForDeploymentPostprocessing = 0;
+                     shellPath = /bin/sh;
+                     shellScript = "make -C /Users/admin/source/opendatacon -f /Users/admin/source/opendatacon/CMakeScripts/ModbusPort_postBuildPhase.make$CONFIGURATION all";
+                     showEnvVarsInLog = 0;
+              };
+              068DF29C51AE42DFAC28D9B7 /* CMake PostBuild Rules */ = {
+                     isa = PBXShellScriptBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                     );
+                     name = "CMake PostBuild Rules";
+                     runOnlyForDeploymentPostprocessing = 0;
+                     shellPath = /bin/sh;
+                     shellScript = "make -C /Users/admin/source/opendatacon -f /Users/admin/source/opendatacon/CMakeScripts/ODC_postBuildPhase.make$CONFIGURATION all";
+                     showEnvVarsInLog = 0;
+              };
+              355D5ACAF7C943BFB32396D0 /*  */ = {
+                     isa = PBXShellScriptBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                     );
+                     inputPaths = (
+                     );
+                     outputPaths = (
+                     );
+                     runOnlyForDeploymentPostprocessing = 0;
+                     shellPath = /bin/sh;
+                     shellScript = "# shell script goes here
+exit 0";
+                     showEnvVarsInLog = 0;
+              };
+              329B19069D4E462D878E9FB9 /* CMake Rules */ = {
+                     isa = PBXShellScriptBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                     );
+                     name = "CMake Rules";
+                     runOnlyForDeploymentPostprocessing = 0;
+                     shellPath = /bin/sh;
+                     shellScript = "make -C /Users/admin/source/opendatacon -f /Users/admin/source/opendatacon/CMakeScripts/ZERO_CHECK_cmakeRulesBuildPhase.make$CONFIGURATION all";
+                     showEnvVarsInLog = 0;
+              };
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+              221779A7B8A1468295D561F0 /* Sources */ = {
+                     isa = PBXSourcesBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                            1C2C9E70F69C4219BADA89DB /* /Users/admin/source/opendatacon/DNP3Port/CommandCorrespondant.cpp */,
+                            EFB738728BB24305A823FD37 /* /Users/admin/source/opendatacon/DNP3Port/DNP3MasterPort.cpp */,
+                            9AE312CBD64B482B927F2306 /* /Users/admin/source/opendatacon/DNP3Port/DNP3OutstationPort.cpp */,
+                            4F3044B6C989430A83D53CEC /* /Users/admin/source/opendatacon/DNP3Port/DNP3PointConf.cpp */,
+                            D0220E3E83254CC28E679FE2 /* /Users/admin/source/opendatacon/DNP3Port/DNP3Port.cpp */,
+                            4591760FDFEB4C80B429F138 /* /Users/admin/source/opendatacon/DNP3Port/main.cpp */,
+                     );
+                     runOnlyForDeploymentPostprocessing = 0;
+              };
+              89E0846AADE14F45814BD491 /* Sources */ = {
+                     isa = PBXSourcesBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                            18863C6DB96E4C1DA08D7837 /* /Users/admin/source/opendatacon/JSON/jsoncpp.cpp */,
+                     );
+                     runOnlyForDeploymentPostprocessing = 0;
+              };
+              A8BDA859721645E0BEE89675 /* Sources */ = {
+                     isa = PBXSourcesBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                            43321C6A2A9E49F79735BDF6 /* /Users/admin/source/opendatacon/JSONPort/JSONClientPort.cpp */,
+                            23F181A0AF3C4177ADBE60CE /* /Users/admin/source/opendatacon/JSONPort/JSONPointConf.cpp */,
+                            8FCCABA0DB26480DB32DC1ED /* /Users/admin/source/opendatacon/JSONPort/JSONPortConf.cpp */,
+                            0D4BD8D3BCE94339A4108B2B /* /Users/admin/source/opendatacon/JSONPort/main.cpp */,
+                     );
+                     runOnlyForDeploymentPostprocessing = 0;
+              };
+              A994EA188974489099164CEC /* Sources */ = {
+                     isa = PBXSourcesBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                            26E32252387A4452ABA46666 /* /Users/admin/source/opendatacon/ModbusPort/ModbusMasterPort.cpp */,
+                            978F3A4296C4406DBCFC73CE /* /Users/admin/source/opendatacon/ModbusPort/ModbusOutstationPort.cpp */,
+                            83ACEF92C975403F8EFA3DD2 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPointConf.cpp */,
+                            5F97DACF7D484B9C85854CA7 /* /Users/admin/source/opendatacon/ModbusPort/ModbusPort.cpp */,
+                            888F28E1071F49BEB7C6DFD2 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-data.c */,
+                            6B2B81EEE64E41F681CA5867 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-rtu.c */,
+                            914FCAD8AD654A269C122222 /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus-tcp.c */,
+                            AFDA98DAE8F84026BAFFF05A /* /Users/admin/source/opendatacon/ModbusPort/libmodbus/modbus.c */,
+                            0ADE704B9A314A1C81EFAC5F /* /Users/admin/source/opendatacon/ModbusPort/main.cpp */,
+                     );
+                     runOnlyForDeploymentPostprocessing = 0;
+              };
+              4668D9BCA19A477C8648FF6E /* Sources */ = {
+                     isa = PBXSourcesBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                            358DEC2853244A8E92017327 /* /Users/admin/source/opendatacon/ODC/ASIOScheduler.cpp */,
+                            3F6DB2449D184C758A727F66 /* /Users/admin/source/opendatacon/ODC/ConfigParser.cpp */,
+                            02E7843BBFAE4D0FA5821821 /* /Users/admin/source/opendatacon/ODC/IOHandler.cpp */,
+                            EBE6DBF04B444D3C8D11234C /* /Users/admin/source/opendatacon/ODC/util.cpp */,
+                     );
+                     runOnlyForDeploymentPostprocessing = 0;
+              };
+              0FB58F3A7FFB46C39D4C75A7 /* Sources */ = {
+                     isa = PBXSourcesBuildPhase;
+                     buildActionMask = 2147483647;
+                     files = (
+                            2005350C53654F56BED15049 /* /Users/admin/source/opendatacon/src/AdvancedLogger.cpp */,
+                            6CD5945F816547C69C4BC8A4 /* /Users/admin/source/opendatacon/src/Console.cpp */,
+                            FB7EC00881C04D398B21294D /* /Users/admin/source/opendatacon/src/DataConcentrator.cpp */,
+                            2D634AEBBADF4F1292A358C2 /* /Users/admin/source/opendatacon/src/DataConnector.cpp */,
+                            20590CD5C98D4EAD9DA6A5FA /* /Users/admin/source/opendatacon/src/LogToFile.cpp */,
+                            8287237B5F1C4B8887610286 /* /Users/admin/source/opendatacon/src/logging_cmds.cpp */,
+                            A4A2C4AF627A4B369AF24D69 /* /Users/admin/source/opendatacon/src/main.cpp */,
+                            3F5053B6225B47B68D0447C5 /* /Users/admin/source/opendatacon/src/tinycon.cpp */,
+                     );
+                     runOnlyForDeploymentPostprocessing = 0;
+              };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+              6C4DB6712158487BA4A9925A /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = FF59930612D346368F6E7F85 /* ODC */;
+                     targetProxy = 51060D0AA34A4EB0B8C231AC /* PBXContainerItemProxy */;
+              };
+              F412B8A127A74E9BA588382E /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 5E1F2CCD16944789A043BB5E /* JSON */;
+                     targetProxy = 03A62B6E46F442958458A3E6 /* PBXContainerItemProxy */;
+              };
+              1E143D59CECE47A4AF69652F /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 6F518CC2060E4727951690CA /* ModbusPort */;
+                     targetProxy = 939DFA678796438BAF0A2FB2 /* PBXContainerItemProxy */;
+              };
+              C7F3A67BB38F4704BBED0864 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 9289B6CE25084FEDBD5FFFBE /* DNP3Port */;
+                     targetProxy = 919F7D7045F546FA826FEDFC /* PBXContainerItemProxy */;
+              };
+              6076261EF76E468892724311 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 5AD83BA8460D49C993E1CE7B /* JSONPort */;
+                     targetProxy = 95A44C2C17A9438685295080 /* PBXContainerItemProxy */;
+              };
+              945D55B95E9A44A3A4EE17E9 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = D1AC122EBE924EF2972BF26B /* opendatacon */;
+                     targetProxy = F0035D89B7084E97B0C703E2 /* PBXContainerItemProxy */;
+              };
+              04DD145786CB408CB6440362 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 4116574DBEF44BB785802974 /* ZERO_CHECK */;
+                     targetProxy = 3D55B8DCDF504279966BA76A /* PBXContainerItemProxy */;
+              };
+              719CB819BDC8428FA2CD12CE /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = FF59930612D346368F6E7F85 /* ODC */;
+                     targetProxy = C38A4B57CEB04027A9351DA4 /* PBXContainerItemProxy */;
+              };
+              A93F570A85D94C228BDBA660 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 5E1F2CCD16944789A043BB5E /* JSON */;
+                     targetProxy = 145EC3E23F2E4A4CAC14E5A6 /* PBXContainerItemProxy */;
+              };
+              48D8621FA84F4851ACBD05D1 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 4116574DBEF44BB785802974 /* ZERO_CHECK */;
+                     targetProxy = E21750B2CC5C49F0AAA289A4 /* PBXContainerItemProxy */;
+              };
+              1AD170C49A664548958B360E /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 4116574DBEF44BB785802974 /* ZERO_CHECK */;
+                     targetProxy = 8F2BE7B1991A48C6B3F5326F /* PBXContainerItemProxy */;
+              };
+              3FF72B6AD34441F2B147DF72 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = FF59930612D346368F6E7F85 /* ODC */;
+                     targetProxy = C5C853749C024C7C8F6CE868 /* PBXContainerItemProxy */;
+              };
+              4AC2DDBC0AAA40DDBDBD52C7 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 5E1F2CCD16944789A043BB5E /* JSON */;
+                     targetProxy = 28F63BA3AE2542B38A909C97 /* PBXContainerItemProxy */;
+              };
+              1401415ED1AC4CA49F9996A2 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 4116574DBEF44BB785802974 /* ZERO_CHECK */;
+                     targetProxy = 7C20ADEAA2E24CA388E7F514 /* PBXContainerItemProxy */;
+              };
+              D89F90C9B6D74270939C903B /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = FF59930612D346368F6E7F85 /* ODC */;
+                     targetProxy = 43BF3D2E03E443989158F00C /* PBXContainerItemProxy */;
+              };
+              055E21E2338743FDB78030E4 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 5E1F2CCD16944789A043BB5E /* JSON */;
+                     targetProxy = 4C38E9233FFA45DDB3D1D0C3 /* PBXContainerItemProxy */;
+              };
+              FA6C1D0959BE4B44B292F57A /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 4116574DBEF44BB785802974 /* ZERO_CHECK */;
+                     targetProxy = 8C7108B9FAD14EBBBD578101 /* PBXContainerItemProxy */;
+              };
+              06E991A20E424CC9B51254DC /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 5E1F2CCD16944789A043BB5E /* JSON */;
+                     targetProxy = BC1BE4C09F024E5BB3DC3151 /* PBXContainerItemProxy */;
+              };
+              82E1AA2E43444C78BD980C81 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 4116574DBEF44BB785802974 /* ZERO_CHECK */;
+                     targetProxy = B86BD9F3D368499297D64A37 /* PBXContainerItemProxy */;
+              };
+              9934D93BEA504B9EAB6B95DB /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = FF59930612D346368F6E7F85 /* ODC */;
+                     targetProxy = 5B377DDBEE1F4BC4BEE7E51D /* PBXContainerItemProxy */;
+              };
+              2858EBE9D4DC4F9BA83FA091 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 5E1F2CCD16944789A043BB5E /* JSON */;
+                     targetProxy = EF035F4EFDC44C9A9E98EE90 /* PBXContainerItemProxy */;
+              };
+              00C4F19432174032AA2CD163 /* PBXTargetDependency */ = {
+                     isa = PBXTargetDependency;
+                     target = 4116574DBEF44BB785802974 /* ZERO_CHECK */;
+                     targetProxy = A2C6CC50D07C4C378043AA00 /* PBXContainerItemProxy */;
+              };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+              42A271ECBFD3468BB332F718 /* Debug */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+                            ONLY_ACTIVE_ARCH = YES;
+                            SDKROOT = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk";
+                            SYMROOT = /Users/admin/source/opendatacon/build;
+                     };
+                     name = Debug;
+              };
+              1F9B9B2F266E4F87B5CC6EE9 /* Release */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+                            ONLY_ACTIVE_ARCH = YES;
+                            SDKROOT = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk";
+                            SYMROOT = /Users/admin/source/opendatacon/build;
+                     };
+                     name = Release;
+              };
+              35476D00DAFD4393A2BC3E6F /* MinSizeRel */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+                            ONLY_ACTIVE_ARCH = YES;
+                            SDKROOT = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk";
+                            SYMROOT = /Users/admin/source/opendatacon/build;
+                     };
+                     name = MinSizeRel;
+              };
+              5A1B8461CCC04E53A1C9958B /* RelWithDebInfo */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+                            ONLY_ACTIVE_ARCH = YES;
+                            SDKROOT = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk";
+                            SYMROOT = /Users/admin/source/opendatacon/build;
+                     };
+                     name = RelWithDebInfo;
+              };
+              F9FB90197F244C6E8C00C1E6 /* Debug */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            OTHER_CFLAGS = "  ";
+                            OTHER_LDFLAGS = " ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ALL_BUILD;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Debug;
+              };
+              CBA74140F90E42B98E567881 /* Release */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            OTHER_CFLAGS = "  ";
+                            OTHER_LDFLAGS = " ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ALL_BUILD;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Release;
+              };
+              C44229ECA6A347EEBA8CDABC /* MinSizeRel */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            OTHER_CFLAGS = "  ";
+                            OTHER_LDFLAGS = " ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ALL_BUILD;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = MinSizeRel;
+              };
+              8C233C7D78C34550B4BF9695 /* RelWithDebInfo */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            OTHER_CFLAGS = "  ";
+                            OTHER_LDFLAGS = " ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ALL_BUILD;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = RelWithDebInfo;
+              };
+              07D495DADE1E492CB93D7D99 /* Debug */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", DNP3Port_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Debug;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "   -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Debug/libODC.dylib /Users/admin/source/opendatacon/Debug/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = DNP3Port;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Debug;
+              };
+              17E32A000BDA4E9BAE099020 /* Release */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 3;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", DNP3Port_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Release;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Release/libODC.dylib /Users/admin/source/opendatacon/Release/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = DNP3Port;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Release;
+              };
+              6E23DF1F10E74E60B9E7CFE7 /* MinSizeRel */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = s;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", DNP3Port_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/MinSizeRel;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/MinSizeRel/libODC.dylib /Users/admin/source/opendatacon/MinSizeRel/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = DNP3Port;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = MinSizeRel;
+              };
+              F7F69FD163B24F48B2BD7902 /* RelWithDebInfo */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 2;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", DNP3Port_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/RelWithDebInfo;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "       -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/RelWithDebInfo/libODC.dylib /Users/admin/source/opendatacon/RelWithDebInfo/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = DNP3Port;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = RelWithDebInfo;
+              };
+              E8BBCA0BA24342318433E44A /* Debug */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", JSON_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Debug;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "   -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = JSON;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Debug;
+              };
+              9E62A1E9A1F34E1D94FF97B4 /* Release */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 3;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", JSON_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Release;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = JSON;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Release;
+              };
+              DAE6E07DE9444FB89CEA85B1 /* MinSizeRel */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = s;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", JSON_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/MinSizeRel;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = JSON;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = MinSizeRel;
+              };
+              E3EB1688B0824F87AEE05842 /* RelWithDebInfo */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 2;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", JSON_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/RelWithDebInfo;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "       -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = JSON;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = RelWithDebInfo;
+              };
+              598404D737A74396AB738E00 /* Debug */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", JSONPort_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Debug;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "   -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Debug/libODC.dylib /Users/admin/source/opendatacon/Debug/libJSON.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libopenpal.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = JSONPort;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Debug;
+              };
+              DE8ABC0E737A46719C264E89 /* Release */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 3;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", JSONPort_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Release;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Release/libODC.dylib /Users/admin/source/opendatacon/Release/libJSON.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libopenpal.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = JSONPort;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Release;
+              };
+              B1A80CF6881E4FC89F668798 /* MinSizeRel */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = s;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", JSONPort_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/MinSizeRel;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/MinSizeRel/libODC.dylib /Users/admin/source/opendatacon/MinSizeRel/libJSON.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libopenpal.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = JSONPort;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = MinSizeRel;
+              };
+              69F541E6C0EF458EB55E0548 /* RelWithDebInfo */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 2;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", JSONPort_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/RelWithDebInfo;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "       -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/RelWithDebInfo/libODC.dylib /Users/admin/source/opendatacon/RelWithDebInfo/libJSON.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libopenpal.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = JSONPort;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = RelWithDebInfo;
+              };
+              8669D4B1F13644E1A0592D82 /* Debug */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ModbusPort_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Debug;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "   -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Debug/libODC.dylib /Users/admin/source/opendatacon/Debug/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ModbusPort;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Debug;
+              };
+              7B7C05E528A341DEAD99E574 /* Release */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 3;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ModbusPort_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Release;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Release/libODC.dylib /Users/admin/source/opendatacon/Release/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ModbusPort;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Release;
+              };
+              F0ED73C5AAF34D45BF70E0CD /* MinSizeRel */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = s;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ModbusPort_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/MinSizeRel;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/MinSizeRel/libODC.dylib /Users/admin/source/opendatacon/MinSizeRel/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ModbusPort;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = MinSizeRel;
+              };
+              2BD8089D093E43BE8EFAB2B3 /* RelWithDebInfo */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 2;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ModbusPort_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/RelWithDebInfo;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "       -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/RelWithDebInfo/libODC.dylib /Users/admin/source/opendatacon/RelWithDebInfo/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ModbusPort;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = RelWithDebInfo;
+              };
+              70541621B573401693A70A64 /* Debug */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ODC_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Debug;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "   -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Debug/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ODC;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Debug;
+              };
+              0CF0911360E24F3C959A14C1 /* Release */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 3;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ODC_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/Release;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Release/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ODC;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Release;
+              };
+              B23E1CE7FD5941F684092457 /* MinSizeRel */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = s;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ODC_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/MinSizeRel;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "    -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/MinSizeRel/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ODC;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = MinSizeRel;
+              };
+              1A836975A75B4F478AB87AEE /* RelWithDebInfo */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            DYLIB_COMPATIBILITY_VERSION = "";
+                            DYLIB_CURRENT_VERSION = "";
+                            EXECUTABLE_PREFIX = lib;
+                            EXECUTABLE_SUFFIX = ".dylib";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 2;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ODC_EXPORTS, ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = /Users/admin/source/opendatacon/RelWithDebInfo;
+                            LIBRARY_SEARCH_PATHS = "";
+                            LIBRARY_STYLE = DYNAMIC;
+                            OTHER_CFLAGS = "       -DNDEBUG -fPIC  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -DNDEBUG -fPIC  ";
+                            OTHER_LDFLAGS = "  -dynamiclib -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/RelWithDebInfo/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ODC;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = RelWithDebInfo;
+              };
+              C2AC466F895E4EB0AACF1DB4 /* Debug */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            OTHER_CFLAGS = "  ";
+                            OTHER_LDFLAGS = " ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ZERO_CHECK;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Debug;
+              };
+              BD422E9ADA48410FA9233769 /* Release */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            OTHER_CFLAGS = "  ";
+                            OTHER_LDFLAGS = " ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ZERO_CHECK;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Release;
+              };
+              02B6A25C92DD4DAE8743B5A2 /* MinSizeRel */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            OTHER_CFLAGS = "  ";
+                            OTHER_LDFLAGS = " ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ZERO_CHECK;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = MinSizeRel;
+              };
+              C34DC62EED1D4C9F925A53FD /* RelWithDebInfo */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            OTHER_CFLAGS = "  ";
+                            OTHER_LDFLAGS = " ";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = ZERO_CHECK;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = RelWithDebInfo;
+              };
+              11A89ADD88C7498994316AF6 /* Debug */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            EXECUTABLE_PREFIX = "";
+                            EXECUTABLE_SUFFIX = "";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 0;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            LIBRARY_SEARCH_PATHS = "";
+                            OTHER_CFLAGS = "    ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11         ";
+                            OTHER_LDFLAGS = "  -Wl,-search_paths_first -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Debug/libODC.dylib -lpthread /Users/admin/source/opendatacon/Debug/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = opendatacon;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Debug;
+              };
+              331AF7D5A6144C7D941CA711 /* Release */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            EXECUTABLE_PREFIX = "";
+                            EXECUTABLE_SUFFIX = "";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 3;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            LIBRARY_SEARCH_PATHS = "";
+                            OTHER_CFLAGS = "    -DNDEBUG  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG  ";
+                            OTHER_LDFLAGS = "  -Wl,-search_paths_first -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/Release/libODC.dylib -lpthread /Users/admin/source/opendatacon/Release/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = opendatacon;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = Release;
+              };
+              CC212657DE1946338BD22794 /* MinSizeRel */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            EXECUTABLE_PREFIX = "";
+                            EXECUTABLE_SUFFIX = "";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = s;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            LIBRARY_SEARCH_PATHS = "";
+                            OTHER_CFLAGS = "    -DNDEBUG  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11     -DNDEBUG  ";
+                            OTHER_LDFLAGS = "  -Wl,-search_paths_first -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/MinSizeRel/libODC.dylib -lpthread /Users/admin/source/opendatacon/MinSizeRel/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = opendatacon;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = MinSizeRel;
+              };
+              97530E9AC0274A3296BA113B /* RelWithDebInfo */ = {
+                     isa = XCBuildConfiguration;
+                     buildSettings = {
+                            COMBINE_HIDPI_IMAGES = YES;
+                            EXECUTABLE_PREFIX = "";
+                            EXECUTABLE_SUFFIX = "";
+                            GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+                            GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+                            GCC_OPTIMIZATION_LEVEL = 2;
+                            GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'", ASIO_STANDALONE, );
+                            GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+                            HEADER_SEARCH_PATHS = (/Users/admin/source/opendatacon, /usr/local/include, "/Users/admin/source/opendatacon/./include", "/Users/admin/source/opendatacon/./ODC", "/Users/admin/source/opendatacon/./JSON", );
+                            INSTALL_PATH = "";
+                            LIBRARY_SEARCH_PATHS = "";
+                            OTHER_CFLAGS = "       -DNDEBUG  ";
+                            OTHER_CPLUSPLUSFLAGS = "-Wall -std=c++11        -DNDEBUG  ";
+                            OTHER_LDFLAGS = "  -Wl,-search_paths_first -Wl,-headerpad_max_install_names  /Users/admin/source/opendatacon/RelWithDebInfo/libODC.dylib -lpthread /Users/admin/source/opendatacon/RelWithDebInfo/libJSON.dylib /usr/local/lib/libasiodnp3.dylib /usr/local/lib/libopendnp3.dylib /usr/local/lib/libasiopal.dylib /usr/local/lib/libopenpal.dylib";
+                            OTHER_REZFLAGS = "";
+                            PRODUCT_NAME = opendatacon;
+                            SECTORDER_FLAGS = "";
+                            SYMROOT = /Users/admin/source/opendatacon;
+                            USE_HEADERMAP = NO;
+                            WARNING_CFLAGS = ("-Wmost", "-Wno-four-char-constants", "-Wno-unknown-pragmas", );
+                     };
+                     name = RelWithDebInfo;
+              };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+              84EAB9FE00E447A3B868C386 /* Build configuration list for PBXProject  "opendatacon" */ = {
+                     isa = XCConfigurationList;
+                     buildConfigurations = (
+                            42A271ECBFD3468BB332F718 /* Debug */,
+                            1F9B9B2F266E4F87B5CC6EE9 /* Release */,
+                            35476D00DAFD4393A2BC3E6F /* MinSizeRel */,
+                            5A1B8461CCC04E53A1C9958B /* RelWithDebInfo */,
+                     );
+                     defaultConfigurationIsVisible = 0;
+                     defaultConfigurationName = Debug;
+              };
+              2229D93CA8B644038B1FF496 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */ = {
+                     isa = XCConfigurationList;
+                     buildConfigurations = (
+                            F9FB90197F244C6E8C00C1E6 /* Debug */,
+                            CBA74140F90E42B98E567881 /* Release */,
+                            C44229ECA6A347EEBA8CDABC /* MinSizeRel */,
+                            8C233C7D78C34550B4BF9695 /* RelWithDebInfo */,
+                     );
+                     defaultConfigurationIsVisible = 0;
+                     defaultConfigurationName = Debug;
+              };
+              1284EEDB72814357A218C1BB /* Build configuration list for PBXNativeTarget "DNP3Port" */ = {
+                     isa = XCConfigurationList;
+                     buildConfigurations = (
+                            07D495DADE1E492CB93D7D99 /* Debug */,
+                            17E32A000BDA4E9BAE099020 /* Release */,
+                            6E23DF1F10E74E60B9E7CFE7 /* MinSizeRel */,
+                            F7F69FD163B24F48B2BD7902 /* RelWithDebInfo */,
+                     );
+                     defaultConfigurationIsVisible = 0;
+                     defaultConfigurationName = Debug;
+              };
+              CC92E85807EE4A49ADA37F87 /* Build configuration list for PBXNativeTarget "JSON" */ = {
+                     isa = XCConfigurationList;
+                     buildConfigurations = (
+                            E8BBCA0BA24342318433E44A /* Debug */,
+                            9E62A1E9A1F34E1D94FF97B4 /* Release */,
+                            DAE6E07DE9444FB89CEA85B1 /* MinSizeRel */,
+                            E3EB1688B0824F87AEE05842 /* RelWithDebInfo */,
+                     );
+                     defaultConfigurationIsVisible = 0;
+                     defaultConfigurationName = Debug;
+              };
+              F3A60E58C6B04A35B46A2B53 /* Build configuration list for PBXNativeTarget "JSONPort" */ = {
+                     isa = XCConfigurationList;
+                     buildConfigurations = (
+                            598404D737A74396AB738E00 /* Debug */,
+                            DE8ABC0E737A46719C264E89 /* Release */,
+                            B1A80CF6881E4FC89F668798 /* MinSizeRel */,
+                            69F541E6C0EF458EB55E0548 /* RelWithDebInfo */,
+                     );
+                     defaultConfigurationIsVisible = 0;
+                     defaultConfigurationName = Debug;
+              };
+              6B50317534EB479BA21BD5E4 /* Build configuration list for PBXNativeTarget "ModbusPort" */ = {
+                     isa = XCConfigurationList;
+                     buildConfigurations = (
+                            8669D4B1F13644E1A0592D82 /* Debug */,
+                            7B7C05E528A341DEAD99E574 /* Release */,
+                            F0ED73C5AAF34D45BF70E0CD /* MinSizeRel */,
+                            2BD8089D093E43BE8EFAB2B3 /* RelWithDebInfo */,
+                     );
+                     defaultConfigurationIsVisible = 0;
+                     defaultConfigurationName = Debug;
+              };
+              62C8CB33C3904894A5365E82 /* Build configuration list for PBXNativeTarget "ODC" */ = {
+                     isa = XCConfigurationList;
+                     buildConfigurations = (
+                            70541621B573401693A70A64 /* Debug */,
+                            0CF0911360E24F3C959A14C1 /* Release */,
+                            B23E1CE7FD5941F684092457 /* MinSizeRel */,
+                            1A836975A75B4F478AB87AEE /* RelWithDebInfo */,
+                     );
+                     defaultConfigurationIsVisible = 0;
+                     defaultConfigurationName = Debug;
+              };
+              06286512BD2D4F5E90F709D8 /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */ = {
+                     isa = XCConfigurationList;
+                     buildConfigurations = (
+                            C2AC466F895E4EB0AACF1DB4 /* Debug */,
+                            BD422E9ADA48410FA9233769 /* Release */,
+                            02B6A25C92DD4DAE8743B5A2 /* MinSizeRel */,
+                            C34DC62EED1D4C9F925A53FD /* RelWithDebInfo */,
+                     );
+                     defaultConfigurationIsVisible = 0;
+                     defaultConfigurationName = Debug;
+              };
+              7999FB24C0AD4C398C0B9A46 /* Build configuration list for PBXNativeTarget "opendatacon" */ = {
+                     isa = XCConfigurationList;
+                     buildConfigurations = (
+                            11A89ADD88C7498994316AF6 /* Debug */,
+                            331AF7D5A6144C7D941CA711 /* Release */,
+                            CC212657DE1946338BD22794 /* MinSizeRel */,
+                            97530E9AC0274A3296BA113B /* RelWithDebInfo */,
+                     );
+                     defaultConfigurationIsVisible = 0;
+                     defaultConfigurationName = Debug;
+              };
+/* End XCConfigurationList section */
+       };
+       rootObject = D25DA496F15D49F1BC704620;
+}

@@ -44,6 +44,7 @@ public:
 	std::map<uint16_t, Json::Value> Binaries;
 	std::map<uint16_t, Json::Value> Analogs;
 	std::map<uint16_t, Json::Value> Controls;
+	Json::Value TimestampPath;
 };
 
 #endif /* JSONPOINTCONF_H_ */

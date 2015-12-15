@@ -30,7 +30,6 @@
 #include <chrono>
 #include <asiopal/UTCTimeSource.h>
 #include <asiodnp3/MeasUpdate.h>
-#include <opendnp3/outstation/Database.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include <openpal/logging/LogLevels.h>
 #include "DNP3OutstationPort.h"
@@ -40,7 +39,7 @@
 DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides),
 	pOutstation(nullptr)
-{};
+{}
 
 void DNP3OutstationPort::Enable()
 {
@@ -72,32 +71,44 @@ void DNP3OutstationPort::Disable()
 }
 
 // Called by OpenDNP3 Thread Pool
-void DNP3OutstationPort::LinkStatusListener(opendnp3::LinkStatus status)
+// Called when a the reset/unreset status of the link layer changes (and on link up)
+void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	this->status = status;
-	if(status == opendnp3::LinkStatus::UNRESET)
+	if(link_dead)
 	{
+		link_dead = false;
 		for(auto IOHandler_pair : Subscribers)
 		{
 			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
 		}
 	}
-	else if(status == opendnp3::LinkStatus::TIMEOUT)
+	//TODO: track a new statistic - reset count
+}
+// Called by OpenDNP3 Thread Pool
+// Called when a keep alive message (request link status) receives no response
+void DNP3OutstationPort::OnKeepAliveFailure()
+{
+	if(!link_dead)
 	{
+		link_dead = true;
 		for(auto IOHandler_pair : Subscribers)
 		{
 			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
 		}
 	}
-	else if(status == opendnp3::LinkStatus::RESET)
+}
+// Called by OpenDNP3 Thread Pool
+// Called when a keep alive message receives a valid response
+void DNP3OutstationPort::OnKeepAliveSuccess()
+{
+	if(link_dead)
 	{
-		//TODO: track a new statistic - reset count
-	}
-	else
-	{
-		std::string msg = Name + ": Unknown link status reported from stack.";
-		auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::WARN, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		link_dead = false;
+		for(auto IOHandler_pair : Subscribers)
+		{
+			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+		}
 	}
 }
 
@@ -111,8 +122,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	if(!TCPChannels.count(IPPort))
 	{
 		TCPChannels[IPPort] = DNP3Mgr.AddTCPServer(log_id.c_str(), LOG_LEVEL.GetBitfield(),
-		                                           openpal::TimeDuration::Seconds(5),
-		                                           openpal::TimeDuration::Seconds(300),
+		                                           opendnp3::ChannelRetry::Default(),
 		                                           pConf->mAddrConf.IP,
 		                                           pConf->mAddrConf.Port);
 	}
@@ -124,7 +134,10 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
 	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
 	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
-	StackConfig.link.KeepAlive = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
+	if(pConf->pPointConf->LinkKeepAlivems == 0)
+		StackConfig.link.KeepAliveTimeout = openpal::TimeDuration::Max();
+	else
+		StackConfig.link.KeepAliveTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
 	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
 
 	// Outstation parameters
@@ -167,11 +180,6 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 		return;
 	}
 
-	pOutstation->AddLinkStatusListener([&](opendnp3::LinkStatus status)
-	                                   {
-	                                         LinkStatusListener(status);
-						     });
-
 	auto configView = pOutstation->GetConfigView();
 
 	{
@@ -206,7 +214,7 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 	Json::Value analogValues;
 	Json::Value binaryValues;
 	if (pOutstation == nullptr)
-		return IUIResponder::RESULT_BADPORT;
+		return IUIResponder::GenerateResult("Bad port");
 
 	auto configView = pOutstation->GetConfigView();
 
@@ -223,7 +231,7 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 	event["BinaryCurrent"] = binaryValues;
 
 	return event;
-};
+}
 
 //DataPort function for UI
 const Json::Value DNP3OutstationPort::GetStatistics() const
@@ -251,7 +259,7 @@ const Json::Value DNP3OutstationPort::GetStatistics() const
 	}
 
 	return event;
-};
+}
 
 template<typename T>
 inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
@@ -306,13 +314,13 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	return opendnp3::CommandStatus::SUCCESS;
 }
 
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Binary>(qual,index,SenderName);};
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::DoubleBitBinary>(qual,index,SenderName);};
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Analog>(qual,index,SenderName);};
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Counter>(qual,index,SenderName);};
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::FrozenCounter>(qual,index,SenderName);};
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::BinaryOutputStatus>(qual,index,SenderName);};
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::AnalogOutputStatus>(qual,index,SenderName);};
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Binary>(qual,index,SenderName);}
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::DoubleBitBinary>(qual,index,SenderName);}
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Analog>(qual,index,SenderName);}
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Counter>(qual,index,SenderName);}
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::FrozenCounter>(qual,index,SenderName);}
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::BinaryOutputStatus>(qual,index,SenderName);}
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::AnalogOutputStatus>(qual,index,SenderName);}
 
 template<typename T, typename Q>
 inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName)
@@ -329,7 +337,7 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, 
 
 		T updated = existing;
 		updated.quality = static_cast<uint8_t>(qual) | state;
-		updated.time = eventTime;
+		updated.time = opendnp3::DNPTime(eventTime);
 		return updated;
 	};
 	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);
@@ -341,13 +349,13 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, 
 	return IOHandler::CommandFutureSuccess();
 }
 
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); };
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 
 template<typename T>
 inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
@@ -367,7 +375,7 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, 
 		      ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time == 0))
 		      )
 		{
-			T newmeas(meas.value, meas.quality, eventTime);
+			T newmeas(meas.value, meas.quality, opendnp3::DNPTime(eventTime));
 			tx.Update(newmeas, index);
 		}
 		else

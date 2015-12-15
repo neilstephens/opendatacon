@@ -34,11 +34,6 @@ const Json::Value IUIResponder::GenerateResult(const std::string& message)
 	return result;
 }
 
-const Json::Value IUIResponder::RESULT_SUCCESS = GenerateResult("Success");
-const Json::Value IUIResponder::RESULT_BADPARAMETER = GenerateResult("Bad parameter");
-const Json::Value IUIResponder::RESULT_BADCOMMAND = GenerateResult("Bad command");
-const Json::Value IUIResponder::RESULT_BADPORT = GenerateResult("Bad port");
-
 Json::Value IUIResponder::GetCommandList()
 {
 	Json::Value result;
@@ -56,7 +51,7 @@ Json::Value IUIResponder::ExecuteCommand(const std::string& arCommandName, const
 		auto command = commands.at(arCommandName);
 		return command.function(params);
 	}
-	return IUIResponder::RESULT_BADCOMMAND;
+	return IUIResponder::GenerateResult("Bad command");
 }
 
 void IUIResponder::AddCommand(const std::string& arCommandName, UIFunction arCommand, const std::string& desc, const bool hide)

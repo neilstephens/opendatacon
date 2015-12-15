@@ -50,13 +50,13 @@ $build_configs{"Release"}{"MHLibs"} = "/usr/lib/x86_64-linux-gnu/libmicrohttpd.s
 $build_configs{"Debug-rpi"}{"Platform"} = "rpi";
 $build_configs{"Debug-rpi"}{"Flavour"} = "-Debug";
 $build_configs{"Debug-rpi"}{"DNP3Libs"} = "../../dnp3-rpi-Debug/.libs/*.so*";
-$build_configs{"Debug-rpi"}{"STDLibs"} = "~/x-tools/armv6-rpi-linux-gnueabi/armv6-rpi-linux-gnueabi/sysroot/lib/libstdc++.so*";
+$build_configs{"Debug-rpi"}{"STDLibs"} = "~/x-tools/armv7-rpi-linux-gnueabihf-2.21_5.1/armv7-rpi-linux-gnueabihf/sysroot/lib/libstdc++.so*";
 $build_configs{"Debug-rpi"}{"MHLibs"} = "../../microhttpd-rpi/lib/libmicrohttpd.so*";
 
 $build_configs{"Release-rpi"}{"Platform"} = "rpi";
 $build_configs{"Release-rpi"}{"Flavour"} = "";
 $build_configs{"Release-rpi"}{"DNP3Libs"} = "../../dnp3-rpi/.libs/*.so*";
-$build_configs{"Release-rpi"}{"STDLibs"} = "~/x-tools/armv6-rpi-linux-gnueabi/armv6-rpi-linux-gnueabi/sysroot/lib/libstdc++.so*";
+$build_configs{"Release-rpi"}{"STDLibs"} = "~/x-tools/armv7-rpi-linux-gnueabihf-2.21_5.1/armv7-rpi-linux-gnueabihf/sysroot/lib/libstdc++.so*";
 $build_configs{"Release-rpi"}{"MHLibs"} = "../../microhttpd-rpi/lib/libmicrohttpd.so*";
 
 $build_configs{"Debug-RHEL65"}{"Platform"} = "RHEL65";
@@ -94,7 +94,7 @@ foreach my $build_config_key (keys %build_configs)
 	system("cp -a ../$build_config_key/opendatacon $build_dir/") and die "Failed to copy opendatacon exe for '$build_dir': $!\n";
 	system("cp -a ../README $build_dir/") and die "Failed to copy opendatacon README '$build_dir': $!\n";
         system("cp -a ../include $build_dir/") and die "Failed to copy API headers for '$build_dir': $!\n";
-	for my $lib ("ODC","JSON","JSONPort","DNP3Port","WebUI")
+	for my $lib ("ODC","JSON","JSONPort","DNP3Port","WebUI","ModbusPort")
 	{
 		#copy lib
 		system("cp -a ../$build_config_key/$lib/lib$lib.so $build_dir/libs/") and die "Failed to copy lib$lib for '$build_dir': $!\n";

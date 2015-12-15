@@ -29,9 +29,7 @@
 
 #include <unordered_map>
 #include <opendnp3/master/ISOEHandler.h>
-#include <opendnp3/master/CommandResponse.h>
-#include <opendnp3/app/IterableBuffer.h>
-
+#include <opendnp3/app/parsing/ICollection.h>
 #include "DNP3Port.h"
 
 using namespace opendnp3;
@@ -41,6 +39,7 @@ class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler //, public o
 public:
 	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 		DNP3Port(aName, aConfFilename, aConfOverrides),
+		pMaster(nullptr),
 		stack_enabled(false),
 		assign_class_sent(false)
 	{};
@@ -52,24 +51,35 @@ public:
 	//Override DataPort functions for UI
 	const Json::Value GetStatistics() const override;
 
+	//Impl. ILinkListener
+	// Called when a the reset/unreset status of the link layer changes (and on link up)
+	void OnStateChange(opendnp3::LinkStatus status);
+	// Called when a keep alive message (request link status) receives no response
+	void OnKeepAliveFailure();
+	// Called when a keep alive message receives a valid response
+	void OnKeepAliveSuccess();
+
 	//implement ISOEHandler
 protected:
 	void Start() override final {}
 	void End() override final {}
 
 public:
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Binary, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<DoubleBitBinary, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Analog, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<Counter, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<FrozenCounter, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryOutputStatus, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogOutputStatus, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<OctetString, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<TimeAndInterval, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<BinaryCommandEvent, uint16_t> >& meas);
-	void OnReceiveHeader(const HeaderInfo& info, const IterableBuffer<IndexedValue<AnalogCommandEvent, uint16_t> >& meas);
-	template<typename T> void LoadT(const IterableBuffer<IndexedValue<T, uint16_t> >& meas);
+	//virtual void Process(const HeaderInfo& info, const ICollection<Indexed<Binary>>& values) = 0;
+
+	void Process(const HeaderInfo& info, const ICollection<Indexed<Binary> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<DoubleBitBinary> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<Analog> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<Counter> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<FrozenCounter> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<BinaryOutputStatus> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<AnalogOutputStatus> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<OctetString> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<TimeAndInterval> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<BinaryCommandEvent> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<AnalogCommandEvent> >& meas);
+	void Process(const HeaderInfo& info, const ICollection<Indexed<SecurityStat> >& meas);
+	template<typename T> void LoadT(const ICollection<Indexed<T> >& meas);
 
 	//Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
@@ -90,7 +100,7 @@ private:
 	void SendAssignClass(std::promise<opendnp3::CommandStatus> cmd_promise);
 	void LinkStatusListener(opendnp3::LinkStatus status);
 	template<typename T>
-	inline void DoOverrideControlCode(T& arCommand){};
+	inline void DoOverrideControlCode(T& arCommand){}
 	void PortUp();
 	void PortDown();
 	inline void EnableStack()
