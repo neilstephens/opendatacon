@@ -360,10 +360,8 @@ inline std::future<opendnp3::CommandStatus> DNP3MasterPort::EventT(T& arCommand,
 			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
 
-			auto cmd_set = opendnp3::CommandSet();
-			cmd_set.Add({Indexed<T>(lCommand,index)});
+			this->pMaster->DirectOperate(lCommand,index,*CommandCorrespondant::GetCallback(std::move(cmd_promise)));
 
-			this->pMaster->DirectOperate(std::move(cmd_set), *CommandCorrespondant::GetCallback(std::move(cmd_promise)));
 			return cmd_future;
 		}
 	}
