@@ -40,7 +40,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 {}
 std::future<opendnp3::CommandStatus> SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
-	CommandFutureSuccess();
+	return CommandFutureSuccess();
 }
 
 //Implement Event handlers from IOHandler - All not supported because SimPort is just a source.
@@ -48,82 +48,82 @@ std::future<opendnp3::CommandStatus> SimPort::ConnectionEvent(ConnectState state
 // measurement events
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 
 // change of quality Events
 std::future<opendnp3::CommandStatus> SimPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 
 // control events
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName)
 {
-	CommandFutureNotSupported();
+	return CommandFutureNotSupported();
 }
 
