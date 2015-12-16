@@ -19,7 +19,7 @@
  # 
 project(DNP3Port_tests)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. ${PROJECT_NAME}_SRC)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(

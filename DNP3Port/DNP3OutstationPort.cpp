@@ -33,6 +33,7 @@
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include <openpal/logging/LogLevels.h>
 #include "DNP3OutstationPort.h"
+#include "DNP3PortConf.h"
 
 #include "OpenDNP3Helpers.h"
 

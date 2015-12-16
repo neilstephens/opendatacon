@@ -19,8 +19,7 @@
  # 
 project(JSONPort)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. JSONPort_SRC)
-set(JSONPort_SRC "${JSONPort_SRC}" "JSONPort.def")
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
@@ -34,4 +33,4 @@ link_directories("${DNP3_HOME}/${MY_BUILD_CONFIG}")
 link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}")
 link_libraries(ODC)
 
-add_library(${PROJECT_NAME} SHARED ${JSONPort_SRC})
+add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})

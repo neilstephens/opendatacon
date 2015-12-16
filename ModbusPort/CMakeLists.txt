@@ -19,7 +19,7 @@
  # 
 project(ModbusPort)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. ModbusPort_SRC)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
@@ -34,4 +34,4 @@ link_directories("${MODBUS_HOME}/${MY_BUILD_CONFIG}/lib"
 "${DNP3_HOME}/${MY_BUILD_CONFIG}")
 link_libraries(ODC modbus)
 
-add_library(${PROJECT_NAME} SHARED ${ModbusPort_SRC})
+add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})

@@ -19,9 +19,7 @@
  # 
 project(opendatacon)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(src SRC_LIST)
-file(GLOB INCL_LIST include/opendatacon/*.h)
-set(SRC_LIST "${SRC_LIST}" "${INCL_LIST}")
+file(GLOB SRC_LIST src/*.cpp src/*.h include/opendatacon/*.h)
 
 # various optional libraries and projects
 option(FULL "Build all optional projects (DNP3Port, JSONPort, Tests, WebUI)" ON)
