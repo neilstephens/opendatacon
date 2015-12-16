@@ -25,6 +25,7 @@
  */
 #include "DNP3Port.h"
 #include <iostream>
+#include "DNP3PortConf.h"
 
 std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::TCPChannels;
 

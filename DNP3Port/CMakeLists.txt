@@ -19,8 +19,8 @@
  # 
 project(DNP3Port)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. DNP3Port_SRC)
-set(DNP3Port_SRC "${DNP3Port_SRC}" "DNP3Port.def")
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
@@ -33,4 +33,4 @@ include_directories(
 link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}"
 "${DNP3_HOME}/${MY_BUILD_CONFIG}")
 link_libraries(ODC asiopal openpal asiodnp3 opendnp3)
-add_library(${PROJECT_NAME} SHARED ${DNP3Port_SRC})
+add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})

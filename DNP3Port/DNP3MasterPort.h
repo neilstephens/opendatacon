@@ -31,6 +31,7 @@
 #include <opendnp3/master/ISOEHandler.h>
 #include <opendnp3/app/parsing/ICollection.h>
 #include "DNP3Port.h"
+#include "DNP3PortConf.h"
 
 using namespace opendnp3;
 

@@ -29,7 +29,6 @@
 
 #include <opendatacon/DataPort.h>
 #include <opendnp3/gen/LinkStatus.h>
-#include "DNP3PortConf.h"
 
 class DNP3Port: public DataPort
 {
