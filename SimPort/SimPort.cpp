@@ -45,24 +45,24 @@ SimPort::SimPort(std::string Name, std::string File, const Json::Value Overrides
 void SimPort::Enable()
 {
 	pEnableDisableSync->post([&]()
-	{
-		if(!enabled)
-		{
-			enabled = true;
-			PortUp();
-		}
-	});
+	                         {
+	                               if(!enabled)
+	                               {
+	                                     enabled = true;
+	                                     PortUp();
+						 }
+					 });
 }
 void SimPort::Disable()
 {
 	pEnableDisableSync->post([&]()
-	{
-		if(enabled)
-		{
-			enabled = false;
-			PortDown();
-		}
-	});
+	                         {
+	                               if(enabled)
+	                               {
+	                                     enabled = false;
+	                                     PortDown();
+						 }
+					 });
 }
 
 void SimPort::PortUp()
@@ -84,10 +84,10 @@ void SimPort::PortUp()
 
 			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 			pTimer->async_wait([=](asio::error_code err_code)
-			{
-				if(err_code != asio::error::operation_aborted)
-					SpawnEvent(pMean, std_dev, interval, index, pTimer, seed);
-			});
+			                   {
+			                         if(err_code != asio::error::operation_aborted)
+								 SpawnEvent(pMean, std_dev, interval, index, pTimer, seed);
+						 });
 		}
 	}
 }
@@ -121,11 +121,11 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
-	{
-		if(err_code != asio::error::operation_aborted)
-			SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
-		//else cancelled - break timer cycle
-	});
+	                   {
+	                         if(err_code != asio::error::operation_aborted)
+						 SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
+	//else cancelled - break timer cycle
+				 });
 }
 
 void SimPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
