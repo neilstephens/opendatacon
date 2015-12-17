@@ -202,7 +202,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
 			else
 			{
-				libname = GetLibFileName(Ports[n]["Type"].asString());
+				libname = GetLibFileName(Ports[n]["Type"].asString()+"Port");
 			}
 
 			//try to load the lib
