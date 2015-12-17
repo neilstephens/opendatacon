@@ -28,6 +28,7 @@
 #define SIMPORT_H
 
 #include <opendatacon/DataPort.h>
+#include <opendatacon/util.h>
 
 class SimPort: public DataPort
 {
@@ -66,6 +67,17 @@ public:
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) final;
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) final;
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) final;
+
+private:
+	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+	typedef std::shared_ptr<Timer_t> pTimer_t;
+	std::vector<pTimer_t> Timers;
+	void SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed);
+	void PortUp();
+	void PortDown();
+
+	std::unique_ptr<asio::strand> pEnableDisableSync;
+	bool enabled;
 };
 
 #endif // SIMPORT_H
