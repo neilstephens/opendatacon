@@ -20,7 +20,6 @@
 project(WebUI)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
 	"../include"
@@ -28,8 +27,8 @@ include_directories(
 	"${MICROHTTPD_HOME}/include"
 )
 
-link_directories("${MICROHTTPD_HOME}/${MY_BUILD_CONFIG}/lib"
-"${DNP3_HOME}/${MY_BUILD_CONFIG}")
-link_libraries(ODC microhttpd)
+link_directories("${MICROHTTPD_HOME}/lib${MY_BUILD_CONFIG}")
+link_directories("${DNP3_HOME}/lib${MY_BUILD_CONFIG}")
+link_libraries(ODC microhttpd asiopal)
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})

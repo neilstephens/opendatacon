@@ -20,18 +20,17 @@
 project(ModbusPort)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
 	"../include"
 	"../JSON"
-	"${DNP3_HOME}/cpp/libs/include/"
-	"${ASIO_HOME}/include/"
+	"${DNP3_HOME}/include"
+	"${ASIO_HOME}/include"
 	"${MODBUS_HOME}/include"
 )
 
-link_directories("${MODBUS_HOME}/${MY_BUILD_CONFIG}/lib"
-"${DNP3_HOME}/${MY_BUILD_CONFIG}")
-link_libraries(ODC modbus)
+link_directories("${MODBUS_HOME}/lib${MY_BUILD_CONFIG}")
+link_directories("${DNP3_HOME}/lib${MY_BUILD_CONFIG}")
+link_libraries(ODC modbus openpal opendnp3)
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
