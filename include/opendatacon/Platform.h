@@ -102,11 +102,25 @@ inline std::string LastSystemError()
 #define CHDIR(a) chdir(a)
 #endif
 
-/// Implement strerror_r error to string equivalent for windows
+/// Implement reentrant and portable strerror function
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-inline char* strerror_r(int therr, char* buf, size_t len)
+inline char* strerror_rp(int therr, char* buf, size_t len)
 {
 	strerror_s(buf, len, therr);
+	return buf;
+}
+#elif defined(_GNU_SOURCE)
+// non-posix GNU-specific function
+#include <string.h>
+inline char* strerror_rp(int therr, char* buf, size_t len)
+{
+	return strerror_r(therr, buf, len);
+}
+#else
+// posix function
+inline char* strerror_rp(int therr, char* buf, size_t len)
+{
+	strerror_r(therr, buf, len);
 	return buf;
 }
 #endif

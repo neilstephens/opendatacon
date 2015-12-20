@@ -80,8 +80,16 @@ int main(int argc, char* argv[])
 			{
 				const size_t strmax = 80;
 				char buf[strmax];
-				char* str = strerror_r(errno, buf, strmax);
-				std::string msg = "Unable to change working directory to '"+PathName+"' : "+str;
+                char* str = strerror_rp(errno, buf, strmax);
+                std::string msg;
+                if (str)
+                {
+                    msg = "Unable to change working directory to '"+PathName+"' : "+str;
+                }
+                else
+                {
+                    msg = "Unable to change working directory to '"+PathName+"' : UNKNOWN ERROR";
+                }
 				throw std::runtime_error(msg);
 			}
 		}
