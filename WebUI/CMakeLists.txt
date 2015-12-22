@@ -27,8 +27,13 @@ include_directories(
 	"${MICROHTTPD_HOME}/include"
 )
 
-link_directories("${MICROHTTPD_HOME}/lib${MY_BUILD_CONFIG}")
-link_directories("${DNP3_HOME}/lib${MY_BUILD_CONFIG}")
-link_libraries(ODC microhttpd asiopal)
+find_library(HTTPD_LIB NAMES "microhttpd" "libmicrohttpd" PATHS "${MICROHTTPD_HOME}/lib}")
+add_library(httpd_target UNKNOWN IMPORTED)
+set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
 
-add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+link_directories("${DNP3_HOME}/lib")
+
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC httpd_target asiopal)
+
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "plugin")

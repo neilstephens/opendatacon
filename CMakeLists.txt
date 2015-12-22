@@ -52,27 +52,29 @@ endif()
 if(UNIX)
 	set(PTHREAD pthread)
 	set(DL dl)
-	set(RPATH_BASE $ORIGIN)
+	# set(RPATH_BASE $ORIGIN)
 endif()
 if(APPLE)
 	set(CMAKE_MACOSX_RPATH 1)
-	set(RPATH_BASE @executable_path)
+	# set(RPATH_BASE @executable_path)
 endif()
 
 # Compiler configuration
 
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
 
-if("${CMAKE_CXX_COMPILER_ID}" MATCHES "MSVC")
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
+	message("CMAKE configuring opendatacon for Visual Studio C++" )
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
 
-elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 	# using Intel C++
 	message(WARNING "opendatacon has not been tested using Intel compiler" )
 	
 else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	# using Clang or GNU compilers
+	message("CMAKE configuring opendatacon for  Clang or GNU compilers" )
 	set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -pedantic")
 
 	# different release and debug flags
@@ -90,34 +92,16 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 endif()
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )
-set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins" )
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" )
 set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )
 
 # Second, for multi-config builds (e.g. msvc)
 foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
 	set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
-	set( CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}/plugins" )
+	set( CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}/lib" )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
-
-#if(CMAKE_BUILD_TYPE MATCHES "Debug")
-#	if(CMAKE_CXX_COMPILER MATCHES "rpi")
-#		set(MY_BUILD_CONFIG "-rpi-Debug")
-#	elseif(CMAKE_CXX_COMPILER MATCHES "RHEL65")
-#		set(MY_BUILD_CONFIG "-RHEL65-Debug")
-#	else()
-#		set(MY_BUILD_CONFIG "-Debug")
-#	endif()
-#else()
-#	if(CMAKE_CXX_COMPILER MATCHES "rpi")
-#		set(MY_BUILD_CONFIG "-rpi")
-#	elseif(CMAKE_CXX_COMPILER MATCHES "RHEL65")
-#		set(MY_BUILD_CONFIG "-RHEL65")
-#	else()
-#		set(MY_BUILD_CONFIG "")
-#	endif()
-#endif()
 
 add_subdirectory(JSON)
 add_subdirectory(ODC)
@@ -137,21 +121,6 @@ if(MODBUSPORT)
 	add_subdirectory(ModbusPort)
 endif()
 
-# skip the full RPATH for the build tree
-SET(CMAKE_SKIP_BUILD_RPATH  TRUE)
-
-# when building use the install RPATH already
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-
-# the RPATH to be used when installing
-SET(CMAKE_INSTALL_RPATH
-	"${RPATH_BASE}:"
-	"${RPATH_BASE}/plugins")
-
-# don't add the automatically determined parts of the RPATH
-# which point to directories outside the build tree to the install RPATH
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 # main opendatacon executable
 file(GLOB SRC_LIST src/*.cpp src/*.h include/opendatacon/*.h)
 include_directories(
@@ -161,6 +130,10 @@ include_directories(
 	"${ASIO_HOME}/include"
 	"${TCLAP_HOME}/include"
 )
-link_directories("${DNP3_HOME}/lib${MY_BUILD_CONFIG}")
-link_libraries(ODC JSON asiopal openpal asiodnp3 opendnp3 ${PTHREAD} ${DL})
+link_directories("${DNP3_HOME}/lib")
+
 add_executable(${PROJECT_NAME} ${SRC_LIST})
+target_link_libraries(${PROJECT_NAME} ODC JSON asiopal openpal asiodnp3 opendnp3 ${PTHREAD} ${DL})
+
+install(DIRECTORY "include/opendatacon" DESTINATION "include")
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")

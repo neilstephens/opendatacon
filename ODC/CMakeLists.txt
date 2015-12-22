@@ -28,7 +28,10 @@ include_directories(
 	"${ASIO_HOME}/include"
 )
 
-link_directories("${DNP3_HOME}/lib${MY_BUILD_CONFIG}")
-link_libraries(JSON asiopal)
+link_directories("${DNP3_HOME}/lib")
+
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} JSON asiopal)
+
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "lib" ARCHIVE DESTINATION "lib")
 

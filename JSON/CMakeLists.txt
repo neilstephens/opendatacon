@@ -22,3 +22,4 @@ cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def json/*.h)
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "lib" ARCHIVE DESTINATION "lib")
