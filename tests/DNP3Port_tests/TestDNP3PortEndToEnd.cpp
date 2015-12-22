@@ -23,13 +23,16 @@
 
 #include "DNP3OutstationPort.h"
 #include "DNP3MasterPort.h"
+#include "PortLoader.h"
 
 #define SUITE(name) "DNP3PortEndToEndTestSuite - " name
 
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
-	DNP3MasterPort* MPUT = new_DNP3MasterPort("MasterUnderTest", "", "{}");
-	DNP3OutstationPort* OPUT = new_DNP3OutstationPort("OutstationUnderTest", "", "{}");
+	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+	DataPort* MPUT = newMaster("MasterUnderTest", "", "");
+	fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+	DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
 	MPUT->Enable();
 	OPUT->Enable();

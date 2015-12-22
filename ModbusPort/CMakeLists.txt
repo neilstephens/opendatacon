@@ -22,14 +22,15 @@ cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 include_directories(
-	"../include"
-	"../JSON"
-	"${DNP3_HOME}/include"
-	"${ASIO_HOME}/include"
-	"${MODBUS_HOME}/include"
+	../include
+	../JSON
+	${DNP3_HOME}/include
+	${ASIO_HOME}/include
+	${MODBUS_HOME}/include
 )
 
-find_library(MODBUS_LIB NAMES "modbus" "libmodbus" PATHS "${MODBUS_HOME}/lib")
+find_library(MODBUS_LIB NAMES modbus libmodbus
+	PATHS ${MODBUS_HOME}/lib)
 add_library(modbus_target UNKNOWN IMPORTED)
 set_property(TARGET modbus_target PROPERTY IMPORTED_LOCATION "${MODBUS_LIB}")
 

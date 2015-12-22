@@ -22,10 +22,10 @@ cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 include_directories(
-	"../include"
-	"../JSON"
-	"${DNP3_HOME}/include"
-	"${ASIO_HOME}/include"
+	../include
+	../JSON
+	${DNP3_HOME}/include
+	${ASIO_HOME}/include
 )
 
 link_directories("${DNP3_HOME}/lib")
@@ -34,4 +34,4 @@ link_directories("${DNP3_HOME}/lib")
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC asiopal openpal asiodnp3 opendnp3)
 
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "plugin")
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "plugin"  RUNTIME DESTINATION "plugin")

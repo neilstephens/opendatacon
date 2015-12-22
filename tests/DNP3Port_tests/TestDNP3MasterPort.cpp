@@ -22,13 +22,15 @@
 #include <catch.hpp>
 
 #include "DNP3MasterPort.h"
+#include "PortLoader.h"
 
 #define SUITE(name) "DNP3MasterPortTestSuite - " name
 
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
-		DNP3MasterPort* MPUT = new_DNP3MasterPort("MasterUnderTest", "", "");
+		fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
 		MPUT->Enable();
 		MPUT->Disable();
@@ -37,7 +39,8 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	}
 	/// Test the destruction of an enabled port
 	{
-		DNP3MasterPort* MPUT = new_DNP3MasterPort("MasterUnderTest", "", "");
+		fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
 		MPUT->Enable();
 

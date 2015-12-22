@@ -22,13 +22,15 @@
 #include <catch.hpp>
 
 #include "DNP3OutstationPort.h"
+#include "PortLoader.h"
 
 #define SUITE(name) "DNP3OutstationPortTestSuite - " name
 
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
-		DNP3OutstationPort* OPUT = new_DNP3OutstationPort("OutstationUnderTest", "", "");
+		fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Master");
+		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
 		OPUT->Enable();
 		OPUT->Disable();
@@ -37,7 +39,8 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	}
 	/// Test the destruction of an enabled port
 	{
-		DNP3OutstationPort* OPUT = new_DNP3OutstationPort("OutstationUnderTest", "", "");
+		fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Master");
+		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
 		OPUT->Enable();
 

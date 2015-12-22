@@ -22,9 +22,9 @@ cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 include_directories(
-	"../include"
-	"../JSON"
-	"${MICROHTTPD_HOME}/include"
+	../include
+	../JSON
+	${MICROHTTPD_HOME}/include
 )
 
 find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
