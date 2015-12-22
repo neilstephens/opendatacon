@@ -110,4 +110,6 @@ private:
 	void LinkStatusListener(opendnp3::LinkStatus status);
 };
 
+extern "C" DNP3OutstationPort* new_DNP3OutstationPort(std::string Name, std::string File, const Json::Value Overrides);
+
 #endif /* DNP3SERVERPORT_H_ */

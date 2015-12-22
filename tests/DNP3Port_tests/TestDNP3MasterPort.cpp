@@ -28,15 +28,19 @@
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
-		DNP3MasterPort MPUT("MasterUnderTest", "", "");
+		DNP3MasterPort* MPUT = new_DNP3MasterPort("MasterUnderTest", "", "");
 
-		MPUT.Enable();
-		MPUT.Disable();
+		MPUT->Enable();
+		MPUT->Disable();
+
+		delete MPUT;
 	}
 	/// Test the destruction of an enabled port
 	{
-		DNP3MasterPort MPUT("MasterUnderTest", "", "");
+		DNP3MasterPort* MPUT = new_DNP3MasterPort("MasterUnderTest", "", "");
 
-		MPUT.Enable();
+		MPUT->Enable();
+
+		delete MPUT;
 	}
 }

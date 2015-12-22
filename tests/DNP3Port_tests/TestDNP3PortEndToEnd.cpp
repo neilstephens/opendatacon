@@ -28,12 +28,15 @@
 
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
-	DNP3MasterPort MPUT("MasterUnderTest", "", "{}");
-	DNP3OutstationPort OPUT("OutstationUnderTest", "", "{}");
+	DNP3MasterPort* MPUT = new_DNP3MasterPort("MasterUnderTest", "", "{}");
+	DNP3OutstationPort* OPUT = new_DNP3OutstationPort("OutstationUnderTest", "", "{}");
 
-	MPUT.Enable();
-	OPUT.Enable();
+	MPUT->Enable();
+	OPUT->Enable();
 
-	auto mstatus = MPUT.GetStatus();
-	auto ostatus = OPUT.GetStatus();
+	auto mstatus = MPUT->GetStatus();
+	auto ostatus = OPUT->GetStatus();
+
+	delete MPUT;
+	delete OPUT;
 }

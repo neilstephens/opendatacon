@@ -20,7 +20,6 @@
 project(ODC_tests)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
 	../catch
@@ -28,7 +27,9 @@ include_directories(
 	../../ODC
 )
 
-link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}"
-"${DNP3_HOME}/${MY_BUILD_CONFIG}")
-link_libraries(ODC JSON)
+link_directories("${DNP3_HOME}/lib${MY_BUILD_CONFIG}")
+
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC JSON)
+
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")

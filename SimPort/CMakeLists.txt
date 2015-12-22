@@ -19,17 +19,18 @@
  # 
 project(SimPort)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. SimPort_SRC)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 include_directories(
-	"../include"
-	"../JSON"
-	"${DNP3_HOME}/cpp/libs/include/"
-	"${ASIO_HOME}/include/"
+	../include
+	../JSON
+	${DNP3_HOME}/include
+	${ASIO_HOME}/include
 )
 
 link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}")
-link_libraries(ODC)
 
-add_library(${PROJECT_NAME} SHARED ${SimPort_SRC})
+add_library(${PROJECT_NAME} MODULE ${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} ODC)
+
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "plugin")

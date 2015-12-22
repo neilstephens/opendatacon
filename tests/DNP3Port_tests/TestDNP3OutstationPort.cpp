@@ -28,15 +28,19 @@
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
-		DNP3OutstationPort OPUT("OutstationUnderTest", "", "");
+		DNP3OutstationPort* OPUT = new_DNP3OutstationPort("OutstationUnderTest", "", "");
 
-		OPUT.Enable();
-		OPUT.Disable();
+		OPUT->Enable();
+		OPUT->Disable();
+
+		delete OPUT;
 	}
 	/// Test the destruction of an enabled port
 	{
-		DNP3OutstationPort OPUT("OutstationUnderTest", "", "");
+		DNP3OutstationPort* OPUT = new_DNP3OutstationPort("OutstationUnderTest", "", "");
 
-		OPUT.Enable();
+		OPUT->Enable();
+
+		delete OPUT;
 	}
 }

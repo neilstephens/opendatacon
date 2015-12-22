@@ -20,7 +20,6 @@
 project(WebUI)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
 	"../include"
@@ -28,8 +27,14 @@ include_directories(
 	"${MICROHTTPD_HOME}/include"
 )
 
-link_directories("${MICROHTTPD_HOME}/${MY_BUILD_CONFIG}/lib"
-"${DNP3_HOME}/${MY_BUILD_CONFIG}")
-link_libraries(ODC microhttpd)
+find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
+	PATHS ${MICROHTTPD_HOME}/lib)
+add_library(httpd_target UNKNOWN IMPORTED)
+set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
 
-add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+link_directories("${DNP3_HOME}/lib")
+
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC httpd_target asiopal)
+
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "plugin")

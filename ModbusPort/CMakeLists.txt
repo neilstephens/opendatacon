@@ -20,18 +20,22 @@
 project(ModbusPort)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
 
 include_directories(
 	"../include"
 	"../JSON"
-	"${DNP3_HOME}/cpp/libs/include/"
-	"${ASIO_HOME}/include/"
+	"${DNP3_HOME}/include"
+	"${ASIO_HOME}/include"
 	"${MODBUS_HOME}/include"
 )
 
-link_directories("${MODBUS_HOME}/${MY_BUILD_CONFIG}/lib"
-"${DNP3_HOME}/${MY_BUILD_CONFIG}")
-link_libraries(ODC modbus)
+find_library(MODBUS_LIB NAMES "modbus" "libmodbus" PATHS "${MODBUS_HOME}/lib")
+add_library(modbus_target UNKNOWN IMPORTED)
+set_property(TARGET modbus_target PROPERTY IMPORTED_LOCATION "${MODBUS_LIB}")
 
-add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+link_directories("${DNP3_HOME}/lib")
+
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC modbus_target openpal opendnp3)
+
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "plugin")

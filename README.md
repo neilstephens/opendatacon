@@ -2,6 +2,7 @@
 
 * [Introduction](#introduction)
     * [Core features](#core-features)
+    * [Building and Installing](#build-install)
     * [Basic components](#basic-components)
       * [Ports](#ports)
       * [Connectors](#connectors)
@@ -61,6 +62,88 @@ The minimal requirement of a data concentrator is to connect multiple data chann
 These core features are abstract by design, to allow for extension. Some extensions are included in opendatacon, the features of which will be covered in corresponding sections of this manual.
 
 The only real constraint to whether a particular data stream can be handled by opendatacon, is whether the data can be meaningfully 'wrapped' or translated to the internal data structure used by opendatacon. This is discussed further in the internal data structure section. Suffice to say that most SCADA data, irrespective of protocol, should not pose a problem due to the common nature of SCADA applications, and it's difficult to conceive of a data stream that couldn't be wrapped.
+
+## Building and Installing
+
+opendatacon uses the CMake build system.
+
+### Build system requirements
+
+*   Modern C++11 compiler (currently developed under msvc, g++ and clang)
+*   for unix environments libstdc > ???
+
+### Dependencies
+
+Core dependencies include:
+
+*   automatak opendnp3: https://www.automatak.com/opendnp3/
+*   ASIO: http://think-async.com/
+*   TCLAP: http://tclap.sourceforge.net/
+
+Plugin specific dependencies:
+
+*   WebUI: libmicrohttpd https://www.gnu.org/software/libmicrohttpd/
+*   ModbusPort: libmodbus http://libmodbus.org/
+
+### CMake options
+
+#### Optional components
+
+*   TEST
+*   WEBUI
+*   DNP3PORT
+*   JSONPORT
+*   MODBUSPORT
+*   FULL
+
+#### Dependency search locations
+
+*   DNP3_HOME
+*   ASIO_HOME
+*   TCLAP_HOME
+*   MODBUS_HOME
+*   MICROHTTPD_HOME   
+
+#### Cross-compiler options
+
+The variable MY_CONFIG_POSTFIX can be set when running cmake to specify the postfix to append to lib search folders.
+For example, setting "-DMY_CONFIG_POSTFIX=-rpi" causes the build system to search in "lib-rpi" in the home directory of each dependency.
+
+### Example setup
+
+The following examples all create out-of-source build systems which is recommended.
+
+#### MacOS build and install using Xcode
+```
+cmake . "-Bbuild-xcode" -G "Xcode" "-DFULL=ON"
+```
+
+#### Visual Studio build and install
+The following assumes that dependencies have been build and installed in c:\local accordingly.
+```
+cmake . "-Bbuild-win32" -G "Visual Studio 12 2013" "-DFULL=ON" "-DDNP3_HOME=c:\local\dnp3" "-DASIO_HOME=C:\local\asio-1.10.1" "-DTCLAP_HOME=c:\local\tclap" "-DMICROHTTPD_HOME=c:\local\microhttpd"
+```
+
+#### Ubuntu build and install using Makefiles
+
+1.  Install build system and dependencies:
+```
+sudo apt-get install libasio-dev libtclap-dev libmicrohttpd-dev libmodbus-dev
+```
+You will also need to build and install opendnp3.
+2.  Create build system for desired environment
+```
+cmake . "-Bbuild-make" -G "Unix Makefiles" "-DFULL=ON"
+```
+3.  Build
+```
+cd build-make
+make -j 4
+```
+4.  Install
+```
+sudo make install
+```
 
 ## Basic components
 
