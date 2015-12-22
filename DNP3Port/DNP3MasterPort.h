@@ -128,4 +128,6 @@ private:
 	};
 };
 
+extern "C" DNP3MasterPort* new_DNP3MasterPort(std::string Name, std::string File, const Json::Value Overrides);
+
 #endif /* DNP3CLIENTPORT_H_ */
