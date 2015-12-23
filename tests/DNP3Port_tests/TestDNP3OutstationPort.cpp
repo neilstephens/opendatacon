@@ -30,6 +30,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
 		fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Master");
+		REQUIRE(newOutstation);
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
 		OPUT->Enable();
@@ -40,6 +41,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	/// Test the destruction of an enabled port
 	{
 		fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Master");
+		REQUIRE(newOutstation);
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
 		OPUT->Enable();

@@ -30,8 +30,10 @@
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+	REQUIRE(newMaster);
 	DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 	fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+	REQUIRE(newOutstation);
 	DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
 	MPUT->Enable();

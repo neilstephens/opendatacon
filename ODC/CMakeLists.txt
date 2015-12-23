@@ -34,4 +34,3 @@ add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} JSON asiopal)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "lib" ARCHIVE DESTINATION "lib")
-

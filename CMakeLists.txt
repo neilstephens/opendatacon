@@ -17,12 +17,12 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.4)
 project(opendatacon CXX)
 
 # various optional libraries and projects
 option(FULL "Build all optional projects (DNP3Port, JSONPort, Tests, WebUI)" ON)
-option(TEST "Build tests" OFF)
+option(TESTS "Build tests" OFF)
 option(WEBUI "Build the http(s) web user interface" OFF)
 option(DNP3PORT "Build DNP3 Port" OFF)
 option(JSONPORT "Build JSON Port" OFF)
@@ -33,7 +33,7 @@ option(WERROR "Set all warnings to errors" OFF)
 option(COVERAGE "Builds the libraries with coverage info for gcov" OFF)
 
 if(FULL)
-	set(TEST ON)
+	set(TESTS ON)
 	set(WEBUI ON)
 	set(DNP3PORT ON)
 	set(JSONPORT ON)
@@ -48,15 +48,16 @@ if(WIN32)
 	# for ASIO
 	add_definitions(-D_WIN32_WINNT=0x0501)
 	add_definitions(-DASIO_HAS_STD_SYSTEM_ERROR)
+	
+	# Auto generate def files that export all symbols of STATIC libraries
+	set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 if(UNIX)
 	set(PTHREAD pthread)
-	set(DL dl)
-	# set(RPATH_BASE $ORIGIN)
+	set(DL dl)	
 endif()
 if(APPLE)
 	set(CMAKE_MACOSX_RPATH 1)
-	# set(RPATH_BASE @executable_path)
 endif()
 
 # Compiler configuration
@@ -92,14 +93,14 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 endif()
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )
-set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" )
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )
 set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )
 
 # Second, for multi-config builds (e.g. msvc)
 foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
 	set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
-	set( CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}/lib" )
+	set( CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
@@ -114,7 +115,7 @@ endif()
 if(WEBUI)
 	add_subdirectory(WebUI)
 endif()
-if(TEST)
+if(TESTS)
 	add_subdirectory(tests)
 endif()
 if(MODBUSPORT)
