@@ -36,3 +36,4 @@ add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC JSON ${PTHREAD})
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)

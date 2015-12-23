@@ -106,6 +106,7 @@ endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 add_subdirectory(JSON)
 add_subdirectory(ODC)
+add_subdirectory(src)
 if(DNP3PORT)
 	add_subdirectory(DNP3Port)
 endif()
@@ -121,20 +122,3 @@ endif()
 if(MODBUSPORT)
 	add_subdirectory(ModbusPort)
 endif()
-
-# main opendatacon executable
-file(GLOB SRC_LIST src/*.cpp src/*.h include/opendatacon/*.h)
-include_directories(
-	"include"
-	"JSON"
-	"${DNP3_HOME}/include"
-	"${ASIO_HOME}/include"
-	"${TCLAP_HOME}/include"
-)
-link_directories("${DNP3_HOME}/lib")
-
-add_executable(${PROJECT_NAME} ${SRC_LIST})
-target_link_libraries(${PROJECT_NAME} ODC JSON asiopal openpal asiodnp3 opendnp3 ${PTHREAD} ${DL})
-
-install(DIRECTORY "include/opendatacon" DESTINATION "include")
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
