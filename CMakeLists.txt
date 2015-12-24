@@ -16,8 +16,12 @@
  #	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
- # 
-cmake_minimum_required(VERSION 3.4)
+ #
+if(WIN32)
+	cmake_minimum_required(VERSION 3.4)
+else()
+	cmake_minimum_required(VERSION 2.8)
+endif()
 project(opendatacon CXX)
 
 # various optional libraries and projects
