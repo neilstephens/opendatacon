@@ -26,6 +26,7 @@
 
 #include "SimPort.h"
 #include "SimPortConf.h"
+#include <random>
 
 inline unsigned int random_interval(const unsigned int& average_interval, rand_t& seed)
 {
@@ -115,8 +116,9 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev
 	//Send an event out
 	for (auto IOHandler_pair : Subscribers)
 	{
-		//TODO: change value around mean
-		IOHandler_pair.second->Event(*pMean.get(), index, this->Name);
+		//change value around mean
+		std::normal_distribution<double> distribution(pMean->value, std_dev);
+		IOHandler_pair.second->Event(opendnp3::Analog(distribution(RandNumGenerator),pMean->quality), index, this->Name);
 	}
 
 	//wait til next time
@@ -124,7 +126,7 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev
 	                   {
 	                         if(err_code != asio::error::operation_aborted)
 						 SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
-	//else cancelled - break timer cycle
+					//else cancelled - break timer cycle
 				 });
 }
 

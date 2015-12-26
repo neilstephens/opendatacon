@@ -28,9 +28,9 @@ include_directories(
 	${ASIO_HOME}/include
 )
 
-link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}")
+link_directories(${DNP3_HOME}/lib)
 
-add_library(${PROJECT_NAME} MODULE ${PROJECT_NAME})
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "plugin")

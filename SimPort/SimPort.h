@@ -78,6 +78,7 @@ private:
 
 	std::unique_ptr<asio::strand> pEnableDisableSync;
 	bool enabled;
+	std::mt19937 RandNumGenerator;
 };
 
 #endif // SIMPORT_H
