@@ -347,7 +347,7 @@ void DataConcentrator::EnablePortOrConn(std::stringstream& args, bool enable)
 
 void DataConcentrator::Shutdown()
 {
-    std::cout << "Disabling user interfaces... ";
+    std::cout << "done" << std::endl << "Disabling user interfaces... ";
     for(auto& Name_n_UI : Interfaces)
     {
         Name_n_UI.second->Disable();
@@ -363,4 +363,5 @@ void DataConcentrator::Shutdown()
 		Name_n_Port.second->Disable();
 	}
 	std::cout << "done" << std::endl;
+    ios_working.reset();
 }
