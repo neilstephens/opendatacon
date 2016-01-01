@@ -43,15 +43,14 @@ public:
 	ConsoleUI();
     virtual ~ConsoleUI(void);
 
+    void AddHelp(std::string help);    
+    
     /* tinyConsole functions */
     int trigger (std::string s) override;
     int hotkeys(char c) override;
     
-    void AddCmd(std::string cmd, std::function<void (std::stringstream&)> callback, std::string desc = "No description available\n");
-    static void sig_quit(int signum);
-    void AddHelp(std::string help);
-    
 	/* Implement IUI interface */
+    void AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc = "No description available\n");
 	void AddResponder(const std::string name, const IUIResponder& pResponder);
     void Enable();
     void Disable();

@@ -29,32 +29,26 @@
 ConsoleUI::ConsoleUI(): tinyConsole("odc> ")
 {
     mDescriptions["help"] = "Get help on commands. Optional argument of specific command.";
-    mDescriptions["exit"] = "Shutdown all components and exit the application.";
 
     std::function<void (std::stringstream&)> bound_func;
-    
-    //Version
-    bound_func = [] (std::stringstream& ss){std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;};
-    this->AddCmd("version",bound_func,"Print version information");
-
 }
 
 ConsoleUI::~ConsoleUI(void)
 {}
 
-void ConsoleUI::AddCmd(std::string cmd, std::function<void (std::stringstream&)> callback, std::string desc)
+void ConsoleUI::AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc)
 {
-    mCmds[cmd] = callback;
-    mDescriptions[cmd] = desc;
+    mCmds[name] = callback;
+    mDescriptions[name] = desc;
     
     int width = 0;
-    for(size_t i=0; i < mDescriptions[cmd].size(); i++)
+    for(size_t i=0; i < mDescriptions[name].size(); i++)
     {
         if(++width > 80)
         {
-            while(mDescriptions[cmd][i] != ' ')
+            while(mDescriptions[name][i] != ' ')
                 i--;
-            mDescriptions[cmd].insert(i,"\n                        ");
+            mDescriptions[name].insert(i,"\n                        ");
             i+=26;
             width = 0;
         }
@@ -82,12 +76,7 @@ int ConsoleUI::trigger (std::string s)
     std::string cmd,arg;
     LineStream>>cmd;
     
-    if(cmd == "exit")
-    {
-        std::cout << "Exiting..." << std::endl;
-        quit();
-    }
-    else if(cmd == "help")
+    if(cmd == "help")
     {
         std::cout<<std::endl;
         if(LineStream>>arg)
@@ -120,11 +109,6 @@ int ConsoleUI::trigger (std::string s)
 
 int ConsoleUI::hotkeys(char c)
 {
-    if (c == 3 /*CTRL-C*/) //TODO: check this value is cross-platform and macro it.
-    {
-        trigger("exit");
-        return 1;
-    }
     if (c == TAB) //auto complete/list
     {
         //store what's been entered so far
@@ -209,7 +193,7 @@ void ConsoleUI::AddResponder(const std::string name, const IUIResponder& pRespon
     for (auto command : commands)
     {
         auto bound_func = std::bind(&ConsoleUI::ExecuteCommand,this,pResponder,command.asString(),std::placeholders::_1);
-        this->AddCmd(name + "_" + command.asString(),bound_func,"List ports matching a regex (by name)");
+        this->AddCommand(name + "_" + command.asString(),bound_func,"List ports matching a regex (by name)");
     }
 }
 
@@ -249,7 +233,6 @@ void ConsoleUI::Enable()
 void ConsoleUI::Disable()
 {
     this->quit();
-    //uithread->join();
 }
 
 

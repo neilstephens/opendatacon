@@ -39,7 +39,8 @@ public:
 	WebUI(uint16_t port);
 
 	/* Implement IUI interface */
-	void AddResponder(const std::string name, const IUIResponder& pResponder);
+    void AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc = "No description available\n");
+    void AddResponder(const std::string name, const IUIResponder& pResponder);
 	void Enable();
 	void Disable();
 
