@@ -205,7 +205,7 @@ int WebUI::http_ahc(void *cls,
 	}
 }
 
-int WebUI::start()
+void WebUI::Enable()
 {
 	if (useSSL)
 	{
@@ -235,11 +235,12 @@ int WebUI::start()
 	}
 
 	if (d == nullptr)
-		return 1;
-	return 0;
+    {
+        // TODO: log error message
+    }
 }
 
-void WebUI::stop()
+void WebUI::Disable()
 {
 	if (d == nullptr) return;
 	MHD_stop_daemon(d);

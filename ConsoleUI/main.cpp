@@ -17,28 +17,14 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
-//
-//  IUI.h
-//  opendatacon
-//
-//  Created by Alan Murray on 29/08/2014.
-//
-//
 
-#ifndef opendatacon_IUI_h
-#define opendatacon_IUI_h
+#include "ConsoleUI.h"
 
-#include "IUIResponder.h"
-#include <memory>
-
-class IUI
+extern "C" IUI* new_ConsoleUIPlugin(std::string Name, std::string File, const Json::Value Overrides)
 {
-public:
-	virtual ~IUI(){};
-	virtual void AddResponder(const std::string name, const IUIResponder& pResponder) = 0;
-	virtual void Enable() = 0;
-	virtual void Disable() = 0;
-};
+	if(Overrides.isObject())
+	{
+	}
 
-
-#endif
+	return new ConsoleUI();
+}

@@ -28,7 +28,6 @@
 #include <regex>
 
 using namespace std;
-using namespace opendnp3;
 
 bool GetBool(const string& value)
 {

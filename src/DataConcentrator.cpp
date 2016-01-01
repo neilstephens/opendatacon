@@ -32,7 +32,6 @@
 #include <opendatacon/Version.h>
 
 #include "DataConcentrator.h"
-#include "Console.h"
 #include "logging_cmds.h"
 #include "NullPort.h"
 
@@ -64,10 +63,17 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	AdvancedLoggers["File Log"] = AdvFileLog;
 
 
-	//Parse the configs and create all the ports and connections
+	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
 
-	for(auto& port : DataPorts)
+    for(auto& interface : Interfaces)
+    {
+        interface.second->AddResponder("/OpenDataCon", *this);
+        interface.second->AddResponder("/DataPorts", DataPorts);
+        interface.second->AddResponder("/DataConnectors", DataConnectors);
+        interface.second->AddResponder("/Loggers", AdvancedLoggers);
+    }
+    for(auto& port : DataPorts)
 	{
 		port.second->AddLogSubscriber(AdvConsoleLog.get());
 		port.second->AddLogSubscriber(AdvFileLog.get());
@@ -143,10 +149,6 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			//call the creation function and wrap the returned pointer to a new plugin
 			Interfaces[PluginName] = std::unique_ptr<IUI>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]));
-			Interfaces[PluginName]->AddResponder("/OpenDataCon", *this);
-			Interfaces[PluginName]->AddResponder("/DataPorts", DataPorts);
-			Interfaces[PluginName]->AddResponder("/DataConnectors", DataConnectors);
-			Interfaces[PluginName]->AddResponder("/Loggers", AdvancedLoggers);
 		}
 	}
 
@@ -249,6 +251,12 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 }
 void DataConcentrator::BuildOrRebuild()
 {
+    std::cout << "User Interfaces" << std::endl;
+    for(auto& Name_n_UI : Interfaces)
+    {
+        // TODO: BuildOrRebuild for UserInterfaces
+        // Name_n_UI.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
+    }
 	std::cout << "Ports" << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
@@ -262,76 +270,40 @@ void DataConcentrator::BuildOrRebuild()
 }
 void DataConcentrator::Run()
 {
-	for(auto& ui : Interfaces)
-	{
-		ui.second->start();
-	}
-	for(auto& Name_n_Conn : DataConnectors)
-	{
-		IOS.post([=]()
-		         {
-		               Name_n_Conn.second->Enable();
-			   });
-	}
-	for(auto& Name_n_Port : DataPorts)
-	{
-		IOS.post([=]()
-		         {
-		               Name_n_Port.second->Enable();
-			   });
-	}
-
-	Console console("odc> ");
-
-	std::function<void (std::stringstream&)> bound_func;
-
-	//Version
-	bound_func = [] (std::stringstream& ss){std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;};
-	console.AddCmd("version",bound_func,"Print version information");
-
-	//console logging control
-	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(*AdvConsoleLog));
-	console.AddCmd("ignore_message",bound_func,"Enter regex to silence matching messages from the console logger.");
-	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(*AdvConsoleLog));
-	console.AddCmd("unignore_message",bound_func,"Enter regex to remove from the console ignore list.");
-	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(*AdvConsoleLog));
-	console.AddCmd("show_ignored",bound_func,"Shows all console message ignore regexes and how many messages they've matched.");
-
-	//file logging control
-	bound_func = std::bind(cmd_ignore_message,std::placeholders::_1,std::ref(*AdvFileLog));
-	console.AddCmd("ignore_file_message",bound_func,"Enter regex to silence matching messages from the file logger.");
-	bound_func = std::bind(cmd_unignore_message,std::placeholders::_1,std::ref(*AdvFileLog));
-	console.AddCmd("unignore_file_message",bound_func,"Enter regex to remove from the file ignore list.");
-	bound_func = std::bind(cmd_show_ignored,std::placeholders::_1,std::ref(*AdvFileLog));
-	console.AddCmd("show_file_ignored",bound_func,"Shows all file message ignore regexes and how many messages they've matched.");
-
-	//disable/enable/restart
-	bound_func = std::bind(&DataConcentrator::EnablePortOrConn,this,std::placeholders::_1,true);
-	console.AddCmd("enable",bound_func,"Enable ports and/or connectors matching a regex (by name)");
-	bound_func = std::bind(&DataConcentrator::EnablePortOrConn,this,std::placeholders::_1,false);
-	console.AddCmd("disable",bound_func,"Disable ports and/or connectors matching a regex (by name)");
-	bound_func = std::bind(&DataConcentrator::RestartPortOrConn,this,std::placeholders::_1);
-	console.AddCmd("restart",bound_func,"Restart ports and/or connectors matching a regex (by name)");
-
-	//list ports/connectors
-	bound_func = std::bind(&DataConcentrator::ListPorts,this,std::placeholders::_1);
-	console.AddCmd("lsports",bound_func,"List ports matching a regex (by name)");
-	bound_func = std::bind(&DataConcentrator::ListConns,this,std::placeholders::_1);
-	console.AddCmd("lsconns",bound_func,"List connectors matching a regex (by name)");
-
-	console.run();
-
-	//turn everything off
-	this->Shutdown();
-	std::cout << "Shutting down DNP3 manager... ";
-	DNP3Mgr.Shutdown();
-	//tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
-	std::cout << "done" << std::endl << "Finishing any remaining work... ";
-	ios_working.reset();
-	//help finish any work
-	IOS.run();
-	std::cout << "done" << std::endl;
+    for(auto& Name_n_UI : Interfaces)
+    {
+        IOS.post([=]()
+                 {
+                     Name_n_UI.second->Enable();
+                 });
+    }
+    for(auto& Name_n_Conn : DataConnectors)
+    {
+        IOS.post([=]()
+                 {
+                     Name_n_Conn.second->Enable();
+                 });
+    }
+    for(auto& Name_n_Port : DataPorts)
+    {
+        IOS.post([=]()
+                 {
+                     Name_n_Port.second->Enable();
+                 });
+    }
+    
+    IOS.run();
+    
+    std::cout << "Shutting down DNP3 manager... ";
+    DNP3Mgr.Shutdown();
+    //tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
+    std::cout << "done" << std::endl << "Finishing any remaining work... ";
+    ios_working.reset();
+    //help finish any work
+    IOS.run();
+    std::cout << "done" << std::endl;
 }
+
 void DataConcentrator::RestartPortOrConn(std::stringstream& args)
 {
 	EnablePortOrConn(args,false);
@@ -356,7 +328,12 @@ void DataConcentrator::EnablePortOrConn(std::stringstream& args, bool enable)
 		std::cout<<e.what()<<std::endl;
 		return;
 	}
-	for(auto& Name_n_Conn : DataConnectors)
+    for(auto& Name_n_UI : Interfaces)
+    {
+        if(std::regex_match(Name_n_UI.first, reg))
+            enable ? Name_n_UI.second->Enable() : Name_n_UI.second->Disable();
+    }
+    for(auto& Name_n_Conn : DataConnectors)
 	{
 		if(std::regex_match(Name_n_Conn.first, reg))
 			enable ? Name_n_Conn.second->Enable() : Name_n_Conn.second->Disable();
@@ -367,59 +344,15 @@ void DataConcentrator::EnablePortOrConn(std::stringstream& args, bool enable)
 			enable ? Name_n_Port.second->Enable() : Name_n_Port.second->Disable();
 	}
 }
-void DataConcentrator::ListPorts(std::stringstream& args)
-{
-	std::string arg = "";
-	std::string mregex;
-	std::regex reg;
-	if(!extract_delimited_string(args,mregex))
-	{
-		std::cout<<"Syntax error: Delimited regex expected, found \"..."<<mregex<<"\""<<std::endl;
-		return;
-	}
-	try
-	{
-		reg = std::regex(mregex);
-	}
-	catch(std::exception& e)
-	{
-		std::cout<<e.what()<<std::endl;
-		return;
-	}
-	for(auto& Name_n_Port : DataPorts)
-	{
-		if(std::regex_match(Name_n_Port.first, reg))
-			std::cout<<Name_n_Port.first<<std::endl;
-	}
-}
-void DataConcentrator::ListConns(std::stringstream& args)
-{
-	std::string arg = "";
-	std::string mregex;
-	std::regex reg;
-	if(!extract_delimited_string(args,mregex))
-	{
-		std::cout<<"Syntax error: Delimited regex expected, found \"..."<<mregex<<"\""<<std::endl;
-		return;
-	}
-	try
-	{
-		reg = std::regex(mregex);
-	}
-	catch(std::exception& e)
-	{
-		std::cout<<e.what()<<std::endl;
-		return;
-	}
-	for(auto& Name_n_Conn : DataConnectors)
-	{
-		if(std::regex_match(Name_n_Conn.first, reg))
-			std::cout<<Name_n_Conn.first<<std::endl;
-	}
-}
+
 void DataConcentrator::Shutdown()
 {
-	std::cout << "Disabling data connectors... ";
+    std::cout << "Disabling user interfaces... ";
+    for(auto& Name_n_UI : Interfaces)
+    {
+        Name_n_UI.second->Disable();
+    }
+    std::cout << "done" << std::endl << "Disabling data connectors... ";
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
