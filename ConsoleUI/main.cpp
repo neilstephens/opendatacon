@@ -17,26 +17,14 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
-/*
-* Version.h
-*
-*  Created on: 26/11/2014
-*      Author: Alan Murray
-*/
 
-#ifndef ODC_VERSION_H_
-#define ODC_VERSION_H_
+#include "ConsoleUI.h"
 
-#define ODC_VERSION_MAJOR 0
-#define ODC_VERSION_MINOR 3
-#define ODC_VERSION_PATCH 3
-#define ODC_VERSION_TWEAK 76
-#define ODC_VERSION_COMMIT g5ab7e1f
-#define ODC_VERSION_DIRTY dirty
+extern "C" IUI* new_ConsoleUIPlugin(std::string Name, std::string File, const Json::Value Overrides)
+{
+	if(Overrides.isObject())
+	{
+	}
 
-#define STR_HELPER(x) # x
-#define STR(x) STR_HELPER(x)
-
-#define ODC_VERSION_STRING "" STR(ODC_VERSION_MAJOR) "." STR(ODC_VERSION_MINOR) "." STR(ODC_VERSION_PATCH) " " STR(ODC_VERSION_COMMIT) " " STR(ODC_VERSION_DIRTY)
-
-#endif
+	return new ConsoleUI();
+}

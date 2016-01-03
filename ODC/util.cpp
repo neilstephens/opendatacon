@@ -28,7 +28,6 @@
 #include <regex>
 
 using namespace std;
-using namespace opendnp3;
 
 bool GetBool(const string& value)
 {
@@ -76,6 +75,35 @@ bool extract_delimited_string(istream& ist, string& extracted)
 	}
 	//if we get to here, there wasn't a matching end delimiter - return failed
 	return false;
+}
+
+bool extract_delimited_string(const std::string& delims, istream& ist, string& extracted)
+{
+    extracted.clear();
+    char delim;
+    //The first char is the delimiter
+    if(!(ist>>delim))
+        return true; //nothing to extract - return successfully extracted nothing
+    if(delims.find(delim) == std::string::npos)
+    {
+        /* no delimiter so just extract until we get to a space or end of string */
+        extracted.push_back(delim);
+        std::string temptoken;
+        ist>>temptoken;
+        extracted.append(temptoken);
+        return true;
+    }
+    char ch;
+    while(ist.get(ch))
+    {
+        //return success once we find the second delimiter
+        if(ch == delim)
+            return true;
+        //otherwise keep extracting
+        extracted.push_back(ch);
+    }
+    //if we get to here, there wasn't a matching end delimiter
+    return false;
 }
 
 //bool operator== (OutstationParams& C1, OutstationParams& C2)

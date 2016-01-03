@@ -52,7 +52,7 @@ public:
 		                       result["Items"]  = vec;
 
 		                       return result;
-				     }, "", true);
+				     }, "", false);
 	}
 	virtual ~ResponderMap(){};
     

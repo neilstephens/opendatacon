@@ -76,8 +76,6 @@ public:
 private:
 	void EnablePortOrConn(std::stringstream& args, bool enable);
 	void RestartPortOrConn(std::stringstream& args);
-	void ListConns(std::stringstream& args);
-	void ListPorts(std::stringstream& args);
 };
 
 #endif /* DATACONCENTRATOR_H_ */
