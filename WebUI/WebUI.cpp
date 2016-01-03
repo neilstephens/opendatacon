@@ -134,7 +134,7 @@ void WebUI::AddCommand(const std::string name, std::function<void (std::stringst
 
 void WebUI::AddResponder(const std::string name, const IUIResponder& pResponder)
 {
-	Responders[name] = &pResponder;
+	Responders["/" + name] = &pResponder;
 }
 
 /* HTTP access handler call back */

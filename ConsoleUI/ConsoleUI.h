@@ -57,6 +57,7 @@ public:
     
 private:
     /* */
+    std::string context;
     std::unique_ptr<asio::thread> uithread;
     
     /* tinyConsole functions */
@@ -65,7 +66,7 @@ private:
     std::string help_intro;
 
 	/* UI response handlers */
-    std::unordered_map<std::string, const IUIResponder*> Responders;
+    std::unordered_map<std::string, const IUIResponder&> Responders;
     
     /* Internal functions */
     void ExecuteCommand(const IUIResponder& pResponder, const std::string& command, std::stringstream& args);

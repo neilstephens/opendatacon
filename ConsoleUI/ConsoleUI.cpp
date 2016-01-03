@@ -24,11 +24,31 @@
 #include <fstream>
 #include <iomanip>
 #include <exception>
-#include <regex>
 
-ConsoleUI::ConsoleUI(): tinyConsole("odc> ")
+ConsoleUI::ConsoleUI(): tinyConsole("odc> "), context("")
 {
-    mDescriptions["help"] = "Get help on commands. Optional argument of specific command.";
+    //mDescriptions["help"] = "Get help on commands. Optional argument of specific command.";
+    AddCommand("help",[this](std::stringstream& LineStream){
+        std::string arg;
+        std::cout<<std::endl;
+        if(LineStream>>arg)
+        {
+            if(!mDescriptions.count(arg))
+                std::cout<<"Command '"<<arg<<"' not found\n";
+            else
+                std::cout<<std::setw(25)<<std::left<<arg+":"<<mDescriptions[arg]<<std::endl<<std::endl;
+        }
+        else
+        {
+            std::cout<<help_intro<<std::endl<<std::endl;
+            for(auto desc : mDescriptions)
+            {
+                std::cout<<std::setw(25)<<std::left<<desc.first+":"<<desc.second<<std::endl<<std::endl;
+            }
+        }
+        std::cout<<std::endl;
+        
+    },"Get help on commands. Optional argument of specific command.");
 
     std::function<void (std::stringstream&)> bound_func;
 }
@@ -73,36 +93,46 @@ void ConsoleUI::AddHelp(std::string help)
 int ConsoleUI::trigger (std::string s)
 {
     std::stringstream LineStream(s);
-    std::string cmd,arg;
+    std::string cmd;
     LineStream>>cmd;
     
-    if(cmd == "help")
+    if(this->context.empty() && Responders.count(cmd))
     {
-        std::cout<<std::endl;
-        if(LineStream>>arg)
+        /* responder */
+        std::string rcmd;
+        LineStream>>rcmd;
+        
+        if (rcmd.length() == 0)
         {
-            if(!mDescriptions.count(arg))
-                std::cout<<"Command '"<<arg<<"' not found\n";
-            else
-                std::cout<<std::setw(25)<<std::left<<arg+":"<<mDescriptions[arg]<<std::endl<<std::endl;
+            /* change context */
+            this->context = cmd;
+            this->_prompt = "odc " + cmd + "> ";
         }
         else
         {
-            std::cout<<help_intro<<std::endl<<std::endl;
-            for(auto desc : mDescriptions)
-            {
-                std::cout<<std::setw(25)<<std::left<<desc.first+":"<<desc.second<<std::endl<<std::endl;
-            }
+            ExecuteCommand(Responders[cmd],rcmd,LineStream);
         }
-        std::cout<<std::endl;
     }
-    else if(!mCmds.count(cmd))
+    else if(!this->context.empty() && cmd == "exit")
     {
-        if(cmd != "")
-            std::cout <<"Unknown command:"<< cmd << std::endl;
+        /* change context */
+        this->context = "";
+        this->_prompt = "odc> ";
+    }
+    else if(!this->context.empty())
+    {
+        ExecuteCommand(Responders[this->context],cmd,LineStream);
+    }
+    else if(mCmds.count(cmd))
+    {
+        /* regular command */
+        mCmds[cmd](LineStream);
     }
     else
-        mCmds[cmd](LineStream);
+    {
+        if(cmd != "")
+            std::cout <<"Unknown command: "<< cmd << std::endl;
+    }
     
     return 0;
 }
@@ -115,12 +145,51 @@ int ConsoleUI::hotkeys(char c)
         std::string partial_cmd;
         partial_cmd.assign(buffer.begin(), buffer.end());
         
+        std::stringstream LineStream(partial_cmd);
+        std::string cmd,arg;
+        LineStream>>cmd;
+        
         //find commands that start with the partial
         std::vector<std::string> matching_cmds;
-        for(auto cmd : mDescriptions)
+        if (this->context.empty())
         {
-            if(strncmp(cmd.first.c_str(),partial_cmd.c_str(),partial_cmd.size())==0)
-                matching_cmds.push_back(cmd.first.c_str());
+            LineStream>>arg;
+
+            if (Responders.count(cmd))
+            {
+                /* list commands avaialble to responder */
+                auto commands = Responders[cmd].GetCommandList();
+                for (auto command : commands)
+                {
+                    if(strncmp(command.asString().c_str(),arg.c_str(),arg.size())==0)
+                        matching_cmds.push_back(cmd + " " + command.asString());
+                }
+            }
+            else
+            {
+                /* list all matching responders */
+                for(auto name_n_responder: Responders)
+                {
+                    if(strncmp(name_n_responder.first.c_str(),cmd.c_str(),cmd.size())==0)
+                        matching_cmds.push_back(name_n_responder.first.c_str());
+                }
+            }
+        }
+        else
+        {
+            /* list commands available to current responder */
+            auto commands = Responders[this->context].GetCommandList();
+            for (auto command : commands)
+            {
+                if(strncmp(command.asString().c_str(),partial_cmd.c_str(),partial_cmd.size())==0)
+                    matching_cmds.push_back(command.asString());
+            }
+        }
+        
+        for(auto name_n_description : mDescriptions)
+        {
+            if(strncmp(name_n_description.first.c_str(),partial_cmd.c_str(),partial_cmd.size())==0)
+                matching_cmds.push_back(name_n_description.first.c_str());
         }
         
         //any matches?
@@ -175,7 +244,6 @@ int ConsoleUI::hotkeys(char c)
                 buffer.push_back(' ');
                 line_pos++;
             }
-            
         }
         
         return 1;
@@ -186,53 +254,40 @@ int ConsoleUI::hotkeys(char c)
 
 void ConsoleUI::AddResponder(const std::string name, const IUIResponder& pResponder)
 {
-	Responders[name] = &pResponder;
-
-    auto commands = pResponder.GetCommandList();
-
-    for (auto command : commands)
-    {
-        auto bound_func = std::bind(&ConsoleUI::ExecuteCommand,this,pResponder,command.asString(),std::placeholders::_1);
-        this->AddCommand(name + "_" + command.asString(),bound_func,"List ports matching a regex (by name)");
-    }
+    Responders.emplace(name, pResponder);
 }
 
 void ConsoleUI::ExecuteCommand(const IUIResponder& pResponder, const std::string& command, std::stringstream& args)
 {
-    std::string arg = "";
-    std::string mregex;
-    std::regex reg;
-    
-    if(!extract_delimited_string(args,mregex))
-    {
-        std::cout<<"Syntax error: Delimited regex expected, found \"..."<<mregex<<"\""<<std::endl;
-        return;
-    }
-    try
-    {
-        reg = std::regex(mregex);
-        ParamCollection params;
-        auto result = pResponder.ExecuteCommand(command, params);
-        std::cout<<result.toStyledString()<<std::endl;
+    ParamCollection params;
 
-    }
-    catch(std::exception& e)
-    {
-        std::cout<<e.what()<<std::endl;
-        return;
-    }
+    std::string pName;
+    std::string pVal;
+    extract_delimited_string("\"'`",args,pName);
+    extract_delimited_string("\"'`",args,pVal);
+    params[pName] = pVal;
+    
+    auto result = pResponder.ExecuteCommand(command, params);
+    std::cout<<result.toStyledString()<<std::endl;
 }
 
 void ConsoleUI::Enable()
 {
-    uithread = std::unique_ptr<asio::thread>(new asio::thread([this](){
-        this->run();
-    }));
+    this->_quit = false;
+    if (!uithread) {
+        uithread = std::unique_ptr<asio::thread>(new asio::thread([this](){
+            this->run();
+        }));
+    }
 }
 
 void ConsoleUI::Disable()
 {
     this->quit();
+    if (uithread) {
+        //uithread->join();
+        uithread.reset();
+    }
 }
 
 

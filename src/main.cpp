@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
 		std::cout << "This is opendatacon version " << ODC_VERSION_STRING << std::endl;
 		std::cout << "Loading configuration... ";
 		TheDataConcentrator.reset(new DataConcentrator(ConfFileName));
-		std::cout << "done" << std::endl << "Initialising objects... ";
+		std::cout << "done" << std::endl << "Initialising objects... " << std::endl;
 		TheDataConcentrator->BuildOrRebuild();
 		std::cout << "done" << std::endl << "Starting up opendatacon..." << std::endl;
         

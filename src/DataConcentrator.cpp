@@ -72,10 +72,11 @@ DataConcentrator::DataConcentrator(std::string FileName):
         interface.second->AddCommand("version",[] (std::stringstream& ss){
             std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;},"Print version information");
         
-        interface.second->AddResponder("/OpenDataCon", *this);
-        interface.second->AddResponder("/DataPorts", DataPorts);
-        interface.second->AddResponder("/DataConnectors", DataConnectors);
-        interface.second->AddResponder("/Loggers", AdvancedLoggers);
+        interface.second->AddResponder("OpenDataCon", *this);
+        interface.second->AddResponder("DataPorts", DataPorts);
+        interface.second->AddResponder("DataConnectors", DataConnectors);
+        interface.second->AddResponder("Loggers", AdvancedLoggers);
+        interface.second->AddResponder("Plugins", Interfaces);
     }
     for(auto& port : DataPorts)
 	{
