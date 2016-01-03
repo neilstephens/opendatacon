@@ -72,7 +72,7 @@ inline std::string LastSystemError()
 const std::string DYNLIBPRE = "lib";
 #include <dlfcn.h>
 #if defined(__APPLE__)
-const std::string DYNLIBEXT = ".dylib";
+const std::string DYNLIBEXT = ".so";
 #else
 const std::string DYNLIBEXT = ".so";
 #endif
