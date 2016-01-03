@@ -263,10 +263,12 @@ void ConsoleUI::ExecuteCommand(const IUIResponder& pResponder, const std::string
 
     std::string pName;
     std::string pVal;
-    extract_delimited_string("\"'`",args,pName);
-    extract_delimited_string("\"'`",args,pVal);
-    params[pName] = pVal;
-    
+    while(args)
+    {
+        extract_delimited_string("\"'`",args,pName);
+        extract_delimited_string("\"'`",args,pVal);
+        params[pName] = pVal;
+    }
     auto result = pResponder.ExecuteCommand(command, params);
     std::cout<<result.toStyledString()<<std::endl;
 }
