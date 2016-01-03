@@ -107,7 +107,9 @@ int main(int argc, char* argv[])
             TheDataConcentrator->Shutdown();
         };
         
-        ::signal(SIGINT,shutdown_func);
+        ::signal(SIGTERM,shutdown_func);
+        ::signal(SIGABRT,shutdown_func);
+        ::signal(SIGINT,SIG_IGN);
         
 		TheDataConcentrator->Run();
         
