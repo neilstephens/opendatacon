@@ -26,6 +26,7 @@
 //#include <opendnp3/outstation/OutstationStackConfig.h>
 //#include <opendnp3/outstation/DatabaseTemplate.h>
 //#include <opendnp3/app/MeasurementTypes.h>
+#include <cstdint>
 
 //fast rough random numbers
 #define CONG(jcong) (jcong = 69069*jcong+1234567)
