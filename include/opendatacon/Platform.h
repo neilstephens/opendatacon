@@ -37,6 +37,12 @@ const std::string DYNLIBEXT = ".dll";
 #define DYNLIBLOAD(a) LoadLibraryExA(a, 0, DWORD(0))
 #define DYNLIBGETSYM(a,b) GetProcAddress(a, b)
 
+// Place any OS specific initilisation code for library loading here, run once on program startup
+inline void InitLibaryLoading()
+{
+	SetErrorMode(SEM_FAILCRITICALERRORS);
+}
+
 // Retrieve the system error message for the last-error code
 inline std::string LastSystemError()
 {
@@ -78,6 +84,12 @@ const std::string DYNLIBEXT = ".so";
 #endif
 #define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
 #define DYNLIBGETSYM(a,b) dlsym(a, b)
+
+// Place any OS specific initilisation code for library loading here, run once on program startup
+inline void InitLibaryLoading()
+{
+
+}
 
 // Retrieve the system error message for the last-error code
 inline std::string LastSystemError()

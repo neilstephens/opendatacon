@@ -45,6 +45,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	FileLog("datacon_log"),
 	AdvFileLog(new AdvancedLogger(FileLog,LOG_LEVEL))
 {
+	// Enable loading of libraries
+	InitLibaryLoading();
+
 	//Version
 	this->AddCommand("version", [this](const ParamCollection &params) { //"Print version information"
 	                       Json::Value result;
