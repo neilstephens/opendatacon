@@ -22,7 +22,12 @@ if(WIN32)
 else()
 	cmake_minimum_required(VERSION 2.8)
 endif()
-cmake_policy(SET CMP0048 NEW)
+
+if(POLICY CMP0048)
+	cmake_policy(SET CMP0048 OLD)
+endif()
+
+project(ODC CXX)
 
 find_package(Git)
 if(GIT_FOUND)
@@ -34,20 +39,22 @@ if(GIT_FOUND)
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
  	#message(" Git describe: ${GIT_DESCRIBE}")
-	string(REGEX MATCH "^([0-9\\.]+)-([0-9]+)-([^-]+)-?([^-]*)$" GIT_REPO_MATCH ${GIT_DESCRIBE})
+	string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)-[0-9]+-([^-]+)-?([^-]*)$" GIT_REPO_MATCH ${GIT_DESCRIBE})
  	#message(" Version: ${CMAKE_MATCH_1} ${CMAKE_MATCH_2} ${CMAKE_MATCH_3} ${CMAKE_MATCH_4}")
-	set(GIT_REPO_VERSION ${CMAKE_MATCH_1}.${CMAKE_MATCH_2})
-	set(GIT_REPO_COMMIT ${CMAKE_MATCH_3})
-	set(GIT_REPO_DIRTY ${CMAKE_MATCH_4})
- 	message("-- opendatacon version: ${GIT_REPO_VERSION} ${GIT_REPO_DIRTY}")
 
-	project(ODC VERSION ${GIT_REPO_VERSION} LANGUAGES CXX)
+	set(ODC_MAJOR_VERSION ${CMAKE_MATCH_1})
+	set(ODC_MINOR_VERSION ${CMAKE_MATCH_2})
+	set(ODC_MICRO_VERSION ${CMAKE_MATCH_3})
+
+	set(GIT_REPO_COMMIT ${CMAKE_MATCH_4})
+	set(GIT_REPO_DIRTY ${CMAKE_MATCH_5})
+	message("-- opendatacon version: ${ODC_MAJOR_VERSION}.${ODC_MINOR_VERSION}.${ODC_MICRO_VERSION} ${GIT_REPO_COMMIT} ${GIT_REPO_DIRTY}")
+
 	configure_file (
 		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h.in"
 		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
   	)
-else()
-	project(ODC LANGUAGES CXX)
+
 endif()
 
 
