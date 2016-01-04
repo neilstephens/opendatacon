@@ -59,12 +59,14 @@ endif()
 
 
 # various optional libraries and projects
-option(FULL "Build all optional projects (DNP3Port, JSONPort, Tests, ConsoleUI, WebUI)" ON)
+option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, Tests, ConsoleUI, WebUI)" ON)
 option(TESTS "Build tests" OFF)
 option(WEBUI "Build the http(s) web user interface" OFF)
 option(DNP3PORT "Build DNP3 Port" OFF)
 option(JSONPORT "Build JSON Port" OFF)
 option(MODBUSPORT "Build Modbus Port" OFF)
+option(SIMPORT "Build Simulation Port" OFF)
+option(CONSOLEUI "Build the console user interface" OFF)
 
 # other options off-by-default that you can enable
 option(WERROR "Set all warnings to errors" OFF)
@@ -77,6 +79,7 @@ if(FULL)
 	set(DNP3PORT ON)
 	set(JSONPORT ON)
 	set(MODBUSPORT ON)
+	set(SIMPORT ON)
 endif()
 
 # IDE configuration
@@ -164,3 +167,6 @@ endif()
 if(MODBUSPORT)
 	add_subdirectory(ModbusPort)
 endif()
+if(SIMPORT)
+	add_subdirectory(SimPort)
+endif()	
