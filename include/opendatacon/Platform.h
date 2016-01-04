@@ -37,6 +37,12 @@ const std::string DYNLIBEXT = ".dll";
 #define DYNLIBLOAD(a) LoadLibraryExA(a, 0, DWORD(0))
 #define DYNLIBGETSYM(a,b) GetProcAddress(a, b)
 
+// Place any OS specific initilisation code for library loading here, run once on program startup
+inline void InitLibaryLoading()
+{
+	SetErrorMode(SEM_FAILCRITICALERRORS);
+}
+
 // Retrieve the system error message for the last-error code
 inline std::string LastSystemError()
 {
@@ -78,6 +84,12 @@ const std::string DYNLIBEXT = ".so";
 #endif
 #define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
 #define DYNLIBGETSYM(a,b) dlsym(a, b)
+
+// Place any OS specific initilisation code for library loading here, run once on program startup
+inline void InitLibaryLoading()
+{
+
+}
 
 // Retrieve the system error message for the last-error code
 inline std::string LastSystemError()
@@ -125,6 +137,14 @@ inline char* strerror_rp(int therr, char* buf, size_t len)
 }
 #endif
 
+/// Platform specific signal definitions
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+const auto SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGBREAK };
+const auto SIG_IGNORE = { SIGINT };
+#else
+const auto SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGQUIT };
+const auto SIG_IGNORE = { SIGINT };
+#endif
 
 inline std::string GetLibFileName(const std::string LibName)
 {

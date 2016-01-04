@@ -158,7 +158,7 @@ int ConsoleUI::hotkeys(char c)
             if (Responders.count(cmd))
             {
                 /* list commands avaialble to responder */
-                auto commands = Responders[cmd].GetCommandList();
+                auto commands = Responders[cmd]->GetCommandList();
                 for (auto command : commands)
                 {
                     if(strncmp(command.asString().c_str(),arg.c_str(),arg.size())==0)
@@ -178,7 +178,7 @@ int ConsoleUI::hotkeys(char c)
         else
         {
             /* list commands available to current responder */
-            auto commands = Responders[this->context].GetCommandList();
+            auto commands = Responders[this->context]->GetCommandList();
             for (auto command : commands)
             {
                 if(strncmp(command.asString().c_str(),partial_cmd.c_str(),partial_cmd.size())==0)
@@ -254,10 +254,10 @@ int ConsoleUI::hotkeys(char c)
 
 void ConsoleUI::AddResponder(const std::string name, const IUIResponder& pResponder)
 {
-	Responders.emplace( name, pResponder );
+	Responders[ name ] = &pResponder;
 }
 
-void ConsoleUI::ExecuteCommand(const IUIResponder& pResponder, const std::string& command, std::stringstream& args)
+void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
 {
     ParamCollection params;
 
@@ -269,7 +269,7 @@ void ConsoleUI::ExecuteCommand(const IUIResponder& pResponder, const std::string
         extract_delimited_string("\"'`",args,pVal);
         params[pName] = pVal;
     }
-    auto result = pResponder.ExecuteCommand(command, params);
+    auto result = pResponder->ExecuteCommand(command, params);
     std::cout<<result.toStyledString()<<std::endl;
 }
 

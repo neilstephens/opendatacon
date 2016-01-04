@@ -45,16 +45,22 @@ public:
 		pTimer->async_wait(
 		      [this](asio::error_code err_code)
 		      {
-		            for (auto IOHandler_pair: Subscribers)
-		            {
-		                  IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
-		                  IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+				if (err_code != asio::error::operation_aborted)
+				{
+			
+					for (auto IOHandler_pair : Subscribers)
+					{
+						IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
+						IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+					}
 				}
 			});
 		return;
 	};
 	void Disable()
 	{
+		pTimer->cancel();
+		pTimer.reset();
 		for (auto IOHandler_pair : Subscribers)
 		{
 			IOHandler_pair.second->Event(ConnectState::PORT_DOWN, 0, this->Name);
