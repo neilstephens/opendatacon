@@ -137,6 +137,14 @@ inline char* strerror_rp(int therr, char* buf, size_t len)
 }
 #endif
 
+/// Platform specific signal definitions
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+const auto SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGBREAK };
+const auto SIG_IGNORE = { SIGINT };
+#else
+const auto SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGQUIT };
+const auto SIG_IGNORE = { SIGINT };
+#endif
 
 inline std::string GetLibFileName(const std::string LibName)
 {
