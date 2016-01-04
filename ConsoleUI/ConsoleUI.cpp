@@ -254,7 +254,7 @@ int ConsoleUI::hotkeys(char c)
 
 void ConsoleUI::AddResponder(const std::string name, const IUIResponder& pResponder)
 {
-    Responders.emplace(name, pResponder);
+	Responders.emplace( name, pResponder );
 }
 
 void ConsoleUI::ExecuteCommand(const IUIResponder& pResponder, const std::string& command, std::stringstream& args)
