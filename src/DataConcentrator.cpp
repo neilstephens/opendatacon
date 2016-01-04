@@ -304,11 +304,6 @@ void DataConcentrator::Run()
     
     std::cout << "Shutting down DNP3 manager... ";
     DNP3Mgr.Shutdown();
-    //tell the io service to let it's run functions return once there's no handlers left (letting our threads end)
-    std::cout << "done" << std::endl << "Finishing any remaining work... ";
-    ios_working.reset();
-    //help finish any work
-    IOS.run();
     std::cout << "done" << std::endl;
 }
 
