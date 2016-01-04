@@ -23,9 +23,7 @@
 #include <fstream>
 #include <string>
 #include <map>
-#include <opendnp3/outstation/OutstationStackConfig.h>
-#include <opendnp3/outstation/DatabaseTemplate.h>
-#include <opendnp3/app/MeasurementTypes.h>
+#include <cstdint>
 
 //fast rough random numbers
 #define CONG(jcong) (jcong = 69069*jcong+1234567)
@@ -34,9 +32,7 @@ typedef uint32_t rand_t;
 
 bool getline_noncomment(std::istream& is, std::string& line);
 bool extract_delimited_string(std::istream& ist, std::string& extracted);
-
-bool operator== (opendnp3::OutstationStackConfig& SC1, opendnp3::OutstationStackConfig& SC2);
-bool operator!= (opendnp3::OutstationStackConfig& SC1, opendnp3::OutstationStackConfig& SC2);
+bool extract_delimited_string(const std::string& delims, std::istream& ist, std::string& extracted);
 
 bool GetBool(const std::string& value);
 

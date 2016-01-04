@@ -22,16 +22,51 @@ if(WIN32)
 else()
 	cmake_minimum_required(VERSION 2.8)
 endif()
-project(opendatacon CXX)
+
+if(POLICY CMP0048)
+	cmake_policy(SET CMP0048 OLD)
+endif()
+
+project(ODC CXX)
+
+find_package(Git)
+if(GIT_FOUND)
+ 	message("-- git found: ${GIT_EXECUTABLE}, determining source version")
+	execute_process(
+		COMMAND git describe --long --match "[0-9]*\\.[0-9]*\\.[0-9]" --dirty
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_DESCRIBE
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+ 	#message(" Git describe: ${GIT_DESCRIBE}")
+	string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)-[0-9]+-([^-]+)-?([^-]*)$" GIT_REPO_MATCH ${GIT_DESCRIBE})
+ 	#message(" Version: ${CMAKE_MATCH_1} ${CMAKE_MATCH_2} ${CMAKE_MATCH_3} ${CMAKE_MATCH_4}")
+
+	set(ODC_MAJOR_VERSION ${CMAKE_MATCH_1})
+	set(ODC_MINOR_VERSION ${CMAKE_MATCH_2})
+	set(ODC_MICRO_VERSION ${CMAKE_MATCH_3})
+
+	set(GIT_REPO_COMMIT ${CMAKE_MATCH_4})
+	set(GIT_REPO_DIRTY ${CMAKE_MATCH_5})
+	message("-- opendatacon version: ${ODC_MAJOR_VERSION}.${ODC_MINOR_VERSION}.${ODC_MICRO_VERSION} ${GIT_REPO_COMMIT} ${GIT_REPO_DIRTY}")
+
+	configure_file (
+		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h.in"
+		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
+  	)
+
+endif()
+
 
 # various optional libraries and projects
-option(FULL "Build all optional projects (DNP3Port, JSONPort, Tests, WebUI, ModbusPort, SimPort)" ON)
+option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, Tests, ConsoleUI, WebUI)" ON)
 option(TESTS "Build tests" OFF)
 option(WEBUI "Build the http(s) web user interface" OFF)
 option(DNP3PORT "Build DNP3 Port" OFF)
 option(JSONPORT "Build JSON Port" OFF)
 option(MODBUSPORT "Build Modbus Port" OFF)
 option(SIMPORT "Build Simulation Port" OFF)
+option(CONSOLEUI "Build the console user interface" OFF)
 
 # other options off-by-default that you can enable
 option(WERROR "Set all warnings to errors" OFF)
@@ -40,6 +75,7 @@ option(COVERAGE "Builds the libraries with coverage info for gcov" OFF)
 if(FULL)
 	set(TESTS ON)
 	set(WEBUI ON)
+	set(CONSOLEUI ON)
 	set(DNP3PORT ON)
 	set(JSONPORT ON)
 	set(MODBUSPORT ON)
@@ -121,6 +157,9 @@ if(JSONPORT)
 endif()
 if(WEBUI)
 	add_subdirectory(WebUI)
+endif()
+if(CONSOLEUI)
+	add_subdirectory(ConsoleUI)
 endif()
 if(TESTS)
 	add_subdirectory(tests)

@@ -29,40 +29,47 @@
 #define __opendatacon__WebUI__
 
 #include <opendatacon/IUI.h>
-#include "MhdWrapper.h"
 
-const char ROOTPAGE[] = "/index.html";
+#include <asio.hpp>
+#include <vector>
+#include <map>
+#include <sstream>
+#include <functional>
+#include "tinycon.h"
 
-class WebUI: public IUI
+class ConsoleUI: public IUI, tinyConsole
 {
 public:
-	WebUI(uint16_t port);
+	ConsoleUI();
+    virtual ~ConsoleUI(void);
 
+    void AddHelp(std::string help);    
+    
+    /* tinyConsole functions */
+    int trigger (std::string s) override;
+    int hotkeys(char c) override;
+    
 	/* Implement IUI interface */
     void AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc = "No description available\n");
-    void AddResponder(const std::string name, const IUIResponder& pResponder);
-	void Enable();
-	void Disable();
-
-	/* HTTP response handler call back */
-	int http_ahc(void *cls,
-	             struct MHD_Connection *connection,
-	             const char *url,
-	             const char *method,
-	             const char *version,
-	             const char *upload_data,
-	             size_t *upload_data_size,
-	             void **ptr);
-
+	void AddResponder(const std::string name, const IUIResponder& pResponder);
+    void Enable();
+    void Disable();
+    
 private:
-	struct MHD_Daemon * d;
-	const int port;
-	std::string cert_pem;
-	std::string key_pem;
+    /* */
+    std::string context;
+    std::unique_ptr<asio::thread> uithread;
+    
+    /* tinyConsole functions */
+    std::map<std::string,std::function<void (std::stringstream&)> > mCmds;
+    std::map<std::string,std::string> mDescriptions;
+    std::string help_intro;
 
-	bool useSSL = false;
 	/* UI response handlers */
-	std::unordered_map<std::string, const IUIResponder*> Responders;
+    std::unordered_map<std::string, const IUIResponder> Responders;
+    
+    /* Internal functions */
+    void ExecuteCommand(const IUIResponder& pResponder, const std::string& command, std::stringstream& args);
 };
 
 #endif /* defined(__opendatacon__WebUI__) */

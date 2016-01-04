@@ -1,6 +1,6 @@
-#	opendatacon
+ #	opendatacon
  #
- #	Copyright (c) 2014:
+ #	Copyright (c) 2015:
  #
  #		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  #		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -17,21 +17,20 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-project(ODC)
+project(ConsoleUI)
 cmake_minimum_required(VERSION 2.8)
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def ../include/opendatacon/*.h)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 include_directories(
-	"../JSON"
-	"../include"
-	"${DNP3_HOME}/include"
-	"${ASIO_HOME}/include"
+	../include
+	../JSON
+	${ASIO_HOME}/include
 )
 
 link_directories("${DNP3_HOME}/lib")
 
-add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} JSON asiopal)
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC asiopal)
 
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "lib" ARCHIVE DESTINATION "lib")
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "plugin")
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)

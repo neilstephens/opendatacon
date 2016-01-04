@@ -53,6 +53,7 @@
 #include <opendatacon/Platform.h>
 #include <opendatacon/Version.h>
 #include <errno.h>
+#include <csignal>
 
 int main(int argc, char* argv[])
 {
@@ -60,7 +61,7 @@ int main(int argc, char* argv[])
 	// because exceptions will be thrown for problems.
 	try
 	{
-		std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
+		static std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
 
 		TCLAP::CmdLine cmd("High performance asynchronous data concentrator", ' ', ODC_VERSION_STRING);
 		TCLAP::ValueArg<std::string> ConfigFileArg("c", "config", "Configuration file, specified as an absolute path or relative to the working directory.", false, "opendatacon.conf", "string");
@@ -97,10 +98,21 @@ int main(int argc, char* argv[])
 		std::cout << "This is opendatacon version " << ODC_VERSION_STRING << std::endl;
 		std::cout << "Loading configuration... ";
 		TheDataConcentrator.reset(new DataConcentrator(ConfFileName));
-		std::cout << "done" << std::endl << "Initialising objects... ";
+		std::cout << "done" << std::endl << "Initialising objects... " << std::endl;
 		TheDataConcentrator->BuildOrRebuild();
 		std::cout << "done" << std::endl << "Starting up opendatacon..." << std::endl;
+        
+        auto shutdown_func = [](int signum)
+        {
+            TheDataConcentrator->Shutdown();
+        };
+        
+        ::signal(SIGTERM,shutdown_func);
+        ::signal(SIGABRT,shutdown_func);
+        ::signal(SIGINT,SIG_IGN);
+        
 		TheDataConcentrator->Run();
+        
 		std::cout << "opendatacon version " << ODC_VERSION_STRING << " shutdown cleanly." << std::endl;
 	}
 	catch (TCLAP::ArgException &e) // catch any exceptions

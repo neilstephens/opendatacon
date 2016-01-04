@@ -127,11 +127,15 @@ WebUI::WebUI(uint16_t pPort):
 	}
 }
 
-void WebUI::AddResponder(const std::string name, const IUIResponder& pResponder)
+void WebUI::AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc)
 {
-	Responders[name] = &pResponder;
+    // TODO: complete
 }
 
+void WebUI::AddResponder(const std::string name, const IUIResponder& pResponder)
+{
+	Responders["/" + name] = &pResponder;
+}
 
 /* HTTP access handler call back */
 int WebUI::http_ahc(void *cls,
@@ -205,7 +209,7 @@ int WebUI::http_ahc(void *cls,
 	}
 }
 
-int WebUI::start()
+void WebUI::Enable()
 {
 	if (useSSL)
 	{
@@ -235,11 +239,12 @@ int WebUI::start()
 	}
 
 	if (d == nullptr)
-		return 1;
-	return 0;
+    {
+        // TODO: log error message
+    }
 }
 
-void WebUI::stop()
+void WebUI::Disable()
 {
 	if (d == nullptr) return;
 	MHD_stop_daemon(d);
