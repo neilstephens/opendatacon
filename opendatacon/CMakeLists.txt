@@ -19,6 +19,13 @@
  # 
 project(opendatacon)
 file(GLOB SRC_LIST *.cpp *.h)
+
+if(WIN32)
+	file(GLOB DAEMON_SRC_LIST WinDaemon/*.cpp WinDaemon/*.h)
+else()
+	file(GLOB DAEMON_SRC_LIST POSIXDaemon/*.cpp POSIXDaemon/*.h)
+endif()
+
 include_directories(
 	"../include"
 	"../JSON"
@@ -28,7 +35,7 @@ include_directories(
 )
 link_directories("${DNP3_HOME}/lib")
 
-add_executable(${PROJECT_NAME} ${SRC_LIST})
+add_executable(${PROJECT_NAME} ${SRC_LIST} ${DAEMON_SRC_LIST})
 target_link_libraries(${PROJECT_NAME} ODC JSON asiopal openpal asiodnp3 opendnp3 ${PTHREAD} ${DL})
 
 install(DIRECTORY "include/opendatacon" DESTINATION "include")
