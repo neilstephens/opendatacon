@@ -27,7 +27,7 @@ if(POLICY CMP0048)
 	cmake_policy(SET CMP0048 OLD)
 endif()
 
-project(ODC CXX)
+project(opendatacon_suite CXX)
 
 find_package(Git)
 if(GIT_FOUND)
@@ -96,10 +96,12 @@ if(WIN32)
 endif()
 if(UNIX)
 	set(PTHREAD pthread)
-	set(DL dl)	
+	set(DL dl)
+	set(RPATH_BASE $ORIGIN)
 endif()
 if(APPLE)
 	set(CMAKE_MACOSX_RPATH 1)
+	set(RPATH_BASE @executable_path)
 endif()
 
 # Compiler configuration
@@ -134,9 +136,16 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	endif()
 endif()
 
-set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )
-set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )
-set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )
+# the RPATH to be used when installing - allowing local libraries to be found for standalone installs
+SET(CMAKE_INSTALL_RPATH "${RPATH_BASE}")
+# when building use the install RPATH already
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+# add the automatically determined parts of the RPATH - allowing running a build in-place
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
+set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
 
 # Second, for multi-config builds (e.g. msvc)
 foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
@@ -148,7 +157,7 @@ endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 add_subdirectory(JSON)
 add_subdirectory(ODC)
-add_subdirectory(src)
+add_subdirectory(opendatacon)
 if(DNP3PORT)
 	add_subdirectory(DNP3Port)
 endif()
