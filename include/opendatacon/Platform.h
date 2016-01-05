@@ -28,6 +28,7 @@
 #define ODC_PLATFORM_H_
 
 #include <string>
+#include <signal.h>
 
 /// Dynamic library loading
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)

@@ -70,8 +70,27 @@ int main(int argc, char* argv[])
 		cmd.add(ConfigFileArg);
 		TCLAP::ValueArg<std::string> PathArg("p", "path", "Working directory path, all configuration files and log files are relative to this path.", false, "", "string");
 		cmd.add(PathArg);
+		TCLAP::SwitchArg DaemonInstallArg("i","daemon","Switch to install opendatacon as a background service (not required / ignored for POSIX platforms)");
+		cmd.add(DaemonInstallArg);
+		TCLAP::SwitchArg DaemonArg("d","daemon","Switch to run opendatacon in the background");
+		cmd.add(DaemonArg);
+		TCLAP::SwitchArg DaemonRemoveArg("r","daemon","Switch to uninstall opendatacon as a background service (not required / ignored for POSIX platforms)");
+		cmd.add(DaemonRemoveArg);
 
 		cmd.parse(argc, argv);
+
+		if (DaemonRemoveArg.isSet())
+		{
+			daemon_remove();
+		}
+		if (DaemonInstallArg.isSet())
+		{
+			daemon_install();
+		}
+		if (DaemonArg.isSet())
+		{
+			daemonp();
+		}
 
 		std::string ConfFileName = ConfigFileArg.getValue();
 
