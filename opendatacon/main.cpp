@@ -55,6 +55,8 @@
 #include <errno.h>
 #include <csignal>
 
+#include "DaemonInterface.h"
+
 int main(int argc, char* argv[])
 {
 	// Wrap everything in a try block.  Do this every time,

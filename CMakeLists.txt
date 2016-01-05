@@ -93,6 +93,9 @@ if(WIN32)
 	
 	# Auto generate def files that export all symbols of STATIC libraries
 	set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+	
+	# UNICODE support
+	add_definitions(-DUNICODE -D_UNICODE)	
 endif()
 if(UNIX)
 	set(PTHREAD pthread)
