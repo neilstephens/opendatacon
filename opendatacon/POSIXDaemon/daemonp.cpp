@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <string>
 #include <stdexcept>
+#include <stdlib.h>
 
 void daemonp()
 {
