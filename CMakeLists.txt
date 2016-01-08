@@ -146,7 +146,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 	
 else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	# using Clang or GNU compilers
-	message("CMAKE configuring opendatacon for  Clang or GNU compilers" )
+	message("-- configuring opendatacon for  Clang or GNU compilers" )
 	set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -pedantic")
 
 	# different release and debug flags
@@ -168,6 +168,8 @@ endif()
 SET(CMAKE_INSTALL_RPATH "${RPATH_BASE}"
 	"${RPATH_BASE}/${INSTALLDIR_LIBS}"
 	"${RPATH_BASE}/${INSTALLDIR_MODULES}"
+	"${RPATH_BASE}/../${INSTALLDIR_LIBS}"
+	"${RPATH_BASE}/../${INSTALLDIR_MODULES}"
 	"${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_LIBS}"
 	"${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}")
 # when building use the install RPATH already
@@ -188,7 +190,7 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 # Locate opendnp3
-foreach( component in ITEMS openpal opendnp3 asiopal asiodnp3 )
+foreach( component openpal opendnp3 asiopal asiodnp3 )
 	# Look for regular libraries
 	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib)
 	add_library(${component}_target UNKNOWN IMPORTED)
@@ -197,7 +199,11 @@ foreach( component in ITEMS openpal opendnp3 asiopal asiodnp3 )
 	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib)
 	add_library(${component}_dtarget UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
+	#set a variable to use for linking
 	set(${component}_libs debug ${component}_dtarget optimized ${component}_target )
+	#include in install/packaging
+	install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release")
+	install(FILES "${${component}_dlib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
 endforeach()
 
 add_subdirectory(JSON)
