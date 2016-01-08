@@ -1,0 +1,7 @@
+
+CMakeLists.txt.user
+.directory
+_site/*
+example/*
+include/*
+
