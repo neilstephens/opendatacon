@@ -163,15 +163,20 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	endif()
 endif()
 
-# the RPATH to be used when installing - allowing local libraries to be found for standalone installs
-SET(CMAKE_INSTALL_RPATH "${RPATH_BASE}")
+# the RPATH to be used when installing - allowing local libraries to be found for standalone installs,
+# as well as installed locations
+SET(CMAKE_INSTALL_RPATH "${RPATH_BASE}"
+	"${RPATH_BASE}/${INSTALLDIR_LIBS}"
+	"${RPATH_BASE}/${INSTALLDIR_MODULES}"
+	"${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_LIBS}"
+	"${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}")
 # when building use the install RPATH already
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-# add the automatically determined parts of the RPATH - allowing running a build in-place
+# add the automatically determined parts of the RPATH - for linked libs outside build tree
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
-set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build/${INSTALLDIR_LIBS}" )
 set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
 
 # Second, for multi-config builds (e.g. msvc)
