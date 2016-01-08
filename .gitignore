@@ -1,2 +1,7 @@
 /build*
 include/opendatacon/Version.h
+_site/*
+Gemfile.lock
+.directory
+CMakeLists.txt.user
+
