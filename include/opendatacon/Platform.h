@@ -34,14 +34,27 @@
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 #include <windows.h>
 const std::string DYNLIBPRE = "";
+#ifdef _DEBUG
+const std::string DYNLIBEXT = "d.dll";
+#else
 const std::string DYNLIBEXT = ".dll";
-#define DYNLIBLOAD(a) LoadLibraryExA(a, 0, DWORD(0))
-#define DYNLIBGETSYM(a,b) GetProcAddress(a, b)
+#endif
+
+inline HMODULE LoadModule(const std::string& a)
+{
+	return LoadLibraryExA(a.c_str(), 0, DWORD(0));
+}
+
+inline FARPROC LoadSymbol(HMODULE a, const std::string& b)
+{
+	return GetProcAddress(a, b.c_str());
+}
 
 // Place any OS specific initilisation code for library loading here, run once on program startup
 inline void InitLibaryLoading()
 {
 	SetErrorMode(SEM_FAILCRITICALERRORS);
+	SetDllDirectory(L"plugin");
 }
 
 // Retrieve the system error message for the last-error code
@@ -83,8 +96,15 @@ const std::string DYNLIBEXT = ".so";
 #else
 const std::string DYNLIBEXT = ".so";
 #endif
-#define DYNLIBLOAD(a) dlopen(a, RTLD_LAZY)
-#define DYNLIBGETSYM(a,b) dlsym(a, b)
+
+inline void* LoadModule(const std::string& a)
+{
+	return dlopen(a.c_str(), RTLD_LAZY)
+}
+inline void* LoadSymbol(void* a, const std::string& b)
+{
+	return dlsym(a, b.c_str());
+}
 
 // Place any OS specific initilisation code for library loading here, run once on program startup
 inline void InitLibaryLoading()

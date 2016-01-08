@@ -28,7 +28,7 @@ fptr GetPortCreator(std::string libname, std::string objname)
 	std::string libfilename = GetLibFileName(libname);
 
 	//try to load the lib
-	auto* pluginlib = DYNLIBLOAD(libfilename.c_str());
+	auto* pluginlib = LoadModule(libfilename.c_str());
 
 	if (pluginlib == nullptr)
 	{
@@ -39,7 +39,7 @@ fptr GetPortCreator(std::string libname, std::string objname)
 	//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 	//it should return a pointer to a heap allocated instance of a descendant of DataPort
 	std::string new_funcname = "new_" + objname + "Port";
-	fptr new_plugin_func = (fptr)DYNLIBGETSYM(pluginlib, new_funcname.c_str());
+	fptr new_plugin_func = (fptr)LoadSymbol(pluginlib, new_funcname.c_str());
 
 	if (new_plugin_func == nullptr)
 	{

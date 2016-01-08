@@ -128,7 +128,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				}
 
 				//try to load the lib
-				auto* txlib = DYNLIBLOAD(libname.c_str());
+				auto* txlib = LoadModule(libname.c_str());
 
 				if(txlib == nullptr)
 				{
@@ -139,7 +139,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
 				//it should return a pointer to a heap allocated instance of a descendant of Transform
 				std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
-				auto new_tx_func = (Transform*(*)(const Json::Value))DYNLIBGETSYM(txlib, new_funcname.c_str());
+				auto new_tx_func = (Transform*(*)(const Json::Value))LoadSymbol(txlib, new_funcname.c_str());
 
 				if(new_tx_func == nullptr)
 				{
