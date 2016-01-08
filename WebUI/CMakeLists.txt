@@ -37,5 +37,5 @@ link_directories("${DNP3_HOME}/lib")
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC httpd_target asiopal)
 
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "plugin")
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)

@@ -28,11 +28,9 @@ include_directories(
 	${ASIO_HOME}/include
 )
 
-link_directories("${DNP3_HOME}/lib")
-
 #TODO add as module - can't atm, due to tests linking directly instead of dynamic loading
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC asiopal openpal asiodnp3 opendnp3)
+target_link_libraries(${PROJECT_NAME} ODC ${asiopal_libs} ${openpal_libs} ${asiodnp3_libs} ${opendnp3_libs})
 
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION "plugin")
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

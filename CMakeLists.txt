@@ -45,10 +45,11 @@ if(GIT_FOUND)
 	set(ODC_MAJOR_VERSION ${CMAKE_MATCH_1})
 	set(ODC_MINOR_VERSION ${CMAKE_MATCH_2})
 	set(ODC_MICRO_VERSION ${CMAKE_MATCH_3})
+	set(ODC_VERSION "${ODC_MAJOR_VERSION}.${ODC_MINOR_VERSION}.${ODC_MICRO_VERSION}")
 
 	set(GIT_REPO_COMMIT ${CMAKE_MATCH_4})
 	set(GIT_REPO_DIRTY ${CMAKE_MATCH_5})
-	message("-- opendatacon version: ${ODC_MAJOR_VERSION}.${ODC_MINOR_VERSION}.${ODC_MICRO_VERSION} ${GIT_REPO_COMMIT} ${GIT_REPO_DIRTY}")
+	message("-- opendatacon version: ${ODC_VERSION} ${GIT_REPO_COMMIT} ${GIT_REPO_DIRTY}")
 
 	configure_file (
 		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h.in"
@@ -88,23 +89,46 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON) #allows the creation of solution fo
 # Platform configuration
 if(WIN32)
 	# for ASIO
-	add_definitions(-D_WIN32_WINNT=0x0501)
+	add_definitions(-D_WIN32_WINNT=0x0502)	
 	add_definitions(-DASIO_HAS_STD_SYSTEM_ERROR)
+	add_definitions(-DVC_EXTRALEAN)
+	add_definitions(-DWIN32_LEAN_AND_MEAN)
 	
 	# Auto generate def files that export all symbols of STATIC libraries
 	set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 	
 	# UNICODE support
-	add_definitions(-DUNICODE -D_UNICODE)	
+	add_definitions(-DUNICODE -D_UNICODE)
+	
+	# Postfix for debug builds
+	SET(CMAKE_DEBUG_POSTFIX "d")
+
+	# Install directories
+	set(INSTALLDIR_BINS ".")
+	set(INSTALLDIR_INCLUDES "include")
+	set(INSTALLDIR_LIBS "lib")
+	set(INSTALLDIR_MODULES "plugin")
 endif()
 if(UNIX)
 	set(PTHREAD pthread)
 	set(DL dl)
 	set(RPATH_BASE $ORIGIN)
+
+	# Install directories
+	set(INSTALLDIR_BINS "bin")
+	set(INSTALLDIR_INCLUDES "include")
+	set(INSTALLDIR_LIBS "lib")
+	set(INSTALLDIR_MODULES "plugin")
 endif()
 if(APPLE)
 	set(CMAKE_MACOSX_RPATH 1)
 	set(RPATH_BASE @executable_path)
+
+	# Install directories
+	set(INSTALLDIR_BINS "bin")
+	set(INSTALLDIR_INCLUDES "include")
+	set(INSTALLDIR_LIBS "lib")
+	set(INSTALLDIR_MODULES "plugin")
 endif()
 
 # Compiler configuration
@@ -158,6 +182,19 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
+# Locate opendnp3
+foreach( component in ITEMS openpal opendnp3 asiopal asiodnp3 )
+	# Look for regular libraries
+	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib)
+	add_library(${component}_target UNKNOWN IMPORTED)
+	set_property(TARGET ${component}_target PROPERTY IMPORTED_LOCATION "${${component}_lib}")
+	# Look for debug libraries
+	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib)
+	add_library(${component}_dtarget UNKNOWN IMPORTED)
+	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
+	set(${component}_libs debug ${component}_dtarget optimized ${component}_target )
+endforeach()
+
 add_subdirectory(JSON)
 add_subdirectory(ODC)
 add_subdirectory(opendatacon)
@@ -182,3 +219,4 @@ endif()
 if(SIMPORT)
 	add_subdirectory(SimPort)
 endif()	
+add_subdirectory("install")
