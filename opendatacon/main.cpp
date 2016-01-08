@@ -49,13 +49,12 @@
  */
 
 #include "DataConcentrator.h"
-#include <tclap/CmdLine.h>
 #include <opendatacon/Platform.h>
-#include <opendatacon/Version.h>
 #include <errno.h>
 #include <csignal>
 
 #include "DaemonInterface.h"
+#include "ODCArgs.h"
 
 int main(int argc, char* argv[])
 {
@@ -65,60 +64,49 @@ int main(int argc, char* argv[])
 	{
 		static std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
 
-		TCLAP::CmdLine cmd("High performance asynchronous data concentrator", ' ', ODC_VERSION_STRING);
-		TCLAP::ValueArg<std::string> ConfigFileArg("c", "config", "Configuration file, specified as an absolute path or relative to the working directory.", false, "opendatacon.conf", "string");
-		cmd.add(ConfigFileArg);
-		TCLAP::ValueArg<std::string> PathArg("p", "path", "Working directory path, all configuration files and log files are relative to this path.", false, "", "string");
-		cmd.add(PathArg);
-		TCLAP::SwitchArg DaemonInstallArg("i","daemon_install","Switch to install opendatacon as a background service (not required / ignored for POSIX platforms)");
-		cmd.add(DaemonInstallArg);
-		TCLAP::SwitchArg DaemonArg("d","daemon","Switch to run opendatacon in the background");
-		cmd.add(DaemonArg);
-		TCLAP::SwitchArg DaemonRemoveArg("r","daemon_remove","Switch to uninstall opendatacon as a background service (not required / ignored for POSIX platforms)");
-		cmd.add(DaemonRemoveArg);
+		ODCArgs Args(argc, argv);
 
-		cmd.parse(argc, argv);
+		std::cout << Args.toString();
 
-		if (DaemonRemoveArg.isSet())
-		{
-			daemon_remove();
-		}
-		if (DaemonInstallArg.isSet())
-		{
-			daemon_install();
-		}
-		if (DaemonArg.isSet())
-		{
-			daemonp();
-		}
 
-		std::string ConfFileName = ConfigFileArg.getValue();
-
-		if (PathArg.isSet())
+		if (Args.PathArg.isSet())
 		{
 			// Try to change working directory
-			std::string PathName = PathArg.getValue();
+			std::string PathName = Args.PathArg.getValue();
 			if (CHDIR(PathName.c_str()))
 			{
 				const size_t strmax = 80;
 				char buf[strmax];
-                char* str = strerror_rp(errno, buf, strmax);
-                std::string msg;
-                if (str)
-                {
-                    msg = "Unable to change working directory to '"+PathName+"' : "+str;
-                }
-                else
-                {
-                    msg = "Unable to change working directory to '"+PathName+"' : UNKNOWN ERROR";
-                }
+				char* str = strerror_rp(errno, buf, strmax);
+				std::string msg;
+				if (str)
+				{
+					msg = "Unable to change working directory to '" + PathName + "' : " + str;
+				}
+				else
+				{
+					msg = "Unable to change working directory to '" + PathName + "' : UNKNOWN ERROR";
+				}
 				throw std::runtime_error(msg);
 			}
 		}
 
+		if (Args.DaemonRemoveArg.isSet())
+		{
+			daemon_remove();
+		}
+		if (Args.DaemonInstallArg.isSet())
+		{
+			daemon_install(Args);
+		}
+		if (Args.DaemonArg.isSet())
+		{
+			daemonp(Args);
+		}
+
 		std::cout << "This is opendatacon version " << ODC_VERSION_STRING << std::endl;
 		std::cout << "Loading configuration... ";
-		TheDataConcentrator.reset(new DataConcentrator(ConfFileName));
+		TheDataConcentrator.reset(new DataConcentrator(Args.ConfigFileArg.getValue()));
 		std::cout << "done" << std::endl << "Initialising objects... " << std::endl;
 		TheDataConcentrator->BuildOrRebuild();
 		std::cout << "done" << std::endl << "Starting up opendatacon..." << std::endl;

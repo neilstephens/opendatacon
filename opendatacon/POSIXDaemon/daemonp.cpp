@@ -25,8 +25,9 @@
 #include <string>
 #include <stdexcept>
 #include <stdlib.h>
+#include "../ODCArgs"
 
-void daemonp()
+void daemonp(ODCArgs& Args)
 {
 	if(daemon(0,0))
 	{

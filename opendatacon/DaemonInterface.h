@@ -20,8 +20,11 @@
 #ifndef DAEMONWRAPPER_H
 #define DAEMONWRAPPER_H
 
-void daemonp();
-void daemon_install();
+#include "DataConcentrator.h"
+#include "ODCArgs.h"
+
+void daemonp(ODCArgs& Args);
+void daemon_install(ODCArgs& Args);
 void daemon_remove();
 
 #endif

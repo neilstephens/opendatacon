@@ -134,7 +134,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 
 			//try to load the lib
-			auto* pluginlib = DYNLIBLOAD(libname.c_str());
+			auto* pluginlib = LoadModule(libname);
 
 			if(pluginlib == nullptr)
 			{
@@ -146,7 +146,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Our API says the library should export a creation function: IUI* new_<Type>Plugin(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of IUI
 			std::string new_funcname = "new_"+Plugins[n]["Type"].asString()+"Plugin";
-			auto new_plugin_func = (IUI*(*)(std::string, std::string, const Json::Value))DYNLIBGETSYM(pluginlib, new_funcname.c_str());
+			auto new_plugin_func = (IUI*(*)(std::string, std::string, const Json::Value))LoadSymbol(pluginlib, new_funcname);
 
 			if(new_plugin_func == nullptr)
 			{
@@ -216,7 +216,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 
 			//try to load the lib
-			auto* portlib = DYNLIBLOAD(libname.c_str());
+			auto* portlib = LoadModule(libname.c_str());
 
 			if(portlib == nullptr)
 			{
@@ -228,7 +228,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of DataPort
 			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-			auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))DYNLIBGETSYM(portlib, new_funcname.c_str());
+			auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))LoadSymbol(portlib, new_funcname);
 
 			if(new_port_func == nullptr)
 			{
