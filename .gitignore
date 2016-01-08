@@ -2,6 +2,7 @@
 CMakeLists.txt.user
 .directory
 _site/*
+Gemfile.lock
 example/*
 include/*
 
