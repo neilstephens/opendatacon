@@ -99,7 +99,7 @@ const std::string DYNLIBEXT = ".so";
 
 inline void* LoadModule(const std::string& a)
 {
-	return dlopen(a.c_str(), RTLD_LAZY)
+	return dlopen(a.c_str(), RTLD_LAZY);
 }
 inline void* LoadSymbol(void* a, const std::string& b)
 {

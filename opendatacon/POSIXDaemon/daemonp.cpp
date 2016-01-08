@@ -25,7 +25,7 @@
 #include <string>
 #include <stdexcept>
 #include <stdlib.h>
-#include "../ODCArgs"
+#include "../ODCArgs.h"
 
 void daemonp(ODCArgs& Args)
 {
@@ -46,5 +46,5 @@ void daemonp(ODCArgs& Args)
 		throw std::runtime_error(msg);
 	}
 }
-void daemon_install(){}
+void daemon_install(ODCArgs& Args){}
 void daemon_remove(){}
