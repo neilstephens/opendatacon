@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2016:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -17,26 +17,28 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  *
- *  Created by Alan Murray on 29/08/2014.
+ *  Created by Alan Murray on 09/01/2016.
  */
 
-#ifndef opendatacon_IUI_h
-#define opendatacon_IUI_h
+#ifndef opendatacon_suite_Plugin_h
+#define opendatacon_suite_Plugin_h
 
-#include "IUIResponder.h"
-#include "Plugin.h"
-#include <memory>
+#include "ConfigParser.h"
 
-class IUI : public Plugin
+class Plugin : ConfigParser
 {
 public:
-    IUI(const std::string& aName, const std::string& aConfFilename, const Json::Value aConfOverrides):
-    Plugin(aName, aConfFilename, aConfOverrides)
+    Plugin(const std::string& aName, const std::string& aConfFilename, const Json::Value aConfOverrides):
+    ConfigParser(aConfFilename, aConfOverrides),
+    Name(aName)
     {};
-    virtual ~IUI(){};
-    virtual void AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc = "No description available\n") = 0;
-    virtual void AddResponder(const std::string name, const IUIResponder& pResponder) = 0;
+    virtual void BuildOrRebuild() = 0;
+    virtual void Enable() = 0;
+    virtual void Disable() = 0;
+private:
+    std::string Name;
 };
+
 
 
 #endif
