@@ -28,7 +28,13 @@ set(CPACK_PACKAGE_VERSION_MAJOR ${ODC_MAJOR_VERSION})
 set(CPACK_PACKAGE_VERSION_MINOR ${ODC_MINOR_VERSION})
 set(CPACK_PACKAGE_VERSION_PATCH ${ODC_MICRO_VERSION})
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "opendatacon")
- 
+
+# Mac OSX bundle specific variables
+set(CPACK_BUNDLE_NAME opendatacon)
+set(CPACK_BUNDLE_PLIST ${CMAKE_SOURCE_DIR}/install/opendatacon.plist)
+set(CPACK_BUNDLE_ICON ${CMAKE_SOURCE_DIR}/install/opendatacon.icns)
+
+#RPM Specific variables
 #set(CPACK_GENERATOR "RPM")
 #set(CPACK_PACKAGE_RELEASE 1)
 #set(CPACK_PACKAGE_CONTACT "John Explainer")
