@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Application-Group</key>
+	<array>
+		<string>dot-mac</string>
+		<string>InternetAccounts</string>
+	</array>
+	<key>BuildMachineOSBuild</key>
+	<string>14D93</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>opendatacon</string>
+	<key>CFBundleIconFile</key>
+	<string>ApplicationIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>net.opendatacon</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>opendatacon</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.3.3</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>???</string>
+	<key>DTCompiler</key>
+	<string>com.apple.compilers.llvm.clang.1_0</string>
+	<key>DTPlatformBuild</key>
+	<string></string>
+	<key>DTPlatformVersion</key>
+	<string></string>
+	<key>DTSDKBuild</key>
+	<string></string>
+	<key>DTSDKName</key>
+	<string>macosx10.10internal</string>
+	<key>DTXcode</key>
+	<string></string>
+	<key>DTXcodeBuild</key>
+	<string></string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSHasLocalizedDisplayName</key>
+	<true/>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.3</string>
+	<key>NSAppleScriptEnabled</key>
+	<true/>
+	<key>NSMainNibFile</key>
+	<string>MainMenu</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>net.opendatacon</string>
+	</array>
+</dict>
+</plist>

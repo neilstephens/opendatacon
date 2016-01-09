@@ -31,13 +31,13 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY "opendatacon")
 
 # Mac OSX bundle specific variables
 set(CPACK_BUNDLE_NAME opendatacon)
-set(CPACK_BUNDLE_PLIST ${CMAKE_SOURCE_DIR}/install/opendatacon.plist)
-set(CPACK_BUNDLE_ICON ${CMAKE_SOURCE_DIR}/install/opendatacon.icns)
+set(CPACK_BUNDLE_PLIST ${CMAKE_SOURCE_DIR}/install/MacOS/opendatacon.plist)
+set(CPACK_BUNDLE_ICON ${CMAKE_SOURCE_DIR}/install/MacOS/AplicationIcon.icns)
 
 #RPM Specific variables
 #set(CPACK_GENERATOR "RPM")
 #set(CPACK_PACKAGE_RELEASE 1)
-#set(CPACK_PACKAGE_CONTACT "John Explainer")
+#set(CPACK_PACKAGE_CONTACT "opendatacon.net")
 #set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 #set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)
