@@ -189,7 +189,7 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
-# Locate opendnp3
+# Locate opendnp3 - this can be moved into DNP3Port when the other projects are decoupled from opendnp3
 foreach( component openpal opendnp3 asiopal asiodnp3 )
 	# Look for regular libraries
 	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib)
@@ -201,9 +201,24 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
 	#set a variable to use for linking
 	set(${component}_libs debug ${component}_dtarget optimized ${component}_target )
+
 	#include in install/packaging
-	install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release")
-	install(FILES "${${component}_dlib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
+	get_filename_component(_resolvedFile "${${component}_lib}" REALPATH) #check for symolic link
+	if(${_resolvedFile} STREQUAL ${${component}_lib})
+		#not a link - just install file
+		install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release")
+	else()
+		#is a link -install link and file
+		install(FILES "${${component}_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release")
+	endif()
+	get_filename_component(_resolvedFile "${${component}_dlib}" REALPATH) #check for symolic link
+	if(${_resolvedFile} STREQUAL ${${component}_dlib})
+		#not a link - just install file
+		install(FILES "${${component}_dlib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
+	else()
+		#is a link -install link and file
+		install(FILES "${${component}_dlib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
+	endif()
 endforeach()
 
 add_subdirectory(JSON)
