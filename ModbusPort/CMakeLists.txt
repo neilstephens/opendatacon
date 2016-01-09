@@ -29,10 +29,21 @@ include_directories(
 	${MODBUS_HOME}/include
 )
 
+#find modbus library
 find_library(MODBUS_LIB NAMES modbus libmodbus
 	PATHS ${MODBUS_HOME}/lib)
 add_library(modbus_target UNKNOWN IMPORTED)
 set_property(TARGET modbus_target PROPERTY IMPORTED_LOCATION "${MODBUS_LIB}")
+#include in install/packaging
+get_filename_component(_resolvedFile "${MODBUS_LIB}" REALPATH) #check for symolic link
+if(${_resolvedFile} STREQUAL ${MODBUS_LIB})
+	#not a link - just install file
+	install(FILES "${MODBUS_LIB}" DESTINATION ${INSTALLDIR_LIBS})
+else()
+	#is a link -install link and file
+	install(FILES "${MODBUS_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
+endif()
+
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC modbus_target ${openpal_libs} ${opendnp3_libs})

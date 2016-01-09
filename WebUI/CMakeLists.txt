@@ -27,10 +27,20 @@ include_directories(
 	${MICROHTTPD_HOME}/include
 )
 
+#import the microhttpd lib
 find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
 	PATHS ${MICROHTTPD_HOME}/lib)
 add_library(httpd_target UNKNOWN IMPORTED)
 set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
+#include in install/packaging
+get_filename_component(_resolvedFile "${HTTPD_LIB}" REALPATH) #check for symolic link
+if(${_resolvedFile} STREQUAL ${HTTPD_LIB})
+	#not a link - just install file
+	install(FILES "${HTTPD_LIB}" DESTINATION ${INSTALLDIR_LIBS})
+else()
+	#is a link -install link and file
+	install(FILES "${HTTPD_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
+endif()
 
 link_directories("${DNP3_HOME}/lib")
 
