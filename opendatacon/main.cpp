@@ -66,9 +66,6 @@ int main(int argc, char* argv[])
 
 		ODCArgs Args(argc, argv);
 
-		std::cout << Args.toString();
-
-
 		if (Args.PathArg.isSet())
 		{
 			// Try to change working directory
