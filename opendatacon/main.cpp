@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 		{
 			// Try to change working directory
 			std::string PathName = Args.PathArg.getValue();
-			if (CHDIR(PathName.c_str()))
+			if (ChangeWorkingDir(PathName))
 			{
 				const size_t strmax = 80;
 				char buf[strmax];

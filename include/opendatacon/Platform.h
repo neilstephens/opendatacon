@@ -89,8 +89,8 @@ inline std::string LastSystemError()
 }
 
 #else
-const std::string DYNLIBPRE = "lib";
 #include <dlfcn.h>
+const std::string DYNLIBPRE = "lib";
 #if defined(__APPLE__)
 const std::string DYNLIBEXT = ".so";
 #else
@@ -129,10 +129,16 @@ inline std::string LastSystemError()
 /// Posix file system directory manipulation - e.g. chdir
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 #include <direct.h>
-#define CHDIR(a) _chdir(a)
+inline int ChangeWorkingDir(const std::string& dir)
+{
+    return _chdir(dir.c_str());
+}
 #else
 #include <unistd.h>
-#define CHDIR(a) chdir(a)
+inline int ChangeWorkingDir(const std::string& dir)
+{
+    return chdir(dir.c_str());
+}
 #endif
 
 /// Implement reentrant and portable strerror function
