@@ -24,9 +24,9 @@ install:
 - ps: >-
     If (-not (Test-Path c:\tclap)){
       Start-FileDownload "http://downloads.sourceforge.net/project/tclap/tclap-1.2.1.tar.gz" -FileName tclap-1.2.1.tar.gz
-      7x x -y tclap-1.2.1.tar.gz
+      7z x -y tclap-1.2.1.tar.gz
       New-Item C:\tclap -ItemType Directory
-      Move-Iteam tclap-1.2.1 C:\tclap\tclap-1.2.1
+      Move-Item tclap-1.2.1 C:\tclap\tclap-1.2.1
     }
 - ps: >-
     if (-not (Test-Path C:\asio)){
