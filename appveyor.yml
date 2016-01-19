@@ -17,22 +17,22 @@ install:
 - ps: >-
     If (-not (Test-Path C:\dnp3\dnp3-2.0.x)){
       Start-FileDownload "https://github.com/automatak/dnp3/archive/2.0.x.zip" -FileName dnp3-2.0.x.zip
-      7z x -y dnp3-2.0.x.zip
+      7z x -y dnp3-2.0.x.zip > nul
       New-Item C:\dnp3 -ItemType Directory
       Move-Item .\dnp3-2.0.x C:\dnp3\dnp3-2.0.x
     }
 - ps: >-
     If (-not (Test-Path c:\tclap)){
       Start-FileDownload "http://downloads.sourceforge.net/project/tclap/tclap-1.2.1.tar.gz" -FileName tclap-1.2.1.tar.gz
-      7z x -y tclap-1.2.1.tar.gz
-      7z x -y tclap-1.2.1.tar
+      7z x -y tclap-1.2.1.tar.gz > nul
+      7z x -y tclap-1.2.1.tar > nul
       New-Item C:\tclap -ItemType Directory
       Move-Item .\tclap-1.2.1 C:\tclap\tclap-1.2.1
     }
 - ps: >-
     if (-not (Test-Path C:\asio)){
       Start-FileDownload "https://github.com/chriskohlhoff/asio/archive/asio-1-10-6.zip" -FileName asio-1-10-6.zip
-      7z x -y asio-1-10-6.zip
+      7z x -y asio-1-10-6.zip > nul
       New-Item C:\asio -ItemType Directory
       Move-Item .\asio-asio-1-10-6\asio C:\asio\asio-1.10.6
     }
@@ -50,10 +50,10 @@ cache:
 build_script:
 - cmd: CD C:\dnp3\dnp3-2.0.x
 - cmd: MKDIR lib
-- cmd: cmake . -Bbuild-win32 -DCMAKE_INSTALL_PREFIX=lib -DFULL=ON -DCMAKE_BUILD_TYPE=Release
+- cmd: cmake . -Bbuild-win32 -DFULL=ON -DCMAKE_BUILD_TYPE=Release
 - cmd: msbuild build-win32\opendnp3.sln /p:Configuration=Release /p:Platform=Win32
 - cmd: msbuild build-win32\INSTALL.vcxproj /p:Configuration=Release /p:Platform=Win32
 - cmd: cd C:\projects\opendatacon
 - cmd: cmake . -Bbuild-win32 -DFULL=ON -DASIO_HOME=C:\asio\asio-1.10.6
-- cmd: msbuild build-win32\opendnp3.sln /p:Configuration=Release /p:Platform=Win32
+- cmd: msbuild build-win32\opendatacon_suite.sln /p:Configuration=Release /p:Platform=Win32
 - cmd: msbuild build-win32\INSTALL.vcxproj /p:Configuration=Release /p:Platform=Win32
