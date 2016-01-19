@@ -54,6 +54,6 @@ build_script:
 - cmd: msbuild build-win32\opendnp3.sln /p:Configuration=Release /p:Platform=Win32
 - cmd: msbuild build-win32\INSTALL.vcxproj /p:Configuration=Release /p:Platform=Win32
 - cmd: cd C:\projects\opendatacon
-- cmd: cmake . -Bbuild-win32 -DFULL=ON -DASIO_HOME=C:\asio\asio-1.10.6
+- cmd: cmake . -Bbuild-win32 -DFULL=ON -DASIO_HOME=C:\asio\asio-1.10.6 -DDNP3_HOME=C:\dnp3\dnp3-2.0.x\win32
 - cmd: msbuild build-win32\opendatacon_suite.sln /p:Configuration=Release /p:Platform=Win32
 - cmd: msbuild build-win32\INSTALL.vcxproj /p:Configuration=Release /p:Platform=Win32
