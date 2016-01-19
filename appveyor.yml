@@ -9,14 +9,17 @@ clone_folder: C:\projects\opendatacon
 environment:
   DNP3_HOME: C:\dnp3\dnp3-2.0.x
   TCLAP_HOME: C:\tclap\tclap-1.2.1
-  ASIO_HOME: C:\asio\asio-1.10.6
+  ASIO_HOME: C:\asio\asio-1.10.6\include
   MICROHTTPD_HOME: C:\microhttpd
   OSSL_LIB32_DIR: C:\OpenSSL-Win32\lib\VC
   OPENDNP3_DIR: C:\projects\dnp3\build\lib
 install:
 - ps: >-
-    If (-not (Test-Path C:\dnp3)){
-      Install-Package opendnp3 -Pre
+    If (-not (Test-Path C:\dnp3\dnp3-2.0.x)){
+      Start-FileDownload "https://github.com/automatak/dnp3/archive/2.0.x.zip" -FileName dnp3-2.0.x.zip
+      7z x -y dnp3-2.0.x.zip
+      New-Item C:\dnp3 -ItemType Directory
+      Move-Item .\dnp3-2.0.x C:\dnp3\dnp3-2.0.x
     }
 - ps: >-
     If (-not (Test-Path c:\tclap)){
@@ -44,6 +47,12 @@ cache:
 - C:\microhttpd
 - C:\OpenSSL-Win32
 build_script:
-- cmd: cmake . -Bbuild-win32 -DFULL=ON
+- cmd: CD C:\dnp3\dnp3-2.0.x
+- cmd: MKDIR lib
+- cmd: cmake . -Bbuild-win32 -DCMAKE_INSTALL_PREFIX=lib -DFULL=ON -DCMAKE_BUILD_TYPE=Release
+- cmd: msbuild build-win32\opendnp3.sln /p:Configuration=Release /p:Platform=Win32
+- cmd: msbuild build-win32\INSTALL.vcxproj /p:Configuration=Release /p:Platform=Win32
+- cmd: cd C:\projects\opendatacon
+- cmd: cmake . -Bbuild-win32 -DFULL=ON -DASIO_HOME=C:\asio\asio-1.10.6
 - cmd: msbuild build-win32\opendnp3.sln /p:Configuration=Release /p:Platform=Win32
 - cmd: msbuild build-win32\INSTALL.vcxproj /p:Configuration=Release /p:Platform=Win32
