@@ -6,6 +6,8 @@ os: Visual Studio 2013
 configuration: Develop
 platform: x86
 clone_folder: C:\projects\opendatacon
+init:
+- ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 environment:
   DNP3_HOME: C:\dnp3\dnp3-2.0.x\win32
   TCLAP_HOME: C:\tclap\tclap-1.2.1
@@ -42,10 +44,9 @@ install:
       Start-Process "Win32OpenSSL-1_0_2e.exe" -ArgumentList "/silent /verysilent /sp- /suppressmsgboxes" -Wait
     }
 cache:
-- C:\dnp3
-- C:\asio
-- C:\tclap
-- C:\microhttpd
+- C:\dnp3\dnp3-2.0.x
+- C:\asio\asio-1.10.6
+- C:\tclap\tclap-1.2.1
 - C:\OpenSSL-Win32
 build_script:
 - cmd: CD C:\dnp3\dnp3-2.0.x
@@ -54,6 +55,8 @@ build_script:
 - cmd: msbuild build-win32\opendnp3.sln /p:Configuration=Release /p:Platform=Win32
 - cmd: msbuild build-win32\INSTALL.vcxproj /p:Configuration=Release /p:Platform=Win32
 - cmd: cd C:\projects\opendatacon
-- cmd: cmake . -Bbuild-win32 -DFULL=ON -DASIO_HOME=C:\asio\asio-1.10.6 -DDNP3_HOME=C:\dnp3\dnp3-2.0.x\win32
+- cmd: cmake . -Bbuild-win32 -DCONSOLEUI=ON -DDNP3PORT=ON -DJSONPORT=ON -DSIMPORT=ON -DASIO_HOME=C:\asio\asio-1.10.6 -DDNP3_HOME=C:\dnp3\dnp3-2.0.x\win32 -DMODBUS_HOME=c:\libmodbus\win32 -DTCLAP_HOME=C:\tclap\tclap-1.2.1 -DMICROHTTPD_HOME=c:\microhttpd
 - cmd: msbuild build-win32\opendatacon_suite.sln /p:Configuration=Release /p:Platform=Win32
 - cmd: msbuild build-win32\INSTALL.vcxproj /p:Configuration=Release /p:Platform=Win32
+on_finish:
+- ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
