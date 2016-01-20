@@ -169,8 +169,8 @@ inline char* strerror_rp(int therr, char* buf, size_t len)
 const auto SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGBREAK };
 const auto SIG_IGNORE = { SIGINT };
 #else
-const auto SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGQUIT };
-const auto SIG_IGNORE = { SIGINT };
+static const std::initializer_list<u_int8_t> SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGQUIT };
+static const std::initializer_list<u_int8_t> SIG_IGNORE = { SIGINT };
 #endif
 
 inline std::string GetLibFileName(const std::string LibName)
