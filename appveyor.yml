@@ -15,21 +15,21 @@ environment:
 install:
 - ps: >-
     If (-not (Test-Path C:\dnp3\dnp3-2.0.x-win32)){
-      Start-FileDownload "https://www.dropbox.com/s/oex7hf1r1tg4kte/dnp3-2.0.x-win32.zip?dl=0" -FileName dnp3-2.0.x-win32.zip
+      Start-FileDownload "https://www.dropbox.com/s/oex7hf1r1tg4kte/dnp3-2.0.x-win32.zip?dl=1" -FileName dnp3-2.0.x-win32.zip
       7z x -y dnp3-2.0.x-win32.zip
       New-Item C:\dnp3 -ItemType Directory
       Move-Item .\dnp3-2.0.x-win32 C:\dnp3\dnp3-2.0.x-win32
     }
 - ps: >-
     If (-not (Test-Path C:\libmodbus\libmodbus)){
-      Start-FileDownload "https://www.dropbox.com/s/iqf95y9x1x4ol36/libmodbus.zip?dl=0" -FileName libmodbus.zip
+      Start-FileDownload "https://www.dropbox.com/s/iqf95y9x1x4ol36/libmodbus.zip?dl=1" -FileName libmodbus.zip
       7z x -y libmodbus.zip
       New-Item C:\libmodbus -ItemType Directory
       Move-Item .\libmodbus C:\libmodbus\libmodbus
     }
 - ps: >-
     If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.17-w32)){
-      Start-FileDownload "https://www.dropbox.com/s/13t92f57wie4wnb/libmicrohttpd-0.9.17-w32.zip?dl=0" -FileName libmicrohttpd-0.9.17-w32.zip
+      Start-FileDownload "https://www.dropbox.com/s/13t92f57wie4wnb/libmicrohttpd-0.9.17-w32.zip?dl=1" -FileName libmicrohttpd-0.9.17-w32.zip
       7z x -y libmicrohttpd-0.9.17-w32.zip
       New-Item C:\libmicrohttpd -ItemType Directory
       Move-Item .\libmicrohttpd C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
