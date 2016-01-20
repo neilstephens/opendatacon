@@ -44,12 +44,12 @@ public:
 	ModbusPollGroup():
 		ID(0),
 		pollrate(0)
-	{ };
+	{ }
 
 	ModbusPollGroup(uint32_t ID_, uint32_t pollrate_):
 		ID(ID_),
 		pollrate(pollrate_)
-	{ };
+	{ }
 
 	uint32_t ID;
 	uint32_t pollrate;
@@ -65,7 +65,7 @@ public:
 		pollgroup(pollgroup_),
 		startval(startval_),
 		index_offset(offset)
-	{ };
+	{ }
 
 	bool operator<(const ModbusReadGroup& other) const
 	{

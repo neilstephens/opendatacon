@@ -108,9 +108,7 @@ inline void* LoadSymbol(void* a, const std::string& b)
 
 // Place any OS specific initilisation code for library loading here, run once on program startup
 inline void InitLibaryLoading()
-{
-
-}
+{}
 
 // Retrieve the system error message for the last-error code
 inline std::string LastSystemError()
@@ -131,13 +129,13 @@ inline std::string LastSystemError()
 #include <direct.h>
 inline int ChangeWorkingDir(const std::string& dir)
 {
-    return _chdir(dir.c_str());
+	return _chdir(dir.c_str());
 }
 #else
 #include <unistd.h>
 inline int ChangeWorkingDir(const std::string& dir)
 {
-    return chdir(dir.c_str());
+	return chdir(dir.c_str());
 }
 #endif
 

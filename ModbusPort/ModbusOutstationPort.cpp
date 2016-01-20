@@ -206,15 +206,15 @@ inline opendnp3::CommandStatus ModbusOutstationPort::SupportsT(T& arCommand, uin
 
 	//FIXME: this is meant to return if we support the type of command
 	//at the moment we just return success if it's configured as a control
-    /*
-	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-	if(std::is_same<T,opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
-	{
-		        for(auto index : pConf->pPointConf->ControlIndicies)
-		                if(index == aIndex)
-		                        return opendnp3::CommandStatus::SUCCESS;
-	}
-    */
+	/*
+	    auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	    if(std::is_same<T,opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
+	    {
+	                    for(auto index : pConf->pPointConf->ControlIndicies)
+	                            if(index == aIndex)
+	                                    return opendnp3::CommandStatus::SUCCESS;
+	    }
+	*/
 	return opendnp3::CommandStatus::NOT_SUPPORTED;
 }
 template<typename T>

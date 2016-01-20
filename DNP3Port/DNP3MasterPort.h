@@ -43,7 +43,7 @@ public:
 		pMaster(nullptr),
 		stack_enabled(false),
 		assign_class_sent(false)
-	{};
+	{}
 
 	void Enable();
 	void Disable();
@@ -125,7 +125,7 @@ private:
 			arCommand.rawCode = opendnp3::ControlCodeToType(arCommand.functionCode);
 		}
 
-	};
+	}
 };
 
 extern "C" DNP3MasterPort* new_DNP3MasterPort(std::string Name, std::string File, const Json::Value Overrides);

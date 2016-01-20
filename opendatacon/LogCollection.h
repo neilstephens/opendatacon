@@ -34,47 +34,47 @@
 class LogCollection: public ResponderMap<AdvancedLogger>
 {
 public:
-    LogCollection()
-    {
-        this->AddCommand("ignore", [this](const ParamCollection &params) {
-            if(auto target = GetTarget(params))
-            {
-                std::stringstream filter;
-                filter << params.at("filter");
-                
-                std::string mregex;
-                if(!extract_delimited_string(filter,mregex))
-                {
-                    return IUIResponder::GenerateResult("Syntax error: Delimited regex expected, found \"..." + mregex + "\"");
-                }
-                if(mregex == "")
-                {
-                    return IUIResponder::GenerateResult("Please supply a regex filter");
-                }
-                target->AddIngoreAlways(mregex);
-                return IUIResponder::GenerateResult("Success");
-            }
-            return IUIResponder::GenerateResult("Bad parameter");
-        }, "Enter regex to silence matching messages from the logger.");
-        this->AddCommand("unignore", [this](const ParamCollection &params) {
-            if(auto target = GetTarget(params))
-            {
-                std::stringstream filter;
-                filter << params.at("filter");
-                cmd_unignore_message(filter,*target);
-                return IUIResponder::GenerateResult("Success");
-            }
-            return IUIResponder::GenerateResult("Bad parameter");
-        }, "Enter regex to remove from the ignore list.");
-        this->AddCommand("ShowFilters", [this](const ParamCollection &params) {
-            if(auto target = GetTarget(params))
-            {
-                return target->ShowIgnored();
-            }
-            return IUIResponder::GenerateResult("Bad parameter");
-        }, "Shows all message ignore regexes and how many messages they've matched.");
-    }
-    virtual ~LogCollection(){};
+	LogCollection()
+	{
+		this->AddCommand("ignore", [this](const ParamCollection &params) {
+		                       if(auto target = GetTarget(params))
+		                       {
+		                             std::stringstream filter;
+		                             filter << params.at("filter");
+
+		                             std::string mregex;
+		                             if(!extract_delimited_string(filter,mregex))
+		                             {
+		                                   return IUIResponder::GenerateResult("Syntax error: Delimited regex expected, found \"..." + mregex + "\"");
+						     }
+		                             if(mregex == "")
+		                             {
+		                                   return IUIResponder::GenerateResult("Please supply a regex filter");
+						     }
+		                             target->AddIngoreAlways(mregex);
+		                             return IUIResponder::GenerateResult("Success");
+					     }
+		                       return IUIResponder::GenerateResult("Bad parameter");
+				     }, "Enter regex to silence matching messages from the logger.");
+		this->AddCommand("unignore", [this](const ParamCollection &params) {
+		                       if(auto target = GetTarget(params))
+		                       {
+		                             std::stringstream filter;
+		                             filter << params.at("filter");
+		                             cmd_unignore_message(filter,*target);
+		                             return IUIResponder::GenerateResult("Success");
+					     }
+		                       return IUIResponder::GenerateResult("Bad parameter");
+				     }, "Enter regex to remove from the ignore list.");
+		this->AddCommand("ShowFilters", [this](const ParamCollection &params) {
+		                       if(auto target = GetTarget(params))
+		                       {
+		                             return target->ShowIgnored();
+					     }
+		                       return IUIResponder::GenerateResult("Bad parameter");
+				     }, "Shows all message ignore regexes and how many messages they've matched.");
+	}
+	virtual ~LogCollection(){}
 };
 
 #endif

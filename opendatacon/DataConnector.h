@@ -36,7 +36,7 @@ class DataConnector: public IOHandler, public ConfigParser
 {
 public:
 	DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
-	~DataConnector(){};
+	~DataConnector(){}
 
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName);
 	std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);
@@ -65,12 +65,12 @@ public:
 	virtual const Json::Value GetStatistics() const
 	{
 		return Json::Value();
-	};
+	}
 
 	virtual const Json::Value GetCurrentState() const
 	{
 		return Json::Value();
-	};
+	}
 
 	void Enable();
 	void Disable();

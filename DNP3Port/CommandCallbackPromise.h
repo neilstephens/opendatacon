@@ -39,8 +39,8 @@ public:
 	CommandCallbackPromise(std::promise<opendnp3::CommandStatus> aPromise, std::function<void()> aCompletionHook = nullptr):
 		mPromise(std::move(aPromise)),
 		mCompletionHook(std::move(aCompletionHook))
-	{};
-	virtual ~CommandCallbackPromise(){};
+	{}
+	virtual ~CommandCallbackPromise(){}
 
 	void OnComplete(const opendnp3::TaskCompletion& response)
 	{
@@ -61,7 +61,7 @@ public:
 		if(mCompletionHook != nullptr)
 			mCompletionHook();
 		CommandCorrespondant::ReleaseCallback(this);
-	};
+	}
 
 private:
 	std::promise<opendnp3::CommandStatus> mPromise;

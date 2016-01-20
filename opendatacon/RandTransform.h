@@ -35,26 +35,26 @@ class RandTransform: public Transform
 public:
 	RandTransform(Json::Value params):
 		Transform(params)
-	{};
+	{}
 
-	bool Event(opendnp3::Binary& meas, uint16_t& index){return true;};
-	bool Event(opendnp3::DoubleBitBinary& meas, uint16_t& index){return true;};
-	bool Event(opendnp3::Counter& meas, uint16_t& index){return true;};
-	bool Event(opendnp3::FrozenCounter& meas, uint16_t& index){return true;};
-	bool Event(opendnp3::BinaryOutputStatus& meas, uint16_t& index){return true;};
-	bool Event(opendnp3::AnalogOutputStatus& meas, uint16_t& index){return true;};
-	bool Event(opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index){return true;};
-	bool Event(opendnp3::AnalogOutputInt16& arCommand, uint16_t index){return true;};
-	bool Event(opendnp3::AnalogOutputInt32& arCommand, uint16_t index){return true;};
-	bool Event(opendnp3::AnalogOutputFloat32& arCommand, uint16_t index){return true;};
-	bool Event(opendnp3::AnalogOutputDouble64& arCommand, uint16_t index){return true;};
+	bool Event(opendnp3::Binary& meas, uint16_t& index){return true;}
+	bool Event(opendnp3::DoubleBitBinary& meas, uint16_t& index){return true;}
+	bool Event(opendnp3::Counter& meas, uint16_t& index){return true;}
+	bool Event(opendnp3::FrozenCounter& meas, uint16_t& index){return true;}
+	bool Event(opendnp3::BinaryOutputStatus& meas, uint16_t& index){return true;}
+	bool Event(opendnp3::AnalogOutputStatus& meas, uint16_t& index){return true;}
+	bool Event(opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index){return true;}
+	bool Event(opendnp3::AnalogOutputInt16& arCommand, uint16_t index){return true;}
+	bool Event(opendnp3::AnalogOutputInt32& arCommand, uint16_t index){return true;}
+	bool Event(opendnp3::AnalogOutputFloat32& arCommand, uint16_t index){return true;}
+	bool Event(opendnp3::AnalogOutputDouble64& arCommand, uint16_t index){return true;}
 
 	bool Event(opendnp3::Analog& meas, uint16_t& index)
 	{
 		static rand_t seed = (rand_t)((intptr_t) this);
 		meas.value = 100*ZERO_TO_ONE(seed);
 		return true;
-	};
+	}
 
 	bool pass_on;
 	bool already_under;

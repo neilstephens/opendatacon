@@ -126,7 +126,7 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev
 	                   {
 	                         if(err_code != asio::error::operation_aborted)
 						 SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
-					//else cancelled - break timer cycle
+	//else cancelled - break timer cycle
 				 });
 }
 

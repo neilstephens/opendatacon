@@ -129,7 +129,7 @@ WebUI::WebUI(uint16_t pPort):
 
 void WebUI::AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc)
 {
-    // TODO: complete
+	// TODO: complete
 }
 
 void WebUI::AddResponder(const std::string name, const IUIResponder& pResponder)
@@ -239,9 +239,9 @@ void WebUI::Enable()
 	}
 
 	if (d == nullptr)
-    {
-        // TODO: log error message
-    }
+	{
+		// TODO: log error message
+	}
 }
 
 void WebUI::Disable()

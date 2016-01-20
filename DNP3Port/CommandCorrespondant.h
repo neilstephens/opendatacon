@@ -39,7 +39,7 @@ public:
 	static void ReleaseCallback(CommandCallbackPromise* pFinshedCallback);
 
 private:
-	CommandCorrespondant(){};
+	CommandCorrespondant(){}
 	static std::unordered_map<CommandCallbackPromise*, std::shared_ptr<CommandCallbackPromise> > Callbacks;
 };
 

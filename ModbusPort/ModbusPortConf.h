@@ -69,7 +69,7 @@ struct ModbusAddrConf
 		Port(502),
 		OutstationAddr(1),
 		ServerType(ONDEMAND)
-	{};
+	{}
 };
 
 class ModbusPortConf: public DataPortConf
@@ -79,7 +79,7 @@ public:
 		mAddrConf()
 	{
 		pPointConf.reset(new ModbusPointConf(FileName));
-	};
+	}
 
 	std::unique_ptr<ModbusPointConf> pPointConf;
 	ModbusAddrConf mAddrConf;

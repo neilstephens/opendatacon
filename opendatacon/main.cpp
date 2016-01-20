@@ -62,11 +62,11 @@ int main(int argc, char* argv[])
 	{
 		static std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
 
-        // Turn command line arguments into easy to query struct
+		// Turn command line arguments into easy to query struct
 		ODCArgs Args(argc, argv);
 
-        // If arg "-p <path>" is set, try and change directory to <path>
-        if (Args.PathArg.isSet())
+		// If arg "-p <path>" is set, try and change directory to <path>
+		if (Args.PathArg.isSet())
 		{
 			std::string PathName = Args.PathArg.getValue();
 			if (ChangeWorkingDir(PathName))
@@ -87,48 +87,48 @@ int main(int argc, char* argv[])
 			}
 		}
 
-        // If arg "-r" provided, unregister daemon (for platforms that provide support)
+		// If arg "-r" provided, unregister daemon (for platforms that provide support)
 		if (Args.DaemonRemoveArg.isSet())
 		{
 			daemon_remove();
 		}
-        // If arg "-i" provided, register daemon (for platforms that provide support)
+		// If arg "-i" provided, register daemon (for platforms that provide support)
 		if (Args.DaemonInstallArg.isSet())
 		{
 			daemon_install(Args);
 		}
-        // If arg "-d" provided, daemonise (for platforms that provide support)
+		// If arg "-d" provided, daemonise (for platforms that provide support)
 		if (Args.DaemonArg.isSet())
 		{
 			daemonp(Args);
 		}
 
-        // Construct and build opendatacon object
+		// Construct and build opendatacon object
 		std::cout << "This is opendatacon version " << ODC_VERSION_STRING << std::endl;
 		std::cout << "Loading configuration... ";
 		TheDataConcentrator.reset(new DataConcentrator(Args.ConfigFileArg.getValue()));
 		std::cout << "done" << std::endl << "Initialising objects... " << std::endl;
 		TheDataConcentrator->BuildOrRebuild();
 		std::cout << "done" << std::endl << "Starting up opendatacon..." << std::endl;
-        
-        // Configure signal handlers
-        auto shutdown_func = [](int signum)
-        {
-            TheDataConcentrator->Shutdown();
-        };
-        
-        for (auto SIG: SIG_SHUTDOWN)
-        {
-            ::signal(SIG,shutdown_func);
-        }
-        for (auto SIG: SIG_IGNORE)
-        {
-            ::signal(SIG,SIG_IGN);
-        }
-        
-        // Start opendatacon, returns after a clean shutdown
+
+		// Configure signal handlers
+		auto shutdown_func = [] (int signum)
+		{
+			TheDataConcentrator->Shutdown();
+		};
+
+		for (auto SIG : SIG_SHUTDOWN)
+		{
+			::signal(SIG,shutdown_func);
+		}
+		for (auto SIG : SIG_IGNORE)
+		{
+			::signal(SIG,SIG_IGN);
+		}
+
+		// Start opendatacon, returns after a clean shutdown
 		TheDataConcentrator->Run();
-        
+
 		std::cout << "opendatacon version " << ODC_VERSION_STRING << " shutdown cleanly." << std::endl;
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions

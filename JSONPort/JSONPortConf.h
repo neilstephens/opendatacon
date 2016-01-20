@@ -44,7 +44,7 @@ public:
 		retry_time_ms(20000)
 	{
 		pPointConf.reset(new JSONPointConf(FileName));
-	};
+	}
 
 	std::unique_ptr<JSONPointConf> pPointConf;
 	JSONAddrConf mAddrConf;

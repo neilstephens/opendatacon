@@ -41,8 +41,8 @@ public:
 		IOHandler(aName),
 		ConfigParser(aConfFilename, aConfOverrides),
 		pConf(nullptr)
-	{};
-	virtual ~DataPort(){};
+	{}
+	virtual ~DataPort(){}
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
@@ -55,24 +55,24 @@ public:
 			return ConnectionEvent(state, SenderName);
 		else
 			return IOHandler::CommandFutureUndefined();
-	};
+	}
 
 	virtual std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) = 0;
 
 	virtual const Json::Value GetStatistics() const
 	{
 		return Json::Value();
-	};
+	}
 
 	virtual const Json::Value GetCurrentState() const
 	{
 		return Json::Value();
-	};
+	}
 
 	virtual const Json::Value GetStatus() const
 	{
 		return Json::Value();
-	};
+	}
 
 protected:
 	std::unique_ptr<DataPortConf> pConf;

@@ -78,7 +78,7 @@ public:
 		                       return IUIResponder::GenerateResult("Bad parameter");
 				     });
 	}
-	virtual ~DataPortCollection(){};
+	virtual ~DataPortCollection(){}
 };
 
 #endif /* defined(__opendatacon__DataPortCollection__) */

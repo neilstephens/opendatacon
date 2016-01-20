@@ -2,17 +2,17 @@
 * Module Name:  CppWindowsService.cpp
 * Project:      CppWindowsService
 * Copyright (c) Microsoft Corporation.
-* 
-* The file defines the entry point of the application. According to the 
-* arguments in the command line, the function installs or uninstalls or 
+*
+* The file defines the entry point of the application. According to the
+* arguments in the command line, the function installs or uninstalls or
 * starts the service by calling into different routines.
-* 
+*
 * This source is subject to the Microsoft Public License.
 * See http://www.microsoft.com/en-us/openness/resources/licenses.aspx#MPL.
 * All other rights reserved.
-* 
-* THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, 
-* EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED 
+*
+* THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
+* EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED
 * WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
 \***************************************************************************/
 
@@ -25,9 +25,9 @@
 #include "../DaemonInterface.h"
 #pragma endregion
 
-// 
+//
 // Settings of the service
-// 
+//
 
 // Internal name of the service
 #define SERVICE_NAME             L"opendatacon"
@@ -64,13 +64,13 @@ void daemon_install(ODCArgs& Args)
 	wss << " -d" << Args.toString().c_str();
 
 	InstallService(
-	SERVICE_NAME,               // Name of service
-	SERVICE_DISPLAY_NAME,       // Name to display
-	SERVICE_START_TYPE,         // Service start type
-	SERVICE_DEPENDENCIES,       // Dependencies
-	SERVICE_ACCOUNT,            // Service running account
-	SERVICE_PASSWORD,            // Password of the account
-	(PWSTR)wss.str().c_str());
+	      SERVICE_NAME,         // Name of service
+	      SERVICE_DISPLAY_NAME, // Name to display
+	      SERVICE_START_TYPE,   // Service start type
+	      SERVICE_DEPENDENCIES, // Dependencies
+	      SERVICE_ACCOUNT,      // Service running account
+	      SERVICE_PASSWORD,     // Password of the account
+	      (PWSTR)wss.str().c_str());
 }
 
 void daemon_remove()

@@ -37,7 +37,7 @@ public:
 	ASIOSchedulerTask(uint32_t periodms_, std::function<void(void)>& action_):
 		periodms(periodms_),
 		action(action_)
-	{ };
+	{ }
 
 	void execute()
 	{

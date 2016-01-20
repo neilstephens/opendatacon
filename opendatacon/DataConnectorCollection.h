@@ -85,7 +85,7 @@ public:
 		                       return IUIResponder::GenerateResult("Bad parameter");
 				     });
 	}
-	virtual ~DataConnectorCollection(){};
+	virtual ~DataConnectorCollection(){}
 };
 
 #endif /* defined(__opendatacon__DataConectorCollection__) */

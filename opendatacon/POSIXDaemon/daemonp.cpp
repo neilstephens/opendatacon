@@ -37,11 +37,11 @@ void daemonp(ODCArgs& Args)
 		std::string msg;
 		if(str)
 		{
-		    msg = std::string("Unable to daemonise: ")+str;
+			msg = std::string("Unable to daemonise: ")+str;
 		}
 		else
 		{
-		    msg = std::string("Unable to daemonise: UNKNOWN ERROR");
+			msg = std::string("Unable to daemonise: UNKNOWN ERROR");
 		}
 		throw std::runtime_error(msg);
 	}

@@ -92,28 +92,28 @@ class IOHandler
 {
 public:
 	IOHandler(std::string aName);
-	virtual ~IOHandler(){};
+	virtual ~IOHandler(){}
 
 	static std::future<opendnp3::CommandStatus> CommandFutureSuccess()
 	{
 		auto Promise = std::promise<opendnp3::CommandStatus>();
 		Promise.set_value(opendnp3::CommandStatus::SUCCESS);
 		return Promise.get_future();
-	};
+	}
 
 	static std::future<opendnp3::CommandStatus> CommandFutureUndefined()
 	{
 		auto Promise = std::promise<opendnp3::CommandStatus>();
 		Promise.set_value(opendnp3::CommandStatus::UNDEFINED);
 		return Promise.get_future();
-	};
+	}
 
 	static std::future<opendnp3::CommandStatus> CommandFutureNotSupported()
 	{
 		auto Promise = std::promise<opendnp3::CommandStatus>();
 		Promise.set_value(opendnp3::CommandStatus::NOT_SUPPORTED);
 		return Promise.get_future();
-	};
+	}
 
 	//Create an overloaded Event function for every type of event
 

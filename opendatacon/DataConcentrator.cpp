@@ -69,19 +69,20 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
 
-    for(auto& interface : Interfaces)
-    {
-        interface.second->AddCommand("shutdown",[this](std::stringstream& ss){this->Shutdown();},"Shutdown opendatacon");
-        interface.second->AddCommand("version",[] (std::stringstream& ss){
-            std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;},"Print version information");
-        
-        interface.second->AddResponder("OpenDataCon", *this);
-        interface.second->AddResponder("DataPorts", DataPorts);
-        interface.second->AddResponder("DataConnectors", DataConnectors);
-        interface.second->AddResponder("Loggers", AdvancedLoggers);
-        interface.second->AddResponder("Plugins", Interfaces);
-    }
-    for(auto& port : DataPorts)
+	for(auto& interface : Interfaces)
+	{
+		interface.second->AddCommand("shutdown",[this](std::stringstream& ss){this->Shutdown();},"Shutdown opendatacon");
+		interface.second->AddCommand("version",[] (std::stringstream& ss){
+		                                   std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;
+						     },"Print version information");
+
+		interface.second->AddResponder("OpenDataCon", *this);
+		interface.second->AddResponder("DataPorts", DataPorts);
+		interface.second->AddResponder("DataConnectors", DataConnectors);
+		interface.second->AddResponder("Loggers", AdvancedLoggers);
+		interface.second->AddResponder("Plugins", Interfaces);
+	}
+	for(auto& port : DataPorts)
 	{
 		port.second->AddLogSubscriber(AdvConsoleLog.get());
 		port.second->AddLogSubscriber(AdvFileLog.get());
@@ -259,12 +260,12 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 }
 void DataConcentrator::BuildOrRebuild()
 {
-    std::cout << "User Interfaces" << std::endl;
-    for(auto& Name_n_UI : Interfaces)
-    {
-        // TODO: BuildOrRebuild for UserInterfaces
-        // Name_n_UI.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
-    }
+	std::cout << "User Interfaces" << std::endl;
+	for(auto& Name_n_UI : Interfaces)
+	{
+		// TODO: BuildOrRebuild for UserInterfaces
+		// Name_n_UI.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
+	}
 	std::cout << "Ports" << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
@@ -278,33 +279,33 @@ void DataConcentrator::BuildOrRebuild()
 }
 void DataConcentrator::Run()
 {
-    for(auto& Name_n_UI : Interfaces)
-    {
-        IOS.post([=]()
-                 {
-                     Name_n_UI.second->Enable();
-                 });
-    }
-    for(auto& Name_n_Conn : DataConnectors)
-    {
-        IOS.post([=]()
-                 {
-                     Name_n_Conn.second->Enable();
-                 });
-    }
-    for(auto& Name_n_Port : DataPorts)
-    {
-        IOS.post([=]()
-                 {
-                     Name_n_Port.second->Enable();
-                 });
-    }
-    
-    IOS.run();
-    
-    std::cout << "Shutting down DNP3 manager... ";
-    DNP3Mgr.Shutdown();
-    std::cout << "done" << std::endl;
+	for(auto& Name_n_UI : Interfaces)
+	{
+		IOS.post([=]()
+		         {
+		               Name_n_UI.second->Enable();
+			   });
+	}
+	for(auto& Name_n_Conn : DataConnectors)
+	{
+		IOS.post([=]()
+		         {
+		               Name_n_Conn.second->Enable();
+			   });
+	}
+	for(auto& Name_n_Port : DataPorts)
+	{
+		IOS.post([=]()
+		         {
+		               Name_n_Port.second->Enable();
+			   });
+	}
+
+	IOS.run();
+
+	std::cout << "Shutting down DNP3 manager... ";
+	DNP3Mgr.Shutdown();
+	std::cout << "done" << std::endl;
 }
 
 void DataConcentrator::RestartPortOrConn(std::stringstream& args)
@@ -331,12 +332,12 @@ void DataConcentrator::EnablePortOrConn(std::stringstream& args, bool enable)
 		std::cout<<e.what()<<std::endl;
 		return;
 	}
-    for(auto& Name_n_UI : Interfaces)
-    {
-        if(std::regex_match(Name_n_UI.first, reg))
-            enable ? Name_n_UI.second->Enable() : Name_n_UI.second->Disable();
-    }
-    for(auto& Name_n_Conn : DataConnectors)
+	for(auto& Name_n_UI : Interfaces)
+	{
+		if(std::regex_match(Name_n_UI.first, reg))
+			enable ? Name_n_UI.second->Enable() : Name_n_UI.second->Disable();
+	}
+	for(auto& Name_n_Conn : DataConnectors)
 	{
 		if(std::regex_match(Name_n_Conn.first, reg))
 			enable ? Name_n_Conn.second->Enable() : Name_n_Conn.second->Disable();
@@ -350,12 +351,12 @@ void DataConcentrator::EnablePortOrConn(std::stringstream& args, bool enable)
 
 void DataConcentrator::Shutdown()
 {
-    std::cout << "done" << std::endl << "Disabling user interfaces... ";
-    for(auto& Name_n_UI : Interfaces)
-    {
-        Name_n_UI.second->Disable();
-    }
-    std::cout << "done" << std::endl << "Disabling data connectors... ";
+	std::cout << "done" << std::endl << "Disabling user interfaces... ";
+	for(auto& Name_n_UI : Interfaces)
+	{
+		Name_n_UI.second->Disable();
+	}
+	std::cout << "done" << std::endl << "Disabling data connectors... ";
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
@@ -366,5 +367,5 @@ void DataConcentrator::Shutdown()
 		Name_n_Port.second->Disable();
 	}
 	std::cout << "done" << std::endl;
-    ios_working.reset();
+	ios_working.reset();
 }
