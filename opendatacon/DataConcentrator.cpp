@@ -262,7 +262,8 @@ void DataConcentrator::BuildOrRebuild()
     std::cout << "User Interfaces" << std::endl;
     for(auto& Name_n_UI : Interfaces)
     {
-        Name_n_UI.second->BuildOrRebuild();
+        // TODO: BuildOrRebuild for UserInterfaces
+        // Name_n_UI.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
     }
 	std::cout << "Ports" << std::endl;
 	for(auto& Name_n_Port : DataPorts)

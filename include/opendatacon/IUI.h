@@ -16,26 +16,29 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- *
- *  Created by Alan Murray on 29/08/2014.
  */
+//
+//  IUI.h
+//  opendatacon
+//
+//  Created by Alan Murray on 29/08/2014.
+//
+//
 
 #ifndef opendatacon_IUI_h
 #define opendatacon_IUI_h
 
 #include "IUIResponder.h"
-#include "Plugin.h"
 #include <memory>
 
-class IUI : public Plugin
+class IUI
 {
 public:
-    IUI(const std::string& aName, const std::string& aConfFilename, const Json::Value aConfOverrides):
-    Plugin(aName, aConfFilename, aConfOverrides)
-    {};
-    virtual ~IUI(){};
+	virtual ~IUI(){};
     virtual void AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc = "No description available\n") = 0;
-    virtual void AddResponder(const std::string name, const IUIResponder& pResponder) = 0;
+	virtual void AddResponder(const std::string name, const IUIResponder& pResponder) = 0;
+	virtual void Enable() = 0;
+	virtual void Disable() = 0;
 };
 
 
