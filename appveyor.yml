@@ -32,7 +32,7 @@ install:
       Start-FileDownload "https://www.dropbox.com/s/13t92f57wie4wnb/libmicrohttpd-0.9.17-w32.zip?dl=1" -FileName libmicrohttpd-0.9.17-w32.zip
       7z x -y libmicrohttpd-0.9.17-w32.zip
       New-Item C:\libmicrohttpd -ItemType Directory
-      Move-Item .\libmicrohttpd C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
+      Move-Item .\libmicrohttpd-0.9.17-w32 C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
     }
 - ps: >-
     If (-not (Test-Path C:\tclap\tclap-1.2.1)){
