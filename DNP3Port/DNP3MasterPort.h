@@ -45,14 +45,40 @@ public:
 		assign_class_sent(false)
 	{}
 
-	void Enable();
-	void Disable();
-	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
-
-	//Override DataPort functions for UI
+protected:
+    /// Implement ODC::DataPort
+	void Enable() override;
+	void Disable() override;
+	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL) override;
 	const Json::Value GetStatistics() const override;
     
-    //Impl. IMasterApplication
+    /// Implement some ODC::IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
+    std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
+    std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
+    std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
+    std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
+    std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
+    
+    std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
+    
+    /// Implement opendnp3::ISOEHandler
+    void Start() override {}
+    void End() override {}
+    
+    void Process(const HeaderInfo& info, const ICollection<Indexed<Binary> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<DoubleBitBinary> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<Analog> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<Counter> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<FrozenCounter> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<BinaryOutputStatus> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<AnalogOutputStatus> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<OctetString> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<TimeAndInterval> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<BinaryCommandEvent> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<AnalogCommandEvent> >& meas) override;
+    void Process(const HeaderInfo& info, const ICollection<Indexed<SecurityStat> >& meas) override;
+    
+    /// Implement opendnp3::IMasterApplication
     virtual void OnReceiveIIN(const opendnp3::IINField& iin) override final {}
     virtual void OnTaskStart(opendnp3::MasterTaskType type, opendnp3::TaskId id) override final {}
     virtual void OnTaskComplete(const opendnp3::TaskInfo& info) override final {}
@@ -64,46 +90,13 @@ public:
         return openpal::UTCTimestamp(time);
     }
 
-    //Impl. ILinkListener
 	// Called when a the reset/unreset status of the link layer changes (and on link up)
-    void OnStateChange(opendnp3::LinkStatus status);
+    void OnStateChange(opendnp3::LinkStatus status) override;
 	// Called when a keep alive message (request link status) receives no response
-    void OnKeepAliveFailure();
+    void OnKeepAliveFailure() override;
 	// Called when a keep alive message receives a valid response
-    void OnKeepAliveSuccess();
-
-	//implement ISOEHandler
-protected:
-	void Start() override final {}
-	void End() override final {}
-
-public:
-	//virtual void Process(const HeaderInfo& info, const ICollection<Indexed<Binary>>& values) = 0;
-
-	void Process(const HeaderInfo& info, const ICollection<Indexed<Binary> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<DoubleBitBinary> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<Analog> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<Counter> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<FrozenCounter> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<BinaryOutputStatus> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<AnalogOutputStatus> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<OctetString> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<TimeAndInterval> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<BinaryCommandEvent> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<AnalogCommandEvent> >& meas);
-	void Process(const HeaderInfo& info, const ICollection<Indexed<SecurityStat> >& meas);
-	template<typename T> void LoadT(const ICollection<Indexed<T> >& meas);
-
-	//Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
-	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
-
-	std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName);
-
+    void OnKeepAliveSuccess() override;
+    
 private:
 	asiodnp3::IMaster* pMaster;
 
@@ -138,8 +131,9 @@ private:
 		}
 
 	}
+    
+    template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
+    template<typename T> void LoadT(const ICollection<Indexed<T> >& meas);
 };
-
-extern "C" DNP3MasterPort* new_DNP3MasterPort(std::string Name, std::string File, const Json::Value Overrides);
 
 #endif /* DNP3CLIENTPORT_H_ */
