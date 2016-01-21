@@ -110,7 +110,6 @@ if(WIN32)
 	set(INSTALLDIR_MODULES "plugin")
 endif()
 if(UNIX)
-	set(PTHREAD pthread)
 	set(DL dl)
 	set(RPATH_BASE $ORIGIN)
 

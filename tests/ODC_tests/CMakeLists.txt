@@ -27,8 +27,6 @@ include_directories(
 	../../ODC
 )
 
-link_directories("${DNP3_HOME}/lib${MY_BUILD_CONFIG}")
-
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC JSON)
 
