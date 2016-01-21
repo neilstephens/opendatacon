@@ -28,6 +28,10 @@
 #define DATAPORTCONF_H_
 
 class DataPortConf
-{}; //base class
+{
+public:
+	virtual ~DataPortConf()
+	{}
+}; //base class
 
 #endif /* DATAPORTCONF_H_ */
