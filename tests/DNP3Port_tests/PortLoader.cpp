@@ -28,11 +28,11 @@ fptr GetPortCreator(std::string libname, std::string objname)
 	std::string libfilename = GetLibFileName(libname);
 
 	//try to load the lib
-	auto* pluginlib = LoadModule(libfilename.c_str());
+	auto pluginlib = LoadModule(libfilename.c_str());
 
 	if (pluginlib == nullptr)
 	{
-		std::cout << libname << " Info: dynamic library load failed '" << libfilename << std::endl;
+		std::cout << libname << " Info: dynamic library load failed '" << libfilename << "' :"<< LastSystemError()<< std::endl;
 		return nullptr;
 	}
 
