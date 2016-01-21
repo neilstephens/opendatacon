@@ -37,7 +37,7 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 	// DNP3 Link Configuration
 	LinkNumRetry(0),
 	LinkTimeoutms(1000),
-	LinkKeepAlivems(0),
+	LinkKeepAlivems(10000),
 	LinkUseConfirms(false),
 	// Common application stack configuration
 	EnableUnsol(true),
