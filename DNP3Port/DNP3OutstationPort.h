@@ -32,7 +32,7 @@
 
 #include "DNP3Port.h"
 
-class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler
+class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication
 {
 public:
 	DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
@@ -45,6 +45,8 @@ public:
 	const Json::Value GetCurrentState() const override;
 	const Json::Value GetStatistics() const override;
 
+    //Impl. IOutstationApplication
+    
 	//Impl. ILinkListener
 	// Called when a the reset/unreset status of the link layer changes (and on link up)
 	void OnStateChange(opendnp3::LinkStatus status);
