@@ -43,6 +43,9 @@ protected:
 	void Disable() override;
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL) override;
 
+	// Implement DNP3Port
+	void OnLinkDown() override;
+
 	/// Implement ODC::DataPort functions for UI
 	const Json::Value GetCurrentState() const override;
 	const Json::Value GetStatistics() const override;

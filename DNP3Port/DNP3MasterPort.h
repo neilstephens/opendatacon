@@ -51,6 +51,9 @@ protected:
 	void Disable() override;
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL) override;
 	const Json::Value GetStatistics() const override;
+
+	// Implement DNP3Port
+		void OnLinkDown() override;
     
     /// Implement some ODC::IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
     std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;

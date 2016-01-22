@@ -140,6 +140,10 @@ void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 // Called when a keep alive message (request link status) receives no response
 void DNP3MasterPort::OnKeepAliveFailure()
 {
+	this->OnLinkDown();
+}
+void DNP3MasterPort::OnLinkDown()
+{
 	if(!link_dead)
 	{
 		link_dead = true;
@@ -160,8 +164,8 @@ void DNP3MasterPort::OnKeepAliveFailure()
 
 			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
 			pIOS->post([&]()
-			           {
-			                 DisableStack();
+				     {
+					     DisableStack();
 				     });
 		}
 	}
@@ -226,6 +230,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	pMaster = pChannel->AddMaster(Name.c_str(), *this, *this, StackConfig);
+	pChannel->AddStateListener(std::bind(&DNP3Port::StateListener,this,std::placeholders::_1));
 	if (pMaster == nullptr)
 	{
 		std::string msg = Name + ": Error creating masterstation.";

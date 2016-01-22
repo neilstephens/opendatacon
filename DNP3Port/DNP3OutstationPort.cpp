@@ -90,6 +90,10 @@ void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 // Called when a keep alive message (request link status) receives no response
 void DNP3OutstationPort::OnKeepAliveFailure()
 {
+	this->OnLinkDown();
+}
+void DNP3OutstationPort::OnLinkDown()
+{
 	if(!link_dead)
 	{
 		link_dead = true;
@@ -172,6 +176,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	}
 
 	pOutstation = pChannel->AddOutstation(Name.c_str(), *this, *this, StackConfig);
+	pChannel->AddStateListener(std::bind(&DNP3Port::StateListener,this,std::placeholders::_1));
 
 	if (pOutstation == nullptr)
 	{

@@ -39,6 +39,8 @@ public:
 	virtual void Disable()=0;
 	virtual void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
 
+	void StateListener(opendnp3::ChannelState state);
+
 	//Override DataPort for UI
 	const Json::Value GetStatus() const override;
 
@@ -72,6 +74,8 @@ protected:
 	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
 	opendnp3::LinkStatus status;
 	bool link_dead;
+
+	virtual void OnLinkDown()=0;
 };
 
 #endif /* DNP3PORT_H_ */

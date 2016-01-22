@@ -42,6 +42,15 @@ DNP3Port::DNP3Port(std::string aName, std::string aConfFilename, const Json::Val
 	ProcessFile();
 }
 
+// Called by OpenDNP3 Thread Pool
+void DNP3Port::StateListener(opendnp3::ChannelState state)
+{
+	if(state != opendnp3::ChannelState::OPEN)
+	{
+		OnLinkDown();
+	}
+}
+
 //DataPort function for UI
 const Json::Value DNP3Port::GetStatus() const
 {
