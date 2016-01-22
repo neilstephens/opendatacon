@@ -45,12 +45,12 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	Mconf["ServerType"] = "PERSISTENT";
 	DataPort* MPUT = newMaster("MasterUnderTest", "", Mconf);
 
-	auto pDNP3Man = new asiodnp3::DNP3Manager(std::thread::hardware_concurrency());
-	auto pLOG_LEVEL = new openpal::LogFilters();
+	asiodnp3::DNP3Manager lDNP3Man(std::thread::hardware_concurrency());
+	openpal::LogFilters lLOG_LEVEL;
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild(*pDNP3Man,*pLOG_LEVEL);
-	MPUT->BuildOrRebuild(*pDNP3Man,*pLOG_LEVEL);
+	OPUT->BuildOrRebuild(lDNP3Man,lLOG_LEVEL);
+	MPUT->BuildOrRebuild(lDNP3Man,lLOG_LEVEL);
 
 	//turn them on
 	OPUT->Enable();
@@ -58,7 +58,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 
 	//TODO: write a better way to wait for GetStatus and timeout (when decouple gets merged)
 	uint count = 0;
-	while(OPUT->GetStatus()["Result"].asString() == "Port enabled - link down" && count < 10000)
+	while(OPUT->GetStatus()["Result"].asString() == "Port enabled - link down" && count < 5000)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
@@ -67,8 +67,19 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 
+	//turn outstation off
+	OPUT->Disable();
+
+	count = 0;
+	while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 5000)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		count++;
+	}
+
+	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
+	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
+
 	delete MPUT;
 	delete OPUT;
-	delete pLOG_LEVEL;
-	delete pDNP3Man;
 }
