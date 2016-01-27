@@ -28,9 +28,16 @@
 #include <opendnp3/app/MeasurementTypes.h>
 #include "DNP3MasterPort.h"
 #include "CommandCallbackPromise.h"
+#include "ChannelStateSubscriber.h"
 #include <openpal/logging/LogLevels.h>
 #include <array>
 #include <asiopal/UTCTimeSource.h>
+
+DNP3MasterPort::~DNP3MasterPort()
+{
+	//pMaster->Shutdown();
+	ChannelStateSubscriber::Unsubscribe(this);
+}
 
 void DNP3MasterPort::Enable()
 {
@@ -230,7 +237,7 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	pMaster = pChannel->AddMaster(Name.c_str(), *this, *this, StackConfig);
-	pChannel->AddStateListener(std::bind(&DNP3Port::StateListener,this,std::placeholders::_1));
+	ChannelStateSubscriber::Subscribe(this,pChannel);
 	if (pMaster == nullptr)
 	{
 		std::string msg = Name + ": Error creating masterstation.";

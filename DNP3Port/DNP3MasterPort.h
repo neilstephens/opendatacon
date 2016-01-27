@@ -44,6 +44,7 @@ public:
 		stack_enabled(false),
 		assign_class_sent(false)
 	{}
+	~DNP3MasterPort();
 
 protected:
     /// Implement ODC::DataPort

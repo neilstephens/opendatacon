@@ -34,6 +34,7 @@
 #include <openpal/logging/LogLevels.h>
 #include "DNP3OutstationPort.h"
 #include "DNP3PortConf.h"
+#include "ChannelStateSubscriber.h"
 
 #include "OpenDNP3Helpers.h"
 
@@ -41,6 +42,12 @@ DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilen
 	DNP3Port(aName, aConfFilename, aConfOverrides),
 	pOutstation(nullptr)
 {}
+
+DNP3OutstationPort::~DNP3OutstationPort()
+{
+	//pOutstation->Shutdown();
+	ChannelStateSubscriber::Unsubscribe(this);
+}
 
 void DNP3OutstationPort::Enable()
 {
@@ -176,7 +183,7 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	}
 
 	pOutstation = pChannel->AddOutstation(Name.c_str(), *this, *this, StackConfig);
-	pChannel->AddStateListener(std::bind(&DNP3Port::StateListener,this,std::placeholders::_1));
+	ChannelStateSubscriber::Subscribe(this,pChannel);
 
 	if (pOutstation == nullptr)
 	{
