@@ -135,6 +135,7 @@ int main(int argc, char* argv[])
 		}
 
 		std::cout << "opendatacon version " << ODC_VERSION_STRING << " shutdown cleanly." << std::endl;
+		TheDataConcentrator.reset();
 		return 0;
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
