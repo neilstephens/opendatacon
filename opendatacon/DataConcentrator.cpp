@@ -98,6 +98,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	}
 }
 
+DataConcentrator::~DataConcentrator()
+{}
+
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;

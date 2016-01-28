@@ -51,11 +51,15 @@ void ChannelStateSubscriber::Unsubscribe(DNP3Port* pPort, asiodnp3::IChannel* pC
 	auto bounds = std::make_pair(SubscriberMap.begin(),SubscriberMap.end());
 	if(pChan != nullptr)
 		bounds = SubscriberMap.equal_range(pChan);
-	for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
+	for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; /*advance inside loop*/)
 	{
 		if((*aMatch_it).second == pPort)
 		{
-			SubscriberMap.erase(aMatch_it);
+			SubscriberMap.erase(aMatch_it++); //erase and advance in one go
+		}
+		else
+		{
+			++aMatch_it;
 		}
 	}
 }

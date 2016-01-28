@@ -51,7 +51,7 @@ class DataConcentrator: public ConfigParser, public IUIResponder
 {
 public:
 	DataConcentrator(std::string FileName);
-	//~DataConcentrator();
+	~DataConcentrator();
 
 	DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;

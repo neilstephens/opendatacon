@@ -129,7 +129,13 @@ int main(int argc, char* argv[])
 		// Start opendatacon, returns after a clean shutdown
 		TheDataConcentrator->Run();
 
+		for (auto SIG : SIG_SHUTDOWN)
+		{
+			::signal(SIG,SIG_IGN);
+		}
+
 		std::cout << "opendatacon version " << ODC_VERSION_STRING << " shutdown cleanly." << std::endl;
+		return 0;
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
 	{
@@ -141,5 +147,4 @@ int main(int argc, char* argv[])
 		std::cerr << "Caught exception: " << e.what() << std::endl;
 		return 1;
 	}
-	return 0;
 }
