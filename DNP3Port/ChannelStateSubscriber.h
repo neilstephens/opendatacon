@@ -28,7 +28,6 @@
 #define CHANNELSTATESUBSCRIBER_H
 
 #include <map>
-#include <functional>
 #include "DNP3Port.h"
 #include <asiodnp3/IChannel.h>
 
