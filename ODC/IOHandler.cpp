@@ -29,7 +29,7 @@
 
 std::unordered_map<std::string,IOHandler*> IOHandler::IOHandlers;
 
-std::unordered_map<std::string, IOHandler*>& GetIOHandlers()
+std::unordered_map<std::string, IOHandler*>& IOHandler::GetIOHandlers()
 {
 	return IOHandler::IOHandlers;
 }

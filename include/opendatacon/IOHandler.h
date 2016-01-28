@@ -157,16 +157,16 @@ public:
 	asio::io_service* pIOS;
 	bool enabled;
 
-	// Don't access the following from outside this dll under Windows
-	// due to static issues use GetIOHandlers to return the right reference instead
-	static std::unordered_map<std::string, IOHandler*> IOHandlers;
+	static std::unordered_map<std::string, IOHandler*>& GetIOHandlers();
 
 protected:
 	bool InDemand();
 	std::map<std::string,bool> connection_demands;
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
-};
 
-std::unordered_map<std::string, IOHandler*>& GetIOHandlers();
+private:
+	// Important that this is private - for inter process memory management
+	static std::unordered_map<std::string, IOHandler*> IOHandlers;
+};
 
 #endif /* IOHANDLER_H_ */
