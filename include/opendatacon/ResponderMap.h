@@ -33,7 +33,7 @@
 #include <regex>
 
 template <class T>
-class ResponderMap: public std::unordered_map<std::string, std::shared_ptr<T> >, public IUIResponder
+class ResponderMap: public std::unordered_map<std::string, std::unique_ptr<T,void(*)(T*)> >, public IUIResponder
 {
 public:
 	ResponderMap()
@@ -44,7 +44,7 @@ public:
 		                       result["Commands"] = GetCommandList();
 
 		                       Json::Value vec;
-		                       for(auto responder: *this)
+					     for(auto& responder: *this)
 		                       {
 		                             vec.append(Json::Value(responder.first));
 					     }

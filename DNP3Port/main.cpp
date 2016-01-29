@@ -36,3 +36,15 @@ extern "C" DNP3OutstationPort* new_DNP3OutstationPort(std::string Name, std::str
 {
 	return new DNP3OutstationPort(Name,File,Overrides);
 }
+
+extern "C" void delete_DNP3MasterPort(DNP3MasterPort* aPort_ptr)
+{
+	delete aPort_ptr;
+	return;
+}
+
+extern "C" void delete_DNP3OutstationPort(DNP3OutstationPort* aPort_ptr)
+{
+	delete aPort_ptr;
+	return;
+}

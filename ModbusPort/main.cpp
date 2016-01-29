@@ -36,3 +36,15 @@ extern "C" ModbusOutstationPort* new_ModbusOutstationPort(std::string Name, std:
 {
 	return new ModbusOutstationPort(Name,File,Overrides);
 }
+
+extern "C" void delete_ModbusMasterPort(ModbusMasterPort* aModbusMasterPort_ptr)
+{
+	delete aModbusMasterPort_ptr;
+	return;
+}
+
+extern "C" void delete_ModbusOutstationPort(ModbusOutstationPort* aModbusOutstationPort_ptr)
+{
+	delete aModbusOutstationPort_ptr;
+	return;
+}

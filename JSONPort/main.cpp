@@ -31,4 +31,10 @@ extern "C" JSONClientPort* new_JSONClientPort(std::string Name, std::string File
 	return new JSONClientPort(Name,File,Overrides);
 }
 
+extern "C" void delete_JSONClientPort(JSONClientPort* aJSONClientPort_ptr)
+{
+	delete aJSONClientPort_ptr;
+	return;
+}
+
 

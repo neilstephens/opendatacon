@@ -20,10 +20,16 @@
 
 #include "ConsoleUI.h"
 
-extern "C" IUI* new_ConsoleUIPlugin(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" ConsoleUI* new_ConsoleUIPlugin(std::string Name, std::string File, const Json::Value Overrides)
 {
 	if(Overrides.isObject())
 	{}
 
 	return new ConsoleUI();
+}
+
+extern "C" void delete_ConsoleUIPlugin(ConsoleUI* aIUI_ptr)
+{
+	delete aIUI_ptr;
+	return;
 }

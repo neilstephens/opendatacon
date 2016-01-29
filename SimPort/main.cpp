@@ -31,4 +31,8 @@ extern "C" SimPort* new_SimPort(std::string Name, std::string File, const Json::
 	return new SimPort(Name,File,Overrides);
 }
 
-
+extern "C" void delete_SimPort(SimPort* aSimPort_ptr)
+{
+	delete aSimPort_ptr;
+	return;
+}

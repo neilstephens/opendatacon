@@ -41,9 +41,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS)),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
-	AdvConsoleLog(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL)),
-	FileLog("datacon_log"),
-	AdvFileLog(new AdvancedLogger(FileLog,LOG_LEVEL))
+	FileLog("datacon_log")
 {
 	// Enable loading of libraries
 	InitLibaryLoading();
@@ -59,11 +57,12 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
 
-	AdvConsoleLog->AddIngoreAlways(".*"); //silence all console messages by default
-	DNP3Mgr.AddLogSubscriber(*AdvConsoleLog.get());
-	AdvancedLoggers["Console Log"] = AdvConsoleLog;
-	DNP3Mgr.AddLogSubscriber(*AdvFileLog.get());
-	AdvancedLoggers["File Log"] = AdvFileLog;
+	AdvancedLoggers.emplace("Console Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
+	AdvancedLoggers.at("Console Log")->AddIngoreAlways(".*"); //silence all console messages by default
+	DNP3Mgr.AddLogSubscriber(*AdvancedLoggers.at("Console Log").get());
+
+	AdvancedLoggers.emplace("File Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(FileLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
+	DNP3Mgr.AddLogSubscriber(*AdvancedLoggers.at("File Log").get());
 
 
 	//Parse the configs and create all user interfaces, ports and connections
@@ -84,15 +83,15 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	}
 	for(auto& port : DataPorts)
 	{
-		port.second->AddLogSubscriber(AdvConsoleLog.get());
-		port.second->AddLogSubscriber(AdvFileLog.get());
+		port.second->AddLogSubscriber(AdvancedLoggers.at("Console Log").get());
+		port.second->AddLogSubscriber(AdvancedLoggers.at("File Log").get());
 		port.second->SetIOS(&IOS);
 		port.second->SetLogLevel(LOG_LEVEL);
 	}
 	for(auto& conn : DataConnectors)
 	{
-		conn.second->AddLogSubscriber(AdvConsoleLog.get());
-		conn.second->AddLogSubscriber(AdvFileLog.get());
+		conn.second->AddLogSubscriber(AdvancedLoggers.at("Console Log").get());
+		conn.second->AddLogSubscriber(AdvancedLoggers.at("File Log").get());
 		conn.second->SetIOS(&IOS);
 		conn.second->SetLogLevel(LOG_LEVEL);
 	}
@@ -152,15 +151,25 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			std::string new_funcname = "new_"+Plugins[n]["Type"].asString()+"Plugin";
 			auto new_plugin_func = (IUI*(*)(std::string, std::string, const Json::Value))LoadSymbol(pluginlib, new_funcname);
 
+			std::string delete_funcname = "delete_"+Plugins[n]["Type"].asString()+"Plugin";
+			auto delete_plugin_func = (void(*)(IUI*))LoadSymbol(pluginlib, delete_funcname);
+
 			if(new_plugin_func == nullptr)
 			{
-				std::cout << PluginName << " Info: failed to load symbol '" << new_funcname << "' in library '" << libname << "' - " << LastSystemError() << std::endl;
+				std::cout << PluginName << " Info: failed to load symbol '" << new_funcname << "' from library '" << libname << "' - " << LastSystemError() << std::endl;
+			}
+			if(delete_plugin_func == nullptr)
+			{
+				std::cout << PluginName << " Info: failed to load symbol '" << delete_funcname << "' from library '" << libname << "' - " << LastSystemError() << std::endl;
+			}
+			if(new_plugin_func == nullptr || delete_plugin_func == nullptr)
+			{
 				std::cout << PluginName << " Error: failed to load plugin, skipping..." << std::endl;
 				continue;
 			}
 
 			//call the creation function and wrap the returned pointer to a new plugin
-			Interfaces[PluginName] = std::unique_ptr<IUI>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]));
+			Interfaces.emplace(PluginName, std::unique_ptr<IUI,void(*)(IUI*)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), delete_plugin_func));
 		}
 	}
 
@@ -186,8 +195,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			LOG_LEVEL = opendnp3::levels::NOTHING;
 		else
 			std::cout << "Warning: invalid LOG_LEVEL setting: '" << value << "' : ignoring and using 'NORMAL' log level." << std::endl;
-		AdvFileLog->SetLogLevel(LOG_LEVEL);
-		AdvConsoleLog->SetLogLevel(LOG_LEVEL);
+		AdvancedLoggers.at("File Log")->SetLogLevel(LOG_LEVEL);
+		AdvancedLoggers.at("Console Log")->SetLogLevel(LOG_LEVEL);
 	}
 
 	if(!JSONRoot["Ports"].isNull())
@@ -203,7 +212,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 			if(Ports[n]["Type"].asString() == "Null")
 			{
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				continue;
 			}
 
@@ -225,7 +234,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			if(portlib == nullptr)
 			{
 				std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				continue;
 			}
 
@@ -234,16 +243,26 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
 			auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))LoadSymbol(portlib, new_funcname);
 
+			std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
+			auto delete_port_func = (void(*)(DataPort*))LoadSymbol(portlib, delete_funcname);
+
 			if(new_port_func == nullptr)
 			{
-				std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"' mapping to null port..."<<std::endl;
-				DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
+				std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"'"<<std::endl;
+			}
+			if(delete_port_func == nullptr)
+			{
+				std::cout << "Warning: failed to load symbol '"<<delete_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"'"<<std::endl;
+			}
+			if(new_port_func == nullptr || delete_port_func == nullptr)
+			{
+				std::cout<<"Mapping '"<<Ports[n]["Type"].asString()<<"' to null port..."<<std::endl;
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				continue;
 			}
 
 			//call the creation function and wrap the returned pointer to a new port
-			DataPorts[Ports[n]["Name"].asString()] = std::unique_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]));
-
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
 		}
 	}
 
@@ -257,7 +276,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				std::cout<<"Warning: invalid Connector config: need at least Name, ConfFilename: \n'"<<Connectors[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 			}
-			DataConnectors[Connectors[n]["Name"].asString()] = std::unique_ptr<DataConnector>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]));
+			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void(*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
 		}
 	}
 }
@@ -284,27 +303,40 @@ void DataConcentrator::Run()
 {
 	for(auto& Name_n_UI : Interfaces)
 	{
-		IOS.post([=]()
+		IOS.post([&]()
 		         {
 		               Name_n_UI.second->Enable();
 			   });
 	}
 	for(auto& Name_n_Conn : DataConnectors)
 	{
-		IOS.post([=]()
+		IOS.post([&]()
 		         {
 		               Name_n_Conn.second->Enable();
 			   });
 	}
 	for(auto& Name_n_Port : DataPorts)
 	{
-		IOS.post([=]()
+		IOS.post([&]()
 		         {
 		               Name_n_Port.second->Enable();
 			   });
 	}
 
 	IOS.run();
+	std::cout << "done" << std::endl;
+
+	std::cout << "Destoying Interfaces... ";
+	Interfaces.clear();
+	std::cout << "done" << std::endl;
+
+	std::cout << "Destoying DataConnectors... ";
+	DataConnectors.clear();
+	std::cout << "done" << std::endl;
+
+	std::cout << "Destoying DataPorts... ";
+	DataPorts.clear();
+	std::cout << "done" << std::endl;
 
 	std::cout << "Shutting down DNP3 manager... ";
 	DNP3Mgr.Shutdown();
@@ -369,6 +401,6 @@ void DataConcentrator::Shutdown()
 	{
 		Name_n_Port.second->Disable();
 	}
-	std::cout << "done" << std::endl;
+	std::cout << "done" << std::endl << "Finishing asynchronous tasks... ";
 	ios_working.reset();
 }

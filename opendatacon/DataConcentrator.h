@@ -64,9 +64,7 @@ public:
 	std::unique_ptr<asio::io_service::work> ios_working;
 
 	openpal::LogFilters LOG_LEVEL;
-	std::shared_ptr<AdvancedLogger> AdvConsoleLog; //just prints messages to the console plus filtering (Adv)
 	LogToFile FileLog;                             //Prints all messages to a rolling set of log files.
-	std::shared_ptr<AdvancedLogger> AdvFileLog;
 	asiopal::LogFanoutHandler FanoutHandler;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
