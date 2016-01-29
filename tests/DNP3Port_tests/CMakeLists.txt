@@ -31,7 +31,7 @@ include_directories(
 )
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC JSON ${asiodnp3_libs} ${DL})
+target_link_libraries(${PROJECT_NAME} ODC JSON ${asiodnp3_libs} ${openpal_libs} ${opendnp3_libs} ${DL})
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
