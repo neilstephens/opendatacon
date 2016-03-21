@@ -83,13 +83,13 @@ void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<OidT
 		if(!Ranges[n]["Index"].isNull())
 			idx = Ranges[n]["Index"].asInt();
 
-		std::string valueOn = "";
-		if(!Ranges[n]["ValueOn"].isNull())
-			valueOn = Ranges[n]["ValueOn"].asString();
+		std::string trueVal = "";
+		if(!Ranges[n]["TrueVal"].isNull())
+			trueVal = Ranges[n]["TrueVal"].asString();
 
-		std::string valueOff = "";
-		if(!Ranges[n]["ValueOff"].isNull())
-			valueOff = Ranges[n]["ValueOff"].asString();
+		std::string falseVal = "";
+		if(!Ranges[n]["FalseVal"].isNull())
+			falseVal = Ranges[n]["FalseVal"].asString();
 		
 		Snmp_pp::Oid oid;
 		if(!Ranges[n]["Oid"].isNull())
@@ -107,7 +107,7 @@ void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<OidT
 			continue;
 		}
 
-		ReadGroup.emplace_back(oid,idx,pollgroup,startval,valueOn,valueOff);
+		ReadGroup.emplace_back(oid,idx,pollgroup,startval,trueVal,falseVal);
 		OidMap[oid] = &ReadGroup.back();
 	}
 }
@@ -221,16 +221,16 @@ void OidToBinaryEvent::GenerateEvent(IOHandler &handler, const Snmp_pp::Vb &vb, 
 			unsigned char ptr[ptr_maxlen];
 			vb.get_value(ptr, ptr_len, ptr_maxlen, true);
 			
-			if (this->valueOn.empty())
+			if (this->trueVal.empty())
 			{
 				// no valueOn defined
-				if (this->valueOff.empty())
+				if (this->falseVal.empty())
 				{
 					// no valueOff defined
 					std::cout << "SNMP String received and no value mapping defined: " << ptr << std::endl;
 					return;
 				}
-				if (strcmp((char*)ptr, this->valueOff.c_str()) != 0)
+				if (strcmp((char*)ptr, this->falseVal.c_str()) != 0)
 				{
 					// default to valueOn
 					bvalue = true;
@@ -239,7 +239,7 @@ void OidToBinaryEvent::GenerateEvent(IOHandler &handler, const Snmp_pp::Vb &vb, 
 			}
 			else
 			{
-				if (strcmp((char*)ptr, this->valueOn.c_str()) == 0)
+				if (strcmp((char*)ptr, this->trueVal.c_str()) == 0)
 				{
 					// matches valueOn
 					bvalue = true;
@@ -247,7 +247,7 @@ void OidToBinaryEvent::GenerateEvent(IOHandler &handler, const Snmp_pp::Vb &vb, 
 				}
 				else
 				{
-					if (this->valueOff.empty() || (strcmp((char*)ptr, this->valueOff.c_str()) == 0))
+					if (this->falseVal.empty() || (strcmp((char*)ptr, this->falseVal.c_str()) == 0))
 					{
 						//default to valueOff or matches valueOff
 						//bvalue = false;

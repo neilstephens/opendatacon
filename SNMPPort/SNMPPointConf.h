@@ -91,13 +91,13 @@ public:
 class OidToBinaryEvent : public OidToEvent
 {
 public:
-	OidToBinaryEvent(Snmp_pp::Oid oid_, uint32_t index_, uint32_t pollgroup_, const opendnp3::Binary& startval_, const std::string& valueOn_, const std::string& valueOff_ ):
+	OidToBinaryEvent(Snmp_pp::Oid oid_, uint32_t index_, uint32_t pollgroup_, const opendnp3::Binary& startval_, const std::string& trueVal_, const std::string& falseVal_ ):
 	OidToEvent(oid_),
 	index(index_),
 	pollgroup(pollgroup_),
 	startval(startval_),
-	valueOn(valueOn_),
-	valueOff(valueOff_)
+	trueVal(trueVal_),
+	falseVal(falseVal_)
 	{ }
 	
 	virtual void GenerateEvent(IOHandler& handler, const Snmp_pp::Vb& value, const std::string& name);
@@ -106,8 +106,8 @@ public:
 	uint32_t pollgroup;
 	opendnp3::Binary startval;
 	
-	const std::string valueOn;
-	const std::string valueOff;
+	const std::string trueVal;
+	const std::string falseVal;
 };
 
 
