@@ -131,6 +131,8 @@ public:
 
 	std::vector<OidToBinaryEvent> BinaryIndicies;
 	std::vector<OidToAnalogEvent> AnalogIndicies;
+	
+	std::map<Snmp_pp::Oid, OidToEvent*> OidMap;
 
 	std::map<uint32_t, SNMPPollGroup> PollGroups;
 

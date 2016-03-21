@@ -42,6 +42,8 @@ struct SNMPAddrConf
 	//IP
 	std::string IP;
 	uint16_t Port;
+	uint16_t SourcePort;
+	uint16_t TrapPort;
 
 	//Common
 	server_type_t ServerType;
@@ -49,6 +51,8 @@ struct SNMPAddrConf
 	SNMPAddrConf():
 		IP("127.0.0.1"),
 		Port(161),
+		SourcePort(0),
+		TrapPort(162),
 		ServerType(ONDEMAND)
 	{}
 };

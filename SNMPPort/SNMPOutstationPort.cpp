@@ -238,7 +238,7 @@ inline std::future<opendnp3::CommandStatus> SNMPOutstationPort::EventT(T& meas, 
 		return cmd_promise.get_future();
 	}
 
-	SNMPPortConf* pConf = static_cast<SNMPPortConf*>(this->pConf.get());
+	//SNMPPortConf* pConf = static_cast<SNMPPortConf*>(this->pConf.get());
 
 	//TODO: finishme
 	

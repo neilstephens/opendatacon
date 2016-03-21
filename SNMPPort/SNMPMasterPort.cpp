@@ -42,7 +42,7 @@ void SNMPMasterPort::Enable()
 {
 	if(enabled) return;
 	enabled = true;
-
+	
 	pTCPRetryTimer.reset(new Timer_t(*pIOS));
 	PollScheduler.reset(new ASIOScheduler(*pIOS));
 
@@ -62,9 +62,6 @@ void SNMPMasterPort::Connect()
 
 	SNMPPortConf* pConf = static_cast<SNMPPortConf*>(this->pConf.get());
 
-
-	/* set up SNMP */
-
 	PollScheduler->Clear();
 	for(auto pg : pConf->pPointConf->PollGroups)
 	{
@@ -81,6 +78,7 @@ void SNMPMasterPort::Connect()
 void SNMPMasterPort::Disable()
 {
 	Disconnect();
+	//snmp->stop_poll_thread();
 	enabled = false;
 }
 
@@ -125,12 +123,22 @@ void SNMPMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	SNMPPortConf* pConf = static_cast<SNMPPortConf*>(this->pConf.get());
 
 	std::string log_id;
-	
 	log_id = "mast_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
 	
+	// Get source session
+	snmp = GetSesion(pConf->mAddrConf.SourcePort);
+	if ( snmp == nullptr)
+	{
+		std::string msg = Name + ": Stack error: 'SNMP stack creation failed.'";
+		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		throw std::runtime_error(msg);
+	}
+	
+	// Create destination target
 	Snmp_pp::UdpAddress address(pConf->mAddrConf.IP.c_str());      // make a SNMP++ Generic address
 	address.set_port(pConf->mAddrConf.Port);
-	if ( !address.valid())
+	if ( !address.valid() )
 	{
 		// check validity of address
 		std::string msg = Name + ": Stack error: 'SNMP stack creation failed, invalid IP address or hostname'";
@@ -139,11 +147,20 @@ void SNMPMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 		throw std::runtime_error(msg);
 	}
 	
+	// Get trap session
+	snmp_trap = GetTrapSession(pConf->mAddrConf.TrapPort, pConf->mAddrConf.IP);
+	if ( snmp_trap == nullptr)
+	{
+		std::string msg = Name + ": Stack error: 'SNMP trap stack creation failed.'";
+		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		throw std::runtime_error(msg);
+	}
+	
 	// SNMP_PP Options
-	Snmp_pp::snmp_version version=Snmp_pp::version1;         // default is v1
+	Snmp_pp::snmp_version version=Snmp_pp::version1; // default is v1
 	int retries=1;                                  // default retries is 1
 	int timeout=100;                                // default is 1 second
-	u_short port=161;                               // default snmp port is 161
 	Snmp_pp::OctetStr community("public");          // community name
 	
 	/*
@@ -161,14 +178,6 @@ void SNMPMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	 #endif
 	 */
 	
-	// Create session
-	int status;
-	snmp = new Snmp_pp::Snmp(status, 0, (address.get_ip_version() == Snmp_pp::Address::version_ipv6));
-
-	if ( status != SNMP_CLASS_SUCCESS) {
-		std::cout << "SNMP++ Session Create Fail, " << snmp->error_msg(status) << std::endl;
-		return;
-	}
 	
 	/*
 	 //---------[ init SnmpV3 ]--------------------------------------------
@@ -215,8 +224,6 @@ void SNMPMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	 #endif
 	*/
 	
-	
-	address.set_port(port);
 	/*
 	 #ifdef _SNMPv3
 	 Snmp_pp::UTarget utarget( address);
@@ -247,7 +254,59 @@ void SNMPMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	 else
 	 #endif
 	 */
-	target = ctarget;
+	target.reset(ctarget);
+	
+	Snmp_pp::IpAddress from(address);
+	auto destIP = from.get_printable();
+	SourcePortMap[destIP] = this;
+}
+
+
+void SNMPMasterPort::SnmpCallback( int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+{
+	Snmp_pp::Vb vb;
+	int pdu_error;
+	
+	// late async requests and traps could come in regardless of the port being enabled or not
+	if (!enabled) return;
+	
+	if ((reason != SNMP_CLASS_ASYNC_RESPONSE) && (reason != SNMP_CLASS_NOTIFICATION))
+	{
+		std::cout << "reason: " << reason << " msg: " << snmp->error_msg(reason) << std::endl;
+		return;
+	}
+	
+	pdu_error = pdu.get_error_status();
+	if (pdu_error){
+		std::cout << "Response contains error: " << snmp->error_msg(pdu_error)<< std::endl;
+	}
+	
+	auto pConf = static_cast<SNMPPortConf*>(this->pConf.get());
+	
+	for (int i = 0; i < pdu.get_vb_count(); i++)
+	{
+		pdu.get_vb(vb, i);
+		if (!pConf->pPointConf->OidMap.count(vb.get_oid()))
+		{
+			std::cout << "Uknown oid received: " << vb.get_printable_oid() << std::endl;
+			continue;
+		}
+		auto point = pConf->pPointConf->OidMap[vb.get_oid()];
+		
+		for(auto IOHandler_pair : Subscribers)
+		{
+			point->GenerateEvent(*IOHandler_pair.second, vb, this->Name);
+			//indexes.at(i)->GenerateEvent(*IOHandler_pair.second, vb, this->Name);
+		}
+	}
+	
+	// SNMP informs require a response
+	if (pdu.get_type() == sNMP_PDU_INFORM) {
+		std::cout << "pdu type: " << pdu.get_type() << std::endl << "sending response to inform: " << std::endl;
+		//vb.set_value("This is the response.");
+		pdu.set_vb(vb, 0);
+		snmp->response(pdu, target);
+	}
 }
 
 void SNMPMasterPort::DoPoll(uint32_t pollgroup)
@@ -261,7 +320,6 @@ void SNMPMasterPort::DoPoll(uint32_t pollgroup)
 	Snmp_pp::Vb vb;                                 // construct a Vb object
 	
 	//---------[ make Oid object to retrieve ]-------------------------------
-	std::vector<OidToEvent*> indexes;
 	for(auto& Oid : pConf->pPointConf->BinaryIndicies)
 	{
 		if (pollgroup && (Oid.pollgroup != pollgroup))
@@ -269,7 +327,6 @@ void SNMPMasterPort::DoPoll(uint32_t pollgroup)
 		
 		vb.set_oid(Oid.oid);                       // set the Oid portion of the Vb
 		pdu += vb;                             // add the vb to the Pdu
-		indexes.push_back(&Oid);          // add backreference to index
 	}
 	for(auto& Oid : pConf->pPointConf->AnalogIndicies)
 	{
@@ -278,51 +335,23 @@ void SNMPMasterPort::DoPoll(uint32_t pollgroup)
 		
 		vb.set_oid(Oid.oid);                       // set the Oid portion of the Vb
 		pdu += vb;                             // add the vb to the Pdu
-		indexes.push_back(&Oid);          // add backreference to index
 	}
-
+	
 	/*
-	 if debug log level
-	 #ifdef _SNMPv3
-	 if (version == version3)
-	 cout << endl
-	 << "securityName= " << securityName.get_printable()
-	 << ", securityLevel= " << securityLevel
-	 << ", securityModel= " << securityModel << endl
-	 << "contextName= " << contextName.get_printable()
-	 << ", contextEngineID= " << contextEngineID.get_printable()
-	 << endl;
-	 else
-	 #endif*/
-	
-	
-	int status = snmp->get( pdu, *target);
-	
-	if (status == SNMP_CLASS_SUCCESS)
+	 * Send a async SNMP-GET request.
+	 *
+	 * @param pdu      - Pdu to send
+	 * @param target   - Target for the get
+	 * @param callback - User callback function to use
+	 * @param callback_data - User definable data pointer
+	 *
+	 * @return SNMP_CLASS_SUCCES or a negative error code
+	 *
+	 */
+	int status = snmp->get(pdu, *target, SNMPPort::SnmpCallback, this);
+	if (status != SNMP_CLASS_SUCCESS)
 	{
-		for (int i = 0; i < pdu.get_vb_count(); i++)
-		{
-			pdu.get_vb(vb, i);
-			/*
-			 if debug log level
-			 #ifdef _SNMPv3
-			 if (pdu.get_type() == REPORT_MSG) {
-			 cout << "Received a report pdu: " << snmp.error_msg(vb.get_printable_oid()) << endl;
-			 }
-			 #endif
-			 
-			 std::cout << "Oid = " << vb.get_printable_oid() << " Value = " << vb.get_printable_value() << " Syntax = " << vb.get_syntax() << std::endl;
-			 */
-			
-			for(auto IOHandler_pair : Subscribers)
-			{
-				indexes.at(i)->GenerateEvent(*IOHandler_pair.second, vb, this->Name);
-			}
-		}
-	}
-	else
-	{
-		std::cout << "SNMP++ Get Error, " << snmp->error_msg( status) << " (" << status <<")" << std::endl;
+		std::cout << "SNMP++ GetNext Error, " << snmp->error_msg( status) << " (" << status <<")" << std::endl ;
 	}
 }
 

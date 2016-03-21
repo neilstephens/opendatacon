@@ -108,6 +108,7 @@ void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<OidT
 		}
 
 		ReadGroup.emplace_back(oid,idx,pollgroup,startval,valueOn,valueOff);
+		OidMap[oid] = &ReadGroup.back();
 	}
 }
 
@@ -149,6 +150,7 @@ void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<OidT
 		}
 		
 		ReadGroup.emplace_back(oid,idx,pollgroup,startval);
+		OidMap[oid] = &ReadGroup.back();
 	}
 }
 

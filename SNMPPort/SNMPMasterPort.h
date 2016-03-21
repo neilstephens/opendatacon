@@ -66,9 +66,13 @@ private:
 	void HandleError(int errnum, const std::string& source);
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
+	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target);
+
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	std::unique_ptr<Timer_t> pTCPRetryTimer;
 	std::unique_ptr<ASIOScheduler> PollScheduler;
+	std::unique_ptr<Snmp_pp::SnmpTarget> target;
 };
 
 #endif /* SNMPCLIENTPORT_H_ */
+

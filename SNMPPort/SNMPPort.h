@@ -30,6 +30,8 @@
 #include <opendatacon/DataPort.h>
 #include <libsnmp.h>
 #include <snmp_pp/snmp_pp.h>
+#include <unordered_set>
+#include <unordered_map>
 
 #include "SNMPPortConf.h"
 
@@ -37,8 +39,7 @@ class SNMPPort: public DataPort
 {
 public:
 	SNMPPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
-	
-	//TODO: 	Snmp_pp::Snmp::socket_cleanup();  // Shut down socket subsystem
+	~SNMPPort();
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
@@ -70,12 +71,55 @@ public:
 	virtual std::future<opendnp3::CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
 
 	void ProcessElements(const Json::Value& JSONRoot);
-
-	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
+	
 protected:
 	bool stack_enabled;
-	Snmp_pp::Snmp *snmp;
-	Snmp_pp::SnmpTarget *target;
+	std::shared_ptr<Snmp_pp::Snmp> snmp;
+	std::shared_ptr<Snmp_pp::Snmp> snmp_trap;
+
+	static std::shared_ptr<Snmp_pp::Snmp> GetSesion(uint16_t UdpPort);
+	static std::shared_ptr<Snmp_pp::Snmp> GetTrapSession(uint16_t UdpPort, const std::string& SourceAddr);
+	
+	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) = 0;
+	static void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, void *obj)
+	{
+		//TODO: use C++11 managed pointers as this is vulnerable to the pointers being invalid
+		Snmp_pp::GenAddress addr;
+		target.get_address(addr);
+		Snmp_pp::IpAddress from(addr);
+		auto destIP = from.get_printable();
+		auto dest_ptr = static_cast<SNMPPort*>(obj);
+		if(obj != nullptr)
+		{
+			SourcePortMap[destIP] = dest_ptr;
+		}
+		else if(SourcePortMap.count(destIP))
+		{
+			dest_ptr = SourcePortMap[destIP];
+		}
+		else
+		{
+			std::cout << "Trap received from unknown source: " << from.get_printable() << std::endl;
+			return;
+		}
+		if (PortSet.count(dest_ptr))
+		{
+			dest_ptr->SnmpCallback(reason, snmp, pdu, target);
+		}
+		else
+		{
+			std::cout << "Trap received from deleted source: " << from.get_printable() << std::endl;
+			return;
+		}
+	}
+
+protected:
+	static std::unordered_map<std::string, SNMPPort*> SourcePortMap;
+	
+private:
+	static std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpSessions;
+	static std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpTrapSessions;
+	static std::unordered_set<SNMPPort*> PortSet;
 };
 
 #endif /* SNMPPORT_H_ */

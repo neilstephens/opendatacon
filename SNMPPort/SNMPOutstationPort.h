@@ -58,6 +58,9 @@ public:
 	void Disconnect();
 
 private:
+
+	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) {};
+	
 	void StateListener(opendnp3::ChannelState state);
 };
 
