@@ -129,10 +129,10 @@ public:
 
 	std::pair<opendnp3::Binary,size_t> mCommsPoint;
 
-	std::vector<OidToBinaryEvent> BinaryIndicies;
-	std::vector<OidToAnalogEvent> AnalogIndicies;
+	std::vector<std::shared_ptr<OidToBinaryEvent>> BinaryIndicies;
+	std::vector<std::shared_ptr<OidToAnalogEvent>> AnalogIndicies;
 	
-	std::map<Snmp_pp::Oid, OidToEvent*> OidMap;
+	std::map<Snmp_pp::Oid, std::shared_ptr<OidToEvent>> OidMap;
 
 	std::map<uint32_t, SNMPPollGroup> PollGroups;
 

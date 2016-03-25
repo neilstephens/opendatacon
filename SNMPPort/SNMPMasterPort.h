@@ -41,8 +41,13 @@ class SNMPMasterPort: public SNMPPort
 {
 public:
 	SNMPMasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-		SNMPPort(aName, aConfFilename, aConfOverrides)
-	{}
+		SNMPPort(aName, aConfFilename, aConfOverrides),
+	pTCPRetryTimer(nullptr),
+	PollScheduler(nullptr),
+	v3_MP(nullptr),
+	target(nullptr)
+	{
+	}
 
 	~SNMPMasterPort();
 
@@ -63,7 +68,6 @@ private:
 	void DoPoll(uint32_t pollgroup);
 
 private:
-	void HandleError(int errnum, const std::string& source);
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
 	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target);
@@ -71,6 +75,7 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	std::unique_ptr<Timer_t> pTCPRetryTimer;
 	std::unique_ptr<ASIOScheduler> PollScheduler;
+	std::shared_ptr<Snmp_pp::v3MP> v3_MP;
 	std::unique_ptr<Snmp_pp::SnmpTarget> target;
 };
 

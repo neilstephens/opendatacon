@@ -29,6 +29,7 @@ std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SNMPPort::SnmpSession
 std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SNMPPort::SnmpTrapSessions;
 std::unordered_map<std::string, SNMPPort*> SNMPPort::SourcePortMap;
 std::unordered_set<SNMPPort*> SNMPPort::PortSet;
+std::shared_ptr<Snmp_pp::v3MP> SNMPPort::v3mpPtr(nullptr);
 
 SNMPPort::SNMPPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -51,27 +52,127 @@ SNMPPort::~SNMPPort()
 void SNMPPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
+	auto portConf = static_cast<SNMPPortConf*>(pConf.get());
 
 	if(!JSONRoot["IP"].isNull())
-		static_cast<SNMPPortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
+		portConf->mAddrConf.IP = JSONRoot["IP"].asString();
 
 	if(!JSONRoot["Port"].isNull())
-		static_cast<SNMPPortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asUInt();
+		portConf->mAddrConf.Port = JSONRoot["Port"].asUInt();
 
 	if(!JSONRoot["SourcePort"].isNull())
-		static_cast<SNMPPortConf*>(pConf.get())->mAddrConf.SourcePort = JSONRoot["SourcePort"].asUInt();
+		portConf->mAddrConf.SourcePort = JSONRoot["SourcePort"].asUInt();
 
 	if(!JSONRoot["TrapPort"].isNull())
-		static_cast<SNMPPortConf*>(pConf.get())->mAddrConf.TrapPort = JSONRoot["TrapPort"].asUInt();
+		portConf->mAddrConf.TrapPort = JSONRoot["TrapPort"].asUInt();
+	
+	if(!JSONRoot["version"].isNull())
+	{
+		auto version = JSONRoot["version"].asString();
+		if (version=="1") portConf->version = Snmp_pp::snmp_version::version1;
+		else if (version=="2") portConf->version = Snmp_pp::snmp_version::version2c;
+		else if (version=="2stern") portConf->version = Snmp_pp::snmp_version::version2stern;
+		else if (version=="3") portConf->version = Snmp_pp::snmp_version::version3;
+		else {
+			std::string msg = "SNMPPort configuration error: Bad SNMP version: ";
+			msg += JSONRoot["version"].toStyledString();
+			//auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			//pLoggers->Log(log_entry);
+			throw std::runtime_error(msg);
+		}
+	}
+	
+	if(!JSONRoot["retries"].isNull())
+		portConf->retries = JSONRoot["retries"].asUInt();
+
+	if(!JSONRoot["timeout"].isNull())
+		portConf->timeout = JSONRoot["timeout"].asUInt();
+
+	if(!JSONRoot["readcommunity"].isNull())
+		portConf->readcommunity = JSONRoot["readcommunity"].asCString();
+
+	if(!JSONRoot["writecommunity"].isNull())
+		portConf->writecommunity = JSONRoot["writecommunity"].asCString();
 	
 	if(!JSONRoot["ServerType"].isNull())
 	{
 		if (JSONRoot["ServerType"].asString()=="PERSISTENT")
-			static_cast<SNMPPortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::PERSISTENT;
+			portConf->mAddrConf.ServerType = server_type_t::PERSISTENT;
 		else if (JSONRoot["ServerType"].asString()=="ONDEMAND")
-			static_cast<SNMPPortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::ONDEMAND;
+			portConf->mAddrConf.ServerType = server_type_t::ONDEMAND;
 		else //if (JSONRoot["ServerType"].asString()=="MANUAL")
-			static_cast<SNMPPortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::MANUAL;
+			portConf->mAddrConf.ServerType = server_type_t::MANUAL;
+	}
+	
+	if(!JSONRoot["SecurityName"].isNull())
+	{
+		portConf->securityName = JSONRoot["SecurityName"].asCString();
+	}
+	if(!JSONRoot["AuthPassword"].isNull())
+	{
+		portConf->authPassword = JSONRoot["AuthPassword"].asCString();
+	}
+	if(!JSONRoot["PrivPassword"].isNull())
+	{
+		portConf->privPassword = JSONRoot["PrivPassword"].asCString();
+	}
+	if(!JSONRoot["AuthProtocol"].isNull())
+	{
+		if (JSONRoot["AuthProtocol"].asString()=="MD5")
+			portConf->authProtocol = SNMP_AUTHPROTOCOL_HMACMD5;
+		else if (JSONRoot["AuthProtocol"].asString()=="SHA")
+			portConf->authProtocol = SNMP_AUTHPROTOCOL_HMACSHA;
+		else //if (JSONRoot["AuthProtocol"].asString()=="NONE")
+			portConf->authProtocol = SNMP_AUTHPROTOCOL_NONE;
+	}
+	if(!JSONRoot["PrivProtocol"].isNull())
+	{
+		if (JSONRoot["PrivProtocol"].asString()=="DES")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_DES;
+		else if (JSONRoot["PrivProtocol"].asString()=="3DESEDE")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_3DESEDE;
+		else if (JSONRoot["PrivProtocol"].asString()=="IDEA")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_IDEA;
+		else if (JSONRoot["PrivProtocol"].asString()=="AES128")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_AES128;
+		else if (JSONRoot["PrivProtocol"].asString()=="AES128W3DESKEYEXT")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_AES128W3DESKEYEXT;
+		else if (JSONRoot["PrivProtocol"].asString()=="AES192")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_AES192;
+		else if (JSONRoot["PrivProtocol"].asString()=="AES192W3DESKEYEXT")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_AES192W3DESKEYEXT;
+		else if (JSONRoot["PrivProtocol"].asString()=="AES256")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_AES256;
+		else if (JSONRoot["PrivProtocol"].asString()=="AES256W3DESKEYEXT")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_AES256W3DESKEYEXT;
+		else //if (JSONRoot["PrivProtocol"].asString()=="NONE")
+			portConf->privProtocol = SNMP_PRIVPROTOCOL_NONE;
+	}
+	if(!JSONRoot["ContextName"].isNull())
+	{
+		portConf->contextName = JSONRoot["ContextName"].asCString();
+	}
+	if(!JSONRoot["ContextEngineID"].isNull())
+	{
+		portConf->contextEngineID = JSONRoot["ContextEngineID"].asCString();
+	}
+	{ /// Implicitly define securityLevel
+		if((portConf->authProtocol != SNMP_AUTHPROTOCOL_NONE) && (portConf->privProtocol != SNMP_PRIVPROTOCOL_NONE))
+		{
+			portConf->securityLevel = SNMP_SECURITY_LEVEL_AUTH_PRIV;
+		}
+		if((portConf->authProtocol != SNMP_AUTHPROTOCOL_NONE) && (portConf->privProtocol == SNMP_PRIVPROTOCOL_NONE))
+		{
+			portConf->securityLevel = SNMP_SECURITY_LEVEL_AUTH_NOPRIV;
+		}
+		if((portConf->authProtocol == SNMP_AUTHPROTOCOL_NONE) && (portConf->privProtocol != SNMP_PRIVPROTOCOL_NONE))
+		{
+			std::string msg = "SNMPPort configuration error: PrivProtocol provided but no AuthProtocol: ";
+			msg += JSONRoot["PrivProtocol"].toStyledString();
+			//auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			//pLoggers->Log(log_entry);
+			throw std::runtime_error(msg);
+		}
 	}
 }
 
@@ -84,7 +185,7 @@ std::shared_ptr<Snmp_pp::Snmp> SNMPPort::GetSesion(uint16_t UdpPort)
 		return session;
 	}
 
-	bool enable_ipv6 = true;
+	bool enable_ipv6 = false;
 	int status;
 	session.reset(new Snmp_pp::Snmp(status, UdpPort, enable_ipv6));
 	if ( status != SNMP_CLASS_SUCCESS) {

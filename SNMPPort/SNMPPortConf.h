@@ -39,15 +39,15 @@ typedef enum
 
 struct SNMPAddrConf
 {
-	//IP
+	/// IP
 	std::string IP;
 	uint16_t Port;
 	uint16_t SourcePort;
 	uint16_t TrapPort;
 
-	//Common
+	/// Common
 	server_type_t ServerType;
-
+	
 	SNMPAddrConf():
 		IP("127.0.0.1"),
 		Port(161),
@@ -61,13 +61,44 @@ class SNMPPortConf: public DataPortConf
 {
 public:
 	SNMPPortConf(std::string FileName):
-		mAddrConf()
+		mAddrConf(),
+		version(Snmp_pp::snmp_version::version2c),
+		retries(1),
+		timeout(1000),
+		readcommunity("public"),
+		writecommunity("private"),
+		privPassword(""),
+		authPassword(""),
+		securityName(""),
+		authProtocol(SNMP_AUTHPROTOCOL_NONE),
+		privProtocol(SNMP_PRIVPROTOCOL_NONE),
+		securityLevel(SNMP_SECURITY_LEVEL_NOAUTH_NOPRIV),
+		contextName(""),
+		contextEngineID("")
 	{
 		pPointConf.reset(new SNMPPointConf(FileName));
 	}
 
 	std::unique_ptr<SNMPPointConf> pPointConf;
 	SNMPAddrConf mAddrConf;
+	
+	/// SNMP options
+	Snmp_pp::snmp_version version;
+	int retries;
+	int timeout;
+	Snmp_pp::OctetStr readcommunity;
+	Snmp_pp::OctetStr writecommunity;
+	
+	/// SNMP v3 options
+	Snmp_pp::OctetStr privPassword;
+	Snmp_pp::OctetStr authPassword;
+	Snmp_pp::OctetStr securityName;
+	long authProtocol;
+	long privProtocol;
+	
+	int securityLevel;
+	Snmp_pp::OctetStr contextName;
+	Snmp_pp::OctetStr contextEngineID;
 };
 
 #endif /* SNMPOUTSTATIONPORTCONF_H_ */
