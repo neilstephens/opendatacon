@@ -175,6 +175,12 @@ void SNMPMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	}
 	else {
 #endif
+		if (pConf->version == Snmp_pp::version3) {
+			std::string msg = Name + ": SNMP++ not compiled with version 3 support.'";
+			auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+			throw std::runtime_error(msg);
+		}
 		Snmp_pp::CTarget *ctarget = new Snmp_pp::CTarget(address);             // make a target using the address
 		ctarget->set_readcommunity(pConf->readcommunity); // set the read community name (default public)
 		ctarget->set_writecommunity(pConf->writecommunity); // set the write community name (default private)
@@ -227,16 +233,19 @@ void SNMPMasterPort::SnmpCallback( int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu
 		}
 #endif
 		
-		if (!pConf->pPointConf->OidMap.count(vb.get_oid()))
+		auto point_pair = pConf->pPointConf->OidMap.equal_range(vb.get_oid());
+		if (point_pair.first == point_pair.second)
 		{
 			std::cout << "Uknown oid received: " << vb.get_printable_oid() << std::endl;
 			continue;
 		}
-		auto point = pConf->pPointConf->OidMap[vb.get_oid()];
 		
-		for(auto IOHandler_pair : Subscribers)
+		for(auto it=point_pair.first; it!=point_pair.second; ++it)
 		{
-			point->GenerateEvent(*IOHandler_pair.second, vb, this->Name);
+			for(auto IOHandler_pair : Subscribers)
+			{
+				it->second->GenerateEvent(*IOHandler_pair.second, vb, this->Name);
+			}
 		}
 	}
 	
