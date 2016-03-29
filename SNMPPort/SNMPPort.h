@@ -72,89 +72,12 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot);
 	
+	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) = 0;
+
 protected:
 	bool stack_enabled;
 	std::shared_ptr<Snmp_pp::Snmp> snmp;
 	std::shared_ptr<Snmp_pp::Snmp> snmp_trap;
-
-	static std::shared_ptr<Snmp_pp::Snmp> GetSesion(uint16_t UdpPort);
-	static std::shared_ptr<Snmp_pp::Snmp> GetTrapSession(uint16_t UdpPort, const std::string& SourceAddr);
-	
-	static std::shared_ptr<Snmp_pp::v3MP> Getv3MP()
-	{
-		if (auto v3mp = v3mpPtr) return v3mp;
-
-		const char *engineId = "opendatacon";
-		const char *filename = "snmpv3_boot_counter";
-		unsigned int snmpEngineBoots = 0;
-		int status;
-		
-		status = Snmp_pp::getBootCounter(filename, engineId, snmpEngineBoots);
-		if ((status != SNMPv3_OK) && (status < SNMPv3_FILEOPEN_ERROR))
-		{
-			std::cout << "Error loading snmpEngineBoots counter: " << status << std::endl;
-			return nullptr;
-		}
-		snmpEngineBoots++;
-		status = Snmp_pp::saveBootCounter(filename, engineId, snmpEngineBoots);
-		if (status != SNMPv3_OK)
-		{
-			std::cout << "Error saving snmpEngineBoots counter: " << status << std::endl;
-			return nullptr;
-		}
-		
-		std::shared_ptr<Snmp_pp::v3MP> newv3mp(new Snmp_pp::v3MP(engineId, snmpEngineBoots, status));
-		
-		if (status != SNMPv3_MP_OK)
-		{
-			std::cout << "Error initializing v3MP: " << status << std::endl;
-			return nullptr;
-		}
-		v3mpPtr = newv3mp;
-		return newv3mp;
-	}
-	
-	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) = 0;
-	static void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, void *obj)
-	{
-		//TODO: use C++11 managed pointers as this is vulnerable to the pointers being invalid
-		Snmp_pp::GenAddress addr;
-		target.get_address(addr);
-		Snmp_pp::IpAddress from(addr);
-		auto destIP = from.get_printable();
-		auto dest_ptr = static_cast<SNMPPort*>(obj);
-		if(obj != nullptr)
-		{
-			SourcePortMap[destIP] = dest_ptr;
-		}
-		else if(SourcePortMap.count(destIP))
-		{
-			dest_ptr = SourcePortMap[destIP];
-		}
-		else
-		{
-			std::cout << "Trap received from unknown source: " << from.get_printable() << std::endl;
-			return;
-		}
-		if (PortSet.count(dest_ptr))
-		{
-			dest_ptr->SnmpCallback(reason, snmp, pdu, target);
-		}
-		else
-		{
-			std::cout << "Trap received from deleted source: " << from.get_printable() << std::endl;
-			return;
-		}
-	}
-
-protected:
-	static std::unordered_map<std::string, SNMPPort*> SourcePortMap;
-	
-private:
-	static std::shared_ptr<Snmp_pp::v3MP> v3mpPtr;
-	static std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpSessions;
-	static std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpTrapSessions;
-	static std::unordered_set<SNMPPort*> PortSet;
 };
 
 #endif /* SNMPPORT_H_ */

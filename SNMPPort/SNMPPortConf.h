@@ -18,7 +18,7 @@
  *	limitations under the License.
  */
 /*
- * SNMPOutstationPortConf.h
+ * SNMPPortConf.h
  *
  *  Created on: 26/02/2016
  *      Author: Alan Murray

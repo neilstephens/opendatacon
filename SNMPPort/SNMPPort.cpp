@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2016:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -20,16 +20,11 @@
 /*
  * SNMPPort.cpp
  *
- *  Created on: 16/10/2014
+ *  Created on: 26/02/2016
  *      Author: Alan Murray
  */
 #include "SNMPPort.h"
-
-std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SNMPPort::SnmpSessions;
-std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SNMPPort::SnmpTrapSessions;
-std::unordered_map<std::string, SNMPPort*> SNMPPort::SourcePortMap;
-std::unordered_set<SNMPPort*> SNMPPort::PortSet;
-std::shared_ptr<Snmp_pp::v3MP> SNMPPort::v3mpPtr(nullptr);
+#include "SNMPSingleton.h"
 
 SNMPPort::SNMPPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -40,13 +35,11 @@ SNMPPort::SNMPPort(std::string aName, std::string aConfFilename, const Json::Val
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
-	
-	PortSet.insert(this);
 }
 
 SNMPPort::~SNMPPort()
 {
-	PortSet.erase(this);
+	SNMPSingleton::GetInstance().UnregisterPort(this);
 }
 
 void SNMPPort::ProcessElements(const Json::Value& JSONRoot)
@@ -176,61 +169,3 @@ void SNMPPort::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
-std::shared_ptr<Snmp_pp::Snmp> SNMPPort::GetSesion(uint16_t UdpPort)
-{
-	auto session = SnmpSessions[UdpPort].lock();
-	//create a new session if one doesn't already exist
-	if (session)
-	{
-		return session;
-	}
-
-	bool enable_ipv6 = false;
-	int status;
-	session.reset(new Snmp_pp::Snmp(status, UdpPort, enable_ipv6));
-	if ( status != SNMP_CLASS_SUCCESS) {
-		std::cout << "SNMP++ Session Create Fail, " << session->error_msg(status) << std::endl;
-		return nullptr;
-	}
-	SnmpSessions[UdpPort] = session;
-	Snmp_pp::DefaultLog::log()->set_profile("off");
-	session->start_poll_thread(10);
-	return session;
-}
-
-std::shared_ptr<Snmp_pp::Snmp> SNMPPort::GetTrapSession(uint16_t UdpPort, const std::string& SourceAddr )
-{
-	auto session = SnmpTrapSessions[UdpPort].lock();
-	//create a new session if one doesn't already exist
-	if (session)
-	{
-		return session;
-	}
-
-	bool enable_ipv6 = false;
-	int status;
-	session.reset(new Snmp_pp::Snmp(status, 0, enable_ipv6));
-	if ( status != SNMP_CLASS_SUCCESS) {
-		std::cout << "SNMP++ Trap Session Create Fail, " << session->error_msg(status) << std::endl;
-		return nullptr;
-	}
-	session->notify_set_listen_port(UdpPort);
-	SnmpTrapSessions[UdpPort] = session;
-	Snmp_pp::DefaultLog::log()->set_profile("off");
-	session->start_poll_thread(10);
-	
-	Snmp_pp::OidCollection oidc;
-	Snmp_pp::TargetCollection targetc;
-	
-	status = session->notify_register(oidc, targetc, SNMPPort::SnmpCallback, nullptr);
-	if (status != SNMP_CLASS_SUCCESS)
-	{
-		std::string msg = "Stack error: 'SNMP stack trap configuration error'";
-		msg += session->error_msg(status);
-		//auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		//pLoggers->Log(log_entry);
-		throw std::runtime_error(msg);
-	}
-	
-	return session;
-}

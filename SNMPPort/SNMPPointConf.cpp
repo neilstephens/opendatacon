@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2016:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -20,7 +20,7 @@
 /*
  * SNMPPointConf.cpp
  *
- *  Created on: 16/10/2014
+ *  Created on: 26/02/2016
  *      Author: Alan Murray
  */
 
