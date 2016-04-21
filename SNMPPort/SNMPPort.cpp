@@ -28,7 +28,11 @@
 
 SNMPPort::SNMPPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	stack_enabled(false)
+	stack_enabled(false),
+	snmp(nullptr),
+	snmp_trap(nullptr),
+	v3_MP(nullptr),
+	target(nullptr)
 {
 	//the creation of a new SNMPPortConf will get the point details
 	pConf.reset(new SNMPPortConf(ConfFilename));

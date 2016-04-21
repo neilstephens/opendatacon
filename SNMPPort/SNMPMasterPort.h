@@ -43,9 +43,7 @@ public:
 	SNMPMasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 		SNMPPort(aName, aConfFilename, aConfOverrides),
 	pTCPRetryTimer(nullptr),
-	PollScheduler(nullptr),
-	v3_MP(nullptr),
-	target(nullptr)
+	PollScheduler(nullptr)
 	{
 	}
 
@@ -75,8 +73,6 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	std::unique_ptr<Timer_t> pTCPRetryTimer;
 	std::unique_ptr<ASIOScheduler> PollScheduler;
-	std::shared_ptr<Snmp_pp::v3MP> v3_MP;
-	std::unique_ptr<Snmp_pp::SnmpTarget> target;
 };
 
 #endif /* SNMPCLIENTPORT_H_ */

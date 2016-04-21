@@ -63,51 +63,57 @@ public:
 class OidToEvent
 {
 public:
-	OidToEvent(Snmp_pp::Oid oid_) :
-	oid(oid_)
+	OidToEvent(Snmp_pp::Oid oid_, Snmp_pp::SmiUINT32 syntax_) :
+	oid(oid_),
+	syntax(syntax_)
 	{}
 	
 	virtual void GenerateEvent(IOHandler& handler, const Snmp_pp::Vb& value, const std::string& name) = 0;
+	virtual void GetValue(Snmp_pp::Vb& target) = 0;
 	Snmp_pp::Oid oid;
+	Snmp_pp::SmiUINT32 syntax;
 };
 
 class OidToAnalogEvent : public OidToEvent
 {
 public:
-	OidToAnalogEvent(Snmp_pp::Oid oid_, uint32_t index_, uint32_t pollgroup_, const opendnp3::Analog& startval_):
-	OidToEvent(oid_),
+	OidToAnalogEvent(Snmp_pp::Oid oid_, Snmp_pp::SmiUINT32 syntax_, uint32_t index_, uint32_t pollgroup_, const opendnp3::Analog& startval_):
+	OidToEvent(oid_, syntax_),
 	index(index_),
 	pollgroup(pollgroup_),
-	startval(startval_)
+	value(startval_)
 	{ }
 	
 	virtual void GenerateEvent(IOHandler& handler, const Snmp_pp::Vb& value, const std::string& name);
-	
+	virtual void GetValue(Snmp_pp::Vb& vb);
+
 	uint32_t index;
 	uint32_t pollgroup;
-	opendnp3::Analog startval;
+	opendnp3::Analog value;
 };
 
 class OidToBinaryEvent : public OidToEvent
 {
 public:
-	OidToBinaryEvent(Snmp_pp::Oid oid_, uint32_t index_, uint32_t pollgroup_, const opendnp3::Binary& startval_, const std::string& trueVal_, const std::string& falseVal_ ):
-	OidToEvent(oid_),
+	OidToBinaryEvent(Snmp_pp::Oid oid_, Snmp_pp::SmiUINT32 syntax_, uint32_t index_, uint32_t pollgroup_, const opendnp3::Binary& startval_, const std::string& trueVal_, const std::string& falseVal_ ):
+	OidToEvent(oid_,syntax_),
 	index(index_),
 	pollgroup(pollgroup_),
-	startval(startval_),
+	value(startval_),
 	trueVal(trueVal_),
 	falseVal(falseVal_)
 	{ }
 	
 	virtual void GenerateEvent(IOHandler& handler, const Snmp_pp::Vb& value, const std::string& name);
+	virtual void GetValue(Snmp_pp::Vb& vb);
 	
 	uint32_t index;
 	uint32_t pollgroup;
-	opendnp3::Binary startval;
+	opendnp3::Binary value;
 	
 	const std::string trueVal;
 	const std::string falseVal;
+	Snmp_pp::SmiUINT32 syntax;
 };
 
 
@@ -132,7 +138,7 @@ public:
 	std::vector<std::shared_ptr<OidToBinaryEvent>> BinaryIndicies;
 	std::vector<std::shared_ptr<OidToAnalogEvent>> AnalogIndicies;
 	
-	std::multimap<Snmp_pp::Oid, std::shared_ptr<OidToEvent>> OidMap;
+	std::map<Snmp_pp::Oid, std::shared_ptr<OidToEvent>> OidMap;
 
 	std::map<uint32_t, SNMPPollGroup> PollGroups;
 

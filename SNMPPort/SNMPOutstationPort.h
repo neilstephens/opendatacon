@@ -53,15 +53,15 @@ public:
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
 	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
 
-
 	void Connect();
 	void Disconnect();
 
 private:
 
-	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) {};
+	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target);
 	
 	void StateListener(opendnp3::ChannelState state);
+	
 };
 
 #endif /* SNMPSERVERPORT_H_ */

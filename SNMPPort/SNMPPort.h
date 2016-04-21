@@ -78,6 +78,8 @@ protected:
 	bool stack_enabled;
 	std::shared_ptr<Snmp_pp::Snmp> snmp;
 	std::shared_ptr<Snmp_pp::Snmp> snmp_trap;
+	std::shared_ptr<Snmp_pp::v3MP> v3_MP;
+	std::unique_ptr<Snmp_pp::SnmpTarget> target;
 };
 
 #endif /* SNMPPORT_H_ */

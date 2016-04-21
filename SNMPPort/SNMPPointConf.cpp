@@ -106,8 +106,41 @@ void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<std:
 			std::cout<<"A point needs an \"Oid\" : '"<<Ranges[n].toStyledString()<<"'"<<std::endl;
 			continue;
 		}
+		Snmp_pp::SmiUINT32 syntax;
+		if(!Ranges[n]["Syntax"].isNull())
+		{
+			auto str_syntax = Ranges[n]["Syntax"].asString();
+			if (str_syntax=="BITS") syntax = sNMP_SYNTAX_BITS;
+			else if (str_syntax=="CNTR32") syntax = sNMP_SYNTAX_CNTR32;
+			else if (str_syntax=="CNTR64") syntax = sNMP_SYNTAX_CNTR64;
+			else if (str_syntax=="EOFMIBVIEW") syntax = sNMP_SYNTAX_ENDOFMIBVIEW;
+			else if (str_syntax=="GAUGE32") syntax = sNMP_SYNTAX_GAUGE32;
+			else if (str_syntax=="INT") syntax = sNMP_SYNTAX_INT;
+			else if (str_syntax=="INT32") syntax = sNMP_SYNTAX_INT32;
+			else if (str_syntax=="IPADDR") syntax = sNMP_SYNTAX_IPADDR;
+			else if (str_syntax=="NOSUCHINSTANCE") syntax = sNMP_SYNTAX_NOSUCHINSTANCE;
+			else if (str_syntax=="NOSUCHOBJECT") syntax = sNMP_SYNTAX_NOSUCHOBJECT;
+			else if (str_syntax=="NULL") syntax = sNMP_SYNTAX_NULL;
+			else if (str_syntax=="OCTETS") syntax = sNMP_SYNTAX_OCTETS;
+			else if (str_syntax=="OID") syntax = sNMP_SYNTAX_OID;
+			else if (str_syntax=="OPAQUE") syntax = sNMP_SYNTAX_OPAQUE;
+			else if (str_syntax=="SEQUENCE") syntax = sNMP_SYNTAX_SEQUENCE;
+			else if (str_syntax=="TIMETICKS") syntax = sNMP_SYNTAX_TIMETICKS;
+			else if (str_syntax=="UINT32") syntax = sNMP_SYNTAX_UINT32;
+			else {
+				std::string msg = "SNMPPort configuration error: Bad SNMP Syntax: ";
+				msg + Ranges[n].toStyledString();
+				//auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+				//pLoggers->Log(log_entry);
+				throw std::runtime_error(msg);
+			}
+		}
+		else
+		{
+			syntax = sNMP_SYNTAX_OCTETS;
+		}
 
-		std::shared_ptr<OidToBinaryEvent> obe(new OidToBinaryEvent(oid,idx,pollgroup,startval,trueVal,falseVal));
+		std::shared_ptr<OidToBinaryEvent> obe(new OidToBinaryEvent(oid,syntax,idx,pollgroup,startval,trueVal,falseVal));
 		ReadGroup.emplace_back(obe);
 		OidMap.emplace(oid,obe);
 	}
@@ -149,8 +182,41 @@ void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<std:
 			std::cout<<"A point needs an \"Oid\" : '"<<Ranges[n].toStyledString()<<"'"<<std::endl;
 			continue;
 		}
+		Snmp_pp::SmiUINT32 syntax;
+		if(!Ranges[n]["Syntax"].isNull())
+		{
+			auto str_syntax = Ranges[n]["Syntax"].asString();
+			if (str_syntax=="BITS") syntax = sNMP_SYNTAX_BITS;
+			else if (str_syntax=="CNTR32") syntax = sNMP_SYNTAX_CNTR32;
+			else if (str_syntax=="CNTR64") syntax = sNMP_SYNTAX_CNTR64;
+			else if (str_syntax=="EOFMIBVIEW") syntax = sNMP_SYNTAX_ENDOFMIBVIEW;
+			else if (str_syntax=="GAUGE32") syntax = sNMP_SYNTAX_GAUGE32;
+			else if (str_syntax=="INT") syntax = sNMP_SYNTAX_INT;
+			else if (str_syntax=="INT32") syntax = sNMP_SYNTAX_INT32;
+			else if (str_syntax=="IPADDR") syntax = sNMP_SYNTAX_IPADDR;
+			else if (str_syntax=="NOSUCHINSTANCE") syntax = sNMP_SYNTAX_NOSUCHINSTANCE;
+			else if (str_syntax=="NOSUCHOBJECT") syntax = sNMP_SYNTAX_NOSUCHOBJECT;
+			else if (str_syntax=="NULL") syntax = sNMP_SYNTAX_NULL;
+			else if (str_syntax=="OCTETS") syntax = sNMP_SYNTAX_OCTETS;
+			else if (str_syntax=="OID") syntax = sNMP_SYNTAX_OID;
+			else if (str_syntax=="OPAQUE") syntax = sNMP_SYNTAX_OPAQUE;
+			else if (str_syntax=="SEQUENCE") syntax = sNMP_SYNTAX_SEQUENCE;
+			else if (str_syntax=="TIMETICKS") syntax = sNMP_SYNTAX_TIMETICKS;
+			else if (str_syntax=="UINT32") syntax = sNMP_SYNTAX_UINT32;
+			else {
+				std::string msg = "SNMPPort configuration error: Bad SNMP Syntax: ";
+				msg + Ranges[n].toStyledString();
+				//auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+				//pLoggers->Log(log_entry);
+				throw std::runtime_error(msg);
+			}
+		}
+		else
+		{
+			syntax = sNMP_SYNTAX_INT;
+		}
 		
-		std::shared_ptr<OidToAnalogEvent> oae(new OidToAnalogEvent(oid,idx,pollgroup,startval));
+		std::shared_ptr<OidToAnalogEvent> oae(new OidToAnalogEvent(oid,syntax,idx,pollgroup,startval));
 		ReadGroup.emplace_back(oae);
 		OidMap.emplace(oid, oae);
 	}
@@ -217,6 +283,10 @@ void OidToBinaryEvent::GenerateEvent(IOHandler &handler, const Snmp_pp::Vb &vb, 
 			break;
 			
 		case sNMP_SYNTAX_OCTETS:
+		case sNMP_SYNTAX_BITS: // obsolete
+		case sNMP_SYNTAX_OID:
+		case sNMP_SYNTAX_IPADDR:
+		case sNMP_SYNTAX_OPAQUE:
 		{
 			const unsigned long ptr_maxlen = 64;
 			unsigned long ptr_len;
@@ -291,11 +361,7 @@ void OidToBinaryEvent::GenerateEvent(IOHandler &handler, const Snmp_pp::Vb &vb, 
 			return;
 			break;
 			
-		case sNMP_SYNTAX_BITS: // obsolete
 		case sNMP_SYNTAX_NULL: // invalid
-		case sNMP_SYNTAX_OID:
-		case sNMP_SYNTAX_IPADDR:
-		case sNMP_SYNTAX_OPAQUE:
 		default:
 			std::cout << "Unsupported SNMP object: " << vb.get_syntax() << " received." << std::endl;
 			return;
@@ -369,3 +435,129 @@ void OidToAnalogEvent::GenerateEvent(IOHandler &handler, const Snmp_pp::Vb &vb, 
 	
 	handler.Event(opendnp3::Analog(dvalue),this->index,name);
 }
+
+void OidToAnalogEvent::GetValue(Snmp_pp::Vb& vb)
+{
+	double val = this->value.value;
+	switch (syntax)
+	{
+		case sNMP_SYNTAX_INT32: // same as sNMP_SYNTAX_INT
+		{
+			vb.set_value((long)val);
+		}
+			break;
+		case sNMP_SYNTAX_OPAQUE:
+		{
+			char buf[128];
+			sprintf(buf,"%f",val);
+			vb.set_value(Snmp_pp::OpaqueStr(buf));
+		}
+			break;
+		case sNMP_SYNTAX_OCTETS:
+		{
+			char buf[128];
+			sprintf(buf,"%f",val);
+			vb.set_value(buf);
+		}
+			break;
+		case sNMP_SYNTAX_CNTR32:
+		{
+			vb.set_value(Snmp_pp::Counter32(val));
+		}
+			break;
+		case sNMP_SYNTAX_TIMETICKS:
+		{
+			vb.set_value(Snmp_pp::TimeTicks(val));
+		}
+			break;
+		case sNMP_SYNTAX_UINT32:     // same as sNMP_SYNTAX_GAUGE32
+		{
+			vb.set_value((unsigned long)val);
+		}
+			break;
+		case sNMP_SYNTAX_CNTR64:
+		{
+			vb.set_value(Snmp_pp::Counter64(val));
+		}
+			break;
+			
+		case sNMP_SYNTAX_ENDOFMIBVIEW:
+		case sNMP_SYNTAX_NOSUCHINSTANCE:
+		case sNMP_SYNTAX_NOSUCHOBJECT:
+			std::cout << "SNMP Exception: " << syntax << " occured." << std::endl;
+			return;
+			break;
+			
+		case sNMP_SYNTAX_BITS: // obsolete
+		case sNMP_SYNTAX_NULL: // invalid
+		case sNMP_SYNTAX_OID:
+		case sNMP_SYNTAX_IPADDR:
+		default:
+			std::cout << "Unsupported SNMP object: " << syntax << " received." << std::endl;
+			return;
+			break;
+	}
+}
+
+void OidToBinaryEvent::GetValue(Snmp_pp::Vb& vb)
+{
+	bool val = this->value.value;
+	switch (syntax)
+	{
+		case sNMP_SYNTAX_INT32: // same as sNMP_SYNTAX_INT
+		{
+			vb.set_value((long)val);
+		}
+			break;
+		case sNMP_SYNTAX_OPAQUE:
+		{
+			const char* buf = val ? trueVal.c_str() : falseVal.c_str();
+			vb.set_value(Snmp_pp::OpaqueStr(buf));
+		}
+			break;
+		case sNMP_SYNTAX_OCTETS:
+		{
+			const char* buf = val ? trueVal.c_str() : falseVal.c_str();
+			vb.set_value(buf);
+		}
+			break;
+		case sNMP_SYNTAX_CNTR32:
+		{
+			vb.set_value(Snmp_pp::Counter32(val));
+		}
+			break;
+		case sNMP_SYNTAX_TIMETICKS:
+		{
+			vb.set_value(Snmp_pp::TimeTicks(val));
+		}
+			break;
+		case sNMP_SYNTAX_UINT32:     // same as sNMP_SYNTAX_GAUGE32
+		{
+			vb.set_value((unsigned long)val);
+		}
+			break;
+		case sNMP_SYNTAX_CNTR64:
+		{
+			vb.set_value(Snmp_pp::Counter64(val));
+		}
+			break;
+			
+		case sNMP_SYNTAX_ENDOFMIBVIEW:
+		case sNMP_SYNTAX_NOSUCHINSTANCE:
+		case sNMP_SYNTAX_NOSUCHOBJECT:
+			std::cout << "SNMP Exception: " << syntax << " occured." << std::endl;
+			return;
+			break;
+			
+		case sNMP_SYNTAX_BITS: // obsolete
+		case sNMP_SYNTAX_NULL: // invalid
+		case sNMP_SYNTAX_OID:
+		case sNMP_SYNTAX_IPADDR:
+		default:
+			std::cout << "Unsupported SNMP object: " << syntax << " received." << std::endl;
+			return;
+			break;
+	}
+	vb.set_syntax(syntax);
+}
+

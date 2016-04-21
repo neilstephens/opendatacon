@@ -62,16 +62,23 @@ std::shared_ptr<Snmp_pp::v3MP> SNMPSingleton::Getv3MP()
 
 void SNMPSingleton::RegisterPort(const std::string& destIP, SNMPPort* target)
 {
-	SourcePortMap[destIP] = target;
 	PortSet.insert(target);
+	SourcePortMap[destIP] = target;
 }
 
 void SNMPSingleton::UnregisterPort(SNMPPort* target)
 {
 	PortSet.erase(target);
+	for(auto destIP_target_pair : SourcePortMap)
+	{
+		if (destIP_target_pair.second == target)
+		{
+			SourcePortMap.erase(destIP_target_pair.first);
+		}
+	}
 }
 
-std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetSession(uint16_t UdpPort)
+std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetPollSession(uint16_t UdpPort)
 {
 	auto session = GetInstance().SnmpSessions[UdpPort].lock();
 	//create a new session if one doesn't already exist
@@ -93,7 +100,7 @@ std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetSession(uint16_t UdpPort)
 	return session;
 }
 
-std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetTrapSession(uint16_t UdpPort, const std::string& SourceAddr )
+std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetListenSession(uint16_t UdpPort)
 {
 	auto session = GetInstance().SnmpTrapSessions[UdpPort].lock();
 	//create a new session if one doesn't already exist
@@ -111,7 +118,6 @@ std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetTrapSession(uint16_t UdpPort, c
 	}
 	session->notify_set_listen_port(UdpPort);
 	GetInstance().SnmpTrapSessions[UdpPort] = session;
-	Snmp_pp::DefaultLog::log()->set_profile("off");
 	session->start_poll_thread(10);
 	
 	Snmp_pp::OidCollection oidc;

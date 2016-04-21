@@ -48,22 +48,23 @@ public:
 	
 	void RegisterPort(const std::string& destIP, SNMPPort* target);
 	void UnregisterPort(SNMPPort* target);
-	std::shared_ptr<Snmp_pp::Snmp> GetSession(uint16_t UdpPort);
-	std::shared_ptr<Snmp_pp::Snmp> GetTrapSession(uint16_t UdpPort, const std::string& SourceAddr );
+	std::shared_ptr<Snmp_pp::Snmp> GetPollSession(uint16_t UdpPort);
+	std::shared_ptr<Snmp_pp::Snmp> GetListenSession(uint16_t UdpPort);
 	std::shared_ptr<Snmp_pp::v3MP> Getv3MP();
 
 private:
 	void SnmpCallbackImpl(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, void *obj);
 	
 	std::unordered_map<std::string, SNMPPort*> SourcePortMap;
+	std::unordered_set<SNMPPort*> PortSet;
+	
 	std::shared_ptr<Snmp_pp::v3MP> v3mpPtr;
 	std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpSessions;
 	std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpTrapSessions;
-	std::unordered_set<SNMPPort*> PortSet;
 	
 	SNMPSingleton()
 	{
-		Snmp_pp::DefaultLog::log()->set_profile("off");
+		//Snmp_pp::DefaultLog::log()->set_profile("off");
 		Snmp_pp::Snmp::socket_startup();  // Initialize socket subsystem
 	}
 	
