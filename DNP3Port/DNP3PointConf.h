@@ -57,6 +57,8 @@ public:
 	bool UnsolClass3;
 
 	// Master Station configuration
+	uint32_t TCPConnectRetryPeriodMinms;
+	uint32_t TCPConnectRetryPeriodMaxms;
 	uint32_t MasterResponseTimeoutms; /// Application layer response timeout
 	bool MasterRespondTimeSync; /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	bool DoUnsolOnStartup; /// If true, the master will enable unsol on startup
@@ -81,6 +83,8 @@ public:
 	bool DoAssignClassOnStartup;
 
 	// Outstation configuration
+	uint32_t TCPListenRetryPeriodMinms;
+	uint32_t TCPListenRetryPeriodMaxms;
 	uint8_t	MaxControlsPerRequest;
 	uint32_t MaxTxFragSize;
 	uint32_t SelectTimeoutms; /// How long the outstation will allow an operate to proceed after a prior select
