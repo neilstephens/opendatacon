@@ -282,18 +282,18 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 }
 void DataConcentrator::BuildOrRebuild()
 {
-	std::cout << "User Interfaces" << std::endl;
+	std::cout << "Initialising Interfaces" << std::endl;
 	for(auto& Name_n_UI : Interfaces)
 	{
 		// TODO: BuildOrRebuild for UserInterfaces
 		// Name_n_UI.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
 	}
-	std::cout << "Ports" << std::endl;
+	std::cout << "Initialising DataPorts" << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
 	}
-	std::cout << "Connectors" << std::endl;
+	std::cout << "Initialising DataConnectors" << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
@@ -301,6 +301,7 @@ void DataConcentrator::BuildOrRebuild()
 }
 void DataConcentrator::Run()
 {
+	std::cout << "Enabling Interfaces... " << std::endl;
 	for(auto& Name_n_UI : Interfaces)
 	{
 		IOS.post([&]()
@@ -308,6 +309,7 @@ void DataConcentrator::Run()
 		               Name_n_UI.second->Enable();
 			   });
 	}
+	std::cout << "Enabling DataConnectors... " << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		IOS.post([&]()
@@ -315,6 +317,7 @@ void DataConcentrator::Run()
 		               Name_n_Conn.second->Enable();
 			   });
 	}
+	std::cout << "Enabling DataPorts... " << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
 		IOS.post([&]()
@@ -322,25 +325,20 @@ void DataConcentrator::Run()
 		               Name_n_Port.second->Enable();
 			   });
 	}
-
+	std::cout << "Up and running." << std::endl;
 	IOS.run();
-	std::cout << "done" << std::endl;
 
-	std::cout << "Destoying Interfaces... ";
+	std::cout << "Destoying Interfaces... " << std::endl;
 	Interfaces.clear();
-	std::cout << "done" << std::endl;
 
-	std::cout << "Destoying DataConnectors... ";
+	std::cout << "Destoying DataConnectors... " << std::endl;
 	DataConnectors.clear();
-	std::cout << "done" << std::endl;
 
-	std::cout << "Destoying DataPorts... ";
+	std::cout << "Destoying DataPorts... " << std::endl;
 	DataPorts.clear();
-	std::cout << "done" << std::endl;
 
-	std::cout << "Shutting down DNP3 manager... ";
+	std::cout << "Shutting down DNP3 manager... " << std::endl;
 	DNP3Mgr.Shutdown();
-	std::cout << "done" << std::endl;
 }
 
 void DataConcentrator::RestartPortOrConn(std::stringstream& args)
@@ -386,21 +384,21 @@ void DataConcentrator::EnablePortOrConn(std::stringstream& args, bool enable)
 
 void DataConcentrator::Shutdown()
 {
-	std::cout << "done" << std::endl << "Disabling user interfaces... ";
+	std::cout << "Disabling user interfaces... " << std::endl;
 	for(auto& Name_n_UI : Interfaces)
 	{
 		Name_n_UI.second->Disable();
 	}
-	std::cout << "done" << std::endl << "Disabling data connectors... ";
+	std::cout << "Disabling data connectors... " << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
 	}
-	std::cout << "done" << std::endl << "Disabling data ports... ";
+	std::cout << "Disabling data ports... " << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->Disable();
 	}
-	std::cout << "done" << std::endl << "Finishing asynchronous tasks... ";
+	std::cout << "Finishing asynchronous tasks... " << std::endl;
 	ios_working.reset();
 }
