@@ -210,9 +210,51 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				std::cout<<"Warning: invalid port config: need at least Type, Name, ConfFilename: \n'"<<Ports[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 				continue;
 			}
+
+			std::function<void (IOHandler*)> set_init_mode;
+			if(!Ports[n]["InitState"].isNull())
+			{
+				if(Ports[n]["InitState"].asString() == "ENABLED")
+				{
+					set_init_mode = [](IOHandler* aIOH)
+					{
+						aIOH->InitState = InitState_t::ENABLED;
+					};
+				}
+				else if(Ports[n]["InitState"].asString() == "DISABLED")
+				{
+					set_init_mode = [](IOHandler* aIOH)
+					{
+						aIOH->InitState = InitState_t::DISABLED;
+					};
+				}
+				else if(Ports[n]["InitState"].asString() == "DELAYED")
+				{
+					uint16_t delay = 0;
+					if(!Ports[n]["EnableDelayms"].isNull())
+					{
+						delay = Ports[n]["EnableDelayms"].asUInt();
+					}
+					else
+					{
+						std::cout<<"Warning: invalid port config: missing 'EnableDelayms': \n'"<<Ports[n].toStyledString()<<"\n' : defaulting to 0"<<std::endl;
+					}
+					set_init_mode = [=](IOHandler* aIOH)
+					{
+						aIOH->InitState = InitState_t::DELAYED;
+						aIOH->EnableDelayms = delay;
+					};
+				}
+			}
+			else
+			{
+				set_init_mode = [](IOHandler* aIOH){};
+			}
+
 			if(Ports[n]["Type"].asString() == "Null")
 			{
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
 
@@ -235,6 +277,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
 
@@ -258,11 +301,13 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				std::cout<<"Mapping '"<<Ports[n]["Type"].asString()<<"' to null port..."<<std::endl;
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
 
 			//call the creation function and wrap the returned pointer to a new port
 			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
+			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 		}
 	}
 
@@ -277,6 +322,31 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				std::cout<<"Warning: invalid Connector config: need at least Name, ConfFilename: \n'"<<Connectors[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 			}
 			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void(*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
+			if(!Connectors[n]["InitState"].isNull())
+			{
+				if(Connectors[n]["InitState"].asString() == "ENABLED")
+				{
+					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::ENABLED;
+				}
+				else if(Connectors[n]["InitState"].asString() == "DISABLED")
+				{
+					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::DISABLED;
+				}
+				else if(Connectors[n]["InitState"].asString() == "DELAYED")
+				{
+					uint16_t delay = 0;
+					if(!Connectors[n]["EnableDelayms"].isNull())
+					{
+						delay = Connectors[n]["EnableDelayms"].asUInt();
+					}
+					else
+					{
+						std::cout<<"Warning: invalid Connector config: missing 'EnableDelayms': \n'"<<Connectors[n].toStyledString()<<"\n' : defaulting to 0"<<std::endl;
+					}
+					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::DELAYED;
+					DataConnectors.at(Connectors[n]["Name"].asString())->EnableDelayms = delay;
+				}
+			}
 		}
 	}
 }
@@ -301,30 +371,57 @@ void DataConcentrator::BuildOrRebuild()
 }
 void DataConcentrator::Run()
 {
-	std::cout << "Enabling Interfaces... " << std::endl;
-	for(auto& Name_n_UI : Interfaces)
-	{
-		IOS.post([&]()
-		         {
-		               Name_n_UI.second->Enable();
-			   });
-	}
 	std::cout << "Enabling DataConnectors... " << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
-		IOS.post([&]()
-		         {
-		               Name_n_Conn.second->Enable();
-			   });
+		if(Name_n_Conn.second->InitState == InitState_t::ENABLED)
+		{
+			IOS.post([&]()
+				   {
+					   Name_n_Conn.second->Enable();
+				   });
+		}
+		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
+		{
+			//FIXME: this leaks a timer on the heap!
+			auto pTimer = new asio::basic_waitable_timer<std::chrono::steady_clock>(IOS);
+			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
+			pTimer->async_wait([&](asio::error_code err_code)
+						 {
+							 Name_n_Conn.second->Enable();
+						 });
+		}
 	}
 	std::cout << "Enabling DataPorts... " << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
+		if(Name_n_Port.second->InitState == InitState_t::ENABLED)
+		{
+			IOS.post([&]()
+				   {
+					   Name_n_Port.second->Enable();
+				   });
+		}
+		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
+		{
+			//FIXME: this leaks a timer on the heap!
+			auto pTimer = new asio::basic_waitable_timer<std::chrono::steady_clock>(IOS);
+			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
+			pTimer->async_wait([&](asio::error_code err_code)
+						 {
+							 Name_n_Port.second->Enable();
+						 });
+		}
+	}
+	std::cout << "Enabling Interfaces... " << std::endl;
+	for(auto& Name_n_UI : Interfaces)
+	{
 		IOS.post([&]()
-		         {
-		               Name_n_Port.second->Enable();
+			   {
+				   Name_n_UI.second->Enable();
 			   });
 	}
+
 	std::cout << "Up and running." << std::endl;
 	IOS.run();
 

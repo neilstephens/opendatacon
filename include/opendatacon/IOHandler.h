@@ -88,6 +88,8 @@ enum class AnalogOutputStatusQuality: uint8_t
 	RESERVED = 0x80
 };
 
+typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
+
 class IOHandler
 {
 public:
@@ -145,6 +147,9 @@ public:
 	//Connection events:
 	virtual std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) = 0;
 
+	virtual void Enable()=0;
+	virtual void Disable()=0;
+
 	void Subscribe(IOHandler* pIOHandler, std::string aName);
 	void AddLogSubscriber(openpal::ILogHandler* logger);
 	void SetLogLevel(openpal::LogFilters LOG_LEVEL);
@@ -156,6 +161,8 @@ public:
 	openpal::LogFilters LOG_LEVEL;
 	asio::io_service* pIOS;
 	bool enabled;
+	InitState_t InitState;
+	uint16_t EnableDelayms;
 
 	static std::unordered_map<std::string, IOHandler*>& GetIOHandlers();
 
