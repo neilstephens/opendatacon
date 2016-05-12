@@ -86,7 +86,7 @@ void SimPort::PortUp()
 			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 			pTimer->async_wait([=](asio::error_code err_code)
 			                   {
-			                         if(err_code != asio::error::operation_aborted)
+							 if(enabled)
 								 SpawnEvent(pMean, std_dev, interval, index, pTimer, seed);
 						 });
 		}
@@ -95,21 +95,13 @@ void SimPort::PortUp()
 
 void SimPort::PortDown()
 {
-	while(Timers.size() > 0)
-	{
-		pTimer_t pTimer = Timers.back();
-		Timers.pop_back();
+	for(auto pTimer : Timers)
 		pTimer->cancel();
-		pTimer->wait(); //waiting ensures all timers will be destroyed here
-	}
+	Timers.clear();
 }
 
 void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
 {
-	//This breaks us out of the timer cycle if the timer was cancelled (port disabled), but we were already queued
-	if(!enabled)
-		return;
-
 	//Restart the timer
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 
@@ -124,9 +116,9 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
 	                   {
-	                         if(err_code != asio::error::operation_aborted)
+					 if(enabled)
 						 SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
-	//else cancelled - break timer cycle
+					//else - break timer cycle
 				 });
 }
 
