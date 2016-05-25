@@ -40,13 +40,7 @@ using namespace opendnp3;
 class SNMPMasterPort: public SNMPPort
 {
 public:
-	SNMPMasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-		SNMPPort(aName, aConfFilename, aConfOverrides),
-	pTCPRetryTimer(nullptr),
-	PollScheduler(nullptr)
-	{
-	}
-
+	SNMPMasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 	~SNMPMasterPort();
 
 	// Implement SNMPPort
@@ -68,8 +62,11 @@ private:
 private:
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
-	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target);
-
+	virtual void ProcessResponse(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target);
+	virtual void ProcessGet(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target);
+	virtual void ProcessTrap(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target);
+	virtual void ProcessReport(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target);
+	
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	std::unique_ptr<Timer_t> pTCPRetryTimer;
 	std::unique_ptr<ASIOScheduler> PollScheduler;

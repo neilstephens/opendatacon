@@ -60,8 +60,8 @@ void SNMPOutstationPort::Enable()
 
 void SNMPOutstationPort::Connect()
 {
-	if(!enabled) return;
-	if (stack_enabled) return;
+	if (!enabled) return;
+	stack_enabled = true;
 }
 
 void SNMPOutstationPort::Disable()
@@ -78,8 +78,7 @@ void SNMPOutstationPort::Disconnect()
 
 void SNMPOutstationPort::StateListener(opendnp3::ChannelState state)
 {
-	if(!enabled)
-		return;
+	if (!enabled) return;
 
 	if(state == opendnp3::ChannelState::OPEN)
 	{
@@ -101,11 +100,21 @@ void SNMPOutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	SNMPPortConf* pConf = static_cast<SNMPPortConf*>(this->pConf.get());
 	
 	std::string log_id;
-	log_id = "mast_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
+	log_id = "outs_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
 	
-	// Get a poll session to poll the SNMP outstation with
-	snmp = SNMPSingleton::GetInstance().GetPollSession(pConf->mAddrConf.SourcePort);
-	if (snmp == nullptr)
+	/// Get a listening session for receiving Get requests
+	snmp_inbound = SNMPSingleton::GetInstance().GetListenSession(pConf->mAddrConf.Port);
+	if (snmp_inbound == nullptr)
+	{
+		std::string msg = Name + ": Stack error: 'SNMP trap stack creation failed.'";
+		auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		throw std::runtime_error(msg);
+	}
+	
+	/// Get a poll session to send send traps with
+	snmp_outbound = SNMPSingleton::GetInstance().GetPollSession(pConf->mAddrConf.SourcePort);
+	if (snmp_outbound == nullptr)
 	{
 		std::string msg = Name + ": Stack error: 'SNMP stack creation failed.'";
 		auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
@@ -113,23 +122,13 @@ void SNMPOutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 		throw std::runtime_error(msg);
 	}
 	
-	// Create destination target
+	/// Create destination IP address for sending traps to
 	Snmp_pp::UdpAddress address(pConf->mAddrConf.IP.c_str());      // make a SNMP++ Generic address
-	address.set_port(pConf->mAddrConf.Port);
+	address.set_port(pConf->mAddrConf.TrapPort);
 	if ( !address.valid() )
 	{
 		// check validity of address
 		std::string msg = Name + ": Stack error: 'SNMP stack creation failed, invalid IP address or hostname'";
-		auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-		throw std::runtime_error(msg);
-	}
-	
-	// Get a listening session for outstations to send SNMP traps to
-	snmp_trap = SNMPSingleton::GetInstance().GetListenSession(pConf->mAddrConf.TrapPort);
-	if ( snmp_trap == nullptr)
-	{
-		std::string msg = Name + ": Stack error: 'SNMP trap stack creation failed.'";
 		auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
 		throw std::runtime_error(msg);
@@ -179,135 +178,56 @@ void SNMPOutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	target->set_retry(pConf->retries);           // set the number of auto retries (default 1)
 	target->set_timeout(pConf->timeout);         // set timeout (default 1000ms)
 	
-	SNMPSingleton::GetInstance().RegisterPort(Snmp_pp::IpAddress(address).get_printable(),this);
+	SNMPSingleton::GetInstance().RegisterPort(Snmp_pp::IpAddress(address).get_printable(),pConf->mAddrConf.Port,this);
 }
 
-void SNMPOutstationPort::SnmpCallback( int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+void SNMPOutstationPort::ProcessResponse(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
 {
+	std::string msg = Name + ": received invalid PDU (response)";
+	auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+	pLoggers->Log(log_entry);
+}
+
+void SNMPOutstationPort::ProcessGet(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+{
+	if (!stack_enabled) return;
+	
 	Snmp_pp::Vb vb;
-	int pdu_error;
-	
-	// late async requests and traps could come in regardless of the port being enabled or not
-	//if (!enabled) return;
-	
-	if ((reason != SNMP_CLASS_ASYNC_RESPONSE) && (reason != SNMP_CLASS_NOTIFICATION))
-	{
-		std::string msg = Name + ": " + snmp->error_msg(reason);
-		auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-		return;
-	}
-	
-	pdu_error = pdu.get_error_status();
-	if (pdu_error){
-		std::string msg = Name + ": Response contains error: " + snmp->error_msg(pdu_error);
-		auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-		return;
-	}
-	
 	auto pConf = static_cast<SNMPPortConf*>(this->pConf.get());
 	
-	auto pdu_type = pdu.get_type();
-	
-	/*
-	 #define sNMP_PDU_GET	    (aSN_CONTEXT | aSN_CONSTRUCTOR | 0x0)
-	 #define sNMP_PDU_GETNEXT    (aSN_CONTEXT | aSN_CONSTRUCTOR | 0x1)
-	 #define sNMP_PDU_RESPONSE   (aSN_CONTEXT | aSN_CONSTRUCTOR | 0x2)
-	 #define sNMP_PDU_SET	    (aSN_CONTEXT | aSN_CONSTRUCTOR | 0x3)
-	 #define sNMP_PDU_V1TRAP     (aSN_CONTEXT | aSN_CONSTRUCTOR | 0x4)
-	 #define sNMP_PDU_GETBULK    (aSN_CONTEXT | aSN_CONSTRUCTOR | 0x5)
-	 #define sNMP_PDU_INFORM     (aSN_CONTEXT | aSN_CONSTRUCTOR | 0x6)
-	 #define sNMP_PDU_TRAP       (aSN_CONTEXT | aSN_CONSTRUCTOR | 0x7)
-	 #define sNMP_PDU_REPORT     (aSN_CONTEXT | aSN_CONSTRUCTOR | 0x8)
-	 */
-	
-	switch (pdu_type)
+	for (int i = 0; i < pdu.get_vb_count(); i++)
 	{
-		case sNMP_PDU_RESPONSE:
-		{/// Response to an inform acknowledging data was received
-		}
-			break;
-			
-		case sNMP_PDU_GET:
-		case sNMP_PDU_GETNEXT:
-		case sNMP_PDU_GETBULK:
-		{/// SNMP informs require a response, just echo what was received back to acknowledge what we received
-			for (int i = 0; i < pdu.get_vb_count(); i++)
-			{
-				pdu.get_vb(vb, i);
-				
-				auto point_pair = pConf->pPointConf->OidMap.equal_range(vb.get_oid());
-				if (point_pair.first == point_pair.second)
-				{
-					std::string msg = Name + ": Uknown oid received: " + vb.get_printable_oid();
-					auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-					pLoggers->Log(log_entry);
-					continue;
-				}
-				
-				// Set the vb value to the database value
-				point_pair.first->second->GetValue(vb);
-				pdu.set_vb(vb, i);
-			}
-			snmp->response(pdu, target);
-		}
-			break;
-			
-		case sNMP_PDU_V1TRAP:
-		case sNMP_PDU_TRAP:
-		case sNMP_PDU_SET:
-		case sNMP_PDU_INFORM:
-		{/// Either solicited or unsolicited data
-			for (int i = 0; i < pdu.get_vb_count(); i++)
-			{
-				pdu.get_vb(vb, i);
-				
-				auto point_pair = pConf->pPointConf->OidMap.equal_range(vb.get_oid());
-				if (point_pair.first == point_pair.second)
-				{
-					std::string msg = Name + ": Uknown oid received: " + vb.get_printable_oid();
-					auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-					pLoggers->Log(log_entry);
-					continue;
-				}
-				
-				for(auto it=point_pair.first; it!=point_pair.second; ++it)
-				{
-					for(auto IOHandler_pair : Subscribers)
-					{
-						it->second->GenerateEvent(*IOHandler_pair.second, vb, this->Name);
-					}
-				}
-			}
-			
-			/// SNMP informs require a response, just echo what was received back to acknowledge what we received
-			if (pdu_type == sNMP_PDU_INFORM) {
-				std::string msg = Name + ": sending response to inform";
-				auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-				pLoggers->Log(log_entry);
-				snmp->response(pdu, target);
-			}
-		}
-			break;
-			
-		case sNMP_PDU_REPORT:
-		{/// A REPORT operation is an indication of some core SNMP communication error or bootstrapping response.
-			std::string msg = Name + ": Received a report pdu: " + vb.get_printable_oid();
-			auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-		}
-			break;
-			
-		default:
+		pdu.get_vb(vb, i);
+		
+		auto point_pair = pConf->pPointConf->OidMap.equal_range(vb.get_oid());
+		if (point_pair.first == point_pair.second)
 		{
-			std::string msg = Name + ": Invalid pdu type received: " + vb.get_printable_oid();
-			auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+			std::string msg = Name + ": Uknown oid received: " + vb.get_printable_oid();
+			auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
+			continue;
 		}
+		
+		// Set the vb value to the database value
+		point_pair.first->second->GetValue(vb);
+		pdu.set_vb(vb, i);
 	}
+	snmp->response(pdu, target);
 }
 
+void SNMPOutstationPort::ProcessTrap(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+{
+	std::string msg = Name + ": received invalid PDU (trap)";
+	auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+	pLoggers->Log(log_entry);
+}
+
+void SNMPOutstationPort::ProcessReport(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+{
+	std::string msg = Name + ": recevied invalid PDU (report)";
+	auto log_entry = openpal::LogEntry("SNMPOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+	pLoggers->Log(log_entry);
+}
 
 template<typename T>
 inline opendnp3::CommandStatus SNMPOutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
@@ -358,9 +278,85 @@ inline opendnp3::CommandStatus SNMPOutstationPort::PerformT(T& arCommand, uint16
 	return opendnp3::CommandStatus::SUCCESS;
 }
 
-std::future<opendnp3::CommandStatus> SNMPOutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> SNMPOutstationPort::SendTrap(OidToEvent& point)
+{
+	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
+	auto pConf = static_cast<SNMPPortConf*>(this->pConf.get());
+	
+	/// build up SNMP++ object needed
+	Snmp_pp::Pdu pdu;                               // construct a Pdu object
+	Snmp_pp::Vb vb;                                 // construct a Vb object
+	
+#ifdef _SNMPv3
+	pdu.set_security_level(pConf->securityLevel);
+	pdu.set_context_name(pConf->contextName);
+	pdu.set_context_engine_id(pConf->contextEngineID);
+#endif
+	
+	/// make Oid object to retrieve
+	vb.set_oid(point.oid);                       // set the Oid portion of the Vb
+	point.GetValue(vb);
+	pdu += vb;                             // add the vb to the Pdu
+	
+	/// Send SNMP-TRAP
+	int status = snmp_outbound->trap(pdu, *target);
+	if (status != SNMP_CLASS_SUCCESS)
+	{
+		std::cout << "SNMP++ GetNext Error, " << snmp_outbound->error_msg( status) << " (" << status <<")" << std::endl;
+		cmd_promise.set_value(opendnp3::CommandStatus::DOWNSTREAM_FAIL);
+		return cmd_promise.get_future();
+	}
+	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
+	return cmd_promise.get_future();
+}
+
+std::future<opendnp3::CommandStatus> SNMPOutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){
+	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
+	
+	if(!enabled)
+	{
+		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+		return cmd_promise.get_future();
+	}
+	if(!stack_enabled)
+	{
+		cmd_promise.set_value(opendnp3::CommandStatus::DOWNSTREAM_FAIL);
+		return cmd_promise.get_future();
+	}
+	
+	// Update database point value
+	auto pConf = static_cast<SNMPPortConf*>(this->pConf.get());
+	auto& point = pConf->pPointConf->BinaryIndicies.at(index);
+	point->value = meas;
+	
+	// Send Trap
+	return SendTrap(*point);
+}
+
 std::future<opendnp3::CommandStatus> SNMPOutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<opendnp3::CommandStatus> SNMPOutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<opendnp3::CommandStatus> SNMPOutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){
+	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
+	
+	if(!enabled)
+	{
+		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+		return cmd_promise.get_future();
+	}
+	if(!stack_enabled)
+	{
+		cmd_promise.set_value(opendnp3::CommandStatus::DOWNSTREAM_FAIL);
+		return cmd_promise.get_future();
+	}
+	
+	// Update database point value
+	auto pConf = static_cast<SNMPPortConf*>(this->pConf.get());
+	auto& point = pConf->pPointConf->AnalogIndicies.at(index);
+	point->value = meas;
+	
+	// Send Trap
+	return SendTrap(*point);
+}
+
 std::future<opendnp3::CommandStatus> SNMPOutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 std::future<opendnp3::CommandStatus> SNMPOutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 std::future<opendnp3::CommandStatus> SNMPOutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
@@ -370,31 +366,6 @@ template<typename T>
 inline std::future<opendnp3::CommandStatus> SNMPOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
 {
 	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
-
-	if(!enabled)
-	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
-		return cmd_promise.get_future();
-	}
-
-	//SNMPPortConf* pConf = static_cast<SNMPPortConf*>(this->pConf.get());
-
-	//TODO: finishme
-	
-	if(std::is_same<T,opendnp3::Analog>::value)
-	{
-//		int map_index = find_index(pConf->pPointConf->AnalogIndicies, index);
-//		if(map_index >= 0)
-//			*(mb_mapping->tab_input_registers + map_index) = (uint16_t)meas.value;
-	}
-	else if(std::is_same<T,opendnp3::Binary>::value)
-	{
-//		int map_index = find_index(pConf->pPointConf->BinaryIndicies, index);
-//		if(map_index >= 0)
-//			*(mb_mapping->tab_input_bits + index) = (uint8_t)meas.value;
-	}
-	//TODO: impl other types
-
 	cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
 	return cmd_promise.get_future();
 }

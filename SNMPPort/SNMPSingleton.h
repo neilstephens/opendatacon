@@ -41,26 +41,45 @@ public:
 		return instance;
 	}
 	
-	static void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, void *obj)
+	static void SnmpCallbackAsync(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, void *obj)
 	{
-		GetInstance().SnmpCallbackImpl(reason, snmp, pdu, target, obj);
+		GetInstance().SnmpCallbackImpl(reason, snmp, pdu, target, static_cast<SNMPPort*>(obj));
 	}
 	
-	void RegisterPort(const std::string& destIP, SNMPPort* target);
+	static void SnmpCallbackNotify(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, void*)
+	{
+		Snmp_pp::IpAddress from(target.get_address());
+		std::string sourceIP = from.get_printable();
+		uint16_t destPort = snmp->notify_get_listen_port();
+		std::string mapIPPort = sourceIP + ":" + std::to_string(destPort);
+		
+		if(GetInstance().SourcePortMap.count(mapIPPort))
+		{
+			auto dest_ptr = GetInstance().SourcePortMap.at(mapIPPort);
+			GetInstance().SnmpCallbackImpl(reason, snmp, pdu, target, dest_ptr);
+		}
+		else
+		{
+			std::cout << "Trap received from unknown source: " << from.get_printable() << std::endl;
+			return;
+		}
+	}
+	
+	void RegisterPort(const std::string& destIP, uint16_t destPort, SNMPPort* target);
 	void UnregisterPort(SNMPPort* target);
 	std::shared_ptr<Snmp_pp::Snmp> GetPollSession(uint16_t UdpPort);
 	std::shared_ptr<Snmp_pp::Snmp> GetListenSession(uint16_t UdpPort);
 	std::shared_ptr<Snmp_pp::v3MP> Getv3MP();
 
 private:
-	void SnmpCallbackImpl(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, void *obj);
+	void SnmpCallbackImpl(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, SNMPPort *obj);
 	
 	std::unordered_map<std::string, SNMPPort*> SourcePortMap;
 	std::unordered_set<SNMPPort*> PortSet;
 	
 	std::shared_ptr<Snmp_pp::v3MP> v3mpPtr;
-	std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpSessions;
-	std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpTrapSessions;
+	std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpPollSessions;
+	std::unordered_map<uint16_t, std::weak_ptr<Snmp_pp::Snmp>> SnmpListenSessions;
 	
 	SNMPSingleton()
 	{

@@ -72,12 +72,18 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot);
 	
-	virtual void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) = 0;
+	void SnmpCallback(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target);
+	
+	virtual void ProcessResponse(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) = 0;
+	virtual void ProcessGet(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) = 0;
+	virtual void ProcessTrap(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) = 0;
+	virtual void ProcessReport(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target) = 0;
+
 
 protected:
 	bool stack_enabled;
-	std::shared_ptr<Snmp_pp::Snmp> snmp;
-	std::shared_ptr<Snmp_pp::Snmp> snmp_trap;
+	std::shared_ptr<Snmp_pp::Snmp> snmp_outbound;
+	std::shared_ptr<Snmp_pp::Snmp> snmp_inbound;
 	std::shared_ptr<Snmp_pp::v3MP> v3_MP;
 	std::unique_ptr<Snmp_pp::SnmpTarget> target;
 };

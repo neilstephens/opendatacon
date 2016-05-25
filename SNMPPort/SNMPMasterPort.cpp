@@ -34,6 +34,12 @@
 #include "SNMPSingleton.h"
 #include <array>
 
+SNMPMasterPort::SNMPMasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
+SNMPPort(aName, aConfFilename, aConfOverrides),
+pTCPRetryTimer(nullptr),
+PollScheduler(nullptr)
+{}
+
 SNMPMasterPort::~SNMPMasterPort()
 {
 	Disable();
@@ -56,10 +62,17 @@ void SNMPMasterPort::Enable()
 	}
 }
 
+void SNMPMasterPort::Disable()
+{
+	Disconnect();
+	enabled = false;
+}
+
 void SNMPMasterPort::Connect()
 {
-	if(!enabled) return;
+	if (!enabled) return;
 	if (stack_enabled) return;
+	stack_enabled = true;
 	
 	SNMPPortConf* pConf = static_cast<SNMPPortConf*>(this->pConf.get());
 	
@@ -74,12 +87,6 @@ void SNMPMasterPort::Connect()
 	}
 	
 	PollScheduler->Start();
-}
-
-void SNMPMasterPort::Disable()
-{
-	Disconnect();
-	enabled = false;
 }
 
 void SNMPMasterPort::Disconnect()
@@ -98,11 +105,11 @@ void SNMPMasterPort::Disconnect()
 		// Iterate over all Oid and issue COMM_LOST
 		for(auto Oid : pConf->pPointConf->BinaryIndicies)
 		{
-			IOHandler_pair.second->Event(opendnp3::BinaryQuality::COMM_LOST, Oid->index, this->Name);
+			IOHandler_pair.second->Event(opendnp3::BinaryQuality::COMM_LOST, Oid.first, this->Name);
 		}
 		for(auto Oid : pConf->pPointConf->AnalogIndicies)
 		{
-			IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST, Oid->index, this->Name);
+			IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST, Oid.first, this->Name);
 		}
 	}
 }
@@ -114,9 +121,19 @@ void SNMPMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	std::string log_id;
 	log_id = "mast_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
 	
-	// Get a poll session to poll the SNMP outstation with
-	snmp = SNMPSingleton::GetInstance().GetPollSession(pConf->mAddrConf.SourcePort);
-	if (snmp == nullptr)
+	/// Get a listening session to receive incomming traps
+	snmp_inbound = SNMPSingleton::GetInstance().GetListenSession(pConf->mAddrConf.TrapPort);
+	if (snmp_inbound == nullptr)
+	{
+		std::string msg = Name + ": Stack error: 'SNMP trap stack creation failed.'";
+		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		throw std::runtime_error(msg);
+	}
+	
+	/// Get a poll session to poll the SNMP outstation
+	snmp_outbound = SNMPSingleton::GetInstance().GetPollSession(pConf->mAddrConf.SourcePort);
+	if (snmp_outbound == nullptr)
 	{
 		std::string msg = Name + ": Stack error: 'SNMP stack creation failed.'";
 		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
@@ -124,23 +141,13 @@ void SNMPMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 		throw std::runtime_error(msg);
 	}
 	
-	// Create destination target
+	/// Create destination target to poll
 	Snmp_pp::UdpAddress address(pConf->mAddrConf.IP.c_str());      // make a SNMP++ Generic address
 	address.set_port(pConf->mAddrConf.Port);
 	if ( !address.valid() )
 	{
 		// check validity of address
 		std::string msg = Name + ": Stack error: 'SNMP stack creation failed, invalid IP address or hostname'";
-		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-		throw std::runtime_error(msg);
-	}
-	
-	// Get a listening session for outstations to send SNMP traps to
-	snmp_trap = SNMPSingleton::GetInstance().GetListenSession(pConf->mAddrConf.TrapPort);
-	if ( snmp_trap == nullptr)
-	{
-		std::string msg = Name + ": Stack error: 'SNMP trap stack creation failed.'";
 		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
 		throw std::runtime_error(msg);
@@ -190,125 +197,86 @@ void SNMPMasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	target->set_retry(pConf->retries);           // set the number of auto retries (default 1)
 	target->set_timeout(pConf->timeout);         // set timeout (default 1000ms)
 	
-	SNMPSingleton::GetInstance().RegisterPort(Snmp_pp::IpAddress(address).get_printable(),this);
+	/// Register this port for callbacks
+	SNMPSingleton::GetInstance().RegisterPort(Snmp_pp::IpAddress(address).get_printable(),pConf->mAddrConf.TrapPort,this);
 }
 
-void SNMPMasterPort::SnmpCallback( int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+void SNMPMasterPort::ProcessResponse(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
 {
+	if (!stack_enabled) return;
 	Snmp_pp::Vb vb;
-	int pdu_error;
-	
-	// late async requests and traps could come in regardless of the port being enabled or not
-	//if (!enabled) return;
-	
-	if ((reason != SNMP_CLASS_ASYNC_RESPONSE) && (reason != SNMP_CLASS_NOTIFICATION))
-	{
-		std::string msg = Name + ": " + snmp->error_msg(reason);
-		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-		return;
-	}
-	
-	pdu_error = pdu.get_error_status();
-	if (pdu_error){
-		std::string msg = Name + ": Response contains error: " + snmp->error_msg(pdu_error);
-		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-		return;
-	}
-	
 	auto pConf = static_cast<SNMPPortConf*>(this->pConf.get());
 	
-	auto pdu_type = pdu.get_type();
-	switch (pdu_type)
+	for (int i = 0; i < pdu.get_vb_count(); i++)
 	{
-		case sNMP_PDU_RESPONSE:
-		{/// Response to an inform acknowledging data was received
-		}
-			break;
-			
-		case sNMP_PDU_GET:
-		case sNMP_PDU_GETNEXT:
-		case sNMP_PDU_GETBULK:
-		{
-			for (int i = 0; i < pdu.get_vb_count(); i++)
-			{
-				pdu.get_vb(vb, i);
-				
-				auto point_pair = pConf->pPointConf->OidMap.equal_range(vb.get_oid());
-				if (point_pair.first == point_pair.second)
-				{
-					std::string msg = Name + ": Uknown oid received: " + vb.get_printable_oid();
-					auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-					pLoggers->Log(log_entry);
-					continue;
-				}
-				
-				// Set the vb value to the database value
-				point_pair.first->second->GetValue(vb);
-				pdu.set_vb(vb, i);
-			}
-			snmp->response(pdu, target);
-		}
-			break;
+		pdu.get_vb(vb, i);
 		
-		case sNMP_PDU_V1TRAP:
-		case sNMP_PDU_TRAP:
-		case sNMP_PDU_SET:
-		case sNMP_PDU_INFORM:
-		{/// Either solicited or unsolicited data
-			for (int i = 0; i < pdu.get_vb_count(); i++)
-			{
-				pdu.get_vb(vb, i);
-				
-				auto point_pair = pConf->pPointConf->OidMap.equal_range(vb.get_oid());
-				if (point_pair.first == point_pair.second)
-				{
-					std::string msg = Name + ": Uknown oid received: " + vb.get_printable_oid();
-					auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-					pLoggers->Log(log_entry);
-					continue;
-				}
-				
-				for(auto it=point_pair.first; it!=point_pair.second; ++it)
-				{
-					for(auto IOHandler_pair : Subscribers)
-					{
-						it->second->GenerateEvent(*IOHandler_pair.second, vb, this->Name);
-					}
-				}
-			}
-			
-			/// SNMP informs require a response, just echo what was received back to acknowledge what we received
-			if (pdu_type == sNMP_PDU_INFORM) {
-				std::string msg = Name + ": sending response to inform";
-				auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-				pLoggers->Log(log_entry);
-				snmp->response(pdu, target);
-			}
-		}
-			break;
-			
-		case sNMP_PDU_REPORT:
-		{/// A REPORT operation is an indication of some core SNMP communication error or bootstrapping response.
-			std::string msg = Name + ": Received a report pdu: " + vb.get_printable_oid();
-			auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-		}
-			break;
-			
-		default:
+		auto point_pair = pConf->pPointConf->OidMap.equal_range(vb.get_oid());
+		if (point_pair.first == point_pair.second)
 		{
-			std::string msg = Name + ": Unknown pdu type received: " + vb.get_printable_oid();
+			std::string msg = Name + ": Uknown oid received: " + vb.get_printable_oid();
 			auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
+			continue;
+		}
+		
+		for(auto it=point_pair.first; it!=point_pair.second; ++it)
+		{
+			for(auto IOHandler_pair : Subscribers)
+			{
+				it->second->GenerateEvent(*IOHandler_pair.second, vb, this->Name);
+			}
 		}
 	}
+}
+
+void SNMPMasterPort::ProcessGet(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+{
+	std::string msg = Name + ": recevied invalid PDU (get)";
+	auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+	pLoggers->Log(log_entry);
+}
+
+void SNMPMasterPort::ProcessTrap(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+{
+	if (!stack_enabled) return;
+	Snmp_pp::Vb vb;
+	auto pConf = static_cast<SNMPPortConf*>(this->pConf.get());
+	
+	for (int i = 0; i < pdu.get_vb_count(); i++)
+	{
+		pdu.get_vb(vb, i);
+		
+		auto point_pair = pConf->pPointConf->OidMap.equal_range(vb.get_oid());
+		if (point_pair.first == point_pair.second)
+		{
+			std::string msg = Name + ": Uknown oid received: " + vb.get_printable_oid();
+			auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+			continue;
+		}
+		
+		for(auto it=point_pair.first; it!=point_pair.second; ++it)
+		{
+			for(auto IOHandler_pair : Subscribers)
+			{
+				it->second->GenerateEvent(*IOHandler_pair.second, vb, this->Name);
+			}
+		}
+	}
+}
+
+void SNMPMasterPort::ProcessReport(Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+{
+	std::string msg = Name + ": recevied invalid PDU (report)";
+	auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+	pLoggers->Log(log_entry);
 }
 
 void SNMPMasterPort::DoPoll(uint32_t pollgroup)
 {
-	if(!enabled) return;
+	if (!enabled) return;
+	if (!stack_enabled) return;
 	
 	auto pConf = static_cast<SNMPPortConf*>(this->pConf.get());
 	
@@ -325,26 +293,26 @@ void SNMPMasterPort::DoPoll(uint32_t pollgroup)
 	/// make Oid object to retrieve
 	for(auto& Oid : pConf->pPointConf->BinaryIndicies)
 	{
-		if (pollgroup && (Oid->pollgroup != pollgroup))
+		if (pollgroup && (Oid.second->pollgroup != pollgroup))
 			continue;
 		
-		vb.set_oid(Oid->oid);                       // set the Oid portion of the Vb
+		vb.set_oid(Oid.second->oid);                       // set the Oid portion of the Vb
 		pdu += vb;                             // add the vb to the Pdu
 	}
 	for(auto& Oid : pConf->pPointConf->AnalogIndicies)
 	{
-		if (pollgroup && (Oid->pollgroup != pollgroup))
+		if (pollgroup && (Oid.second->pollgroup != pollgroup))
 			continue;
 		
-		vb.set_oid(Oid->oid);                       // set the Oid portion of the Vb
+		vb.set_oid(Oid.second->oid);                       // set the Oid portion of the Vb
 		pdu += vb;                             // add the vb to the Pdu
 	}
 
-	/// Send a async SNMP-GET request
-	int status = snmp->get(pdu, *target, SNMPSingleton::SnmpCallback, this);
+	/// Send an async SNMP-GET request
+	int status = snmp_outbound->get(pdu, *target, SNMPSingleton::SnmpCallbackAsync, this);
 	if (status != SNMP_CLASS_SUCCESS)
 	{
-		std::cout << "SNMP++ GetNext Error, " << snmp->error_msg( status) << " (" << status <<")" << std::endl ;
+		std::cout << "SNMP++ GetNext Error, " << snmp_outbound->error_msg( status) << " (" << status <<")" << std::endl ;
 	}
 }
 

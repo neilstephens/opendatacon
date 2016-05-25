@@ -25,12 +25,13 @@
  */
 #include "SNMPPort.h"
 #include "SNMPSingleton.h"
+#include <opendnp3/LogLevels.h>
 
 SNMPPort::SNMPPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	stack_enabled(false),
-	snmp(nullptr),
-	snmp_trap(nullptr),
+	snmp_outbound(nullptr),
+	snmp_inbound(nullptr),
 	v3_MP(nullptr),
 	target(nullptr)
 {
@@ -169,6 +170,75 @@ void SNMPPort::ProcessElements(const Json::Value& JSONRoot)
 			//auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
 			//pLoggers->Log(log_entry);
 			throw std::runtime_error(msg);
+		}
+	}
+}
+
+void SNMPPort::SnmpCallback( int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target)
+{
+	Snmp_pp::Vb vb;
+	int pdu_error;
+	
+	// late async requests and traps could come in regardless of the port being enabled or not
+	//if (!enabled) return;
+	
+	if ((reason != SNMP_CLASS_ASYNC_RESPONSE) && (reason != SNMP_CLASS_NOTIFICATION))
+	{
+		std::string msg = Name + ": " + snmp->error_msg(reason);
+		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		return;
+	}
+	
+	pdu_error = pdu.get_error_status();
+	if (pdu_error){
+		std::string msg = Name + ": Response contains error: " + snmp->error_msg(pdu_error);
+		auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		return;
+	}
+	
+	auto pdu_type = pdu.get_type();
+	switch (pdu_type)
+	{
+		case sNMP_PDU_RESPONSE:
+			ProcessResponse(snmp, pdu, target);
+			break;
+			
+		case sNMP_PDU_GET:
+		case sNMP_PDU_GETNEXT:
+		case sNMP_PDU_GETBULK:
+			ProcessGet(snmp, pdu, target);
+			break;
+			
+		case sNMP_PDU_V1TRAP:
+		case sNMP_PDU_TRAP:
+		case sNMP_PDU_SET:
+		case sNMP_PDU_INFORM:
+		{/// Either solicited or unsolicited data
+			ProcessTrap(snmp, pdu, target);
+			
+			/// SNMP informs require a response, just echo what was received back to acknowledge what we received
+			if (pdu_type == sNMP_PDU_INFORM) {
+				std::string msg = Name + ": sending response to inform";
+				auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
+				pLoggers->Log(log_entry);
+				snmp->response(pdu, target);
+			}
+		}
+			break;
+			
+		case sNMP_PDU_REPORT:
+		{/// A REPORT operation is an indication of some core SNMP communication error or bootstrapping response.
+			ProcessReport(snmp, pdu, target);
+		}
+			break;
+			
+		default:
+		{
+			std::string msg = Name + ": Unknown pdu type received: " + vb.get_printable_oid();
+			auto log_entry = openpal::LogEntry("SNMPMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
 		}
 	}
 }

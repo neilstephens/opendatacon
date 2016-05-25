@@ -116,15 +116,6 @@ public:
 	Snmp_pp::SmiUINT32 syntax;
 };
 
-
-template<class T>
-class SNMPOidCollection: public std::vector< T >
-{
-public:
-
-	
-};
-
 class SNMPPointConf: public ConfigParser
 {
 public:
@@ -135,8 +126,8 @@ public:
 
 	std::pair<opendnp3::Binary,size_t> mCommsPoint;
 
-	std::vector<std::shared_ptr<OidToBinaryEvent>> BinaryIndicies;
-	std::vector<std::shared_ptr<OidToAnalogEvent>> AnalogIndicies;
+	std::map<uint32_t, std::shared_ptr<OidToBinaryEvent>> BinaryIndicies;
+	std::map<uint32_t, std::shared_ptr<OidToAnalogEvent>> AnalogIndicies;
 	
 	std::map<Snmp_pp::Oid, std::shared_ptr<OidToEvent>> OidMap;
 
@@ -144,7 +135,7 @@ public:
 
 private:
 	template<class T>
-	void ProcessReadGroup(const Json::Value& Ranges, std::vector<T>& ReadGroup);
+	void ProcessReadGroup(const Json::Value& Ranges, std::map<uint32_t, T>& ReadGroup);
 };
 
 #endif /* SNMPPOINTCONF_H_ */

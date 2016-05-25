@@ -63,7 +63,7 @@ opendnp3::Binary GetStartVal<opendnp3::Binary>(const Json::Value& value)
 }
 
 template<>
-void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<std::shared_ptr<OidToBinaryEvent>>& ReadGroup)
+void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::map<uint32_t, std::shared_ptr<OidToBinaryEvent>>& ReadGroup)
 {
 	for(Json::ArrayIndex n = 0; n < Ranges.size(); ++n)
 	{
@@ -141,13 +141,13 @@ void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<std:
 		}
 
 		std::shared_ptr<OidToBinaryEvent> obe(new OidToBinaryEvent(oid,syntax,idx,pollgroup,startval,trueVal,falseVal));
-		ReadGroup.emplace_back(obe);
+		ReadGroup.emplace(idx,obe);
 		OidMap.emplace(oid,obe);
 	}
 }
 
 template<>
-void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<std::shared_ptr<OidToAnalogEvent>>& ReadGroup)
+void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::map<uint32_t, std::shared_ptr<OidToAnalogEvent>>& ReadGroup)
 {
 	for(Json::ArrayIndex n = 0; n < Ranges.size(); ++n)
 	{
@@ -217,7 +217,7 @@ void SNMPPointConf::ProcessReadGroup(const Json::Value& Ranges, std::vector<std:
 		}
 		
 		std::shared_ptr<OidToAnalogEvent> oae(new OidToAnalogEvent(oid,syntax,idx,pollgroup,startval));
-		ReadGroup.emplace_back(oae);
+		ReadGroup.emplace(idx, oae);
 		OidMap.emplace(oid, oae);
 	}
 }

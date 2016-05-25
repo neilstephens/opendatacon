@@ -60,27 +60,28 @@ std::shared_ptr<Snmp_pp::v3MP> SNMPSingleton::Getv3MP()
 	return newv3mp;
 }
 
-void SNMPSingleton::RegisterPort(const std::string& destIP, SNMPPort* target)
+void SNMPSingleton::RegisterPort(const std::string& sourceIP, uint16_t destPort, SNMPPort* target)
 {
+	std::string destIPPort = sourceIP + ":" + std::to_string(destPort);
 	PortSet.insert(target);
-	SourcePortMap[destIP] = target;
+	SourcePortMap[destIPPort] = target;
 }
 
 void SNMPSingleton::UnregisterPort(SNMPPort* target)
 {
 	PortSet.erase(target);
-	for(auto destIP_target_pair : SourcePortMap)
+	for(auto destIPPort_target_pair : SourcePortMap)
 	{
-		if (destIP_target_pair.second == target)
+		if (destIPPort_target_pair.second == target)
 		{
-			SourcePortMap.erase(destIP_target_pair.first);
+			SourcePortMap.erase(destIPPort_target_pair.first);
 		}
 	}
 }
 
 std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetPollSession(uint16_t UdpPort)
 {
-	auto session = GetInstance().SnmpSessions[UdpPort].lock();
+	auto session = GetInstance().SnmpPollSessions[UdpPort].lock();
 	//create a new session if one doesn't already exist
 	if (session)
 	{
@@ -94,7 +95,7 @@ std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetPollSession(uint16_t UdpPort)
 		std::cout << "SNMP++ Session Create Fail, " << session->error_msg(status) << std::endl;
 		return nullptr;
 	}
-	GetInstance().SnmpSessions[UdpPort] = session;
+	GetInstance().SnmpPollSessions[UdpPort] = session;
 	
 	session->start_poll_thread(10);
 	return session;
@@ -102,7 +103,7 @@ std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetPollSession(uint16_t UdpPort)
 
 std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetListenSession(uint16_t UdpPort)
 {
-	auto session = GetInstance().SnmpTrapSessions[UdpPort].lock();
+	auto session = GetInstance().SnmpListenSessions[UdpPort].lock();
 	//create a new session if one doesn't already exist
 	if (session)
 	{
@@ -117,13 +118,13 @@ std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetListenSession(uint16_t UdpPort)
 		return nullptr;
 	}
 	session->notify_set_listen_port(UdpPort);
-	GetInstance().SnmpTrapSessions[UdpPort] = session;
+	GetInstance().SnmpListenSessions[UdpPort] = session;
 	session->start_poll_thread(10);
 	
 	Snmp_pp::OidCollection oidc;
 	Snmp_pp::TargetCollection targetc;
 	
-	status = session->notify_register(oidc, targetc, SNMPSingleton::SnmpCallback, nullptr);
+	status = session->notify_register(oidc, targetc, SNMPSingleton::SnmpCallbackNotify, nullptr);
 	if (status != SNMP_CLASS_SUCCESS)
 	{
 		std::string msg = "Stack error: 'SNMP stack trap configuration error'";
@@ -136,33 +137,15 @@ std::shared_ptr<Snmp_pp::Snmp> SNMPSingleton::GetListenSession(uint16_t UdpPort)
 	return session;
 }
 
-void SNMPSingleton::SnmpCallbackImpl(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, void *obj)
+void SNMPSingleton::SnmpCallbackImpl(int reason, Snmp_pp::Snmp *snmp, Snmp_pp::Pdu &pdu, Snmp_pp::SnmpTarget &target, SNMPPort *dest_ptr)
 {
-	//TODO: use C++11 managed pointers as this is vulnerable to the pointers being invalid
-	Snmp_pp::GenAddress addr;
-	target.get_address(addr);
-	Snmp_pp::IpAddress from(addr);
-	auto destIP = from.get_printable();
-	auto dest_ptr = static_cast<SNMPPort*>(obj);
-	if(obj != nullptr)
-	{
-		GetInstance().SourcePortMap[destIP] = dest_ptr;
-	}
-	else if(GetInstance().SourcePortMap.count(destIP))
-	{
-		dest_ptr = GetInstance().SourcePortMap[destIP];
-	}
-	else
-	{
-		std::cout << "Trap received from unknown source: " << from.get_printable() << std::endl;
-		return;
-	}
 	if (GetInstance().PortSet.count(dest_ptr))
 	{
 		dest_ptr->SnmpCallback(reason, snmp, pdu, target);
 	}
 	else
 	{
+		Snmp_pp::UdpAddress from(target.get_address());
 		std::cout << "Trap received from deleted source: " << from.get_printable() << std::endl;
 		return;
 	}
