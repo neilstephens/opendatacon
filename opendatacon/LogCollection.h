@@ -28,7 +28,6 @@
 #ifndef opendatacon_LogCollection_h
 #define opendatacon_LogCollection_h
 
-#include "logging_cmds.h"
 #include <opendatacon/IUIResponder.h>
 
 class LogCollection: public ResponderMap<AdvancedLogger>
@@ -37,35 +36,21 @@ public:
 	LogCollection()
 	{
 		this->AddCommand("ignore", [this](const ParamCollection &params) {
-		                       if(auto target = GetTarget(params))
+					     if(auto target = GetTarget(params)) if(params.count("filter"))
 		                       {
-		                             std::stringstream filter;
-		                             filter << params.at("filter");
-
-		                             std::string mregex;
-		                             if(!extract_delimited_string(filter,mregex))
-		                             {
-		                                   return IUIResponder::GenerateResult("Syntax error: Delimited regex expected, found \"..." + mregex + "\"");
-						     }
-		                             if(mregex == "")
-		                             {
-		                                   return IUIResponder::GenerateResult("Please supply a regex filter");
-						     }
-		                             target->AddIngoreAlways(mregex);
+						     target->AddIngoreAlways(params.at("filter"));
 		                             return IUIResponder::GenerateResult("Success");
 					     }
 		                       return IUIResponder::GenerateResult("Bad parameter");
-				     }, "Enter regex to silence matching messages from the logger.");
+				     }, "Required parameter 'filter' - regex to silence matching messages from the logger.");
 		this->AddCommand("unignore", [this](const ParamCollection &params) {
-		                       if(auto target = GetTarget(params))
-		                       {
-		                             std::stringstream filter;
-		                             filter << params.at("filter");
-		                             cmd_unignore_message(filter,*target);
-		                             return IUIResponder::GenerateResult("Success");
+					     if(auto target = GetTarget(params)) if(params.count("filter"))
+					     {
+							target->RemoveIgnore(params.at("filter"));
+							return IUIResponder::GenerateResult("Success");
 					     }
 		                       return IUIResponder::GenerateResult("Bad parameter");
-				     }, "Enter regex to remove from the ignore list.");
+				     }, "Required parameter 'filter' - regex to remove from the ignore list.");
 		this->AddCommand("ShowFilters", [this](const ParamCollection &params) {
 		                       if(auto target = GetTarget(params))
 		                       {

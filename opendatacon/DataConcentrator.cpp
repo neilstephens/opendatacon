@@ -32,7 +32,6 @@
 #include <opendatacon/Version.h>
 
 #include "DataConcentrator.h"
-#include "logging_cmds.h"
 #include "NullPort.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
@@ -210,9 +209,51 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				std::cout<<"Warning: invalid port config: need at least Type, Name, ConfFilename: \n'"<<Ports[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 				continue;
 			}
+
+			std::function<void (IOHandler*)> set_init_mode;
+			if(!Ports[n]["InitState"].isNull())
+			{
+				if(Ports[n]["InitState"].asString() == "ENABLED")
+				{
+					set_init_mode = [](IOHandler* aIOH)
+					{
+						aIOH->InitState = InitState_t::ENABLED;
+					};
+				}
+				else if(Ports[n]["InitState"].asString() == "DISABLED")
+				{
+					set_init_mode = [](IOHandler* aIOH)
+					{
+						aIOH->InitState = InitState_t::DISABLED;
+					};
+				}
+				else if(Ports[n]["InitState"].asString() == "DELAYED")
+				{
+					uint16_t delay = 0;
+					if(!Ports[n]["EnableDelayms"].isNull())
+					{
+						delay = Ports[n]["EnableDelayms"].asUInt();
+					}
+					else
+					{
+						std::cout<<"Warning: invalid port config: missing 'EnableDelayms': \n'"<<Ports[n].toStyledString()<<"\n' : defaulting to 0"<<std::endl;
+					}
+					set_init_mode = [=](IOHandler* aIOH)
+					{
+						aIOH->InitState = InitState_t::DELAYED;
+						aIOH->EnableDelayms = delay;
+					};
+				}
+			}
+			else
+			{
+				set_init_mode = [](IOHandler* aIOH){};
+			}
+
 			if(Ports[n]["Type"].asString() == "Null")
 			{
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
 
@@ -235,6 +276,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
 
@@ -258,11 +300,13 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				std::cout<<"Mapping '"<<Ports[n]["Type"].asString()<<"' to null port..."<<std::endl;
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
 
 			//call the creation function and wrap the returned pointer to a new port
 			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
+			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 		}
 	}
 
@@ -277,23 +321,48 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				std::cout<<"Warning: invalid Connector config: need at least Name, ConfFilename: \n'"<<Connectors[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 			}
 			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void(*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
+			if(!Connectors[n]["InitState"].isNull())
+			{
+				if(Connectors[n]["InitState"].asString() == "ENABLED")
+				{
+					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::ENABLED;
+				}
+				else if(Connectors[n]["InitState"].asString() == "DISABLED")
+				{
+					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::DISABLED;
+				}
+				else if(Connectors[n]["InitState"].asString() == "DELAYED")
+				{
+					uint16_t delay = 0;
+					if(!Connectors[n]["EnableDelayms"].isNull())
+					{
+						delay = Connectors[n]["EnableDelayms"].asUInt();
+					}
+					else
+					{
+						std::cout<<"Warning: invalid Connector config: missing 'EnableDelayms': \n'"<<Connectors[n].toStyledString()<<"\n' : defaulting to 0"<<std::endl;
+					}
+					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::DELAYED;
+					DataConnectors.at(Connectors[n]["Name"].asString())->EnableDelayms = delay;
+				}
+			}
 		}
 	}
 }
 void DataConcentrator::BuildOrRebuild()
 {
-	std::cout << "User Interfaces" << std::endl;
+	std::cout << "Initialising Interfaces" << std::endl;
 	for(auto& Name_n_UI : Interfaces)
 	{
 		// TODO: BuildOrRebuild for UserInterfaces
 		// Name_n_UI.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
 	}
-	std::cout << "Ports" << std::endl;
+	std::cout << "Initialising DataPorts" << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
 	}
-	std::cout << "Connectors" << std::endl;
+	std::cout << "Initialising DataConnectors" << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
@@ -301,106 +370,90 @@ void DataConcentrator::BuildOrRebuild()
 }
 void DataConcentrator::Run()
 {
+	std::cout << "Enabling DataConnectors... " << std::endl;
+	for(auto& Name_n_Conn : DataConnectors)
+	{
+		if(Name_n_Conn.second->InitState == InitState_t::ENABLED)
+		{
+			IOS.post([&]()
+				   {
+					   Name_n_Conn.second->Enable();
+				   });
+		}
+		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
+		{
+			//FIXME: this leaks a timer on the heap!
+			auto pTimer = new asio::basic_waitable_timer<std::chrono::steady_clock>(IOS);
+			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
+			pTimer->async_wait([&](asio::error_code err_code)
+						 {
+							 Name_n_Conn.second->Enable();
+						 });
+		}
+	}
+	std::cout << "Enabling DataPorts... " << std::endl;
+	for(auto& Name_n_Port : DataPorts)
+	{
+		if(Name_n_Port.second->InitState == InitState_t::ENABLED)
+		{
+			IOS.post([&]()
+				   {
+					   Name_n_Port.second->Enable();
+				   });
+		}
+		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
+		{
+			//FIXME: this leaks a timer on the heap!
+			auto pTimer = new asio::basic_waitable_timer<std::chrono::steady_clock>(IOS);
+			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
+			pTimer->async_wait([&](asio::error_code err_code)
+						 {
+							 Name_n_Port.second->Enable();
+						 });
+		}
+	}
+	std::cout << "Enabling Interfaces... " << std::endl;
 	for(auto& Name_n_UI : Interfaces)
 	{
 		IOS.post([&]()
-		         {
-		               Name_n_UI.second->Enable();
-			   });
-	}
-	for(auto& Name_n_Conn : DataConnectors)
-	{
-		IOS.post([&]()
-		         {
-		               Name_n_Conn.second->Enable();
-			   });
-	}
-	for(auto& Name_n_Port : DataPorts)
-	{
-		IOS.post([&]()
-		         {
-		               Name_n_Port.second->Enable();
+			   {
+				   Name_n_UI.second->Enable();
 			   });
 	}
 
+	std::cout << "Up and running." << std::endl;
 	IOS.run();
-	std::cout << "done" << std::endl;
 
-	std::cout << "Destoying Interfaces... ";
+	std::cout << "Destoying Interfaces... " << std::endl;
 	Interfaces.clear();
-	std::cout << "done" << std::endl;
 
-	std::cout << "Destoying DataConnectors... ";
+	std::cout << "Destoying DataConnectors... " << std::endl;
 	DataConnectors.clear();
-	std::cout << "done" << std::endl;
 
-	std::cout << "Destoying DataPorts... ";
+	std::cout << "Destoying DataPorts... " << std::endl;
 	DataPorts.clear();
-	std::cout << "done" << std::endl;
 
-	std::cout << "Shutting down DNP3 manager... ";
+	std::cout << "Shutting down DNP3 manager... " << std::endl;
 	DNP3Mgr.Shutdown();
-	std::cout << "done" << std::endl;
-}
-
-void DataConcentrator::RestartPortOrConn(std::stringstream& args)
-{
-	EnablePortOrConn(args,false);
-	EnablePortOrConn(args,true);
-}
-void DataConcentrator::EnablePortOrConn(std::stringstream& args, bool enable)
-{
-	std::string arg = "";
-	std::string mregex;
-	std::regex reg;
-	if(!extract_delimited_string(args,mregex))
-	{
-		std::cout<<"Syntax error: Delimited regex expected, found \"..."<<mregex<<"\""<<std::endl;
-		return;
-	}
-	try
-	{
-		reg = std::regex(mregex);
-	}
-	catch(std::exception& e)
-	{
-		std::cout<<e.what()<<std::endl;
-		return;
-	}
-	for(auto& Name_n_UI : Interfaces)
-	{
-		if(std::regex_match(Name_n_UI.first, reg))
-			enable ? Name_n_UI.second->Enable() : Name_n_UI.second->Disable();
-	}
-	for(auto& Name_n_Conn : DataConnectors)
-	{
-		if(std::regex_match(Name_n_Conn.first, reg))
-			enable ? Name_n_Conn.second->Enable() : Name_n_Conn.second->Disable();
-	}
-	for(auto& Name_n_Port : DataPorts)
-	{
-		if(std::regex_match(Name_n_Port.first, reg))
-			enable ? Name_n_Port.second->Enable() : Name_n_Port.second->Disable();
-	}
 }
 
 void DataConcentrator::Shutdown()
 {
-	std::cout << "done" << std::endl << "Disabling user interfaces... ";
+	std::cout << "Disabling user interfaces... " << std::endl;
 	for(auto& Name_n_UI : Interfaces)
 	{
 		Name_n_UI.second->Disable();
 	}
-	std::cout << "done" << std::endl << "Disabling data connectors... ";
+	std::cout << "Disabling data connectors... " << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Disable();
 	}
-	std::cout << "done" << std::endl << "Disabling data ports... ";
+	std::cout << "Disabling data ports... " << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->Disable();
 	}
-	std::cout << "done" << std::endl << "Finishing asynchronous tasks... ";
+	std::cout << "Finishing asynchronous tasks... " << std::endl;
 	ios_working.reset();
 }

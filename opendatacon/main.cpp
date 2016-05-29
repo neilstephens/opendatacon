@@ -105,11 +105,9 @@ int main(int argc, char* argv[])
 
 		// Construct and build opendatacon object
 		std::cout << "This is opendatacon version " << ODC_VERSION_STRING << std::endl;
-		std::cout << "Loading configuration... ";
+		std::cout << "Loading configuration... "<< std::endl;
 		TheDataConcentrator.reset(new DataConcentrator(Args.ConfigFileArg.getValue()));
-		std::cout << "done" << std::endl << "Initialising objects... " << std::endl;
 		TheDataConcentrator->BuildOrRebuild();
-		std::cout << "done" << std::endl << "Starting up opendatacon..." << std::endl;
 
 		// Configure signal handlers
 		auto shutdown_func = [] (int signum)

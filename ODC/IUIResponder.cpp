@@ -44,6 +44,16 @@ Json::Value IUIResponder::GetCommandList() const
 	return result;
 }
 
+std::string IUIResponder::GetCommandDescription(const std::string& acmd) const
+{
+	std::string result;
+	if(commands.count(acmd) != 0 && !commands.at(acmd).hidden)
+		result = commands.at(acmd).description;
+	else
+		result = "No such command: '"+acmd+"'";
+	return result;
+}
+
 Json::Value IUIResponder::ExecuteCommand(const std::string& arCommandName, const ParamCollection& params) const
 {
 	if(commands.count(arCommandName) != 0)

@@ -119,7 +119,6 @@ const Json::Value AdvancedLogger::ShowIgnored()
 	for(auto ignored : IgnoreRepeats)
 	{
 		result[ignored.MessageRegex_string] = ignored.Count;
-		std::cout<<ignored.MessageRegex_string<<"\t\t silenced "<<ignored.Count<<" messages"<<std::endl;
 	}
 	return result;
 }
