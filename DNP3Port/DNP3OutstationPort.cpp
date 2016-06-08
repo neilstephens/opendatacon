@@ -111,8 +111,8 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	if(!TCPChannels.count(IPPort))
 	{
 		TCPChannels[IPPort] = DNP3Mgr.AddTCPServer(log_id.c_str(), LOG_LEVEL.GetBitfield(),
-											openpal::TimeDuration::Seconds(5),
-											openpal::TimeDuration::Seconds(300),
+											openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMinms),
+											openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMaxms),
 											pConf->mAddrConf.IP,
 											pConf->mAddrConf.Port);
 	}
