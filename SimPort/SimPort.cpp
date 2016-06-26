@@ -91,6 +91,27 @@ void SimPort::PortUp()
 						 });
 		}
 	}
+	for(auto index : pConf->BinaryIndicies)
+	{
+		if(pConf->BinaryUpdateIntervalms.count(index))
+		{
+			auto interval = pConf->BinaryUpdateIntervalms[index];
+			auto pVal = pConf->BinaryStartVals.count(index) ? std::make_shared<opendnp3::Binary>(pConf->BinaryStartVals[index]) : std::make_shared<opendnp3::Binary>();
+
+			pTimer_t pTimer(new Timer_t(*pIOS));
+			Timers.push_back(pTimer);
+
+			//use a heap pointer as a random seed
+			auto seed = (rand_t)((intptr_t)(pTimer.get()));
+
+			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
+			pTimer->async_wait([=](asio::error_code err_code)
+						 {
+							 if(enabled)
+								 SpawnEvent(pVal, interval, index, pTimer, seed);
+						 });
+		}
+	}
 }
 
 void SimPort::PortDown()
@@ -118,6 +139,29 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev
 	                   {
 					 if(enabled)
 						 SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
+					//else - break timer cycle
+				 });
+}
+
+void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
+{
+	//Restart the timer
+	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
+
+	//Send an event out
+	for (auto IOHandler_pair : Subscribers)
+	{
+		//toggle value
+		pVal->value = !pVal->value;
+		//pass a copy, because we don't know when the ref will go out of scope
+		IOHandler_pair.second->Event(opendnp3::Binary(*pVal), index, this->Name);
+	}
+
+	//wait til next time
+	pTimer->async_wait([=](asio::error_code err_code)
+				 {
+					 if(enabled)
+						 SpawnEvent(pVal,interval,index,pTimer,seed);
 					//else - break timer cycle
 				 });
 }

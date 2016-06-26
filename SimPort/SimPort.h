@@ -74,6 +74,7 @@ private:
 	typedef std::shared_ptr<Timer_t> pTimer_t;
 	std::vector<pTimer_t> Timers;
 	void SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed);
+	void SpawnEvent(std::shared_ptr<opendnp3::Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed);
 	void PortUp();
 	void PortDown();
 
