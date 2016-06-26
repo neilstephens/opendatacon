@@ -199,8 +199,9 @@ void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::Log
 	if(!TCPChannels.count(IPPort))
 	{
 		TCPChannels[IPPort] = DNP3Mgr.AddTCPClient(log_id.c_str(), LOG_LEVEL.GetBitfield(),
-												   openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-												   openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms),
+									 opendnp3::ChannelRetry(
+										 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
+										 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
 		                                           pConf->mAddrConf.IP,
 		                                           "0.0.0.0",
 		                                           pConf->mAddrConf.Port);
