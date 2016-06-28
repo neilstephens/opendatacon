@@ -20,3 +20,4 @@
 LIBRARY ConsoleUI
 EXPORTS
 	new_ConsoleUIPlugin
+	delete_ConsoleUIPlugin

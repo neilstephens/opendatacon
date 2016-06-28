@@ -21,3 +21,5 @@ LIBRARY DNP3Port
 EXPORTS
 	new_DNP3MasterPort
 	new_DNP3OutstationPort
+	delete_DNP3MasterPort
+	delete_DNP3OutstationPort

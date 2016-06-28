@@ -20,3 +20,4 @@
 LIBRARY WebUI
 EXPORTS
 	new_WebUIPlugin
+	delete_WebUIPlugin
