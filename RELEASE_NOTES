@@ -1,4 +1,7 @@
-opendatacon version 0.3.3
+opendatacon version 0.3.4
+
+0.3.4	- Hotfix for DNP3OutstationPort - DNP3 outstation tcp socket was configured to only re-listen after 5 seconds
+	    Exposed configuration items for min and max retry periods for listening and connecting tcp sockets.
 
 0.3.3
 	- README and headers now packaged in linux build archives

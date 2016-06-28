@@ -86,8 +86,29 @@ void SimPort::PortUp()
 			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 			pTimer->async_wait([=](asio::error_code err_code)
 			                   {
-			                         if(err_code != asio::error::operation_aborted)
+							 if(enabled)
 								 SpawnEvent(pMean, std_dev, interval, index, pTimer, seed);
+						 });
+		}
+	}
+	for(auto index : pConf->BinaryIndicies)
+	{
+		if(pConf->BinaryUpdateIntervalms.count(index))
+		{
+			auto interval = pConf->BinaryUpdateIntervalms[index];
+			auto pVal = pConf->BinaryStartVals.count(index) ? std::make_shared<opendnp3::Binary>(pConf->BinaryStartVals[index]) : std::make_shared<opendnp3::Binary>();
+
+			pTimer_t pTimer(new Timer_t(*pIOS));
+			Timers.push_back(pTimer);
+
+			//use a heap pointer as a random seed
+			auto seed = (rand_t)((intptr_t)(pTimer.get()));
+
+			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
+			pTimer->async_wait([=](asio::error_code err_code)
+						 {
+							 if(enabled)
+								 SpawnEvent(pVal, interval, index, pTimer, seed);
 						 });
 		}
 	}
@@ -95,21 +116,13 @@ void SimPort::PortUp()
 
 void SimPort::PortDown()
 {
-	while(Timers.size() > 0)
-	{
-		pTimer_t pTimer = Timers.back();
-		Timers.pop_back();
+	for(auto pTimer : Timers)
 		pTimer->cancel();
-		pTimer->wait(); //waiting ensures all timers will be destroyed here
-	}
+	Timers.clear();
 }
 
 void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
 {
-	//This breaks us out of the timer cycle if the timer was cancelled (port disabled), but we were already queued
-	if(!enabled)
-		return;
-
 	//Restart the timer
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 
@@ -124,9 +137,32 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
 	                   {
-	                         if(err_code != asio::error::operation_aborted)
+					 if(enabled)
 						 SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
-	//else cancelled - break timer cycle
+					//else - break timer cycle
+				 });
+}
+
+void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
+{
+	//Restart the timer
+	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
+
+	//Send an event out
+	for (auto IOHandler_pair : Subscribers)
+	{
+		//toggle value
+		pVal->value = !pVal->value;
+		//pass a copy, because we don't know when the ref will go out of scope
+		IOHandler_pair.second->Event(opendnp3::Binary(*pVal), index, this->Name);
+	}
+
+	//wait til next time
+	pTimer->async_wait([=](asio::error_code err_code)
+				 {
+					 if(enabled)
+						 SpawnEvent(pVal,interval,index,pTimer,seed);
+					//else - break timer cycle
 				 });
 }
 

@@ -32,7 +32,6 @@
 #include <opendatacon/Version.h>
 
 #include "DataConcentrator.h"
-#include "logging_cmds.h"
 #include "NullPort.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
@@ -436,47 +435,6 @@ void DataConcentrator::Run()
 
 	std::cout << "Shutting down DNP3 manager... " << std::endl;
 	DNP3Mgr.Shutdown();
-}
-
-void DataConcentrator::RestartPortOrConn(std::stringstream& args)
-{
-	EnablePortOrConn(args,false);
-	EnablePortOrConn(args,true);
-}
-void DataConcentrator::EnablePortOrConn(std::stringstream& args, bool enable)
-{
-	std::string arg = "";
-	std::string mregex;
-	std::regex reg;
-	if(!extract_delimited_string(args,mregex))
-	{
-		std::cout<<"Syntax error: Delimited regex expected, found \"..."<<mregex<<"\""<<std::endl;
-		return;
-	}
-	try
-	{
-		reg = std::regex(mregex);
-	}
-	catch(std::exception& e)
-	{
-		std::cout<<e.what()<<std::endl;
-		return;
-	}
-	for(auto& Name_n_UI : Interfaces)
-	{
-		if(std::regex_match(Name_n_UI.first, reg))
-			enable ? Name_n_UI.second->Enable() : Name_n_UI.second->Disable();
-	}
-	for(auto& Name_n_Conn : DataConnectors)
-	{
-		if(std::regex_match(Name_n_Conn.first, reg))
-			enable ? Name_n_Conn.second->Enable() : Name_n_Conn.second->Disable();
-	}
-	for(auto& Name_n_Port : DataPorts)
-	{
-		if(std::regex_match(Name_n_Port.first, reg))
-			enable ? Name_n_Port.second->Enable() : Name_n_Port.second->Disable();
-	}
 }
 
 void DataConcentrator::Shutdown()

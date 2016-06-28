@@ -39,27 +39,27 @@ public:
 		this->AddCommand("Configuration", [this](const ParamCollection &params) {
 		                       if (auto target = GetTarget(params)) return target->GetConfiguration();
 		                       return IUIResponder::GenerateResult("Bad parameter");
-				     });
+				     },"Returns the JSON configuration for a DataPort");
 		this->AddCommand("CurrentState", [this](const ParamCollection &params) {
 		                       if (auto target = GetTarget(params)) return target->GetCurrentState();
 		                       return IUIResponder::GenerateResult("Bad parameter");
-				     });
+				     },"Returns the current state of a DataPort");
 		this->AddCommand("Statistics", [this](const ParamCollection &params) {
 		                       if (auto target = GetTarget(params)) return target->GetStatistics();
 		                       return IUIResponder::GenerateResult("Bad parameter");
-				     });
+				     },"Returns available statistics from a DataPort");
 		this->AddCommand("Status", [this](const ParamCollection &params) {
 		                       if (auto target = GetTarget(params)) return target->GetStatus();
 		                       return IUIResponder::GenerateResult("Bad parameter");
-				     });
-		this->AddCommand("Enable", [this](const ParamCollection &params)->const Json::Value {
+				     },"Returns the current status of a DataPort");
+		this->AddCommand("Enable", [this](const ParamCollection &params)->const Json::Value{
 		                       if (auto target = GetTarget(params))
 		                       {
 		                             target->Enable();
 		                             return IUIResponder::GenerateResult("Success");
 					     }
 		                       return IUIResponder::GenerateResult("Bad parameter");
-				     });
+				     },"Enables a DataPort and returns if the operation was succesful");
 		this->AddCommand("Disable", [this](const ParamCollection &params)->const Json::Value {
 		                       if (auto target = GetTarget(params))
 		                       {
@@ -67,7 +67,7 @@ public:
 		                             return IUIResponder::GenerateResult("Success");
 					     }
 		                       return IUIResponder::GenerateResult("Bad parameter");
-				     });
+				     },"Disables a DataPort and returns if the operation was succesful");
 		this->AddCommand("Restart", [this](const ParamCollection &params)->const Json::Value {
 		                       if (auto target = GetTarget(params))
 		                       {
@@ -76,7 +76,7 @@ public:
 		                             return IUIResponder::GenerateResult("Success");
 					     }
 		                       return IUIResponder::GenerateResult("Bad parameter");
-				     });
+				     },"Disables then Enables a DataPort and returns if the operation was succesful");
 	}
 	virtual ~DataPortCollection(){}
 };

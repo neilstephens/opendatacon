@@ -45,6 +45,8 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 	UnsolClass2(false),
 	UnsolClass3(false),
 	// Master Station configuration
+	TCPConnectRetryPeriodMinms(500),
+	TCPConnectRetryPeriodMaxms(30000),
 	MasterResponseTimeoutms(5000), /// Application layer response timeout
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	DoUnsolOnStartup(true),
@@ -65,6 +67,8 @@ DNP3PointConf::DNP3PointConf(std::string FileName):
 	OverrideControlCode(opendnp3::ControlCode::UNDEFINED),
 	DoAssignClassOnStartup(false),
 	// Outstation configuration
+	TCPListenRetryPeriodMinms(0),
+	TCPListenRetryPeriodMaxms(5000),
 	MaxControlsPerRequest(16),
 	MaxTxFragSize(2048),
 	SelectTimeoutms(10000),
@@ -164,6 +168,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolClass3 = JSONRoot["UnsolClass3"].asBool();
 
 	// Master Station configuration
+	if (!JSONRoot["TCPConnectRetryPeriodMinms"].isNull())
+		TCPConnectRetryPeriodMinms = JSONRoot["TCPConnectRetryPeriodMinms"].asUInt();
+	if (!JSONRoot["TCPConnectRetryPeriodMaxms"].isNull())
+		TCPConnectRetryPeriodMaxms = JSONRoot["TCPConnectRetryPeriodMaxms"].asUInt();
 	if (!JSONRoot["MasterResponseTimeoutms"].isNull())
 		MasterResponseTimeoutms = JSONRoot["MasterResponseTimeoutms"].asUInt();
 	if (!JSONRoot["MasterRespondTimeSync"].isNull())
@@ -239,6 +247,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	// Outstation configuration
+	if (!JSONRoot["TCPListenRetryPeriodMinms"].isNull())
+		TCPListenRetryPeriodMinms = JSONRoot["TCPListenRetryPeriodMinms"].asUInt();
+	if (!JSONRoot["TCPListenRetryPeriodMaxms"].isNull())
+		TCPListenRetryPeriodMaxms = JSONRoot["TCPListenRetryPeriodMaxms"].asUInt();
 	if (!JSONRoot["MaxControlsPerRequest"].isNull())
 		MaxControlsPerRequest = JSONRoot["MaxControlsPerRequest"].asUInt();
 	if (!JSONRoot["MaxTxFragSize"].isNull())
