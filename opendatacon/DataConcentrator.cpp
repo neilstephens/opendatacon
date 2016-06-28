@@ -439,21 +439,26 @@ void DataConcentrator::Run()
 
 void DataConcentrator::Shutdown()
 {
-	std::cout << "Disabling user interfaces... " << std::endl;
-	for(auto& Name_n_UI : Interfaces)
+	//Shutdown gets called from various places (signal handling, user interface(s))
+	//ensure we only act once
+	std::call_once(shutdown_flag, [this]()
 	{
-		Name_n_UI.second->Disable();
-	}
-	std::cout << "Disabling data connectors... " << std::endl;
-	for(auto& Name_n_Conn : DataConnectors)
-	{
-		Name_n_Conn.second->Disable();
-	}
-	std::cout << "Disabling data ports... " << std::endl;
-	for(auto& Name_n_Port : DataPorts)
-	{
-		Name_n_Port.second->Disable();
-	}
-	std::cout << "Finishing asynchronous tasks... " << std::endl;
-	ios_working.reset();
+		std::cout << "Disabling user interfaces... " << std::endl;
+		for(auto& Name_n_UI : Interfaces)
+		{
+			Name_n_UI.second->Disable();
+		}
+		std::cout << "Disabling data connectors... " << std::endl;
+		for(auto& Name_n_Conn : DataConnectors)
+		{
+			Name_n_Conn.second->Disable();
+		}
+		std::cout << "Disabling data ports... " << std::endl;
+		for(auto& Name_n_Port : DataPorts)
+		{
+			Name_n_Port.second->Disable();
+		}
+		std::cout << "Finishing asynchronous tasks... " << std::endl;
+		ios_working.reset();
+	});
 }

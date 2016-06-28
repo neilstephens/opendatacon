@@ -53,6 +53,12 @@ public:
 	DataConcentrator(std::string FileName);
 	~DataConcentrator();
 
+	void ProcessElements(const Json::Value& JSONRoot) override;
+	void BuildOrRebuild();
+	void Run();
+	void Shutdown();
+
+private:
 	DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
 	LogCollection AdvancedLoggers;
@@ -60,17 +66,12 @@ public:
 
 	asiodnp3::DNP3Manager DNP3Mgr;
 	asio::io_service IOS;
-
 	std::unique_ptr<asio::io_service::work> ios_working;
+	std::once_flag shutdown_flag;
 
 	openpal::LogFilters LOG_LEVEL;
 	LogToFile FileLog;                             //Prints all messages to a rolling set of log files.
 	asiopal::LogFanoutHandler FanoutHandler;
-
-	void ProcessElements(const Json::Value& JSONRoot) override;
-	void BuildOrRebuild();
-	void Run();
-	void Shutdown();
 };
 
 #endif /* DATACONCENTRATOR_H_ */
