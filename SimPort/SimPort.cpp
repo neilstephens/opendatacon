@@ -27,6 +27,7 @@
 #include "SimPort.h"
 #include "SimPortConf.h"
 #include <random>
+#include <limits>
 
 inline unsigned int random_interval(const unsigned int& average_interval, rand_t& seed)
 {
@@ -226,6 +227,18 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 								pConf->AnalogIndicies.erase(it);
 								break;
 							}
+					}
+					else if(start_val == "NAN" || start_val == "nan" || start_val == "NaN")
+					{
+						pConf->AnalogStartVals[index] = opendnp3::Analog(std::numeric_limits<double>::quiet_NaN(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
+					}
+					else if(start_val == "INF" || start_val == "inf")
+					{
+						pConf->AnalogStartVals[index] = opendnp3::Analog(std::numeric_limits<double>::infinity(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
+					}
+					else if(start_val == "-INF" || start_val == "-inf")
+					{
+						pConf->AnalogStartVals[index] = opendnp3::Analog(-std::numeric_limits<double>::infinity(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
 					}
 					else if(start_val == "X")
 						pConf->AnalogStartVals[index] = opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST));
