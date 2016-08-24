@@ -31,7 +31,7 @@ include_directories(
 
 #find modbus library
 find_library(MODBUS_LIB NAMES modbus libmodbus
-	PATHS ${MODBUS_HOME}/lib)
+	PATHS ${MODBUS_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 add_library(modbus_target UNKNOWN IMPORTED)
 set_property(TARGET modbus_target PROPERTY IMPORTED_LOCATION "${MODBUS_LIB}")
 #include in install/packaging

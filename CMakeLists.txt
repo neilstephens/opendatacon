@@ -196,11 +196,11 @@ endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 # Locate opendnp3 - this can be moved into DNP3Port when the other projects are decoupled from opendnp3
 foreach( component openpal opendnp3 asiopal asiodnp3 )
 	# Look for regular libraries
-	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib)
+	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 	add_library(${component}_target UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_target PROPERTY IMPORTED_LOCATION "${${component}_lib}")
 	# Look for debug libraries
-	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib)
+	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 	add_library(${component}_dtarget UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
 	#set a variable to use for linking
