@@ -79,11 +79,11 @@ void DNP3OutstationPort::Disable()
 }
 
 // Called by OpenDNP3 Thread Pool
-// Called when a the reset/unreset status of the link layer changes (and on link up)
+// Called when a the reset/unreset status of the link layer changes (and on link up / channel down)
 void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	this->status = status;
-	if(link_dead)
+	if(link_dead && !channel_dead) //must be on link up
 	{
 		link_dead = false;
 		for(auto IOHandler_pair : Subscribers)

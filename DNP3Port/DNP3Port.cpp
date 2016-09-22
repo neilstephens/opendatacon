@@ -33,7 +33,8 @@ DNP3Port::DNP3Port(std::string aName, std::string aConfFilename, const Json::Val
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pChannel(nullptr),
 	status(opendnp3::LinkStatus::UNRESET),
-	link_dead(true)
+	link_dead(true),
+	channel_dead(true)
 {
 	//the creation of a new DNP3PortConf will get the point details
 	pConf.reset(new DNP3PortConf(ConfFilename));
@@ -47,7 +48,12 @@ void DNP3Port::StateListener(opendnp3::ChannelState state)
 {
 	if(state != opendnp3::ChannelState::OPEN)
 	{
+		channel_dead = true;
 		OnLinkDown();
+	}
+	else
+	{
+		channel_dead = false;
 	}
 }
 

@@ -58,7 +58,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 
 	//TODO: write a better way to wait for GetStatus and timeout (when decouple gets merged)
 	unsigned int count = 0;
-	while(OPUT->GetStatus()["Result"].asString() == "Port enabled - link down" && count < 5000)
+	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;

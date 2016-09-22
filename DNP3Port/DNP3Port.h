@@ -75,6 +75,7 @@ protected:
 	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
 	opendnp3::LinkStatus status;
 	bool link_dead;
+	bool channel_dead;
 
 	virtual void OnLinkDown()=0;
 };

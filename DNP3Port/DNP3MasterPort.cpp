@@ -130,11 +130,11 @@ void DNP3MasterPort::PortDown()
 }
 
 // Called by OpenDNP3 Thread Pool
-// Called when a the reset/unreset status of the link layer changes (and on link up)
+// Called when a the reset/unreset status of the link layer changes (and on link up / channel down)
 void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	this->status = status;
-	if(link_dead)
+	if(link_dead && !channel_dead) //must be on link up
 	{
 
 		link_dead = false;
