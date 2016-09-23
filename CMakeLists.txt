@@ -21,6 +21,12 @@ if(WIN32)
 	cmake_minimum_required(VERSION 3.4)
 else()
 	cmake_minimum_required(VERSION 2.8)
+	set(BUILD_TYPE_INSTRUCTIONS "Choose the type of build, default Release, other options: Debug RelWithDebInfo MinSizeRel.")
+	if(DEFINED CMAKE_BUILD_TYPE)
+		set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING ${BUILD_TYPE_INSTRUCTIONS})
+	else()
+		set(CMAKE_BUILD_TYPE Release CACHE STRING ${BUILD_TYPE_INSTRUCTIONS})
+	endif()
 endif()
 
 if(POLICY CMP0048)
@@ -60,27 +66,28 @@ endif()
 
 
 # various optional libraries and projects
-option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, Tests, ConsoleUI, WebUI)" ON)
-option(TESTS "Build tests" OFF)
-option(WEBUI "Build the http(s) web user interface" OFF)
-option(DNP3PORT "Build DNP3 Port" OFF)
-option(JSONPORT "Build JSON Port" OFF)
-option(MODBUSPORT "Build Modbus Port" OFF)
-option(SIMPORT "Build Simulation Port" OFF)
-option(CONSOLEUI "Build the console user interface" OFF)
+option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, Tests, ConsoleUI, WebUI)" OFF)
+
+set(TESTS OFF CACHE BOOL "Build tests"					)
+set(WEBUI OFF CACHE BOOL "Build the http(s) web user interface"	)
+set(DNP3PORT OFF CACHE BOOL "Build DNP3 Port"				)
+set(JSONPORT OFF CACHE BOOL "Build JSON Port"				)
+set(MODBUSPORT OFF CACHE BOOL "Build Modbus Port"			)
+set(SIMPORT OFF CACHE BOOL "Build Simulation Port"			)
+set(CONSOLEUI OFF CACHE BOOL "Build the console user interface"	)
 
 # other options off-by-default that you can enable
 option(WERROR "Set all warnings to errors" OFF)
 option(COVERAGE "Builds the libraries with coverage info for gcov" OFF)
 
 if(FULL)
-	set(TESTS ON)
-	set(WEBUI ON)
-	set(CONSOLEUI ON)
-	set(DNP3PORT ON)
-	set(JSONPORT ON)
-	set(MODBUSPORT ON)
-	set(SIMPORT ON)
+	set(TESTS ON CACHE BOOL "Build tests"				   	FORCE)
+	set(WEBUI ON CACHE BOOL "Build the http(s) web user interface"	FORCE)
+	set(DNP3PORT ON CACHE BOOL "Build DNP3 Port"			   	FORCE)
+	set(JSONPORT ON CACHE BOOL "Build JSON Port"			   	FORCE)
+	set(MODBUSPORT ON CACHE BOOL "Build Modbus Port"		   	FORCE)
+	set(SIMPORT ON CACHE BOOL "Build Simulation Port"		   	FORCE)
+	set(CONSOLEUI ON CACHE BOOL "Build the console user interface"	FORCE)
 endif()
 
 # IDE configuration
@@ -194,6 +201,12 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 # Locate opendnp3 - this can be moved into DNP3Port when the other projects are decoupled from opendnp3
+set(DNP3_HOME_INSTRUCTIONS "Choose the location of opendnp3: where it was installed - there should be lib and include directories within")
+if(DEFINED DNP3_HOME)
+	set(DNP3_HOME ${DNP3_HOME} CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
+else()
+	set(DNP3_HOME "/usr/local" CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
+endif()
 foreach( component openpal opendnp3 asiopal asiodnp3 )
 	# Look for regular libraries
 	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
@@ -206,14 +219,17 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 	#set a variable to use for linking
 	set(${component}_libs debug ${component}_dtarget optimized ${component}_target )
 
+	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
+	mark_as_advanced(FORCE ${component}_lib ${component}_dlib)
+
 	#include in install/packaging
 	get_filename_component(_resolvedFile "${${component}_lib}" REALPATH) #check for symolic link
 	if(${_resolvedFile} STREQUAL ${${component}_lib})
 		#not a link - just install file
-		install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release")
+		install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
 	else()
 		#is a link -install link and file
-		install(FILES "${${component}_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release")
+		install(FILES "${${component}_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
 	endif()
 	get_filename_component(_resolvedFile "${${component}_dlib}" REALPATH) #check for symolic link
 	if(${_resolvedFile} STREQUAL ${${component}_dlib})
@@ -224,6 +240,13 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 		install(FILES "${${component}_dlib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
 	endif()
 endforeach()
+
+set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an include directory within")
+if(DEFINED ASIO_HOME)
+	set(ASIO_HOME ${ASIO_HOME} CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+else()
+	set(ASIO_HOME "/usr/local" CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+endif()
 
 add_subdirectory(JSON)
 add_subdirectory(ODC)

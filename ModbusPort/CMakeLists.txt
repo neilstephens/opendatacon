@@ -21,6 +21,13 @@ project(ModbusPort)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
+set(MODBUS_HOME_INSTRUCTIONS "Choose the location of libmodbus: where it was installed - there should be lib and include directories within")
+if(DEFINED MODBUS_HOME)
+	set(MODBUS_HOME ${MODBUS_HOME} CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
+else()
+	set(MODBUS_HOME "/usr/local" CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
+endif()
+
 include_directories(
 	../include
 	../JSON
@@ -34,6 +41,10 @@ find_library(MODBUS_LIB NAMES modbus libmodbus
 	PATHS ${MODBUS_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 add_library(modbus_target UNKNOWN IMPORTED)
 set_property(TARGET modbus_target PROPERTY IMPORTED_LOCATION "${MODBUS_LIB}")
+
+#hide (in non-advanced mode) the library path in cmake guis since it's derrived
+mark_as_advanced(FORCE MODBUS_LIB)
+
 #include in install/packaging
 get_filename_component(_resolvedFile "${MODBUS_LIB}" REALPATH) #check for symolic link
 if(${_resolvedFile} STREQUAL ${MODBUS_LIB})

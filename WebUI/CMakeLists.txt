@@ -21,6 +21,13 @@ project(WebUI)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
+set(MICROHTTPD_HOME_INSTRUCTIONS "Choose the location of libmicrohttpd: where it was installed - there should be lib and include directories within")
+if(DEFINED MICROHTTPD_HOME)
+	set(MICROHTTPD_HOME ${MICROHTTPD_HOME} CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
+else()
+	set(MICROHTTPD_HOME "/usr/local" CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
+endif()
+
 include_directories(
 	../include
 	../JSON
@@ -32,6 +39,10 @@ find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
 	PATHS ${MICROHTTPD_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 add_library(httpd_target UNKNOWN IMPORTED)
 set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
+
+#hide (in non-advanced mode) the library path in cmake guis since it's derrived
+mark_as_advanced(FORCE HTTPD_LIB)
+
 #include in install/packaging
 get_filename_component(_resolvedFile "${HTTPD_LIB}" REALPATH) #check for symolic link
 if(${_resolvedFile} STREQUAL ${HTTPD_LIB})
