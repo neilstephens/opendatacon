@@ -243,129 +243,15 @@ The main config consists of global settings, a list of ports, a list of connecto
 
 Here are the available keys for configuration of the main opendatacon configuration object:
 
-<div class="table-wrap">
-
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td class="confluenceTd">"Ports"</td>
-
-<td class="confluenceTd"><span>array</span></td>
-
-<td class="confluenceTd">a list of port configurations</td>
-
-<td class="confluenceTd">No, but opendatacon won't do much without any ports</td>
-
-<td colspan="1" class="confluenceTd">Empty</td>
-
-</tr>
-
-<tr>
-
-<td class="confluenceTd">"Connectors"</td>
-
-<td class="confluenceTd">array</td>
-
-<td class="confluenceTd">a list of connector configurations</td>
-
-<td class="confluenceTd"><span>No, but opendatacon won't do much without any connectors</span></td>
-
-<td colspan="1" class="confluenceTd"><span>Empty</span></td>
-
-</tr>
-
-<tr>
-
-<td class="confluenceTd">"Plugins"</td>
-
-<td class="confluenceTd"><span>array</span></td>
-
-<td class="confluenceTd">a list of plug-in configurations</td>
-
-<td class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd"><span>Empty</span></td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"LogName"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">filepath/name prefix for log message files. A number and .txt file extension will be appended</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">"datacon_log"</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"NumLogFiles"</td>
-
-<td colspan="1" class="confluenceTd">number</td>
-
-<td colspan="1" class="confluenceTd">A non-zero number, denoting the number of log files to be used as a 'rolling buffer' of logs. Eg. If 3 is given, files LogName0.txt, <span>LogName1.txt, <span>LogName2.txt will be written to in sequential modulo 3 order.</span></span></td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">5</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"LogFileSizekB"</td>
-
-<td colspan="1" class="confluenceTd">number</td>
-
-<td colspan="1" class="confluenceTd">The size in kilobytes after which a log file is full, and the logging system will start a new log file.</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">5120</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"LOG_LEVEL"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">Either "NOTHING", "NORMAL", "ALL_COMMS", or "ALL". This defines the verbosity of the log messages generated. This corresponds directly with the log levels used by the open dnp3 library, since the DNP3 port implementations are the primary usage of opendatacon as of 0.3.0</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">"NORMAL"</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "Ports" | <span>array</span> | a list of port configurations | No, but opendatacon won't do much without any ports | Empty |
+| "Connectors" | array | a list of connector configurations | <span>No, but opendatacon won't do much without any connectors</span> | <span>Empty</span> |
+| "Plugins" | <span>array</span> | a list of plug-in configurations | No | <span>Empty</span> |
+| "LogName" | string | filepath/name prefix for log message files. A number and .txt file extension will be appended | No | "datacon_log" |
+| "NumLogFiles" | number | A non-zero number, denoting the number of log files to be used as a 'rolling buffer' of logs. Eg. If 3 is given, files LogName0.txt, <span>LogName1.txt, <span>LogName2.txt will be written to in sequential modulo 3 order.</span></span> | No | 5 |
+| "LogFileSizekB" | number | The size in kilobytes after which a log file is full, and the logging system will start a new log file. | No | 5120 |
+| "LOG_LEVEL" | string | Either "NOTHING", "NORMAL", "ALL_COMMS", or "ALL". This defines the verbosity of the log messages generated. This corresponds directly with the log levels used by the open dnp3 library, since the DNP3 port implementations are the primary usage of opendatacon as of 0.3.0 | No | "NORMAL" |
 
 ### Port configuration
 
@@ -373,87 +259,13 @@ Here are the available keys for configuration of the main opendatacon configurat
 
 Here are the available keys for configuration of a port in opendatacon. An object with these keys is used as a member of the "Ports" list in the main configuration.
 
-<div class="table-wrap">
 
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Name"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">The name of the port. This needs to be a unique identifier.</td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Type"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">This defines the specific implementation of a port. There is an inbuilt port implementation called "Null" (which throws away data - for testing), but otherwise, ports are implemented in libraries, and this is used to find the port construction routine in the library. See "Library" below for how the library itself is found.</td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"ConfFilename"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">The filepath/name to a file containing the implementation specific configuration for the port. This is discussed separately for the included port types in following sections.</td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Library"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">The base name of the library containing the port implementation. This is required if the library contains multiple port implementations, and hence can't be derived from the port type. Eg. The DNP3 port library contains the port implementations DNP3Outstation and DNP3Master, but the library base name is "DNP3Port" (which resolves to libDNP3Port.so/dylib under POSIX and DNP3Port.dll under windows). By default the library base name is assumed to be "Type"Port.</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">Derived from "Type"</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "Name" | string | The name of the port. This needs to be a unique identifier. | Yes | N/A |
+| "Type" | string | This defines the specific implementation of a port. There is an inbuilt port implementation called "Null" (which throws away data - for testing), but otherwise, ports are implemented in libraries, and this is used to find the port construction routine in the library. See "Library" below for how the library itself is found. | Yes | N/A |
+| "ConfFilename" | string | The filepath/name to a file containing the implementation specific configuration for the port. This is discussed separately for the included port types in following sections. | Yes | N/A |
+| "Library" | string | The base name of the library containing the port implementation. This is required if the library contains multiple port implementations, and hence can't be derived from the port type. Eg. The DNP3 port library contains the port implementations DNP3Outstation and DNP3Master, but the library base name is "DNP3Port" (which resolves to libDNP3Port.so/dylib under POSIX and DNP3Port.dll under windows). By default the library base name is assumed to be "Type"Port. | No | Derived from "Type" |
 
 ### Connector configuration
 
@@ -461,135 +273,49 @@ Here are the available keys for configuration of a port in opendatacon. An objec
 
 Here are the available keys for configuration of a connector in opendatacon. An object with these keys is used as a member of the "Connectors" list in the main configuration.
 
-<div class="table-wrap">
-
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Name"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">The name of the connector. <span>This needs to be a unique identifier.</span></td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"ConfFilename"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd"><span>The filepath/name to a file containing the JSON object for configuring the connections and transforms belonging to a connector.</span></td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">
-
-N/A
-
-</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "Name" | string | The name of the connector. <span>This needs to be a unique identifier.</span> | Yes | N/A |
+| "ConfFilename" | string | <span>The filepath/name to a file containing the JSON object for configuring the connections and transforms belonging to a connector.</span> | Yes | N/A |
 
 Here is an example of the object in the file referred to by "ConfFilename":
 
-<div class="code panel pdl" style="border-width: 1px;">
+```json
+{
+	"Connections" :
+	[
+		{
+			"Name" : "Test JSON to DNP3",
+			"Port1" : "Test JSON input",
+			"Port2" : "Test DNP3 output 1"
+		},
+		{
+			"Name" : "Test DNP3 to Null",
+			"Port1" : "Test DNP3 Master",
+			"Port2" : "Test DNP3 output 2"
+		}
+	],
 
-<div class="codeContent panelContent pdl"><script type="syntaxhighlighter" class="theme: Confluence; brush: java; gutter: false"><![CDATA[{ &quot;Connections&quot; : [ { &quot;Name&quot; : &quot;Test JSON to DNP3&quot;, &quot;Port1&quot; : &quot;Test JSON input&quot;, &quot;Port2&quot; : &quot;Test DNP3 output 1&quot; }, { &quot;Name&quot; : &quot;Test DNP3 to Null&quot;, &quot;Port1&quot; : &quot;Test DNP3 input&quot;, &quot;Port2&quot; : &quot;Test DNP3 output 2&quot; } ], &quot;Transforms&quot; : [ { &quot;Type&quot; : &quot;IndexOffset&quot;, &quot;Sender&quot;: &quot;Test JSON input&quot;, &quot;Parameters&quot; : { &quot;Offset&quot; : 1 } } ] }]]></script></div>
 
-</div>
+	"Transforms" :
+	[
+		{
+			"Type" : "IndexOffset",
+			"Sender": "Test JSON input",
+			"Parameters" : {
+				"Offset" : 1
+			}
+		}
+	]
+}
+```
 
 #### Config file keys
 
-<div class="table-wrap">
-
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>"Connections"</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">array</td>
-
-<td colspan="1" class="confluenceTd">list of connection configurations for the connector</td>
-
-<td colspan="1" class="confluenceTd">No, but the connector won't do anything without any connections</td>
-
-<td colspan="1" class="confluenceTd">Empty</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>"Transforms"</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">array</td>
-
-<td colspan="1" class="confluenceTd">list of transform configurations for the connector</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">Empty</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "Connections"| array | list of connection configurations for the connector | No, but the connector won't do anything without any connections | Empty |
+|"Transforms" | array | list of transform configurations for the connector | No | Empty |
 
 ### Connection configuration
 
@@ -597,59 +323,10 @@ Here is an example of the object in the file referred to by "ConfFilename":
 
 Here are the available keys for configuration of a connection in opendatacon. An object with these keys is used as a member of the "Connections" list in the connector config file.
 
-<div class="table-wrap">
-
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Name"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd"><span>The name of the connection. This needs to be a unique identifier.</span></td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Port1" and <span>"Port2"</span></td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">The names of the ports that the connection routes between. Notice that there isn't a 'from' or 'to' port, because a connection is bidirectional.</td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "Name" | string | <span>The name of the connection. This needs to be a unique identifier.</span> | Yes | N/A |
+| "Port1" and <span>"Port2"</span> | string | The names of the ports that the connection routes between. Notice that there isn't a 'from' or 'to' port, because a connection is bidirectional. | Yes | N/A |
 
 ### Transform configuration
 
@@ -657,197 +334,31 @@ Here are the available keys for configuration of a connection in opendatacon. An
 
 Here are the available keys for configuration of a transform in opendatacon. An object with these keys is used as a member of the "Transforms" list in the connector config file.
 
-<div class="table-wrap">
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "Type" | string | This defines the specific implementation of transform to use. As of opendatacon 0.3.0, the inbuilt transforms are "IndexOffset", "Threshold" and "Rand". Transforms will be fully extensible, in the fashion ports are - through a dynamic library API, in subsequent releases of opendatacon. | Yes | N/A |
+| "Sender" | string | This should be set to the name of the port that the transform applies to. Any connections in the same connector as the transform, will route data from the specified sender to the transform before routing to the opposite port. | Yes | N/A |
+| "Parameters" | value | JSON value to pass to the transform for implementation specific configuration. |
+| "Library" | string | The base name of the library containing the <span>transform</span> implementation. This is required if the library contains multiple <span>transform</span> implementations, and hence can't be derived from the <span>transform</span> type. Eg. By default the library base name is assumed to be "Type"Transform. | No | Derived from "Type" |
 
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Type"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">This defines the specific implementation of transform to use. As of opendatacon 0.3.0, the inbuilt transforms are "IndexOffset", "Threshold" and "Rand". Transforms will be fully extensible, in the fashion ports are - through a dynamic library API, in subsequent releases of opendatacon.</td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Sender"</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">This should be set to the name of the port that the transform applies to. Any connections in the same connector as the transform, will route data from the specified sender to the transform before routing to the opposite port.</td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Parameters"</td>
-
-<td colspan="1" class="confluenceTd">value</td>
-
-<td colspan="1" class="confluenceTd">JSON value to pass to the transform for implementation specific configuration.</td>
-
-</tr>
-
-<tr>
-
-<td class="confluenceTd">"Library"</td>
-
-<td class="confluenceTd">string</td>
-
-<td class="confluenceTd">The base name of the library containing the <span>transform</span> implementation. This is required if the library contains multiple <span>transform</span> implementations, and hence can't be derived from the <span>transform</span> type. Eg. By default the library base name is assumed to be "Type"Transform.</td>
-
-<td class="confluenceTd">No</td>
-
-<td class="confluenceTd">Derived from "Type"</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
 
 ##### IndexOffset "Parameters"
 
 The IndexOffset transform expects a JSON object with the following keys to be provided as the "Parameters" value:
 
-<div class="table-wrap">
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "Offset" | number | An integer to add to the point index of a data event. Note this can be negative, but the resulting index should be designed to be unsigned. | No | 0 |
 
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"Offset"</td>
-
-<td colspan="1" class="confluenceTd">number</td>
-
-<td colspan="1" class="confluenceTd">An integer to add to the point index of a data event. Note this can be negative, but the resulting index should be designed to be unsigned.</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">0</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
 
 ##### Threshold "Parameters"
 
-<div class="table-wrap">
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "threshold_point_index" | number | The index of the Analog point to be used as the value to threshold gate a group of points | No | 0 |
+| "threshold" | number | The value which the Analog value has to meet or surpass to allow data past for the group of points | No | approx -1.79769313486231570815e+308 |
+| "points" | <span>array</span> | The point indexes of the points that should be blocked if the Analog value doesn't meet the threshold | No | Empty |
 
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"threshold_point_index"</td>
-
-<td colspan="1" class="confluenceTd">number</td>
-
-<td colspan="1" class="confluenceTd">The index of the Analog point to be used as the value to threshold gate a group of points</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">0</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"threshold"</td>
-
-<td colspan="1" class="confluenceTd">number</td>
-
-<td colspan="1" class="confluenceTd">The value which the Analog value has to meet or surpass to allow data past for the group of points</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">approx -1.79769313486231570815e+308</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">"points"</td>
-
-<td colspan="1" class="confluenceTd"><span>array</span></td>
-
-<td colspan="1" class="confluenceTd">The point indexes of the points that should be blocked if the Analog value doesn't meet the threshold</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">Empty</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
 
 ##### Rand "Parameters"
 
@@ -855,9 +366,9 @@ There are no expected parameters for the Rand transform. Any given will be ignor
 
 ## Extensions
 
-### <span style="font-size: 16.0px;line-height: 1.5625;">DNP3 Port Library</span>
+### DNP3 Port Library
 
-#### <span style="font-size: 16.0px;line-height: 1.5625;">Features</span>
+#### Features
 
 #### Configuration
 
@@ -866,370 +377,148 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 ##### DNP3 Master
 
 ###### Example
-
-<div class="code panel pdl" style="border-width: 1px;">
-
-<div class="codeContent panelContent pdl"><script type="syntaxhighlighter" class="theme: Confluence; brush: java; gutter: false"><![CDATA[{ //------- DNP3 Link Configuration--------# &quot;IP&quot; : 1.2.3.4, &quot;Port&quot; : 20000, &quot;MasterAddr&quot; : 0, &quot;OutstationAddr&quot; : 1, &quot;LinkNumRetry&quot; : 0, &quot;LinkTimeoutms&quot; : 1000, &quot;LinkUseConfirms&quot; : false, //-------- DNP3 Common Application Configuration -------------# &quot;EnableUnsol&quot;: true, &quot;UnsolClass1&quot;: true, &quot;UnsolClass2&quot;: true, &quot;UnsolClass3&quot;: true, //-------Master Stack conf--------# &quot;MasterResponseTimeoutms&quot; : 30000, &quot;MasterRespondTimeSync&quot; : true, &quot;DoUnsolOnStartup&quot; : true, &quot;StartupIntegrityClass0&quot; : true, &quot;StartupIntegrityClass1&quot; : true, &quot;StartupIntegrityClass2&quot; : true, &quot;StartupIntegrityClass3&quot; : true, &quot;IntegrityOnEventOverflowIIN&quot; : true, &quot;TaskRetryPeriodms&quot; : 30000, &quot;IntegrityScanRatems&quot; : 3600000, &quot;EventClass1ScanRatems&quot; : 0, &quot;EventClass2ScanRatems&quot; : 0, &quot;EventClass3ScanRatems&quot; : 0, &quot;OverrideControlCode&quot; : &quot;PULSE&quot;, &quot;DoAssignClassOnStartup&quot; : false, //-------Point conf--------# &quot;Binaries&quot; : [{&quot;Index&quot;: 5}], &quot;Analogs&quot; : [{&quot;Range&quot; : {&quot;Start&quot; : 0, &quot;Stop&quot; : 5}}], &quot;CommsPoint&quot; : {&quot;Index&quot; : 0, &quot;FailValue&quot; : true} //&quot;BinaryControls&quot; : [{&quot;Range&quot; : {&quot;Start&quot; : 0, &quot;Stop&quot; : 5}}], }]]></script></div>
-
-</div>
+```json
+{
+    //------- DNP3 Link Configuration--------#
+    "IP" : 1.2.3.4,
+    "Port" : 20000,
+    "MasterAddr" : 0,
+    "OutstationAddr" : 1,
+    "LinkNumRetry" : 0,
+    "LinkTimeoutms" : 1000,
+    "LinkUseConfirms" : false,
+     
+    //-------- DNP3 Common Application Configuration -------------#
+    "EnableUnsol": true,
+    "UnsolClass1": true,
+    "UnsolClass2": true,
+    "UnsolClass3": true,
+    //-------Master Stack conf--------#
+    "MasterResponseTimeoutms" : 30000,
+    "MasterRespondTimeSync" : true,
+    "DoUnsolOnStartup" : true,
+    "StartupIntegrityClass0" : true,
+    "StartupIntegrityClass1" : true,
+    "StartupIntegrityClass2" : true,
+    "StartupIntegrityClass3" : true,
+    "IntegrityOnEventOverflowIIN" : true,
+    "TaskRetryPeriodms" : 30000,
+    "IntegrityScanRatems" : 3600000,
+    "EventClass1ScanRatems" : 0,
+    "EventClass2ScanRatems" : 0,
+    "EventClass3ScanRatems" : 0,
+    "OverrideControlCode" : "PULSE",
+    "DoAssignClassOnStartup" : false,
+     
+    //-------Point conf--------#
+    "Binaries" : [{"Index": 5}],
+    "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 5}}],
+    "CommsPoint" : {"Index" : 0, "FailValue" : true}
+    //"BinaryControls" : [{"Range" : {"Start" : 0, "Stop" : 5}}],  
+}
+```
 
 ###### Config file keys
 
-<div class="table-wrap">
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| MasterResponseTimeoutms |
+| MasterRespondTimeSync |
+| DoUnsolOnStartup |
+| StartupIntegrityClass0 |
+| StartupIntegrityClass1 |
+| StartupIntegrityClass2 |
+| StartupIntegrityClass3 |
+| IntegrityOnEventOverflowIIN |
+| TaskRetryPeriodms |
+| IntegrityScanRatems |
+| EventClass1ScanRatems |
+| EventClass2ScanRatems |
+| EventClass3ScanRatems |
+| DoAssignClassOnStartup |
+| OverrideControlCode |
+| CommsPoint |
 
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">MasterResponseTimeoutms</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">MasterRespondTimeSync</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">DoUnsolOnStartup</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">StartupIntegrityClass0</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">StartupIntegrityClass1</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">StartupIntegrityClass2</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">StartupIntegrityClass3</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">IntegrityOnEventOverflowIIN</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">TaskRetryPeriodms</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">IntegrityScanRatems</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">EventClass1ScanRatems</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">EventClass2ScanRatems</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">EventClass3ScanRatems</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">DoAssignClassOnStartup</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">OverrideControlCode</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">CommsPoint</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
 
 ##### DNP3 Outstation
 
 ###### Example
 
-<div class="code panel pdl" style="border-width: 1px;">
-
-<div class="codeContent panelContent pdl"><script type="syntaxhighlighter" class="theme: Confluence; brush: java; gutter: false"><![CDATA[{ //------- DNP3 Link Configuration--------# &quot;IP&quot; : 0.0.0.0, &quot;Port&quot; : 20000, &quot;MasterAddr&quot; : 0, &quot;OutstationAddr&quot; : 1, &quot;LinkNumRetry&quot; : 0, &quot;LinkTimeoutms&quot; : 1000, &quot;LinkUseConfirms&quot; : false, //-------- DNP3 Common Application Configuration -------------# &quot;EnableUnsol&quot;: true, &quot;UnsolClass1&quot;: false, &quot;UnsolClass2&quot;: false, &quot;UnsolClass3&quot;: false, //-------Outstation Stack conf--------# &quot;SelectTimeoutms&quot; : 30000, &quot;SolConfirmTimeoutms&quot; : 30000, &quot;UnsolConfirmTimeoutms&quot; : 30000, &quot;EventBinaryResponse&quot;: &quot;Group2Var2&quot;, &quot;EventAnalogResponse&quot;: &quot;Group32Var5&quot;, &quot;EventCounterResponse&quot;: &quot;Group22Var1&quot;, &quot;StaticBinaryResponse&quot;: &quot;Group1Var2&quot;, &quot;StaticAnalogResponse&quot;: &quot;Group30Var5&quot;, &quot;StaticCounterResponse&quot;: &quot;Group20Var1&quot;, &quot;DemandCheckPeriodms&quot;: 1000, &quot;WaitForCommandResponses&quot;: false, //-------Point conf--------# &quot;Binaries&quot; : [{&quot;Index&quot;: 0},{&quot;Index&quot;: 5}], &quot;Analogs&quot; : [{&quot;Range&quot; : {&quot;Start&quot; : 0, &quot;Stop&quot; : 5}}] //&quot;BinaryControls&quot; : [{&quot;Range&quot; : {&quot;Start&quot; : 0, &quot;Stop&quot; : 5}}] }]]></script></div>
-
-</div>
+```json
+{
+    //------- DNP3 Link Configuration--------#
+    "IP" : 0.0.0.0,
+    "Port" : 20000,
+    "MasterAddr" : 0,
+    "OutstationAddr" : 1,
+    "LinkNumRetry" : 0,
+    "LinkTimeoutms" : 1000,
+    "LinkUseConfirms" : false,
+     
+    //-------- DNP3 Common Application Configuration -------------#
+    "EnableUnsol": true,
+    "UnsolClass1": false,
+    "UnsolClass2": false,
+    "UnsolClass3": false,
+     
+    //-------Outstation Stack conf--------#
+    "SelectTimeoutms" : 30000,
+    "SolConfirmTimeoutms" : 30000,
+    "UnsolConfirmTimeoutms" : 30000,
+    "EventBinaryResponse": "Group2Var2",
+    "EventAnalogResponse": "Group32Var5",
+    "EventCounterResponse": "Group22Var1",
+    "StaticBinaryResponse": "Group1Var2",
+    "StaticAnalogResponse": "Group30Var5",
+    "StaticCounterResponse": "Group20Var1",
+ 
+    "DemandCheckPeriodms": 1000,
+    "WaitForCommandResponses": false,
+    //-------Point conf--------#
+    "Binaries" : [{"Index": 0},{"Index": 5}],
+    "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 5}}]
+//"BinaryControls" : [{"Range" : {"Start" : 0, "Stop" : 5}}]
+     
+}
+```
 
 ###### Config file keys
 
-<div class="table-wrap">
-
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">MaxControlsPerRequest</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">MaxTxFragSize</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">SelectTimeoutms</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">SolConfirmTimeoutms</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">UnsolConfirmTimeoutms</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">WaitForCommandResponses</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">DemandCheckPeriodms</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">StaticBinaryResponse</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">StaticAnalogResponse</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">StaticCounterResponse</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">EventBinaryResponse</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">EventAnalogResponse</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">EventCounterResponse</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">TimestampOverride</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">MaxBinaryEvents</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">MaxAnalogEvents</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">MaxCounterEvents</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| MaxControlsPerRequest |
+| MaxTxFragSize |
+| SelectTimeoutms |
+| SolConfirmTimeoutms |
+| UnsolConfirmTimeoutms |
+| WaitForCommandResponses |
+| DemandCheckPeriodms |
+| StaticBinaryResponse |
+| StaticAnalogResponse |
+| StaticCounterResponse |
+| EventBinaryResponse |
+| EventAnalogResponse |
+| EventCounterResponse |
+| TimestampOverride |
+| MaxBinaryEvents |
+| MaxAnalogEvents |
+| MaxCounterEvents |
 
 ##### Common keys to DNP3 Master and Outstation
 
-<div class="table-wrap">
-
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">LinkNumRetry</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">LinkTimeoutms</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">LinkUseConfirms</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">UseConfirms</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">EnableUnsol</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">UnsolClass1</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">UnsolClass2</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">UnsolClass3</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">Analogs</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">Binaries</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">BinaryControls</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| LinkNumRetry |
+| LinkTimeoutms |
+| LinkUseConfirms |
+| UseConfirms |
+| EnableUnsol |
+| UnsolClass1 |
+| UnsolClass2 |
+| UnsolClass3 |
+| Analogs |
+| Binaries |
+| BinaryControls |
 
 ### JSON Port Library
 
@@ -1243,181 +532,62 @@ A JSON port is configured by setting the "Type" of a port to "JSONClient" ("JSON
 
 ###### Example
 
-<div class="code panel pdl" style="border-width: 1px;">
-
-<div class="codeContent panelContent pdl"><script type="syntaxhighlighter" class="theme: Confluence; brush: java; gutter: false"><![CDATA[{ &quot;JSONPointConf&quot; : [ { // The type of points - Analog or Binary &quot;PointType&quot; : &quot;Analog&quot;, &quot;Points&quot; : [ { &quot;Index&quot; : 0, &quot;StartVal&quot; : 3.46, &quot;JSONPath&quot; : [&quot;Weather Data&quot;,&quot;Wind Speed&quot;] }, { &quot;JSONPath&quot; : [&quot;Weather Data&quot;,&quot;Humidity&quot;], &quot;Index&quot; : 1 } ] }, { &quot;PointType&quot; : &quot;Binary&quot;, &quot;Points&quot; : [ { &quot;Index&quot; : 0, &quot;JSONPath&quot; : [&quot;Device&quot;,&quot;Status&quot;], &quot;TrueVal&quot; : &quot;GOOD&quot;, &quot;StartVal&quot; : &quot;GOOD&quot; }, { &quot;JSONPath&quot; : [&quot;Device&quot;,&quot;Online&quot;], &quot;Index&quot; : 1, &quot;TrueVal&quot; : &quot;YES&quot;, &quot;FalseVal&quot; : &quot;NO&quot;, &quot;StartVal&quot; : &quot;SOMETHING ELSE&quot; //true and false are both defined - another state will produce bad quality } ] } ] }]]></script></div>
-
-</div>
+```json
+{
+    "JSONPointConf" :
+    [
+    {
+        // The type of points - Analog or Binary
+        "PointType" : "Analog",
+        "Points" :
+        [
+            {
+              "Index" : 0,
+              "StartVal" : 3.46,
+              "JSONPath" : ["Weather Data","Wind Speed"]
+            },
+            {
+              "JSONPath" : ["Weather Data","Humidity"],
+              "Index" : 1
+            }
+        ]
+    },
+ 
+    {
+        "PointType" : "Binary",
+        "Points" :
+        [
+            {
+              "Index" : 0,
+              "JSONPath" : ["Device","Status"],
+              "TrueVal" : "GOOD",
+              "StartVal" : "GOOD"
+            },
+            {
+              "JSONPath" : ["Device","Online"],
+              "Index" : 1,
+              "TrueVal" : "YES",
+              "FalseVal" : "NO",
+              "StartVal" : "SOMETHING ELSE" //true and false are both defined - another state will produce bad quality
+            }
+        ]
+    }
+    ]
+}
+```
 
 ###### Config file keys
 
-<div class="table-wrap">
-
-<table class="confluenceTable">
-
-<tbody>
-
-<tr>
-
-<th class="confluenceTh">Key</th>
-
-<th class="confluenceTh">Value Type</th>
-
-<th class="confluenceTh">Description</th>
-
-<th class="confluenceTh">Mandatory</th>
-
-<th colspan="1" class="confluenceTh">Default Value</th>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>JSONPointConf</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">array</td>
-
-<td colspan="1" class="confluenceTd">A list of objects containing point configuration for a type of points.</td>
-
-<td colspan="1" class="confluenceTd">No - but the port won't do anything without some point configurations</td>
-
-<td colspan="1" class="confluenceTd">Empty</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>JSONPointConf[]:PointType</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">string</td>
-
-<td colspan="1" class="confluenceTd">A string denoting which type of internal events the points in this <span style="line-height: 1.4285715;">JSONPointConf member will be coverted to. "Analog" and "Binary" support at 0.3.0, "Control" not implemented yet.</span></td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>JSONPointConf[]:Points</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">array</td>
-
-<td colspan="1" class="confluenceTd">A list of objects containing the configuration for each of the points in this <span style="line-height: 1.4285715;">JSONPointConf member.</span></td>
-
-<td colspan="1" class="confluenceTd">No - but there's no reason to have a <span style="line-height: 1.4285715;">JSONPointConf object with no points</span></td>
-
-<td colspan="1" class="confluenceTd">Empty</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>JSONPointConf[]:Points[]:JSONPath</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">array</td>
-
-<td colspan="1" class="confluenceTd">The JSON Path (sequence of nested keys) as an array of strings, to map to a point</td>
-
-<td colspan="1" class="confluenceTd">No - but the point will never update</td>
-
-<td colspan="1" class="confluenceTd">Empty</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>JSONPointConf[]:Points[]:Index</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">number</td>
-
-<td colspan="1" class="confluenceTd"><span>The index of the point to map to</span></td>
-
-<td colspan="1" class="confluenceTd">Yes</td>
-
-<td colspan="1" class="confluenceTd">N/A</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>JSONPointConf[]:Points[]:StartVal</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">value</td>
-
-<td colspan="1" class="confluenceTd">An optional value to initialise the point</td>
-
-<td colspan="1" class="confluenceTd">No</td>
-
-<td colspan="1" class="confluenceTd">undefined</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>JSONPointConf[]:Points[]:TrueVal</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">value</td>
-
-<td colspan="1" class="confluenceTd">For "Binary" <span style="line-height: 1.4285715;">PointType, the value which will parse as true</span></td>
-
-<td colspan="1" class="confluenceTd">Yes/No - see default</td>
-
-<td rowspan="2" class="confluenceTd">At least one of TrueVal and FalseVal needs to be defined. If only one is defined, any value other than that will parse to be the opposite state. If both are defined, any value other than those will parse to force the point bad quality (but not change state).</td>
-
-</tr>
-
-<tr>
-
-<td colspan="1" class="confluenceTd">
-
-<pre>JSONPointConf[]:Points[]:FalseVal</pre>
-
-</td>
-
-<td colspan="1" class="confluenceTd">value</td>
-
-<td colspan="1" class="confluenceTd"><span>For "Binary"</span> <span>PointType, the value which will parse as false</span></td>
-
-<td colspan="1" class="confluenceTd"><span>Yes/No - see default</span></td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+|JSONPointConf | array | A list of objects containing point configuration for a type of points. | No - but the port won't do anything without some point configurations | Empty |
+|JSONPointConf[]:PointType | string | A string denoting which type of internal events the points in this <span style="line-height: 1.4285715;">JSONPointConf member will be coverted to. "Analog" and "Binary" support at 0.3.0, "Control" not implemented yet.</span> | Yes | N/A |
+|JSONPointConf[]:Points | array | A list of objects containing the configuration for each of the points in this <span style="line-height: 1.4285715;">JSONPointConf member.</span> | No - but there's no reason to have a <span style="line-height: 1.4285715;">JSONPointConf object with no points</span> | Empty |
+|JSONPointConf[]:Points[]:JSONPath | array | The JSON Path (sequence of nested keys) as an array of strings, to map to a point | No - but the point will never update | Empty |
+|JSONPointConf[]:Points[]:Index | number | <span>The index of the point to map to</span> | Yes | N/A |
+|JSONPointConf[]:Points[]:StartVal | value | An optional value to initialise the point | No | undefined |
+|JSONPointConf[]:Points[]:TrueVal | value | For "Binary" <span style="line-height: 1.4285715;">PointType, the value which will parse as true</span> | Yes/No - see default | At least one of TrueVal and FalseVal needs to be defined. If only one is defined, any value other than that will parse to be the opposite state. If both are defined, any value other than those will parse to force the point bad quality (but not change state). |
+|JSONPointConf[]:Points[]:FalseVal | value | <span>For "Binary"</span> <span>PointType, the value which will parse as false</span> | <span>Yes/No - see default</span> |
 
 ## API
 
