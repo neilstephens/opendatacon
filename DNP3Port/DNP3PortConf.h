@@ -61,9 +61,9 @@ struct DNP3AddrConf
 class DNP3PortConf: public DataPortConf
 {
 public:
-	DNP3PortConf(std::string FileName)
+	DNP3PortConf(std::string FileName, const Json::Value& ConfOverrides)
 	{
-		pPointConf.reset(new DNP3PointConf(FileName));
+		pPointConf.reset(new DNP3PointConf(FileName, ConfOverrides));
 	}
 
 	std::unique_ptr<DNP3PointConf> pPointConf;
