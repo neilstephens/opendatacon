@@ -39,48 +39,49 @@ public:
 	~DNP3OutstationPort();
 
 protected:
-    /// Implement ODC::DataPort
+	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL) override;
 
 	// Implement DNP3Port
 	void OnLinkDown() override;
+	TCPClientServer ClientOrServer() override;
 
 	/// Implement ODC::DataPort functions for UI
 	const Json::Value GetCurrentState() const override;
 	const Json::Value GetStatistics() const override;
 
-    /// Implement some ODC::IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
-    std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-    
-    std::future<opendnp3::CommandStatus> Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
-    std::future<opendnp3::CommandStatus> Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
-    
-    std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
-    
-    /// Implement opendnp3::IOutstationApplication
+	/// Implement some ODC::IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+
+	std::future<opendnp3::CommandStatus> Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<opendnp3::CommandStatus> Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
+
+	std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
+
+	/// Implement opendnp3::IOutstationApplication
 	// Called when a the reset/unreset status of the link layer changes (and on link up)
-    void OnStateChange(opendnp3::LinkStatus status) override;
+	void OnStateChange(opendnp3::LinkStatus status) override;
 	// Called when a keep alive message (request link status) receives no response
 	void OnKeepAliveFailure() override;
 	// Called when a keep alive message receives a valid response
 	void OnKeepAliveSuccess() override;
 
 	/// Implement opendnp3::ICommandHandler
-    void Start() override {}
-    void End() override {}
+	void Start() override {}
+	void End() override {}
 	opendnp3::CommandStatus Select(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex) override { return SupportsT(arCommand, aIndex); }
 	opendnp3::CommandStatus Operate(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
 	opendnp3::CommandStatus Select(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex) override {return SupportsT(arCommand,aIndex);}

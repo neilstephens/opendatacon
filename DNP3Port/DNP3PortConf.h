@@ -30,15 +30,32 @@
 #include <opendatacon/DataPort.h>
 #include "DNP3PointConf.h"
 
+enum TCPClientServer {CLIENT,SERVER,DEFAULT};
 enum server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 struct DNP3AddrConf
 {
+	//Serial
+	asiopal::SerialSettings SerialSettings;
+
+	//IP
 	std::string IP;
 	uint16_t Port;
+	TCPClientServer ClientServer;
+
+	//Common
 	uint16_t OutstationAddr;
 	uint16_t MasterAddr;
 	server_type_t ServerType;
-	DNP3AddrConf(): IP("127.0.0.1"), Port(20000), OutstationAddr(1), MasterAddr(0), ServerType(server_type_t::ONDEMAND){}
+
+	DNP3AddrConf():
+		SerialSettings(),
+		IP("127.0.0.1"),
+		Port(20000),
+		ClientServer(TCPClientServer::DEFAULT),
+		OutstationAddr(1),
+		MasterAddr(0),
+		ServerType(server_type_t::ONDEMAND)
+	{}
 };
 
 class DNP3PortConf: public DataPortConf

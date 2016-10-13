@@ -124,21 +124,26 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 	}
 }
 
+TCPClientServer DNP3OutstationPort::ClientOrServer()
+{
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
+		return TCPClientServer::SERVER;
+	return pConf->mAddrConf.ClientServer;
+}
+
 void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	auto IPPort = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
-	auto log_id = "outst_"+IPPort;
 
-	//create a new channel if one isn't already up
-	if(!TCPChannels.count(IPPort))
+	pChannel = GetChannel(DNP3Mgr);
+
+	if (pChannel == nullptr)
 	{
-		TCPChannels[IPPort] = DNP3Mgr.AddTCPServer(log_id.c_str(), LOG_LEVEL.GetBitfield(),
-									 opendnp3::ChannelRetry(
-										 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMinms),
-										 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMaxms)),
-		                                           pConf->mAddrConf.IP,
-		                                           pConf->mAddrConf.Port);
+		std::string msg = Name + ": Channel not found for outstation.";
+		auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::ERR, "", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		return;
 	}
 
 	opendnp3::OutstationStackConfig StackConfig;
@@ -173,16 +178,6 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents; /// The number of counter events the outstation will buffer before overflowing
 
 	StackConfig.dbTemplate = opendnp3::DatabaseTemplate(pConf->pPointConf->BinaryIndicies.size(), 0, pConf->pPointConf->AnalogIndicies.size());
-
-	pChannel = TCPChannels[IPPort];
-
-	if (pChannel == nullptr)
-	{
-		std::string msg = Name + ": TCP channel not found for outstation.";
-		auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-		return;
-	}
 
 	pOutstation = pChannel->AddOutstation(Name.c_str(), *this, *this, StackConfig);
 	ChannelStateSubscriber::Subscribe(this,pChannel);

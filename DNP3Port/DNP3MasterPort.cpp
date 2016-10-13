@@ -189,30 +189,25 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 	}
 }
 
+TCPClientServer DNP3MasterPort::ClientOrServer()
+{
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
+		return TCPClientServer::CLIENT;
+	return pConf->mAddrConf.ClientServer;
+}
+
 void DNP3MasterPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	auto IPPort = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
-	auto log_id = "mast_"+IPPort;
 
-	//create a new channel if one isn't already up
-	if(!TCPChannels.count(IPPort))
-	{
-		TCPChannels[IPPort] = DNP3Mgr.AddTCPClient(log_id.c_str(), LOG_LEVEL.GetBitfield(),
-									 opendnp3::ChannelRetry(
-										 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-										 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
-		                                           pConf->mAddrConf.IP,
-		                                           "0.0.0.0",
-		                                           pConf->mAddrConf.Port);
-	}
-	pChannel = TCPChannels[IPPort];
+	pChannel = GetChannel(DNP3Mgr);
+
 	if (pChannel == nullptr)
 	{
-		std::string msg = Name + ": TCP channel not found for masterstation.";
+		std::string msg = Name + ": Channel not found for masterstation.";
 		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
-
 		return;
 	}
 

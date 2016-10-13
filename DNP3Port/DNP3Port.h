@@ -29,6 +29,7 @@
 
 #include <opendatacon/DataPort.h>
 #include <opendnp3/gen/LinkStatus.h>
+#include "DNP3PortConf.h"
 
 class DNP3Port: public DataPort
 {
@@ -71,13 +72,16 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot);
 
 protected:
+	asiodnp3::IChannel* GetChannel(asiodnp3::DNP3Manager& DNP3Mgr);
+
 	asiodnp3::IChannel* pChannel;
-	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
+	static std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
 	opendnp3::LinkStatus status;
 	bool link_dead;
 	bool channel_dead;
 
 	virtual void OnLinkDown()=0;
+	virtual TCPClientServer ClientOrServer()=0;
 };
 
 #endif /* DNP3PORT_H_ */
