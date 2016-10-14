@@ -86,7 +86,6 @@ TEST_CASE(SUITE("TCP link"))
 
 TEST_CASE(SUITE("Serial link"))
 {
-	int i;
 	if (!system(NULL))
 	{
 		WARN("Can't get system shell to execute socat (for virtual serial ports) - skipping test");
@@ -97,7 +96,6 @@ TEST_CASE(SUITE("Serial link"))
 		WARN("Failed to execute socat (for virtual serial ports) - skipping test");
 		return;
 	}
-
 
 	//make an outstation port
 	fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");

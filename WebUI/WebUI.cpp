@@ -209,6 +209,9 @@ int WebUI::http_ahc(void *cls,
 	}
 }
 
+void WebUI::BuildOrRebuild()
+{}
+
 void WebUI::Enable()
 {
 	if (useSSL)

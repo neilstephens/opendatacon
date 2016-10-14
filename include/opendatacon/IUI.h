@@ -37,6 +37,7 @@ public:
 	virtual ~IUI(){}
 	virtual void AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc = "No description available\n") = 0;
 	virtual void AddResponder(const std::string name, const IUIResponder& pResponder) = 0;
+	virtual void BuildOrRebuild() = 0;
 	virtual void Enable() = 0;
 	virtual void Disable() = 0;
 };
