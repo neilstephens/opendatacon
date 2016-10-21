@@ -40,10 +40,10 @@ typedef struct
 class JSONPortConf: public DataPortConf
 {
 public:
-	JSONPortConf(std::string FileName):
+	JSONPortConf(std::string FileName, const Json::Value& ConfOverrides):
 		retry_time_ms(20000)
 	{
-		pPointConf.reset(new JSONPointConf(FileName));
+		pPointConf.reset(new JSONPointConf(FileName, ConfOverrides));
 	}
 
 	std::unique_ptr<JSONPointConf> pPointConf;

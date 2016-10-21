@@ -37,7 +37,7 @@
 class JSONPointConf: public ConfigParser
 {
 public:
-	JSONPointConf(std::string FileName);
+	JSONPointConf(std::string FileName, const Json::Value& ConfOverrides);
 
 	void ProcessElements(const Json::Value& JSONRoot);
 

@@ -29,8 +29,8 @@
 #include <cstdint>
 #include "JSONPointConf.h"
 
-JSONPointConf::JSONPointConf(std::string FileName):
-	ConfigParser(FileName)
+JSONPointConf::JSONPointConf(std::string FileName, const Json::Value &ConfOverrides):
+	ConfigParser(FileName, ConfOverrides)
 {
 	ProcessFile();
 }
@@ -79,7 +79,7 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 			{
 				if(!check_index(PointConfs[n]["Points"][k]))
 					continue;
-				this->Binaries[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
+				this->Controls[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
 			}
 		}
 		else
