@@ -79,7 +79,7 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 			{
 				if(!check_index(PointConfs[n]["Points"][k]))
 					continue;
-				this->Binaries[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
+				this->Controls[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
 			}
 		}
 		else
