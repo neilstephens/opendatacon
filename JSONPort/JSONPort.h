@@ -38,7 +38,7 @@ public:
 		DataPort(aName, aConfFilename, aConfOverrides)
 	{
 		//the creation of a new PortConf will get the point details
-		pConf.reset(new JSONPortConf(ConfFilename));
+		pConf.reset(new JSONPortConf(ConfFilename, aConfOverrides));
 
 		//We still may need to process the file (or overrides) to get Addr details:
 		ProcessFile();
