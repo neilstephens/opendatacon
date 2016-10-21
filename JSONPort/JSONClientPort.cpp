@@ -30,11 +30,14 @@
 #include "JSONClientPort.h"
 
 JSONClientPort::JSONClientPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	JSONPort(aName, aConfFilename, aConfOverrides)
+	JSONPort(aName, aConfFilename, aConfOverrides),
+	write_queue()
 {}
 
 void JSONClientPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
-{}
+{
+	pWriteQueueStrand.reset(new asio::strand(*pIOS));
+}
 
 void JSONClientPort::Enable()
 {
@@ -79,11 +82,15 @@ void JSONClientPort::ConnectCompletionHandler(asio::error_code err_code)
 	pLoggers->Log(log_entry);
 
 	enabled = true;
+	for (auto IOHandler_pair: Subscribers)
+	{
+		IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+	}
 	Read();
 }
 void JSONClientPort::Read()
 {
-	asio::async_read(*pSock.get(), buf,asio::transfer_at_least(1), std::bind(&JSONClientPort::ReadCompletionHandler,this,std::placeholders::_1));
+	asio::async_read(*pSock.get(), readbuf,asio::transfer_at_least(1), std::bind(&JSONClientPort::ReadCompletionHandler,this,std::placeholders::_1));
 }
 void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
 {
@@ -108,10 +115,10 @@ void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
 	char ch;
 	std::string braced;
 	size_t count_open_braces = 0, count_close_braces = 0;
-	while(buf.size() > 0)
+	while(readbuf.size() > 0)
 	{
-		ch = buf.sgetc();
-		buf.consume(1);
+		ch = readbuf.sgetc();
+		readbuf.consume(1);
 		if(ch=='{')
 		{
 			count_open_braces++;
@@ -138,13 +145,17 @@ void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
 	}
 	//put back the leftovers
 	for(auto ch : braced)
-		buf.sputc(ch);
+		readbuf.sputc(ch);
 
 	if(!err_code) //not eof - read more
 		Read();
 	else
 	{
 		//remote end closed the connection - reset and try reconnecting
+		for (auto IOHandler_pair: Subscribers)
+		{
+			IOHandler_pair.second->Event(ConnectState::DISCONNECTED , 0, this->Name);
+		}
 		Disable();
 		Enable();
 	}
@@ -255,6 +266,46 @@ inline void JSONClientPort::LoadT(T meas, uint16_t index, Json::Value timestamp_
 	for(auto IOHandler_pair : Subscribers)
 		IOHandler_pair.second->Event(meas, index, this->Name);
 }
+
+void JSONClientPort::QueueWrite(const std::string &message)
+{
+	pWriteQueueStrand->post([=]()
+	{
+		write_queue.push_back(message);
+		if(write_queue.size() == 1) //need to kick off a write
+			Write();
+	});
+}
+void JSONClientPort::Write()
+{
+	asio::async_write(*pSock.get(),
+				asio::buffer(write_queue[0].c_str(),write_queue[0].size()),
+				pWriteQueueStrand->wrap(std::bind(&JSONClientPort::WriteCompletionHandler,this,std::placeholders::_1,std::placeholders::_2))
+				);
+}
+void JSONClientPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_written)
+{
+	write_queue.pop_front();
+	if(err_code)
+	{
+		if(err_code != asio::error::eof)
+		{
+			std::string msg = Name+": Write error: '"+err_code.message()+"'";
+			auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+			return;
+		}
+		else
+		{
+			std::string msg = Name+": '"+err_code.message()+"'";
+			auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::WARN,"", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
+		}
+	}
+	if(!write_queue.empty())
+		Write();
+}
+
 void JSONClientPort::Disable()
 {
 	//cancel the retry timer (otherwise it would tie up the io_service on shutdown)
@@ -263,4 +314,55 @@ void JSONClientPort::Disable()
 	//shutdown and close socket by using destructor
 	pSock.reset(nullptr);
 	enabled = false;
+}
+
+std::future<opendnp3::CommandStatus> JSONClientPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName)
+{return EventT(meas,index,SenderName);}
+std::future<opendnp3::CommandStatus> JSONClientPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName)
+{return EventT(meas,index,SenderName);}
+std::future<opendnp3::CommandStatus> JSONClientPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName)
+{return IOHandler::CommandFutureNotSupported();}
+std::future<opendnp3::CommandStatus> JSONClientPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName)
+{return EventQ(qual,index,SenderName);}
+std::future<opendnp3::CommandStatus> JSONClientPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName)
+{return EventQ(qual,index,SenderName);}
+
+template<typename T>
+inline std::future<opendnp3::CommandStatus> JSONClientPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName)
+{
+	return IOHandler::CommandFutureUndefined();
+}
+
+template<typename T>
+inline std::future<opendnp3::CommandStatus> JSONClientPort::EventT(const T& meas, uint16_t index, const std::string& SenderName)
+{
+	if(!enabled)
+	{
+		return IOHandler::CommandFutureUndefined();
+	}
+	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
+
+	std::map<uint16_t, Json::Value> PointMap = pConf->pPointConf->Analogs;
+
+	if(std::is_same<T,opendnp3::Binary>::value)
+		PointMap = pConf->pPointConf->Binaries;
+	else if(!std::is_same<T,opendnp3::Analog>::value)
+		return IOHandler::CommandFutureNotSupported();
+
+	if(PointMap.count(index))
+	{
+		Json::Value output;
+		const unsigned int last_index = PointMap[index]["JSONPath"].size()-1;
+		output[PointMap[index]["JSONPath"][last_index].asCString()] = meas.value;
+		for(int n =  last_index-1; n >= 0 ; n--)
+		{
+			Json::Value temp = Json::Value::null;
+			temp[PointMap[index]["JSONPath"][n].asCString()] = output;
+			output = temp;
+		}
+		auto writer = Json::FastWriter();
+		QueueWrite(writer.write(output));
+	}
+
+	return IOHandler::CommandFutureSuccess();
 }

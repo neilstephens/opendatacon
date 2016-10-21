@@ -38,10 +38,21 @@ public:
 	void Enable();
 	void Disable();
 
+	template<typename T> std::future<opendnp3::CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
+	template<typename T> std::future<opendnp3::CommandStatus> EventQ(const T& qual, uint16_t index, const std::string& SenderName);
+
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName) ;
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName) ;
+
+	std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) ;
+
+	std::future<opendnp3::CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) ;
+	std::future<opendnp3::CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) ;
+
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
 
 private:
-	asio::basic_streambuf<std::allocator<char> > buf;
+	asio::basic_streambuf<std::allocator<char> > readbuf;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	std::unique_ptr<Timer_t> pTCPRetryTimer;
 	void ConnectCompletionHandler(asio::error_code err_code);
@@ -49,6 +60,12 @@ private:
 	void ProcessBraced(std::string braced);
 	template<typename T> void LoadT(T meas, uint16_t index, Json::Value timestamp_val);
 	void Read();
+
+	std::deque<std::string> write_queue;
+	std::unique_ptr<asio::strand> pWriteQueueStrand;
+	void QueueWrite(const std::string& message);
+	void Write();
+	void WriteCompletionHandler(asio::error_code err_code, size_t bytes_written);
 };
 
 #endif /* JSONCLIENTDATAPORT_H_ */
