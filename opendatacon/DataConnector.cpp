@@ -59,6 +59,11 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					continue;
 				}
 				auto ConName = JConnections[n]["Name"].asString();
+				if(Connections.count(ConName))
+				{
+					std::cout<<"Warning: invalid Connection config: Duplicate Name: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+					continue;
+				}
 				auto ConPort1 = JConnections[n]["Port1"].asString();
 				auto ConPort2 = JConnections[n]["Port2"].asString();
 				if ((GetIOHandlers().count(ConPort1) == 0) || (GetIOHandlers().count(ConPort2) == 0))
