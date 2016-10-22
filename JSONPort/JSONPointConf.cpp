@@ -37,7 +37,7 @@ JSONPointConf::JSONPointConf(std::string FileName, const Json::Value &ConfOverri
 
 inline bool check_index(const Json::Value& Point)
 {
-	if(Point["Index"].isNull())
+	if(!Point.isMember("Index"))
 	{
 		std::cout<<"A point needs an \"Index\" : '"<<Point.toStyledString()<<"'"<<std::endl;
 		return false;

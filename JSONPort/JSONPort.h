@@ -46,14 +46,14 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot)
 	{
-		if(!JSONRoot["IP"].isNull())
+		if(JSONRoot.isMember("IP"))
 			static_cast<JSONPortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
 
-		if(!JSONRoot["Port"].isNull())
+		if(JSONRoot.isMember("Port"))
 			static_cast<JSONPortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asUInt();
 
 		//TODO: document this
-		if(!JSONRoot["RetryTimems"].isNull())
+		if(JSONRoot.isMember("RetryTimems"))
 			static_cast<JSONPortConf*>(pConf.get())->retry_time_ms = JSONRoot["RetryTimems"].asUInt();
 	}
 

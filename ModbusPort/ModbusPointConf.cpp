@@ -109,16 +109,16 @@ void ModbusPointConf::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
 
-	if(!JSONRoot["BitIndicies"].isNull())
+	if(JSONRoot.isMember("BitIndicies"))
 		ProcessReadGroup(JSONRoot["BitIndicies"], BitIndicies);
-	if(!JSONRoot["InputBitIndicies"].isNull())
+	if(JSONRoot.isMember("InputBitIndicies"))
 		ProcessReadGroup(JSONRoot["InputBitIndicies"], InputBitIndicies);
-	if(!JSONRoot["RegIndicies"].isNull())
+	if(JSONRoot.isMember("RegIndicies"))
 		ProcessReadGroup(JSONRoot["RegIndicies"], RegIndicies);
-	if(!JSONRoot["InputRegIndicies"].isNull())
+	if(JSONRoot.isMember("InputRegIndicies"))
 		ProcessReadGroup(JSONRoot["InputRegIndicies"], InputRegIndicies);
 
-	if(!JSONRoot["PollGroups"].isNull())
+	if(JSONRoot.isMember("PollGroups"))
 	{
 		auto jPollGroups = JSONRoot["PollGroups"];
 		for(Json::ArrayIndex n = 0; n < jPollGroups.size(); ++n)

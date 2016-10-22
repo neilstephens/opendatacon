@@ -81,17 +81,17 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
 
-	if(!JSONRoot["IP"].isNull() && !JSONRoot["SerialDevice"].isNull())
+	if(JSONRoot.isMember("IP") && JSONRoot.isMember("SerialDevice"))
 		std::cout<<"Warning: DNP3 port serial device AND IP address specified - IP overrides"<<std::endl;
 
-	if(!JSONRoot["SerialDevice"].isNull())
+	if(JSONRoot.isMember("SerialDevice"))
 	{
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.deviceName = JSONRoot["SerialDevice"].asString();
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.IP = "";
 
-		if(!JSONRoot["BaudRate"].isNull())
+		if(JSONRoot.isMember("BaudRate"))
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.baud = JSONRoot["BaudRate"].asUInt();
-		if(!JSONRoot["Parity"].isNull())
+		if(JSONRoot.isMember("Parity"))
 		{
 			if(JSONRoot["Parity"].asString() == "EVEN")
 				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::EVEN;
@@ -102,9 +102,9 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 			else
 				std::cout << "Warning: Invalid serial parity: " << JSONRoot["Parity"].asString() << ", should be EVEN, ODD, or NONE."<< std::endl;
 		}
-		if(!JSONRoot["DataBits"].isNull())
+		if(JSONRoot.isMember("DataBits"))
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.dataBits = JSONRoot["DataBits"].asUInt();
-		if(!JSONRoot["StopBits"].isNull())
+		if(JSONRoot.isMember("StopBits"))
 		{
 			if(JSONRoot["StopBits"].asFloat() == 0)
 				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::NONE;
@@ -119,16 +119,16 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 
-	if(!JSONRoot["IP"].isNull())
+	if(JSONRoot.isMember("IP"))
 	{
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.deviceName = "";
 	}
 
-	if(!JSONRoot["Port"].isNull())
+	if(JSONRoot.isMember("Port"))
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asUInt();
 
-	if(!JSONRoot["TCPClientServer"].isNull())
+	if(JSONRoot.isMember("TCPClientServer"))
 	{
 		if(JSONRoot["TCPClientServer"].asString() == "CLIENT")
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::CLIENT;
@@ -140,13 +140,13 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 			std::cout << "Warning: Invalid TCP client/server type: " << JSONRoot["TCPClientServer"].asString() << ", should be CLIENT, SERVER, or DEFAULT."<< std::endl;
 	}
 
-	if(!JSONRoot["OutstationAddr"].isNull())
+	if(JSONRoot.isMember("OutstationAddr"))
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.OutstationAddr = JSONRoot["OutstationAddr"].asUInt();
 
-	if(!JSONRoot["MasterAddr"].isNull())
+	if(JSONRoot.isMember("MasterAddr"))
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.MasterAddr = JSONRoot["MasterAddr"].asUInt();
 
-	if(!JSONRoot["ServerType"].isNull())
+	if(JSONRoot.isMember("ServerType"))
 	{
 		if(JSONRoot["ServerType"].asString() == "ONDEMAND")
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::ONDEMAND;

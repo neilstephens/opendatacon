@@ -176,7 +176,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 
-	if(!JSONRoot["Analogs"].isNull())
+	if(JSONRoot.isMember("Analogs"))
 	{
 		const auto Analogs = JSONRoot["Analogs"];
 		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
@@ -252,7 +252,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(pConf->AnalogIndicies.begin(),pConf->AnalogIndicies.end());
 	}
 
-	if(!JSONRoot["Binaries"].isNull())
+	if(JSONRoot.isMember("Binaries"))
 	{
 		const auto Binaries = JSONRoot["Binaries"];
 		for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
@@ -313,7 +313,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(pConf->BinaryIndicies.begin(),pConf->BinaryIndicies.end());
 	}
 
-	if(!JSONRoot["BinaryControls"].isNull())
+	if(JSONRoot.isMember("BinaryControls"))
 	{
 		const auto BinaryControls= JSONRoot["BinaryControls"];
 		for(Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)

@@ -42,11 +42,11 @@ void ModbusPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
 
-	if(!JSONRoot["SerialDevice"].isNull())
+	if(JSONRoot.isMember("SerialDevice"))
 		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.SerialDevice = JSONRoot["SerialDevice"].asString();
-	if(!JSONRoot["BaudRate"].isNull())
+	if(JSONRoot.isMember("BaudRate"))
 		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.BaudRate = JSONRoot["BaudRate"].asUInt();
-	if(!JSONRoot["Parity"].isNull())
+	if(JSONRoot.isMember("Parity"))
 	{
 		if(JSONRoot["Parity"].asString() == "EVEN")
 			static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.Parity = SerialParity::EVEN;
@@ -57,21 +57,21 @@ void ModbusPort::ProcessElements(const Json::Value& JSONRoot)
 		else
 			std::cout << "Warning: Invalid Modbus port parity: " << JSONRoot["Parity"].asString() << ", should be EVEN, ODD, or NONE."<< std::endl;
 	}
-	if(!JSONRoot["DataBits"].isNull())
+	if(JSONRoot.isMember("DataBits"))
 		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.DataBits = JSONRoot["DataBits"].asUInt();
-	if(!JSONRoot["StopBits"].isNull())
+	if(JSONRoot.isMember("StopBits"))
 		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.StopBits = JSONRoot["StopBits"].asUInt();
 
-	if(!JSONRoot["IP"].isNull())
+	if(JSONRoot.isMember("IP"))
 		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
 
-	if(!JSONRoot["Port"].isNull())
+	if(JSONRoot.isMember("Port"))
 		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asUInt();
 
-	if(!JSONRoot["OutstationAddr"].isNull())
+	if(JSONRoot.isMember("OutstationAddr"))
 		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.OutstationAddr = JSONRoot["OutstationAddr"].asUInt();
 
-	if(!JSONRoot["ServerType"].isNull())
+	if(JSONRoot.isMember("ServerType"))
 	{
 		if (JSONRoot["ServerType"].asString()=="PERSISTENT")
 			static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::PERSISTENT;

@@ -208,14 +208,14 @@ void JSONClientPort::ProcessBraced(std::string braced)
 			if(!val.isNull())
 			{
 				bool true_val = false; opendnp3::BinaryQuality qual = opendnp3::BinaryQuality::ONLINE;
-				if(!point_pair.second["TrueVal"].isNull())
+				if(point_pair.second.isMember("TrueVal"))
 				{
 					true_val = (val == point_pair.second["TrueVal"]);
-					if(!point_pair.second["FalseVal"].isNull())
+					if(point_pair.second.isMember("FalseVal"))
 						if (!true_val && (val != point_pair.second["FalseVal"]))
 							qual = opendnp3::BinaryQuality::COMM_LOST;
 				}
-				else if(!point_pair.second["FalseVal"].isNull())
+				else if(point_pair.second.isMember("FalseVal"))
 					true_val = !(val == point_pair.second["FalseVal"]);
 				else if(val.isNumeric() || val.isBool())
 					true_val = val.asBool();

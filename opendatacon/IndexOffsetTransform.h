@@ -35,9 +35,9 @@ class IndexOffsetTransform: public Transform
 public:
 	IndexOffsetTransform(Json::Value params): Transform(params)
 	{
-		if(!params["Offset"].isNull() && params["Offset"].isInt())
+		if(params.isMember("Offset") && params["Offset"].isInt())
 			offset = params["Offset"].asInt();
-		else if(!params["offset"].isNull() && params["offset"].isInt())
+		else if(params.isMember("offset") && params["offset"].isInt())
 			offset = params["offset"].asInt();
 		else
 			offset = 0;

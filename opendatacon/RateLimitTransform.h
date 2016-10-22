@@ -39,7 +39,7 @@ public:
 		Transform(params)
 	{
 		std::string name = "DEFAULT";
-		if (!params["Name"].isNull() && params["Name"].isString())
+		if (params.isMember("Name") && params["Name"].isString())
 		{
 			name = params["Name"].asString();
 		}
@@ -55,19 +55,19 @@ public:
 			rateStats->inputRate = 0;
 			rateStats->outputRate = 0;
 
-			if (!params["outputRateLimit"].isNull() && params["outputRateLimit"].isUInt())
+			if (params.isMember("outputRateLimit") && params["outputRateLimit"].isUInt())
 			{
 				rateStats->outputRateLimit = params["outputRateLimit"].asUInt();
 			}
 			else
 				rateStats->outputRateLimit = 10;
-			if (!params["updatePeriodms"].isNull() && params["updatePeriodms"].isUInt())
+			if (params.isMember("updatePeriodms") && params["updatePeriodms"].isUInt())
 			{
 				rateStats->updatePeriodms = params["updatePeriodms"].asUInt();
 			}
 			else
 				rateStats->updatePeriodms = 100;
-			if (!params["updatePeriodMultiplier"].isNull() && params["updatePeriodMultiplier"].isUInt())
+			if (params.isMember("updatePeriodMultiplier") && params["updatePeriodMultiplier"].isUInt())
 			{
 				rateStats->updatePeriodMultiplier = params["updatePeriodMultiplier"].asUInt();
 			}

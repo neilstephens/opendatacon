@@ -40,7 +40,7 @@ public:
 		already_under(false),
 		threshold(-DBL_MAX)
 	{
-		if(params["threshold_point_index"].isNull() || !params["threshold_point_index"].isUInt())
+		if(!params.isMember("threshold_point_index") || !params["threshold_point_index"].isUInt())
 		{
 			threshold_point_index = 0;
 			pass_on = true;
@@ -48,7 +48,7 @@ public:
 		else
 		{
 			threshold_point_index = params["threshold_point_index"].asUInt();
-			if(!params["threshold"].isNull() && params["threshold"].isNumeric())
+			if(params.isMember("threshold") && params["threshold"].isNumeric())
 				threshold = params["threshold"].asDouble();
 		}
 	}
