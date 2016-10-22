@@ -197,7 +197,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();
 
 	// Comms Point Configuration
-	if (!JSONRoot.isMember("CommsPoint") || JSONRoot["CommsPoint"]["Index"].isNull())
+	if (!JSONRoot.isMember("CommsPoint") || !JSONRoot["CommsPoint"].isMember("Index"))
 		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
 	else
 	{
@@ -308,15 +308,15 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
 		{
 			double deadband = 0;
-			if(!Analogs[n]["Deadband"].isNull())
+			if(Analogs[n].isMember("Deadband"))
 			{
 				deadband = Analogs[n]["Deadband"].asDouble();
 			}
 			opendnp3::PointClass clazz = GetClass(Analogs[n]);
 			size_t start, stop;
-			if(!Analogs[n]["Index"].isNull())
+			if(Analogs[n].isMember("Index"))
 				start = stop = Analogs[n]["Index"].asUInt();
-			else if(!Analogs[n]["Range"]["Start"].isNull() && !Analogs[n]["Range"]["Stop"].isNull())
+			else if(Analogs[n]["Range"].isMember("Start") && Analogs[n]["Range"].isMember("Stop"))
 			{
 				start = Analogs[n]["Range"]["Start"].asUInt();
 				stop = Analogs[n]["Range"]["Stop"].asUInt();
@@ -340,7 +340,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				if(!exists)
 					AnalogIndicies.push_back(index);
 
-				if(!Analogs[n]["StartVal"].isNull())
+				if(Analogs[n].isMember("StartVal"))
 				{
 					std::string start_val = Analogs[n]["StartVal"].asString();
 					if(start_val == "D") //delete this index
@@ -375,9 +375,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		{
 			opendnp3::PointClass clazz = GetClass(Binaries[n]);
 			size_t start, stop;
-			if(!Binaries[n]["Index"].isNull())
+			if(Binaries[n].isMember("Index"))
 				start = stop = Binaries[n]["Index"].asUInt();
-			else if(!Binaries[n]["Range"]["Start"].isNull() && !Binaries[n]["Range"]["Stop"].isNull())
+			else if(Binaries[n]["Range"].isMember("Start") && Binaries[n]["Range"].isMember("Stop"))
 			{
 				start = Binaries[n]["Range"]["Start"].asUInt();
 				stop = Binaries[n]["Range"]["Stop"].asUInt();
@@ -401,7 +401,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				if(!exists)
 					BinaryIndicies.push_back(index);
 
-				if(!Binaries[n]["StartVal"].isNull())
+				if(Binaries[n].isMember("StartVal"))
 				{
 					std::string start_val = Binaries[n]["StartVal"].asString();
 					if(start_val == "D") //delete this index
@@ -435,9 +435,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		for(Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
 		{
 			size_t start, stop;
-			if(!BinaryControls[n]["Index"].isNull())
+			if(BinaryControls[n].isMember("Index"))
 				start = stop = BinaryControls[n]["Index"].asUInt();
-			else if(!BinaryControls[n]["Range"]["Start"].isNull() && !BinaryControls[n]["Range"]["Stop"].isNull())
+			else if(BinaryControls[n]["Range"].isMember("Start") && BinaryControls[n]["Range"].isMember("Stop"))
 			{
 				start = BinaryControls[n]["Range"]["Start"].asUInt();
 				stop = BinaryControls[n]["Range"]["Stop"].asUInt();

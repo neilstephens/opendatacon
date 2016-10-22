@@ -67,24 +67,24 @@ void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGrou
 	for(Json::ArrayIndex n = 0; n < Ranges.size(); ++n)
 	{
 		uint32_t pollgroup = 0;
-		if(!Ranges[n]["PollGroup"].isNull())
+		if(Ranges[n].isMember("PollGroup"))
 		{
 			pollgroup = Ranges[n]["PollGroup"].asUInt();
 		}
 
 		T startval;
-		if(!Ranges[n]["StartVal"].isNull())
+		if(Ranges[n].isMember("StartVal"))
 		{
 			startval = GetStartVal<T>(Ranges[n]["StartVal"]);
 		}
 
 		size_t start, stop, offset = 0;
-		if(!Ranges[n]["IndexOffset"].isNull())
+		if(Ranges[n].isMember("IndexOffset"))
 			offset = Ranges[n]["IndexOffset"].asInt();
 
-		if(!Ranges[n]["Index"].isNull())
+		if(Ranges[n].isMember("Index"))
 			start = stop = Ranges[n]["Index"].asUInt();
-		else if(!Ranges[n]["Range"]["Start"].isNull() && !Ranges[n]["Range"]["Stop"].isNull())
+		else if(Ranges[n]["Range"].isMember("Start") && Ranges[n]["Range"].isMember("Stop"))
 		{
 			start = Ranges[n]["Range"]["Start"].asUInt();
 			stop = Ranges[n]["Range"]["Stop"].asUInt();
@@ -123,12 +123,12 @@ void ModbusPointConf::ProcessElements(const Json::Value& JSONRoot)
 		auto jPollGroups = JSONRoot["PollGroups"];
 		for(Json::ArrayIndex n = 0; n < jPollGroups.size(); ++n)
 		{
-			if(jPollGroups[n]["ID"].isNull())
+			if(!jPollGroups[n].isMember("ID"))
 			{
 				std::cout<<"Poll group missing ID : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
 				continue;
 			}
-			if(jPollGroups[n]["PollRate"].isNull())
+			if(!jPollGroups[n].isMember("PollRate"))
 			{
 				std::cout<<"Poll group missing PollRate : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
 				continue;

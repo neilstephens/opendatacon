@@ -53,7 +53,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 		{
 			try
 			{
-				if(JConnections[n]["Name"].isNull() || JConnections[n]["Port1"].isNull() || JConnections[n]["Port2"].isNull())
+				if(!JConnections[n].isMember("Name") || !JConnections[n].isMember("Port1") || !JConnections[n].isMember("Port2"))
 				{
 					std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 					continue;
@@ -93,7 +93,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 		{
 			try
 			{
-				if(Transforms[n]["Type"].isNull() || Transforms[n]["Sender"].isNull())
+				if(!Transforms[n].isMember("Type") || !Transforms[n].isMember("Sender"))
 				{
 					std::cout<<"Warning: invalid Transform config: need at least Type and Sender: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 					continue;
@@ -124,7 +124,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 
 				//Looks for a specific library (for libs that implement more than one class)
 				std::string libname;
-				if(!Transforms[n]["Library"].isNull())
+				if(Transforms[n].isMember("Library"))
 				{
 					libname = GetLibFileName(Transforms[n]["Library"].asString());
 				}

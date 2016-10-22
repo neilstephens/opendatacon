@@ -110,7 +110,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 		for(Json::Value::ArrayIndex n = 0; n < Plugins.size(); ++n)
 		{
-			if(Plugins[n]["Type"].isNull() || Plugins[n]["Name"].isNull() || Plugins[n]["ConfFilename"].isNull())
+			if(!Plugins[n].isMember("Type") || !Plugins[n].isMember("Name") || !Plugins[n].isMember("ConfFilename"))
 			{
 				std::cout << "Warning: invalid plugin config: need at least Type, Name, ConfFilename: \n'" << Plugins[n].toStyledString() << "\n' : ignoring" << std::endl;
 				continue;
@@ -125,7 +125,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			//Looks for a specific library (for libs that implement more than one class)
 			std::string libname;
-			if(!Plugins[n]["Library"].isNull())
+			if(Plugins[n].isMember("Library"))
 			{
 				libname = GetLibFileName(Plugins[n]["Library"].asString());
 			}
@@ -204,14 +204,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 		for(Json::Value::ArrayIndex n = 0; n < Ports.size(); ++n)
 		{
-			if(Ports[n]["Type"].isNull() || Ports[n]["Name"].isNull() || Ports[n]["ConfFilename"].isNull())
+			if(!Ports[n].isMember("Type") || !Ports[n].isMember("Name") || !Ports[n].isMember("ConfFilename"))
 			{
 				std::cout<<"Warning: invalid port config: need at least Type, Name, ConfFilename: \n'"<<Ports[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 				continue;
 			}
 
 			std::function<void (IOHandler*)> set_init_mode;
-			if(!Ports[n]["InitState"].isNull())
+			if(Ports[n].isMember("InitState"))
 			{
 				if(Ports[n]["InitState"].asString() == "ENABLED")
 				{
@@ -230,7 +230,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				else if(Ports[n]["InitState"].asString() == "DELAYED")
 				{
 					uint16_t delay = 0;
-					if(!Ports[n]["EnableDelayms"].isNull())
+					if(Ports[n].isMember("EnableDelayms"))
 					{
 						delay = Ports[n]["EnableDelayms"].asUInt();
 					}
@@ -259,7 +259,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			//Looks for a specific library (for libs that implement more than one class)
 			std::string libname;
-			if(!Ports[n]["Library"].isNull())
+			if(Ports[n].isMember("Library"))
 			{
 				libname = GetLibFileName(Ports[n]["Library"].asString());
 			}
@@ -316,12 +316,12 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 		for(Json::Value::ArrayIndex n = 0; n < Connectors.size(); ++n)
 		{
-			if(Connectors[n]["Name"].isNull() || Connectors[n]["ConfFilename"].isNull())
+			if(!Connectors[n].isMember("Name") || !Connectors[n].isMember("ConfFilename"))
 			{
 				std::cout<<"Warning: invalid Connector config: need at least Name, ConfFilename: \n'"<<Connectors[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 			}
 			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void(*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
-			if(!Connectors[n]["InitState"].isNull())
+			if(Connectors[n].isMember("InitState"))
 			{
 				if(Connectors[n]["InitState"].asString() == "ENABLED")
 				{
@@ -334,7 +334,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				else if(Connectors[n]["InitState"].asString() == "DELAYED")
 				{
 					uint16_t delay = 0;
-					if(!Connectors[n]["EnableDelayms"].isNull())
+					if(Connectors[n].isMember("EnableDelayms"))
 					{
 						delay = Connectors[n]["EnableDelayms"].asUInt();
 					}
