@@ -55,6 +55,9 @@ public:
 		//TODO: document this
 		if(JSONRoot.isMember("RetryTimems"))
 			static_cast<JSONPortConf*>(pConf.get())->retry_time_ms = JSONRoot["RetryTimems"].asUInt();
+		//TODO: document this
+		if(JSONRoot.isMember("EventBufferSize"))
+			static_cast<JSONPortConf*>(pConf.get())->evt_buffer_size = JSONRoot["RetryTimems"].asUInt();
 	}
 
 	virtual void Enable()=0;

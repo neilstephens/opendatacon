@@ -269,11 +269,13 @@ inline void JSONClientPort::LoadT(T meas, uint16_t index, Json::Value timestamp_
 
 void JSONClientPort::QueueWrite(const std::string &message)
 {
-	pWriteQueueStrand->post([=]()
+	pWriteQueueStrand->post([this,&message]()
 	{
 		write_queue.push_back(message);
 		if(write_queue.size() == 1) //need to kick off a write
 			Write();
+		else if(write_queue.size() > static_cast<JSONPortConf*>(this->pConf.get())->evt_buffer_size) //limit buffer size - drop event
+			write_queue.pop_front();
 	});
 }
 void JSONClientPort::Write()
