@@ -269,7 +269,7 @@ inline void JSONClientPort::LoadT(T meas, uint16_t index, Json::Value timestamp_
 
 void JSONClientPort::QueueWrite(const std::string &message)
 {
-	pWriteQueueStrand->post([this,&message]()
+	pWriteQueueStrand->post([this,message]()
 	{
 		write_queue.push_back(message);
 		if(write_queue.size() == 1) //need to kick off a write
@@ -336,19 +336,6 @@ inline std::future<opendnp3::CommandStatus> JSONClientPort::EventQ(const T& meas
 }
 
 template<typename T>
-inline void InsertValue(const Json::Value& path, const T& value, Json::Value& output)
-{
-		const unsigned int last_index = path.size()-1;
-		Json::Value* json_ptr = &output;
-		for(unsigned int n = 0; n < last_index ; n++)
-		{
-			auto key = path[n].asCString();
-			json_ptr = &(*json_ptr)[key];
-		}
-		(*json_ptr)[path[last_index].asCString()] = value;
-}
-
-template<typename T>
 inline std::future<opendnp3::CommandStatus> JSONClientPort::EventT(const T& meas, uint16_t index, const std::string& SenderName)
 {
 	if(!enabled)
@@ -362,48 +349,25 @@ inline std::future<opendnp3::CommandStatus> JSONClientPort::EventT(const T& meas
 		if(PointMap.count(index))
 		{
 			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString());
-			if(!output.isNull())
-			{
-				return std::move(output);
-			}
-
-			if(PointMap[index]["JSONPath"].isNull())
-			{
-				Json::Value path;
-				path.append("Value");
-				InsertValue(path,meas.value,output);
-			}
-			else
-			{
-				InsertValue(PointMap[index]["JSONPath"],meas.value,output);
-			}
-			if(pConf->pPointConf->TimestampPath.isNull())
-			{
-				Json::Value path;
-				path.append("Timestamp");
-				InsertValue(path,(Json::UInt64)meas.time.Get(),output);
-			}
-			else
-			{
-				InsertValue(pConf->pPointConf->TimestampPath,(Json::UInt64)meas.time.Get(),output);
-			}
-			Json::Value path;
-			path.append("Quality");
-			InsertValue(path,meas.quality,output);
 			return std::move(output);
-
 		}
 		return Json::Value::null;
 	};
-
-
 	auto output = std::is_same<T,opendnp3::Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
 			  std::is_same<T,opendnp3::Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
 										  Json::Value::null;
 	if(output.isNull())
 		return IOHandler::CommandFutureNotSupported();
 
-	Json::FastWriter writer;
-	QueueWrite(writer.write(output));
+	if(pConf->style_output)
+	{
+		Json::StyledWriter writer;
+		QueueWrite(writer.write(output));
+	}
+	else
+	{
+		Json::FastWriter writer;
+		QueueWrite(writer.write(output));
+	}
 	return IOHandler::CommandFutureSuccess();
 }

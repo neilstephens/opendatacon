@@ -35,6 +35,7 @@ public:
 	//non-copyable because it references itself.
 	JSONOutputTemplate(const JSONOutputTemplate&) = delete;
 	JSONOutputTemplate& operator=(const JSONOutputTemplate&) = delete;
+
 	JSONOutputTemplate(const Json::Value& aJV, const std::string& ind_marker, const std::string& name_marker, const std::string& val_marker, const std::string& qual_marker, const std::string& time_marker):
 		NullJV(Json::Value::null),
 		JV(aJV),
@@ -47,30 +48,36 @@ public:
 	template<typename T>
 	Json::Value Instantiate(const T& event, u_int16_t index, const std::string Name = "")
 	{
+		Json::Value instance = JV;
 		if(!ind_ref.isNull())
-			ind_ref = index;
+			find_marker(ind_ref.asString(), instance) = index;
 		if(!name_ref.isNull())
-			name_ref = Name;
+			find_marker(name_ref.asString(), instance) = Name;
 		if(!val_ref.isNull())
-			val_ref = event.value;
+			find_marker(val_ref.asString(), instance) = event.value;
 		if(!qual_ref.isNull())
-			qual_ref = event.quality;
+			find_marker(qual_ref.asString(), instance) = event.quality;
 		if(!time_ref.isNull())
-			time_ref = (Json::UInt64)event.time.Get();
-		return JV;
+			find_marker(time_ref.asString(), instance) = (Json::UInt64)event.time.Get();
+		return std::move(instance);
 	}
 private:
 	Json::Value NullJV;
-	Json::Value JV;
-	Json::Value &ind_ref, &name_ref, &val_ref, &qual_ref, &time_ref;
-	Json::Value& find_marker(const std::string& marker, Json::Value& val)
+	const Json::Value JV;
+	const Json::Value &ind_ref, &name_ref, &val_ref, &qual_ref, &time_ref;
+	template<typename T>
+	T& find_marker(const std::string& marker, T& val)
 	{
 		for(auto it = val.begin(); it != val.end(); it++)
 		{
 			if((*it).isString() && (*it).asString() == marker)
 				return *it;
 			if((*it).isObject() || (*it).isArray())
-				return find_marker(marker, *it);
+			{
+				T& look_deeper = find_marker(marker, *it);
+				if(!look_deeper.isNull())
+					return look_deeper;
+			}
 		}
 		return NullJV;
 	}

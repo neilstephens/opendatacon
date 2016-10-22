@@ -42,7 +42,8 @@ class JSONPortConf: public DataPortConf
 public:
 	JSONPortConf(std::string FileName, const Json::Value& ConfOverrides):
 		retry_time_ms(20000),
-		evt_buffer_size(1000)
+		evt_buffer_size(1000),
+		style_output(false)
 	{
 		pPointConf.reset(new JSONPointConf(FileName, ConfOverrides));
 	}
@@ -51,6 +52,7 @@ public:
 	JSONAddrConf mAddrConf;
 	unsigned int retry_time_ms;
 	unsigned int evt_buffer_size;
+	bool style_output;
 };
 
 #endif /* JSONPORTCONF_H_ */

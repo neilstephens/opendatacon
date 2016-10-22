@@ -58,6 +58,9 @@ public:
 		//TODO: document this
 		if(JSONRoot.isMember("EventBufferSize"))
 			static_cast<JSONPortConf*>(pConf.get())->evt_buffer_size = JSONRoot["RetryTimems"].asUInt();
+		//TODO: document this
+		if(JSONRoot.isMember("StyleOutput"))
+			static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
 	}
 
 	virtual void Enable()=0;
