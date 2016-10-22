@@ -182,9 +182,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
 		{
 			size_t start, stop;
-			if(!Analogs[n]["Index"].isNull())
+			if(Analogs[n].isMember("Index"))
 				start = stop = Analogs[n]["Index"].asUInt();
-			else if(!Analogs[n]["Range"]["Start"].isNull() && !Analogs[n]["Range"]["Stop"].isNull())
+			else if(Analogs[n]["Range"].isMember("Start") && Analogs[n]["Range"].isMember("Stop"))
 			{
 				start = Analogs[n]["Range"]["Start"].asUInt();
 				stop = Analogs[n]["Range"]["Stop"].asUInt();
@@ -205,12 +205,12 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 				if(!exists)
 					pConf->AnalogIndicies.push_back(index);
 
-				if(!Analogs[n]["StdDev"].isNull())
+				if(Analogs[n].isMember("StdDev"))
 					pConf->AnalogStdDevs[index] = Analogs[n]["StdDev"].asDouble();
-				if(!Analogs[n]["UpdateIntervalms"].isNull())
+				if(Analogs[n].isMember("UpdateIntervalms"))
 					pConf->AnalogUpdateIntervalms[index] = Analogs[n]["UpdateIntervalms"].asUInt();
 
-				if(!Analogs[n]["StartVal"].isNull())
+				if(Analogs[n].isMember("StartVal"))
 				{
 					std::string start_val = Analogs[n]["StartVal"].asString();
 					if(start_val == "D") //delete this index
@@ -258,9 +258,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
 		{
 			size_t start, stop;
-			if(!Binaries[n]["Index"].isNull())
+			if(Binaries[n].isMember("Index"))
 				start = stop = Binaries[n]["Index"].asUInt();
-			else if(!Binaries[n]["Range"]["Start"].isNull() && !Binaries[n]["Range"]["Stop"].isNull())
+			else if(Binaries[n]["Range"].isMember("Start") && Binaries[n]["Range"].isMember("Stop"))
 			{
 				start = Binaries[n]["Range"]["Start"].asUInt();
 				stop = Binaries[n]["Range"]["Stop"].asUInt();
@@ -282,10 +282,10 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 				if(!exists)
 					pConf->BinaryIndicies.push_back(index);
 
-				if(!Binaries[n]["UpdateIntervalms"].isNull())
+				if(Binaries[n].isMember("UpdateIntervalms"))
 					pConf->BinaryUpdateIntervalms[index] = Binaries[n]["UpdateIntervalms"].asUInt();
 
-				if(!Binaries[n]["StartVal"].isNull())
+				if(Binaries[n].isMember("StartVal"))
 				{
 					std::string start_val = Binaries[n]["StartVal"].asString();
 					if(start_val == "D") //delete this index
@@ -319,9 +319,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		for(Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
 		{
 			size_t start, stop;
-			if(!BinaryControls[n]["Index"].isNull())
+			if(BinaryControls[n].isMember("Index"))
 				start = stop = BinaryControls[n]["Index"].asUInt();
-			else if(!BinaryControls[n]["Range"]["Start"].isNull() && !BinaryControls[n]["Range"]["Stop"].isNull())
+			else if(BinaryControls[n]["Range"].isMember("Start") && BinaryControls[n]["Range"].isMember("Stop"))
 			{
 				start = BinaryControls[n]["Range"]["Start"].asUInt();
 				stop = BinaryControls[n]["Range"]["Stop"].asUInt();
@@ -342,7 +342,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 				if(!exists)
 					pConf->ControlIndicies.push_back(index);
 
-				if(!BinaryControls[n]["Intervalms"].isNull())
+				if(BinaryControls[n].isMember("Intervalms"))
 					pConf->ControlIntervalms[index] = BinaryControls[n]["Intervalms"].asUInt();
 
 				auto start_val = BinaryControls[n]["StartVal"].asString();

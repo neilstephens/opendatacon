@@ -106,7 +106,7 @@ const Json::Value ConfigParser::GetConfiguration() const
 {
 	Json::Value JSONRoot;
 	JSONRoot[ConfFilename] = GetConfiguration(ConfFilename);
-	if(!JSONRoot[ConfFilename]["Inherits"].isNull())
+	if(JSONRoot[ConfFilename].isMember("Inherits"))
 	{
 		AddInherits(JSONRoot, JSONRoot[ConfFilename]["Inherits"]);
 	}
