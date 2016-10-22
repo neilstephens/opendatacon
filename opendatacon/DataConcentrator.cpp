@@ -104,7 +104,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 	if(!JSONRoot.isObject()) return;
 
 	//Configure the user interface
-	if(!JSONRoot["Plugins"].isNull())
+	if(JSONRoot.isMember("Plugins"))
 	{
 		const Json::Value Plugins = JSONRoot["Plugins"];
 
@@ -172,16 +172,16 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 
-	if(!JSONRoot["LogFileSizekB"].isNull())
+	if(JSONRoot.isMember("LogFileSizekB"))
 		FileLog.SetLogFileSizekB(JSONRoot["LogFileSizekB"].asUInt());
 
-	if(!JSONRoot["NumLogFiles"].isNull())
+	if(JSONRoot.isMember("NumLogFiles"))
 		FileLog.SetNumLogFiles(JSONRoot["NumLogFiles"].asUInt());
 
-	if(!JSONRoot["LogName"].isNull())
+	if(JSONRoot.isMember("LogName"))
 		FileLog.SetLogName(JSONRoot["LogName"].asString());
 
-	if(!JSONRoot["LOG_LEVEL"].isNull())
+	if(JSONRoot.isMember("LOG_LEVEL"))
 	{
 		std::string value = JSONRoot["LOG_LEVEL"].asString();
 		if(value == "ALL")
@@ -198,7 +198,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		AdvancedLoggers.at("Console Log")->SetLogLevel(LOG_LEVEL);
 	}
 
-	if(!JSONRoot["Ports"].isNull())
+	if(JSONRoot.isMember("Ports"))
 	{
 		const Json::Value Ports = JSONRoot["Ports"];
 
@@ -310,7 +310,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 
-	if(!JSONRoot["Connectors"].isNull())
+	if(JSONRoot.isMember("Connectors"))
 	{
 		const Json::Value Connectors = JSONRoot["Connectors"];
 

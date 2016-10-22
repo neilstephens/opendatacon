@@ -95,7 +95,7 @@ void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherit
 	{
 		Json::Value InheritRoot = ConfigParser::GetConfiguration(InheritFile.asString());
 		JSONRoot[InheritFile.asString()] = InheritRoot;
-		if (!(InheritRoot["Inherits"].isNull()))
+		if (InheritRoot.isMember("Inherits"))
 		{
 			AddInherits(JSONRoot, InheritRoot["Inherits"]);
 		}

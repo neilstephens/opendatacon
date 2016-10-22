@@ -114,7 +114,7 @@ uint8_t DNP3PointConf::GetStartupIntegrityClassMask()
 opendnp3::PointClass GetClass(Json::Value JPoint)
 {
 	opendnp3::PointClass clazz = opendnp3::PointClass::Class1;
-	if(!JPoint["Class"].isNull())
+	if(JPoint.isMember("Class"))
 	{
 		if(JPoint["Class"].isUInt())
 		{
@@ -146,58 +146,58 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if(!JSONRoot.isObject()) return;
 
 	// DNP3 Link Configuration
-	if (!JSONRoot["LinkNumRetry"].isNull())
+	if (JSONRoot.isMember("LinkNumRetry"))
 		LinkNumRetry = JSONRoot["LinkNumRetry"].asUInt();
-	if (!JSONRoot["LinkTimeoutms"].isNull())
+	if (JSONRoot.isMember("LinkTimeoutms"))
 		LinkTimeoutms = JSONRoot["LinkTimeoutms"].asUInt();
-	if (!JSONRoot["LinkKeepAlivems"].isNull())
+	if (JSONRoot.isMember("LinkKeepAlivems"))
 		LinkKeepAlivems = JSONRoot["LinkKeepAlivems"].asUInt();
-	if (!JSONRoot["LinkUseConfirms"].isNull())
+	if (JSONRoot.isMember("LinkUseConfirms"))
 		LinkUseConfirms = JSONRoot["LinkUseConfirms"].asBool();
-	if (!JSONRoot["UseConfirms"].isNull())
+	if (JSONRoot.isMember("UseConfirms"))
 		std::cout << "Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '" << JSONRoot["UseConfirms"].toStyledString() << "'" << std::endl;
 
 	// Common application configuration
-	if (!JSONRoot["EnableUnsol"].isNull())
+	if (JSONRoot.isMember("EnableUnsol"))
 		EnableUnsol = JSONRoot["EnableUnsol"].asBool();
-	if (!JSONRoot["UnsolClass1"].isNull())
+	if (JSONRoot.isMember("UnsolClass1"))
 		UnsolClass1 = JSONRoot["UnsolClass1"].asBool();
-	if (!JSONRoot["UnsolClass2"].isNull())
+	if (JSONRoot.isMember("UnsolClass2"))
 		UnsolClass2 = JSONRoot["UnsolClass2"].asBool();
-	if (!JSONRoot["UnsolClass3"].isNull())
+	if (JSONRoot.isMember("UnsolClass3"))
 		UnsolClass3 = JSONRoot["UnsolClass3"].asBool();
 
 	// Master Station configuration
-	if (!JSONRoot["TCPConnectRetryPeriodMinms"].isNull())
+	if (JSONRoot.isMember("TCPConnectRetryPeriodMinms"))
 		TCPConnectRetryPeriodMinms = JSONRoot["TCPConnectRetryPeriodMinms"].asUInt();
-	if (!JSONRoot["TCPConnectRetryPeriodMaxms"].isNull())
+	if (JSONRoot.isMember("TCPConnectRetryPeriodMaxms"))
 		TCPConnectRetryPeriodMaxms = JSONRoot["TCPConnectRetryPeriodMaxms"].asUInt();
-	if (!JSONRoot["MasterResponseTimeoutms"].isNull())
+	if (JSONRoot.isMember("MasterResponseTimeoutms"))
 		MasterResponseTimeoutms = JSONRoot["MasterResponseTimeoutms"].asUInt();
-	if (!JSONRoot["MasterRespondTimeSync"].isNull())
+	if (JSONRoot.isMember("MasterRespondTimeSync"))
 		MasterRespondTimeSync = JSONRoot["MasterRespondTimeSync"].asBool();
-	if (!JSONRoot["DoUnsolOnStartup"].isNull())
+	if (JSONRoot.isMember("DoUnsolOnStartup"))
 		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
 
 	/// Which classes should be requested in a startup integrity scan
-	if (!JSONRoot["StartupIntegrityClass0"].isNull())
+	if (JSONRoot.isMember("StartupIntegrityClass0"))
 		StartupIntegrityClass0 = JSONRoot["StartupIntegrityClass0"].asBool();
-	if (!JSONRoot["StartupIntegrityClass1"].isNull())
+	if (JSONRoot.isMember("StartupIntegrityClass1"))
 		StartupIntegrityClass1 = JSONRoot["StartupIntegrityClass1"].asBool();
-	if (!JSONRoot["StartupIntegrityClass2"].isNull())
+	if (JSONRoot.isMember("StartupIntegrityClass2"))
 		StartupIntegrityClass2 = JSONRoot["StartupIntegrityClass2"].asBool();
-	if (!JSONRoot["StartupIntegrityClass3"].isNull())
+	if (JSONRoot.isMember("StartupIntegrityClass3"))
 		StartupIntegrityClass3 = JSONRoot["StartupIntegrityClass3"].asBool();
 
 	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
-	if (!JSONRoot["IntegrityOnEventOverflowIIN"].isNull())
+	if (JSONRoot.isMember("IntegrityOnEventOverflowIIN"))
 		IntegrityOnEventOverflowIIN = JSONRoot["IntegrityOnEventOverflowIIN"].asBool();
 	/// Time delay beforce retrying a failed task
-	if (!JSONRoot["TaskRetryPeriodms"].isNull())
+	if (JSONRoot.isMember("TaskRetryPeriodms"))
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();
 
 	// Comms Point Configuration
-	if (JSONRoot["CommsPoint"].isNull() || JSONRoot["CommsPoint"]["Index"].isNull())
+	if (!JSONRoot.isMember("CommsPoint") || JSONRoot["CommsPoint"]["Index"].isNull())
 		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
 	else
 	{
@@ -206,27 +206,27 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	// Master Station scanning configuration
-	if (!JSONRoot["IntegrityScanRatems"].isNull())
+	if (JSONRoot.isMember("IntegrityScanRatems"))
 		IntegrityScanRatems = JSONRoot["IntegrityScanRatems"].asUInt();
-	if (!JSONRoot["IntegrityScanRateSec"].isNull())
+	if (JSONRoot.isMember("IntegrityScanRateSec"))
 		std::cout << "Use of 'IntegrityScanRateSec' is deprecated, use 'IntegrityScanRatems' instead : '" << JSONRoot["IntegrityScanRateSec"].toStyledString() << "'" << std::endl;
-	if (!JSONRoot["EventClass1ScanRatems"].isNull())
+	if (JSONRoot.isMember("EventClass1ScanRatems"))
 		EventClass1ScanRatems = JSONRoot["EventClass1ScanRatems"].asUInt();
-	if (!JSONRoot["EventClass1ScanRateSec"].isNull())
+	if (JSONRoot.isMember("EventClass1ScanRateSec"))
 		std::cout << "Use of 'EventClass1ScanRateSec' is deprecated, use 'EventClass1ScanRatems' instead : '" << JSONRoot["EventClass1ScanRateSec"].toStyledString() << "'" << std::endl;
-	if (!JSONRoot["EventClass2ScanRatems"].isNull())
+	if (JSONRoot.isMember("EventClass2ScanRatems"))
 		EventClass2ScanRatems = JSONRoot["EventClass2ScanRatems"].asUInt();
-	if (!JSONRoot["EventClass2ScanRateSec"].isNull())
+	if (JSONRoot.isMember("EventClass2ScanRateSec"))
 		std::cout << "Use of 'EventClass2ScanRateSec' is deprecated, use 'EventClass2ScanRatems' instead : '" << JSONRoot["EventClass2ScanRateSec"].toStyledString() << "'" << std::endl;
-	if (!JSONRoot["EventClass3ScanRatems"].isNull())
+	if (JSONRoot.isMember("EventClass3ScanRatems"))
 		EventClass3ScanRatems = JSONRoot["EventClass3ScanRatems"].asUInt();
-	if (!JSONRoot["EventClass3ScanRateSec"].isNull())
+	if (JSONRoot.isMember("EventClass3ScanRateSec"))
 		std::cout << "Use of 'EventClass3ScanRateSec' is deprecated, use 'EventClass3ScanRatems' instead : '" << JSONRoot["EventClass3ScanRateSec"].toStyledString() << "'" << std::endl;
 
-	if (!JSONRoot["DoAssignClassOnStartup"].isNull())
+	if (JSONRoot.isMember("DoAssignClassOnStartup"))
 		DoAssignClassOnStartup = JSONRoot["DoAssignClassOnStartup"].asBool();
 
-	if (!JSONRoot["OverrideControlCode"].isNull())
+	if (JSONRoot.isMember("OverrideControlCode"))
 	{
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_ON")
 			OverrideControlCode = opendnp3::ControlCode::PULSE_ON;
@@ -247,41 +247,41 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	// Outstation configuration
-	if (!JSONRoot["TCPListenRetryPeriodMinms"].isNull())
+	if (JSONRoot.isMember("TCPListenRetryPeriodMinms"))
 		TCPListenRetryPeriodMinms = JSONRoot["TCPListenRetryPeriodMinms"].asUInt();
-	if (!JSONRoot["TCPListenRetryPeriodMaxms"].isNull())
+	if (JSONRoot.isMember("TCPListenRetryPeriodMaxms"))
 		TCPListenRetryPeriodMaxms = JSONRoot["TCPListenRetryPeriodMaxms"].asUInt();
-	if (!JSONRoot["MaxControlsPerRequest"].isNull())
+	if (JSONRoot.isMember("MaxControlsPerRequest"))
 		MaxControlsPerRequest = JSONRoot["MaxControlsPerRequest"].asUInt();
-	if (!JSONRoot["MaxTxFragSize"].isNull())
+	if (JSONRoot.isMember("MaxTxFragSize"))
 		MaxTxFragSize = JSONRoot["MaxTxFragSize"].asUInt();
-	if (!JSONRoot["SelectTimeoutms"].isNull())
+	if (JSONRoot.isMember("SelectTimeoutms"))
 		SelectTimeoutms = JSONRoot["SelectTimeoutms"].asUInt();
-	if (!JSONRoot["SolConfirmTimeoutms"].isNull())
+	if (JSONRoot.isMember("SolConfirmTimeoutms"))
 		SolConfirmTimeoutms = JSONRoot["SolConfirmTimeoutms"].asUInt();
-	if (!JSONRoot["UnsolConfirmTimeoutms"].isNull())
+	if (JSONRoot.isMember("UnsolConfirmTimeoutms"))
 		UnsolConfirmTimeoutms = JSONRoot["UnsolConfirmTimeoutms"].asUInt();
-	if (!JSONRoot["WaitForCommandResponses"].isNull())
+	if (JSONRoot.isMember("WaitForCommandResponses"))
 		WaitForCommandResponses = JSONRoot["WaitForCommandResponses"].asBool();
 
 	// Default Static Variations
-	if (!JSONRoot["StaticBinaryResponse"].isNull())
+	if (JSONRoot.isMember("StaticBinaryResponse"))
 		StaticBinaryResponse = StringToStaticBinaryResponse(JSONRoot["StaticBinaryResponse"].asString());
-	if (!JSONRoot["StaticAnalogResponse"].isNull())
+	if (JSONRoot.isMember("StaticAnalogResponse"))
 		StaticAnalogResponse = StringToStaticAnalogResponse(JSONRoot["StaticAnalogResponse"].asString());
-	if (!JSONRoot["StaticCounterResponse"].isNull())
+	if (JSONRoot.isMember("StaticCounterResponse"))
 		StaticCounterResponse = StringToStaticCounterResponse(JSONRoot["StaticCounterResponse"].asString());
 
 	// Default Event Variations
-	if (!JSONRoot["EventBinaryResponse"].isNull())
+	if (JSONRoot.isMember("EventBinaryResponse"))
 		EventBinaryResponse = StringToEventBinaryResponse(JSONRoot["EventBinaryResponse"].asString());
-	if (!JSONRoot["EventAnalogResponse"].isNull())
+	if (JSONRoot.isMember("EventAnalogResponse"))
 		EventAnalogResponse = StringToEventAnalogResponse(JSONRoot["EventAnalogResponse"].asString());
-	if (!JSONRoot["EventCounterResponse"].isNull())
+	if (JSONRoot.isMember("EventCounterResponse"))
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
 
 	// Timestamp Override Alternatives
-	if (!JSONRoot["TimestampOverride"].isNull())
+	if (JSONRoot.isMember("TimestampOverride"))
 	{
 		if (JSONRoot["TimestampOverride"].asString() == "ALWAYS")
 			TimestampOverride = DNP3PointConf::TimestampOverride_t::ALWAYS;
@@ -294,15 +294,15 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	// Event buffer limits
-	if (!JSONRoot["MaxBinaryEvents"].isNull())
+	if (JSONRoot.isMember("MaxBinaryEvents"))
 		MaxBinaryEvents = JSONRoot["MaxBinaryEvents"].asUInt();
-	if (!JSONRoot["MaxAnalogEvents"].isNull())
+	if (JSONRoot.isMember("MaxAnalogEvents"))
 		MaxAnalogEvents = JSONRoot["MaxAnalogEvents"].asUInt();
-	if (!JSONRoot["MaxCounterEvents"].isNull())
+	if (JSONRoot.isMember("MaxCounterEvents"))
 		MaxCounterEvents = JSONRoot["MaxCounterEvents"].asUInt();
 
 	//common point configuration
-	if(!JSONRoot["Analogs"].isNull())
+	if(JSONRoot.isMember("Analogs"))
 	{
 		const auto Analogs = JSONRoot["Analogs"];
 		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
@@ -368,7 +368,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(AnalogIndicies.begin(),AnalogIndicies.end());
 	}
 
-	if(!JSONRoot["Binaries"].isNull())
+	if(JSONRoot.isMember("Binaries"))
 	{
 		const auto Binaries = JSONRoot["Binaries"];
 		for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
@@ -429,7 +429,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(BinaryIndicies.begin(),BinaryIndicies.end());
 	}
 
-	if(!JSONRoot["BinaryControls"].isNull())
+	if(JSONRoot.isMember("BinaryControls"))
 	{
 		const auto BinaryControls= JSONRoot["BinaryControls"];
 		for(Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)

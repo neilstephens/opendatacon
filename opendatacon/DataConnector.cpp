@@ -45,7 +45,7 @@ DataConnector::DataConnector(std::string aName, std::string aConfFilename, const
 void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
-	if(!JSONRoot["Connections"].isNull())
+	if(JSONRoot.isMember("Connections"))
 	{
 		const Json::Value JConnections = JSONRoot["Connections"];
 
@@ -85,7 +85,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			}
 		}
 	}
-	if(!JSONRoot["Transforms"].isNull())
+	if(JSONRoot.isMember("Transforms"))
 	{
 		const Json::Value Transforms = JSONRoot["Transforms"];
 

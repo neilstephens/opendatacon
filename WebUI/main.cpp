@@ -33,10 +33,10 @@ extern "C" WebUI* new_WebUIPlugin(std::string Name, std::string File, const Json
 	uint16_t port = 443;
 	if(Overrides.isObject())
 	{
-		if(!Overrides["IP"].isNull())
+		if(Overrides.isMember("IP"))
 			ip= Overrides["IP"].asString();
 
-		if(!Overrides["Port"].isNull())
+		if(Overrides.isMember("Port"))
 			port = Overrides["Port"].asUInt();
 	}
 
