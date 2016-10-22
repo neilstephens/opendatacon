@@ -28,11 +28,13 @@
 #define JSONPOINTCONF_H_
 
 #include <vector>
+#include <memory>
 #include <unordered_map>
 #include <functional>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 #include <json/json.h>
+#include "JSONOutputTemplate.h"
 
 class JSONPointConf: public ConfigParser
 {
@@ -45,6 +47,7 @@ public:
 	std::map<uint16_t, Json::Value> Analogs;
 	std::map<uint16_t, Json::Value> Controls;
 	Json::Value TimestampPath;
+	std::unique_ptr<JSONOutputTemplate> pJOT;
 };
 
 #endif /* JSONPOINTCONF_H_ */
