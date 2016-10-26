@@ -275,12 +275,26 @@ void DNP3MasterPort::Process(const HeaderInfo& info, const ICollection<Indexed<S
 template<typename T>
 inline void DNP3MasterPort::LoadT(const ICollection<Indexed<T> >& meas)
 {
+	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	meas.ForeachItem([&](const Indexed<T>&pair)
 	                 {
-	                       for(auto IOHandler_pair: Subscribers)
-	                       {
-	                             IOHandler_pair.second->Event(pair.value,pair.index,this->Name);
-				     }
+					if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
+						((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time == 0)))
+					{
+						decltype(pair.value) newmeas(pair.value.value, pair.value.quality, opendnp3::DNPTime(eventTime));
+						for(auto IOHandler_pair: Subscribers)
+						{
+						     IOHandler_pair.second->Event(newmeas,pair.index,this->Name);
+						}
+					}
+					else
+					{
+						for(auto IOHandler_pair: Subscribers)
+						{
+						     IOHandler_pair.second->Event(pair.value,pair.index,this->Name);
+						}
+					}
 			     });
 }
 
