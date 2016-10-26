@@ -209,6 +209,11 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				std::cout<<"Warning: invalid port config: need at least Type, Name, ConfFilename: \n'"<<Ports[n].toStyledString()<<"\n' : ignoring"<<std::endl;
 				continue;
 			}
+			if(DataPorts.count(Ports[n]["Name"].asString()))
+			{
+				std::cout<<"Warning: Duplicate Port Name; ignoring:\n'"<<Ports[n].toStyledString()<<"\n'"<<std::endl;
+				continue;
+			}
 
 			std::function<void (IOHandler*)> set_init_mode;
 			if(Ports[n].isMember("InitState"))
@@ -319,6 +324,12 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			if(!Connectors[n].isMember("Name") || !Connectors[n].isMember("ConfFilename"))
 			{
 				std::cout<<"Warning: invalid Connector config: need at least Name, ConfFilename: \n'"<<Connectors[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+				continue;
+			}
+			if(DataConnectors.count(Connectors[n]["Name"].asString()))
+			{
+				std::cout<<"Warning: Duplicate Connector Name; ignoring:\n'"<<Connectors[n].toStyledString()<<"\n'"<<std::endl;
+				continue;
 			}
 			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void(*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
 			if(Connectors[n].isMember("InitState"))
