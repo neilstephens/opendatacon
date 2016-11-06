@@ -261,7 +261,6 @@ void JSONPort::Write()
 }
 void JSONPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_written)
 {
-	write_queue.pop_front();
 	if(err_code)
 	{
 		if(err_code != asio::error::eof)
@@ -277,6 +276,10 @@ void JSONPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_wr
 			auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::WARN,"", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
 		}
+	}
+	else
+	{
+		write_queue.pop_front();
 	}
 	if(!write_queue.empty())
 		Write();

@@ -27,6 +27,7 @@
 #ifndef JSONDATAPORT_H_
 #define JSONDATAPORT_H_
 
+#include <asio.hpp>
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include "JSONPortConf.h"
@@ -71,6 +72,7 @@ public:
 
 protected:
 	std::unique_ptr<asio::basic_stream_socket<asio::ip::tcp> > pSock;
+	std::unique_ptr<asio::ip::tcp::acceptor> pAcceptor;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	std::unique_ptr<Timer_t> pTCPRetryTimer;
 	void Read();

@@ -18,21 +18,21 @@
  *	limitations under the License.
  */
 /*
- * JSONClientDataPort.h
+ * JSONServerPort.h
  *
- *  Created on: 22/07/2014
+ *  Created on: 02/11/2016
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#ifndef JSONCLIENTDATAPORT_H_
-#define JSONCLIENTDATAPORT_H_
+#ifndef JSONSERVERPORT_H
+#define JSONSERVERPORT_H
 
 #include "JSONPort.h"
 
-class JSONClientPort: public JSONPort
+class JSONServerPort : public JSONPort
 {
 public:
-	JSONClientPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	JSONServerPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 
 	void Enable();
 	void Disable();
@@ -40,7 +40,19 @@ public:
 private:
 
 	void ConnectCompletionHandler(asio::error_code err_code);
-
+	std::unique_ptr<asio::strand> pEnableDisableSync;
+	void PortUp();
+	inline void PortUpRetry(unsigned int retry_ms)
+	{
+		pTCPRetryTimer.reset(new Timer_t(*pIOS, std::chrono::milliseconds(retry_ms)));
+		pTCPRetryTimer->async_wait(pEnableDisableSync->wrap(
+			[this](asio::error_code err_code)
+			{
+				if(err_code != asio::error::operation_aborted)
+					PortUp();
+			}));
+	}
+	void PortDown();
 };
 
-#endif /* JSONCLIENTDATAPORT_H_ */
+#endif // JSONSERVERPORT_H
