@@ -312,7 +312,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			{
 				deadband = Analogs[n]["Deadband"].asDouble();
 			}
-			opendnp3::PointClass clazz = GetClass(Analogs[n]);
 			size_t start, stop;
 			if(Analogs[n].isMember("Index"))
 				start = stop = Analogs[n]["Index"].asUInt();
@@ -334,7 +333,16 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					if(existing_index == index)
 						exists = true;
 
-				AnalogClasses[index] = clazz;
+				AnalogClasses[index] = GetClass(Analogs[n]);
+				if (Analogs[n].isMember("StaticAnalogResponse"))
+					StaticAnalogResponses[index] = StringToStaticAnalogResponse(Analogs[n]["StaticAnalogResponse"].asString());
+				else
+					StaticAnalogResponses[index] = StaticAnalogResponse;
+				if (Analogs[n].isMember("EventAnalogResponse"))
+					EventAnalogResponses[index] = StringToStaticAnalogResponse(Analogs[n]["EventAnalogResponse"].asString());
+				else
+					EventAnalogResponses[index] = EventAnalogResponse;
+				
 				AnalogDeadbands[index] = deadband;
 
 				if(!exists)
@@ -373,7 +381,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto Binaries = JSONRoot["Binaries"];
 		for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
 		{
-			opendnp3::PointClass clazz = GetClass(Binaries[n]);
 			size_t start, stop;
 			if(Binaries[n].isMember("Index"))
 				start = stop = Binaries[n]["Index"].asUInt();
@@ -396,8 +403,16 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					if(existing_index == index)
 						exists = true;
 
-				BinaryClasses[index] = clazz;
-
+				BinaryClasses[index] = GetClass(Binaries[n]);
+				if (Binaries[n].isMember("StaticBinaryResponse"))
+					StaticBinaryResponses[index] = StringToStaticBinaryResponse(Binaries[n]["StaticBinaryResponse"].asString());
+				else
+					StaticBinaryResponses[index] = StaticBinaryResponse;
+				if (Binaries[n].isMember("EventBinaryResponse"))
+					EventBinaryResponses[index] = StringToStaticBinaryResponse(Binaries[n]["EventBinaryResponse"].asString());
+				else
+					EventBinaryResponses[index] = EventBinaryResponse;
+				
 				if(!exists)
 					BinaryIndicies.push_back(index);
 
