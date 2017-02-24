@@ -36,7 +36,7 @@ class ChannelStateSubscriber
 public:
 	static void Subscribe(DNP3Port* pPort, asiodnp3::IChannel* pChan);
 	static void Unsubscribe(DNP3Port* pPort, asiodnp3::IChannel* pChan = nullptr);
-	static void StateListener(asiodnp3::IChannel* pChan, opendnp3::ChannelState state);
+	static void StateListener(asiodnp3::IChannel* pChan, ChannelState state);
 
 private:
 	ChannelStateSubscriber(){}

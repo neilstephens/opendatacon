@@ -59,7 +59,7 @@ public:
 	void Disconnect();
 
 private:
-	void StateListener(opendnp3::ChannelState state);
+	void StateListener(ChannelState state);
 	modbus_t *mb;
 	modbus_mapping_t *mb_mapping;
 };

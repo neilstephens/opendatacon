@@ -31,6 +31,9 @@
 #include "DataPort.h"
 #include "ResponderMap.h"
 
+namespace odc
+{
+
 class DataPortCollection: public ResponderMap<DataPort>
 {
 public:
@@ -80,5 +83,7 @@ public:
 	}
 	virtual ~DataPortCollection(){}
 };
+	
+}
 
 #endif /* defined(__opendatacon__DataPortCollection__) */

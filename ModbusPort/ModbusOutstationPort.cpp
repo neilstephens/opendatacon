@@ -111,12 +111,12 @@ void ModbusOutstationPort::Disconnect()
 	if(mb != nullptr) modbus_close(mb);
 }
 
-void ModbusOutstationPort::StateListener(opendnp3::ChannelState state)
+void ModbusOutstationPort::StateListener(ChannelState state)
 {
 	if(!enabled)
 		return;
 
-	if(state == opendnp3::ChannelState::OPEN)
+	if(state == ChannelState::OPEN)
 	{
 		for(auto IOHandler_pair : Subscribers)
 		{

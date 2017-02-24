@@ -34,9 +34,10 @@
 
 #include "IUIResponder.h"
 
-using namespace odc;
+namespace odc {
+typedef opendnp3::ChannelState ChannelState;
 
-class DataPort: public odc::IOHandler, public ConfigParser
+class DataPort: public IOHandler, public ConfigParser
 {
 public:
 	DataPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
@@ -51,7 +52,7 @@ public:
 	virtual void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
 	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
 
-	std::future<opendnp3::CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) final
+	std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) final
 	{
 		if(MuxConnectionEvents(state, SenderName))
 			return ConnectionEvent(state, SenderName);
@@ -79,5 +80,7 @@ public:
 protected:
 	std::unique_ptr<DataPortConf> pConf;
 };
+
+}
 
 #endif /* DATAPORT_H_ */

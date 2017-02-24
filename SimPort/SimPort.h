@@ -31,6 +31,8 @@
 #include <opendatacon/util.h>
 #include <random>
 
+using namespace odc;
+
 class SimPort: public DataPort
 {
 public:

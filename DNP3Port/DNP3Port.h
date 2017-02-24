@@ -31,6 +31,8 @@
 #include <opendnp3/gen/LinkStatus.h>
 #include "DNP3PortConf.h"
 
+using namespace odc;
+
 class DNP3Port: public DataPort
 {
 public:
@@ -41,7 +43,7 @@ public:
 	virtual void Disable()=0;
 	virtual void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
 
-	void StateListener(opendnp3::ChannelState state);
+	void StateListener(ChannelState state);
 
 	//Override DataPort for UI
 	const Json::Value GetStatus() const override;

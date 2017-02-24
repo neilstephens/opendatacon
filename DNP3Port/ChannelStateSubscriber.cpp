@@ -35,7 +35,7 @@ void ChannelStateSubscriber::Subscribe(DNP3Port* pPort, asiodnp3::IChannel* pCha
 	std::lock_guard<std::mutex> lock(MapMutex);
 	if(SubscriberMap.count(pChan) == 0)
 	{
-		pChan->AddStateListener([pChan](opendnp3::ChannelState state)
+		pChan->AddStateListener([pChan](ChannelState state)
 		{
 			ChannelStateSubscriber::StateListener(pChan,state);
 		});
@@ -63,7 +63,7 @@ void ChannelStateSubscriber::Unsubscribe(DNP3Port* pPort, asiodnp3::IChannel* pC
 		}
 	}
 }
-void ChannelStateSubscriber::StateListener(asiodnp3::IChannel* pChan, opendnp3::ChannelState state)
+void ChannelStateSubscriber::StateListener(asiodnp3::IChannel* pChan, ChannelState state)
 {
 	std::lock_guard<std::mutex> lock(MapMutex);
 	auto bounds = SubscriberMap.equal_range(pChan);

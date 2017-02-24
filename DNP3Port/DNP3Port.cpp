@@ -45,9 +45,9 @@ DNP3Port::DNP3Port(std::string aName, std::string aConfFilename, const Json::Val
 }
 
 // Called by OpenDNP3 Thread Pool
-void DNP3Port::StateListener(opendnp3::ChannelState state)
+void DNP3Port::StateListener(ChannelState state)
 {
-	if(state != opendnp3::ChannelState::OPEN)
+	if(state != ChannelState::OPEN)
 	{
 		channel_dead = true;
 		OnLinkDown();

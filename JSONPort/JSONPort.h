@@ -31,6 +31,8 @@
 #include <opendatacon/DataPort.h>
 #include "JSONPortConf.h"
 
+using namespace odc;
+
 class JSONPort: public DataPort
 {
 public:
