@@ -60,7 +60,7 @@ public:
 			return IOHandler::CommandFutureUndefined();
 	}
 
-	virtual std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) = 0;
+	virtual std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) = 0;
 
 	virtual const Json::Value GetStatistics() const
 	{

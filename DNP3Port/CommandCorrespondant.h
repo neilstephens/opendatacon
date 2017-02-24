@@ -30,12 +30,16 @@
 #include <future>
 #include <unordered_map>
 #include <opendnp3/gen/CommandStatus.h>
+#include <opendatacon/IOTypes.h>
+
+using namespace odc;
+
 class CommandCallbackPromise;
 
 class CommandCorrespondant
 {
 public:
-	static CommandCallbackPromise* GetCallback(std::promise<opendnp3::CommandStatus> aPromise, std::function<void()> aCompletionHook = nullptr);
+	static CommandCallbackPromise* GetCallback(std::promise<CommandStatus> aPromise, std::function<void()> aCompletionHook = nullptr);
 	static void ReleaseCallback(CommandCallbackPromise* pFinshedCallback);
 
 private:

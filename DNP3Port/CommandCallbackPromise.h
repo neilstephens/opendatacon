@@ -36,7 +36,7 @@
 class CommandCallbackPromise: public opendnp3::CommandCallbackT
 {
 public:
-	CommandCallbackPromise(std::promise<opendnp3::CommandStatus> aPromise, std::function<void()> aCompletionHook = nullptr):
+	CommandCallbackPromise(std::promise<CommandStatus> aPromise, std::function<void()> aCompletionHook = nullptr):
 		mPromise(std::move(aPromise)),
 		mCompletionHook(std::move(aCompletionHook))
 	{}
@@ -47,15 +47,15 @@ public:
 		switch(response)
 		{
 			case opendnp3::TaskCompletion::SUCCESS:
-				mPromise.set_value(opendnp3::CommandStatus::SUCCESS);
+				mPromise.set_value(CommandStatus::SUCCESS);
 				break;
 			case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
-				mPromise.set_value(opendnp3::CommandStatus::TIMEOUT);
+				mPromise.set_value(CommandStatus::TIMEOUT);
 				break;
 			case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
 			case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
 			default:
-				mPromise.set_value(opendnp3::CommandStatus::UNDEFINED);
+				mPromise.set_value(CommandStatus::UNDEFINED);
 				break;
 		}
 		if(mCompletionHook != nullptr)
@@ -64,7 +64,7 @@ public:
 	}
 
 private:
-	std::promise<opendnp3::CommandStatus> mPromise;
+	std::promise<CommandStatus> mPromise;
 	std::function<void()> mCompletionHook;
 
 };

@@ -29,7 +29,7 @@
 
 std::unordered_map<CommandCallbackPromise*, std::shared_ptr<CommandCallbackPromise> > CommandCorrespondant::Callbacks;
 
-CommandCallbackPromise* CommandCorrespondant::GetCallback(std::promise<opendnp3::CommandStatus> aPromise, std::function<void()> aCompletionHook)
+CommandCallbackPromise* CommandCorrespondant::GetCallback(std::promise<CommandStatus> aPromise, std::function<void()> aCompletionHook)
 {
 	auto pCallback = std::shared_ptr<CommandCallbackPromise>(new CommandCallbackPromise(std::move(aPromise), std::move(aCompletionHook)));
 	auto key = pCallback.get();

@@ -272,30 +272,30 @@ const Json::Value DNP3OutstationPort::GetStatistics() const
 }
 
 template<typename T>
-inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
+inline CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {
 	if(!enabled)
-		return opendnp3::CommandStatus::UNDEFINED;
+		return CommandStatus::UNDEFINED;
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(std::is_same<T,opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
 	{
 		for(auto index : pConf->pPointConf->ControlIndicies)
 			if(index == aIndex)
-				return opendnp3::CommandStatus::SUCCESS;
+				return CommandStatus::SUCCESS;
 	}
-	return opendnp3::CommandStatus::NOT_SUPPORTED;
+	return CommandStatus::NOT_SUPPORTED;
 }
 
 // Called by OpenDNP3 Thread Pool
 template<typename T>
-inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
+inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 {
 	if(!enabled)
-		return opendnp3::CommandStatus::UNDEFINED;
+		return CommandStatus::UNDEFINED;
 
 	//container to store our async futures
-	std::vector<std::future<opendnp3::CommandStatus> > future_results;
+	std::vector<std::future<CommandStatus> > future_results;
 
 	for(auto IOHandler_pair : Subscribers)
 	{
@@ -305,7 +305,7 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if (!pConf->pPointConf->WaitForCommandResponses)
 	{
-		return opendnp3::CommandStatus::SUCCESS;
+		return CommandStatus::SUCCESS;
 	}
 
 	for(auto& future_result : future_results)
@@ -317,23 +317,23 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 			this->pIOS->poll_one();
 		}
 		//first one that isn't a success, we can return
-		if(future_result.get() != opendnp3::CommandStatus::SUCCESS)
-			return opendnp3::CommandStatus::UNDEFINED;
+		if(future_result.get() != CommandStatus::SUCCESS)
+			return CommandStatus::UNDEFINED;
 	}
 
-	return opendnp3::CommandStatus::SUCCESS;
+	return CommandStatus::SUCCESS;
 }
 
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Binary>(qual,index,SenderName);}
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::DoubleBitBinary>(qual,index,SenderName);}
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Analog>(qual,index,SenderName);}
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Counter>(qual,index,SenderName);}
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::FrozenCounter>(qual,index,SenderName);}
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::BinaryOutputStatus>(qual,index,SenderName);}
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::AnalogOutputStatus>(qual,index,SenderName);}
+std::future<CommandStatus> DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Binary>(qual,index,SenderName);}
+std::future<CommandStatus> DNP3OutstationPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::DoubleBitBinary>(qual,index,SenderName);}
+std::future<CommandStatus> DNP3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Analog>(qual,index,SenderName);}
+std::future<CommandStatus> DNP3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Counter>(qual,index,SenderName);}
+std::future<CommandStatus> DNP3OutstationPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::FrozenCounter>(qual,index,SenderName);}
+std::future<CommandStatus> DNP3OutstationPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::BinaryOutputStatus>(qual,index,SenderName);}
+std::future<CommandStatus> DNP3OutstationPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::AnalogOutputStatus>(qual,index,SenderName);}
 
 template<typename T, typename Q>
-inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName)
+inline std::future<CommandStatus> DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName)
 {
 	if (!enabled)
 	{
@@ -359,16 +359,16 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventQ(Q& qual, 
 	return IOHandler::CommandFutureSuccess();
 }
 
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<CommandStatus> DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<CommandStatus> DNP3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<CommandStatus> DNP3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<CommandStatus> DNP3OutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<CommandStatus> DNP3OutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<CommandStatus> DNP3OutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+std::future<CommandStatus> DNP3OutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 
 template<typename T>
-inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
+inline std::future<CommandStatus> DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
 {
 	if(!enabled)
 	{
@@ -396,7 +396,7 @@ inline std::future<opendnp3::CommandStatus> DNP3OutstationPort::EventT(T& meas, 
 	return IOHandler::CommandFutureSuccess();
 }
 
-std::future<opendnp3::CommandStatus> DNP3OutstationPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+std::future<CommandStatus> DNP3OutstationPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
 	if (!enabled)
 	{
