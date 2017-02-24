@@ -112,12 +112,18 @@ public:
 	uint16_t MaxCounterEvents; /// The number of counter events the outstation will buffer before overflowing
 
 	// Point Configuration
+	// TODO: use struct or class for point configuration
 	std::pair<opendnp3::Binary, size_t> mCommsPoint;
 	std::vector<uint32_t> BinaryIndicies;
 	std::map<size_t, opendnp3::Binary> BinaryStartVals;
 	std::map<size_t, opendnp3::PointClass> BinaryClasses;
+	std::map<size_t, opendnp3::Binary::StaticVariation> StaticBinaryResponses;
+	std::map<size_t, opendnp3::Binary::EventVariation> EventBinaryResponses;
+	
 	std::vector<uint32_t> AnalogIndicies;
 	std::map<size_t, opendnp3::Analog> AnalogStartVals;
+	std::map<size_t, opendnp3::Analog::StaticVariation> StaticAnalogResponses;
+	std::map<size_t, opendnp3::Analog::EventVariation> EventAnalogResponses;
 	std::map<size_t, opendnp3::PointClass> AnalogClasses;
 	std::map<size_t, double> AnalogDeadbands;
 	std::vector<uint32_t> ControlIndicies;

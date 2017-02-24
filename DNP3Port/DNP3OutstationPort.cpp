@@ -197,9 +197,9 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 		for (auto index : pConf->pPointConf->AnalogIndicies)
 		{
 			configView.analogs[rawIndex].vIndex = index;
-			configView.analogs[rawIndex].variation = pConf->pPointConf->StaticAnalogResponse;
+			configView.analogs[rawIndex].variation = pConf->pPointConf->StaticAnalogResponses[index];
 			configView.analogs[rawIndex].metadata.clazz = pConf->pPointConf->AnalogClasses[index];
-			configView.analogs[rawIndex].metadata.variation = pConf->pPointConf->EventAnalogResponse;
+			configView.analogs[rawIndex].metadata.variation = pConf->pPointConf->EventAnalogResponses[index];
 			configView.analogs[rawIndex].metadata.deadband = pConf->pPointConf->AnalogDeadbands[index];
 			++rawIndex;
 		}
@@ -209,9 +209,9 @@ void DNP3OutstationPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal:
 		for (auto index : pConf->pPointConf->BinaryIndicies)
 		{
 			configView.binaries[rawIndex].vIndex = index;
-			configView.binaries[rawIndex].variation = pConf->pPointConf->StaticBinaryResponse;
+			configView.binaries[rawIndex].variation = pConf->pPointConf->StaticBinaryResponses[index];
 			configView.binaries[rawIndex].metadata.clazz = pConf->pPointConf->BinaryClasses[index];
-			configView.binaries[rawIndex].metadata.variation = pConf->pPointConf->EventBinaryResponse;
+			configView.binaries[rawIndex].metadata.variation = pConf->pPointConf->EventBinaryResponses[index];
 			++rawIndex;
 		}
 	}
