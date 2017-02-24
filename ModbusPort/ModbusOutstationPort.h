@@ -42,17 +42,17 @@ public:
 	void Disable();
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
 
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
 
-	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
-	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
-	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
+	template<typename T> CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
+	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex);
+	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
 
 
 	void Connect();

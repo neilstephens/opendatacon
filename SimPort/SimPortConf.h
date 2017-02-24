@@ -39,10 +39,10 @@ public:
 	{}
 
 	std::vector<uint32_t> BinaryIndicies;
-	std::map<size_t, opendnp3::Binary> BinaryStartVals;
+	std::map<size_t, Binary> BinaryStartVals;
 	std::map<size_t, unsigned int> BinaryUpdateIntervalms;
 	std::vector<uint32_t> AnalogIndicies;
-	std::map<size_t, opendnp3::Analog> AnalogStartVals;
+	std::map<size_t, Analog> AnalogStartVals;
 	std::map<size_t, unsigned int> AnalogUpdateIntervalms;
 	std::map<size_t, double> AnalogStdDevs;
 	std::vector<uint32_t> ControlIndicies;

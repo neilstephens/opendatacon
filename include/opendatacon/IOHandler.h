@@ -35,6 +35,9 @@
 #include <asiodnp3/DNP3Manager.h>
 #include <opendatacon/IOTypes.h>
 
+namespace odc
+{
+	
 enum ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 
 typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
@@ -124,5 +127,7 @@ private:
 	// Important that this is private - for inter process memory management
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;
 };
+	
+}
 
 #endif /* IOHANDLER_H_ */

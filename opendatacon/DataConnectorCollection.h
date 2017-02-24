@@ -33,6 +33,8 @@
 #include "DataConnector.h"
 #include <opendatacon/ResponderMap.h>
 
+using namespace odc;
+
 class DataConnectorCollection: public ResponderMap<DataConnector>
 {
 public:

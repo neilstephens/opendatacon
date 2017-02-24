@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <opendatacon/Transform.h>
 
+using namespace odc;
+
 class IndexOffsetTransform: public Transform
 {
 public:
@@ -43,18 +45,18 @@ public:
 			offset = 0;
 	}
 
-	bool Event(opendnp3::Binary& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(opendnp3::DoubleBitBinary& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(opendnp3::Analog& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(opendnp3::Counter& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(opendnp3::FrozenCounter& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(opendnp3::BinaryOutputStatus& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(opendnp3::AnalogOutputStatus& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index){return EventT(arCommand,index);}
-	bool Event(opendnp3::AnalogOutputInt16& arCommand, uint16_t index){return EventT(arCommand,index);}
-	bool Event(opendnp3::AnalogOutputInt32& arCommand, uint16_t index){return EventT(arCommand,index);}
-	bool Event(opendnp3::AnalogOutputFloat32& arCommand, uint16_t index){return EventT(arCommand,index);}
-	bool Event(opendnp3::AnalogOutputDouble64& arCommand, uint16_t index){return EventT(arCommand,index);}
+	bool Event(Binary& meas, uint16_t& index){return EventT(meas,index);}
+	bool Event(DoubleBitBinary& meas, uint16_t& index){return EventT(meas,index);}
+	bool Event(Analog& meas, uint16_t& index){return EventT(meas,index);}
+	bool Event(Counter& meas, uint16_t& index){return EventT(meas,index);}
+	bool Event(FrozenCounter& meas, uint16_t& index){return EventT(meas,index);}
+	bool Event(BinaryOutputStatus& meas, uint16_t& index){return EventT(meas,index);}
+	bool Event(AnalogOutputStatus& meas, uint16_t& index){return EventT(meas,index);}
+	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index){return EventT(arCommand,index);}
+	bool Event(AnalogOutputInt16& arCommand, uint16_t index){return EventT(arCommand,index);}
+	bool Event(AnalogOutputInt32& arCommand, uint16_t index){return EventT(arCommand,index);}
+	bool Event(AnalogOutputFloat32& arCommand, uint16_t index){return EventT(arCommand,index);}
+	bool Event(AnalogOutputDouble64& arCommand, uint16_t index){return EventT(arCommand,index);}
 
 	template<typename T> bool EventT(T& meas, uint16_t& index)
 	{

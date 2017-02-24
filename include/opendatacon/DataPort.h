@@ -34,7 +34,9 @@
 
 #include "IUIResponder.h"
 
-class DataPort: public IOHandler, public ConfigParser
+using namespace odc;
+
+class DataPort: public odc::IOHandler, public ConfigParser
 {
 public:
 	DataPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):

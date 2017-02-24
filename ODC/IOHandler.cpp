@@ -27,6 +27,9 @@
 #include <openpal/logging/LogLevels.h>
 #include <opendatacon/IOHandler.h>
 
+namespace odc
+{
+
 std::unordered_map<std::string,IOHandler*> IOHandler::IOHandlers;
 
 std::unordered_map<std::string, IOHandler*>& IOHandler::GetIOHandlers()
@@ -84,4 +87,6 @@ bool IOHandler::MuxConnectionEvents(ConnectState state, const std::string& Sende
 		return new_demand;
 	}
 	return true;
+}
+	
 }

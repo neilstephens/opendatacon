@@ -90,18 +90,18 @@ public:
 	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
 
 	// Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName);
-	template<typename T> std::future<opendnp3::CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName);
+	template<typename T> std::future<CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
 
 private:
 	template<class T>
-	opendnp3::CommandStatus WriteObject(const T& command, uint16_t index);
+	CommandStatus WriteObject(const T& command, uint16_t index);
 
 	void DoPoll(uint32_t pollgroup);
 
@@ -109,7 +109,7 @@ private:
 	void HandleError(int errnum, const std::string& source);
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
-	ModbusReadGroup<opendnp3::Binary>* GetRange(uint16_t index);
+	ModbusReadGroup<Binary>* GetRange(uint16_t index);
 
 	modbus_t *mb;
 	void* modbus_read_buffer;

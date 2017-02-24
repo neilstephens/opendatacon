@@ -53,23 +53,23 @@ protected:
 	const Json::Value GetStatistics() const override;
 
 	/// Implement some ODC::IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
 
-	std::future<opendnp3::CommandStatus> Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<opendnp3::CommandStatus> Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
 
-	std::future<opendnp3::CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
+	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
 
 	/// Implement opendnp3::IOutstationApplication
 	// Called when a the reset/unreset status of the link layer changes (and on link up)

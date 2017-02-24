@@ -28,6 +28,9 @@
 #include <algorithm>
 #include "ModbusPointConf.h"
 #include <opendatacon/util.h>
+#include <opendatacon/IOTypes.h>
+
+using namespace odc;
 
 ModbusPointConf::ModbusPointConf(std::string FileName):
 	ConfigParser(FileName)
@@ -39,26 +42,26 @@ template<class T>
 T GetStartVal(const Json::Value& value);
 
 template<>
-opendnp3::Analog GetStartVal<opendnp3::Analog>(const Json::Value& value)
+Analog GetStartVal<Analog>(const Json::Value& value)
 {
-	opendnp3::Analog startval;
+	Analog startval;
 
 	std::string start_val = value.asString();
 	if(start_val == "X")
-		return opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST));
+		return Analog(0,static_cast<uint8_t>(AnalogQuality::COMM_LOST));
 	else
-		return opendnp3::Analog(std::stod(start_val),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
+		return Analog(std::stod(start_val),static_cast<uint8_t>(AnalogQuality::ONLINE));
 }
 
 template<>
-opendnp3::Binary GetStartVal<opendnp3::Binary>(const Json::Value& value)
+Binary GetStartVal<Binary>(const Json::Value& value)
 {
-	opendnp3::Binary startval;
+	Binary startval;
 
 	if(value.asString() == "X")
-		return opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
+		return Binary(false,static_cast<uint8_t>(BinaryQuality::COMM_LOST));
 	else
-		return opendnp3::Binary(value.asBool(),static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+		return Binary(value.asBool(),static_cast<uint8_t>(BinaryQuality::ONLINE));
 }
 
 template<class T>

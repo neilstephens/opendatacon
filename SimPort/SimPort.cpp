@@ -75,7 +75,7 @@ void SimPort::PortUp()
 		if(pConf->AnalogUpdateIntervalms.count(index))
 		{
 			auto interval = pConf->AnalogUpdateIntervalms[index];
-			auto pMean = pConf->AnalogStartVals.count(index) ? std::make_shared<opendnp3::Analog>(pConf->AnalogStartVals[index]) : std::make_shared<opendnp3::Analog>();
+			auto pMean = pConf->AnalogStartVals.count(index) ? std::make_shared<Analog>(pConf->AnalogStartVals[index]) : std::make_shared<Analog>();
 			auto std_dev = pConf->AnalogStdDevs.count(index) ? pConf->AnalogStdDevs[index] : (pMean->value ? (pConf->default_std_dev_factor*pMean->value) : 20);
 
 			pTimer_t pTimer(new Timer_t(*pIOS));
@@ -97,7 +97,7 @@ void SimPort::PortUp()
 		if(pConf->BinaryUpdateIntervalms.count(index))
 		{
 			auto interval = pConf->BinaryUpdateIntervalms[index];
-			auto pVal = pConf->BinaryStartVals.count(index) ? std::make_shared<opendnp3::Binary>(pConf->BinaryStartVals[index]) : std::make_shared<opendnp3::Binary>();
+			auto pVal = pConf->BinaryStartVals.count(index) ? std::make_shared<Binary>(pConf->BinaryStartVals[index]) : std::make_shared<Binary>();
 
 			pTimer_t pTimer(new Timer_t(*pIOS));
 			Timers.push_back(pTimer);
@@ -122,7 +122,7 @@ void SimPort::PortDown()
 	Timers.clear();
 }
 
-void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
+void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
 {
 	//Restart the timer
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
@@ -132,7 +132,7 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev
 	{
 		//change value around mean
 		std::normal_distribution<double> distribution(pMean->value, std_dev);
-		IOHandler_pair.second->Event(opendnp3::Analog(distribution(RandNumGenerator),pMean->quality), index, this->Name);
+		IOHandler_pair.second->Event(Analog(distribution(RandNumGenerator),pMean->quality), index, this->Name);
 	}
 
 	//wait til next time
@@ -144,7 +144,7 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Analog> pMean, double std_dev
 				 });
 }
 
-void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
+void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
 {
 	//Restart the timer
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
@@ -155,7 +155,7 @@ void SimPort::SpawnEvent(std::shared_ptr<opendnp3::Binary> pVal, unsigned int in
 		//toggle value
 		pVal->value = !pVal->value;
 		//pass a copy, because we don't know when the ref will go out of scope
-		IOHandler_pair.second->Event(opendnp3::Binary(*pVal), index, this->Name);
+		IOHandler_pair.second->Event(Binary(*pVal), index, this->Name);
 	}
 
 	//wait til next time
@@ -230,20 +230,20 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 					}
 					else if(start_val == "NAN" || start_val == "nan" || start_val == "NaN")
 					{
-						pConf->AnalogStartVals[index] = opendnp3::Analog(std::numeric_limits<double>::quiet_NaN(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
+						pConf->AnalogStartVals[index] = Analog(std::numeric_limits<double>::quiet_NaN(),static_cast<uint8_t>(AnalogQuality::ONLINE));
 					}
 					else if(start_val == "INF" || start_val == "inf")
 					{
-						pConf->AnalogStartVals[index] = opendnp3::Analog(std::numeric_limits<double>::infinity(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
+						pConf->AnalogStartVals[index] = Analog(std::numeric_limits<double>::infinity(),static_cast<uint8_t>(AnalogQuality::ONLINE));
 					}
 					else if(start_val == "-INF" || start_val == "-inf")
 					{
-						pConf->AnalogStartVals[index] = opendnp3::Analog(-std::numeric_limits<double>::infinity(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
+						pConf->AnalogStartVals[index] = Analog(-std::numeric_limits<double>::infinity(),static_cast<uint8_t>(AnalogQuality::ONLINE));
 					}
 					else if(start_val == "X")
-						pConf->AnalogStartVals[index] = opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST));
+						pConf->AnalogStartVals[index] = Analog(0,static_cast<uint8_t>(AnalogQuality::COMM_LOST));
 					else
-						pConf->AnalogStartVals[index] = opendnp3::Analog(std::stod(start_val),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
+						pConf->AnalogStartVals[index] = Analog(std::stod(start_val),static_cast<uint8_t>(AnalogQuality::ONLINE));
 				}
 				else if(pConf->AnalogStartVals.count(index))
 					pConf->AnalogStartVals.erase(index);
@@ -302,9 +302,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							}
 					}
 					else if(start_val == "X")
-						pConf->BinaryStartVals[index] = opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
+						pConf->BinaryStartVals[index] = Binary(false,static_cast<uint8_t>(BinaryQuality::COMM_LOST));
 					else
-						pConf->BinaryStartVals[index] = opendnp3::Binary(Binaries[n]["StartVal"].asBool(),static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+						pConf->BinaryStartVals[index] = Binary(Binaries[n]["StartVal"].asBool(),static_cast<uint8_t>(BinaryQuality::ONLINE));
 				}
 				else if(pConf->BinaryStartVals.count(index))
 					pConf->BinaryStartVals.erase(index);
@@ -362,7 +362,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(pConf->ControlIndicies.begin(),pConf->ControlIndicies.end());
 	}
 }
-std::future<opendnp3::CommandStatus> SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+std::future<CommandStatus> SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
 	return CommandFutureSuccess();
 }
@@ -370,83 +370,83 @@ std::future<opendnp3::CommandStatus> SimPort::ConnectionEvent(ConnectState state
 //Implement Event handlers from IOHandler - All not supported because SimPort is just a source.
 
 // measurement events
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
 
 // change of quality Events
-std::future<opendnp3::CommandStatus> SimPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
 
 // control events
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }
-std::future<opendnp3::CommandStatus> SimPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureNotSupported();
 }

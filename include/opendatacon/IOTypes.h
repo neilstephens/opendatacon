@@ -31,6 +31,9 @@
 #include <opendnp3/app/ControlRelayOutputBlock.h>
 #include <opendnp3/app/AnalogOutput.h>
 
+namespace odc
+{
+
 typedef opendnp3::CommandStatus CommandStatus;
 
 /// Measurement types
@@ -99,5 +102,6 @@ enum class AnalogOutputStatusQuality: uint8_t
 	RESERVED = 0x80
 };
 
+}
 
 #endif

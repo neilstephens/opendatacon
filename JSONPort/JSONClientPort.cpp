@@ -183,7 +183,7 @@ void JSONClientPort::ProcessBraced(std::string braced)
 			if(!val.isNull())
 			{
 				if(val.isNumeric())
-					LoadT(opendnp3::Analog(val.asDouble(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
+					LoadT(Analog(val.asDouble(),static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
 				else if(val.isString())
 				{
 					double value;
@@ -193,10 +193,10 @@ void JSONClientPort::ProcessBraced(std::string braced)
 					}
 					catch(std::exception&)
 					{
-						LoadT(opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),point_pair.first, timestamp_val);
+						LoadT(Analog(0,static_cast<uint8_t>(AnalogQuality::COMM_LOST)),point_pair.first, timestamp_val);
 						continue;
 					}
-					LoadT(opendnp3::Analog(value,static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
+					LoadT(Analog(value,static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
 				}
 			}
 		}
@@ -207,13 +207,13 @@ void JSONClientPort::ProcessBraced(std::string braced)
 			//if the path existed, load up the point
 			if(!val.isNull())
 			{
-				bool true_val = false; opendnp3::BinaryQuality qual = opendnp3::BinaryQuality::ONLINE;
+				bool true_val = false; BinaryQuality qual = BinaryQuality::ONLINE;
 				if(point_pair.second.isMember("TrueVal"))
 				{
 					true_val = (val == point_pair.second["TrueVal"]);
 					if(point_pair.second.isMember("FalseVal"))
 						if (!true_val && (val != point_pair.second["FalseVal"]))
-							qual = opendnp3::BinaryQuality::COMM_LOST;
+							qual = BinaryQuality::COMM_LOST;
 				}
 				else if(point_pair.second.isMember("FalseVal"))
 					true_val = !(val == point_pair.second["FalseVal"]);
@@ -223,12 +223,12 @@ void JSONClientPort::ProcessBraced(std::string braced)
 				{
 					true_val = (val.asString() == "true");
 					if(!true_val && (val.asString() != "false"))
-						qual = opendnp3::BinaryQuality::COMM_LOST;
+						qual = BinaryQuality::COMM_LOST;
 				}
 				else
-					qual = opendnp3::BinaryQuality::COMM_LOST;
+					qual = BinaryQuality::COMM_LOST;
 
-				LoadT(opendnp3::Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first,timestamp_val);
+				LoadT(Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first,timestamp_val);
 			}
 		}
 		//TODO: implement controls

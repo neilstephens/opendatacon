@@ -150,22 +150,22 @@ void ModbusMasterPort::Disconnect()
 		// Modbus function code 0x01 (read coil status)
 		for(auto range : pConf->pPointConf->BitIndicies)
 			for(uint16_t index = range.start; index < range.start + range.count; index++ )
-				IOHandler_pair.second->Event(opendnp3::BinaryQuality::COMM_LOST, index, this->Name);
+				IOHandler_pair.second->Event(BinaryQuality::COMM_LOST, index, this->Name);
 
 		// Modbus function code 0x02 (read input status)
 		for(auto range : pConf->pPointConf->InputBitIndicies)
 			for(uint16_t index = range.start; index < range.start + range.count; index++ )
-				IOHandler_pair.second->Event(opendnp3::BinaryQuality::COMM_LOST, index, this->Name);
+				IOHandler_pair.second->Event(BinaryQuality::COMM_LOST, index, this->Name);
 
 		// Modbus function code 0x03 (read holding registers)
 		for(auto range : pConf->pPointConf->RegIndicies)
 			for(uint16_t index = range.start; index < range.start + range.count; index++ )
-				IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST,index,this->Name);
+				IOHandler_pair.second->Event(AnalogQuality::COMM_LOST,index,this->Name);
 
 		// Modbus function code 0x04 (read input registers)
 		for(auto range : pConf->pPointConf->InputRegIndicies)
 			for(uint16_t index = range.start; index < range.start + range.count; index++ )
-				IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST,index,this->Name);
+				IOHandler_pair.second->Event(AnalogQuality::COMM_LOST,index,this->Name);
 	}
 }
 
@@ -203,25 +203,25 @@ CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& 
 	switch (errno)
 	{
 		case EMBXILFUN: //return "Illegal function";
-			return opendnp3::CommandStatus::NOT_SUPPORTED;
+			return CommandStatus::NOT_SUPPORTED;
 		case EMBBADCRC:  //return "Invalid CRC";
 		case EMBBADDATA: //return "Invalid data";
 		case EMBBADEXC:  //return "Invalid exception code";
 		case EMBXILADD:  //return "Illegal data address";
 		case EMBXILVAL:  //return "Illegal data value";
 		case EMBMDATA:   //return "Too many data";
-			return opendnp3::CommandStatus::FORMAT_ERROR;
+			return CommandStatus::FORMAT_ERROR;
 		case EMBXSFAIL:  //return "Slave device or server failure";
 		case EMBXMEMPAR: //return "Memory parity error";
-			return opendnp3::CommandStatus::HARDWARE_ERROR;
+			return CommandStatus::HARDWARE_ERROR;
 		case EMBXGTAR: //return "Target device failed to respond";
-			return opendnp3::CommandStatus::TIMEOUT;
+			return CommandStatus::TIMEOUT;
 		case EMBXACK:   //return "Acknowledge";
 		case EMBXSBUSY: //return "Slave device or server is busy";
 		case EMBXNACK:  //return "Negative acknowledge";
 		case EMBXGPATH: //return "Gateway path unavailable";
 		default:
-			return opendnp3::CommandStatus::UNDEFINED;
+			return CommandStatus::UNDEFINED;
 	}
 }
 
@@ -307,7 +307,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			{
 				for(auto IOHandler_pair : Subscribers)
 				{
-					IOHandler_pair.second->Event(opendnp3::BinaryOutputStatus(((uint8_t*)modbus_read_buffer)[i] != false),index,this->Name);
+					IOHandler_pair.second->Event(BinaryOutputStatus(((uint8_t*)modbus_read_buffer)[i] != false),index,this->Name);
 				}
 				++index;
 			}
@@ -339,7 +339,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			{
 				for(auto IOHandler_pair : Subscribers)
 				{
-					IOHandler_pair.second->Event(opendnp3::Binary(((uint8_t*)modbus_read_buffer)[i] != false),index,this->Name);
+					IOHandler_pair.second->Event(Binary(((uint8_t*)modbus_read_buffer)[i] != false),index,this->Name);
 				}
 				++index;
 			}
@@ -371,7 +371,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			{
 				for(auto IOHandler_pair : Subscribers)
 				{
-					IOHandler_pair.second->Event(opendnp3::AnalogOutputInt16(((uint16_t*)modbus_read_buffer)[i]),index,this->Name);
+					IOHandler_pair.second->Event(AnalogOutputInt16(((uint16_t*)modbus_read_buffer)[i]),index,this->Name);
 				}
 				++index;
 			}
@@ -403,7 +403,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			{
 				for(auto IOHandler_pair : Subscribers)
 				{
-					IOHandler_pair.second->Event(opendnp3::Analog(((uint16_t*)modbus_read_buffer)[i]),index,this->Name);
+					IOHandler_pair.second->Event(Analog(((uint16_t*)modbus_read_buffer)[i]),index,this->Name);
 				}
 				++index;
 			}
@@ -412,22 +412,22 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 }
 
 //Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<opendnp3::CommandStatus> ModbusMasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+std::future<CommandStatus> ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
-std::future<opendnp3::CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+std::future<CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
-	auto cmd_promise = std::promise<opendnp3::CommandStatus>();
+	auto cmd_promise = std::promise<CommandStatus>();
 	auto cmd_future = cmd_promise.get_future();
 
 	if(!enabled)
 	{
-		cmd_promise.set_value(opendnp3::CommandStatus::UNDEFINED);
+		cmd_promise.set_value(CommandStatus::UNDEFINED);
 		return cmd_future;
 	}
 
@@ -441,11 +441,11 @@ std::future<opendnp3::CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectSt
 		}
 	}
 
-	cmd_promise.set_value(opendnp3::CommandStatus::SUCCESS);
+	cmd_promise.set_value(CommandStatus::SUCCESS);
 	return cmd_future;
 }
 
-ModbusReadGroup<opendnp3::Binary>* ModbusMasterPort::GetRange(uint16_t index)
+ModbusReadGroup<Binary>* ModbusMasterPort::GetRange(uint16_t index)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 	for(auto& range : pConf->pPointConf->BitIndicies)
@@ -457,7 +457,7 @@ ModbusReadGroup<opendnp3::Binary>* ModbusMasterPort::GetRange(uint16_t index)
 }
 
 template<>
-opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::ControlRelayOutputBlock& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index)
 {
 	if (
 	      (command.functionCode == ControlCode::NUL) ||
@@ -468,7 +468,7 @@ opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::ControlRel
 	}
 
 	// Modbus function code 0x01 (read coil status)
-	ModbusReadGroup<opendnp3::Binary>* TargetRange = GetRange(index);
+	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
 	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
 
 	int rc;
@@ -494,9 +494,9 @@ opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::ControlRel
 }
 
 template<>
-opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutputInt16& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputInt16& command, uint16_t index)
 {
-	ModbusReadGroup<opendnp3::Binary>* TargetRange = GetRange(index);
+	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
 	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
 
 	int rc = modbus_write_register(mb, index, command.value);
@@ -510,9 +510,9 @@ opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutp
 }
 
 template<>
-opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutputInt32& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputInt32& command, uint16_t index)
 {
-	ModbusReadGroup<opendnp3::Binary>* TargetRange = GetRange(index);
+	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
 	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
 
 	int rc = modbus_write_register(mb, index, command.value);
@@ -526,9 +526,9 @@ opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutp
 }
 
 template<>
-opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutputFloat32& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputFloat32& command, uint16_t index)
 {
-	ModbusReadGroup<opendnp3::Binary>* TargetRange = GetRange(index);
+	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
 	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
 
 	int rc = modbus_write_register(mb, index, command.value);
@@ -542,9 +542,9 @@ opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutp
 }
 
 template<>
-opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutputDouble64& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputDouble64& command, uint16_t index)
 {
-	ModbusReadGroup<opendnp3::Binary>* TargetRange = GetRange(index);
+	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
 	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
 
 	int rc = modbus_write_register(mb, index, command.value);
@@ -558,21 +558,21 @@ opendnp3::CommandStatus ModbusMasterPort::WriteObject(const opendnp3::AnalogOutp
 }
 
 template<typename T>
-inline std::future<opendnp3::CommandStatus> ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
+inline std::future<CommandStatus> ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
 {
-	std::unique_ptr<std::promise<opendnp3::CommandStatus> > cmd_promise { new std::promise<opendnp3::CommandStatus>() };
+	std::unique_ptr<std::promise<CommandStatus> > cmd_promise { new std::promise<CommandStatus>() };
 	auto cmd_future = cmd_promise->get_future();
 
 	if(!enabled)
 	{
-		cmd_promise->set_value(opendnp3::CommandStatus::UNDEFINED);
+		cmd_promise->set_value(CommandStatus::UNDEFINED);
 		return cmd_future;
 	}
 
 	cmd_promise->set_value(WriteObject(arCommand, index));
 	/*
 	auto lambda = capture( std::move(cmd_promise),
-	                      [=]( std::unique_ptr<std::promise<opendnp3::CommandStatus>> & cmd_promise ) {
+	                      [=]( std::unique_ptr<std::promise<CommandStatus>> & cmd_promise ) {
 	                          cmd_promise->set_value(WriteObject(arCommand, index));
 	                      } );
 	pIOS->post([&](){ lambda(); });

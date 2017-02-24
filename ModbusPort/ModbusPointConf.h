@@ -31,12 +31,16 @@
 #include <map>
 #include <unordered_map>
 #include <functional>
+#include <opendatacon/IOTypes.h>
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/gen/ControlCode.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 
+
 #include <chrono>
+
+using namespace odc;
 
 class ModbusPollGroup
 {
@@ -102,12 +106,12 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot);
 	uint8_t GetUnsolClassMask();
 
-	std::pair<opendnp3::Binary,size_t> mCommsPoint;
+	std::pair<Binary,size_t> mCommsPoint;
 
-	ModbusReadGroupCollection<opendnp3::Binary> BitIndicies;
-	ModbusReadGroupCollection<opendnp3::Binary> InputBitIndicies;
-	ModbusReadGroupCollection<opendnp3::Analog> RegIndicies;
-	ModbusReadGroupCollection<opendnp3::Analog> InputRegIndicies;
+	ModbusReadGroupCollection<Binary> BitIndicies;
+	ModbusReadGroupCollection<Binary> InputBitIndicies;
+	ModbusReadGroupCollection<Analog> RegIndicies;
+	ModbusReadGroupCollection<Analog> InputRegIndicies;
 
 	std::map<uint32_t, ModbusPollGroup> PollGroups;
 
