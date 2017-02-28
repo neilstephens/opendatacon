@@ -27,7 +27,6 @@
 #ifndef JSONCLIENTDATAPORT_H_
 #define JSONCLIENTDATAPORT_H_
 
-#include <asio.hpp>
 #include "JSONPort.h"
 
 class JSONClientPort: public JSONPort
@@ -38,17 +37,10 @@ public:
 	void Enable();
 	void Disable();
 
-	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
-
 private:
-	asio::basic_streambuf<std::allocator<char> > buf;
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pTCPRetryTimer;
+
 	void ConnectCompletionHandler(asio::error_code err_code);
-	void ReadCompletionHandler(asio::error_code err_code);
-	void ProcessBraced(std::string braced);
-	template<typename T> void LoadT(T meas, uint16_t index, Json::Value timestamp_val);
-	void Read();
+
 };
 
 #endif /* JSONCLIENTDATAPORT_H_ */

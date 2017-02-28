@@ -18,36 +18,41 @@
  *	limitations under the License.
  */
 /*
- * JSONPointConf.h
+ * JSONServerPort.h
  *
- *  Created on: 22/07/2014
+ *  Created on: 02/11/2016
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#ifndef JSONPOINTCONF_H_
-#define JSONPOINTCONF_H_
+#ifndef JSONSERVERPORT_H
+#define JSONSERVERPORT_H
 
-#include <vector>
-#include <memory>
-#include <unordered_map>
-#include <functional>
-#include <opendatacon/DataPointConf.h>
-#include <opendatacon/ConfigParser.h>
-#include <json/json.h>
-#include "JSONOutputTemplate.h"
+#include "JSONPort.h"
 
-class JSONPointConf: public ConfigParser
+class JSONServerPort : public JSONPort
 {
 public:
-	JSONPointConf(std::string FileName, const Json::Value& ConfOverrides);
+	JSONServerPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 
-	void ProcessElements(const Json::Value& JSONRoot);
+	void Enable();
+	void Disable();
 
-	std::map<uint16_t, Json::Value> Binaries;
-	std::map<uint16_t, Json::Value> Analogs;
-	std::map<uint16_t, Json::Value> Controls;
-	Json::Value TimestampPath;
-	std::unique_ptr<JSONOutputTemplate> pJOT;
+private:
+
+	void ConnectCompletionHandler(asio::error_code err_code);
+	std::unique_ptr<asio::strand> pEnableDisableSync;
+	void PortUp();
+	inline void PortUpRetry(unsigned int retry_ms)
+	{
+		pTCPRetryTimer.reset(new Timer_t(*pIOS, std::chrono::milliseconds(retry_ms)));
+		pTCPRetryTimer->async_wait(pEnableDisableSync->wrap(
+			[this](asio::error_code err_code)
+			{
+				if(err_code != asio::error::operation_aborted)
+					PortUp();
+			}));
+	}
+	void PortDown();
 };
 
-#endif /* JSONPOINTCONF_H_ */
+#endif // JSONSERVERPORT_H

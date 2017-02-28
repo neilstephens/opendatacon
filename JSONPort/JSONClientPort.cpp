@@ -24,16 +24,11 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <thread>
-#include <chrono>
 #include <opendnp3/LogLevels.h>
 #include "JSONClientPort.h"
 
 JSONClientPort::JSONClientPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	JSONPort(aName, aConfFilename, aConfOverrides)
-{}
-
-void JSONClientPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
 {}
 
 void JSONClientPort::Enable()
@@ -79,181 +74,11 @@ void JSONClientPort::ConnectCompletionHandler(asio::error_code err_code)
 	pLoggers->Log(log_entry);
 
 	enabled = true;
+	for (auto IOHandler_pair: Subscribers)
+	{
+		IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+	}
 	Read();
-}
-void JSONClientPort::Read()
-{
-	asio::async_read(*pSock.get(), buf,asio::transfer_at_least(1), std::bind(&JSONClientPort::ReadCompletionHandler,this,std::placeholders::_1));
-}
-void JSONClientPort::ReadCompletionHandler(asio::error_code err_code)
-{
-	if(err_code)
-	{
-		if(err_code != asio::error::eof)
-		{
-			std::string msg = Name+": Read error: '"+err_code.message()+"'";
-			auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-			return;
-		}
-		else
-		{
-			std::string msg = Name+": '"+err_code.message()+"' : Retrying...";
-			auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-		}
-	}
-
-	//transfer content between matched braces to get processed as json
-	char ch;
-	std::string braced;
-	size_t count_open_braces = 0, count_close_braces = 0;
-	while(buf.size() > 0)
-	{
-		ch = buf.sgetc();
-		buf.consume(1);
-		if(ch=='{')
-		{
-			count_open_braces++;
-			if(count_open_braces == 1)
-				braced.clear(); //discard anything before the first brace
-		}
-		if(ch=='}')
-		{
-			count_close_braces++;
-			if(count_close_braces > count_open_braces)
-			{
-				braced.clear(); //discard because it must be outside matched braces
-				count_close_braces = count_open_braces = 0;
-			}
-		}
-		braced.push_back(ch);
-		//check if we've found a match to the first brace
-		if(count_open_braces > 0 && count_close_braces == count_open_braces)
-		{
-			ProcessBraced(braced);
-			braced.clear();
-			count_close_braces = count_open_braces = 0;
-		}
-	}
-	//put back the leftovers
-	for(auto ch : braced)
-		buf.sputc(ch);
-
-	if(!err_code) //not eof - read more
-		Read();
-	else
-	{
-		//remote end closed the connection - reset and try reconnecting
-		Disable();
-		Enable();
-	}
-}
-
-//At this point we have a whole (hopefully JSON) object - ie. {.*}
-//Here we parse it and extract any paths that match our point config
-void JSONClientPort::ProcessBraced(std::string braced)
-{
-	Json::Value JSONRoot; // will contain the root value after parsing.
-	Json::Reader JSONReader;
-	bool parsing_success = JSONReader.parse(braced, JSONRoot);
-	if (parsing_success)
-	{
-		JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
-
-		//little functor to traverse any paths, starting at the root
-		//pass a JSON array of nodes representing the path (that's how we store our point config after all)
-		auto TraversePath = [&JSONRoot](const Json::Value nodes)
-		{
-			//val will traverse any paths, starting at the root
-			auto val = JSONRoot;
-			//traverse
-			for(unsigned int n = 0; n < nodes.size(); ++n)
-				if((val = val[nodes[n].asCString()]).isNull())
-					break;
-			return val;
-		};
-
-		Json::Value timestamp_val = TraversePath(pConf->pPointConf->TimestampPath);
-
-		for(auto& point_pair : pConf->pPointConf->Analogs)
-		{
-			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
-			//if the path existed, load up the point
-			if(!val.isNull())
-			{
-				if(val.isNumeric())
-					LoadT(Analog(val.asDouble(),static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
-				else if(val.isString())
-				{
-					double value;
-					try
-					{
-						value = std::stod(val.asString());
-					}
-					catch(std::exception&)
-					{
-						LoadT(Analog(0,static_cast<uint8_t>(AnalogQuality::COMM_LOST)),point_pair.first, timestamp_val);
-						continue;
-					}
-					LoadT(Analog(value,static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
-				}
-			}
-		}
-
-		for(auto& point_pair : pConf->pPointConf->Binaries)
-		{
-			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
-			//if the path existed, load up the point
-			if(!val.isNull())
-			{
-				bool true_val = false; BinaryQuality qual = BinaryQuality::ONLINE;
-				if(point_pair.second.isMember("TrueVal"))
-				{
-					true_val = (val == point_pair.second["TrueVal"]);
-					if(point_pair.second.isMember("FalseVal"))
-						if (!true_val && (val != point_pair.second["FalseVal"]))
-							qual = BinaryQuality::COMM_LOST;
-				}
-				else if(point_pair.second.isMember("FalseVal"))
-					true_val = !(val == point_pair.second["FalseVal"]);
-				else if(val.isNumeric() || val.isBool())
-					true_val = val.asBool();
-				else if(val.isString())
-				{
-					true_val = (val.asString() == "true");
-					if(!true_val && (val.asString() != "false"))
-						qual = BinaryQuality::COMM_LOST;
-				}
-				else
-					qual = BinaryQuality::COMM_LOST;
-
-				LoadT(Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first,timestamp_val);
-			}
-		}
-		//TODO: implement controls
-	}
-	else
-	{
-		std::string msg = "Error parsing JSON string: '"+braced+"'";
-		auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-	}
-}
-template<typename T>
-inline void JSONClientPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
-{
-	std::string msg = "Measurement Event '"+std::string(typeid(meas).name())+"'";
-	auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::DBG,"", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
-
-	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
-	{
-		meas = T(meas.value, meas.quality, opendnp3::DNPTime(timestamp_val.asUInt64()));
-	}
-
-	for(auto IOHandler_pair : Subscribers)
-		IOHandler_pair.second->Event(meas, index, this->Name);
 }
 void JSONClientPort::Disable()
 {
@@ -264,3 +89,5 @@ void JSONClientPort::Disable()
 	pSock.reset(nullptr);
 	enabled = false;
 }
+
+

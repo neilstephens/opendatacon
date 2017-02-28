@@ -30,7 +30,8 @@
 #include "JSONPointConf.h"
 
 JSONPointConf::JSONPointConf(std::string FileName, const Json::Value &ConfOverrides):
-	ConfigParser(FileName, ConfOverrides)
+	ConfigParser(FileName, ConfOverrides),
+	pJOT(nullptr)
 {
 	ProcessFile();
 }
@@ -50,6 +51,26 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		return;
 
 	this->TimestampPath = JSONRoot["TimestampPath"];
+
+	auto ind_marker = JSONRoot["TemplateIndex"].isString() ? JSONRoot["TemplateIndex"].asString() : "<INDEX>";
+	auto name_marker = JSONRoot["TemplateName"].isString() ? JSONRoot["TemplateIndex"].asString() : "<NAME>";
+	auto val_marker = JSONRoot["TemplateValue"].isString() ? JSONRoot["TemplateIndex"].asString() : "<VALUE>";
+	auto qual_marker = JSONRoot["TemplateQuality"].isString() ? JSONRoot["TemplateIndex"].asString() : "<QUALITY>";
+	auto time_marker = JSONRoot["TemplateTimestamp"].isString() ? JSONRoot["TemplateIndex"].asString() : "<TIMESTAMP>";
+	if(JSONRoot.isMember("OutputTemplate"))
+	{
+		pJOT.reset(new JSONOutputTemplate(JSONRoot["OutputTemplate"],ind_marker,name_marker,val_marker,qual_marker,time_marker));
+	}
+	else
+	{
+		Json::Value temp;
+		temp["Index"] = ind_marker;
+		temp["Name"] = name_marker;
+		temp["Value"] = val_marker;
+		temp["Quality"] = qual_marker;
+		temp["Timestamp"] = time_marker;
+		pJOT.reset(new JSONOutputTemplate(temp,ind_marker,name_marker,val_marker,qual_marker,time_marker));
+	}
 
 	const Json::Value PointConfs = JSONRoot["JSONPointConf"];
 	for (Json::ArrayIndex n = 0; n < PointConfs.size(); ++n) // Iterates over the sequence of point groups (grouped by type).
