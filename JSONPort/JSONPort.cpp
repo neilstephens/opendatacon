@@ -28,6 +28,8 @@
 #include <chrono>
 #include "JSONPort.h"
 
+using namespace odc;
+
 JSONPort::JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	write_queue()
@@ -168,7 +170,7 @@ void JSONPort::ProcessBraced(std::string braced)
 			if(!val.isNull())
 			{
 				if(val.isNumeric())
-					LoadT(opendnp3::Analog(val.asDouble(),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
+					LoadT(Analog(val.asDouble(),static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
 				else if(val.isString())
 				{
 					double value;
@@ -178,10 +180,10 @@ void JSONPort::ProcessBraced(std::string braced)
 					}
 					catch(std::exception&)
 					{
-						LoadT(opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST)),point_pair.first, timestamp_val);
+						LoadT(Analog(0,static_cast<uint8_t>(AnalogQuality::COMM_LOST)),point_pair.first, timestamp_val);
 						continue;
 					}
-					LoadT(opendnp3::Analog(value,static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
+					LoadT(Analog(value,static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
 				}
 			}
 		}
@@ -192,13 +194,13 @@ void JSONPort::ProcessBraced(std::string braced)
 			//if the path existed, load up the point
 			if(!val.isNull())
 			{
-				bool true_val = false; opendnp3::BinaryQuality qual = opendnp3::BinaryQuality::ONLINE;
+				bool true_val = false; BinaryQuality qual = BinaryQuality::ONLINE;
 				if(point_pair.second.isMember("TrueVal"))
 				{
 					true_val = (val == point_pair.second["TrueVal"]);
 					if(point_pair.second.isMember("FalseVal"))
 						if (!true_val && (val != point_pair.second["FalseVal"]))
-							qual = opendnp3::BinaryQuality::COMM_LOST;
+							qual = BinaryQuality::COMM_LOST;
 				}
 				else if(point_pair.second.isMember("FalseVal"))
 					true_val = !(val == point_pair.second["FalseVal"]);
@@ -208,12 +210,12 @@ void JSONPort::ProcessBraced(std::string braced)
 				{
 					true_val = (val.asString() == "true");
 					if(!true_val && (val.asString() != "false"))
-						qual = opendnp3::BinaryQuality::COMM_LOST;
+						qual = BinaryQuality::COMM_LOST;
 				}
 				else
-					qual = opendnp3::BinaryQuality::COMM_LOST;
+					qual = BinaryQuality::COMM_LOST;
 
-				LoadT(opendnp3::Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first,timestamp_val);
+				LoadT(Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first,timestamp_val);
 			}
 		}
 		//TODO: implement controls
@@ -234,7 +236,7 @@ inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 
 	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
 	{
-		meas = T(meas.value, meas.quality, opendnp3::DNPTime(timestamp_val.asUInt64()));
+		meas = T(meas.value, meas.quality, DNPTime(timestamp_val.asUInt64()));
 	}
 
 	for(auto IOHandler_pair : Subscribers)
@@ -286,40 +288,40 @@ void JSONPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_wr
 }
 
 //Unsupported types - return as such
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
 
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::ConnectionEvent(ConnectState state, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::ConnectionEvent(ConnectState state, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
 
-std::future<opendnp3::CommandStatus> JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<opendnp3::CommandStatus> JSONPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+std::future<CommandStatus> JSONPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
 
 //Supported types - call templates
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
-std::future<opendnp3::CommandStatus> JSONPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
-std::future<opendnp3::CommandStatus> JSONPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
-std::future<opendnp3::CommandStatus> JSONPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
+std::future<CommandStatus> JSONPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
+std::future<CommandStatus> JSONPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
+std::future<CommandStatus> JSONPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
+std::future<CommandStatus> JSONPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
 
 //Templates for supported types
 template<typename T>
-inline std::future<opendnp3::CommandStatus> JSONPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName)
+inline std::future<CommandStatus> JSONPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName)
 {
 	return IOHandler::CommandFutureUndefined();
 }
 
 template<typename T>
-inline std::future<opendnp3::CommandStatus> JSONPort::EventT(const T& meas, uint16_t index, const std::string& SenderName)
+inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index, const std::string& SenderName)
 {
 	if(!enabled)
 	{
@@ -336,8 +338,8 @@ inline std::future<opendnp3::CommandStatus> JSONPort::EventT(const T& meas, uint
 		}
 		return Json::Value::null;
 	};
-	auto output = std::is_same<T,opendnp3::Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
-			  std::is_same<T,opendnp3::Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
+	auto output = std::is_same<T,Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
+			  std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
 										  Json::Value::null;
 	if(output.isNull())
 		return IOHandler::CommandFutureNotSupported();
