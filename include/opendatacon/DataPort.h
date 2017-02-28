@@ -27,11 +27,10 @@
 #ifndef DATAPORT_H_
 #define DATAPORT_H_
 
-#include <asiodnp3/DNP3Manager.h>
 #include "DataPortConf.h"
 #include "IOHandler.h"
+#include "IOManager.h"
 #include "ConfigParser.h"
-
 #include "IUIResponder.h"
 
 namespace odc {
@@ -49,7 +48,7 @@ public:
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
-	virtual void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
+	virtual void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)=0;
 	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
 
 	std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) final

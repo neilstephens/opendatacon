@@ -67,7 +67,7 @@ public:
 			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
 		}
 	}
-	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL){}
+	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL){}
 	void ProcessElements(const Json::Value& JSONRoot){}
 
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }

@@ -41,7 +41,7 @@ public:
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
-	virtual void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
+	virtual void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)=0;
 
 	void StateListener(ChannelState state);
 
@@ -74,7 +74,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot);
 
 protected:
-	asiodnp3::IChannel* GetChannel(asiodnp3::DNP3Manager& DNP3Mgr);
+	asiodnp3::IChannel* GetChannel(IOManager& IOMgr);
 
 	asiodnp3::IChannel* pChannel;
 	static std::unordered_map<std::string, asiodnp3::IChannel*> Channels;

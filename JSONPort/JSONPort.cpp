@@ -60,7 +60,7 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 		static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
 }
 
-void JSONPort::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
+void JSONPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
 {
 	pWriteQueueStrand.reset(new asio::strand(*pIOS));
 }
@@ -236,7 +236,7 @@ inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 
 	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
 	{
-		meas = T(meas.value, meas.quality, DNPTime(timestamp_val.asUInt64()));
+		meas = T(meas.value, meas.quality, opendnp3::DNPTime(timestamp_val.asUInt64()));
 	}
 
 	for(auto IOHandler_pair : Subscribers)

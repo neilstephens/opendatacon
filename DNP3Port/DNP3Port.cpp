@@ -160,7 +160,7 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 
 }
 
-asiodnp3::IChannel* DNP3Port::GetChannel(asiodnp3::DNP3Manager& DNP3Mgr)
+asiodnp3::IChannel* DNP3Port::GetChannel(IOManager& IOMgr)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -182,7 +182,7 @@ asiodnp3::IChannel* DNP3Port::GetChannel(asiodnp3::DNP3Manager& DNP3Mgr)
 	{
 		if(isSerial)
 		{
-			Channels[ChannelID] = DNP3Mgr.AddSerial(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
+			Channels[ChannelID] = IOMgr.AddSerial(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
 									    opendnp3::ChannelRetry(
 										    openpal::TimeDuration::Milliseconds(500),
 										    openpal::TimeDuration::Milliseconds(5000)),
@@ -193,7 +193,7 @@ asiodnp3::IChannel* DNP3Port::GetChannel(asiodnp3::DNP3Manager& DNP3Mgr)
 			switch (ClientOrServer())
 			{
 				case TCPClientServer::SERVER:
-					Channels[ChannelID] = DNP3Mgr.AddTCPServer(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
+					Channels[ChannelID] = IOMgr.AddTCPServer(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
 												 opendnp3::ChannelRetry(
 													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMinms),
 													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMaxms)),
@@ -202,7 +202,7 @@ asiodnp3::IChannel* DNP3Port::GetChannel(asiodnp3::DNP3Manager& DNP3Mgr)
 					break;
 
 				case TCPClientServer::CLIENT:
-					Channels[ChannelID] = DNP3Mgr.AddTCPClient(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
+					Channels[ChannelID] = IOMgr.AddTCPClient(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
 												 opendnp3::ChannelRetry(
 													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
 													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
@@ -213,7 +213,7 @@ asiodnp3::IChannel* DNP3Port::GetChannel(asiodnp3::DNP3Manager& DNP3Mgr)
 
 				default:
 					std::string msg = Name + ": Can't determine if TCP socket is client or server";
-					auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+					auto log_entry = openpal::LogEntry("DNP3Port", openpal::logflags::ERR,"", msg.c_str(), -1);
 					pLoggers->Log(log_entry);
 					throw std::runtime_error(msg);
 			}

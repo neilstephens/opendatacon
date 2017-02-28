@@ -36,7 +36,7 @@
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
-	DNP3Mgr(std::thread::hardware_concurrency()),
+	IOMgr(std::thread::hardware_concurrency()),
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS)),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
@@ -58,10 +58,10 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	AdvancedLoggers.emplace("Console Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
 	AdvancedLoggers.at("Console Log")->AddIngoreAlways(".*"); //silence all console messages by default
-	DNP3Mgr.AddLogSubscriber(*AdvancedLoggers.at("Console Log").get());
+	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("Console Log").get());
 
 	AdvancedLoggers.emplace("File Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(FileLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
-	DNP3Mgr.AddLogSubscriber(*AdvancedLoggers.at("File Log").get());
+	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("File Log").get());
 
 
 	//Parse the configs and create all user interfaces, ports and connections
@@ -370,12 +370,12 @@ void DataConcentrator::BuildOrRebuild()
 	std::cout << "Initialising DataPorts" << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
-		Name_n_Port.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
+		Name_n_Port.second->BuildOrRebuild(IOMgr,LOG_LEVEL);
 	}
 	std::cout << "Initialising DataConnectors" << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
-		Name_n_Conn.second->BuildOrRebuild(DNP3Mgr,LOG_LEVEL);
+		Name_n_Conn.second->BuildOrRebuild(IOMgr,LOG_LEVEL);
 	}
 }
 void DataConcentrator::Run()
@@ -444,7 +444,7 @@ void DataConcentrator::Run()
 	DataPorts.clear();
 
 	std::cout << "Shutting down DNP3 manager... " << std::endl;
-	DNP3Mgr.Shutdown();
+	IOMgr.Shutdown();
 }
 
 void DataConcentrator::Shutdown()

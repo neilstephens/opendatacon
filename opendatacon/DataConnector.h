@@ -28,6 +28,7 @@
 #define DATACONNECTOR_H_
 
 #include <opendatacon/IOHandler.h>
+#include <opendatacon/IOManager.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/Transform.h>
 
@@ -75,7 +76,7 @@ public:
 
 	void Enable();
 	void Disable();
-	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
 
 protected:
 	void ProcessElements(const Json::Value& JSONRoot);

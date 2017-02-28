@@ -40,7 +40,7 @@ public:
 
 	void Enable();
 	void Disable();
-	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
 
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName);
 	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);

@@ -26,7 +26,6 @@
 
 #include <future>
 #include <iostream>
-#include <asiodnp3/DNP3Manager.h>
 #include <opendnp3/LogLevels.h>
 #include "DataConnector.h"
 #include "IndexOffsetTransform.h"
@@ -34,6 +33,7 @@
 #include "RandTransform.h"
 #include "RateLimitTransform.h"
 #include <opendatacon/Platform.h>
+#include <opendatacon/IOManager.h>
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	IOHandler(aName),
@@ -250,7 +250,7 @@ inline std::future<CommandStatus> DataConnector::EventT(const T& event_obj, uint
 	return IOHandler::CommandFutureUndefined();
 }
 
-void DataConnector::BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL)
+void DataConnector::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
 {}
 void DataConnector::Enable()
 {

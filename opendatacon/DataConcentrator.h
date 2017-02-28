@@ -29,7 +29,6 @@
 
 #include <asio.hpp>
 #include <unordered_map>
-#include <asiodnp3/DNP3Manager.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/DataPortCollection.h>
 #include "DataConnector.h"
@@ -64,7 +63,7 @@ private:
 	LogCollection AdvancedLoggers;
 	InterfaceCollection Interfaces;
 
-	asiodnp3::DNP3Manager DNP3Mgr;
+	IOManager IOMgr;
 	asio::io_service IOS;
 	std::unique_ptr<asio::io_service::work> ios_working;
 	std::once_flag shutdown_flag;

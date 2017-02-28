@@ -32,7 +32,6 @@
 #include <map>
 #include <asio.hpp>
 #include <asiopal/LogFanoutHandler.h>
-#include <asiodnp3/DNP3Manager.h>
 #include <opendatacon/IOTypes.h>
 
 namespace odc

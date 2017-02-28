@@ -40,7 +40,7 @@ public:
 	SimPort(std::string Name, std::string File, const Json::Value Overrides);
 	void Enable() final;
 	void Disable() final;
-	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL) final;
+	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) final;
 	void ProcessElements(const Json::Value& JSONRoot) final;
 	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) final;
 

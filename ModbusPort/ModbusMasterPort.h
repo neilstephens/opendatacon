@@ -87,7 +87,7 @@ public:
 	void Disable();
 	void Connect();
 	void Disconnect();
-	void BuildOrRebuild(asiodnp3::DNP3Manager& DNP3Mgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
 
 	// Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
 	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
