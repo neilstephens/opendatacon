@@ -347,7 +347,7 @@ inline std::future<CommandStatus> DNP3OutstationPort::EventQ(Q& qual, uint16_t i
 
 		T updated = existing;
 		updated.quality = static_cast<uint8_t>(qual) | state;
-		updated.time = opendnp3::DNPTime(eventTime);
+		updated.time = Timestamp(eventTime);
 		return updated;
 	};
 	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);

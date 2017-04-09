@@ -236,7 +236,7 @@ inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 
 	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
 	{
-		meas = T(meas.value, meas.quality, opendnp3::DNPTime(timestamp_val.asUInt64()));
+		meas = T(meas.value, meas.quality, Timestamp(timestamp_val.asUInt64()));
 	}
 
 	for(auto IOHandler_pair : Subscribers)

@@ -82,7 +82,7 @@ void DNP3MasterPort::PortUp()
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	// Update the comms state point if configured
-	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
+	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(BinaryQuality::ONLINE))
 	{
 		for (auto IOHandler_pair : Subscribers)
 		{
@@ -91,7 +91,7 @@ void DNP3MasterPort::PortUp()
 				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
 				pLoggers->Log(log_entry);
 			}
-			opendnp3::Binary commsUpEvent(!pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE), opendnp3::DNPTime(eventTime));
+			Binary commsUpEvent(!pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(BinaryQuality::ONLINE), Timestamp(eventTime));
 			IOHandler_pair.second->Event(commsUpEvent, pConf->pPointConf->mCommsPoint.second, this->Name);
 		}
 	}
@@ -111,19 +111,19 @@ void DNP3MasterPort::PortDown()
 		}
 
 		for (auto index : pConf->pPointConf->BinaryIndicies)
-			IOHandler_pair.second->Event(opendnp3::BinaryQuality::COMM_LOST, index, this->Name);
+			IOHandler_pair.second->Event(BinaryQuality::COMM_LOST, index, this->Name);
 		for (auto index : pConf->pPointConf->AnalogIndicies)
-			IOHandler_pair.second->Event(opendnp3::AnalogQuality::COMM_LOST, index, this->Name);
+			IOHandler_pair.second->Event(AnalogQuality::COMM_LOST, index, this->Name);
 
 		// Update the comms state point if configured
-		if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
+		if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(BinaryQuality::ONLINE))
 		{
 			{
 				std::string msg = Name + ": Updating comms state point to bad";
 				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
 				pLoggers->Log(log_entry);
 			}
-			opendnp3::Binary commsDownEvent(pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE), opendnp3::DNPTime(eventTime));
+			Binary commsDownEvent(pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(BinaryQuality::ONLINE), Timestamp(eventTime));
 			IOHandler_pair.second->Event(commsDownEvent, pConf->pPointConf->mCommsPoint.second, this->Name);
 		}
 	}
@@ -275,14 +275,14 @@ void DNP3MasterPort::Process(const HeaderInfo& info, const ICollection<Indexed<S
 template<typename T>
 inline void DNP3MasterPort::LoadT(const ICollection<Indexed<T> >& meas)
 {
-	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	Timestamp eventTime = Timestamp(asiopal::UTCTimeSource::Instance().Now().msSinceEpoch);
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	meas.ForeachItem([&](const Indexed<T>&pair)
 	                 {
 					if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
 						((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time == 0)))
 					{
-						decltype(pair.value) newmeas(pair.value.value, pair.value.quality, opendnp3::DNPTime(eventTime));
+						decltype(pair.value) newmeas(pair.value.value, pair.value.quality, eventTime);
 						for(auto IOHandler_pair: Subscribers)
 						{
 						     IOHandler_pair.second->Event(newmeas,pair.index,this->Name);

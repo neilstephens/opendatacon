@@ -36,6 +36,9 @@ namespace odc
 
 typedef opendnp3::CommandStatus CommandStatus;
 
+/// Timestamp
+typedef	opendnp3::DNPTime Timestamp;
+	
 /// Measurement types
 typedef opendnp3::Binary Binary;
 typedef opendnp3::DoubleBitBinary DoubleBitBinary;
