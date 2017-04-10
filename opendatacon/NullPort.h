@@ -37,39 +37,32 @@ private:
 	std::unique_ptr<Timer_t> pTimer;
 public:
 	NullPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-		DataPort(aName, aConfFilename, aConfOverrides)
+	DataPort(aName, aConfFilename, aConfOverrides)
 	{}
 	void Enable()
 	{
 		pTimer.reset(new Timer_t(*pIOS, std::chrono::seconds(3)));
 		pTimer->async_wait(
-		      [this](asio::error_code err_code)
-		      {
-		            if (err_code != asio::error::operation_aborted)
-		            {
-
-		                  for (auto IOHandler_pair: Subscribers)
-		                  {
-		                        PublishEvent(ConnectState::PORT_UP, 0);
-		                        PublishEvent(ConnectState::CONNECTED, 0);
-					}
-				}
-			});
+						   [this](asio::error_code err_code)
+						   {
+							   if (err_code != asio::error::operation_aborted)
+							   {
+								   PublishEvent(ConnectState::PORT_UP, 0);
+								   PublishEvent(ConnectState::CONNECTED, 0);
+							   }
+						   });
 		return;
 	}
 	void Disable()
 	{
 		pTimer->cancel();
 		pTimer.reset();
-		for (auto IOHandler_pair : Subscribers)
-		{
-			PublishEvent(ConnectState::PORT_DOWN, 0);
-			PublishEvent(ConnectState::DISCONNECTED, 0);
-		}
+		PublishEvent(ConnectState::PORT_DOWN, 0);
+		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL){}
 	void ProcessElements(const Json::Value& JSONRoot){}
-
+	
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }
 	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }
 	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }
