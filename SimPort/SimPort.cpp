@@ -128,12 +128,9 @@ void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 
 	//Send an event out
-	for (auto IOHandler_pair : Subscribers)
-	{
-		//change value around mean
-		std::normal_distribution<double> distribution(pMean->value, std_dev);
-		IOHandler_pair.second->Event(Analog(distribution(RandNumGenerator),pMean->quality), index, this->Name);
-	}
+	//change value around mean
+	std::normal_distribution<double> distribution(pMean->value, std_dev);
+	PublishEvent(Analog(distribution(RandNumGenerator),pMean->quality), index);
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
@@ -150,13 +147,10 @@ void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, si
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 
 	//Send an event out
-	for (auto IOHandler_pair : Subscribers)
-	{
-		//toggle value
-		pVal->value = !pVal->value;
-		//pass a copy, because we don't know when the ref will go out of scope
-		IOHandler_pair.second->Event(Binary(*pVal), index, this->Name);
-	}
+	//toggle value
+	pVal->value = !pVal->value;
+	//pass a copy, because we don't know when the ref will go out of scope
+	PublishEvent(Binary(*pVal), index);
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)

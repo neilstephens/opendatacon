@@ -118,17 +118,11 @@ void ModbusOutstationPort::StateListener(ChannelState state)
 
 	if(state == ChannelState::OPEN)
 	{
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
-		}
+		PublishEvent(ConnectState::CONNECTED, 0);
 	}
 	else
 	{
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
-		}
+		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
 }
 void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
@@ -222,14 +216,8 @@ inline CommandStatus ModbusOutstationPort::PerformT(T& arCommand, uint16_t aInde
 {
 	if(!enabled)
 		return CommandStatus::UNDEFINED;
-
-	//container to store our async futures
-	std::vector<std::future<CommandStatus> > future_results;
-
-	for(auto IOHandler_pair : Subscribers)
-	{
-		future_results.push_back((IOHandler_pair.second->Event(arCommand, aIndex, this->Name)));
-	}
+	
+	auto future_results = PublishCommand(arCommand, aIndex);
 
 	for(auto& future_result : future_results)
 	{

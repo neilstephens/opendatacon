@@ -50,8 +50,8 @@ public:
 
 		                  for (auto IOHandler_pair: Subscribers)
 		                  {
-		                        IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
-		                        IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
+		                        PublishEvent(ConnectState::PORT_UP, 0);
+		                        PublishEvent(ConnectState::CONNECTED, 0);
 					}
 				}
 			});
@@ -63,8 +63,8 @@ public:
 		pTimer.reset();
 		for (auto IOHandler_pair : Subscribers)
 		{
-			IOHandler_pair.second->Event(ConnectState::PORT_DOWN, 0, this->Name);
-			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
+			PublishEvent(ConnectState::PORT_DOWN, 0);
+			PublishEvent(ConnectState::DISCONNECTED, 0);
 		}
 	}
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL){}

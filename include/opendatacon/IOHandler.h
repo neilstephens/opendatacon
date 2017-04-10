@@ -107,7 +107,6 @@ public:
 	void SetIOS(asio::io_service* ios_ptr);
 
 	std::string Name;
-	std::unordered_map<std::string,IOHandler*> Subscribers;
 	std::unique_ptr<asiopal::LogFanoutHandler> pLoggers;
 	openpal::LogFilters LOG_LEVEL;
 	asio::io_service* pIOS;
@@ -121,8 +120,30 @@ protected:
 	bool InDemand();
 	std::map<std::string,bool> connection_demands;
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
+	
+	template<class T>
+	void PublishEvent(const T& meas, uint16_t index) {
+		for(auto IOHandler_pair: Subscribers)
+		{
+			IOHandler_pair.second->Event(meas, index, Name);
+		}
+	}
+	
+	template<class T>
+	std::vector<std::future<CommandStatus> > PublishCommand(const T& meas, uint16_t index) {
+		std::vector<std::future<CommandStatus> > future_results;
+
+		for(auto IOHandler_pair: Subscribers)
+		{
+			future_results.push_back(IOHandler_pair.second->Event(meas, index, Name));
+		}
+		
+		return future_results;
+	}
 
 private:
+	std::unordered_map<std::string,IOHandler*> Subscribers;
+
 	// Important that this is private - for inter process memory management
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;
 };

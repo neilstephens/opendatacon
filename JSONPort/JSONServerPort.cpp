@@ -94,10 +94,7 @@ void JSONServerPort::PortDown()
 		pTCPRetryTimer->cancel();
 	//shutdown and close socket by using destructor
 	pSock.reset(nullptr);
-	for (auto IOHandler_pair: Subscribers)
-	{
-		IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
-	}
+	PublishEvent(ConnectState::DISCONNECTED, 0);
 }
 
 void JSONServerPort::ConnectCompletionHandler(asio::error_code err_code)
@@ -117,9 +114,6 @@ void JSONServerPort::ConnectCompletionHandler(asio::error_code err_code)
 	auto log_entry = openpal::LogEntry("JSONServerPort", openpal::logflags::INFO,"", msg.c_str(), -1);
 	pLoggers->Log(log_entry);
 
-	for (auto IOHandler_pair: Subscribers)
-	{
-		IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
-	}
+	PublishEvent(ConnectState::CONNECTED, 0);
 	Read();
 }

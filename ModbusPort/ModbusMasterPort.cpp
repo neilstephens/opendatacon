@@ -145,28 +145,26 @@ void ModbusMasterPort::Disconnect()
 
 	//Update the quality of point
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-	for(auto IOHandler_pair : Subscribers)
-	{
-		// Modbus function code 0x01 (read coil status)
-		for(auto range : pConf->pPointConf->BitIndicies)
-			for(uint16_t index = range.start; index < range.start + range.count; index++ )
-				IOHandler_pair.second->Event(BinaryQuality::COMM_LOST, index, this->Name);
 
-		// Modbus function code 0x02 (read input status)
-		for(auto range : pConf->pPointConf->InputBitIndicies)
-			for(uint16_t index = range.start; index < range.start + range.count; index++ )
-				IOHandler_pair.second->Event(BinaryQuality::COMM_LOST, index, this->Name);
-
-		// Modbus function code 0x03 (read holding registers)
-		for(auto range : pConf->pPointConf->RegIndicies)
-			for(uint16_t index = range.start; index < range.start + range.count; index++ )
-				IOHandler_pair.second->Event(AnalogQuality::COMM_LOST,index,this->Name);
-
-		// Modbus function code 0x04 (read input registers)
-		for(auto range : pConf->pPointConf->InputRegIndicies)
-			for(uint16_t index = range.start; index < range.start + range.count; index++ )
-				IOHandler_pair.second->Event(AnalogQuality::COMM_LOST,index,this->Name);
-	}
+	// Modbus function code 0x01 (read coil status)
+	for(auto range : pConf->pPointConf->BitIndicies)
+		for(uint16_t index = range.start; index < range.start + range.count; index++ )
+			PublishEvent(BinaryQuality::COMM_LOST, index);
+	
+	// Modbus function code 0x02 (read input status)
+	for(auto range : pConf->pPointConf->InputBitIndicies)
+		for(uint16_t index = range.start; index < range.start + range.count; index++ )
+			PublishEvent(BinaryQuality::COMM_LOST, index);
+	
+	// Modbus function code 0x03 (read holding registers)
+	for(auto range : pConf->pPointConf->RegIndicies)
+		for(uint16_t index = range.start; index < range.start + range.count; index++ )
+			PublishEvent(AnalogQuality::COMM_LOST,index);
+	
+	// Modbus function code 0x04 (read input registers)
+	for(auto range : pConf->pPointConf->InputRegIndicies)
+		for(uint16_t index = range.start; index < range.start + range.count; index++ )
+			PublishEvent(AnalogQuality::COMM_LOST,index);
 }
 
 void ModbusMasterPort::HandleError(int errnum, const std::string& source)
@@ -305,10 +303,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			uint16_t index = range.start;
 			for(uint16_t i = 0; i < rc; i++ )
 			{
-				for(auto IOHandler_pair : Subscribers)
-				{
-					IOHandler_pair.second->Event(BinaryOutputStatus(((uint8_t*)modbus_read_buffer)[i] != false),index,this->Name);
-				}
+				PublishEvent(BinaryOutputStatus(((uint8_t*)modbus_read_buffer)[i] != false),index);
 				++index;
 			}
 		}
@@ -337,10 +332,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			uint16_t index = range.start;
 			for(uint16_t i = 0; i < rc; i++ )
 			{
-				for(auto IOHandler_pair : Subscribers)
-				{
-					IOHandler_pair.second->Event(Binary(((uint8_t*)modbus_read_buffer)[i] != false),index,this->Name);
-				}
+				PublishEvent(Binary(((uint8_t*)modbus_read_buffer)[i] != false),index);
 				++index;
 			}
 		}
@@ -369,10 +361,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			uint16_t index = range.start;
 			for(uint16_t i = 0; i < rc; i++ )
 			{
-				for(auto IOHandler_pair : Subscribers)
-				{
-					IOHandler_pair.second->Event(AnalogOutputInt16(((uint16_t*)modbus_read_buffer)[i]),index,this->Name);
-				}
+				PublishEvent(AnalogOutputInt16(((uint16_t*)modbus_read_buffer)[i]),index);
 				++index;
 			}
 		}
@@ -401,10 +390,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			uint16_t index = range.start;
 			for(uint16_t i = 0; i < rc; i++ )
 			{
-				for(auto IOHandler_pair : Subscribers)
-				{
-					IOHandler_pair.second->Event(Analog(((uint16_t*)modbus_read_buffer)[i]),index,this->Name);
-				}
+				PublishEvent(Analog(((uint16_t*)modbus_read_buffer)[i]),index);
 				++index;
 			}
 		}

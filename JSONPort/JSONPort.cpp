@@ -128,10 +128,7 @@ void JSONPort::ReadCompletionHandler(asio::error_code err_code)
 	else
 	{
 		//remote end closed the connection - reset and try reconnecting
-		for (auto IOHandler_pair: Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::DISCONNECTED , 0, this->Name);
-		}
+		PublishEvent(ConnectState::DISCONNECTED , 0);
 		Disable();
 		Enable();
 	}
@@ -239,8 +236,7 @@ inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 		meas = T(meas.value, meas.quality, Timestamp(timestamp_val.asUInt64()));
 	}
 
-	for(auto IOHandler_pair : Subscribers)
-		IOHandler_pair.second->Event(meas, index, this->Name);
+	PublishEvent(meas, index);
 }
 
 void JSONPort::QueueWrite(const std::string &message)

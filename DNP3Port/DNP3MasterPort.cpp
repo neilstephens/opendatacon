@@ -84,16 +84,13 @@ void DNP3MasterPort::PortUp()
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(BinaryQuality::ONLINE))
 	{
-		for (auto IOHandler_pair : Subscribers)
 		{
-			{
-				std::string msg = Name + ": Updating comms state point to good";
-				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-				pLoggers->Log(log_entry);
-			}
-			Binary commsUpEvent(!pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(BinaryQuality::ONLINE), Timestamp(eventTime));
-			IOHandler_pair.second->Event(commsUpEvent, pConf->pPointConf->mCommsPoint.second, this->Name);
+			std::string msg = Name + ": Updating comms state point to good";
+			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
+			pLoggers->Log(log_entry);
 		}
+		Binary commsUpEvent(!pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(BinaryQuality::ONLINE), Timestamp(eventTime));
+		PublishEvent(commsUpEvent, pConf->pPointConf->mCommsPoint.second);
 	}
 }
 
@@ -101,31 +98,28 @@ void DNP3MasterPort::PortDown()
 {
 	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
-	for (auto IOHandler_pair : Subscribers)
+	
+	{
+		std::string msg = Name + ": Setting point quality to COMM_LOST";
+		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+	}
+	
+	for (auto index : pConf->pPointConf->BinaryIndicies)
+		PublishEvent(BinaryQuality::COMM_LOST, index);
+	for (auto index : pConf->pPointConf->AnalogIndicies)
+		PublishEvent(AnalogQuality::COMM_LOST, index);
+	
+	// Update the comms state point if configured
+	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(BinaryQuality::ONLINE))
 	{
 		{
-			std::string msg = Name + ": Setting point quality to COMM_LOST";
+			std::string msg = Name + ": Updating comms state point to bad";
 			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
 		}
-
-		for (auto index : pConf->pPointConf->BinaryIndicies)
-			IOHandler_pair.second->Event(BinaryQuality::COMM_LOST, index, this->Name);
-		for (auto index : pConf->pPointConf->AnalogIndicies)
-			IOHandler_pair.second->Event(AnalogQuality::COMM_LOST, index, this->Name);
-
-		// Update the comms state point if configured
-		if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(BinaryQuality::ONLINE))
-		{
-			{
-				std::string msg = Name + ": Updating comms state point to bad";
-				auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-				pLoggers->Log(log_entry);
-			}
-			Binary commsDownEvent(pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(BinaryQuality::ONLINE), Timestamp(eventTime));
-			IOHandler_pair.second->Event(commsDownEvent, pConf->pPointConf->mCommsPoint.second, this->Name);
-		}
+		Binary commsDownEvent(pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(BinaryQuality::ONLINE), Timestamp(eventTime));
+		PublishEvent(commsDownEvent, pConf->pPointConf->mCommsPoint.second);
 	}
 }
 
@@ -157,10 +151,7 @@ void DNP3MasterPort::OnLinkDown()
 		PortDown();
 
 		// Notify subscribers that a disconnect event has occured
-		for (auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
-		}
+		PublishEvent(ConnectState::DISCONNECTED, 0);
 
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
@@ -278,24 +269,18 @@ inline void DNP3MasterPort::LoadT(const ICollection<Indexed<T> >& meas)
 	Timestamp eventTime = Timestamp(asiopal::UTCTimeSource::Instance().Now().msSinceEpoch);
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	meas.ForeachItem([&](const Indexed<T>&pair)
-	                 {
-					if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-						((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time == 0)))
-					{
-						decltype(pair.value) newmeas(pair.value.value, pair.value.quality, eventTime);
-						for(auto IOHandler_pair: Subscribers)
-						{
-						     IOHandler_pair.second->Event(newmeas,pair.index,this->Name);
-						}
-					}
-					else
-					{
-						for(auto IOHandler_pair: Subscribers)
-						{
-						     IOHandler_pair.second->Event(pair.value,pair.index,this->Name);
-						}
-					}
-			     });
+					 {
+						 if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
+							 ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time == 0)))
+						 {
+							 decltype(pair.value) newmeas(pair.value.value, pair.value.quality, eventTime);
+							 PublishEvent(newmeas,pair.index);
+						 }
+						 else
+						 {
+							 PublishEvent(pair.value,pair.index);
+						 }
+					 });
 }
 
 //Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED

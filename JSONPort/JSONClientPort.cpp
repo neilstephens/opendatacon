@@ -74,10 +74,8 @@ void JSONClientPort::ConnectCompletionHandler(asio::error_code err_code)
 	pLoggers->Log(log_entry);
 
 	enabled = true;
-	for (auto IOHandler_pair: Subscribers)
-	{
-		IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
-	}
+	PublishEvent(ConnectState::CONNECTED, 0);
+
 	Read();
 }
 void JSONClientPort::Disable()

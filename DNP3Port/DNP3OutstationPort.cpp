@@ -64,10 +64,7 @@ void DNP3OutstationPort::Enable()
 	pOutstation->Enable();
 	enabled = true;
 
-	for (auto IOHandler_pair : Subscribers)
-	{
-		IOHandler_pair.second->Event(ConnectState::PORT_UP, 0, this->Name);
-	}
+	PublishEvent(ConnectState::PORT_UP, 0);
 }
 void DNP3OutstationPort::Disable()
 {
@@ -86,10 +83,7 @@ void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 	if(link_dead && !channel_dead) //must be on link up
 	{
 		link_dead = false;
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
-		}
+		PublishEvent(ConnectState::CONNECTED, 0);
 	}
 	//TODO: track a new statistic - reset count
 }
@@ -104,10 +98,7 @@ void DNP3OutstationPort::OnLinkDown()
 	if(!link_dead)
 	{
 		link_dead = true;
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::DISCONNECTED, 0, this->Name);
-		}
+		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
 }
 // Called by OpenDNP3 Thread Pool
@@ -117,10 +108,7 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 	if(link_dead)
 	{
 		link_dead = false;
-		for(auto IOHandler_pair : Subscribers)
-		{
-			IOHandler_pair.second->Event(ConnectState::CONNECTED, 0, this->Name);
-		}
+		PublishEvent(ConnectState::CONNECTED, 0);
 	}
 }
 
@@ -294,13 +282,7 @@ inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 	if(!enabled)
 		return CommandStatus::UNDEFINED;
 
-	//container to store our async futures
-	std::vector<std::future<CommandStatus> > future_results;
-
-	for(auto IOHandler_pair : Subscribers)
-	{
-		future_results.push_back((IOHandler_pair.second->Event(arCommand, aIndex, this->Name)));
-	}
+	auto future_results = PublishCommand(arCommand, aIndex);
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if (!pConf->pPointConf->WaitForCommandResponses)
