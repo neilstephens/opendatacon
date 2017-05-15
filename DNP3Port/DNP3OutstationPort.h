@@ -35,18 +35,17 @@
 class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication
 {
 public:
-	DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	DNP3OutstationPort(std::shared_ptr<DNP3PortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 	~DNP3OutstationPort();
 
 protected:
 	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+	void BuildOrRebuild() override;
 
 	// Implement DNP3Port
 	void OnLinkDown() override;
-	TCPClientServer ClientOrServer() override;
 
 	/// Implement ODC::DataPort functions for UI
 	const Json::Value GetCurrentState() const override;

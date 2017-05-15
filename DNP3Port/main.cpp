@@ -24,27 +24,14 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include "DNP3MasterPort.h"
-#include "DNP3OutstationPort.h"
+#include "DNP3PortFactory.h"
 
-extern "C" DNP3MasterPort* new_DNP3MasterPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" odc::DataPortFactory* new_DataPortFactory(std::shared_ptr<odc::IOManager> pIOM)
 {
-	return new DNP3MasterPort(Name,File,Overrides);
+	return DNP3PortFactory::Get(pIOM);
 }
 
-extern "C" DNP3OutstationPort* new_DNP3OutstationPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" void delete_DataPortFactory(odc::DataPortFactory* PortFactory)
 {
-	return new DNP3OutstationPort(Name,File,Overrides);
-}
-
-extern "C" void delete_DNP3MasterPort(DNP3MasterPort* aPort_ptr)
-{
-	delete aPort_ptr;
-	return;
-}
-
-extern "C" void delete_DNP3OutstationPort(DNP3OutstationPort* aPort_ptr)
-{
-	delete aPort_ptr;
-	return;
+	return delete PortFactory;
 }

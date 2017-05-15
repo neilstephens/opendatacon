@@ -28,10 +28,9 @@
 #include "DNP3PortConf.h"
 #include <openpal/logging/LogLevels.h>
 
-std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::Channels;
-
-DNP3Port::DNP3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+DNP3Port::DNP3Port(std::shared_ptr<DNP3PortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
+	Manager_(Manager),
 	pChannel(nullptr),
 	status(opendnp3::LinkStatus::UNRESET),
 	link_dead(true),
@@ -160,66 +159,5 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 
 }
 
-asiodnp3::IChannel* DNP3Port::GetChannel(IOManager& IOMgr)
-{
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	std::string ChannelID;
-	bool isSerial;
-	if(pConf->mAddrConf.IP.empty())
-	{
-		ChannelID = pConf->mAddrConf.SerialSettings.deviceName;
-		isSerial = true;
-	}
-	else
-	{
-		ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
-		isSerial = false;
-	}
-
-	//create a new channel if needed
-	if(!Channels.count(ChannelID))
-	{
-		if(isSerial)
-		{
-			Channels[ChannelID] = IOMgr.AddSerial(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-									    opendnp3::ChannelRetry(
-										    openpal::TimeDuration::Milliseconds(500),
-										    openpal::TimeDuration::Milliseconds(5000)),
-									    pConf->mAddrConf.SerialSettings);
-		}
-		else
-		{
-			switch (ClientOrServer())
-			{
-				case TCPClientServer::SERVER:
-					Channels[ChannelID] = IOMgr.AddTCPServer(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-												 opendnp3::ChannelRetry(
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMinms),
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMaxms)),
-												 pConf->mAddrConf.IP,
-												 pConf->mAddrConf.Port);
-					break;
-
-				case TCPClientServer::CLIENT:
-					Channels[ChannelID] = IOMgr.AddTCPClient(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-												 opendnp3::ChannelRetry(
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
-												 pConf->mAddrConf.IP,
-												 "0.0.0.0",
-												 pConf->mAddrConf.Port);
-					break;
-
-				default:
-					std::string msg = Name + ": Can't determine if TCP socket is client or server";
-					auto log_entry = openpal::LogEntry("DNP3Port", openpal::logflags::ERR,"", msg.c_str(), -1);
-					pLoggers->Log(log_entry);
-					throw std::runtime_error(msg);
-			}
-		}
-	}
-
-	return Channels[ChannelID];
-}
 

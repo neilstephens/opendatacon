@@ -65,6 +65,13 @@ public:
 	{
 		pPointConf.reset(new DNP3PointConf(FileName, ConfOverrides));
 	}
+	
+	TCPClientServer ClientOrServer() const
+	{
+		if(mAddrConf.ClientServer == TCPClientServer::DEFAULT)
+			return TCPClientServer::CLIENT;
+		return mAddrConf.ClientServer;
+	}
 
 	std::unique_ptr<DNP3PointConf> pPointConf;
 	DNP3AddrConf mAddrConf;

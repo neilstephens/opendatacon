@@ -30,18 +30,21 @@
 #include <opendatacon/DataPort.h>
 #include <opendnp3/gen/LinkStatus.h>
 #include "DNP3PortConf.h"
+#include "DNP3PortManager.h"
 
 using namespace odc;
 
 class DNP3Port: public DataPort
 {
 public:
-	DNP3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
-	virtual ~DNP3Port(){}
+	DNP3Port(std::shared_ptr<DNP3PortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	virtual ~DNP3Port(){
+		std::cout << "Destructing DNP3Port" << std::endl;
+	}
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
-	virtual void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)=0;
+	virtual void BuildOrRebuild()=0;
 
 	void StateListener(ChannelState state);
 
@@ -51,16 +54,14 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot);
 
 protected:
-	asiodnp3::IChannel* GetChannel(IOManager& IOMgr);
-
+	std::shared_ptr<DNP3PortManager> Manager_;
+	
 	asiodnp3::IChannel* pChannel;
-	static std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
 	opendnp3::LinkStatus status;
 	bool link_dead;
 	bool channel_dead;
 
 	virtual void OnLinkDown()=0;
-	virtual TCPClientServer ClientOrServer()=0;
 };
 
 #endif /* DNP3PORT_H_ */

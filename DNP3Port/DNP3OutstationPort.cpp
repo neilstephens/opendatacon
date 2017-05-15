@@ -38,15 +38,17 @@
 
 #include "OpenDNP3Helpers.h"
 
-DNP3OutstationPort::DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	DNP3Port(aName, aConfFilename, aConfOverrides),
+DNP3OutstationPort::DNP3OutstationPort(std::shared_ptr<DNP3PortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	DNP3Port(Manager, aName, aConfFilename, aConfOverrides),
 	pOutstation(nullptr)
 {}
 
 DNP3OutstationPort::~DNP3OutstationPort()
 {
-	//pOutstation->Shutdown();
+	Disable();
+	pOutstation->Shutdown();
 	ChannelStateSubscriber::Unsubscribe(this);
+	std::cout << "Destructing DNP3OutstationPort" << std::endl;
 }
 
 void DNP3OutstationPort::Enable()
@@ -112,19 +114,11 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 	}
 }
 
-TCPClientServer DNP3OutstationPort::ClientOrServer()
-{
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
-		return TCPClientServer::SERVER;
-	return pConf->mAddrConf.ClientServer;
-}
-
-void DNP3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void DNP3OutstationPort::BuildOrRebuild()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	pChannel = GetChannel(IOMgr);
+	pChannel = Manager_->GetChannel(*pConf);
 
 	if (pChannel == nullptr)
 	{

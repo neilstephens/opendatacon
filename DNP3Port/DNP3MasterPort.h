@@ -38,8 +38,8 @@ using namespace opendnp3;
 class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
 {
 public:
-	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-		DNP3Port(aName, aConfFilename, aConfOverrides),
+	DNP3MasterPort(std::shared_ptr<DNP3PortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+		DNP3Port(Manager, aName, aConfFilename, aConfOverrides),
 		pMaster(nullptr),
 		stack_enabled(false),
 		assign_class_sent(false)
@@ -50,12 +50,11 @@ protected:
 	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+	void BuildOrRebuild() override;
 	const Json::Value GetStatistics() const override;
 
 	// Implement DNP3Port
 	void OnLinkDown() override;
-	TCPClientServer ClientOrServer() override;
     
 	/// Implement some ODC::IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
 	std::future<CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;

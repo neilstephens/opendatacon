@@ -35,8 +35,10 @@
 
 DNP3MasterPort::~DNP3MasterPort()
 {
-	//pMaster->Shutdown();
+	Disable();
+	pMaster->Shutdown();
 	ChannelStateSubscriber::Unsubscribe(this);
+	std::cout << "Destructing DNP3MasterPort" << std::endl;
 }
 
 void DNP3MasterPort::Enable()
@@ -180,19 +182,11 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 	}
 }
 
-TCPClientServer DNP3MasterPort::ClientOrServer()
-{
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
-		return TCPClientServer::CLIENT;
-	return pConf->mAddrConf.ClientServer;
-}
-
-void DNP3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void DNP3MasterPort::BuildOrRebuild()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	pChannel = GetChannel(IOMgr);
+	pChannel = Manager_->GetChannel(*pConf);
 
 	if (pChannel == nullptr)
 	{
@@ -290,7 +284,7 @@ std::future<CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputInt
 std::future<CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
-std::future<CommandStatus> DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+std::future<CommandStatus> DNP3MasterPort::Event(const ConnectState& state, uint16_t index, const std::string& SenderName)
 {
 	if(!enabled)
 	{
