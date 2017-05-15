@@ -48,28 +48,12 @@ public:
 	template<typename T> std::future<CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<CommandStatus> EventQ(const T& qual, uint16_t index, const std::string& SenderName);
 
+	//Supported types
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);
 	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName);
-
-	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName);
 
 	std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName);
 	std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName);
 
 protected:
 	std::unique_ptr<asio::basic_stream_socket<asio::ip::tcp> > pSock;

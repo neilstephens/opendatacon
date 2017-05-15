@@ -34,52 +34,67 @@
 #include "IUIResponder.h"
 
 namespace odc {
-typedef opendnp3::ChannelState ChannelState;
-
-class DataPort: public IOHandler, public ConfigParser
-{
-public:
-	DataPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	typedef opendnp3::ChannelState ChannelState;
+	
+	class DataPort: public IOHandler, public ConfigParser
+	{
+	public:
+		DataPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 		IOHandler(aName),
 		ConfigParser(aConfFilename, aConfOverrides),
 		pConf(nullptr)
-	{}
-	virtual ~DataPort(){}
-
-	virtual void Enable()=0;
-	virtual void Disable()=0;
-	virtual void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)=0;
-	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
-
-	std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) final
-	{
-		if(MuxConnectionEvents(state, SenderName))
-			return ConnectionEvent(state, SenderName);
-		else
-			return IOHandler::CommandFutureUndefined();
-	}
-
-	virtual std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) = 0;
-
-	virtual const Json::Value GetStatistics() const
-	{
-		return Json::Value();
-	}
-
-	virtual const Json::Value GetCurrentState() const
-	{
-		return Json::Value();
-	}
-
-	virtual const Json::Value GetStatus() const
-	{
-		return Json::Value();
-	}
-
-protected:
-	std::unique_ptr<DataPortConf> pConf;
-};
-
+		{}
+		virtual ~DataPort(){}
+		
+		virtual void Enable()=0;
+		virtual void Disable()=0;
+		virtual void BuildOrRebuild()=0;
+		virtual void ProcessElements(const Json::Value& JSONRoot)=0;
+		
+		virtual const Json::Value GetStatistics() const
+		{
+			return Json::Value();
+		}
+		
+		virtual const Json::Value GetCurrentState() const
+		{
+			return Json::Value();
+		}
+		
+		virtual const Json::Value GetStatus() const
+		{
+			return Json::Value();
+		}
+		
+		// Default to unsupported
+		virtual std::future<CommandStatus> Event(const ConnectState& state, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		
+		virtual std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		
+		virtual std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		
+		virtual std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		virtual std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+		
+	protected:
+		std::unique_ptr<DataPortConf> pConf;
+	};
+	
 }
 
 #endif /* DATAPORT_H_ */

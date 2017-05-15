@@ -42,7 +42,7 @@ public:
 	void Disable() final;
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) final;
 	void ProcessElements(const Json::Value& JSONRoot) final;
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) final;
+	std::future<CommandStatus> Event(const ConnectState& state, uint16_t index, const std::string& SenderName) final;
 
 	//Implement Event handlers from IOHandler
 

@@ -85,7 +85,7 @@ public:
 	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }
 	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }
 
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }
+	std::future<CommandStatus> Event(const ConnectState& state, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }
 };
 
 #endif /* NULLPORT_H_ */

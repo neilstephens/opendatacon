@@ -378,7 +378,7 @@ inline std::future<CommandStatus> DNP3OutstationPort::EventT(T& meas, uint16_t i
 	return IOHandler::CommandFutureSuccess();
 }
 
-std::future<CommandStatus> DNP3OutstationPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+std::future<CommandStatus> DNP3OutstationPort::Event(const ConnectState& state, uint16_t index, const std::string& SenderName)
 {
 	if (!enabled)
 	{

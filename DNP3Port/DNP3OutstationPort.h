@@ -69,7 +69,7 @@ protected:
 	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
 
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const ConnectState& state, uint16_t index, const std::string& SenderName) override;
 
 	/// Implement opendnp3::IOutstationApplication
 	// Called when a the reset/unreset status of the link layer changes (and on link up)

@@ -64,7 +64,7 @@ protected:
 	std::future<CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
 
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const ConnectState& state, uint16_t index, const std::string& SenderName) override;
 
 	/// Implement opendnp3::ISOEHandler
 	void Start() override {}
