@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/DataPortCollection.h>
+#include <opendatacon/DataPortFactoryCollection.h>
 #include "DataConnector.h"
 #include "DataConnectorCollection.h"
 #include <opendatacon/InterfaceCollection.h>
@@ -58,12 +59,13 @@ public:
 	void Shutdown();
 
 private:
+	std::shared_ptr<IOManager> IOMgr;
+	DataPortFactoryCollection DataPortFactories;
 	DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
 	LogCollection AdvancedLoggers;
 	InterfaceCollection Interfaces;
 
-	IOManager IOMgr;
 	asio::io_service IOS;
 	std::unique_ptr<asio::io_service::work> ios_working;
 	std::once_flag shutdown_flag;

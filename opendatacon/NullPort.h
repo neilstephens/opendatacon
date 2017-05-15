@@ -60,7 +60,7 @@ public:
 		PublishEvent(ConnectState::PORT_DOWN, 0);
 		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL){}
+	void BuildOrRebuild(){}
 	void ProcessElements(const Json::Value& JSONRoot){}
 	
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }

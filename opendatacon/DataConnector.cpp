@@ -193,7 +193,7 @@ std::future<CommandStatus> DataConnector::Event(const AnalogOutputInt32& arComma
 std::future<CommandStatus> DataConnector::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 std::future<CommandStatus> DataConnector::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
-std::future<CommandStatus> DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName)
+std::future<CommandStatus> DataConnector::Event(const ConnectState& state, uint16_t index, const std::string& SenderName)
 {
 	if(MuxConnectionEvents(state, SenderName))
 		return EventT(state, index, SenderName);
@@ -250,7 +250,7 @@ inline std::future<CommandStatus> DataConnector::EventT(const T& event_obj, uint
 	return IOHandler::CommandFutureUndefined();
 }
 
-void DataConnector::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void DataConnector::BuildOrRebuild()
 {}
 void DataConnector::Enable()
 {

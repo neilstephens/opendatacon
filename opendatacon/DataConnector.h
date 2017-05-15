@@ -62,7 +62,7 @@ public:
 	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
 	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
 
-	std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName);
+	std::future<CommandStatus> Event(const ConnectState& state, uint16_t index, const std::string& SenderName);
 
 	virtual const Json::Value GetStatistics() const
 	{
@@ -76,7 +76,7 @@ public:
 
 	void Enable();
 	void Disable();
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild();
 
 protected:
 	void ProcessElements(const Json::Value& JSONRoot);

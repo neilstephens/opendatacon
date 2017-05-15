@@ -30,13 +30,15 @@
 #include <opendnp3/LogLevels.h>
 
 #include <opendatacon/Version.h>
+#include <opendatacon/DataPortFactory.h>
 
 #include "DataConcentrator.h"
 #include "NullPort.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
-	IOMgr(std::thread::hardware_concurrency()),
+	IOMgr(new odc::ODCManager(std::thread::hardware_concurrency())),
+	DataPortFactories(IOMgr),
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS)),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
@@ -58,10 +60,10 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	AdvancedLoggers.emplace("Console Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
 	AdvancedLoggers.at("Console Log")->AddIngoreAlways(".*"); //silence all console messages by default
-	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("Console Log").get());
+	IOMgr->AddLogSubscriber(*AdvancedLoggers.at("Console Log").get());
 
 	AdvancedLoggers.emplace("File Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(FileLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
-	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("File Log").get());
+	IOMgr->AddLogSubscriber(*AdvancedLoggers.at("File Log").get());
 
 
 	//Parse the configs and create all user interfaces, ports and connections
@@ -75,6 +77,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 						     },"Print version information");
 
 		interface.second->AddResponder("OpenDataCon", *this);
+		interface.second->AddResponder("DataPortFactories", DataPortFactories);
 		interface.second->AddResponder("DataPorts", DataPorts);
 		interface.second->AddResponder("DataConnectors", DataConnectors);
 		interface.second->AddResponder("Loggers", AdvancedLoggers);
@@ -262,55 +265,85 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				continue;
 			}
 
-			//Looks for a specific library (for libs that implement more than one class)
-			std::string libname;
-			if(Ports[n].isMember("Library"))
-			{
-				libname = GetLibFileName(Ports[n]["Library"].asString());
+			// The new API uses a factory for each port type
+			DataPortFactory* factory = DataPortFactories.GetFactory(Ports[n]["Library"].asString());
+			if (factory != nullptr) {
+				DataPort * port = factory->CreateDataPort(
+					Ports[n]["Type"].asString(),
+					Ports[n]["Name"].asString(),
+					Ports[n]["ConfFilename"].asString(),
+					Ports[n]["ConfOverrides"]
+														  );
+				if (port) {
+					DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(port,[](DataPort* pDP){delete pDP;}));
+				}
+				else
+				{
+					std::cout<<"Mapping '"<<Ports[n]["Type"].asString()<<"' to null port..."<<std::endl;
+					DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				}
 			}
-			//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
 			else
 			{
-				libname = GetLibFileName(Ports[n]["Type"].asString()+"Port");
+				// Try the old API
+				//Looks for a specific library (for libs that implement more than one class)
+				std::string libname;
+				if(Ports[n].isMember("Library"))
+				{
+					libname = GetLibFileName(Ports[n]["Library"].asString());
+				}
+				//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
+				else
+				{
+					libname = GetLibFileName(Ports[n]["Type"].asString()+"Port");
+				}
+				
+				//try to load the lib
+				auto* portlib = LoadModule(libname.c_str());
+				
+				if(portlib == nullptr)
+				{
+					std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
+					DataPorts.emplace(
+									  Ports[n]["Name"].asString(),
+									  std::unique_ptr<DataPort,void(*)(DataPort*)>(
+																				   new NullPort(
+																								Ports[n]["Name"].asString(),
+																								Ports[n]["ConfFilename"].asString(),
+																								Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}
+																				   )
+									  );
+					set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
+					continue;
+				}
+				
+				// The old API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
+				//it should return a pointer to a heap allocated instance of a descendant of DataPort
+				std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
+				auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))LoadSymbol(portlib, new_funcname);
+				if(new_port_func == nullptr)
+				{
+					std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"'"<<std::endl;
+				}
+				
+				std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
+				auto delete_port_func = (void(*)(DataPort*))LoadSymbol(portlib, delete_funcname);
+				if(delete_port_func == nullptr)
+				{
+					std::cout << "Warning: failed to load symbol '"<<delete_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"'"<<std::endl;
+				}
+				
+				if(new_port_func == nullptr || delete_port_func == nullptr)
+				{
+					std::cout<<"Mapping '"<<Ports[n]["Type"].asString()<<"' to null port..."<<std::endl;
+					DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+					set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
+					continue;
+				}
+				
+				//call the creation function and wrap the returned pointer to a new port
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
 			}
-
-			//try to load the lib
-			auto* portlib = LoadModule(libname.c_str());
-
-			if(portlib == nullptr)
-			{
-				std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
-				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
-				continue;
-			}
-
-			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
-			//it should return a pointer to a heap allocated instance of a descendant of DataPort
-			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-			auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))LoadSymbol(portlib, new_funcname);
-
-			std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
-			auto delete_port_func = (void(*)(DataPort*))LoadSymbol(portlib, delete_funcname);
-
-			if(new_port_func == nullptr)
-			{
-				std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"'"<<std::endl;
-			}
-			if(delete_port_func == nullptr)
-			{
-				std::cout << "Warning: failed to load symbol '"<<delete_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"'"<<std::endl;
-			}
-			if(new_port_func == nullptr || delete_port_func == nullptr)
-			{
-				std::cout<<"Mapping '"<<Ports[n]["Type"].asString()<<"' to null port..."<<std::endl;
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
-				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
-				continue;
-			}
-
-			//call the creation function and wrap the returned pointer to a new port
-			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 		}
 	}
@@ -370,12 +403,12 @@ void DataConcentrator::BuildOrRebuild()
 	std::cout << "Initialising DataPorts" << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
-		Name_n_Port.second->BuildOrRebuild(IOMgr,LOG_LEVEL);
+		Name_n_Port.second->BuildOrRebuild();
 	}
 	std::cout << "Initialising DataConnectors" << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
-		Name_n_Conn.second->BuildOrRebuild(IOMgr,LOG_LEVEL);
+		Name_n_Conn.second->BuildOrRebuild();
 	}
 }
 void DataConcentrator::Run()
@@ -443,8 +476,8 @@ void DataConcentrator::Run()
 	std::cout << "Destoying DataPorts... " << std::endl;
 	DataPorts.clear();
 
-	std::cout << "Shutting down DNP3 manager... " << std::endl;
-	IOMgr.Shutdown();
+	std::cout << "Shutting down IO manager... " << std::endl;
+	IOMgr->Shutdown();
 }
 
 void DataConcentrator::Shutdown()
@@ -467,6 +500,11 @@ void DataConcentrator::Shutdown()
 		for(auto& Name_n_Port : DataPorts)
 		{
 			Name_n_Port.second->Disable();
+		}
+		std::cout << "Destructing data port factories... " << std::endl;
+		for(auto& Name_n_Factory : DataPortFactories)
+		{
+			DataPortFactories.erase(Name_n_Factory.first);
 		}
 		std::cout << "Finishing asynchronous tasks... " << std::endl;
 		ios_working.reset();
