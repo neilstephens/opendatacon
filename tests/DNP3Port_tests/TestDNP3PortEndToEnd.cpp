@@ -45,12 +45,12 @@ TEST_CASE(SUITE("TCP link"))
 	Mconf["ServerType"] = "PERSISTENT";
 	DataPort* MPUT = newMaster("MasterUnderTest", "", Mconf);
 
-	IOManager lDNP3Man(std::thread::hardware_concurrency());
+	ODCManager lDNP3Man(std::thread::hardware_concurrency());
 	openpal::LogFilters lLOG_LEVEL;
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild(lDNP3Man,lLOG_LEVEL);
-	MPUT->BuildOrRebuild(lDNP3Man,lLOG_LEVEL);
+	OPUT->BuildOrRebuild();
+	MPUT->BuildOrRebuild();
 
 	//turn them on
 	OPUT->Enable();
@@ -116,12 +116,12 @@ TEST_CASE(SUITE("Serial link"))
 	Mconf["LinkTimeoutms"] = 100;
 	DataPort* MPUT = newMaster("MasterUnderTest", "", Mconf);
 
-	IOManager lDNP3Man(std::thread::hardware_concurrency());
+	ODCManager lDNP3Man(std::thread::hardware_concurrency());
 	openpal::LogFilters lLOG_LEVEL;
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild(lDNP3Man,lLOG_LEVEL);
-	MPUT->BuildOrRebuild(lDNP3Man,lLOG_LEVEL);
+	OPUT->BuildOrRebuild();
+	MPUT->BuildOrRebuild();
 
 	//turn them on
 	OPUT->Enable();
