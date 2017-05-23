@@ -31,6 +31,28 @@
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/app/ControlRelayOutputBlock.h>
 
+//DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
+//We can generalise, and come up with a simpler superset:
+//	-have an arbitrary length list of outputs
+//	-arbitrary on/off values for each output
+//	-each output either pulsed or latched
+
+typedef enum { PULSE, LATCH } FeedbackMode;
+struct BinaryFeedback
+{
+	size_t binary_index;
+	Binary on_value;
+	Binary off_value;
+	FeedbackMode mode;
+
+	BinaryFeedback(size_t index, Binary on = Binary(true), Binary off = Binary(false), FeedbackMode amode = LATCH):
+		binary_index(index),
+		on_value(on),
+		off_value(off),
+		mode(amode)
+	{}
+};
+
 class SimPortConf: public DataPortConf
 {
 public:
@@ -47,6 +69,7 @@ public:
 	std::map<size_t, double> AnalogStdDevs;
 	std::vector<uint32_t> ControlIndicies;
 	std::map<size_t, unsigned int> ControlIntervalms;
+	std::map<size_t, std::vector<BinaryFeedback>> ControlFeedback;
 
 	double default_std_dev_factor;
 };

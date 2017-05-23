@@ -351,6 +351,47 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							break;
 						}
 				}
+
+				if(BinaryControls[n].isMember("FeedbackBinaries"))
+				{
+					const auto FeedbackBinaries= BinaryControls[n]["FeedbackBinaries"];
+					for(Json::ArrayIndex fbn = 0; fbn < FeedbackBinaries.size(); ++fbn)
+					{
+						if(!FeedbackBinaries[fbn].isMember("Index"))
+						{
+							std::cout<<"An 'Index' is required for Binary feedback : '"<<FeedbackBinaries[fbn].toStyledString()<<"'"<<std::endl;
+							continue;
+						}
+
+						BinaryFeedback fb(FeedbackBinaries[fbn]["Index"].asUInt());
+						if(FeedbackBinaries[fbn].isMember("OnValue"))
+						{
+							if(FeedbackBinaries[fbn]["OnValue"].asString() == "X")
+								fb.on_value = Binary(false,static_cast<uint8_t>(BinaryQuality::COMM_LOST));
+							else
+								fb.on_value = Binary(FeedbackBinaries[fbn]["OnValue"].asBool(),static_cast<uint8_t>(BinaryQuality::ONLINE));
+						}
+						if(FeedbackBinaries[fbn].isMember("OffValue"))
+						{
+							if(FeedbackBinaries[fbn]["OffValue"].asString() == "X")
+								fb.off_value = Binary(false,static_cast<uint8_t>(BinaryQuality::COMM_LOST));
+							else
+								fb.off_value = Binary(FeedbackBinaries[fbn]["OffValue"].asBool(),static_cast<uint8_t>(BinaryQuality::ONLINE));
+
+						}
+						if(FeedbackBinaries[fbn].isMember("FeedbackMode"))
+						{
+							auto mode = FeedbackBinaries[fbn]["FeedbackMode"].asString();
+							if(mode == "PULSE")
+								fb.mode = FeedbackMode::PULSE;
+							else if(mode == "LATCH")
+								fb.mode = FeedbackMode::LATCH;
+							else
+								std::cout<<"Warning: unrecognised feedback mode: '"<<FeedbackBinaries[fbn].toStyledString()<<"'"<<std::endl;
+						}
+						pConf->ControlFeedback[n].push_back(std::move(fb));
+					}
+				}
 			}
 		}
 		std::sort(pConf->ControlIndicies.begin(),pConf->ControlIndicies.end());
@@ -422,10 +463,62 @@ std::future<CommandStatus> SimPort::Event(const AnalogOutputStatusQuality qual, 
 {
 	return CommandFutureNotSupported();
 }
-
 // control events
 std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName)
 {
+	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+	for(auto i : pConf->ControlIndicies)
+	{
+		if(i == index)
+		{
+			if(pConf->ControlFeedback.count(i))
+			{
+				for(auto& fb : pConf->ControlFeedback[i])
+				{
+					if(fb.mode == PULSE)
+					{
+						switch(arCommand.functionCode)
+						{
+							case ControlCode::PULSE_ON:
+							case ControlCode::LATCH_ON:
+							case ControlCode::LATCH_OFF:
+							case ControlCode::CLOSE_PULSE_ON:
+							case ControlCode::TRIP_PULSE_ON:
+							{
+								PublishEvent(fb.on_value,fb.binary_index);
+								pTimer_t pTimer(new Timer_t(*pIOS));
+								pTimer->expires_from_now(std::chrono::milliseconds(arCommand.onTimeMS));
+								pTimer->async_wait([=](asio::error_code err_code)
+											 {
+												 PublishEvent(fb.off_value,fb.binary_index);
+											 });
+								break;
+							}
+							default:
+								return CommandFutureNotSupported();
+						}
+					}
+					else
+					{
+						switch(arCommand.functionCode)
+						{
+							case ControlCode::LATCH_ON:
+							case ControlCode::CLOSE_PULSE_ON:
+								PublishEvent(fb.on_value,fb.binary_index);
+								break;
+							case ControlCode::LATCH_OFF:
+							case ControlCode::TRIP_PULSE_ON:
+								PublishEvent(fb.off_value,fb.binary_index);
+								break;
+							default:
+								return CommandFutureNotSupported();
+						}
+					}
+				}
+			}
+			return CommandFutureSuccess();
+		}
+	}
 	return CommandFutureNotSupported();
 }
 std::future<CommandStatus> SimPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName)

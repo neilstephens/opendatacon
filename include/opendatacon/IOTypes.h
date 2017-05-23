@@ -35,6 +35,7 @@ namespace odc
 {
 
 typedef opendnp3::CommandStatus CommandStatus;
+typedef opendnp3::ControlCode ControlCode;
 
 /// Timestamp
 typedef	opendnp3::DNPTime Timestamp;

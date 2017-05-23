@@ -46,13 +46,9 @@ public:
 		      [this](asio::error_code err_code)
 		      {
 		            if (err_code != asio::error::operation_aborted)
-		            {
-
-		                  for (auto IOHandler_pair: Subscribers)
-		                  {
-		                        PublishEvent(ConnectState::PORT_UP, 0);
-		                        PublishEvent(ConnectState::CONNECTED, 0);
-					}
+				{
+					PublishEvent(ConnectState::PORT_UP, 0);
+					PublishEvent(ConnectState::CONNECTED, 0);
 				}
 			});
 		return;
@@ -61,11 +57,8 @@ public:
 	{
 		pTimer->cancel();
 		pTimer.reset();
-		for (auto IOHandler_pair : Subscribers)
-		{
-			PublishEvent(ConnectState::PORT_DOWN, 0);
-			PublishEvent(ConnectState::DISCONNECTED, 0);
-		}
+		PublishEvent(ConnectState::PORT_DOWN, 0);
+		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL){}
 	void ProcessElements(const Json::Value& JSONRoot){}
