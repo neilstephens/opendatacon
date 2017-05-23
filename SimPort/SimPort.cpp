@@ -488,9 +488,9 @@ std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arComma
 								PublishEvent(fb.on_value,fb.binary_index);
 								pTimer_t pTimer(new Timer_t(*pIOS));
 								pTimer->expires_from_now(std::chrono::milliseconds(arCommand.onTimeMS));
-								pTimer->async_wait([=](asio::error_code err_code)
+								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
 											 {
-												 PublishEvent(fb.off_value,fb.binary_index);
+												PublishEvent(fb.off_value,fb.binary_index);
 											 });
 								break;
 							}
