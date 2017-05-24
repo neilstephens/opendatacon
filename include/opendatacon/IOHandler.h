@@ -138,7 +138,7 @@ protected:
 			future_results.push_back(IOHandler_pair.second->Event(meas, index, Name));
 		}
 		
-		return future_results;
+		return std::move(future_results);
 	}
 
 private:
