@@ -134,6 +134,52 @@ void JSONPort::ReadCompletionHandler(asio::error_code err_code)
 	}
 }
 
+void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future_results, size_t index, std::shared_ptr<Timer_t> pTimer, double poll_time_ms, double backoff_factor)
+{
+	JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
+	bool ready = true;
+	bool success = true;
+	for(auto& future_result : future_results)
+	{
+		if(future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
+		{
+			ready = false;
+			break;
+		}
+		//first one that isn't a success, we break
+		if(future_result.get() != CommandStatus::SUCCESS)
+		{
+			success = false;
+			break;
+		}
+	}
+	if(ready)
+	{
+		Json::Value result;
+		//FIXME:
+		result["Command"]["Index"] =(Json::UInt64) index;
+		result["Command"]["Status"] = success ? "SUCCESS" : (future_results.size()==1 ? "FAIL" : "UNDEFINED");
+		if(pConf->style_output)
+		{
+			Json::StyledWriter writer;
+			QueueWrite(writer.write(result));
+		}
+		else
+		{
+			Json::FastWriter writer;
+			QueueWrite(writer.write(result));
+		}
+	}
+	else
+	{
+		pTimer->expires_from_now(std::chrono::milliseconds((unsigned int)poll_time_ms));
+		pTimer->async_wait([=,future_results=std::move(future_results)](asio::error_code err_code) mutable
+					 {
+						AsyncFuturesPoll(std::move(future_results), index, pTimer, backoff_factor*poll_time_ms, backoff_factor);
+					 });
+	}
+}
+
 //At this point we have a whole (hopefully JSON) object - ie. {.*}
 //Here we parse it and extract any paths that match our point config
 void JSONPort::ProcessBraced(std::string braced)
@@ -215,7 +261,135 @@ void JSONPort::ProcessBraced(std::string braced)
 				LoadT(Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first,timestamp_val);
 			}
 		}
-		//TODO: implement controls
+
+		for(auto& point_pair : pConf->pPointConf->Controls)
+		{
+			if(!point_pair.second.isMember("JSONPath"))
+				continue;
+			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
+			//if the path existed, get the value and send the control
+			if(!val.isNull())
+			{
+				ControlRelayOutputBlock command(ControlCode::PULSE_ON); //default pulse if nothing else specified
+
+				//work out control code to send
+				if(point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
+				{
+					auto check_val = [&](std::string truename, std::string falsename)->bool
+					{
+						bool ret = true;
+						if(point_pair.second.isMember(truename))
+						{
+							ret = (val == point_pair.second[truename]);
+							if(point_pair.second.isMember(falsename))
+								if (!ret && (val != point_pair.second[falsename]))
+									throw std::runtime_error("unexpected control value");
+						}
+						else if(point_pair.second.isMember(falsename))
+							ret = !(val == point_pair.second[falsename]);
+						else if(val.isNumeric() || val.isBool())
+							ret = val.asBool();
+						else if(val.isString()) //Guess some sensible default on/off/trip/close values
+						{
+							//TODO: replace with regex?
+							ret = (val.asString() == "true" ||
+								 val.asString() == "True" ||
+								 val.asString() == "TRUE" ||
+								 val.asString() == "on" ||
+								 val.asString() == "On" ||
+								 val.asString() == "ON" ||
+								 val.asString() == "close" ||
+								 val.asString() == "Close" ||
+								 val.asString() == "CLOSE");
+							if(!ret && (val.asString() != "false" &&
+									val.asString() != "False" &&
+									val.asString() != "FALSE" &&
+									val.asString() != "off" &&
+									val.asString() != "Off" &&
+									val.asString() != "OFF" &&
+									val.asString() != "trip" &&
+									val.asString() != "Trip" &&
+									val.asString() != "TRIP"))
+								throw std::runtime_error("unexpected control value");
+						}
+						return ret;
+					};
+
+					auto cm = point_pair.second["ControlMode"].asString();
+					if(cm == "LATCH")
+					{
+						bool on;
+						try
+						{
+							on = check_val("OnVal","OffVal");
+						}
+						catch(std::runtime_error e)
+						{
+							//TODO: log warning
+							continue;
+						}
+						if(on)
+							command.functionCode = ControlCode::LATCH_ON;
+						else
+							command.functionCode = ControlCode::LATCH_OFF;
+					}
+					else if(cm == "TRIPCLOSE")
+					{
+						bool trip;
+						try
+						{
+							trip = check_val("TripVal","CloseVal");
+						}
+						catch(std::runtime_error e)
+						{
+							//TODO: log warning
+							continue;
+						}
+						if(trip)
+							command.functionCode = ControlCode::TRIP_PULSE_ON;
+						else
+							command.functionCode = ControlCode::CLOSE_PULSE_ON;
+					}
+					else if(cm != "PULSE")
+					{
+						//TODO: log warning
+						continue;
+					}
+				}
+				if(point_pair.second.isMember("PulseCount"))
+					command.count = point_pair.second["PulseCount"].asUInt();
+				if(point_pair.second.isMember("OnTimems"))
+					command.onTimeMS = point_pair.second["OnTimems"].asUInt();
+				if(point_pair.second.isMember("OffTimems"))
+					command.offTimeMS = point_pair.second["OffTimems"].asUInt();
+
+				auto future_results = PublishCommand(command,point_pair.first);
+
+				auto pTimer =std::make_shared<Timer_t>(*pIOS);
+				pTimer->expires_from_now(std::chrono::milliseconds(10)); //TODO: expose pole time in config
+				pTimer->async_wait([=,future_results=std::move(future_results)](asio::error_code err_code) mutable
+							 {
+								if(!err_code)
+									AsyncFuturesPoll(std::move(future_results), point_pair.first, pTimer, 20, 2);
+								else
+								{
+									Json::Value result;
+									result["Command"]["Index"] = point_pair.first;
+									result["Command"]["Status"] = "UNDEFINED";
+									if(pConf->style_output)
+									{
+										Json::StyledWriter writer;
+										QueueWrite(writer.write(result));
+									}
+									else
+									{
+										Json::FastWriter writer;
+										QueueWrite(writer.write(result));
+									}
+								}
+							 });
+			}
+		}
 	}
 	else
 	{
