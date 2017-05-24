@@ -492,6 +492,7 @@ std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arComma
 											 {
 												PublishEvent(fb.off_value,fb.binary_index);
 											 });
+								//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
 								break;
 							}
 							default:
