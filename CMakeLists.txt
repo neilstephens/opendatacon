@@ -153,7 +153,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
-	set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -pedantic")
+	set(CMAKE_CXX_FLAGS "-Wall -std=c++14 -pedantic")
 
 	# different release and debug flags
 	set(CMAKE_CXX_FLAGS_RELEASE "-O3")
