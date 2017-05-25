@@ -240,7 +240,7 @@ inline std::future<CommandStatus> DataConnector::EventT(const T& event_obj, uint
 			if(ret.get() != CommandStatus::SUCCESS)
 				return IOHandler::CommandFutureUndefined();
 		}
-		return std::move(returns.back());
+		return IOHandler::CommandFutureSuccess();
 	}
 	//no connection for sender if we get here
 	std::string msg = "Connector '"+this->Name+"' discarding event from '"+SenderName+"' (No connection defined)";

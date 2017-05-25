@@ -139,15 +139,19 @@ void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future
 	JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
 	bool ready = true;
 	bool success = true;
-	for(auto& future_result : future_results)
+	//for(auto& future_result : future_results)
+	while(future_results.size())
 	{
+		auto& future_result = future_results.back();
 		if(future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
 		{
 			ready = false;
 			break;
 		}
+		auto result = future_result.get();
+		future_results.pop_back();
 		//first one that isn't a success, we break
-		if(future_result.get() != CommandStatus::SUCCESS)
+		if(result != CommandStatus::SUCCESS)
 		{
 			success = false;
 			break;
