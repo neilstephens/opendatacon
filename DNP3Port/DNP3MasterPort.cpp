@@ -367,7 +367,7 @@ inline std::future<CommandStatus> DNP3MasterPort::EventT(T& arCommand, uint16_t 
 			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
 
-			this->pMaster->DirectOperate(lCommand,index,*CommandCorrespondant::GetCallback(std::move(cmd_promise)));
+			this->pMaster->DirectOperate(lCommand,index,CommandCorrespondant::GetCallback(std::move(cmd_promise)));
 
 			return cmd_future;
 		}
