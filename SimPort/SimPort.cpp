@@ -389,7 +389,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							else
 								std::cout<<"Warning: unrecognised feedback mode: '"<<FeedbackBinaries[fbn].toStyledString()<<"'"<<std::endl;
 						}
-						pConf->ControlFeedback[n].push_back(std::move(fb));
+						pConf->ControlFeedback[index].push_back(std::move(fb));
 					}
 				}
 			}
