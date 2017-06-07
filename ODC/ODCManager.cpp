@@ -7,6 +7,7 @@
 //
 
 #include <opendatacon/ODCManager.h>
+#include <iostream>
 
 namespace odc {
 	ODCManager::ODCManager(
@@ -19,7 +20,20 @@ namespace odc {
 	scheduler(IOS)
 	{
 		for (size_t i = 0; i < concurrencyHint; ++i)
-			std::thread([&](){ IOS.run(); }).detach();
+			std::thread([&](){
+				for (;;) {
+					try {
+						IOS.run();
+						break;
+					} catch (std::exception& e) {
+						std::cout << "Exception: " << e.what() << std::endl;
+						// TODO: work out what best to do
+						// log exception
+						// shutdown port, restart application?
+					}
+					
+				}
+			}).detach();
 	}
 
 }
