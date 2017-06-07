@@ -167,6 +167,24 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	if (WERROR)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 	endif()
+
+	#package the c++ standard library
+	execute_process(
+		COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so.6
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE std_lib
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
+	mark_as_advanced(FORCE std_lib)
+	get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symolic link
+	if(${_resolvedFile} STREQUAL ${std_lib})
+		#not a link - just install file
+		install(FILES "${std_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+	else()
+		#is a link -install link and file
+		install(FILES "${std_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+	endif()
 endif()
 
 find_package(Threads REQUIRED)
