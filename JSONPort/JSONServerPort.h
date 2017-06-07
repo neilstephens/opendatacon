@@ -32,7 +32,7 @@
 class JSONServerPort : public JSONPort
 {
 public:
-	JSONServerPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	JSONServerPort(std::shared_ptr<JSONPortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 
 	void Enable();
 	void Disable();
@@ -44,7 +44,7 @@ private:
 	void PortUp();
 	inline void PortUpRetry(unsigned int retry_ms)
 	{
-		pTCPRetryTimer.reset(new Timer_t(*pIOS, std::chrono::milliseconds(retry_ms)));
+		pTCPRetryTimer.reset(new Timer_t(Manager_->get_io_service(), std::chrono::milliseconds(retry_ms)));
 		pTCPRetryTimer->async_wait(pEnableDisableSync->wrap(
 			[this](asio::error_code err_code)
 			{

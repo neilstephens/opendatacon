@@ -24,27 +24,14 @@
  *      Author: Alan Murray
  */
 
-#include "ModbusOutstationPort.h"
-#include "ModbusMasterPort.h"
+#include "ModbusPortFactory.h"
 
-extern "C" ModbusMasterPort* new_ModbusMasterPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" odc::DataPortFactory* new_DataPortFactory(std::shared_ptr<odc::IOManager> pIOM)
 {
-	return new ModbusMasterPort(Name,File,Overrides);
+	return ModbusPortFactory::Get(pIOM);
 }
 
-extern "C" ModbusOutstationPort* new_ModbusOutstationPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" void delete_DataPortFactory(odc::DataPortFactory* PortFactory)
 {
-	return new ModbusOutstationPort(Name,File,Overrides);
-}
-
-extern "C" void delete_ModbusMasterPort(ModbusMasterPort* aModbusMasterPort_ptr)
-{
-	delete aModbusMasterPort_ptr;
-	return;
-}
-
-extern "C" void delete_ModbusOutstationPort(ModbusOutstationPort* aModbusOutstationPort_ptr)
-{
-	delete aModbusOutstationPort_ptr;
-	return;
+	return delete PortFactory;
 }

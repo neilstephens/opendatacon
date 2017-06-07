@@ -18,41 +18,37 @@
  *	limitations under the License.
  */
 /*
- * DNP3PortManager.h
+ * ModbusPortFactory.h
  *
  *  Created on: 09/05/2017
  *      Author: Alan Murray <alan@atmurray.net>
  */
 
-#ifndef opendatacon_suite_DNP3PortManager_h
-#define opendatacon_suite_DNP3PortManager_h
+#ifndef opendatacon_suite_ModbusPortFactory_h
+#define opendatacon_suite_ModbusPortFactory_h
 
-#include <opendatacon/IOManager.h>
-#include <asio.hpp>
-#include <unordered_map>
-
-#include "DNP3PortConf.h"
-#include <asiodnp3/DNP3Manager.h>
-#include <opendnp3/LogLevels.h>
 #include <opendatacon/DataPortFactory.h>
+#include "ModbusPortManager.h"
 
-class DNP3PortManager : public odc::AsyncIOManager
+class ModbusPortFactory : public odc::DataPortFactory
 {
 public:
-	DNP3PortManager(const std::shared_ptr<odc::IOManager>& pIOMgr);
-	~DNP3PortManager();
-	asiodnp3::IChannel* GetChannel(const DNP3PortConf& PortConf);
-	virtual void Shutdown() override {
-		DNP3Mgr->Shutdown();
+	virtual ~ModbusPortFactory();
+	static ModbusPortFactory* Get(std::shared_ptr<odc::IOManager> pIOMgr);
+
+	virtual std::shared_ptr<odc::IOManager> GetManager() {
+		return Manager_;
 	}
 
+	virtual odc::DataPort* CreateDataPort(const std::string& Type, const std::string& Name, const std::string& File, const Json::Value& Overrides);
+	
 private:
-	DNP3PortManager(const DNP3PortManager &other) = delete;
-
-	std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
-
-	std::unique_ptr<asiodnp3::DNP3Manager> DNP3Mgr;
-	openpal::LogFilters LOG_LEVEL = opendnp3::levels::ALL;
+	ModbusPortFactory(std::shared_ptr<odc::IOManager> pIOMgr);
+	ModbusPortFactory(const ModbusPortFactory &that) = delete;
+	ModbusPortFactory &operator=(const ModbusPortFactory &) { return *this; }
+	
+	std::shared_ptr<ModbusPortManager> Manager_;
 };
+
 
 #endif

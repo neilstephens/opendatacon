@@ -27,8 +27,8 @@
 #include <opendnp3/LogLevels.h>
 #include "JSONClientPort.h"
 
-JSONClientPort::JSONClientPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	JSONPort(aName, aConfFilename, aConfOverrides)
+JSONClientPort::JSONClientPort(std::shared_ptr<JSONPortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	JSONPort(Manager, aName, aConfFilename, aConfOverrides)
 {}
 
 void JSONClientPort::Enable()
@@ -37,10 +37,10 @@ void JSONClientPort::Enable()
 	JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
 	try
 	{
-		asio::ip::tcp::resolver resolver(*pIOS);
+		asio::ip::tcp::resolver resolver(Manager_->get_io_service());
 		asio::ip::tcp::resolver::query query(pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port));
 		auto endpoint_iterator = resolver.resolve(query);
-		pSock.reset(new asio::ip::tcp::socket(*pIOS));
+		pSock.reset(new asio::ip::tcp::socket(Manager_->get_io_service()));
 		asio::async_connect(*pSock.get(), endpoint_iterator,std::bind(&JSONClientPort::ConnectCompletionHandler,this,std::placeholders::_1));
 	}
 	catch(std::exception& e)
@@ -60,7 +60,7 @@ void JSONClientPort::ConnectCompletionHandler(asio::error_code err_code)
 		pLoggers->Log(log_entry);
 		//try again later
 		JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
-		pTCPRetryTimer.reset(new Timer_t(*pIOS, std::chrono::milliseconds(pConf->retry_time_ms)));
+		pTCPRetryTimer.reset(new Timer_t(Manager_->get_io_service(), std::chrono::milliseconds(pConf->retry_time_ms)));
 		pTCPRetryTimer->async_wait(
 		      [this](asio::error_code err_code)
 		      {

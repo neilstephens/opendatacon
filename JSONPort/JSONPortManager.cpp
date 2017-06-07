@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2017:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -18,32 +18,16 @@
  *	limitations under the License.
  */
 /*
- * ModbusPort.h
+ * JSONPortManager.cpp
  *
- *  Created on: 16/10/2014
- *      Author: Alan Murray
+ *  Created on: 09/05/2017
+ *      Author: Alan Murray <alan@atmurray.net>
  */
 
-#ifndef ModbusPORT_H_
-#define ModbusPORT_H_
+#include "JSONPortManager.h"
 
-#include <opendatacon/DataPort.h>
-#include "ModbusPortManager.h"
-#include "ModbusPortConf.h"
 
-using namespace odc;
 
-class ModbusPort: public DataPort
-{
-public:
-	ModbusPort(std::shared_ptr<ModbusPortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
-
-	void ProcessElements(const Json::Value& JSONRoot) override;
-
-protected:
-	std::shared_ptr<ModbusPortManager> Manager_;
-	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
-	bool stack_enabled;
-};
-
-#endif /* ModbusPORT_H_ */
+JSONPortManager::~JSONPortManager() {
+	std::cout << "Destructing JSONPortManager" << std::endl;
+}

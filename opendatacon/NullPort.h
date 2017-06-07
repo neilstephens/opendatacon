@@ -32,16 +32,14 @@
 /* The equivalent of /dev/null as a DataPort */
 class NullPort: public DataPort
 {
-private:
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pTimer;
 public:
-	NullPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	DataPort(aName, aConfFilename, aConfOverrides)
+	NullPort(std::shared_ptr<IOManager> pIOMgr, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	DataPort(aName, aConfFilename, aConfOverrides),
+	Manager(pIOMgr)
 	{}
 	void Enable()
 	{
-		pTimer.reset(new Timer_t(*pIOS, std::chrono::seconds(3)));
+		pTimer.reset(new Timer_t(Manager->get_io_service(), std::chrono::seconds(3)));
 		pTimer->async_wait(
 						   [this](asio::error_code err_code)
 						   {
@@ -86,6 +84,11 @@ public:
 	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }
 
 	std::future<CommandStatus> Event(const ConnectState& state, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureSuccess(); }
+private:
+	std::shared_ptr<IOManager> Manager;
+	
+	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+	std::unique_ptr<Timer_t> pTimer;
 };
 
 #endif /* NULLPORT_H_ */

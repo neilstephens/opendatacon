@@ -30,20 +30,21 @@
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include "JSONPortConf.h"
+#include "JSONPortManager.h"
 
 using namespace odc;
 
-class JSONPort: public DataPort
+class JSONPort : public DataPort
 {
 public:
-	JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	JSONPort(std::shared_ptr<JSONPortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 
 	void ProcessElements(const Json::Value& JSONRoot);
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
 
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild();
 
 	template<typename T> std::future<CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<CommandStatus> EventQ(const T& qual, uint16_t index, const std::string& SenderName);
@@ -56,6 +57,8 @@ public:
 	std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName);
 
 protected:
+	std::shared_ptr<JSONPortManager> Manager_;
+
 	std::unique_ptr<asio::basic_stream_socket<asio::ip::tcp> > pSock;
 	std::unique_ptr<asio::ip::tcp::acceptor> pAcceptor;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
@@ -69,7 +72,7 @@ private:
 	template<typename T> void LoadT(T meas, uint16_t index, Json::Value timestamp_val);
 
 	std::deque<std::string> write_queue;
-	std::unique_ptr<asio::strand> pWriteQueueStrand;
+	asio::strand WriteQueueStrand;
 	void QueueWrite(const std::string& message);
 	void Write();
 	void WriteCompletionHandler(asio::error_code err_code, size_t bytes_written);

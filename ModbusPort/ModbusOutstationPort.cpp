@@ -34,8 +34,8 @@
 
 #include <opendnp3/LogLevels.h>
 
-ModbusOutstationPort::ModbusOutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	ModbusPort(aName, aConfFilename, aConfOverrides)
+ModbusOutstationPort::ModbusOutstationPort(std::shared_ptr<ModbusPortManager> Manager, std::string Name, std::string ConfFilename, const Json::Value ConfOverrides):
+	ModbusPort(Manager, Name, ConfFilename, ConfOverrides)
 {}
 
 ModbusOutstationPort::~ModbusOutstationPort()
@@ -125,7 +125,7 @@ void ModbusOutstationPort::StateListener(ChannelState state)
 		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
 }
-void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void ModbusOutstationPort::BuildOrRebuild()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -225,7 +225,7 @@ inline CommandStatus ModbusOutstationPort::PerformT(T& arCommand, uint16_t aInde
 		while(future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
 		{
 			//not ready - let's lend a hand to speed things up
-			this->pIOS->poll_one();
+			Manager_->yield();
 		}
 		//first one that isn't a success, we can return
 		if(future_result.get() != CommandStatus::SUCCESS)

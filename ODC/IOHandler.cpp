@@ -60,10 +60,6 @@ void IOHandler::SetLogLevel(openpal::LogFilters LOG_LEVEL)
 {
 	this->LOG_LEVEL = LOG_LEVEL;
 }
-void IOHandler::SetIOS(asio::io_service* ios_ptr)
-{
-	pIOS = ios_ptr;
-}
 
 bool IOHandler::InDemand()
 {

@@ -21,31 +21,51 @@
  */
 #include <catch.hpp>
 
-#include "DNP3MasterPort.h"
-#include "PortLoader.h"
+#include "DNP3PortFactory.h"
+#include <opendatacon/DataPortFactoryCollection.h>
 
 #define SUITE(name) "DNP3MasterPortTestSuite - " name
 
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
+	std::shared_ptr<odc::IOManager> IOMgr(new odc::ODCManager(std::thread::hardware_concurrency()));
+	odc::DataPortFactoryCollection DataPortFactories(IOMgr);
+	odc::DataPortFactory* factory = DataPortFactories.GetFactory("DNP3Port");
+	REQUIRE(factory);
 	{
-		fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
-		REQUIRE(newMaster);
-		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
-
+		odc::DataPort* MPUT = factory->CreateDataPort("DNP3Master","MasterUnderTest", "", "");
+		REQUIRE(MPUT);
+		
+		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port disabled");
 		MPUT->Enable();
+		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port disabled");
+		
+		delete MPUT;
+	}
+	{
+		odc::DataPort* MPUT = factory->CreateDataPort("DNP3Master","MasterUnderTest", "", "");
+		REQUIRE(MPUT);
+		
+		MPUT->BuildOrRebuild();
+		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port disabled");
+		MPUT->Enable();
+		REQUIRE(MPUT->GetStatus()["Result"].asString() != "Port disabled");
 		MPUT->Disable();
-
+		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port disabled");
+		
 		delete MPUT;
 	}
 	/// Test the destruction of an enabled port
 	{
-		fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
-		REQUIRE(newMaster);
-		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
-
+		odc::DataPort* MPUT = factory->CreateDataPort("DNP3Master","MasterUnderTest1", "", "");
+		REQUIRE(MPUT);
+		
+		MPUT->BuildOrRebuild();
+		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port disabled");
 		MPUT->Enable();
-
+		REQUIRE(MPUT->GetStatus()["Result"].asString() != "Port disabled");
+		
 		delete MPUT;
 	}
+
 }

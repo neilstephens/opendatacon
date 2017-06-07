@@ -161,7 +161,7 @@ void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, si
 				 });
 }
 
-void SimPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void SimPort::BuildOrRebuild()
 {
 	pEnableDisableSync.reset(new asio::strand(*pIOS));
 }
@@ -356,7 +356,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(pConf->ControlIndicies.begin(),pConf->ControlIndicies.end());
 	}
 }
-std::future<CommandStatus> SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+std::future<CommandStatus> SimPort::Event(const ConnectState& state, uint16_t index, const std::string& SenderName)
 {
 	return CommandFutureSuccess();
 }

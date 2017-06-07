@@ -33,13 +33,11 @@
 #include "ConfigParser.h"
 #include "IUIResponder.h"
 
-namespace odc {
-	typedef opendnp3::ChannelState ChannelState;
-	
+namespace odc {	
 	class DataPort: public IOHandler, public ConfigParser
 	{
 	public:
-		DataPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+		DataPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		IOHandler(aName),
 		ConfigParser(aConfFilename, aConfOverrides),
 		pConf(nullptr)
@@ -94,7 +92,6 @@ namespace odc {
 	protected:
 		std::unique_ptr<DataPortConf> pConf;
 	};
-	
 }
 
 #endif /* DATAPORT_H_ */

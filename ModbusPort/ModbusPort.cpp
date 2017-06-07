@@ -27,8 +27,9 @@
 
 std::unordered_map<std::string, asiodnp3::IChannel*> ModbusPort::TCPChannels;
 
-ModbusPort::ModbusPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	DataPort(aName, aConfFilename, aConfOverrides),
+ModbusPort::ModbusPort(std::shared_ptr<ModbusPortManager> Manager, std::string Name, std::string ConfFilename, const Json::Value ConfOverrides):
+	DataPort(Name, ConfFilename, ConfOverrides),
+    Manager_(Manager),
 	stack_enabled(false)
 {
 	//the creation of a new ModbusPortConf will get the point details

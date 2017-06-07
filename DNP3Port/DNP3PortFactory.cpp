@@ -29,7 +29,7 @@
 #include "DNP3MasterPort.h"
 
 DNP3PortFactory::DNP3PortFactory(std::shared_ptr<odc::IOManager> pIOMgr) : Manager(new DNP3PortManager(pIOMgr)) {
-
+	std::cout << "Constructing DNP3PortFactory" << std::endl;
 }
 
 DNP3PortFactory::~DNP3PortFactory() {

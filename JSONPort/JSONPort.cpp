@@ -30,9 +30,11 @@
 
 using namespace odc;
 
-JSONPort::JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+JSONPort::JSONPort(std::shared_ptr<JSONPortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	write_queue()
+	Manager_(Manager),
+	write_queue(),
+	WriteQueueStrand(Manager->get_io_service())
 {
 	//the creation of a new PortConf will get the point details
 	pConf.reset(new JSONPortConf(ConfFilename, aConfOverrides));
@@ -60,9 +62,8 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 		static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
 }
 
-void JSONPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void JSONPort::BuildOrRebuild()
 {
-	pWriteQueueStrand.reset(new asio::strand(*pIOS));
 }
 void JSONPort::Read()
 {
@@ -241,7 +242,7 @@ inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 
 void JSONPort::QueueWrite(const std::string &message)
 {
-	pWriteQueueStrand->post([this,message]()
+	WriteQueueStrand.post([this,message]()
 	{
 		write_queue.push_back(message);
 		if(write_queue.size() == 1) //need to kick off a write
@@ -254,7 +255,7 @@ void JSONPort::Write()
 {
 	asio::async_write(*pSock.get(),
 				asio::buffer(write_queue[0].c_str(),write_queue[0].size()),
-				pWriteQueueStrand->wrap(std::bind(&JSONPort::WriteCompletionHandler,this,std::placeholders::_1,std::placeholders::_2))
+				WriteQueueStrand.wrap(std::bind(&JSONPort::WriteCompletionHandler,this,std::placeholders::_1,std::placeholders::_2))
 				);
 }
 void JSONPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_written)

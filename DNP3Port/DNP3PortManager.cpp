@@ -26,15 +26,15 @@
 
 #include "DNP3PortManager.h"
 
+
 DNP3PortManager::DNP3PortManager(const std::shared_ptr<odc::IOManager>& pIOMgr) :
-IOMgr(pIOMgr),
+AsyncIOManager(pIOMgr),
 DNP3Mgr(new asiodnp3::DNP3Manager(std::thread::hardware_concurrency()))
 {
 
 }
 
 DNP3PortManager::~DNP3PortManager() {
-	DNP3Mgr->Shutdown();
 	std::cout << "Destructing DNP3PortManager" << std::endl;
 }
 

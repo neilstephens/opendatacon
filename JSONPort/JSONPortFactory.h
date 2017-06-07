@@ -18,23 +18,25 @@
  *	limitations under the License.
  */
 /*
- * DNP3PortFactory.h
+ * JSONPortFactory.h
  *
  *  Created on: 09/05/2017
  *      Author: Alan Murray <alan@atmurray.net>
  */
 
-#ifndef opendatacon_suite_DNP3PortFactory_h
-#define opendatacon_suite_DNP3PortFactory_h
+#ifndef opendatacon_suite_JSONPortFactory_h
+#define opendatacon_suite_JSONPortFactory_h
 
 #include <opendatacon/DataPortFactory.h>
-#include "DNP3PortManager.h"
+#include "JSONPortManager.h"
 
-class DNP3PortFactory : public odc::DataPortFactory
+class JSONPortFactory : public odc::DataPortFactory
 {
 public:
-	virtual ~DNP3PortFactory();
-	static DNP3PortFactory* Get(std::shared_ptr<odc::IOManager> pIOMgr);
+	
+	static JSONPortFactory* Get(std::shared_ptr<odc::IOManager> pIOMgr) {
+		return new JSONPortFactory(pIOMgr);
+	}
 
 	virtual std::shared_ptr<odc::IOManager> GetManager() {
 		return Manager;
@@ -43,11 +45,13 @@ public:
 	virtual odc::DataPort* CreateDataPort(const std::string& Type, const std::string& Name, const std::string& File, const Json::Value& Overrides);
 	
 private:
-	DNP3PortFactory(std::shared_ptr<odc::IOManager> pIOMgr);
-	DNP3PortFactory(const DNP3PortFactory &that) = delete;
-	DNP3PortFactory &operator=(const DNP3PortFactory &) { return *this; }
+	JSONPortFactory(std::shared_ptr<odc::IOManager> pIOMgr) : Manager(new JSONPortManager(pIOMgr)) { }
+	~JSONPortFactory() { std::cout << "Destructing JSONPortFactory" << std::endl; }
+
+	JSONPortFactory(const JSONPortFactory &that) = delete;
+	JSONPortFactory &operator=(const JSONPortFactory &) { return *this; }
 	
-	std::shared_ptr<DNP3PortManager> Manager;
+	std::shared_ptr<JSONPortManager> Manager;
 };
 
 

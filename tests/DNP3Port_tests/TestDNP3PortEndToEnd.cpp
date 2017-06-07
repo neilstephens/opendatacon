@@ -21,32 +21,31 @@
  */
 #include <catch.hpp>
 
-#include "DNP3OutstationPort.h"
-#include "DNP3MasterPort.h"
-#include "PortLoader.h"
+#include "DNP3PortFactory.h"
+#include <opendatacon/DataPortFactoryCollection.h>
 
 #define SUITE(name) "DNP3PortEndToEndTestSuite - " name
 
 TEST_CASE(SUITE("TCP link"))
 {
+	std::shared_ptr<odc::IOManager> IOMgr(new odc::ODCManager(std::thread::hardware_concurrency()));
+	odc::DataPortFactoryCollection DataPortFactories(IOMgr);
+	odc::DataPortFactory* factory = DataPortFactories.GetFactory("DNP3Port");
+	REQUIRE(factory);
+	
 	//make an outstation port
-	fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
-	REQUIRE(newOutstation);
-
 	Json::Value Oconf;
 	Oconf["IP"] = "0.0.0.0";
-	DataPort* OPUT = newOutstation("OutstationUnderTest", "", Oconf);
+	Oconf["ServerType"] = "PERSISTENT";
+	Oconf["TCPClientServer"] = "SERVER";
+	odc::DataPort* OPUT = factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", Oconf);
+	REQUIRE(OPUT);
 
 	//make a master port
-	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
-	REQUIRE(newMaster);
-
 	Json::Value Mconf;
 	Mconf["ServerType"] = "PERSISTENT";
-	DataPort* MPUT = newMaster("MasterUnderTest", "", Mconf);
-
-	ODCManager lDNP3Man(std::thread::hardware_concurrency());
-	openpal::LogFilters lLOG_LEVEL;
+	odc::DataPort* MPUT = factory->CreateDataPort("DNP3Master","MasterUnderTest", "", Mconf);
+	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
 	OPUT->BuildOrRebuild();
@@ -54,18 +53,23 @@ TEST_CASE(SUITE("TCP link"))
 
 	//turn them on
 	OPUT->Enable();
+	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
+	
 	MPUT->Enable();
-
+	REQUIRE(MPUT->GetStatus()["Result"].asString() != "Port disabled");
+	
 	//TODO: write a better way to wait for GetStatus and timeout (when decouple gets merged)
 	unsigned int count = 0;
-	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
+	while(count < 5000 &&
+		  (MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" ||
+		   OPUT->GetStatus()["Result"].asString() == "Port enabled - link down"))
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
 	}
 
-	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
+	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 
 	//turn outstation off
 	OPUT->Disable();
@@ -91,33 +95,35 @@ TEST_CASE(SUITE("Serial link"))
 		WARN("Can't get system shell to execute socat (for virtual serial ports) - skipping test");
 		return;
 	}
+	if(system("socat -V"))
+	{
+		WARN("Failed to locate socat binary (for virtual serial ports) - skipping test");
+		return;
+	}
 	if(system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &"))
 	{
 		WARN("Failed to execute socat (for virtual serial ports) - skipping test");
 		return;
 	}
-
+	std::shared_ptr<odc::IOManager> IOMgr(new odc::ODCManager(std::thread::hardware_concurrency()));
+	odc::DataPortFactoryCollection DataPortFactories(IOMgr);
+	odc::DataPortFactory* factory = DataPortFactories.GetFactory("DNP3Port");
+	REQUIRE(factory);
+	
 	//make an outstation port
-	fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
-	REQUIRE(newOutstation);
-
 	Json::Value Oconf;
 	Oconf["SerialDevice"] = "SerialEndpoint1";
-	DataPort* OPUT = newOutstation("OutstationUnderTest", "", Oconf);
-
+	odc::DataPort* OPUT = factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", Oconf);
+	REQUIRE(OPUT);
+	
 	//make a master port
-	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
-	REQUIRE(newMaster);
-
 	Json::Value Mconf;
 	Mconf["ServerType"] = "PERSISTENT";
 	Mconf["SerialDevice"] = "SerialEndpoint2";
 	Mconf["LinkKeepAlivems"] = 200;
 	Mconf["LinkTimeoutms"] = 100;
-	DataPort* MPUT = newMaster("MasterUnderTest", "", Mconf);
-
-	ODCManager lDNP3Man(std::thread::hardware_concurrency());
-	openpal::LogFilters lLOG_LEVEL;
+	odc::DataPort* MPUT = factory->CreateDataPort("DNP3Master","MasterUnderTest", "", Mconf);
+	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
 	OPUT->BuildOrRebuild();

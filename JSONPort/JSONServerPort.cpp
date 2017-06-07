@@ -27,8 +27,8 @@
 #include <opendnp3/LogLevels.h>
 #include "JSONServerPort.h"
 
-JSONServerPort::JSONServerPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-	JSONPort(aName, aConfFilename, aConfOverrides),
+JSONServerPort::JSONServerPort(std::shared_ptr<JSONPortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	JSONPort(Manager, aName, aConfFilename, aConfOverrides),
 	pEnableDisableSync(nullptr)
 {
 }
@@ -36,7 +36,7 @@ JSONServerPort::JSONServerPort(std::string aName, std::string aConfFilename, con
 void JSONServerPort::Enable()
 {
 	if(pEnableDisableSync.get() == nullptr)
-		pEnableDisableSync.reset(new asio::strand(*pIOS));
+		pEnableDisableSync.reset(new asio::strand(Manager_->get_io_service()));
 	pEnableDisableSync->post([&]()
 					 {
 						 if(!enabled)
@@ -49,7 +49,7 @@ void JSONServerPort::Enable()
 void JSONServerPort::Disable()
 {
 	if(pEnableDisableSync.get() == nullptr)
-		pEnableDisableSync.reset(new asio::strand(*pIOS));
+		pEnableDisableSync.reset(new asio::strand(Manager_->get_io_service()));
 	pEnableDisableSync->post([&]()
 					 {
 						 if(enabled)
@@ -65,11 +65,11 @@ void JSONServerPort::PortUp()
 	JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
 	try
 	{
-		asio::ip::tcp::resolver resolver(*pIOS);
+		asio::ip::tcp::resolver resolver(Manager_->get_io_service());
 		asio::ip::tcp::resolver::query query(pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port));
 		auto endpoint_iterator = resolver.resolve(query);
-		pSock.reset(new asio::ip::tcp::socket(*pIOS));
-		pAcceptor.reset(new asio::ip::tcp::acceptor(*pIOS, *endpoint_iterator));
+		pSock.reset(new asio::ip::tcp::socket(Manager_->get_io_service()));
+		pAcceptor.reset(new asio::ip::tcp::acceptor(Manager_->get_io_service(), *endpoint_iterator));
 		pAcceptor->async_accept(*pSock.get(),pEnableDisableSync->wrap(
 						[this](asio::error_code err_code)
 						{

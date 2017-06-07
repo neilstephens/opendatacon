@@ -33,22 +33,16 @@
 
 namespace odc {
 	
-	class DataPortManager
-	{
-	public:
-		virtual void Shutdown() = 0;
-	};
-	
 	class DataPortFactory
 	{
 	public:
 		DataPortFactory() {};
+		virtual ~DataPortFactory() {};
 		virtual DataPort* CreateDataPort(const std::string& Type, const std::string& Name, const std::string& File, const Json::Value& Overrides) = 0;
-		virtual std::shared_ptr<DataPortManager> GetManager() = 0;
+		virtual std::shared_ptr<IOManager> GetManager() = 0;
 	private:
 		DataPortFactory(const DataPortFactory &that) = delete;
 		DataPortFactory &operator=(const DataPortFactory &) = delete;
-		
 	};
 	
 }

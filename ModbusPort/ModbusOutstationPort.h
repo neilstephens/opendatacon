@@ -35,12 +35,12 @@
 class ModbusOutstationPort: public ModbusPort
 {
 public:
-	ModbusOutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	ModbusOutstationPort(std::shared_ptr<ModbusPortManager> Manager, std::string Name, std::string ConfFilename, const Json::Value ConfOverrides);
 	~ModbusOutstationPort();
 
 	void Enable();
 	void Disable();
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild();
 
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName);
 	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName);

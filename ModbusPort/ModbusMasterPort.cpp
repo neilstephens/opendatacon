@@ -32,6 +32,14 @@
 #include "ModbusMasterPort.h"
 #include <array>
 
+ModbusMasterPort::ModbusMasterPort(std::shared_ptr<ModbusPortManager> Manager, std::string Name, std::string ConfFilename, const Json::Value ConfOverrides):
+	ModbusPort(Manager, Name, ConfFilename, ConfOverrides),
+	mb(nullptr),
+	modbus_read_buffer(nullptr),
+	modbus_read_buffer_size(0),
+	RetryConnectionTask([this](){ this->Connect(); }, 5000, false)
+{}
+
 ModbusMasterPort::~ModbusMasterPort()
 {
 	Disable();
@@ -45,9 +53,6 @@ void ModbusMasterPort::Enable()
 {
 	if(enabled) return;
 	enabled = true;
-
-	pTCPRetryTimer.reset(new Timer_t(*pIOS));
-	PollScheduler.reset(new ASIOScheduler(*pIOS));
 
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -82,13 +87,7 @@ void ModbusMasterPort::Connect()
 		//try again later - except for manual connections
 		if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
-			pTCPRetryTimer->expires_from_now(std::chrono::seconds(5));
-			pTCPRetryTimer->async_wait(
-			      [this](asio::error_code err_code)
-			      {
-			            if(err_code != asio::error::operation_aborted)
-						this->Connect();
-				});
+			Manager_->post(RetryConnectionTask);
 		}
 		return;
 	}
@@ -113,17 +112,14 @@ void ModbusMasterPort::Connect()
 //	    pLoggers->Log(log_entry);
 //    }
 
-	PollScheduler->Clear();
 	for(auto pg : pConf->pPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
-		auto action = [=](){
+		PollTasks.emplace_back([=](){
 			this->DoPoll(id);
-		};
-		PollScheduler->Add(pg.second.pollrate, action);
+		}, pg.second.pollrate, true);
+		Manager_->post(PollTasks.back());
 	}
-
-	PollScheduler->Start();
 }
 
 void ModbusMasterPort::Disable()
@@ -138,8 +134,7 @@ void ModbusMasterPort::Disconnect()
 	stack_enabled = false;
 
 	//cancel the timers (otherwise it would tie up the io_service on shutdown)
-	pTCPRetryTimer->cancel();
-	PollScheduler->Stop();
+	PollTasks.clear();
 
 	if(mb != nullptr) modbus_close(mb);
 
@@ -223,7 +218,7 @@ CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& 
 	}
 }
 
-void ModbusMasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void ModbusMasterPort::BuildOrRebuild()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -473,7 +468,7 @@ CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& comma
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		Manager_->post([=](){ DoPoll(TargetRange->pollgroup); });
 
 	if (rc == -1) return HandleWriteError(errno, "write bit");
 	return CommandStatus::SUCCESS;
@@ -489,7 +484,7 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputInt16& command, ui
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		Manager_->post([=](){ DoPoll(TargetRange->pollgroup); });
 
 	if (rc == -1) return HandleWriteError(errno, "write register");
 	return CommandStatus::SUCCESS;
@@ -505,7 +500,7 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputInt32& command, ui
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		Manager_->post([=](){ DoPoll(TargetRange->pollgroup); });
 
 	if (rc == -1) return HandleWriteError(errno, "write register");
 	return CommandStatus::SUCCESS;
@@ -521,7 +516,7 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputFloat32& command, 
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		Manager_->post([=](){ DoPoll(TargetRange->pollgroup); });
 
 	if (rc == -1) return HandleWriteError(errno, "write register");
 	return CommandStatus::SUCCESS;
@@ -537,7 +532,7 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputDouble64& command,
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		Manager_->post([=](){ DoPoll(TargetRange->pollgroup); });
 
 	if (rc == -1) return HandleWriteError(errno, "write register");
 	return CommandStatus::SUCCESS;

@@ -24,12 +24,23 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include "JSONClientPort.h"
-#include "JSONServerPort.h"
+#include "JSONPortFactory.h"
 
-extern "C" JSONClientPort* new_JSONClientPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" odc::DataPortFactory* new_DataPortFactory(std::shared_ptr<odc::IOManager> pIOM)
 {
-	return new JSONClientPort(Name,File,Overrides);
+	return JSONPortFactory::Get(pIOM);
+}
+
+extern "C" void delete_DataPortFactory(odc::DataPortFactory* PortFactory)
+{
+	return delete PortFactory;
+}
+
+
+/*
+extern "C" JSONClientPort* new_JSONClientPort(std::shared_ptr<JSONPortManager> Manager, std::string Name, std::string File, const Json::Value Overrides)
+{
+	return new JSONClientPort(Manager, Name,File,Overrides);
 }
 
 extern "C" void delete_JSONClientPort(JSONClientPort* aJSONClientPort_ptr)
@@ -38,14 +49,14 @@ extern "C" void delete_JSONClientPort(JSONClientPort* aJSONClientPort_ptr)
 	return;
 }
 
-extern "C" JSONServerPort* new_JSONServerPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" JSONServerPort* new_JSONServerPort(std::shared_ptr<JSONPortManager> Manager, std::string Name, std::string File, const Json::Value Overrides)
 {
-	return new JSONServerPort(Name,File,Overrides);
+	return new JSONServerPort(Manager, Name,File,Overrides);
 }
 
 extern "C" void delete_JSONServerPort(JSONServerPort* aJSONServerPort_ptr)
 {
 	delete aJSONServerPort_ptr;
 	return;
-}
+}*/
 

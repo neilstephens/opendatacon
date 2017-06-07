@@ -18,41 +18,33 @@
  *	limitations under the License.
  */
 /*
- * DNP3PortManager.h
+ * ModbusPortManager.h
  *
  *  Created on: 09/05/2017
  *      Author: Alan Murray <alan@atmurray.net>
  */
 
-#ifndef opendatacon_suite_DNP3PortManager_h
-#define opendatacon_suite_DNP3PortManager_h
+#ifndef opendatacon_suite_ModbusPortManager_h
+#define opendatacon_suite_ModbusPortManager_h
 
 #include <opendatacon/IOManager.h>
 #include <asio.hpp>
 #include <unordered_map>
 
-#include "DNP3PortConf.h"
+#include "ModbusPortConf.h"
 #include <asiodnp3/DNP3Manager.h>
 #include <opendnp3/LogLevels.h>
 #include <opendatacon/DataPortFactory.h>
 
-class DNP3PortManager : public odc::AsyncIOManager
+class ModbusPortManager : public odc::AsyncIOManager
 {
 public:
-	DNP3PortManager(const std::shared_ptr<odc::IOManager>& pIOMgr);
-	~DNP3PortManager();
-	asiodnp3::IChannel* GetChannel(const DNP3PortConf& PortConf);
-	virtual void Shutdown() override {
-		DNP3Mgr->Shutdown();
-	}
+	ModbusPortManager(const std::shared_ptr<odc::IOManager>& pIOMgr);
+	~ModbusPortManager();
+	virtual void Shutdown() override { }
 
 private:
-	DNP3PortManager(const DNP3PortManager &other) = delete;
-
-	std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
-
-	std::unique_ptr<asiodnp3::DNP3Manager> DNP3Mgr;
-	openpal::LogFilters LOG_LEVEL = opendnp3::levels::ALL;
+	ModbusPortManager(const ModbusPortManager &other) = delete;
 };
 
 #endif

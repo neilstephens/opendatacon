@@ -29,6 +29,7 @@
 
 #include <opendatacon/DataPort.h>
 #include "DNP3PointConf.h"
+#include <asiopal/SerialTypes.h>
 
 enum TCPClientServer {CLIENT,SERVER,DEFAULT};
 enum server_type_t {ONDEMAND,PERSISTENT,MANUAL};

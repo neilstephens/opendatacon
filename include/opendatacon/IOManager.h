@@ -29,55 +29,102 @@
 #define IOMANAGER_H
 
 #include <asio.hpp>
-#include <asiodnp3/DNP3Manager.h>
+#include "Task.h"
+#include "Timestamp.h"
 
 namespace odc {
-	//typedef asiodnp3::DNP3Manager IOManager;
-	
+	typedef std::function<void()> HandlerT;
+		
 	class IOManager {
 	public:
+		virtual ~IOManager() {};
 		virtual asio::io_service& get_io_service() = 0;
-		
-		/**
-		 * Add a callback to receive log messages
-		 * @param handler reference to a log handling interface
-		 */
-		virtual void AddLogSubscriber(openpal::ILogHandler& handler) = 0;
-		
-		/**
-		 * Permanently shutdown the manager and all sub-objects that have been created. Stop
-		 * the thead pool.
-		 */
+		virtual std::shared_ptr<asio::strand> get_strand() = 0;
+		virtual void dispatch(HandlerT handler) = 0;
+		virtual void post(HandlerT handler) = 0;
+		virtual void post(Task& task) = 0;
+		virtual void stop(Task& task) = 0;
+		virtual void yield() = 0;
+		void run() {
+			get_io_service().run();
+		}
 		virtual void Shutdown() = 0;
 	};
 	
-	class ODCManager : public IOManager, public asiodnp3::DNP3Manager {
+	class AsyncIOManager : public IOManager {
 	public:
-		ODCManager(
-				  uint32_t concurrencyHint,
-				  openpal::ICryptoProvider* crypto = nullptr,
-				  std::function<void()> onThreadStart = []() {},
-				  std::function<void()> onThreadExit = []() {}
-				  ) : DNP3Manager(concurrencyHint, crypto, onThreadStart, onThreadExit), IOS(concurrencyHint) {
-			
-		};
-		
-		void AddLogSubscriber(openpal::ILogHandler& handler) {
-			
+		AsyncIOManager(std::shared_ptr<odc::IOManager> pIOMgr) :
+		impl(pIOMgr) {
 			
 		}
 		
-		void Shutdown() {
-			asiodnp3::DNP3Manager::Shutdown();
-		}
-		
-		asio::io_service& get_io_service()
+		virtual asio::io_service& get_io_service() override
 		{
-			return IOS;
+			return impl->get_io_service();
+		}
+		
+		virtual std::shared_ptr<asio::strand> get_strand() override
+		{
+			return impl->get_strand();
+		}
+		
+		virtual void dispatch(HandlerT handler) override
+		{
+			impl->dispatch(handler);
+		}
+		
+		virtual void post(HandlerT handler) override
+		{
+			impl->post(handler);
+		}
+		virtual void post(Task& task) override;
+		virtual void stop(Task& task) override;
+		
+		virtual void yield() override
+		{
+			impl->yield();
 		}
 		
 	private:
-		asio::io_service IOS;
+		std::shared_ptr<odc::IOManager> impl;
+	};
+	
+	class SyncIOManager : public IOManager {
+	public:
+		SyncIOManager(std::shared_ptr<odc::IOManager> pIOMgr) :
+		impl(pIOMgr), pStrand(pIOMgr->get_strand()) {
+			
+		}
+		
+		virtual asio::io_service& get_io_service() override
+		{
+			return impl->get_io_service();
+		}
+		
+		virtual std::shared_ptr<asio::strand> get_strand() override
+		{
+			return pStrand;
+		}
+		
+		virtual void dispatch(HandlerT handler) override
+		{
+			pStrand->dispatch(handler);
+		}
+		
+		virtual void post(HandlerT handler) override
+		{
+			pStrand->post(handler);
+		}
+		virtual void post(Task& task) override;
+		virtual void stop(Task& task) override;
+		
+		virtual void yield() override
+		{
+			impl->yield();
+		}
+	private:
+		std::shared_ptr<odc::IOManager> impl;
+		std::shared_ptr<asio::strand> pStrand;
 	};
 }
 

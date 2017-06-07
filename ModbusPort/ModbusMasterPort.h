@@ -32,54 +32,15 @@
 
 #include <modbus/modbus.h>
 #include "ModbusPort.h"
-#include <opendatacon/ASIOScheduler.h>
 
 using namespace opendnp3;
 
 #include <utility>
 
-/*
-template <typename T, typename F>
-class capture_impl
-{
-    T x;
-    F f;
-public:
-    capture_impl( T && x, F && f )
-    : x{std::forward<T>(x)}, f{std::forward<F>(f)}
-    {}
-
-    template <typename ...Ts> auto operator()( Ts&&...args )
-    -> decltype(f( x, std::forward<Ts>(args)... ))
-    {
-        return f( x, std::forward<Ts>(args)... );
-    }
-
-    template <typename ...Ts> auto operator()( Ts&&...args ) const
-    -> decltype(f( x, std::forward<Ts>(args)... ))
-    {
-        return f( x, std::forward<Ts>(args)... );
-    }
-};
-
-template <typename T, typename F>
-capture_impl<T,F> capture( T && x, F && f )
-{
-    return capture_impl<T,F>(
-                             std::forward<T>(x), std::forward<F>(f) );
-}*/
-
-
 class ModbusMasterPort: public ModbusPort
 {
 public:
-	ModbusMasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-		ModbusPort(aName, aConfFilename, aConfOverrides),
-		mb(nullptr),
-		modbus_read_buffer(nullptr),
-		modbus_read_buffer_size(0)
-	{}
-
+	ModbusMasterPort(std::shared_ptr<ModbusPortManager> Manager, std::string Name, std::string ConfFilename, const Json::Value ConfOverrides);
 	~ModbusMasterPort();
 
 	// Implement ModbusPort
@@ -87,7 +48,7 @@ public:
 	void Disable();
 	void Connect();
 	void Disconnect();
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild();
 
 	// Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
 	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
@@ -115,8 +76,8 @@ private:
 	void* modbus_read_buffer;
 	size_t modbus_read_buffer_size;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pTCPRetryTimer;
-	std::unique_ptr<ASIOScheduler> PollScheduler;
+	Task RetryConnectionTask;
+	std::vector<Task> PollTasks;
 };
 
 #endif /* ModbusCLIENTPORT_H_ */

@@ -38,12 +38,7 @@ using namespace opendnp3;
 class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
 {
 public:
-	DNP3MasterPort(std::shared_ptr<DNP3PortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-		DNP3Port(Manager, aName, aConfFilename, aConfOverrides),
-		pMaster(nullptr),
-		stack_enabled(false),
-		assign_class_sent(false)
-	{}
+	DNP3MasterPort(std::shared_ptr<DNP3PortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 	~DNP3MasterPort();
 
 protected:

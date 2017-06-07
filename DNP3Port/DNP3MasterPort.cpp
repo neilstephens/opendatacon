@@ -33,11 +33,18 @@
 #include <array>
 #include <asiopal/UTCTimeSource.h>
 
+DNP3MasterPort::DNP3MasterPort(std::shared_ptr<DNP3PortManager> Manager, std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	DNP3Port(Manager, aName, aConfFilename, aConfOverrides),
+	pMaster(nullptr),
+	stack_enabled(false),
+	assign_class_sent(false)
+{}
+
 DNP3MasterPort::~DNP3MasterPort()
 {
 	Disable();
-	pMaster->Shutdown();
 	ChannelStateSubscriber::Unsubscribe(this);
+	if (pMaster) pMaster->Shutdown();
 	std::cout << "Destructing DNP3MasterPort" << std::endl;
 }
 
@@ -61,8 +68,8 @@ void DNP3MasterPort::Enable()
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
 		EnableStack();
-
 }
+
 void DNP3MasterPort::Disable()
 {
 	if(!enabled)
@@ -139,12 +146,14 @@ void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 	}
 	//TODO: track a statistic - reset count
 }
+
 // Called by OpenDNP3 Thread Pool
 // Called when a keep alive message (request link status) receives no response
 void DNP3MasterPort::OnKeepAliveFailure()
 {
 	this->OnLinkDown();
 }
+
 void DNP3MasterPort::OnLinkDown()
 {
 	if(!link_dead)
@@ -163,13 +172,14 @@ void DNP3MasterPort::OnLinkDown()
 			pLoggers->Log(log_entry);
 
 			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
-			pIOS->post([&]()
+			Manager_->post([&]()
 				     {
 					     DisableStack();
 				     });
 		}
 	}
 }
+
 // Called by OpenDNP3 Thread Pool
 // Called when a keep alive message receives a valid response
 void DNP3MasterPort::OnKeepAliveSuccess()
@@ -310,7 +320,7 @@ std::future<CommandStatus> DNP3MasterPort::Event(const ConnectState& state, uint
 		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
 
-		pIOS->post([&]()
+		Manager_->post([&]()
 		           {
 		                 EnableStack();
 			     });
@@ -319,7 +329,7 @@ std::future<CommandStatus> DNP3MasterPort::Event(const ConnectState& state, uint
 	// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
 	if (stack_enabled && state == ConnectState::DISCONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 	{
-		pIOS->post([&]()
+		Manager_->post([&]()
 		           {
 		                 DisableStack();
 		                 PortDown();

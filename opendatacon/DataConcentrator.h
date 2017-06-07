@@ -66,8 +66,6 @@ private:
 	LogCollection AdvancedLoggers;
 	InterfaceCollection Interfaces;
 
-	asio::io_service IOS;
-	std::unique_ptr<asio::io_service::work> ios_working;
 	std::once_flag shutdown_flag;
 
 	openpal::LogFilters LOG_LEVEL;

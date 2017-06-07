@@ -46,8 +46,8 @@ DNP3OutstationPort::DNP3OutstationPort(std::shared_ptr<DNP3PortManager> Manager,
 DNP3OutstationPort::~DNP3OutstationPort()
 {
 	Disable();
-	pOutstation->Shutdown();
 	ChannelStateSubscriber::Unsubscribe(this);
+	if (pOutstation) pOutstation->Shutdown();
 	std::cout << "Destructing DNP3OutstationPort" << std::endl;
 }
 
@@ -290,7 +290,7 @@ inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 		while(future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
 		{
 			//not ready - let's lend a hand to speed things up
-			this->pIOS->poll_one();
+			Manager_->get_io_service().poll_one();
 		}
 		//first one that isn't a success, we can return
 		if(future_result.get() != CommandStatus::SUCCESS)
