@@ -23,6 +23,7 @@
 
 #include "DNP3PortFactory.h"
 #include <opendatacon/DataPortFactoryCollection.h>
+#include <opendatacon/ODCManager.h>
 
 #define SUITE(name) "DNP3OutstationPortTestSuite - " name
 
