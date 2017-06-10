@@ -20,10 +20,11 @@ namespace odc {
 	scheduler(IOS)
 	{
 		for (size_t i = 0; i < concurrencyHint; ++i)
-			std::thread([&](){
+			threads_.emplace_back([this,i](){
 				for (;;) {
 					try {
 						IOS.run();
+						std::cout << "Thread " << i << " finished" << std::endl;
 						break;
 					} catch (std::exception& e) {
 						std::cout << "Exception: " << e.what() << std::endl;
@@ -33,7 +34,7 @@ namespace odc {
 					}
 					
 				}
-			}).detach();
+			});
 	}
 
 }

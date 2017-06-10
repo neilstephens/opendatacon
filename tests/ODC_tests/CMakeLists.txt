@@ -23,8 +23,11 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
 
 include_directories(
 	../catch
+	"../../JSON"
 	../../include
 	../../ODC
+	"${DNP3_HOME}/include"
+	"${ASIO_HOME}/include"
 )
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})

@@ -29,6 +29,7 @@
 
 #include <asio.hpp>
 #include <thread>
+#include <iostream>
 #include <asiodnp3/DNP3Manager.h>
 #include "IOManager.h"
 #include "TaskScheduler.h"
@@ -44,7 +45,9 @@ namespace odc {
 				   ) ;
 		virtual ~ODCManager()
 		{
+			std::cout << "Destructing ODCManager... ";
 			Shutdown();
+			std::cout << "done" << std::endl;
 		}
 		
 		virtual asio::io_service& get_io_service() override
@@ -87,12 +90,19 @@ namespace odc {
 			scheduler.Shutdown();
 			ios_working.reset();
 			IOS.run();
+			// needed to avoid race condition whereby the threads don't finish
+			// before the lambdas are destructed
+			while (!threads_.empty()) {
+				threads_.back().join();
+				threads_.pop_back();
+			}
 		}
-
-	private:
+		
+	private:		
 		asio::io_service IOS;
 		std::unique_ptr<asio::io_service::work> ios_working;
 		TaskScheduler scheduler;
+		std::vector<std::thread> threads_;
 	};
 }
 

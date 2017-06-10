@@ -23,14 +23,16 @@
 
 #include "DNP3PortFactory.h"
 #include <opendatacon/DataPortFactoryCollection.h>
+#include <opendatacon/ODCManager.h>
 
 #define SUITE(name) "DNP3PortEndToEndTestSuite - " name
 
 TEST_CASE(SUITE("TCP link"))
 {
 	std::shared_ptr<odc::IOManager> IOMgr(new odc::ODCManager(std::thread::hardware_concurrency()));
+	{
 	odc::DataPortFactoryCollection DataPortFactories(IOMgr);
-	odc::DataPortFactory* factory = DataPortFactories.GetFactory("DNP3Port");
+	odc::DataPortFactory* factory(DataPortFactories.GetFactory("DNP3Port"));
 	REQUIRE(factory);
 	
 	//make an outstation port
@@ -38,13 +40,13 @@ TEST_CASE(SUITE("TCP link"))
 	Oconf["IP"] = "0.0.0.0";
 	Oconf["ServerType"] = "PERSISTENT";
 	Oconf["TCPClientServer"] = "SERVER";
-	odc::DataPort* OPUT = factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", Oconf);
+	std::unique_ptr<odc::DataPort> OPUT(factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", Oconf));
 	REQUIRE(OPUT);
 
 	//make a master port
 	Json::Value Mconf;
 	Mconf["ServerType"] = "PERSISTENT";
-	odc::DataPort* MPUT = factory->CreateDataPort("DNP3Master","MasterUnderTest", "", Mconf);
+	std::unique_ptr<odc::DataPort> MPUT(factory->CreateDataPort("DNP3Master","MasterUnderTest", "", Mconf));
 	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
@@ -83,9 +85,8 @@ TEST_CASE(SUITE("TCP link"))
 
 	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
-
-	delete MPUT;
-	delete OPUT;
+}
+	sleep(1);
 }
 
 TEST_CASE(SUITE("Serial link"))
@@ -107,13 +108,13 @@ TEST_CASE(SUITE("Serial link"))
 	}
 	std::shared_ptr<odc::IOManager> IOMgr(new odc::ODCManager(std::thread::hardware_concurrency()));
 	odc::DataPortFactoryCollection DataPortFactories(IOMgr);
-	odc::DataPortFactory* factory = DataPortFactories.GetFactory("DNP3Port");
+	odc::DataPortFactory* factory(DataPortFactories.GetFactory("DNP3Port"));
 	REQUIRE(factory);
 	
 	//make an outstation port
 	Json::Value Oconf;
 	Oconf["SerialDevice"] = "SerialEndpoint1";
-	odc::DataPort* OPUT = factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", Oconf);
+	std::unique_ptr<odc::DataPort> OPUT(factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", Oconf));
 	REQUIRE(OPUT);
 	
 	//make a master port
@@ -122,7 +123,7 @@ TEST_CASE(SUITE("Serial link"))
 	Mconf["SerialDevice"] = "SerialEndpoint2";
 	Mconf["LinkKeepAlivems"] = 200;
 	Mconf["LinkTimeoutms"] = 100;
-	odc::DataPort* MPUT = factory->CreateDataPort("DNP3Master","MasterUnderTest", "", Mconf);
+	std::unique_ptr<odc::DataPort> MPUT(factory->CreateDataPort("DNP3Master","MasterUnderTest", "", Mconf));
 	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
@@ -156,7 +157,4 @@ TEST_CASE(SUITE("Serial link"))
 
 	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
-
-	delete MPUT;
-	delete OPUT;
 }

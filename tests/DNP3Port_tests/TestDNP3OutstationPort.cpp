@@ -31,20 +31,18 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	std::shared_ptr<odc::IOManager> IOMgr(new odc::ODCManager(std::thread::hardware_concurrency()));
 	odc::DataPortFactoryCollection DataPortFactories(IOMgr);
-	odc::DataPortFactory* factory = DataPortFactories.GetFactory("DNP3Port");
+	odc::DataPortFactory* factory(DataPortFactories.GetFactory("DNP3Port"));
 	REQUIRE(factory);
 	{
-		odc::DataPort* OPUT = factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", "");
+		std::unique_ptr<odc::DataPort> OPUT(factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", ""));
 		REQUIRE(OPUT);
 		
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 		OPUT->Enable();
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
-		
-		delete OPUT;
 	}
 	{
-		odc::DataPort* OPUT = factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", "");
+		std::unique_ptr<odc::DataPort> OPUT(factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", ""));
 		REQUIRE(OPUT);
 		
 		OPUT->BuildOrRebuild();
@@ -53,20 +51,15 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 		REQUIRE(OPUT->GetStatus()["Result"].asString() != "Port disabled");
 		OPUT->Disable();
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
-		
-		delete OPUT;
 	}
 	/// Test the destruction of an enabled port
 	{
-		odc::DataPort* OPUT = factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", "");
+		std::unique_ptr<odc::DataPort> OPUT(factory->CreateDataPort("DNP3Outstation","OutstationUnderTest", "", ""));
 		REQUIRE(OPUT);
 		
 		OPUT->BuildOrRebuild();
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 		OPUT->Enable();
 		REQUIRE(OPUT->GetStatus()["Result"].asString() != "Port disabled");
-		
-		delete OPUT;
 	}
-
 }

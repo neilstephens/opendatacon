@@ -35,6 +35,8 @@
 #include "Task.h"
 #include "Timestamp.h"
 
+#include <iostream>
+
 namespace odc {	
 	class TaskScheduler
 	{
@@ -48,7 +50,9 @@ namespace odc {
 		
 		~TaskScheduler()
 		{
-			Shutdown();
+			std::cout << "Destructing TaskScheduler...";
+			//Shutdown();
+			std::cout << "done" << std::endl;
 		}
 		
 		void Shutdown()

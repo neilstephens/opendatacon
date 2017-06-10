@@ -21,8 +21,14 @@
  */
 #include <catch.hpp>
 
+#include <opendatacon/DataPortFactoryCollection.h>
+#include <opendatacon/ODCManager.h>
 
-#define SUITE(name) "DummyTestSuite - " name
+#define SUITE(name) "ODCTestSuite - " name
 
-TEST_CASE(SUITE("Dummy"))
-{}
+TEST_CASE(SUITE("ODCManagerConstructDestroy"))
+{
+	for(int i=0;i<1000;i++){
+		std::shared_ptr<odc::IOManager> IOMgr(new odc::ODCManager(std::thread::hardware_concurrency()));
+	}
+}
