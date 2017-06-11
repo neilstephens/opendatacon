@@ -100,6 +100,32 @@ namespace odc {
 			
 		}
 		
+		virtual ~SyncIOManager() {
+			std::mutex m;
+			std::condition_variable cv;
+			bool sync = false;
+
+			// flush any pending tasks on the strand by posting
+			// a task to the strand and waiting for it to complete
+			// TODO: this assumes that pending tasks don't post further tasks,
+			// is it possible to guarentee that they don't?
+			
+			auto action = [&]() {
+				std::unique_lock<std::mutex> lk(m);
+				sync = true;
+				lk.unlock();
+				cv.notify_one();
+			};
+			
+			pStrand->post(action);
+			
+			// wait for the strand to complete
+			{
+				std::unique_lock<std::mutex> lk(m);
+				cv.wait(lk, [&sync]{ return sync; });
+			}
+		}
+		
 		virtual asio::io_service& get_io_service() override
 		{
 			return impl->get_io_service();
@@ -138,6 +164,7 @@ namespace odc {
 	private:
 		std::shared_ptr<odc::IOManager> impl;
 		std::shared_ptr<asio::strand> pStrand;
+		bool running;
 	};
 }
 

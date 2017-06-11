@@ -51,7 +51,7 @@ namespace odc {
 		~TaskScheduler()
 		{
 			std::cout << "Destructing TaskScheduler...";
-			//Shutdown();
+			Shutdown();
 			std::cout << "done" << std::endl;
 		}
 		

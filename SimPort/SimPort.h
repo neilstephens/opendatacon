@@ -39,6 +39,9 @@ class SimPort: public DataPort, SyncIOManager<SimPortManager>
 public:
 	//Implement DataPort interface
 	SimPort(std::shared_ptr<SimPortManager> Manager, std::string Name, std::string File, const Json::Value Overrides);
+	virtual ~SimPort() {
+		std::cout << "SimPort::~SimPort" << std::endl;
+	}
 	void Enable() final;
 	void Disable() final;
 	void BuildOrRebuild() final;

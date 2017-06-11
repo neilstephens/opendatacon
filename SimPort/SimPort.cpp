@@ -40,6 +40,7 @@ SimPort::SimPort(std::shared_ptr<SimPortManager> Manager, std::string Name, std:
 }
 void SimPort::Enable()
 {
+	std::cout << "SimPort::Enable" << std::endl;
 	post([&]()
 	                         {
 	                               if(!enabled)
@@ -51,6 +52,7 @@ void SimPort::Enable()
 }
 void SimPort::Disable()
 {
+	std::cout << "SimPort::Disable" << std::endl;
 	post([&]()
 	                         {
 	                               if(enabled)
@@ -63,6 +65,7 @@ void SimPort::Disable()
 
 void SimPort::PortUp()
 {
+	std::cout << "SimPort::PortUP" << std::endl;
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 	for(auto index : pConf->AnalogIndicies)
 	{
@@ -122,6 +125,8 @@ void SimPort::BuildOrRebuild()
 
 void SimPort::ProcessElements(const Json::Value& JSONRoot)
 {
+	if(!JSONRoot.isObject()) return;
+
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 
 	if(JSONRoot.isMember("Analogs"))
