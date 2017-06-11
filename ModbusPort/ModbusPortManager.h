@@ -41,7 +41,6 @@ class ModbusPortManager : public odc::AsyncIOManager
 public:
 	ModbusPortManager(const std::shared_ptr<odc::IOManager>& pIOMgr);
 	~ModbusPortManager();
-	virtual void Shutdown() override { }
 
 private:
 	ModbusPortManager(const ModbusPortManager &other) = delete;

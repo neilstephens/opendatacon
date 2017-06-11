@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2017:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -18,20 +18,17 @@
  *	limitations under the License.
  */
 /*
- * main.cpp
+ * SimPortFactory.cpp
  *
- *  Created on: 13/08/2014
- *      Author: Neil Stephens <dearknarl@gmail.com>
+ *  Created on: 09/05/2017
+ *      Author: Alan Murray <alan@atmurray.net>
  */
 
-#include "JSONPortFactory.h"
+#include "SimPortFactory.h"
+#include "SimPort.h"
 
-extern "C" odc::DataPortFactory* new_DataPortFactory(std::shared_ptr<odc::IOManager> pIOM)
-{
-	return JSONPortFactory::Get(pIOM);
-}
-
-extern "C" void delete_DataPortFactory(odc::DataPortFactory* PortFactory)
-{
-	return delete PortFactory;
+DataPort* SimPortFactory::CreateDataPort(const std::string& Type, const std::string& Name, const std::string& File, const Json::Value& Overrides) {
+	if (Type.compare("Sim") == 0)
+		return new SimPort(Manager, Name, File, Overrides);
+	return nullptr;
 }

@@ -419,7 +419,7 @@ void DataConcentrator::Run()
 			// TODO: the task needs to be owned by the connection so that it is cleaned up
 			Task* task(new Task([&]() {
 						  Name_n_Conn.second->Enable();
-					  }, Name_n_Conn.second->EnableDelayms, false));
+			}, std::bind(scheduler_interval,std::placeholders::_1,Name_n_Conn.second->EnableDelayms), false));
 			IOMgr->post(*task);
 		}
 	}
@@ -438,7 +438,7 @@ void DataConcentrator::Run()
 			// TODO: the task needs to be owned by the port so that it is cleaned up
 			Task* task(new Task([&]() {
 				Name_n_Port.second->Enable();
-			}, Name_n_Port.second->EnableDelayms, false));
+			}, std::bind(scheduler_interval,std::placeholders::_1,Name_n_Port.second->EnableDelayms), false));
 			IOMgr->post(*task);
 		}
 	}

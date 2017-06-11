@@ -46,6 +46,7 @@
 #include "LogCollection.h"
 
 #include <opendatacon/IUI.h>
+#include <opendatacon/ODCManager.h>
 
 class DataConcentrator: public ConfigParser, public IUIResponder
 {
@@ -59,7 +60,7 @@ public:
 	void Shutdown();
 
 private:
-	std::shared_ptr<IOManager> IOMgr;
+	std::shared_ptr<ODCManager> IOMgr;
 	DataPortFactoryCollection DataPortFactories;
 	DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;

@@ -29,16 +29,10 @@
 #include <random>
 #include <limits>
 
-inline unsigned int random_interval(const unsigned int& average_interval, rand_t& seed)
-{
-	//random interval - uniform distribution, minimum 1ms
-	auto ret_val = (unsigned int)((2*average_interval-2)*ZERO_TO_ONE(seed)+1.5); //the .5 is for rounding down
-	return ret_val;
-}
-
 //Implement DataPort interface
-SimPort::SimPort(std::string Name, std::string File, const Json::Value Overrides):
+SimPort::SimPort(std::shared_ptr<SimPortManager> Manager, std::string Name, std::string File, const Json::Value Overrides):
 	DataPort(Name, File, Overrides),
+	SyncIOManager<SimPortManager>(Manager),
 	enabled(false)
 {
 	pConf.reset(new SimPortConf());
@@ -46,7 +40,7 @@ SimPort::SimPort(std::string Name, std::string File, const Json::Value Overrides
 }
 void SimPort::Enable()
 {
-	pEnableDisableSync->post([&]()
+	post([&]()
 	                         {
 	                               if(!enabled)
 	                               {
@@ -57,7 +51,7 @@ void SimPort::Enable()
 }
 void SimPort::Disable()
 {
-	pEnableDisableSync->post([&]()
+	post([&]()
 	                         {
 	                               if(enabled)
 	                               {
@@ -78,18 +72,17 @@ void SimPort::PortUp()
 			auto pMean = pConf->AnalogStartVals.count(index) ? std::make_shared<Analog>(pConf->AnalogStartVals[index]) : std::make_shared<Analog>();
 			auto std_dev = pConf->AnalogStdDevs.count(index) ? pConf->AnalogStdDevs[index] : (pMean->value ? (pConf->default_std_dev_factor*pMean->value) : 20);
 
-			pTimer_t pTimer(new Timer_t(*pIOS));
-			Timers.push_back(pTimer);
-
-			//use a heap pointer as a random seed
-			auto seed = (rand_t)((intptr_t)(pTimer.get()));
-
-			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
-			pTimer->async_wait([=](asio::error_code err_code)
-			                   {
-							 if(enabled)
-								 SpawnEvent(pMean, std_dev, interval, index, pTimer, seed);
-						 });
+			auto action = [=]() {
+				if(enabled) {
+					std::normal_distribution<double> distribution(pMean->value, std_dev);
+					PublishEvent(Analog(distribution(RandNumGenerator),pMean->quality), index);
+					//SpawnEvent(pMean, std_dev, interval, index, pTimer, seed);
+				}
+			};
+			auto schedule = std::bind(random_interval,std::placeholders::_1, interval);
+			
+			Tasks.emplace_back(action, schedule, true);
+			post(Tasks.back());
 		}
 	}
 	for(auto index : pConf->BinaryIndicies)
@@ -99,71 +92,32 @@ void SimPort::PortUp()
 			auto interval = pConf->BinaryUpdateIntervalms[index];
 			auto pVal = pConf->BinaryStartVals.count(index) ? std::make_shared<Binary>(pConf->BinaryStartVals[index]) : std::make_shared<Binary>();
 
-			pTimer_t pTimer(new Timer_t(*pIOS));
-			Timers.push_back(pTimer);
+			auto action = [=]() {
+				if(enabled) {
+					//Send an event out
+					//toggle value
+					pVal->value = !pVal->value;
+					//pass a copy, because we don't know when the ref will go out of scope
+					PublishEvent(Binary(*pVal), index);
+				}
+			};
+			auto schedule = std::bind(random_interval,std::placeholders::_1, interval);
 
-			//use a heap pointer as a random seed
-			auto seed = (rand_t)((intptr_t)(pTimer.get()));
-
-			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
-			pTimer->async_wait([=](asio::error_code err_code)
-						 {
-							 if(enabled)
-								 SpawnEvent(pVal, interval, index, pTimer, seed);
-						 });
+			Tasks.emplace_back(action, schedule, true);
+			post(Tasks.back());
 		}
 	}
 }
 
 void SimPort::PortDown()
 {
-	for(auto pTimer : Timers)
-		pTimer->cancel();
-	Timers.clear();
-}
-
-void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
-{
-	//Restart the timer
-	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
-
-	//Send an event out
-	//change value around mean
-	std::normal_distribution<double> distribution(pMean->value, std_dev);
-	PublishEvent(Analog(distribution(RandNumGenerator),pMean->quality), index);
-
-	//wait til next time
-	pTimer->async_wait([=](asio::error_code err_code)
-	                   {
-					 if(enabled)
-						 SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
-					//else - break timer cycle
-				 });
-}
-
-void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
-{
-	//Restart the timer
-	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
-
-	//Send an event out
-	//toggle value
-	pVal->value = !pVal->value;
-	//pass a copy, because we don't know when the ref will go out of scope
-	PublishEvent(Binary(*pVal), index);
-
-	//wait til next time
-	pTimer->async_wait([=](asio::error_code err_code)
-				 {
-					 if(enabled)
-						 SpawnEvent(pVal,interval,index,pTimer,seed);
-					//else - break timer cycle
-				 });
+	for(auto task : Tasks) {
+		Tasks.clear();
+	}
 }
 
 void SimPort::BuildOrRebuild()
 {
-	pEnableDisableSync.reset(new asio::strand(*pIOS));
 }
 
 void SimPort::ProcessElements(const Json::Value& JSONRoot)
@@ -486,12 +440,13 @@ std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arComma
 							case ControlCode::TRIP_PULSE_ON:
 							{
 								PublishEvent(fb.on_value,fb.binary_index);
-								pTimer_t pTimer(new Timer_t(*pIOS));
-								pTimer->expires_from_now(std::chrono::milliseconds(arCommand.onTimeMS));
-								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
-											 {
-												PublishEvent(fb.off_value,fb.binary_index);
-											 });
+								
+								//TODO: delete this task once it completes
+								auto action = [fb,this](){
+									PublishEvent(fb.off_value,fb.binary_index);
+								};
+								
+								Tasks.emplace_back(action, std::bind(scheduler_interval, std::placeholders::_1, arCommand.onTimeMS), false);
 								//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
 								break;
 							}
@@ -503,12 +458,12 @@ std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arComma
 					{
 						switch(arCommand.functionCode)
 						{
-							case ControlCode::LATCH_ON:
-							case ControlCode::CLOSE_PULSE_ON:
+							case odc::ControlCode::LATCH_ON:
+							case odc::ControlCode::CLOSE_PULSE_ON:
 								PublishEvent(fb.on_value,fb.binary_index);
 								break;
-							case ControlCode::LATCH_OFF:
-							case ControlCode::TRIP_PULSE_ON:
+							case odc::ControlCode::LATCH_OFF:
+							case odc::ControlCode::TRIP_PULSE_ON:
 								PublishEvent(fb.off_value,fb.binary_index);
 								break;
 							default:

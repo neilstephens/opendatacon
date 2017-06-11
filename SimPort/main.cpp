@@ -24,15 +24,15 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include "SimPort.h"
+#include "SimPortFactory.h"
 
-extern "C" SimPort* new_SimPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" odc::DataPortFactory* new_DataPortFactory(std::shared_ptr<odc::IOManager> pIOM)
 {
-	return new SimPort(Name,File,Overrides);
+	return SimPortFactory::Get(pIOM);
 }
 
-extern "C" void delete_SimPort(SimPort* aSimPort_ptr)
+extern "C" void delete_DataPortFactory(odc::DataPortFactory* PortFactory)
 {
-	delete aSimPort_ptr;
-	return;
+	return delete PortFactory;
 }
+

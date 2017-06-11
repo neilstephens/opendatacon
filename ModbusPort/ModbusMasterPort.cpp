@@ -37,7 +37,7 @@ ModbusMasterPort::ModbusMasterPort(std::shared_ptr<ModbusPortManager> Manager, s
 	mb(nullptr),
 	modbus_read_buffer(nullptr),
 	modbus_read_buffer_size(0),
-	RetryConnectionTask([this](){ this->Connect(); }, 5000, false)
+	RetryConnectionTask([this](){ this->Connect(); }, std::bind(scheduler_interval, std::placeholders::_1, 5000), false)
 {}
 
 ModbusMasterPort::~ModbusMasterPort()
@@ -115,9 +115,11 @@ void ModbusMasterPort::Connect()
 	for(auto pg : pConf->pPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
-		PollTasks.emplace_back([=](){
+		auto action = [=](){
 			this->DoPoll(id);
-		}, pg.second.pollrate, true);
+		};
+		auto scheduler = std::bind(scheduler_interval,std::placeholders::_1,pg.second.pollrate);
+		PollTasks.emplace_back(action, scheduler, true);
 		Manager_->post(PollTasks.back());
 	}
 }

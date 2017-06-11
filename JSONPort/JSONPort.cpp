@@ -370,7 +370,8 @@ void JSONPort::ProcessBraced(std::string braced)
 
 				auto future_results = PublishCommand(command,point_pair.first);
 
-				auto pTimer =std::make_shared<Timer_t>(*pIOS);
+				//TODO: replace with posting on Task Scheduler
+				auto pTimer =std::make_shared<Timer_t>(Manager_->get_io_service());
 				pTimer->expires_from_now(std::chrono::milliseconds(10)); //TODO: expose pole time in config
 				pTimer->async_wait([=,future_results=std::move(future_results)](asio::error_code err_code) mutable
 							 {

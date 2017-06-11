@@ -34,9 +34,11 @@
 
 namespace odc {
 	typedef std::function<void()> HandlerT;
-		
+	
 	class IOManager {
 	public:
+		IOManager() {};
+		IOManager(std::shared_ptr<odc::IOManager> pIOMgr) {};
 		virtual ~IOManager() {};
 		virtual asio::io_service& get_io_service() = 0;
 		virtual std::shared_ptr<asio::strand> get_strand() = 0;
@@ -48,7 +50,6 @@ namespace odc {
 		void run() {
 			get_io_service().run();
 		}
-		virtual void Shutdown() = 0;
 	};
 	
 	class AsyncIOManager : public IOManager {
@@ -89,10 +90,13 @@ namespace odc {
 		std::shared_ptr<odc::IOManager> impl;
 	};
 	
-	class SyncIOManager : public IOManager {
+	template<class T>
+	class SyncIOManager : public T {
 	public:
-		SyncIOManager(std::shared_ptr<odc::IOManager> pIOMgr) :
-		impl(pIOMgr), pStrand(pIOMgr->get_strand()) {
+		SyncIOManager(std::shared_ptr<T> pIOMgr) :
+		T(pIOMgr),
+		impl(pIOMgr),
+		pStrand(pIOMgr->get_strand()) {
 			
 		}
 		
@@ -115,8 +119,17 @@ namespace odc {
 		{
 			pStrand->post(handler);
 		}
-		virtual void post(Task& task) override;
-		virtual void stop(Task& task) override;
+
+		virtual void post(Task& task) override
+		{
+			task.schedule(this);
+			impl->post(task);
+		}
+		
+		virtual void stop(Task& task) override
+		{
+			impl->stop(task);
+		}
 		
 		virtual void yield() override
 		{

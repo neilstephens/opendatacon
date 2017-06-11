@@ -36,6 +36,7 @@ DNP3Mgr(new asiodnp3::DNP3Manager(std::thread::hardware_concurrency()))
 
 DNP3PortManager::~DNP3PortManager() {
 	std::cout << "Destructing DNP3PortManager" << std::endl;
+	DNP3Mgr->Shutdown();
 }
 
 asiodnp3::IChannel* DNP3PortManager::GetChannel(const DNP3PortConf& PortConf)

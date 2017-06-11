@@ -140,7 +140,7 @@ namespace odc {
 		
 	private:
 		//typedef std::priority_queue<ScheduledTask*, std::vector<ScheduledTask*>, ScheduledTaskComparison> ScheduleType;
-		typedef std::multiset<Task*, ScheduledTaskComparison> ScheduleType;
+		typedef std::multiset<Task*, TaskComparison> ScheduleType;
 		
 		typedef asio::basic_waitable_timer<odc::Clock> TaskShedulerTimer;
 

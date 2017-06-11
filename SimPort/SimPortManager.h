@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2017:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -18,20 +18,33 @@
  *	limitations under the License.
  */
 /*
- * main.cpp
+ * SimPortManager.h
  *
- *  Created on: 13/08/2014
- *      Author: Neil Stephens <dearknarl@gmail.com>
+ *  Created on: 09/05/2017
+ *      Author: Alan Murray <alan@atmurray.net>
  */
 
-#include "JSONPortFactory.h"
+#ifndef opendatacon_suite_SimPortManager_h
+#define opendatacon_suite_SimPortManager_h
 
-extern "C" odc::DataPortFactory* new_DataPortFactory(std::shared_ptr<odc::IOManager> pIOM)
-{
-	return JSONPortFactory::Get(pIOM);
-}
+#include <opendatacon/IOManager.h>
+#include <asio.hpp>
+#include <unordered_map>
 
-extern "C" void delete_DataPortFactory(odc::DataPortFactory* PortFactory)
+#include "SimPortConf.h"
+#include <opendnp3/LogLevels.h>
+#include <opendatacon/DataPortFactory.h>
+
+class SimPortManager : public odc::AsyncIOManager
 {
-	return delete PortFactory;
-}
+public:
+	SimPortManager(std::shared_ptr<odc::IOManager> pIOMgr) : AsyncIOManager(pIOMgr) {}
+	~SimPortManager();
+
+	virtual void Shutdown() { }
+
+private:
+	SimPortManager(const SimPortManager &other) = delete;
+};
+
+#endif

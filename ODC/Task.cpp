@@ -7,12 +7,13 @@
 //
 
 #include <opendatacon/Task.h>
+#include <opendatacon/IOManager.h>
 
 namespace odc {
-	Task::Task(std::function<void(void)> const& action, uint32_t periodms, bool repeats):
+	Task::Task(std::function<void(void)> const& action, std::function<odc::Clock::time_point(odc::Clock::time_point)> const& scheduler, bool repeats):
 	IOMgr_(nullptr),
 	action_(action),
-	periodms_(periodms),
+	scheduler_(scheduler),
 	repeats_(repeats)
 	{}
 	
@@ -45,12 +46,12 @@ namespace odc {
 			return;
 		}
 		IOMgr_ = IOMgr;
-		nextpoll_ = odc::Clock::now() + std::chrono::milliseconds(periodms_);
+		nextpoll_ = scheduler_(nextpoll_);
 	}
 	
 	void Task::reschedule()
 	{
-		nextpoll_ += std::chrono::milliseconds(periodms_);
+		nextpoll_ = scheduler_(nextpoll_);
 	}
 	
 	odc::Clock::time_point Task::GetNextPoll()

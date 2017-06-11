@@ -42,9 +42,6 @@ public:
 	DNP3PortManager(const std::shared_ptr<odc::IOManager>& pIOMgr);
 	~DNP3PortManager();
 	asiodnp3::IChannel* GetChannel(const DNP3PortConf& PortConf);
-	virtual void Shutdown() override {
-		DNP3Mgr->Shutdown();
-	}
 
 private:
 	DNP3PortManager(const DNP3PortManager &other) = delete;

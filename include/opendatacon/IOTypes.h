@@ -52,6 +52,7 @@ namespace odc
 	typedef opendnp3::AnalogOutputStatus AnalogOutputStatus;
 	
 	/// Output types
+	typedef opendnp3::ControlCode ControlCode;
 	typedef opendnp3::ControlRelayOutputBlock ControlRelayOutputBlock;
 	typedef opendnp3::AnalogOutputInt16 AnalogOutputInt16;
 	typedef opendnp3::AnalogOutputInt32 AnalogOutputInt32;

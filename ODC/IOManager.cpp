@@ -20,15 +20,4 @@ namespace odc {
 	{
 		impl->stop(task);
 	}
-
-	void SyncIOManager::post(Task& task)
-	{
-		task.schedule(this);
-		impl->post(task);
-	}
-	
-	void SyncIOManager::stop(Task& task)
-	{
-		impl->stop(task);
-	}
 }

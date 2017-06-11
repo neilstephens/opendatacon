@@ -25,10 +25,6 @@
 //
 //
 
-namespace odc {
-	class Task;
-	class ScheduledTaskComparison;
-}
 
 #ifndef __opendatacon__Task__
 #define __opendatacon__Task__
@@ -36,16 +32,33 @@ namespace odc {
 #include <queue>
 #include <set>
 #include <asio.hpp>
-#include "IOManager.h"
 #include "Timestamp.h"
+
+#include <opendatacon/util.h>
 
 namespace odc {
 	class IOManager;
 	
+	inline odc::Clock::time_point random_interval(const odc::Clock::time_point& lasttime, const unsigned int& average_interval_ms)
+	{
+		//use last time as a random seed
+		auto seed = (rand_t)(lasttime.time_since_epoch().count());
+		
+		//random interval - uniform distribution, minimum 1ms
+		auto delay_ms = (unsigned int)((2*average_interval_ms-2)*ZERO_TO_ONE(seed)+1.5); //the .5 is for rounding down
+		return lasttime + std::chrono::milliseconds(delay_ms);
+	}
+
+	inline odc::Clock::time_point scheduler_interval(const odc::Clock::time_point& lasttime, const unsigned int& interval_ms)
+	{
+		//random interval - uniform distribution, minimum 1ms
+		return lasttime + std::chrono::milliseconds(interval_ms);
+	}
+	
 	class Task
 	{
 	public:
-		Task(std::function<void(void)> const& action, uint32_t periodms, bool repeats);
+		Task(std::function<void(void)> const& action, std::function<odc::Clock::time_point(odc::Clock::time_point)> const& scheduler, bool repeats = true);
 		~Task();
 		
 		bool operator<(const Task& other) const;
@@ -55,23 +68,23 @@ namespace odc {
 		
 		void schedule(IOManager* IOMgr);
 		void reschedule();
-		
+				
 		odc::Clock::time_point GetNextPoll();
 		bool GetRepeats();
-		
+
 	private:
 		IOManager* IOMgr_;
 		const std::function<void(void)> action_;
-		uint32_t periodms_;
+		const std::function<odc::Clock::time_point(odc::Clock::time_point)> scheduler_;
 		bool repeats_;
 		odc::Clock::time_point nextpoll_;
 	};
 	
-	class ScheduledTaskComparison
+	class TaskComparison
 	{
 		bool reverse;
 	public:
-		ScheduledTaskComparison(const bool& revparam=false)
+		TaskComparison(const bool& revparam=false)
 		{reverse=revparam;}
 		bool operator() (const Task* lhs, const Task* rhs) const
 		{

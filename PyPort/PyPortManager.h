@@ -39,7 +39,7 @@ class PyPortManager;
 #include <iostream>
 #include "PyPort.h"
 
-class PyPortManager : public odc::SyncIOManager
+class PyPortManager : public odc::SyncIOManager<odc::IOManager>
 {
 public:
 	PyPortManager(std::shared_ptr<odc::IOManager> pIOMgr);

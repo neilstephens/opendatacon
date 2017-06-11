@@ -30,14 +30,15 @@
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <random>
+#include "SimPortManager.h"
 
 using namespace odc;
 
-class SimPort: public DataPort
+class SimPort: public DataPort, SyncIOManager<SimPortManager>
 {
 public:
 	//Implement DataPort interface
-	SimPort(std::string Name, std::string File, const Json::Value Overrides);
+	SimPort(std::shared_ptr<SimPortManager> Manager, std::string Name, std::string File, const Json::Value Overrides);
 	void Enable() final;
 	void Disable() final;
 	void BuildOrRebuild() final;
@@ -72,15 +73,10 @@ public:
 	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) final;
 
 private:
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	typedef std::shared_ptr<Timer_t> pTimer_t;
-	std::vector<pTimer_t> Timers;
-	void SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed);
-	void SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed);
+	std::vector<Task> Tasks;
 	void PortUp();
 	void PortDown();
 
-	std::unique_ptr<asio::strand> pEnableDisableSync;
 	bool enabled;
 	std::mt19937 RandNumGenerator;
 };

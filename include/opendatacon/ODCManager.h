@@ -85,7 +85,7 @@ namespace odc {
 			IOS.poll_one();
 		}
 
-		virtual void Shutdown() override
+		void Shutdown()
 		{
 			scheduler.Shutdown();
 			ios_working.reset();
