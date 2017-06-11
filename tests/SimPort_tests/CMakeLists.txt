@@ -17,6 +17,21 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-add_subdirectory(ODC_tests)
-add_subdirectory(DNP3Port_tests)
-add_subdirectory(SimPort_tests)
+project(SimPort_tests)
+cmake_minimum_required(VERSION 2.8)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
+
+include_directories(
+	"../catch"
+	"../../include"
+	"../../JSON"
+	"../../SimPort"
+	"${DNP3_HOME}/include"
+	"${ASIO_HOME}/include"
+)
+
+add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC JSON ${asiodnp3_libs} ${openpal_libs} ${opendnp3_libs} ${DL})
+
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
