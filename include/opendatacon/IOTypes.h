@@ -35,8 +35,7 @@
 #include <opendatacon/Timestamp.h>
 
 namespace odc
-{
-	
+{	
 	typedef enum { PORT_UP, CONNECTED, DISCONNECTED, PORT_DOWN } ConnectState;
 	typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
 	

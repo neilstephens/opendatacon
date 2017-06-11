@@ -53,10 +53,10 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 	this->TimestampPath = JSONRoot["TimestampPath"];
 
 	auto ind_marker = JSONRoot["TemplateIndex"].isString() ? JSONRoot["TemplateIndex"].asString() : "<INDEX>";
-	auto name_marker = JSONRoot["TemplateName"].isString() ? JSONRoot["TemplateIndex"].asString() : "<NAME>";
-	auto val_marker = JSONRoot["TemplateValue"].isString() ? JSONRoot["TemplateIndex"].asString() : "<VALUE>";
-	auto qual_marker = JSONRoot["TemplateQuality"].isString() ? JSONRoot["TemplateIndex"].asString() : "<QUALITY>";
-	auto time_marker = JSONRoot["TemplateTimestamp"].isString() ? JSONRoot["TemplateIndex"].asString() : "<TIMESTAMP>";
+	auto name_marker = JSONRoot["TemplateName"].isString() ? JSONRoot["TemplateName"].asString() : "<NAME>";
+	auto val_marker = JSONRoot["TemplateValue"].isString() ? JSONRoot["TemplateValue"].asString() : "<VALUE>";
+	auto qual_marker = JSONRoot["TemplateQuality"].isString() ? JSONRoot["TemplateQuality"].asString() : "<QUALITY>";
+	auto time_marker = JSONRoot["TemplateTimestamp"].isString() ? JSONRoot["TemplateTimestamp"].asString() : "<TIMESTAMP>";
 	if(JSONRoot.isMember("OutputTemplate"))
 	{
 		pJOT.reset(new JSONOutputTemplate(JSONRoot["OutputTemplate"],ind_marker,name_marker,val_marker,qual_marker,time_marker));

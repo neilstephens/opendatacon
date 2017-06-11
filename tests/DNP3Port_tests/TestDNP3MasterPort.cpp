@@ -56,7 +56,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 			}
 			/// Test the destruction of an enabled port
 			{
-				std::unique_ptr<odc::DataPort> MPUT(factory->CreateDataPort("DNP3Master","MasterUnderTest1", "", ""));
+				std::unique_ptr<odc::DataPort> MPUT(factory->CreateDataPort("DNP3Master","MasterUnderTest", "", ""));
 				REQUIRE(MPUT);
 				
 				MPUT->BuildOrRebuild();

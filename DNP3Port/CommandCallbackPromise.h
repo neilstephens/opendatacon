@@ -30,10 +30,9 @@
 #include <iostream>
 #include <future>
 #include <opendnp3/master/ITaskCallback.h>
-#include <opendnp3/master/CommandCallbackT.h>
 #include "CommandCorrespondant.h"
 
-class CommandCallbackPromise: public opendnp3::CommandCallbackT
+class CommandCallbackPromise
 {
 public:
 	CommandCallbackPromise(std::promise<CommandStatus> aPromise, std::function<void()> aCompletionHook = nullptr):
@@ -42,9 +41,9 @@ public:
 	{}
 	virtual ~CommandCallbackPromise(){}
 
-	void OnComplete(const opendnp3::TaskCompletion& response)
+	void OnComplete(const opendnp3::ICommandTaskResult& response)
 	{
-		switch(response)
+		switch(response.summary)
 		{
 			case opendnp3::TaskCompletion::SUCCESS:
 				mPromise.set_value(CommandStatus::SUCCESS);

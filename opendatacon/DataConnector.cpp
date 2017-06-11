@@ -29,6 +29,7 @@
 #include <opendnp3/LogLevels.h>
 #include "DataConnector.h"
 #include "IndexOffsetTransform.h"
+#include "IndexMapTransform.h"
 #include "ThresholdTransform.h"
 #include "RandTransform.h"
 #include "RateLimitTransform.h"
@@ -104,6 +105,11 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				if(Transforms[n]["Type"].asString() == "IndexOffset")
 				{
 					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new IndexOffsetTransform(Transforms[n]["Parameters"]), normal_delete));
+					continue;
+				}
+				if(Transforms[n]["Type"].asString() == "IndexMap")
+				{
+					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new IndexMapTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "Threshold")
@@ -240,7 +246,7 @@ inline std::future<CommandStatus> DataConnector::EventT(const T& event_obj, uint
 			if(ret.get() != CommandStatus::SUCCESS)
 				return IOHandler::CommandFutureUndefined();
 		}
-		return std::move(returns.back());
+		return IOHandler::CommandFutureSuccess();
 	}
 	//no connection for sender if we get here
 	std::string msg = "Connector '"+this->Name+"' discarding event from '"+SenderName+"' (No connection defined)";

@@ -142,6 +142,9 @@ endif()
 # Compiler configuration
 
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
@@ -155,7 +158,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
-	set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -pedantic")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
 
 	# different release and debug flags
 	set(CMAKE_CXX_FLAGS_RELEASE "-O3")

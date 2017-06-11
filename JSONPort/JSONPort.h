@@ -68,6 +68,7 @@ protected:
 private:
 	asio::basic_streambuf<std::allocator<char> > readbuf;
 	void ReadCompletionHandler(asio::error_code err_code);
+	void AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future_results, size_t index, std::shared_ptr<Timer_t> pTimer, double poll_time_ms, double backoff_factor);
 	void ProcessBraced(std::string braced);
 	template<typename T> void LoadT(T meas, uint16_t index, Json::Value timestamp_val);
 
