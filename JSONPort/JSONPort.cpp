@@ -439,7 +439,17 @@ void JSONPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_wr
 {
 	if(err_code)
 	{
-		if(err_code != asio::error::eof)
+		if(err_code == asio::error::bad_descriptor) //not connected - retry later
+		{
+			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
+			pTimer->expires_from_now(std::chrono::milliseconds(static_cast<JSONPortConf*>(this->pConf.get())->retry_time_ms));
+			pTimer->async_wait([pTimer,this](asio::error_code err_code)
+						 {
+							Write();
+						 });
+			return;
+		}
+		else if(err_code != asio::error::eof)
 		{
 			std::string msg = Name+": Write error: '"+err_code.message()+"'";
 			auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::ERR,"", msg.c_str(), -1);

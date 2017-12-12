@@ -392,10 +392,9 @@ void DataConcentrator::Run()
 		}
 		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
 		{
-			//FIXME: this leaks a timer on the heap!
-			auto pTimer = new asio::basic_waitable_timer<std::chrono::steady_clock>(IOS);
+			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(IOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
-			pTimer->async_wait([&](asio::error_code err_code)
+			pTimer->async_wait([pTimer,this,&Name_n_Conn](asio::error_code err_code)
 						 {
 							 Name_n_Conn.second->Enable();
 						 });
@@ -413,10 +412,9 @@ void DataConcentrator::Run()
 		}
 		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
 		{
-			//FIXME: this leaks a timer on the heap!
-			auto pTimer = new asio::basic_waitable_timer<std::chrono::steady_clock>(IOS);
+			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(IOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
-			pTimer->async_wait([&](asio::error_code err_code)
+			pTimer->async_wait([pTimer,this,&Name_n_Port](asio::error_code err_code)
 						 {
 							 Name_n_Port.second->Enable();
 						 });
