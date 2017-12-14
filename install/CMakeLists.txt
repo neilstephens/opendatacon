@@ -37,7 +37,7 @@ message("Cross toolchain detect: ${cross_detect}")
 string(REGEX MATCH "(-m32)" BITNESS_MATCH ${CMAKE_CXX_FLAGS} "")
 set(bit_detect ${CMAKE_MATCH_1})
 message("Compile bitness detect: ${bit_detect}")
-set(CPACK_PACKAGE_FILE_NAME "opendatacon-${ODC_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}${bit_detect}-${cross_detect}${CMAKE_BUILD_TYPE}")
+set(CPACK_PACKAGE_FILE_NAME "opendatacon-${GIT_DESCRIBE}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}${bit_detect}-${cross_detect}${CMAKE_BUILD_TYPE}")
 
 # Mac OSX bundle specific variables
 set(CPACK_BUNDLE_NAME opendatacon)
