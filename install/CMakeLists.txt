@@ -32,7 +32,12 @@ set(CPACK_PACKAGE_VERSION_PATCH ${ODC_MICRO_VERSION})
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
 
 string(REGEX MATCH "/([^/]*-)" TOOLCHAIN_MATCH ${CMAKE_TOOLCHAIN_FILE} "")
-set(CPACK_PACKAGE_FILE_NAME "opendatacon-${ODC_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_MATCH_1}${CMAKE_BUILD_TYPE}")
+set(cross_detect ${CMAKE_MATCH_1})
+message("Cross toolchain detect: ${cross_detect}")
+string(REGEX MATCH "(-m32)" BITNESS_MATCH ${CMAKE_CXX_FLAGS} "")
+set(bit_detect ${CMAKE_MATCH_1})
+message("Compile bitness detect: ${bit_detect}")
+set(CPACK_PACKAGE_FILE_NAME "opendatacon-${ODC_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}${bit_detect}-${cross_detect}${CMAKE_BUILD_TYPE}")
 
 # Mac OSX bundle specific variables
 set(CPACK_BUNDLE_NAME opendatacon)
