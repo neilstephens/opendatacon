@@ -445,7 +445,8 @@ void JSONPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_wr
 			pTimer->expires_from_now(std::chrono::milliseconds(static_cast<JSONPortConf*>(this->pConf.get())->retry_time_ms));
 			pTimer->async_wait([pTimer,this](asio::error_code err_code)
 						 {
-							Write();
+							if (err_code != asio::error::operation_aborted && enabled)
+								Write();
 						 });
 			return;
 		}

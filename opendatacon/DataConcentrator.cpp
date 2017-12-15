@@ -396,6 +396,7 @@ void DataConcentrator::Run()
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
 			pTimer->async_wait([pTimer,this,&Name_n_Conn](asio::error_code err_code)
 						 {
+							//FIXME: check err_code?
 							 Name_n_Conn.second->Enable();
 						 });
 		}
@@ -416,6 +417,7 @@ void DataConcentrator::Run()
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
 			pTimer->async_wait([pTimer,this,&Name_n_Port](asio::error_code err_code)
 						 {
+							//FIXME: check err_code?
 							 Name_n_Port.second->Enable();
 						 });
 		}

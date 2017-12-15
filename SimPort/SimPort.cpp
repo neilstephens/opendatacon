@@ -87,6 +87,7 @@ void SimPort::PortUp()
 			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 			pTimer->async_wait([=](asio::error_code err_code)
 			                   {
+							//FIXME: check err_code?
 							 if(enabled)
 								 SpawnEvent(pMean, std_dev, interval, index, pTimer, seed);
 						 });
@@ -108,6 +109,7 @@ void SimPort::PortUp()
 			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 			pTimer->async_wait([=](asio::error_code err_code)
 						 {
+							//FIXME: check err_code?
 							 if(enabled)
 								 SpawnEvent(pVal, interval, index, pTimer, seed);
 						 });
@@ -135,6 +137,7 @@ void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
 	                   {
+					//FIXME: check err_code?
 					 if(enabled)
 						 SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
 					//else - break timer cycle
@@ -155,6 +158,7 @@ void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, si
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
 				 {
+					//FIXME: check err_code?
 					 if(enabled)
 						 SpawnEvent(pVal,interval,index,pTimer,seed);
 					//else - break timer cycle
@@ -490,6 +494,7 @@ std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arComma
 								pTimer->expires_from_now(std::chrono::milliseconds(arCommand.onTimeMS));
 								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
 											 {
+												//FIXME: check err_code?
 												PublishEvent(fb.off_value,fb.binary_index);
 											 });
 								//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
