@@ -1,4 +1,18 @@
-opendatacon version 0.3.4
+opendatacon version 0.4.0
+
+0.4.0
+	- Improved memory management for dynamically loaded modules
+	- CPack package generation
+	- Linux daemon / Windows service
+	- Beginnings of test suite
+	- Console UI plugin
+	- Simulator Port
+	- Modbus Port
+	- Index Mapping Transform
+	- Serial support for DNP3 Port
+	- DNP3 Outstation and Master now support both TCP Client and Server modes
+	- JSON Port support for reading, writing and controls (with feedback), and TCP Server support
+	- C++14 under the hood
 
 0.3.4	- Hotfix for DNP3OutstationPort - DNP3 outstation tcp socket was configured to only re-listen after 5 seconds
 	    Exposed configuration items for min and max retry periods for listening and connecting tcp sockets.
