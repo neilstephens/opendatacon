@@ -19,20 +19,17 @@
  # 
 project(JSONPort)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. JSONPort_SRC)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 include_directories(
 	"../include"
 	"../JSON"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"${ASIO_HOME}/asio/include/"
+	"${DNP3_HOME}/include"
+	"${ASIO_HOME}/include"
 )
 
-link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}")
-link_libraries(ODC)
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC ${openpal_libs} ${opendnp3_libs})
 
-add_library(${PROJECT_NAME} SHARED ${JSONPort_SRC})
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

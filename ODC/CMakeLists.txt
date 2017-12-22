@@ -19,18 +19,17 @@
  # 
 project(ODC)
 cmake_minimum_required(VERSION 2.8)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
-aux_source_directory(. ODC_SRC)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def ../include/opendatacon/*.h)
 
 include_directories(
 	"../JSON"
 	"../include"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"${ASIO_HOME}/asio/include/"
+	"${DNP3_HOME}/include"
+	"${ASIO_HOME}/include"
 )
 
-add_library(${PROJECT_NAME} SHARED ${ODC_SRC})
+add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} JSON ${asiopal_libs})
 
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_LIBS} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_BINS})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)

@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * main.cpp
  *
@@ -35,4 +35,16 @@ extern "C" DNP3MasterPort* new_DNP3MasterPort(std::string Name, std::string File
 extern "C" DNP3OutstationPort* new_DNP3OutstationPort(std::string Name, std::string File, const Json::Value Overrides)
 {
 	return new DNP3OutstationPort(Name,File,Overrides);
+}
+
+extern "C" void delete_DNP3MasterPort(DNP3MasterPort* aPort_ptr)
+{
+	delete aPort_ptr;
+	return;
+}
+
+extern "C" void delete_DNP3OutstationPort(DNP3OutstationPort* aPort_ptr)
+{
+	delete aPort_ptr;
+	return;
 }

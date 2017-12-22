@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 //
 //  main.cpp
 //  opendatacon
@@ -27,18 +27,24 @@
 
 #include "WebUI.h"
 
-extern "C" IUI* new_WebUIPlugin(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" WebUI* new_WebUIPlugin(std::string Name, std::string File, const Json::Value Overrides)
 {
-    std::string ip = "0.0.0.0";
-    uint16_t port = 443;
-    if(Overrides.isObject())
-    {
-        if(!Overrides["IP"].isNull())
-            ip= Overrides["IP"].asString();
-        
-        if(!Overrides["Port"].isNull())
-            port = Overrides["Port"].asUInt();
-    }
-    
-    return new WebUI(port);
+	std::string ip = "0.0.0.0";
+	uint16_t port = 443;
+	if(Overrides.isObject())
+	{
+		if(Overrides.isMember("IP"))
+			ip= Overrides["IP"].asString();
+
+		if(Overrides.isMember("Port"))
+			port = Overrides["Port"].asUInt();
+	}
+
+	return new WebUI(port);
+}
+
+extern "C" void delete_WebUIPlugin(WebUI* aIUI_ptr)
+{
+	delete aIUI_ptr;
+	return;
 }

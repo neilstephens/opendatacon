@@ -1,20 +1,7 @@
-build/
-*.suo
-*.vcxproj.user
-Release/
-Debug/
-Release-rpi/
-Debug-rpi/
-Release-RHEL65/
-Debug-RHEL65/
+/build*
+include/opendatacon/Version.h
+_site/*
+Gemfile.lock
 .directory
-*.opensdf
-*.sdf
-lib/
-opendatacon.xcodeproj
-opendatacon.build
-make.log
-scripts/gmon.out
-scripts/perf.svgz
-example/
+CMakeLists.txt.user
 

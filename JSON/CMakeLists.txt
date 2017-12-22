@@ -19,10 +19,8 @@
  # 
 project(JSON)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. JSON_SRC)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-add_library(${PROJECT_NAME} SHARED ${JSON_SRC})
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def json/*.h)
 
-
-
-
+add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_LIBS} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_BINS})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)

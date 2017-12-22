@@ -19,20 +19,18 @@
  # 
 project(DNP3Port)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. DNP3Port_SRC)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 include_directories(
-	"../include"
-	"../JSON"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiodnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/asiopal/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/opendnp3/src/"
-	"${DNP3_HOME}/dnp3${MY_CONFIG_POSTFIX}/cpp/libs/openpal/src/"
-	"${ASIO_HOME}/asio/include/"
+	../include
+	../JSON
+	${DNP3_HOME}/include
+	${ASIO_HOME}/include
 )
 
-link_directories("${PROJECT_SOURCE_DIR}/../ODC/${MY_BUILD_CONFIG}"
-"${PROJECT_SOURCE_DIR}/../../dnp3${MY_CONFIG_POSTFIX}/.libs")
-link_libraries(ODC asiopal openpal asiodnp3 opendnp3)
-add_library(${PROJECT_NAME} SHARED ${DNP3Port_SRC})
+#TODO add as module - can't atm, due to tests linking directly instead of dynamic loading
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC ${asiopal_libs} ${openpal_libs} ${asiodnp3_libs} ${opendnp3_libs})
+
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

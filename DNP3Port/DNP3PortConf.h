@@ -4,11 +4,11 @@
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *	
+ *
  *	Licensed under the Apache License, Version 2.0 (the "License");
  *	you may not use this file except in compliance with the License.
  *	You may obtain a copy of the License at
- *	
+ *
  *		http://www.apache.org/licenses/LICENSE-2.0
  *
  *	Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,7 @@
  *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
- */ 
+ */
 /*
  * DNP3OutstationPortConf.h
  *
@@ -30,24 +30,41 @@
 #include <opendatacon/DataPort.h>
 #include "DNP3PointConf.h"
 
+enum TCPClientServer {CLIENT,SERVER,DEFAULT};
 enum server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 struct DNP3AddrConf
 {
+	//Serial
+	asiopal::SerialSettings SerialSettings;
+
+	//IP
 	std::string IP;
 	uint16_t Port;
+	TCPClientServer ClientServer;
+
+	//Common
 	uint16_t OutstationAddr;
 	uint16_t MasterAddr;
 	server_type_t ServerType;
-	DNP3AddrConf() :IP("0.0.0.0"), Port(20000), OutstationAddr(1), MasterAddr(0), ServerType(server_type_t::ONDEMAND){};
+
+	DNP3AddrConf():
+		SerialSettings(),
+		IP("127.0.0.1"),
+		Port(20000),
+		ClientServer(TCPClientServer::DEFAULT),
+		OutstationAddr(1),
+		MasterAddr(0),
+		ServerType(server_type_t::ONDEMAND)
+	{}
 };
 
 class DNP3PortConf: public DataPortConf
 {
 public:
-	DNP3PortConf(std::string FileName)
+	DNP3PortConf(std::string FileName, const Json::Value& ConfOverrides)
 	{
-		pPointConf.reset(new DNP3PointConf(FileName));
-	};
+		pPointConf.reset(new DNP3PointConf(FileName, ConfOverrides));
+	}
 
 	std::unique_ptr<DNP3PointConf> pPointConf;
 	DNP3AddrConf mAddrConf;

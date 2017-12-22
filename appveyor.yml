@@ -1,0 +1,61 @@
+version: 0.4.0.{build}
+branches:
+  only:
+  - develop
+os: Visual Studio 2013
+configuration: Develop
+platform: x86
+clone_folder: C:\projects\opendatacon
+environment:
+  DNP3_HOME: C:\dnp3\dnp3-2.0.x-win32
+  TCLAP_HOME: C:\tclap\tclap-1.2.1
+  ASIO_HOME: C:\asio\asio-1.10.6
+  MICROHTTPD_HOME: C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
+  MODBUS_HOME: C:\libmodbus\libmodbus\windows32
+install:
+- ps: >-
+    If (-not (Test-Path C:\dnp3\dnp3-2.0.x-win32)){
+      Start-FileDownload "https://www.dropbox.com/s/oex7hf1r1tg4kte/dnp3-2.0.x-win32.zip?dl=1" -FileName dnp3-2.0.x-win32.zip
+      7z x -y dnp3-2.0.x-win32.zip
+      New-Item C:\dnp3 -ItemType Directory
+      Move-Item .\dnp3-2.0.x-win32 C:\dnp3\dnp3-2.0.x-win32
+    }
+- ps: >-
+    If (-not (Test-Path C:\libmodbus\libmodbus)){
+      Start-FileDownload "https://www.dropbox.com/s/iqf95y9x1x4ol36/libmodbus.zip?dl=1" -FileName libmodbus.zip
+      7z x -y libmodbus.zip
+      New-Item C:\libmodbus -ItemType Directory
+      Move-Item .\libmodbus C:\libmodbus\libmodbus
+    }
+- ps: >-
+    If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.17-w32)){
+      Start-FileDownload "https://www.dropbox.com/s/13t92f57wie4wnb/libmicrohttpd-0.9.17-w32.zip?dl=1" -FileName libmicrohttpd-0.9.17-w32.zip
+      7z x -y libmicrohttpd-0.9.17-w32.zip
+      New-Item C:\libmicrohttpd -ItemType Directory
+      Move-Item .\libmicrohttpd-0.9.17-w32 C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
+    }
+- ps: >-
+    If (-not (Test-Path C:\tclap\tclap-1.2.1)){
+      Start-FileDownload "http://downloads.sourceforge.net/project/tclap/tclap-1.2.1.tar.gz" -FileName tclap-1.2.1.tar.gz
+      7z x -y tclap-1.2.1.tar.gz
+      7z x -y tclap-1.2.1.tar
+      New-Item C:\tclap -ItemType Directory
+      Move-Item .\tclap-1.2.1 C:\tclap\tclap-1.2.1
+    }
+- ps: >-
+    if (-not (Test-Path C:\asio\asio-1.10.6)){
+      Start-FileDownload "https://github.com/chriskohlhoff/asio/archive/asio-1-10-6.zip" -FileName asio-1-10-6.zip
+      7z x -y asio-1-10-6.zip
+      New-Item C:\asio -ItemType Directory
+      Move-Item .\asio-asio-1-10-6\asio C:\asio\asio-1.10.6
+    }
+cache:
+- C:\dnp3\
+- C:\asio\
+- C:\tclap\
+- C:\libmodbus\
+- C:\libmicrohttpd\
+build_script:
+- cmd: cd C:\projects\opendatacon
+- cmd: cmake . -Bbuild-win32 -DFULL=ON -DASIO_HOME=C:\asio\asio-1.10.6 -DDNP3_HOME=C:\dnp3\dnp3-2.0.x-win32 -DMODBUS_HOME=c:\libmodbus\libmodbus\windows32 -DTCLAP_HOME=C:\tclap\tclap-1.2.1 -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
+- cmd: msbuild build-win32\opendatacon_suite.sln /p:Configuration=Release /p:Platform=Win32

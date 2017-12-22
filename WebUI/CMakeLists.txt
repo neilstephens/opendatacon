@@ -19,16 +19,46 @@
  # 
 project(WebUI)
 cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. WebUI_SRC)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DASIO_STANDALONE")
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
+
+set(MICROHTTPD_HOME_INSTRUCTIONS "Choose the location of libmicrohttpd: where it was installed - there should be lib and include directories within")
+if(DEFINED MICROHTTPD_HOME)
+	set(MICROHTTPD_HOME ${MICROHTTPD_HOME} CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
+else()
+	set(MICROHTTPD_HOME "/usr/local" CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
+endif()
 
 include_directories(
-	"../include"
-	"../JSON"
-	"${MICROHTTPD_HOME}/microhttpd${MY_CONFIG_POSTFIX}/include"
+	../include
+	../JSON
+	${MICROHTTPD_HOME}/include
 )
 
-link_directories("${MICROHTTPD_HOME}/microhttpd${MY_CONFIG_POSTFIX}/lib")
-link_libraries(ODC microhttpd)
+#import the microhttpd lib
+find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
+	PATHS ${MICROHTTPD_HOME}/lib
+	PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
+	NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+add_library(httpd_target UNKNOWN IMPORTED)
+set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
 
-add_library(${PROJECT_NAME} SHARED ${WebUI_SRC})
+#hide (in non-advanced mode) the library path in cmake guis since it's derrived
+mark_as_advanced(FORCE HTTPD_LIB)
+
+#include in install/packaging
+get_filename_component(_resolvedFile "${HTTPD_LIB}" REALPATH) #check for symolic link
+if(${_resolvedFile} STREQUAL ${HTTPD_LIB})
+	#not a link - just install file
+	install(FILES "${HTTPD_LIB}" DESTINATION ${INSTALLDIR_LIBS})
+else()
+	#is a link -install link and file
+	install(FILES "${HTTPD_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
+endif()
+
+link_directories("${DNP3_HOME}/lib")
+
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC httpd_target asiopal)
+
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
