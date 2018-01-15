@@ -20,3 +20,6 @@
 LIBRARY JSONPort
 EXPORTS
 	new_JSONClientPort
+	new_JSONServerPort
+	delete_JSONClientPort
+	delete_JSONServerPort

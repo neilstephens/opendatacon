@@ -21,3 +21,5 @@ LIBRARY ModbusPort
 EXPORTS
 	new_ModbusMasterPort
 	new_ModbusOutstationPort
+	delete_ModbusMasterPort
+	delete_ModbusOutstationPort

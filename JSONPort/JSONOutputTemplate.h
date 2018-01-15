@@ -37,7 +37,7 @@ public:
 	JSONOutputTemplate& operator=(const JSONOutputTemplate&) = delete;
 
 	JSONOutputTemplate(const Json::Value& aJV, const std::string& ind_marker, const std::string& name_marker, const std::string& val_marker, const std::string& qual_marker, const std::string& time_marker):
-		NullJV(Json::Value::null),
+		NullJV(Json::Value::nullSingleton()),
 		JV(aJV),
 		ind_ref(find_marker(ind_marker,JV)),
 		name_ref(find_marker(name_marker,JV)),
@@ -46,7 +46,7 @@ public:
 		time_ref(find_marker(time_marker,JV))
 	{}
 	template<typename T>
-	Json::Value Instantiate(const T& event, u_int16_t index, const std::string Name = "")
+	Json::Value Instantiate(const T& event, uint16_t index, const std::string Name = "")
 	{
 		Json::Value instance = JV;
 		if(!ind_ref.isNull())

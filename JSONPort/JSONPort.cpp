@@ -521,11 +521,11 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString());
 			return std::move(output);
 		}
-		return Json::Value::null;
+		return Json::Value::nullSingleton();
 	};
 	auto output = std::is_same<T,Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
 			  std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
-										  Json::Value::null;
+										  Json::Value::nullSingleton();
 	if(output.isNull())
 		return IOHandler::CommandFutureNotSupported();
 

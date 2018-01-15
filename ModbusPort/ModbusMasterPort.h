@@ -34,8 +34,6 @@
 #include "ModbusPort.h"
 #include <opendatacon/ASIOScheduler.h>
 
-using namespace opendnp3;
-
 #include <utility>
 
 /*
