@@ -129,8 +129,15 @@ void JSONPort::ReadCompletionHandler(asio::error_code err_code)
 	{
 		//remote end closed the connection - reset and try reconnecting
 		PublishEvent(ConnectState::DISCONNECTED , 0);
-		Disable();
-		Enable();
+
+		//pWriteQueueStrand is used to synchronise access to a queue for writing,
+		//but we're using the side effect of synchronising access to the underlying socket here
+		//TODO: implement a nicer way to synchronise access to the socket
+		pWriteQueueStrand->post([this]()
+		{
+			Disable();
+			Enable();
+		});
 	}
 }
 
@@ -428,12 +435,31 @@ void JSONPort::QueueWrite(const std::string &message)
 			write_queue.pop_front();
 	});
 }
+void JSONPort::RetryWrite()
+{
+	auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
+	pTimer->expires_from_now(std::chrono::milliseconds(static_cast<JSONPortConf*>(this->pConf.get())->retry_time_ms));
+	pTimer->async_wait([pTimer,this](asio::error_code err_code)
+				 {
+					if (err_code != asio::error::operation_aborted && enabled)
+						Write();
+					else if (enabled)
+						RetryWrite();
+					//if we're bailing out, clear the write queue, otherwise writing can't start again later
+					else
+						write_queue.clear();
+				 });
+}
 void JSONPort::Write()
 {
-	asio::async_write(*pSock.get(),
+	auto apSock = pSock.get();
+	if(apSock != nullptr)
+		asio::async_write(*apSock,
 				asio::buffer(write_queue[0].c_str(),write_queue[0].size()),
 				pWriteQueueStrand->wrap(std::bind(&JSONPort::WriteCompletionHandler,this,std::placeholders::_1,std::placeholders::_2))
 				);
+	else
+		RetryWrite();
 }
 void JSONPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_written)
 {
@@ -441,13 +467,7 @@ void JSONPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_wr
 	{
 		if(err_code == asio::error::bad_descriptor) //not connected - retry later
 		{
-			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
-			pTimer->expires_from_now(std::chrono::milliseconds(static_cast<JSONPortConf*>(this->pConf.get())->retry_time_ms));
-			pTimer->async_wait([pTimer,this](asio::error_code err_code)
-						 {
-							if (err_code != asio::error::operation_aborted && enabled)
-								Write();
-						 });
+			RetryWrite();
 			return;
 		}
 		else if(err_code != asio::error::eof)

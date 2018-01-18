@@ -89,6 +89,7 @@ private:
 	std::unique_ptr<asio::strand> pWriteQueueStrand;
 	void QueueWrite(const std::string& message);
 	void Write();
+	void RetryWrite();
 	void WriteCompletionHandler(asio::error_code err_code, size_t bytes_written);
 
 };
