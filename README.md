@@ -149,7 +149,7 @@ sudo make install
 
 Here is an example diagram of basic components for configuring opendatacon, and how they fit together.
 
-![](https://github.com/neilstephens/wikiimages/blob/master/opendatacon_components.png)
+![BasicComponents](https://github.com/neilstephens/wikiimages/raw/master/opendatacon_components.png)
 
 ### Ports
 
@@ -380,7 +380,7 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 ```json
 {
     //------- DNP3 Link Configuration--------#
-    "IP" : 1.2.3.4,
+    "IP" : "1.2.3.4",
     "Port" : 20000,
     "MasterAddr" : 0,
     "OutstationAddr" : 1,
