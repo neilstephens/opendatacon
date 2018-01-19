@@ -599,6 +599,7 @@ To be successfully loaded, a library only needs to export a single C style const
 
 ```c
 extern "C" DataPort* new_PORTNAMEPort(std::string Name, std::string File, const Json::Value Overrides);
+extern "C" void delete_PORTNAMEPort(DataPort*);
 ```
 
 PORTNAME in the example above is the name used as "Type" in the port configuration. It must return a pointer to a new heap allocated instance of a descendant of C++ class DataPort. The declaration of DataPort is included here for context. The whole class hierarchy for DataPort from the public header files (include directory in the opendatacon repository) is needed in practice.
@@ -624,6 +625,53 @@ class DataPort: public IOHandler, public ConfigParser
 ```
 
 ### Transform
+
+Similar to Ports, custom Transforms can be implemented as dynamically loaded modules with specified entry points.
+
+```c
+extern "C" Transform* new_SOMETransform(const Json::Value params);
+extern "C" void delete_SOMETransform(Transform* pSometx);
+```
+The 'newing' function just has to construct a instance of a class derriving from the Transform base class (see below) on the heap, and return a pointer to the object.
+
+The 'deleting' function just has to destroy the specified object.
+
+Here is the Transform class declaration, taken from the public header file directory (include dir installed with opendatacon) of opendatacon, for context:
+
+```C++
+class Transform
+{
+public:
+	Transform(Json::Value params): params(params){}
+	virtual ~Transform(){}
+
+	virtual bool Event(Binary& meas, uint16_t& index) { return true; }
+	virtual bool Event(DoubleBitBinary& meas, uint16_t& index) { return true; }
+	virtual bool Event(Analog& meas, uint16_t& index) { return true; }
+	virtual bool Event(Counter& meas, uint16_t& index) { return true; }
+	virtual bool Event(FrozenCounter& meas, uint16_t& index) { return true; }
+	virtual bool Event(BinaryOutputStatus& meas, uint16_t& index) { return true; }
+	virtual bool Event(AnalogOutputStatus& meas, uint16_t& index) { return true; }
+	virtual bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) { return true; }
+	virtual bool Event(AnalogOutputInt16& arCommand, uint16_t index) { return true; }
+	virtual bool Event(AnalogOutputInt32& arCommand, uint16_t index) { return true; }
+	virtual bool Event(AnalogOutputFloat32& arCommand, uint16_t index) { return true; }
+	virtual bool Event(AnalogOutputDouble64& arCommand, uint16_t index) { return true; }
+
+	virtual bool Event(BinaryQuality qual, uint16_t index) { return true; }
+	virtual bool Event(DoubleBitBinaryQuality qual, uint16_t index) { return true; }
+	virtual bool Event(AnalogQuality qual, uint16_t index) { return true; }
+	virtual bool Event(CounterQuality qual, uint16_t index) { return true; }
+	virtual bool Event(FrozenCounterQuality qual, uint16_t index) { return true; }
+	virtual bool Event(BinaryOutputStatusQuality qual, uint16_t index) { return true; }
+	virtual bool Event(AnalogOutputStatusQuality qual, uint16_t index) { return true; }
+
+	virtual bool Event(ConnectState state, uint16_t index){ return true; }
+
+	Json::Value params;
+};
+```
+
 
 ### User interface
 
