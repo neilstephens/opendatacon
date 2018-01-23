@@ -33,6 +33,7 @@
 #include "ThresholdTransform.h"
 #include "RandTransform.h"
 #include "RateLimitTransform.h"
+#include "LogicInvTransform.h"
 #include <opendatacon/Platform.h>
 #include <opendatacon/IOManager.h>
 
@@ -125,6 +126,11 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				if(Transforms[n]["Type"].asString() == "RateLimit")
 				{
 					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new RateLimitTransform(Transforms[n]["Parameters"]), normal_delete));
+					continue;
+				}
+				if(Transforms[n]["Type"].asString() == "LogicInv")
+				{
+					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new LogicInvTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 
