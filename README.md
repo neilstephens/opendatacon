@@ -146,18 +146,31 @@ sudo make install
 ```
 
 ## Basic components
+Here are some examples utilising the basic components for configuring opendatacon, to show how they fit together.
 
-Here is an example diagram of basic components for configuring opendatacon, and how they fit together.
+![one_to_one](images/one_to_one.PNG)
+Port 1 and port 2 are subscribed to each other by a single connection.
 
-![BasicComponents](https://github.com/neilstephens/wikiimages/raw/master/opendatacon_components.png)
+![one_to_two](images/one_to_two.PNG)
+Port 1 and port 2 are subscribed to each other. Port 1 and port 3 are also subscribed. Each has its own connection.
+
+![one_to_one_transform](images/one_to_one_transform.PNG)
+Port 1 and port 2 are subscribed to each other by a single connection. There is a unidirectional transform affecting the data sent from port 1 to port 2.
+
+![one_to_two_transform](images/one_to_two_transform.PNG)
+Port 1 and port 2 are subscribed to each other. Port 1 and port 3 are also subscribed. There is a unidirectional transform affecting the data sent from port 1 to port 2 and port 3. There is also a unidirectional transform affecting the data sent from port 2 to port 1.
 
 ### Ports
 
-Ports are the interface between opendatacon and the outside world. It is a Port's job to translate from/to the internal data structures used by opendatacon to/from an external protocol. For example, as of opendatacon 0.3.0, there are built in Port types:
+Ports are the interface between opendatacon and the outside world. It is a Port's job to translate from/to the internal data structures used by opendatacon to/from an external protocol. For example, as of opendatacon 0.4.0, there are built in Port types:
 
 *   DNP3 Master Port
 *   DNP3 Outstation Port
+*   Modbus Master Port
+*   Modbus Outstation Port
+*   Simulation Port
 *   JSON Client Port
+*   Null port
 
 ### Connectors
 
@@ -359,7 +372,38 @@ The IndexOffset transform expects a JSON object with the following keys to be pr
 | "threshold" | number | The value which the Analog value has to meet or surpass to allow data past for the group of points | No | approx -1.79769313486231570815e+308 |
 | "points" | <span>array</span> | The point indexes of the points that should be blocked if the Analog value doesn't meet the threshold | No | Empty |
 
+##### IndexMap "Parameters"
 
+The IndexMap transform enables point indexes to be remapped. It expects a JSON object with the following keys to be provided as the "Parameters" value:
+
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "AnalogMap" | JSON object | A JSON object containing two arrays. | No | Empty |
+| "BinaryMap" | JSON object | A JSON object containing two arrays. | No | Empty |
+| "ControlMap" | JSON object | A JSON object containing two arrays. | No | Empty |
+
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| "From" | array | An array containing the point indicies from the sending port. | No | Empty |
+| "To" | array | An array containing the new point indicies. These are sequential - From[n] will be changed to To[n], where n is the index of the array. | No | Empty |
+
+The below example maps analog point 100-105 to 0-5 (e.g. index 100 becomes index 0)
+```json
+{
+    "Type" : "IndexMap",
+    "Sender": "DNP3Master",
+    "Parameters" :
+    {
+        "AnalogMap" :
+        {
+            "From":
+            [100,101,102,103,104,105],
+            "To":
+            [0,1,2,3,4,5]
+        }
+    }
+}
+```
 ##### Rand "Parameters"
 
 There are no expected parameters for the Rand transform. Any given will be ignored.
@@ -373,6 +417,29 @@ There are no expected parameters for the Rand transform. Any given will be ignor
 #### Configuration
 
 A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master" or "DNP3Outstation", the "Library" to "DNP3Port", and the "ConfFilename" to a file containing the JSON object discussed below.
+
+##### Common keys to DNP3 Master and Outstation
+
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| IP | IP address | IP address of the server if in client mode (see TCPClientServer). IP address of interface to listen on if in server mode. | No | Client: 127.0.0.1, Server: 0.0.0.0 |
+| Port | number | Port number to communicate on. | No | 20000 |
+| MasterAddr | number | Master station address | No | 0 |
+| OutstationAddr | number | Outstation address | No | 1 |
+| LinkNumRetry | number | Number of connection attempts | No | 0 |
+| LinkTimeoutms | number | Connection timeout in milliseconds | No | 1000 |
+| LinkKeepAlivems | number | Time to keep the connection alive for in milliseconds. | No | 10000 |
+| LinkUseConfirms | boolean | Request confirmation that the frame arrived | No | false |
+| EnableUnsol | boolean | Enable unsolicited events | No | true |
+| UnsolClass1 | boolean | Enable Class 1 unsolicited events | No | false |
+| UnsolClass2 | boolean | Enable Class 2 unsolicited events | No | false |
+| UnsolClass3 | boolean | Enable Class 3 unsolicited events | No | false |
+| Analogs | JSON object | List of indvidual index objects, or a range object containing a start and a stop value. | No | empty |
+| Binaries | JSON object | List of indvidual index objects, or a range object containing a start and a stop value. | No | empty |
+| BinaryControls | JSON object | List of indvidual index objects, or a range object containing a start and a stop value. | No | empty |
+| TCPClientServer | string | Return one of CLIENT, SERVER, DEFAULT. | No | CLIENT |
+| ServerType | string | Connection type - ONDEMAND, PERSISTENT, MANUAL. | No | ONDEMAND |
+| TimestampOverride | enum | Override the timestamp received - ALWAYS, ZERO, NEVER. When configured to ZERO the timestamp will only be overwritten if the received time == 0. | No | ZERO |
 
 ##### DNP3 Master
 
@@ -422,22 +489,22 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 
 | Key | Value Type | Description | Mandatory | Default Value |
 |-----|------------|-------------|-----------|---------------|
-| MasterResponseTimeoutms |
-| MasterRespondTimeSync |
-| DoUnsolOnStartup |
-| StartupIntegrityClass0 |
-| StartupIntegrityClass1 |
-| StartupIntegrityClass2 |
-| StartupIntegrityClass3 |
-| IntegrityOnEventOverflowIIN |
-| TaskRetryPeriodms |
-| IntegrityScanRatems |
-| EventClass1ScanRatems |
-| EventClass2ScanRatems |
-| EventClass3ScanRatems |
-| DoAssignClassOnStartup |
-| OverrideControlCode |
-| CommsPoint |
+| MasterResponseTimeoutms | number | Application layer response timeout. | No | 5000 |
+| MasterRespondTimeSync | boolean | If true, the master will do time syncs when it sees the time IIN bit from the outstation. | No | true |
+| DoUnsolOnStartup | boolean | If true, the master will enable unsol on startup. | No | true |
+| StartupIntegrityClass0 | boolean | If true, the master will perform a Class 0 scan on startup. | No | true |
+| StartupIntegrityClass1 | boolean | If true, the master will perform a Class 1 scan on startup. | No | true |
+| StartupIntegrityClass2 | boolean | If true, the master will perform a Class 2 scan on startup. | No | true |
+| StartupIntegrityClass3 | boolean | If true, the master will perform a Class 3 scan on startup. | No | true |
+| IntegrityOnEventOverflowIIN | boolean | Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected. | No | true |
+| TaskRetryPeriodms | number | Time delay beforce retrying a failed task. | No | 5000 |
+| IntegrityScanRatems | number | Frequency of Class 0 (integrity) scan. | No | 3600000 |
+| EventClass1ScanRatems | number | Frequency of Class 1 scan. | No | 1000 |
+| EventClass2ScanRatems | number | Frequency of Class 2 scan. | No | 1000 |
+| EventClass3ScanRatems | number | Frequency of Class 3 scan. | No | 1000 |
+| DoAssignClassOnStartup | boolean | | No | false
+| OverrideControlCode | opendnp3 ControlCode | Overrides the control code sent by an upstream master station. | No | Undefined
+| CommsPoint | JSON object | JSON object containing the point index and fail value | No | empty
 
 
 ##### DNP3 Outstation
@@ -471,8 +538,7 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
     "StaticBinaryResponse": "Group1Var2",
     "StaticAnalogResponse": "Group30Var5",
     "StaticCounterResponse": "Group20Var1",
- 
-    "DemandCheckPeriodms": 1000,
+
     "WaitForCommandResponses": false,
     //-------Point conf--------#
     "Binaries" : [{"Index": 0},{"Index": 5}],
@@ -486,39 +552,31 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 
 | Key | Value Type | Description | Mandatory | Default Value |
 |-----|------------|-------------|-----------|---------------|
-| MaxControlsPerRequest |
-| MaxTxFragSize |
-| SelectTimeoutms |
-| SolConfirmTimeoutms |
-| UnsolConfirmTimeoutms |
-| WaitForCommandResponses |
-| DemandCheckPeriodms |
-| StaticBinaryResponse |
-| StaticAnalogResponse |
-| StaticCounterResponse |
-| EventBinaryResponse |
-| EventAnalogResponse |
-| EventCounterResponse |
-| TimestampOverride |
-| MaxBinaryEvents |
-| MaxAnalogEvents |
-| MaxCounterEvents |
+| MaxControlsPerRequest | number | The maximum number of controls the outstation will attempt to process from a single APDU. | No | 16 |
+| MaxTxFragSize | number (kB) | The maximum fragment size the outstation will use for fragments it sends. | No | 2048 |
+| SelectTimeoutms | number | How long the outstation will allow an operate to proceed after a prior select. | No | 10000 |
+| SolConfirmTimeoutms | number | Timeout for solicited confirms. | No | 5000 |
+| UnsolConfirmTimeoutms | number | Timeout for unsolicited confirms. | No | 5000 |
+| WaitForCommandResponses | boolean | When responding to a command, wait for downstream command responses, otherwise returns success. | No | false |
+| StaticBinaryResponse | DNP3 data type | Group and variation for static binary data | No | Group1Var1 |
+| StaticAnalogResponse | DNP3 data type | Group and variation for static analog data | No | Group30Var5 |
+| StaticCounterResponse | DNP3 data type | Group and variation for static counter data | No | Group20Var1 |
+| EventBinaryResponse | DNP3 data type | Group and variation for event binary data | No | Group2Var1 |
+| EventAnalogResponse | DNP3 data type | Group and variation for event analog data | No | Group32Var5 |
+| EventCounterResponse | DNP3 data type | Group and variation for event counter data | No | Group22Var1 |
+| MaxBinaryEvents | number | The number of binary events the outstation will buffer before overflowing. | No | 1000 |
+| MaxAnalogEvents | number | The number of analog events the outstation will buffer before overflowing. | No | 1000 |
+| MaxCounterEvents | number | The number of counter events the outstation will buffer before overflowing. | No | 1000 |
 
-##### Common keys to DNP3 Master and Outstation
+### Modbus Port Library
+```
+Modbus port placeholder
+```
 
-| Key | Value Type | Description | Mandatory | Default Value |
-|-----|------------|-------------|-----------|---------------|
-| LinkNumRetry |
-| LinkTimeoutms |
-| LinkUseConfirms |
-| UseConfirms |
-| EnableUnsol |
-| UnsolClass1 |
-| UnsolClass2 |
-| UnsolClass3 |
-| Analogs |
-| Binaries |
-| BinaryControls |
+### Simulation Port Library
+```
+Simulation port placeholder
+```
 
 ### JSON Port Library
 
@@ -588,6 +646,11 @@ A JSON port is configured by setting the "Type" of a port to "JSONClient" ("JSON
 |JSONPointConf[]:Points[]:StartVal | value | An optional value to initialise the point | No | undefined |
 |JSONPointConf[]:Points[]:TrueVal | value | For "Binary" <span style="line-height: 1.4285715;">PointType, the value which will parse as true</span> | Yes/No - see default | At least one of TrueVal and FalseVal needs to be defined. If only one is defined, any value other than that will parse to be the opposite state. If both are defined, any value other than those will parse to force the point bad quality (but not change state). |
 |JSONPointConf[]:Points[]:FalseVal | value | <span>For "Binary"</span> <span>PointType, the value which will parse as false</span> | <span>Yes/No - see default</span> |
+
+### Null Port Library
+```
+Null port placeholder
+```
 
 ## API
 
