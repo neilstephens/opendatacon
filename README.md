@@ -574,9 +574,68 @@ Modbus port placeholder
 ```
 
 ### Simulation Port Library
+#### Features
+#### Configuration
+##### Example
+```JSON
+{
+    //-------Point conf--------#
+    "Binaries" : 
+    [
+        {"Index": 0},{"Index": 1},{"Index": 5},{"Index": 6}
+    ],
+
+    "Analogs" : 
+    [
+        {"Range" : {"Start" : 0, "Stop" : 2}, "StartVal" : 50, "UpdateIntervalms" : 0, "StdDev" : 2},
+        {"Range" : {"Start" : 3, "Stop" : 5}, "StartVal" : 230, "UpdateIntervalms" : 0, "StdDev" : 5}
+    ],
+
+    "BinaryControls" : 
+    [
+        {"Index" : 0, "FeedbackBinaries" : [{"Index" : 0, "FeedbackMode" : "PULSE"}]}
+    ]
+}
 ```
-Simulation port placeholder
-```
+##### Root level keys
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| Analogs | JSON object | List of items from the analog keys table. | No | empty |
+| Binaries | JSON object | List of items from the binary keys table. | No | empty |
+| BinaryControls | JSON object | List of items from the binary control keys table. | No | empty |
+
+##### Analog Keys
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| Index | number | The point index. | Must include a point or a range. | Empty |
+| Range | JSON object | The start and stop point indexes (number). E.g. {"Start" : 0, "Stop" : 5} | Must include a point or a range. | Empty |
+| StdDev | number | The standard deviation from the mean (StartVal). Used each time the point updates. | No | Empty |
+| UpdateIntervalms | number | How often the point will update. | No | Empty |
+| StartVal | number | The start value and mean from which each subsequent point update is calculated. | No | Empty |
+
+##### Binary Keys
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| Index | number | The point index. | Must include a point or a range. | Empty |
+| Range | JSON object | The start and stop point indexes (number). E.g. {"Start" : 0, "Stop" : 5} | Must include a point or a range. | Empty |
+| UpdateIntervalms | number | How often the point will update. | No | Empty |
+| StartVal | boolean ( 0 \| 1 ) | The binary start value. | No | Empty |
+
+##### Binary Control Keys
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| Index | number | The point index. | Must include a point or a range. | Empty |
+| Range | JSON object | The start and stop point indexes (number). E.g. {"Start" : 0, "Stop" : 5} | Must include a point or a range. | Empty |
+| Intervalms | number | The duration for which a pulse is applied. | No | Empty |
+| FeedbackBinaries | JSON object | JSON object containing the fields in the next table. | No | Empty |
+
+###### Feedback Binary Keys
+| Key | Value Type | Description | Mandatory | Default Value |
+|-----|------------|-------------|-----------|---------------|
+| Index | number | The point index. | Yes | Empty |
+| OnValue | boolean ( 0 \| 1 ) |  |  | Empty |
+| OffValue | boolean ( 0 \| 1 ) |  |  | Empty |
+| Feedback Mode | number | Feedback mode can be PULSE or LATCH. | No | LATCH |
 
 ### JSON Port Library
 
@@ -648,8 +707,15 @@ A JSON port is configured by setting the "Type" of a port to "JSONClient" ("JSON
 |JSONPointConf[]:Points[]:FalseVal | value | <span>For "Binary"</span> <span>PointType, the value which will parse as false</span> | <span>Yes/No - see default</span> |
 
 ### Null Port Library
-```
-Null port placeholder
+The null port is equivalent of /dev/null as a DataPort and can be used for testing purposes. There is no configuration data required. 
+
+The null port is simply created as follows:
+```JSON
+{
+	"Name" : "Null",
+	"Type" : "Null",
+	"ConfFilename" : "/dev/null"
+}
 ```
 
 ## API
