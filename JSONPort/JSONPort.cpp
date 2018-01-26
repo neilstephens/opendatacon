@@ -54,7 +54,7 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 		static_cast<JSONPortConf*>(pConf.get())->retry_time_ms = JSONRoot["RetryTimems"].asUInt();
 	//TODO: document this
 	if(JSONRoot.isMember("EventBufferSize"))
-		static_cast<JSONPortConf*>(pConf.get())->evt_buffer_size = JSONRoot["RetryTimems"].asUInt();
+		static_cast<JSONPortConf*>(pConf.get())->evt_buffer_size = JSONRoot["EventBufferSize"].asUInt();
 	//TODO: document this
 	if(JSONRoot.isMember("StyleOutput"))
 		static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
