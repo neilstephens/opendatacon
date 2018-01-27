@@ -170,16 +170,16 @@ void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future
 		//FIXME:
 		result["Command"]["Index"] =(Json::UInt64) index;
 		result["Command"]["Status"] = success ? "SUCCESS" : (future_results.size()==1 ? "FAIL" : "UNDEFINED");
-		if(pConf->style_output)
-		{
-			Json::StyledWriter writer;
-			QueueWrite(writer.write(result));
-		}
-		else
-		{
-			Json::FastWriter writer;
-			QueueWrite(writer.write(result));
-		}
+
+		//TODO: make this writer reusable (class member)
+		Json::StreamWriterBuilder wbuilder;
+		if(!pConf->style_output)
+			wbuilder["indentation"] = "";
+		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
+		std::ostringstream oss;
+		pWriter->write(result, &oss); oss<<std::endl;
+		QueueWrite(oss.str());
 	}
 	else
 	{
@@ -193,11 +193,18 @@ void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future
 
 //At this point we have a whole (hopefully JSON) object - ie. {.*}
 //Here we parse it and extract any paths that match our point config
-void JSONPort::ProcessBraced(std::string braced)
+void JSONPort::ProcessBraced(const std::string& braced)
 {
+	//TODO: make this a reusable reader (class member)
+	Json::CharReaderBuilder rbuilder;
+	std::unique_ptr<Json::CharReader> const JSONReader(rbuilder.newCharReader());
+	char const* start = braced.c_str();
+	char const* stop = start + braced.size();
+
 	Json::Value JSONRoot; // will contain the root value after parsing.
-	Json::Reader JSONReader;
-	bool parsing_success = JSONReader.parse(braced, JSONRoot);
+	std::string err_str;
+
+	bool parsing_success = JSONReader->parse(start,stop,&JSONRoot,&err_str);
 	if (parsing_success)
 	{
 		JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
@@ -387,16 +394,16 @@ void JSONPort::ProcessBraced(std::string braced)
 									Json::Value result;
 									result["Command"]["Index"] = point_pair.first;
 									result["Command"]["Status"] = "UNDEFINED";
-									if(pConf->style_output)
-									{
-										Json::StyledWriter writer;
-										QueueWrite(writer.write(result));
-									}
-									else
-									{
-										Json::FastWriter writer;
-										QueueWrite(writer.write(result));
-									}
+
+									//TODO: make this writer reusable (class member)
+									Json::StreamWriterBuilder wbuilder;
+									if(!pConf->style_output)
+										wbuilder["indentation"] = "";
+									std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
+									std::ostringstream oss;
+									pWriter->write(result, &oss); oss<<std::endl;
+									QueueWrite(oss.str());
 								}
 							 });
 			}
@@ -404,7 +411,7 @@ void JSONPort::ProcessBraced(std::string braced)
 	}
 	else
 	{
-		std::string msg = "Error parsing JSON string: '"+braced+"'";
+		std::string msg = "Error parsing JSON string: '"+braced+"' : '"+err_str+"'";
 		auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::WARN,"", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
 	}
@@ -539,7 +546,7 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 		if(PointMap.count(index))
 		{
 			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString());
-			return std::move(output);
+			return output;
 		}
 		return Json::Value::nullSingleton();
 	};
@@ -549,15 +556,15 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 	if(output.isNull())
 		return IOHandler::CommandFutureNotSupported();
 
-	if(pConf->style_output)
-	{
-		Json::StyledWriter writer;
-		QueueWrite(writer.write(output));
-	}
-	else
-	{
-		Json::FastWriter writer;
-		QueueWrite(writer.write(output));
-	}
+	//TODO: make this writer reusable (class member)
+	Json::StreamWriterBuilder wbuilder;
+	if(!pConf->style_output)
+		wbuilder["indentation"] = "";
+	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
+	std::ostringstream oss;
+	pWriter->write(output, &oss); oss<<std::endl;
+	QueueWrite(oss.str());
+
 	return IOHandler::CommandFutureSuccess();
 }

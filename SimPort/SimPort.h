@@ -44,6 +44,9 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) final;
 	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) final;
 
+	//so the compiler won't warn we're hiding the base class overload we still want to use
+	using DataPort::Event;
+
 	//Implement Event handlers from IOHandler
 
 	// measurement events

@@ -48,6 +48,9 @@ public:
 	//Override DataPort for UI
 	const Json::Value GetStatus() const override;
 
+	//so the compiler won't warn we're hiding the base class overload we still want to use
+	using DataPort::Event;
+
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override { return IOHandler::CommandFutureNotSupported(); }
 	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override { return IOHandler::CommandFutureNotSupported(); }
 	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override { return IOHandler::CommandFutureNotSupported(); }

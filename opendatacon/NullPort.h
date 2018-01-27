@@ -63,6 +63,9 @@ public:
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override{}
 	void ProcessElements(const Json::Value& JSONRoot) override{}
 
+	//so the compiler won't warn we're hiding the base class overload we still want to use
+	using DataPort::Event;
+
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override { return IOHandler::CommandFutureSuccess(); }
 	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override { return IOHandler::CommandFutureSuccess(); }
 	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override { return IOHandler::CommandFutureSuccess(); }

@@ -68,12 +68,13 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 			std::cout << "WARNING: Config file " << FileName << " open fail." << std::endl;
 			return nullptr;
 		}
-		Json::Reader JSONReader;
-		bool parse_success = JSONReader.parse(fin, JSONCache[FileName]);
+		Json::CharReaderBuilder JSONReader;
+		std::string err_str;
+		bool parse_success = Json::parseFromStream(JSONReader,fin, &JSONCache[FileName], &err_str);
 		if (!parse_success)
 		{
 			std::cout << "Failed to parse configuration from '"<<FileName<<"'\n"
-			          << JSONReader.getFormattedErrorMessages()<<std::endl;
+				    << err_str <<std::endl;
 			return nullptr;
 		}
 	}

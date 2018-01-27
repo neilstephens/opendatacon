@@ -59,7 +59,7 @@ public:
 			find_marker(qual_ref.asString(), instance) = event.quality;
 		if(!time_ref.isNull())
 			find_marker(time_ref.asString(), instance) = (Json::UInt64)event.time.Get();
-		return std::move(instance);
+		return instance;
 	}
 private:
 	Json::Value NullJV;

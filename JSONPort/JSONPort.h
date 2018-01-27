@@ -48,6 +48,9 @@ public:
 	template<typename T> std::future<CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
 	template<typename T> std::future<CommandStatus> EventQ(const T& qual, uint16_t index, const std::string& SenderName);
 
+	//so the compiler won't warn we're hiding the base class overload we still want to use
+	using DataPort::Event;
+
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
@@ -82,7 +85,7 @@ private:
 	asio::basic_streambuf<std::allocator<char> > readbuf;
 	void ReadCompletionHandler(asio::error_code err_code);
 	void AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future_results, size_t index, std::shared_ptr<Timer_t> pTimer, double poll_time_ms, double backoff_factor);
-	void ProcessBraced(std::string braced);
+	void ProcessBraced(const std::string& braced);
 	template<typename T> void LoadT(T meas, uint16_t index, Json::Value timestamp_val);
 
 	std::deque<std::string> write_queue;
