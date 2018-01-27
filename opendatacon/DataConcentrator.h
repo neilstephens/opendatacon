@@ -42,6 +42,7 @@
 #include "DataConnector.h"
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
+#include "LogToTCP.h"
 #include "LogCollection.h"
 
 #include <opendatacon/IUI.h>
@@ -70,6 +71,7 @@ private:
 
 	openpal::LogFilters LOG_LEVEL;
 	LogToFile FileLog;                             //Prints all messages to a rolling set of log files.
+	LogToTCP TCPLog;
 	asiopal::LogFanoutHandler FanoutHandler;
 };
 

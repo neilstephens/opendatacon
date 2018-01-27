@@ -40,7 +40,8 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS)),
 	LOG_LEVEL(opendnp3::levels::NORMAL),
-	FileLog("datacon_log")
+	FileLog("datacon_log"),
+	TCPLog()
 {
 	// Enable loading of libraries
 	InitLibaryLoading();
@@ -63,6 +64,8 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	AdvancedLoggers.emplace("File Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(FileLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
 	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("File Log").get());
 
+	AdvancedLoggers.emplace("TCP Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(TCPLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
+	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("TCP Log").get());
 
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
@@ -84,6 +87,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	{
 		port.second->AddLogSubscriber(AdvancedLoggers.at("Console Log").get());
 		port.second->AddLogSubscriber(AdvancedLoggers.at("File Log").get());
+		port.second->AddLogSubscriber(AdvancedLoggers.at("TCP Log").get());
 		port.second->SetIOS(&IOS);
 		port.second->SetLogLevel(LOG_LEVEL);
 	}
@@ -91,6 +95,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	{
 		conn.second->AddLogSubscriber(AdvancedLoggers.at("Console Log").get());
 		conn.second->AddLogSubscriber(AdvancedLoggers.at("File Log").get());
+		conn.second->AddLogSubscriber(AdvancedLoggers.at("TCP Log").get());
 		conn.second->SetIOS(&IOS);
 		conn.second->SetLogLevel(LOG_LEVEL);
 	}
@@ -180,6 +185,27 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 	if(JSONRoot.isMember("LogName"))
 		FileLog.SetLogName(JSONRoot["LogName"].asString());
+
+	//TODO: document this
+	if(JSONRoot.isMember("TCPLog"))
+	{
+		auto TCPLogJSON = JSONRoot["TCPLog"];
+		if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
+		{
+			std::cout<<"Warning: invalid TCPLog config: need at least IP, Port, TCPClientServer: \n'"<<TCPLogJSON.toStyledString()<<"\n' : ignoring"<<std::endl;
+		}
+		else
+		{
+			bool isClient = false;
+
+			if(TCPLogJSON["TCPClientServer"].asString() == "CLIENT")
+				isClient = true;
+			else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
+				std::cout<<"Warning: invalid TCPLog TCPClientServer setting. Choose CLIENT or SERVER. Defaulting to SERVER."<<std::endl;
+
+			TCPLog.Startup(TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString(),&IOS,isClient);
+		}
+	}
 
 	if(JSONRoot.isMember("LOG_LEVEL"))
 	{
@@ -468,6 +494,7 @@ void DataConcentrator::Shutdown()
 		{
 			Name_n_Port.second->Disable();
 		}
+		TCPLog.Shutdown();
 		std::cout << "Finishing asynchronous tasks... " << std::endl;
 		ios_working.reset();
 	});

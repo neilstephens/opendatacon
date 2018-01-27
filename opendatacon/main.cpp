@@ -37,10 +37,7 @@
  *    -remove the need for two threadpools?
  *          -Mod to DNP3Manager to use existing io_service?
  *    -add a network interface to the console
- *	-network logging
- *	-daemon mode
  *	-more dataports to implement:
- *		-EventGenPort (random events ala old test_slaves util)
  *		-C37.118
  *		-NMEA 2k / CANv2
  *		-NMEA 0183
