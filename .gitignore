@@ -1,5 +1,6 @@
 /build*
 /example*
+*.orig
 include/opendatacon/Version.h
 _site/*
 Gemfile.lock
