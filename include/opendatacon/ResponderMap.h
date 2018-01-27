@@ -64,7 +64,7 @@ public:
 		                       return result;
 				     }, "Returns a list of commands and items for this collection. Optional argument: regex for which items to match", false);
 	}
-	virtual ~ResponderMap(){}
+	~ResponderMap() override{}
 
 	std::vector<T*> GetTargets(const ParamCollection& params)
 	{

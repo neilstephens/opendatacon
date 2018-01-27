@@ -42,7 +42,7 @@ public:
 		stack_enabled(false),
 		assign_class_sent(false)
 	{}
-	~DNP3MasterPort();
+	~DNP3MasterPort() override;
 
 protected:
 	/// Implement ODC::DataPort
@@ -82,12 +82,12 @@ protected:
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::SecurityStat> >& meas) override;
 
 	/// Implement opendnp3::IMasterApplication
-	virtual void OnReceiveIIN(const opendnp3::IINField& iin) override final {}
-	virtual void OnTaskStart(opendnp3::MasterTaskType type, opendnp3::TaskId id) override final {}
-	virtual void OnTaskComplete(const opendnp3::TaskInfo& info) override final {}
-	virtual bool AssignClassDuringStartup() override final { return false; }
-	virtual void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) override final {}
-	virtual openpal::UTCTimestamp Now() override final
+	void OnReceiveIIN(const opendnp3::IINField& iin) final {}
+	void OnTaskStart(opendnp3::MasterTaskType type, opendnp3::TaskId id) final {}
+	void OnTaskComplete(const opendnp3::TaskInfo& info) final {}
+	bool AssignClassDuringStartup() final { return false; }
+	void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) final {}
+	openpal::UTCTimestamp Now() final
 	{
 		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		return openpal::UTCTimestamp(time);

@@ -44,12 +44,12 @@ public:
 		ConfigParser(aConfFilename, aConfOverrides),
 		pConf(nullptr)
 	{}
-	virtual ~DataPort(){}
+	~DataPort() override{}
 
-	virtual void Enable()=0;
-	virtual void Disable()=0;
+	void Enable() override =0;
+	void Disable() override =0;
 	virtual void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)=0;
-	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
+	void ProcessElements(const Json::Value& JSONRoot) override =0;
 
 	std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) final
 	{

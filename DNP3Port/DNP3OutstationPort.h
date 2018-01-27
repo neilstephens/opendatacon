@@ -36,7 +36,7 @@ class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, pub
 {
 public:
 	DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
-	~DNP3OutstationPort();
+	~DNP3OutstationPort() override;
 
 protected:
 	/// Implement ODC::DataPort

@@ -41,7 +41,7 @@ class DNP3PointConf: public ConfigParser
 public:
 	DNP3PointConf(std::string FileName, const Json::Value &ConfOverrides);
 
-	void ProcessElements(const Json::Value& JSONRoot);
+	void ProcessElements(const Json::Value& JSONRoot) override;
 
 	// DNP3 Link Configuration
 	uint32_t LinkNumRetry;

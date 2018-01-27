@@ -41,7 +41,7 @@ class JSONPointConf: public ConfigParser
 public:
 	JSONPointConf(std::string FileName, const Json::Value& ConfOverrides);
 
-	void ProcessElements(const Json::Value& JSONRoot);
+	void ProcessElements(const Json::Value& JSONRoot) override;
 
 	std::map<uint16_t, Json::Value> Binaries;
 	std::map<uint16_t, Json::Value> Analogs;
