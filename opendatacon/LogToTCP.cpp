@@ -27,7 +27,7 @@
 #include "LogToTCP.h"
 
 LogToTCP::LogToTCP():
-	pSockMan()
+	pSockMan(nullptr)
 {}
 
 void LogToTCP::Startup(std::string IP, std::string Port, asio::io_service* pIOS, bool isClient)
@@ -48,6 +48,9 @@ void LogToTCP::StateCallback(bool connected)
 
 void LogToTCP::Log( const openpal::LogEntry& arEntry )
 {
+	if(pSockMan.get() == nullptr)
+		return;
+
 	std::string time_str = "TODO: timestamp"; //move platform specific timestamp code from LogToFile into Platform.h or util.h
 	std::string filter_str = "TODO: level"; //FilterToString(arEntry.GetFilters()); move from LogToFile into Platform.h or util.h
 
@@ -64,5 +67,7 @@ void LogToTCP::Log( const openpal::LogEntry& arEntry )
 }
 void LogToTCP::Shutdown()
 {
+	if(pSockMan.get() == nullptr)
+		return;
 	pSockMan->Close();
 }
