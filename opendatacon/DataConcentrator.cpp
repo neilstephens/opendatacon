@@ -25,7 +25,7 @@
  */
 
 #include <thread>
-#include <asio.hpp>
+#include <opendatacon/asio.h>
 #include <asiodnp3/ConsoleLogger.h>
 #include <opendnp3/LogLevels.h>
 

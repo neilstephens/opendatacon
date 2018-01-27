@@ -40,7 +40,7 @@
 #ifndef TCPSOCKETMANAGER
 #define TCPSOCKETMANAGER
 
-#include <asio.hpp>
+#include <opendatacon/asio.h>
 
 namespace odc {
 

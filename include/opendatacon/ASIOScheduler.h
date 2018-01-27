@@ -29,7 +29,7 @@
 #define __opendatacon__ASIOScheduler__
 
 #include <queue>
-#include <asio.hpp>
+#include <opendatacon/asio.h>
 
 class ASIOSchedulerTask
 {

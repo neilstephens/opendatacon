@@ -30,7 +30,7 @@
 #include <future>
 #include <unordered_map>
 #include <map>
-#include <asio.hpp>
+#include <opendatacon/asio.h>
 #include <asiopal/LogFanoutHandler.h>
 #include <opendatacon/IOTypes.h>
 

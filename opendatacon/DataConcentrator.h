@@ -27,7 +27,7 @@
 #ifndef DATACONCENTRATOR_H_
 #define DATACONCENTRATOR_H_
 
-#include <asio.hpp>
+#include <opendatacon/asio.h>
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/DataPortCollection.h>
