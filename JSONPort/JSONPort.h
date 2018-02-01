@@ -29,6 +29,7 @@
 
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
+#include <opendatacon/TCPSocketManager.h>
 #include "JSONPortConf.h"
 
 using namespace odc;
@@ -36,12 +37,12 @@ using namespace odc;
 class JSONPort: public DataPort
 {
 public:
-	JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides, bool aisServer);
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
-	void Enable() override =0;
-	void Disable() override =0;
+	void Enable() override;
+	void Disable() override;
 
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
 
@@ -74,27 +75,16 @@ public:
 	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
 
-protected:
-	std::unique_ptr<asio::basic_stream_socket<asio::ip::tcp> > pSock;
-	std::unique_ptr<asio::ip::tcp::acceptor> pAcceptor;
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pTCPRetryTimer;
-	void Read();
-
 private:
-	asio::basic_streambuf<std::allocator<char> > readbuf;
-	void ReadCompletionHandler(asio::error_code err_code);
+	std::unique_ptr<Json::StreamWriter> pJSONWriter;
+	bool isServer;
+	std::unique_ptr<TCPSocketManager<std::string>> pSockMan;
+	void SocketStateHandler(bool state);
+	void ReadCompletionHandler(buf_t& readbuf);
+	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	void AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future_results, size_t index, std::shared_ptr<Timer_t> pTimer, double poll_time_ms, double backoff_factor);
 	void ProcessBraced(const std::string& braced);
 	template<typename T> void LoadT(T meas, uint16_t index, Json::Value timestamp_val);
-
-	std::deque<std::string> write_queue;
-	std::unique_ptr<asio::strand> pWriteQueueStrand;
-	void QueueWrite(const std::string& message);
-	void Write();
-	void RetryWrite();
-	void WriteCompletionHandler(asio::error_code err_code, size_t bytes_written);
-
 };
 
 #endif /* JSONDATAPORT_H_ */
