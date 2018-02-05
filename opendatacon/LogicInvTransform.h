@@ -31,20 +31,20 @@
 #include <opendatacon/util.h>
 #include <opendatacon/Transform.h>
 
-class RandTransform: public Transform
+class LogicInvTransform: public Transform
 {
 public:
 	LogicInvTransform(Json::Value params):
 		Transform(params)
 	{}
 
-	bool Event(Binary& meas, uint16_t& index){meas.value = ~meas.value; return true;}
-	bool Event(DoubleBitBinary& meas, uint16_t& index){meas.value = ~meas.value; return true;}
+	bool Event(Binary& meas, uint16_t& index){meas.value = !(meas.value); return true;}
+	bool Event(DoubleBitBinary& meas, uint16_t& index){return true;}
 	bool Event(Counter& meas, uint16_t& index){return true;}
 	bool Event(FrozenCounter& meas, uint16_t& index){return true;}
-	bool Event(BinaryOutputStatus& meas, uint16_t& index){meas.value = ~meas.value; return true;}
+	bool Event(BinaryOutputStatus& meas, uint16_t& index){meas.value = !(meas.value); return true;}
 	bool Event(AnalogOutputStatus& meas, uint16_t& index){return true;}
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index){meas.value = ~meas.value; return true;}
+	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index){return true;}
 	bool Event(AnalogOutputInt16& arCommand, uint16_t index){return true;}
 	bool Event(AnalogOutputInt32& arCommand, uint16_t index){return true;}
 	bool Event(AnalogOutputFloat32& arCommand, uint16_t index){return true;}

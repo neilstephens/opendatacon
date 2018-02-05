@@ -130,7 +130,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				}
 				if(Transforms[n]["Type"].asString() == "LogicInv")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new LogicInvTransform(Transforms[n]["Parameters"]), normal_delete));
+					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new LogicInvTransform    (Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 
