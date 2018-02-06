@@ -22,7 +22,7 @@
  *
  *  Created on: 19/10/2018
  *      Author: Andrew Gilbett <andrew@gilbett.net>
- *  This performes a logical not on binary measured values
+ *  This performs a logical not on binary measured values
  */
 
 #ifndef LOGICINVTRANSFORM_H_
@@ -38,22 +38,26 @@ public:
 		Transform(params)
 	{}
 
-	bool Event(Binary& meas, uint16_t& index){return EventT(meas);}
-	bool Event(DoubleBitBinary& meas, uint16_t& index){return true;}
-	bool Event(Counter& meas, uint16_t& index){return true;}
-	bool Event(FrozenCounter& meas, uint16_t& index){return true;}
-	bool Event(BinaryOutputStatus& meas, uint16_t& index){return EventT(meas);}
-	bool Event(AnalogOutputStatus& meas, uint16_t& index){return true;}
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputInt16& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputInt32& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputFloat32& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputDouble64& arCommand, uint16_t index){return true;}
-	bool Event(Analog& meas, uint16_t& index){return true;}
+	//pass through events that inversion doesn't apply to
+	bool Event(DoubleBitBinary& meas, uint16_t& index) override{return true;}
+	bool Event(Counter& meas, uint16_t& index) override{return true;}
+	bool Event(FrozenCounter& meas, uint16_t& index) override{return true;}
+	bool Event(AnalogOutputStatus& meas, uint16_t& index) override{return true;}
+	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputInt16& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputInt32& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputFloat32& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputDouble64& arCommand, uint16_t index) override{return true;}
+	bool Event(Analog& meas, uint16_t& index) override{return true;}
+
+	//apply inversion to these events
+	bool Event(BinaryOutputStatus& meas, uint16_t& index) override{return EventT(meas);}
+	bool Event(Binary& meas, uint16_t& index) override{return EventT(meas);}
 
 	template<typename T> bool EventT(T& meas)
 	{
-		meas.value = !(meas.value); return true;
+		meas.value = !(meas.value);
+		return true;
 	}
 
 
