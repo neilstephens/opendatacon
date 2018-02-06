@@ -44,7 +44,7 @@ public:
 	bool Event(FrozenCounter& meas, uint16_t& index){return true;}
 	bool Event(BinaryOutputStatus& meas, uint16_t& index){return EventT(meas);}
 	bool Event(AnalogOutputStatus& meas, uint16_t& index){return true;}
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index){return true;}
+	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index){return EventT(arCommand);}
 	bool Event(AnalogOutputInt16& arCommand, uint16_t index){return true;}
 	bool Event(AnalogOutputInt32& arCommand, uint16_t index){return true;}
 	bool Event(AnalogOutputFloat32& arCommand, uint16_t index){return true;}
