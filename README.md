@@ -42,6 +42,7 @@
           * [JSON Client](#json-client)
             * [Example](#example-2)
             * [Config file keys](#config-file-keys-3)
+        * [Elasticsearch](#elasticsearch)
     * [API](#api)
       * [Port](#port)
       * [Transform](#transform)
@@ -705,6 +706,33 @@ A JSON port is configured by setting the "Type" of a port to "JSONClient" ("JSON
 |JSONPointConf[]:Points[]:StartVal | value | An optional value to initialise the point | No | undefined |
 |JSONPointConf[]:Points[]:TrueVal | value | For "Binary" <span style="line-height: 1.4285715;">PointType, the value which will parse as true</span> | Yes/No - see default | At least one of TrueVal and FalseVal needs to be defined. If only one is defined, any value other than that will parse to be the opposite state. If both are defined, any value other than those will parse to force the point bad quality (but not change state). |
 |JSONPointConf[]:Points[]:FalseVal | value | <span>For "Binary"</span> <span>PointType, the value which will parse as false</span> | <span>Yes/No - see default</span> |
+
+#### Elasticsearch
+
+It is possible to historise data from opendatacon by simply pointing a JSON port at Logstash and Elastic search.
+
+A basic configuration of the logstash.conf
+
+```
+input {
+  tcp {
+    port => 2598
+    codec => json
+    mode => client
+    host => "127.0.0.1"
+    type => "opendatacon"
+  }
+}
+output {
+  elasticsearch {
+    hosts => ["localhost:9200"]
+    sniffing => true
+    manage_template => false
+    index => "opendatacon-"
+    document_type => "%{[@metadata][type]}"
+  }
+}
+```
 
 ### Null Port Library
 The null port is equivalent of /dev/null as a DataPort and can be used for testing purposes. There is no configuration data required. 
