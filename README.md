@@ -573,6 +573,39 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 ```
 Modbus port placeholder
 ```
+#### Modbus Master Example
+```json
+{
+	//-------Stack settings--------#
+	"ServerType" : "PERSISTENT",
+	
+	//-------Default Addr conf--------#
+	"Port" : 502,
+	"OutstationAddr" : 1,
+
+	//-------Point conf--------#
+	"BitIndicies" : [
+		{"Index" : 0, "PollGroup" : 1},
+		{"Range" : {"Start" : 1, "Stop" : 4}, "PollGroup" : 1}
+		],
+	"InputBitIndicies" : [
+		{"Range" : {"Start" : 0, "Stop" : 4}, "PollGroup" : 2}
+		],
+	"RegIndicies" : [
+		{"Index" : 0, "PollGroup" : 1},
+		{"Range" : {"Start" : 1, "Stop" : 4}, "PollGroup" : 1}
+		],
+	"InputRegIndicies" : [
+		{"Range" : {"Start" : 0, "Stop" : 4}, "PollGroup" : 3}
+		],
+	"CommsPoint" : {"Binary" : 0, "FailValue" : false},
+	"PollGroups" : [
+		{"ID" : 1, "PollRate" : 1000},
+		{"ID" : 2, "PollRate" : 5000},
+		{"ID" : 3, "PollRate" : 3000}
+		]
+}
+```
 
 ### Simulation Port Library
 #### Features
