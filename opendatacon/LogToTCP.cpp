@@ -24,7 +24,10 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+
 #include "LogToTCP.h"
+#define GetMessage() GetMessage()
+
 
 LogToTCP::LogToTCP():
 	pSockMan(nullptr)

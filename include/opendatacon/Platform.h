@@ -35,7 +35,7 @@
 #include <windows.h>
 const std::string DYNLIBPRE = "";
 #ifdef _DEBUG
-const std::string DYNLIBEXT = "d.dll";
+const std::string DYNLIBEXT = ".dll";
 #else
 const std::string DYNLIBEXT = ".dll";
 #endif

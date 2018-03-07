@@ -4,11 +4,11 @@
  #
  #		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  #		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- #	
+ #
  #	Licensed under the Apache License, Version 2.0 (the "License");
  #	you may not use this file except in compliance with the License.
  #	You may obtain a copy of the License at
- #	
+ #
  #		http://www.apache.org/licenses/LICENSE-2.0
  #
  #	Unless required by applicable law or agreed to in writing, software
@@ -39,11 +39,12 @@ find_package(Git)
 if(GIT_FOUND)
  	message("-- git found: ${GIT_EXECUTABLE}, determining source version")
 	execute_process(
-		COMMAND git describe --long --match "[0-9]*\\.[0-9]*\\.[0-9]" --dirty
+		COMMAND ${GIT_EXECUTABLE} describe --long --match "[0-9]*\\.[0-9]*\\.[0-9]" --dirty
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		OUTPUT_VARIABLE GIT_DESCRIBE
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
+	#depending on how git is installed on windows, it may not be on the path. So changed this to point at the full executable. SJE
  	#message(" Git describe: ${GIT_DESCRIBE}")
 	string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)-[0-9]+-([^-]+)-?([^-]*)$" GIT_REPO_MATCH ${GIT_DESCRIBE})
  	#message(" Version: ${CMAKE_MATCH_1} ${CMAKE_MATCH_2} ${CMAKE_MATCH_3} ${CMAKE_MATCH_4}")
@@ -93,22 +94,29 @@ endif()
 # IDE configuration
 set_property(GLOBAL PROPERTY USE_FOLDERS ON) #allows the creation of solution folders
 
+# These cause CMake to display them as configurable parameters. If not for this it does not find all of them.
+message("DNP3_HOME ${DNP3_HOME}")
+message("ASIO_HOME ${ASIO_HOME}")
+message("TCLAP_HOME ${TCLAP_HOME}")
+message("MICROHTTPD_HOME ${MICROHTTPD_HOME}")
+message("MODBUS_HOME ${MODBUS_HOME}")
+
 # Platform configuration
 if(WIN32)
 	# for ASIO
-	add_definitions(-D_WIN32_WINNT=0x0502)	
+	add_definitions(-D_WIN32_WINNT=0x0502)
 	add_definitions(-DASIO_HAS_STD_SYSTEM_ERROR)
 	add_definitions(-DVC_EXTRALEAN)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
-	
+
 	# Auto generate def files that export all symbols of STATIC libraries
 	set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-	
+
 	# UNICODE support
 	add_definitions(-DUNICODE -D_UNICODE)
-	
-	# Postfix for debug builds
-	SET(CMAKE_DEBUG_POSTFIX "d")
+
+	# Postfix for debug builds - really - need to rename the libraries?
+#	SET(CMAKE_DEBUG_POSTFIX "d")
 
 	# Install directories
 	set(INSTALLDIR_BINS ".")
@@ -142,13 +150,13 @@ endif()
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
-	message("CMAKE configuring opendatacon for Visual Studio C++" )
+	message("CMAKE configuring opendatacon for Visual Studio C++" )  # /std:c++14 ??
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
 
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 	# using Intel C++
 	message(WARNING "opendatacon has not been tested using Intel compiler" )
-	
+
 else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
@@ -175,9 +183,9 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 		OUTPUT_VARIABLE std_lib
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
-	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
+	#hide (in non-advanced mode) the library paths in cmake guis since they are derived
 	mark_as_advanced(FORCE std_lib)
-	get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symolic link
+	get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symbolic link
 	if(${_resolvedFile} STREQUAL ${std_lib})
 		#not a link - just install file
 		install(FILES "${std_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
@@ -220,6 +228,7 @@ endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 # Locate opendnp3 - this can be moved into DNP3Port when the other projects are decoupled from opendnp3
 set(DNP3_HOME_INSTRUCTIONS "Choose the location of opendnp3: where it was installed - there should be lib and include directories within")
+
 if(DEFINED DNP3_HOME)
 	set(DNP3_HOME ${DNP3_HOME} CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
 else()
@@ -230,18 +239,23 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 	add_library(${component}_target UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_target PROPERTY IMPORTED_LOCATION "${${component}_lib}")
+
 	# Look for debug libraries
 	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 	add_library(${component}_dtarget UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
+
 	#set a variable to use for linking
 	set(${component}_libs debug ${component}_dtarget optimized ${component}_target )
 
-	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
+	#hide (in non-advanced mode) the library paths in cmake guis since they are derived
 	mark_as_advanced(FORCE ${component}_lib ${component}_dlib)
 
+	message("Found Library ${${component}_lib}")
+	message("Found Debug Library ${${component}_dlib}")
+	
 	#include in install/packaging
-	get_filename_component(_resolvedFile "${${component}_lib}" REALPATH) #check for symolic link
+	get_filename_component(_resolvedFile "${${component}_lib}" REALPATH) #check for symbolic link
 	if(${_resolvedFile} STREQUAL ${${component}_lib})
 		#not a link - just install file
 		install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
@@ -249,7 +263,7 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 		#is a link -install link and file
 		install(FILES "${${component}_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
 	endif()
-	get_filename_component(_resolvedFile "${${component}_dlib}" REALPATH) #check for symolic link
+	get_filename_component(_resolvedFile "${${component}_dlib}" REALPATH) #check for symbolic link
 	if(${_resolvedFile} STREQUAL ${${component}_dlib})
 		#not a link - just install file
 		install(FILES "${${component}_dlib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
@@ -265,6 +279,7 @@ if(DEFINED ASIO_HOME)
 else()
 	set(ASIO_HOME "/usr/local" CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
 endif()
+
 
 message("add subdir JSON")
 add_subdirectory(JSON)
@@ -302,6 +317,6 @@ endif()
 if(SIMPORT)
 	message("add subdir SimPort")
 	add_subdirectory(SimPort)
-endif()	
+endif()
 message("add subdir install")
 add_subdirectory("install")
