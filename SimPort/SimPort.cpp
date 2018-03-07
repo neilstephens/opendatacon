@@ -132,9 +132,9 @@ void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned
 	//Send an event out
 	//change value around mean
 	std::normal_distribution<double> distribution(pMean->value, std_dev);
-	PublishEvent(Analog(distribution(RandNumGenerator),pMean->quality), index);
+	PublishEvent(Analog(distribution(RandNumGenerator),pMean->flags), (uint16_t)index);
 
-	//wait til next time
+	//wait till next time
 	pTimer->async_wait([=](asio::error_code err_code)
 	                   {
 					//FIXME: check err_code?
