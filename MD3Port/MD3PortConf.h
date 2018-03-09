@@ -79,8 +79,10 @@ public:
 	MD3PortConf(std::string FileName):
 		mAddrConf()
 	{
-
+		pPointConf.reset(new MD3PointConf(FileName));
 	}
+
+	std::unique_ptr<MD3PointConf> pPointConf;
 
 	MD3AddrConf mAddrConf;
 };
