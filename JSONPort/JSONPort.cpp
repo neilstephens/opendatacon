@@ -485,11 +485,11 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 	}
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	auto ToJSON = [pConf,index,&meas](std::map<uint16_t, Json::Value>& PointMap)->Json::Value
+	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap)->Json::Value
 	{
 		if(PointMap.count(index))
 		{
-			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString());
+			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
 			return output;
 		}
 		return Json::Value::nullSingleton();
