@@ -29,7 +29,7 @@
 
 #include <unordered_map>
 
-//#include <MD3/MD3.h>
+#include "MD3.h"
 #include "MD3Port.h"
 
 class MD3OutstationPort: public MD3Port
@@ -60,7 +60,7 @@ public:
 
 private:
 	void StateListener(ChannelState state);
-//	MD3_t *mb;
+	std::unique_ptr<MD3_t> md3;
 //	MD3_mapping_t *mb_mapping;
 };
 

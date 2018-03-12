@@ -17,22 +17,23 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
-/*
- * MD3PointConf.cpp
- *
- *  Created on: 16/10/2014
- *      Author: Alan Murray
- */
+ /*
+  * MD3PointConf.cpp
+  *
+  *  Created on: 16/10/2014
+  *      Author: Alan Murray
+  */
 
 #include <regex>
 #include <algorithm>
 #include "MD3PointConf.h"
+#include "MD3PortConf.h"
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
 
 using namespace odc;
 
-MD3PointConf::MD3PointConf(std::string FileName):
+MD3PointConf::MD3PointConf(std::string FileName) :
 	ConfigParser(FileName)
 {
 	ProcessFile();
@@ -41,7 +42,7 @@ MD3PointConf::MD3PointConf(std::string FileName):
 
 void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 {
-	if(!JSONRoot.isObject()) return;
+	if (!JSONRoot.isObject()) return;
 
 	// Root level Configuration values
 	if (JSONRoot.isMember("LinkNumRetry"))
@@ -49,233 +50,121 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("LinkTimeoutms"))
 		LinkTimeoutms = JSONRoot["LinkTimeoutms"].asUInt();
 
-		if (JSONRoot.isMember("Analogs"))
+	if (JSONRoot.isMember("Analogs"))
+	{
+		ProcessAnalogs(JSONRoot);
+	}
+
+	if (JSONRoot.isMember("Binaries"))
+	{
+		ProcessBinaries(JSONRoot);
+	}
+
+	if (JSONRoot.isMember("BinaryControls"))
+	{
+		ProcessBinaryControls(JSONRoot);
+	}
+}
+
+void MD3PointConf::ProcessBinaryControls(const Json::Value& JSONRoot)
+{
+	const auto BinaryControls = JSONRoot["BinaryControls"];
+	for (Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
+	{
+		size_t start, stop;
+		if (BinaryControls[n].isMember("Index"))
+			start = stop = BinaryControls[n]["Index"].asUInt();
+		else if (BinaryControls[n]["Range"].isMember("Start") && BinaryControls[n]["Range"].isMember("Stop"))
 		{
-			const auto Analogs = JSONRoot["Analogs"];
-			for (Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
-			{
-				size_t start, stop;
-				if (Analogs[n].isMember("Index"))
-					start = stop = Analogs[n]["Index"].asUInt();
-				else if (Analogs[n]["Range"].isMember("Start") && Analogs[n]["Range"].isMember("Stop"))
-				{
-					start = Analogs[n]["Range"]["Start"].asUInt();
-					stop = Analogs[n]["Range"]["Stop"].asUInt();
-				}
-				else
-				{
-					std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << Analogs[n].toStyledString() << "'" << std::endl;
-					start = 1;
-					stop = 0;
-				}
-				for (auto index = start; index <= stop; index++)
-				{
-					bool exists = false;
-					for (auto existing_index : pConf->AnalogIndicies)
-						if (existing_index == index)
-							exists = true;
-
-					if (!exists)
-						pConf->AnalogIndicies.push_back(index);
-
-					if (Analogs[n].isMember("StdDev"))
-						pConf->AnalogStdDevs[index] = Analogs[n]["StdDev"].asDouble();
-					if (Analogs[n].isMember("UpdateIntervalms"))
-						pConf->AnalogUpdateIntervalms[index] = Analogs[n]["UpdateIntervalms"].asUInt();
-
-					if (Analogs[n].isMember("StartVal"))
-					{
-						std::string start_val = Analogs[n]["StartVal"].asString();
-						if (start_val == "D") //delete this index
-						{
-							if (pConf->AnalogStartVals.count(index))
-								pConf->AnalogStartVals.erase(index);
-							if (pConf->AnalogStdDevs.count(index))
-								pConf->AnalogStdDevs.erase(index);
-							if (pConf->AnalogUpdateIntervalms.count(index))
-								pConf->AnalogUpdateIntervalms.erase(index);
-							for (auto it = pConf->AnalogIndicies.begin(); it != pConf->AnalogIndicies.end(); it++)
-								if (*it == index)
-								{
-									pConf->AnalogIndicies.erase(it);
-									break;
-								}
-						}
-						else if (start_val == "NAN" || start_val == "nan" || start_val == "NaN")
-						{
-							pConf->AnalogStartVals[index] = Analog(std::numeric_limits<double>::quiet_NaN(), static_cast<uint8_t>(AnalogQuality::ONLINE));
-						}
-						else if (start_val == "INF" || start_val == "inf")
-						{
-							pConf->AnalogStartVals[index] = Analog(std::numeric_limits<double>::infinity(), static_cast<uint8_t>(AnalogQuality::ONLINE));
-						}
-						else if (start_val == "-INF" || start_val == "-inf")
-						{
-							pConf->AnalogStartVals[index] = Analog(-std::numeric_limits<double>::infinity(), static_cast<uint8_t>(AnalogQuality::ONLINE));
-						}
-						else if (start_val == "X")
-							pConf->AnalogStartVals[index] = Analog(0, static_cast<uint8_t>(AnalogQuality::COMM_LOST));
-						else
-							pConf->AnalogStartVals[index] = Analog(std::stod(start_val), static_cast<uint8_t>(AnalogQuality::ONLINE));
-					}
-					else if (pConf->AnalogStartVals.count(index))
-						pConf->AnalogStartVals.erase(index);
-				}
-			}
-			std::sort(pConf->AnalogIndicies.begin(), pConf->AnalogIndicies.end());
+			start = BinaryControls[n]["Range"]["Start"].asUInt();
+			stop = BinaryControls[n]["Range"]["Stop"].asUInt();
 		}
-
-		if (JSONRoot.isMember("Binaries"))
+		else
 		{
-			const auto Binaries = JSONRoot["Binaries"];
-			for (Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
-			{
-				size_t start, stop;
-				if (Binaries[n].isMember("Index"))
-					start = stop = Binaries[n]["Index"].asUInt();
-				else if (Binaries[n]["Range"].isMember("Start") && Binaries[n]["Range"].isMember("Stop"))
-				{
-					start = Binaries[n]["Range"]["Start"].asUInt();
-					stop = Binaries[n]["Range"]["Stop"].asUInt();
-				}
-				else
-				{
-					std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << Binaries[n].toStyledString() << "'" << std::endl;
-					start = 1;
-					stop = 0;
-				}
-				for (auto index = start; index <= stop; index++)
-				{
-
-					bool exists = false;
-					for (auto existing_index : pConf->BinaryIndicies)
-						if (existing_index == index)
-							exists = true;
-
-					if (!exists)
-						pConf->BinaryIndicies.push_back(index);
-
-					if (Binaries[n].isMember("UpdateIntervalms"))
-						pConf->BinaryUpdateIntervalms[index] = Binaries[n]["UpdateIntervalms"].asUInt();
-
-					if (Binaries[n].isMember("StartVal"))
-					{
-						std::string start_val = Binaries[n]["StartVal"].asString();
-						if (start_val == "D") //delete this index
-						{
-							if (pConf->BinaryStartVals.count(index))
-								pConf->BinaryStartVals.erase(index);
-							if (pConf->BinaryUpdateIntervalms.count(index))
-								pConf->BinaryUpdateIntervalms.erase(index);
-							for (auto it = pConf->BinaryIndicies.begin(); it != pConf->BinaryIndicies.end(); it++)
-								if (*it == index)
-								{
-									pConf->BinaryIndicies.erase(it);
-									break;
-								}
-						}
-						else if (start_val == "X")
-							pConf->BinaryStartVals[index] = Binary(false, static_cast<uint8_t>(BinaryQuality::COMM_LOST));
-						else
-							pConf->BinaryStartVals[index] = Binary(Binaries[n]["StartVal"].asBool(), static_cast<uint8_t>(BinaryQuality::ONLINE));
-					}
-					else if (pConf->BinaryStartVals.count(index))
-						pConf->BinaryStartVals.erase(index);
-				}
-			}
-			std::sort(pConf->BinaryIndicies.begin(), pConf->BinaryIndicies.end());
+			std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << BinaryControls[n].toStyledString() << "'" << std::endl;
+			start = 1;
+			stop = 0;
 		}
-
-		if (JSONRoot.isMember("BinaryControls"))
+		for (auto index = start; index <= stop; index++)
 		{
-			const auto BinaryControls = JSONRoot["BinaryControls"];
-			for (Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
-			{
-				size_t start, stop;
-				if (BinaryControls[n].isMember("Index"))
-					start = stop = BinaryControls[n]["Index"].asUInt();
-				else if (BinaryControls[n]["Range"].isMember("Start") && BinaryControls[n]["Range"].isMember("Stop"))
-				{
-					start = BinaryControls[n]["Range"]["Start"].asUInt();
-					stop = BinaryControls[n]["Range"]["Stop"].asUInt();
-				}
-				else
-				{
-					std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << BinaryControls[n].toStyledString() << "'" << std::endl;
-					start = 1;
-					stop = 0;
-				}
-				for (auto index = start; index <= stop; index++)
-				{
-					bool exists = false;
-					for (auto existing_index : pConf->ControlIndicies)
-						if (existing_index == index)
-							exists = true;
+			bool exists = false;
+			for (auto existing_index : ControlIndicies)
+				if (existing_index == index)
+					exists = true;
 
-					if (!exists)
-						pConf->ControlIndicies.push_back(index);
-
-					if (BinaryControls[n].isMember("Intervalms"))
-						pConf->ControlIntervalms[index] = BinaryControls[n]["Intervalms"].asUInt();
-
-					auto start_val = BinaryControls[n]["StartVal"].asString();
-					if (start_val == "D")
-					{
-						if (pConf->ControlIntervalms.count(index))
-							pConf->ControlIntervalms.erase(index);
-						for (auto it = pConf->ControlIndicies.begin(); it != pConf->ControlIndicies.end(); it++)
-							if (*it == index)
-							{
-								pConf->ControlIndicies.erase(it);
-								break;
-							}
-					}
-
-					if (BinaryControls[n].isMember("FeedbackBinaries"))
-					{
-						const auto FeedbackBinaries = BinaryControls[n]["FeedbackBinaries"];
-						for (Json::ArrayIndex fbn = 0; fbn < FeedbackBinaries.size(); ++fbn)
-						{
-							if (!FeedbackBinaries[fbn].isMember("Index"))
-							{
-								std::cout << "An 'Index' is required for Binary feedback : '" << FeedbackBinaries[fbn].toStyledString() << "'" << std::endl;
-								continue;
-							}
-
-							BinaryFeedback fb(FeedbackBinaries[fbn]["Index"].asUInt());
-							if (FeedbackBinaries[fbn].isMember("OnValue"))
-							{
-								if (FeedbackBinaries[fbn]["OnValue"].asString() == "X")
-									fb.on_value = Binary(false, static_cast<uint8_t>(BinaryQuality::COMM_LOST));
-								else
-									fb.on_value = Binary(FeedbackBinaries[fbn]["OnValue"].asBool(), static_cast<uint8_t>(BinaryQuality::ONLINE));
-							}
-							if (FeedbackBinaries[fbn].isMember("OffValue"))
-							{
-								if (FeedbackBinaries[fbn]["OffValue"].asString() == "X")
-									fb.off_value = Binary(false, static_cast<uint8_t>(BinaryQuality::COMM_LOST));
-								else
-									fb.off_value = Binary(FeedbackBinaries[fbn]["OffValue"].asBool(), static_cast<uint8_t>(BinaryQuality::ONLINE));
-
-							}
-							if (FeedbackBinaries[fbn].isMember("FeedbackMode"))
-							{
-								auto mode = FeedbackBinaries[fbn]["FeedbackMode"].asString();
-								if (mode == "PULSE")
-									fb.mode = FeedbackMode::PULSE;
-								else if (mode == "LATCH")
-									fb.mode = FeedbackMode::LATCH;
-								else
-									std::cout << "Warning: unrecognised feedback mode: '" << FeedbackBinaries[fbn].toStyledString() << "'" << std::endl;
-							}
-							pConf->ControlFeedback[index].push_back(std::move(fb));
-						}
-					}
-				}
-			}
-			std::sort(pConf->ControlIndicies.begin(), pConf->ControlIndicies.end());
+			if (!exists)
+				ControlIndicies.push_back(index);
 		}
 	}
+	std::sort(ControlIndicies.begin(), ControlIndicies.end());
+}
+
+void MD3PointConf::ProcessBinaries(const Json::Value& JSONRoot)
+{
+	const auto Binaries = JSONRoot["Binaries"];
+	for (Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
+	{
+		size_t start, stop;
+		if (Binaries[n].isMember("Index"))
+			start = stop = Binaries[n]["Index"].asUInt();
+		else if (Binaries[n]["Range"].isMember("Start") && Binaries[n]["Range"].isMember("Stop"))
+		{
+			start = Binaries[n]["Range"]["Start"].asUInt();
+			stop = Binaries[n]["Range"]["Stop"].asUInt();
+		}
+		else
+		{
+			std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << Binaries[n].toStyledString() << "'" << std::endl;
+			start = 1;
+			stop = 0;
+		}
+		for (auto index = start; index <= stop; index++)
+		{
+
+			bool exists = false;
+			for (auto existing_index : BinaryIndicies)
+				if (existing_index == index)
+					exists = true;
+
+			if (!exists)
+				BinaryIndicies.push_back(index);
+		}
+	}
+	std::sort(BinaryIndicies.begin(), BinaryIndicies.end());
+}
+
+void MD3PointConf::ProcessAnalogs(const Json::Value& JSONRoot)
+{
+	const auto Analogs = JSONRoot["Analogs"];
+	for (Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
+	{
+		size_t start, stop;
+		if (Analogs[n].isMember("Index"))
+			start = stop = Analogs[n]["Index"].asUInt();
+		else if (Analogs[n]["Range"].isMember("Start") && Analogs[n]["Range"].isMember("Stop"))
+		{
+			start = Analogs[n]["Range"]["Start"].asUInt();
+			stop = Analogs[n]["Range"]["Stop"].asUInt();
+		}
+		else
+		{
+			std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << Analogs[n].toStyledString() << "'" << std::endl;
+			start = 1;
+			stop = 0;
+		}
+		for (auto index = start; index <= stop; index++)
+		{
+			bool exists = false;
+			for (auto existing_index : AnalogIndicies)
+				if (existing_index == index)
+					exists = true;
+
+			if (!exists)
+				AnalogIndicies.push_back(index);
+		}
+	}
+	std::sort(AnalogIndicies.begin(), AnalogIndicies.end());
+}
 
 
 

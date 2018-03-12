@@ -1,11 +1,9 @@
-/*
-#include <catch.hpp>
+#include "MD3.h"
+#include "CRC.h"
 
-#define SUITE(name) "DNP3PortEndToEndTestSuite - " name
-
-TEST_CASE(SUITE("Dummy Test Case"))
+uint32_t MD3CRC(const uint32_t data)
 {
-	WARN("Dummy test run");
-	REQUIRE(true);
+	uint32_t inputdata = data * 0x40;
+	uint32_t crc = CRC::Calculate((const void*)&inputdata, sizeof(inputdata), CRC::CRC_6_MD3());
+	return crc;
 }
-*/

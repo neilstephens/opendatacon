@@ -116,7 +116,7 @@ void MD3MasterPort::Connect()
 //    }
 
 	PollScheduler->Clear();
-	for(auto pg : pConf->pPointConf->PollGroups)
+/*	for(auto pg : pConf->pPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
 		auto action = [=](){
@@ -124,7 +124,7 @@ void MD3MasterPort::Connect()
 		};
 		PollScheduler->Add(pg.second.pollrate, action);
 	}
-
+*/
 	PollScheduler->Start();
 }
 
@@ -148,25 +148,11 @@ void MD3MasterPort::Disconnect()
 	//Update the quality of point
 	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
 
-	// MD3 function code 0x01 (read coil status)
-	for(auto range : pConf->pPointConf->BitIndicies)
-		for(uint16_t index = range.start; index < range.start + range.count; index++ )
+	// MD3 Binary
+	for(auto index : pConf->pPointConf->BinaryIndicies)
+		//for(uint16_t index = range.start; index < range.start + range.count; index++ )
 			PublishEvent(BinaryQuality::COMM_LOST, index);
-	
-	// MD3 function code 0x02 (read input status)
-	for(auto range : pConf->pPointConf->InputBitIndicies)
-		for(uint16_t index = range.start; index < range.start + range.count; index++ )
-			PublishEvent(BinaryQuality::COMM_LOST, index);
-	
-	// MD3 function code 0x03 (read holding registers)
-	for(auto range : pConf->pPointConf->RegIndicies)
-		for(uint16_t index = range.start; index < range.start + range.count; index++ )
-			PublishEvent(AnalogQuality::COMM_LOST,index);
-	
-	// MD3 function code 0x04 (read input registers)
-	for(auto range : pConf->pPointConf->InputRegIndicies)
-		for(uint16_t index = range.start; index < range.start + range.count; index++ )
-			PublishEvent(AnalogQuality::COMM_LOST,index);
+	// Do Analogs and Controls.
 }
 
 void MD3MasterPort::HandleError(int errnum, const std::string& source)
@@ -277,7 +263,7 @@ void MD3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LE
 	}
 }
 
-void MD3MasterPort::DoPoll(uint32_t pollgroup)
+/*void MD3MasterPort::DoPoll(uint32_t pollgroup)
 {
 	if(!enabled) return;
 
@@ -402,6 +388,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 		}
 	}
 }
+*/
 
 //Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
 std::future<CommandStatus> MD3MasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
@@ -437,7 +424,7 @@ std::future<CommandStatus> MD3MasterPort::ConnectionEvent(ConnectState state, co
 	return cmd_future;
 }
 
-MD3ReadGroup<Binary>* MD3MasterPort::GetRange(uint16_t index)
+/*MD3ReadGroup<Binary>* MD3MasterPort::GetRange(uint16_t index)
 {
 	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
 	for(auto& range : pConf->pPointConf->BitIndicies)
@@ -447,7 +434,9 @@ MD3ReadGroup<Binary>* MD3MasterPort::GetRange(uint16_t index)
 	}
 	return nullptr;
 }
+*/
 
+/*
 template<>
 CommandStatus MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index)
 {
@@ -548,6 +537,7 @@ CommandStatus MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, ui
 //	if (rc == -1) return HandleWriteError(errno, "write register");
 	return CommandStatus::SUCCESS;
 }
+*/
 
 template<typename T>
 inline std::future<CommandStatus> MD3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
@@ -561,7 +551,7 @@ inline std::future<CommandStatus> MD3MasterPort::EventT(T& arCommand, uint16_t i
 		return cmd_future;
 	}
 
-	cmd_promise->set_value(WriteObject(arCommand, index));
+//	cmd_promise->set_value(WriteObject(arCommand, index));
 	/*
 	auto lambda = capture( std::move(cmd_promise),
 	                      [=]( std::unique_ptr<std::promise<CommandStatus>> & cmd_promise ) {

@@ -24,6 +24,12 @@
  *      Author: Alan Murray
  */
 
+/* The out station port is connected to the Overall System Scada master, so the master thinks it is talking to an outstation.
+ This code then fires off events to the connector, which the connected master port(s) (of some type DNP3/ModBus/MD3) will turn back into scada commands and send out to the "real" Outstation.
+ So it makes sense to connect the SIM (which generates data) to a DNP3 Outstation which will feed the data back to the SCADA master.
+ So an Event to an outstation will be data that needs to be sent up to the scada master.
+ An event from an outstation will be a master control signal to turn something on or off.
+*/
 #include <iostream>
 #include <future>
 #include <regex>
@@ -32,12 +38,15 @@
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include "MD3OutstationPort.h"
 #include "LogMacro.h"
+#include "MD3.h"
+#include "CRC.h"
 
 #include <opendnp3/LogLevels.h>
 
 MD3OutstationPort::MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	MD3Port(aName, aConfFilename, aConfOverrides)
-{}
+{
+}
 
 MD3OutstationPort::~MD3OutstationPort()
 {
@@ -70,30 +79,25 @@ void MD3OutstationPort::Connect()
 
 	stack_enabled = true;
 
-//	if (mb == NULL)
+	if (md3 == NULL)
 	{
 		LOG("MD3OutstationPort", openpal::logflags::ERR,"", Name + ": Connect error: 'MD3 stack failed'");
 		return;
 	}
 
-/*	int s = MD3_tcp_pi_listen(mb, 1);
-	if (s == -1)
+//	int s = MD3_tcp_listen(md3, 1);
+//	if (s == -1)
 	{
-		std::string msg = Name+": Connect error: '" + MD3_strerror(errno) + "'";
-		auto log_entry = openpal::LogEntry("MD3OutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		LOG("MD3OutstationPort", openpal::logflags::WARN,"",Name+": Connect error: '" + "-" + "'");//MD3_strerror(errno)
 		return;
 	}
 
-	int r = MD3_tcp_pi_accept(mb, &s);
-	if (r == -1)
+//	int r = MD3_tcp_accept(md3, &s);
+//	if (r == -1)
 	{
-		std::string msg = Name+": Connect error: '" + MD3_strerror(errno) + "'";
-		auto log_entry = openpal::LogEntry("MD3OutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		LOG("MD3OutstationPort", openpal::logflags::WARN,"", Name+": Connect error: '" + "-" + "'");//MD3_strerror(errno)
 		return;
 	}
-	*/
 }
 
 void MD3OutstationPort::Disable()
@@ -136,12 +140,10 @@ void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LO
 		log_id = "outst_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
 
 		//TODO: collect these on a collection of MD3 tcp connections
-//		mb = MD3_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
-//		if (mb == NULL)
+//		md3 = MD3_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
+//		if (md3 == NULL)
 		{
-			std::string msg = Name + ": Stack error: 'MD3 stack creation failed'";
-			auto log_entry = openpal::LogEntry("MD3OutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			LOG("MD3OutstationPort", openpal::logflags::ERR,"", Name + ": Stack error: 'MD3 stack creation failed'");
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
@@ -149,29 +151,23 @@ void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LO
 	else if(pConf->mAddrConf.SerialDevice != "")
 	{
 		log_id = "outst_" + pConf->mAddrConf.SerialDevice;
-//		mb = MD3_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
-//		if (mb == NULL)
+//		md3 = MD3_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
+//		if (md3 == NULL)
 		{
-			std::string msg = Name + ": Stack error: 'MD3 stack creation failed'";
-			auto log_entry = openpal::LogEntry("MD3OutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			LOG("MD3OutstationPort", openpal::logflags::ERR,"", Name + ": Stack error: 'MD3 stack creation failed'");
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
-//		if(MD3_rtu_set_serial_mode(mb,MD3_RTU_RS232))
+//		if(MD3_rtu_set_serial_mode(md3, MD3_RTU_RS232))
 		{
-			std::string msg = Name + ": Stack error: 'Failed to set MD3 serial mode to RS232'";
-			auto log_entry = openpal::LogEntry("MD3OutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			LOG("MD3OutstationPort", openpal::logflags::ERR,"", Name + ": Stack error: 'Failed to set MD3 serial mode to RS232'");
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
 	}
 	else
 	{
-		std::string msg = Name + ": No IP interface or serial device defined";
-		auto log_entry = openpal::LogEntry("MD3OutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		LOG("MD3OutstationPort", openpal::logflags::ERR,"", Name + ": No IP interface or serial device defined");
 		//TODO: should this throw an exception instead of return?
 		return;
 	}
@@ -184,14 +180,14 @@ void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LO
 	                                pConf->pPointConf->InputRegIndicies.Total());
 	if (mb_mapping == NULL)
 */	{
-		std::string msg = Name + ": Failed to allocate the MD3 register mapping: ";// +std::string(MD3_strerror(errno));
-		auto log_entry = openpal::LogEntry("MD3OutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		LOG("MD3OutstationPort", openpal::logflags::ERR,"", Name + ": Failed to allocate the MD3 register mapping: "); // +std::string(MD3_strerror(errno));
 		//TODO: should this throw an exception instead of return?
 		return;
 	}
 }
 
+//Similar to the command below, but this one is just asking if something is supported.
+//At the moment, I assume we respond based on how we are configured (controls and data points) and dont wait to see what happens down the line.
 template<typename T>
 inline CommandStatus MD3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {
@@ -211,6 +207,11 @@ inline CommandStatus MD3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 	*/
 	return CommandStatus::NOT_SUPPORTED;
 }
+
+// We are going to send a command to the opendatacon connector to do some kind of operation.
+// If there is a master on that connector it will then send the command on down to the "real" outstation.
+// This method will be called in response to data appearing on our TCP connection.
+// TODO: SJE The question is, how do we respond up the line - do we need to wait for a response from down the line first?
 template<typename T>
 inline CommandStatus MD3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 {
@@ -243,15 +244,17 @@ std::future<CommandStatus> MD3OutstationPort::Event(const FrozenCounter& meas, u
 std::future<CommandStatus> MD3OutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 std::future<CommandStatus> MD3OutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 
-template<typename T>
-int find_index (const MD3ReadGroupCollection<T>& aCollection, uint16_t index)
+int find_index (const std::vector<uint32_t> &aCollection, uint16_t index)
 {
 	for(auto group : aCollection)
-		for(auto group_index = group.start; group_index < group.start + group.count; group_index++)
-			if(group_index + group.index_offset == index)
-				return (int)group_index;
+			if(group == index)
+				return (int)index;
 	return -1;
 }
+
+// We received a change in data from an Event (from the opendatacon Connector) now store it so that it can be produced when the Scada master polls us
+// for a group or iindividually on our TCP connection.
+// What we return here is not used in anyway that I can see.
 
 template<typename T>
 inline std::future<CommandStatus> MD3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
@@ -268,27 +271,15 @@ inline std::future<CommandStatus> MD3OutstationPort::EventT(T& meas, uint16_t in
 
 	if(std::is_same<T,Analog>::value)
 	{
-		int map_index = find_index(pConf->pPointConf->InputRegIndicies, index);
+		int map_index = find_index(pConf->pPointConf->AnalogIndicies, index);
 		if (map_index >= 0)
 			;//	*(mb_mapping->tab_input_registers + map_index) = (uint16_t)meas.value;
-		else
-		{
-			map_index = find_index(pConf->pPointConf->RegIndicies, index);
-			if (map_index >= 0)
-				;//		*(mb_mapping->tab_registers + map_index) = (uint16_t)meas.value;
-		}
 	}
 	else if(std::is_same<T,Binary>::value)
 	{
-		int map_index = find_index(pConf->pPointConf->InputBitIndicies, index);
+		int map_index = find_index(pConf->pPointConf->BinaryIndicies, index);
 		if (map_index >= 0)
 			;//		*(mb_mapping->tab_input_bits + index) = (uint8_t)meas.value;
-		else
-		{
-			map_index = find_index(pConf->pPointConf->BitIndicies, index);
-			if (map_index >= 0)
-				;//				*(mb_mapping->tab_bits + index) = (uint8_t)meas.value;
-		}
 	}
 	//TODO: impl other types
 

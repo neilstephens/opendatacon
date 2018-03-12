@@ -99,7 +99,7 @@ public:
 
 private:
 	template<class T>
-	CommandStatus WriteObject(const T& command, uint16_t index);
+//	CommandStatus WriteObject(const T& command, uint16_t index);
 
 	void DoPoll(uint32_t pollgroup);
 
@@ -107,7 +107,7 @@ private:
 	void HandleError(int errnum, const std::string& source);
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
-	MD3ReadGroup<Binary>* GetRange(uint16_t index);
+//	MD3ReadGroup<Binary>* GetRange(uint16_t index);
 
 	//MD3_t *mb;
 	void* MD3_read_buffer;

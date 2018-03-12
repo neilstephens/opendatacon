@@ -49,6 +49,12 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
+	void ProcessBinaryControls(const Json::Value& JSONRoot);
+
+	void ProcessBinaries(const Json::Value& JSONRoot);
+
+	void ProcessAnalogs(const Json::Value& JSONRoot);
+
 //	std::pair<Binary,size_t> mCommsPoint;
 
 	unsigned LinkNumRetry = 0;
@@ -59,7 +65,7 @@ public:
 	std::vector<uint32_t> ControlIndicies;
 
 private:
-	template<class T>
+	//template<class T>
 };
 
 #endif /* MD3POINTCONF_H_ */

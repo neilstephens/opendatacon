@@ -25,7 +25,7 @@
  */
 #include "MD3Port.h"
 
-std::unordered_map<std::string, asiodnp3::IChannel*> MD3Port::TCPChannels;
+// std::unordered_map<std::string, asiodnp3::IChannel*> MD3Port::TCPChannels;
 
 MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
