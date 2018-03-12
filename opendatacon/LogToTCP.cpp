@@ -58,6 +58,8 @@ void LogToTCP::Log( const openpal::LogEntry& arEntry )
 	SS <<time_str<<" - "<< filter_str<<" - "<<arEntry.GetAlias();
 	if(!arEntry.GetLocation())
 		SS << " - " << arEntry.GetLocation();
+//FIXME: Clash with windows #define
+#define GetMessage GetMessage
 	SS << " - " << arEntry.GetMessage();
 	if(arEntry.GetErrorCode() != -1)
 		SS << " - " << arEntry.GetErrorCode();
