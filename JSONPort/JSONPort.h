@@ -76,7 +76,6 @@ public:
 	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
 
 private:
-	std::unique_ptr<Json::StreamWriter> pJSONWriter;
 	bool isServer;
 	std::unique_ptr<TCPSocketManager<std::string>> pSockMan;
 	void SocketStateHandler(bool state);
