@@ -33,8 +33,8 @@
 
 using namespace odc;
 
-MD3PointConf::MD3PointConf(std::string FileName) :
-	ConfigParser(FileName)
+MD3PointConf::MD3PointConf(std::string FileName, const Json::Value& ConfOverrides) :
+	ConfigParser(FileName, ConfOverrides)
 {
 	ProcessFile();
 }
@@ -45,10 +45,6 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot.isObject()) return;
 
 	// Root level Configuration values
-	if (JSONRoot.isMember("LinkNumRetry"))
-		LinkNumRetry = JSONRoot["LinkNumRetry"].asUInt();
-	if (JSONRoot.isMember("LinkTimeoutms"))
-		LinkTimeoutms = JSONRoot["LinkTimeoutms"].asUInt();
 
 	if (JSONRoot.isMember("Analogs"))
 	{

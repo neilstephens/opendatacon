@@ -20,8 +20,8 @@
 /*
  * MD3PointConf.h
  *
- *  Created on: 16/10/2014
- *      Author: Alan Murray
+ *  Created on: 10/03/2018
+ *      Author: Scott Ellis - Derived from  DNP3PointConf.h
  */
 
 #ifndef MD3POINTCONF_H_
@@ -42,10 +42,15 @@
 
 using namespace odc;
 
+// So the MD3 Addressing structure requires us to support a Module addressing scheme 1 to 256 for digital IO with 16 bits at each location
+// The Analogs are effectively the same, with 16 channels at each Module address.
+// ModBus uses an Index/Offset addressing scheme. We will do similar Index/Channel.
+// Sometimes we will return 16 bits at an Index, othertimes will return just time tagged chanes, so need to support this.
+
 class MD3PointConf: public ConfigParser
 {
 public:
-	MD3PointConf(std::string FileName);
+	MD3PointConf(std::string FileName, const Json::Value& ConfOverrides);
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
@@ -54,8 +59,6 @@ public:
 	void ProcessBinaries(const Json::Value& JSONRoot);
 
 	void ProcessAnalogs(const Json::Value& JSONRoot);
-
-//	std::pair<Binary,size_t> mCommsPoint;
 
 	unsigned LinkNumRetry = 0;
 	unsigned LinkTimeoutms = 0;

@@ -61,7 +61,7 @@ void MD3MasterPort::Enable()
 void MD3MasterPort::Connect()
 {
 	if(!enabled) return;
-	if (stack_enabled) return;
+//	if (stack_enabled) return;
 
 	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
 
@@ -95,7 +95,7 @@ void MD3MasterPort::Connect()
 	}
 	*/
 
-	stack_enabled = true;
+//	stack_enabled = true;
 
 	{
 		std::string msg = Name + ": Connect success!";
@@ -136,8 +136,8 @@ void MD3MasterPort::Disable()
 
 void MD3MasterPort::Disconnect()
 {
-	if (!stack_enabled) return;
-	stack_enabled = false;
+//	if (!stack_enabled) return;
+//	stack_enabled = false;
 
 	//cancel the timers (otherwise it would tie up the io_service on shutdown)
 	pTCPRetryTimer->cancel();
@@ -217,50 +217,7 @@ void MD3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LE
 {
 	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
 
-	std::string log_id;
-
-	if(pConf->mAddrConf.IP != "")
-	{
-		log_id = "mast_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
-
-		//TODO: collect these on a collection of MD3 tcp connections
-//		mb = MD3_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
-//		if (mb == NULL)
-		{
-			std::string msg = Name + ": Stack error: 'MD3 stack creation failed'";
-			auto log_entry = openpal::LogEntry("MD3MasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-			throw std::runtime_error(msg);
-		}
-	}
-	else if(pConf->mAddrConf.SerialDevice != "")
-	{
-		log_id = "mast_" + pConf->mAddrConf.SerialDevice;
-//		mb = MD3_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
-//		if (mb == NULL)
-		{
-			std::string msg = Name + ": Stack error: 'MD3 stack creation failed'";
-			auto log_entry = openpal::LogEntry("MD3MasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-			throw std::runtime_error(msg);
-		}
-
-//Not needed? - doesn't work at least
-//		if(MD3_rtu_set_serial_mode(mb,MD3_RTU_RS232) == -1)
-//		{
-//			std::string msg = Name + ": Stack error: 'Failed to set MD3 serial mode to RS232'";
-//			auto log_entry = openpal::LogEntry("MD3MasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-//			pLoggers->Log(log_entry);
-//			throw std::runtime_error(msg);
-//		}
-	}
-	else
-	{
-		std::string msg = Name + ": No IP address or serial device defined";
-		auto log_entry = openpal::LogEntry("MD3OutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-		throw std::runtime_error(msg);
-	}
+	
 }
 
 /*void MD3MasterPort::DoPoll(uint32_t pollgroup)

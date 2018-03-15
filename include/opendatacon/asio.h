@@ -27,6 +27,12 @@
 #ifndef ASIO_H
 #define ASIO_H
 
+#define ASIO_HAS_STD_ADDRESSOF
+#define ASIO_HAS_STD_ARRAY
+#define ASIO_HAS_CSTDINT
+#define ASIO_HAS_STD_TYPE_TRAITS
+#define ASIO_HAS_STD_SHARED_PTR
+
 #include <asio.hpp>
 
 //use these to suppress warnings

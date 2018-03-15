@@ -57,9 +57,10 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 	auto val_marker = JSONRoot["TemplateValue"].isString() ? JSONRoot["TemplateValue"].asString() : "<VALUE>";
 	auto qual_marker = JSONRoot["TemplateQuality"].isString() ? JSONRoot["TemplateQuality"].asString() : "<QUALITY>";
 	auto time_marker = JSONRoot["TemplateTimestamp"].isString() ? JSONRoot["TemplateTimestamp"].asString() : "<TIMESTAMP>";
+	auto sender_marker = JSONRoot["TemplateSender"].isString() ? JSONRoot["TemplateSender"].asString() : "<SENDER>";
 	if(JSONRoot.isMember("OutputTemplate"))
 	{
-		pJOT.reset(new JSONOutputTemplate(JSONRoot["OutputTemplate"],ind_marker,name_marker,val_marker,qual_marker,time_marker));
+		pJOT.reset(new JSONOutputTemplate(JSONRoot["OutputTemplate"],ind_marker,name_marker,val_marker,qual_marker,time_marker,sender_marker));
 	}
 	else
 	{
@@ -69,7 +70,8 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		temp["Value"] = val_marker;
 		temp["Quality"] = qual_marker;
 		temp["Timestamp"] = time_marker;
-		pJOT.reset(new JSONOutputTemplate(temp,ind_marker,name_marker,val_marker,qual_marker,time_marker));
+		temp["Sender"] = sender_marker;
+		pJOT.reset(new JSONOutputTemplate(temp,ind_marker,name_marker,val_marker,qual_marker,time_marker,sender_marker));
 	}
 
 	const Json::Value PointConfs = JSONRoot["JSONPointConf"];

@@ -132,7 +132,14 @@ void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned
 	//Send an event out
 	//change value around mean
 	std::normal_distribution<double> distribution(pMean->value, std_dev);
+<<<<<<< HEAD
 	PublishEvent(Analog(distribution(RandNumGenerator),pMean->quality), (uint16_t)index);
+=======
+	PublishEvent(Analog(distribution(RandNumGenerator),
+				  pMean->quality,
+				  Timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())),
+			 index);
+>>>>>>> origin/develop
 
 	//wait till next time
 	pTimer->async_wait([=](asio::error_code err_code)
@@ -152,6 +159,8 @@ void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, si
 	//Send an event out
 	//toggle value
 	pVal->value = !pVal->value;
+	pVal->time = Timestamp(std::chrono::duration_cast<std::chrono::milliseconds>
+				     (std::chrono::system_clock::now().time_since_epoch()).count());
 	//pass a copy, because we don't know when the ref will go out of scope
 	PublishEvent(Binary(*pVal), index);
 

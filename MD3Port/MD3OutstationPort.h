@@ -28,11 +28,12 @@
 #define MD3SERVERPORT_H_
 
 #include <unordered_map>
+#include <opendnp3/outstation/ICommandHandler.h>
 
 #include "MD3.h"
 #include "MD3Port.h"
 
-class MD3OutstationPort: public MD3Port
+class MD3OutstationPort: public MD3Port// , public opendnp3::IOutstationApplication	//, public opendnp3::ICommandHandler
 {
 public:
 	MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
@@ -41,6 +42,10 @@ public:
 	void Enable() override;
 	void Disable() override;
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+
+	// Implement DNP3Port
+	void OnLinkDown() override;
+	TCPClientServer ClientOrServer() override;
 
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
@@ -54,13 +59,11 @@ public:
 	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex);
 	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
 
-
-	void Connect();
-	void Disconnect();
-
 private:
-	void StateListener(ChannelState state);
+	asiodnp3::IOutstation* pOutstation;
+//	void LinkStatusListener(opendnp3::LinkStatus status);
 	std::unique_ptr<MD3_t> md3;
+
 //	MD3_mapping_t *mb_mapping;
 };
 

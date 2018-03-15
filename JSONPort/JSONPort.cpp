@@ -32,7 +32,6 @@ using namespace odc;
 
 JSONPort::JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides, bool aisServer):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	pJSONWriter(nullptr),
 	isServer(aisServer),
 	pSockMan(nullptr)
 {
@@ -111,11 +110,6 @@ void JSONPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
 {
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	Json::StreamWriterBuilder wbuilder;
-	if(!pConf->style_output)
-		wbuilder["indentation"] = "";
-	pJSONWriter.reset(wbuilder.newStreamWriter());
-
 	//TODO: use event buffer size once socket manager supports it
 	pSockMan.reset(new TCPSocketManager<std::string>
 			   (pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
@@ -193,8 +187,16 @@ void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future
 		result["Command"]["Index"] =(Json::UInt64) index;
 		result["Command"]["Status"] = success ? "SUCCESS" : (future_results.size()==1 ? "FAIL" : "UNDEFINED");
 
+		auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
+		//TODO: make this writer reusable (class member)
+		//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+		Json::StreamWriterBuilder wbuilder;
+		if(!pConf->style_output)
+			wbuilder["indentation"] = "";
+		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
 		std::ostringstream oss;
-		pJSONWriter->write(result, &oss); oss<<std::endl;
+		pWriter->write(result, &oss); oss<<std::endl;
 		pSockMan->Write(oss.str());
 	}
 	else
@@ -412,8 +414,15 @@ void JSONPort::ProcessBraced(const std::string& braced)
 									result["Command"]["Index"] = point_pair.first;
 									result["Command"]["Status"] = "UNDEFINED";
 
+									//TODO: make this writer reusable (class member)
+									//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+									Json::StreamWriterBuilder wbuilder;
+									if(!pConf->style_output)
+										wbuilder["indentation"] = "";
+									std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
 									std::ostringstream oss;
-									pJSONWriter->write(result, &oss); oss<<std::endl;
+									pWriter->write(result, &oss); oss<<std::endl;
 									pSockMan->Write(oss.str());
 								}
 							 });
@@ -485,11 +494,11 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 	}
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	auto ToJSON = [pConf,index,&meas](std::map<uint16_t, Json::Value>& PointMap)->Json::Value
+	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap)->Json::Value
 	{
 		if(PointMap.count(index))
 		{
-			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString());
+			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
 			return output;
 		}
 		return Json::Value::nullSingleton();
@@ -500,8 +509,15 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 	if(output.isNull())
 		return IOHandler::CommandFutureNotSupported();
 
+	//TODO: make this writer reusable (class member)
+	//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+	Json::StreamWriterBuilder wbuilder;
+	if(!pConf->style_output)
+		wbuilder["indentation"] = "";
+	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
 	std::ostringstream oss;
-	pJSONWriter->write(output, &oss); oss<<std::endl;
+	pWriter->write(output, &oss); oss<<std::endl;
 	pSockMan->Write(oss.str());
 
 	return IOHandler::CommandFutureSuccess();

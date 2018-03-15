@@ -29,7 +29,8 @@
 
 extern "C" MD3MasterPort* new_MD3MasterPort(std::string Name, std::string File, const Json::Value Overrides)
 {
-	return new MD3MasterPort(Name,File,Overrides);
+	return nullptr;
+//	return new MD3MasterPort(Name,File,Overrides);
 }
 
 extern "C" MD3OutstationPort* new_MD3OutstationPort(std::string Name, std::string File, const Json::Value Overrides)
@@ -39,7 +40,7 @@ extern "C" MD3OutstationPort* new_MD3OutstationPort(std::string Name, std::strin
 
 extern "C" void delete_MD3MasterPort(MD3MasterPort* aMD3MasterPort_ptr)
 {
-	delete aMD3MasterPort_ptr;
+	// delete aMD3MasterPort_ptr;
 	return;
 }
 

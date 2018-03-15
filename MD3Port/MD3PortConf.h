@@ -21,21 +21,18 @@
  * MD3OutstationPortConf.h
  *
  *  Created on: 1/2/2018
- *      Author: Scott Ellis - derived from MD3 version
+ *      Author: Scott Ellis - derived from DNP3 version
  */
 
 #ifndef MD3OUTSTATIONPORTCONF_H_
 #define MD3OUTSTATIONPORTCONF_H_
 
 #include <opendatacon/DataPort.h>
+#include <opendatacon/TCPSocketManager.h>
 #include "MD3PointConf.h"
 
-typedef enum
-{
-	PERSISTENT,
-	ONDEMAND,
-	MANUAL
-} server_type_t;
+enum TCPClientServer { CLIENT, SERVER, DEFAULT };
+enum server_type_t { ONDEMAND, PERSISTENT, MANUAL };
 
 enum class SerialParity: char
 {
@@ -45,46 +42,44 @@ enum class SerialParity: char
 struct MD3AddrConf
 {
 	//Serial
-	std::string SerialDevice;
-	uint32_t BaudRate;
-	SerialParity Parity;
-	uint8_t DataBits;
-	uint8_t StopBits;
+	asiopal::SerialSettings SerialSettings;
 
 	//IP
 	std::string IP;
 	uint16_t Port;
+	TCPClientServer ClientServer;
 
 	//Common
 	uint8_t OutstationAddr;
+	uint16_t MasterAddr;
 	server_type_t ServerType;
 
 	// Default address values can minimally set SerialDevice or IP.
-	MD3AddrConf():
-		SerialDevice(""),
-		BaudRate(115200),
-		Parity(SerialParity::NONE),
-		DataBits(8),
-		StopBits(1),
-		IP(""),
-		Port(502),
+	MD3AddrConf() :
+		SerialSettings(),
+		IP("127.0.0.1"),
+		Port(20000),
+		ClientServer(TCPClientServer::DEFAULT),
 		OutstationAddr(1),
-		ServerType(ONDEMAND)
+		MasterAddr(0),
+		ServerType(server_type_t::ONDEMAND)
 	{}
 };
 
 class MD3PortConf: public DataPortConf
 {
 public:
-	MD3PortConf(std::string FileName):
-		mAddrConf()
+	MD3PortConf(std::string FileName, const Json::Value& ConfOverrides)
 	{
-		pPointConf.reset(new MD3PointConf(FileName));
+		pPointConf.reset(new MD3PointConf(FileName, ConfOverrides));
 	}
 
 	std::unique_ptr<MD3PointConf> pPointConf;
-
 	MD3AddrConf mAddrConf;
+	uint32_t TCPListenRetryPeriodMinms;
+	uint32_t TCPListenRetryPeriodMaxms;
+	uint32_t TCPConnectRetryPeriodMinms;
+	uint32_t TCPConnectRetryPeriodMaxms;
 };
 
 #endif /* MD3OUTSTATIONPORTCONF_H_ */

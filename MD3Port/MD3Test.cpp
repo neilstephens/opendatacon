@@ -1,5 +1,7 @@
 #include "catchvs.hpp"
 #include "Trompeloeil.hpp"
+#include <opendnp3/LogLevels.h>
+#include <asiodnp3/ConsoleLogger.h>
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 
@@ -47,7 +49,7 @@ namespace UnitTests
 	{
 		const uint32_t data = 0x0F0F0F0F;
 		uint32_t res = MD3CRC(data);
-		REQUIRE(res == 0xFF);
+		REQUIRE(res == 0x23);
 	}
 
 	TEST_CASE(SUITE("ConstructorTest"))
@@ -79,5 +81,14 @@ namespace UnitTests
 		auto res2 = MD3Port->Event(b, index2, "TestHarness");
 		REQUIRE((res2.get() == odc::CommandStatus::UNDEFINED));	// The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
 
+		IOManager IOMgr(1);
+
+		// send log messages to the console
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance());
+		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+
+		// Wait for some period to do something?? Check that the port is open and we can connect to it?
+
+		IOMgr.Shutdown();
 	}
 }

@@ -28,6 +28,7 @@
 #define MD3PORT_H_
 
 #include <opendatacon/DataPort.h>
+#include <opendnp3/gen/LinkStatus.h>
 #include "MD3PortConf.h"
 
 using namespace odc;
@@ -40,6 +41,10 @@ public:
 	void Enable() override =0;
 	void Disable() override =0;
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override =0;
+	void StateListener(ChannelState state);
+
+	//Override DataPort for UI
+	const Json::Value GetStatus() const override;
 
 	//so the compiler won't warn we're hiding the base class overload we still want to use
 	using DataPort::Event;
@@ -69,9 +74,17 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
-	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
 protected:
-	bool stack_enabled;
+	asiodnp3::IChannel* GetChannel(IOManager& IOMgr);
+
+	asiodnp3::IChannel* pChannel;
+	static std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
+	opendnp3::LinkStatus status;
+	bool link_dead;
+	bool channel_dead;
+
+	virtual void OnLinkDown() = 0;
+	virtual TCPClientServer ClientOrServer() = 0;
 };
 
 #endif /* MD3PORT_H_ */

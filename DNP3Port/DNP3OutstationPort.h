@@ -38,7 +38,7 @@ public:
 	DNP3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 	~DNP3OutstationPort() override;
 
-protected:
+
 	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
