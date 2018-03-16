@@ -35,35 +35,18 @@ endif()
 
 project(opendatacon_suite C CXX)
 
-find_package(Git)
-if(GIT_FOUND)
- 	message("-- git found: ${GIT_EXECUTABLE}, determining source version")
-	execute_process(
-		COMMAND git describe --long --match "[0-9]*\\.[0-9]*\\.[0-9]" --dirty
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		OUTPUT_VARIABLE GIT_DESCRIBE
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-	)
- 	#message(" Git describe: ${GIT_DESCRIBE}")
-	string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)-[0-9]+-([^-]+)-?([^-]*)$" GIT_REPO_MATCH ${GIT_DESCRIBE})
- 	#message(" Version: ${CMAKE_MATCH_1} ${CMAKE_MATCH_2} ${CMAKE_MATCH_3} ${CMAKE_MATCH_4}")
-
-	set(ODC_MAJOR_VERSION ${CMAKE_MATCH_1})
-	set(ODC_MINOR_VERSION ${CMAKE_MATCH_2})
-	set(ODC_MICRO_VERSION ${CMAKE_MATCH_3})
-	set(ODC_VERSION "${ODC_MAJOR_VERSION}.${ODC_MINOR_VERSION}.${ODC_MICRO_VERSION}")
-
-	set(GIT_REPO_COMMIT ${CMAKE_MATCH_4})
-	set(GIT_REPO_DIRTY ${CMAKE_MATCH_5})
-	message("-- opendatacon version: ${ODC_VERSION} ${GIT_REPO_COMMIT} ${GIT_REPO_DIRTY}")
-
-	configure_file (
-		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h.in"
-		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
-  	)
-
-endif()
-
+#Generate version info now, and set to generate on every build
+include(version.cmake)
+#This will run on every build, because output is never actually produced.
+add_custom_command(OUTPUT always_rebuild COMMAND ${CMAKE_COMMAND} -E echo)
+add_custom_command(
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	OUTPUT "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
+	COMMAND ${CMAKE_COMMAND} -P "version.cmake"
+	DEPENDS always_rebuild
+)
+#version info target that our other targets can have a dependance on
+add_custom_target(version DEPENDS "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h")
 
 # various optional libraries and projects
 option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, Tests, ConsoleUI, WebUI)" OFF)
