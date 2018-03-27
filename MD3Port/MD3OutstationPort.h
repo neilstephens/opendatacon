@@ -28,12 +28,15 @@
 #define MD3SERVERPORT_H_
 
 #include <unordered_map>
-#include <opendnp3/outstation/ICommandHandler.h>
+#include <vector>
+#include <functional>
+
 
 #include "MD3.h"
 #include "MD3Port.h"
+#include "MD3Engine.h"
 
-class MD3OutstationPort: public MD3Port// , public opendnp3::IOutstationApplication	//, public opendnp3::ICommandHandler
+class MD3OutstationPort: public MD3Port
 {
 public:
 	MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
@@ -42,10 +45,6 @@ public:
 	void Enable() override;
 	void Disable() override;
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
-
-	// Implement DNP3Port
-	void OnLinkDown() override;
-	TCPClientServer ClientOrServer() override;
 
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
@@ -59,12 +58,29 @@ public:
 	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex);
 	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
 
-private:
-	asiodnp3::IOutstation* pOutstation;
-//	void LinkStatusListener(opendnp3::LinkStatus status);
-	std::unique_ptr<MD3_t> md3;
+	// only public for unit testing - could use a friend class to access?
+	void ReadCompletionHandler(buf_t& readbuf);
+	void RouteMD3Message(std::vector<MD3Block> &CompleteMD3Message);
+	void ProcessMD3Message(std::vector<MD3Block> &CompleteMD3Message);
 
-//	MD3_mapping_t *mb_mapping;
+	void DoAnalogUnconditional(std::vector<MD3Block>& CompleteMD3Message);
+
+	void SendResponse(std::vector<MD3Block>& CompleteMD3Message);
+
+	// This allows us to hook the TCP Data Send Fucntion for testing.
+	void SetSendTCPDataFn(std::function<void(std::string)> Send);
+
+private:
+
+	void SocketStateHandler(bool state);
+
+	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+
+	std::vector<MD3Block> MD3Message;
+
+	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
+	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing
+
 };
 
-#endif /* MD3SERVERPORT_H_ */
+#endif

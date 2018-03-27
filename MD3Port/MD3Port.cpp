@@ -20,22 +20,18 @@
 /*
  * MD3Port.cpp
  *
- *  Created on: 16/10/2014
- *      Author: Alan Murray
+ *  Created on:
+ *      Author: Scott Ellis
  */
 #include "MD3Port.h"
 #include <iostream>
 #include "MD3PortConf.h"
 #include <openpal/logging/LogLevels.h>
 
-	std::unordered_map<std::string, asiodnp3::IChannel*> MD3Port::Channels;
 
 MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
 	DataPort(aName, aConfFilename, aConfOverrides),
-	pChannel(nullptr),
-	status(opendnp3::LinkStatus::UNRESET),
-	link_dead(true),
-	channel_dead(true)
+	pSockMan(nullptr)
 {
 	//the creation of a new MD3PortConf will get the point details
 	pConf.reset(new MD3PortConf(ConfFilename, ConfOverrides));
@@ -44,21 +40,16 @@ MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value
 	ProcessFile();
 }
 
-// Called by OpenMD3 Thread Pool
-void MD3Port::StateListener(ChannelState state)
+TCPClientServer MD3Port::ClientOrServer()
 {
-	if (state != ChannelState::OPEN)
-	{
-		channel_dead = true;
-		OnLinkDown();
-	}
-	else
-	{
-		channel_dead = false;
-	}
+	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
+	if (pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
+		return TCPClientServer::SERVER;
+	return pConf->mAddrConf.ClientServer;
 }
 
 //DataPort function for UI
+/*
 const Json::Value MD3Port::GetStatus() const
 {
 	auto ret_val = Json::Value();
@@ -76,9 +67,13 @@ const Json::Value MD3Port::GetStatus() const
 
 	return ret_val;
 }
+*/
 
 void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 {
+	// The points are handled by the MD3PointConf class.
+	// This is all the port specfic stuff.
+
 	if (!JSONRoot.isObject()) return;
 
 	if (JSONRoot.isMember("IP") && JSONRoot.isMember("SerialDevice"))
@@ -157,69 +152,4 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 		else
 			std::cout << "Invalid MD3 Port server type: '" << JSONRoot["ServerType"].asString() << "'." << std::endl;
 	}
-
 }
-
-asiodnp3::IChannel* MD3Port::GetChannel(IOManager& IOMgr)
-{
-	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
-
-	std::string ChannelID;
-	bool isSerial;
-	if (pConf->mAddrConf.IP.empty())
-	{
-		ChannelID = pConf->mAddrConf.SerialSettings.deviceName;
-		isSerial = true;
-	}
-	else
-	{
-		ChannelID = pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
-		isSerial = false;
-	}
-
-	//create a new channel if needed
-	if (!Channels.count(ChannelID))
-	{
-		if (isSerial)
-		{
-			Channels[ChannelID] = IOMgr.AddSerial(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-				opendnp3::ChannelRetry(
-					openpal::TimeDuration::Milliseconds(500),
-					openpal::TimeDuration::Milliseconds(5000)),
-				pConf->mAddrConf.SerialSettings);
-		}
-		else
-		{
-			switch (ClientOrServer())
-			{
-			case TCPClientServer::SERVER:
-				Channels[ChannelID] = IOMgr.AddTCPServer(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-					opendnp3::ChannelRetry(
-						openpal::TimeDuration::Milliseconds(pConf->TCPListenRetryPeriodMinms),
-						openpal::TimeDuration::Milliseconds(pConf->TCPListenRetryPeriodMaxms)),
-					pConf->mAddrConf.IP,
-					pConf->mAddrConf.Port);
-				break;
-
-			case TCPClientServer::CLIENT:
-				Channels[ChannelID] = IOMgr.AddTCPClient(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-					opendnp3::ChannelRetry(
-						openpal::TimeDuration::Milliseconds(pConf->TCPConnectRetryPeriodMinms),
-						openpal::TimeDuration::Milliseconds(pConf->TCPConnectRetryPeriodMaxms)),
-					pConf->mAddrConf.IP,
-					"0.0.0.0",
-					pConf->mAddrConf.Port);
-				break;
-
-			default:
-				std::string msg = Name + ": Can't determine if TCP socket is client or server";
-				auto log_entry = openpal::LogEntry("MD3Port", openpal::logflags::ERR, "", msg.c_str(), -1);
-				pLoggers->Log(log_entry);
-				throw std::runtime_error(msg);
-			}
-		}
-	}
-
-	return Channels[ChannelID];
-}
-

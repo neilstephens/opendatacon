@@ -149,9 +149,9 @@ void MD3MasterPort::Disconnect()
 	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
 
 	// MD3 Binary
-	for(auto index : pConf->pPointConf->BinaryIndicies)
+	//for(auto index : pConf->pPointConf->BinaryIndicies)
 		//for(uint16_t index = range.start; index < range.start + range.count; index++ )
-			PublishEvent(BinaryQuality::COMM_LOST, index);
+//			PublishEvent(BinaryQuality::COMM_LOST, index);
 	// Do Analogs and Controls.
 }
 

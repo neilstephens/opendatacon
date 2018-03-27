@@ -76,10 +76,7 @@ public:
 
 	std::unique_ptr<MD3PointConf> pPointConf;
 	MD3AddrConf mAddrConf;
-	uint32_t TCPListenRetryPeriodMinms;
-	uint32_t TCPListenRetryPeriodMaxms;
-	uint32_t TCPConnectRetryPeriodMinms;
-	uint32_t TCPConnectRetryPeriodMaxms;
+	uint32_t TCPConnectRetryPeriodms;
 };
 
 #endif /* MD3OUTSTATIONPORTCONF_H_ */

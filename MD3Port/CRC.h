@@ -893,9 +893,9 @@ namespace CRCPP
 	@brief Returns a set of parameters for CRC-6 MD3.
 	@note The parameters are static and are delayed-constructed to reduce memory footprint.
 	@note CRC-6 MD3 has the following parameters and check value:
-	- polynomial     = 0x6D
+	- polynomial     = 0x1B	The high order bit is always 1 and left off.
 	- initial value  = 0x00
-	- final XOR      = 0xFF
+	- final XOR      = 0xFF Invert the output
 	- reflect input  = true
 	- reflect output = true
 	- check value    = 0x??
@@ -903,7 +903,7 @@ namespace CRCPP
 	*/
 	inline const CRC::Parameters<crcpp_uint8, 6> & CRC::CRC_6_MD3()
 	{
-		static const Parameters<crcpp_uint8, 6> parameters = { 0x6d, 0x00, 0xFF, true, true };
+		static const Parameters<crcpp_uint8, 6> parameters = { 0x1B, 0x00, 0xFF, true, true };
 		return parameters;
 	}
 	/**

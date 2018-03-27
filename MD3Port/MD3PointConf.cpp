@@ -20,14 +20,15 @@
  /*
   * MD3PointConf.cpp
   *
-  *  Created on: 16/10/2014
-  *      Author: Alan Murray
+  *  Created on:
+  *      Author: Scott Ellis
   */
 
 #include <regex>
 #include <algorithm>
+#include <memory>
+#include <map>
 #include "MD3PointConf.h"
-#include "MD3PortConf.h"
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
 
@@ -48,118 +49,93 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("Analogs"))
 	{
-		ProcessAnalogs(JSONRoot);
+		const auto BinaryControls = JSONRoot["Analogs"];
+		ProcessPoints(BinaryControls, AnalogMD3PointMap, AnalogODCPointMap);
 	}
 
 	if (JSONRoot.isMember("Binaries"))
 	{
-		ProcessBinaries(JSONRoot);
+		const auto BinaryControls = JSONRoot["Binaries"];
+		ProcessPoints(BinaryControls, BinaryMD3PointMap, BinaryODCPointMap);
 	}
 
 	if (JSONRoot.isMember("BinaryControls"))
 	{
-		ProcessBinaryControls(JSONRoot);
+		const auto BinaryControls = JSONRoot["BinaryControls"];
+		ProcessPoints(BinaryControls, BinaryControlMD3PointMap, BinaryControlODCPointMap);
 	}
 }
 
-void MD3PointConf::ProcessBinaryControls(const Json::Value& JSONRoot)
+void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3Point>> &MD3PointMap,
+																std::map<uint32_t, std::shared_ptr<MD3Point>> &ODCPointMap)
 {
-	const auto BinaryControls = JSONRoot["BinaryControls"];
-	for (Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
+	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
+		bool error = false;
+
 		size_t start, stop;
-		if (BinaryControls[n].isMember("Index"))
-			start = stop = BinaryControls[n]["Index"].asUInt();
-		else if (BinaryControls[n]["Range"].isMember("Start") && BinaryControls[n]["Range"].isMember("Stop"))
+		if (JSONNode[n].isMember("Index"))
 		{
-			start = BinaryControls[n]["Range"]["Start"].asUInt();
-			stop = BinaryControls[n]["Range"]["Stop"].asUInt();
+			start = stop = JSONNode[n]["Index"].asUInt();
+		}
+		else if (JSONNode[n]["Range"].isMember("Start") && JSONNode[n]["Range"].isMember("Stop"))
+		{
+			start = JSONNode[n]["Range"]["Start"].asUInt();
+			stop = JSONNode[n]["Range"]["Stop"].asUInt();
 		}
 		else
 		{
-			std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << BinaryControls[n].toStyledString() << "'" << std::endl;
+			std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
 			start = 1;
 			stop = 0;
+			error = true;
 		}
-		for (auto index = start; index <= stop; index++)
-		{
-			bool exists = false;
-			for (auto existing_index : ControlIndicies)
-				if (existing_index == index)
-					exists = true;
 
-			if (!exists)
-				ControlIndicies.push_back(index);
-		}
-	}
-	std::sort(ControlIndicies.begin(), ControlIndicies.end());
-}
+		uint32_t module = 0;
+		uint32_t offset = 0;
 
-void MD3PointConf::ProcessBinaries(const Json::Value& JSONRoot)
-{
-	const auto Binaries = JSONRoot["Binaries"];
-	for (Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
-	{
-		size_t start, stop;
-		if (Binaries[n].isMember("Index"))
-			start = stop = Binaries[n]["Index"].asUInt();
-		else if (Binaries[n]["Range"].isMember("Start") && Binaries[n]["Range"].isMember("Stop"))
-		{
-			start = Binaries[n]["Range"]["Start"].asUInt();
-			stop = Binaries[n]["Range"]["Stop"].asUInt();
-		}
+		if (JSONNode[n].isMember("Module"))
+			module = JSONNode[n]["Module"].asUInt();
 		else
 		{
-			std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << Binaries[n].toStyledString() << "'" << std::endl;
-			start = 1;
-			stop = 0;
+			std::cout << "A point needs an \"Module\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			error = true;
 		}
-		for (auto index = start; index <= stop; index++)
-		{
 
-			bool exists = false;
-			for (auto existing_index : BinaryIndicies)
-				if (existing_index == index)
-					exists = true;
-
-			if (!exists)
-				BinaryIndicies.push_back(index);
-		}
-	}
-	std::sort(BinaryIndicies.begin(), BinaryIndicies.end());
-}
-
-void MD3PointConf::ProcessAnalogs(const Json::Value& JSONRoot)
-{
-	const auto Analogs = JSONRoot["Analogs"];
-	for (Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
-	{
-		size_t start, stop;
-		if (Analogs[n].isMember("Index"))
-			start = stop = Analogs[n]["Index"].asUInt();
-		else if (Analogs[n]["Range"].isMember("Start") && Analogs[n]["Range"].isMember("Stop"))
-		{
-			start = Analogs[n]["Range"]["Start"].asUInt();
-			stop = Analogs[n]["Range"]["Stop"].asUInt();
-		}
+		if (JSONNode[n].isMember("Offset"))
+			offset = JSONNode[n]["Offset"].asUInt();
 		else
 		{
-			std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << Analogs[n].toStyledString() << "'" << std::endl;
-			start = 1;
-			stop = 0;
+			std::cout << "A point needs an \"Offset\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			error = true;
 		}
-		for (auto index = start; index <= stop; index++)
-		{
-			bool exists = false;
-			for (auto existing_index : AnalogIndicies)
-				if (existing_index == index)
-					exists = true;
 
-			if (!exists)
-				AnalogIndicies.push_back(index);
+		if (!error)
+		{
+			for (auto index = start; index <= stop; index++)
+			{
+				uint16_t moduleaddress = module + (index - start + offset) / 16;
+				uint8_t channel = (uint8_t)((offset + (index-start)) % 16);
+
+				uint16_t md3index = (moduleaddress << 8) | channel;
+
+				if (MD3PointMap.find(md3index) != MD3PointMap.end())
+				{
+					std::cout << "Duplicate MD3 Index '" << JSONNode[n].toStyledString() << "'" << std::endl;
+				}
+				else if (ODCPointMap.find(index) != ODCPointMap.end())
+				{
+					std::cout << "Duplicate ODC Index : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+				}
+				else
+				{
+					auto pt = std::make_shared<MD3Point>(index, moduleaddress, channel);
+					MD3PointMap[md3index] = pt;
+					ODCPointMap[index] = pt;
+				}
+			}
 		}
 	}
-	std::sort(AnalogIndicies.begin(), AnalogIndicies.end());
 }
 
 

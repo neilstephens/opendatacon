@@ -3,6 +3,7 @@
 #include <cstdint>
 
 // Note that in the message block format, these characters are not excluded from appearing - so their appearance and use is message state dependent
+// THESE ARE NOT PRESENT IN THE tcp STREAMS...
 #define MD3_START_OF_MESSAGE_CHAR	0x01		// SOM
 #define MD3_SYNC_CHAR				0x16		// SYN
 #define MD3_END_OF_MESSAGE_CHAR		0x03		// ETX
@@ -92,12 +93,6 @@ enum MD3_FUNCTION_CODE
 	LOW_RES_EVENTS_LIST_SCAN = 60
 };
 
-typedef struct {
-	int nb_bits;
-	int nb_input_bits;
-	int nb_input_registers;
-	int nb_registers;
-} MD3_t;
 
 
 // BCC Code
