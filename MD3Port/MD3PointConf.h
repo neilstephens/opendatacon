@@ -75,6 +75,8 @@ public:
 	uint8_t Binary = 0x01;
 };
 
+typedef std::map<uint32_t, std::shared_ptr<MD3Point>>::iterator ODCPointMapIterType;
+typedef std::map<uint16_t, std::shared_ptr<MD3Point>>::iterator MD3PointMapIterType;
 
 class MD3PointConf: public ConfigParser
 {
@@ -97,9 +99,6 @@ public:
 
 	std::map<uint16_t, std::shared_ptr<MD3Point>> BinaryControlMD3PointMap;	// ModuleAndChannel, MD3Point
 	std::map<uint32_t, std::shared_ptr<MD3Point>> BinaryControlODCPointMap;	// Index OpenDataCon, MD3Point
-
-	std::map<uint16_t, std::shared_ptr<MD3Point>>::iterator MD3PointMapIter;		// Just to save declaration later
-	std::map<uint32_t, std::shared_ptr<MD3Point>>::iterator ODCPointMapIter;
 
 private:
 	//template<class T>

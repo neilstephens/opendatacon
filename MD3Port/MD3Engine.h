@@ -20,21 +20,27 @@
 #define DCPBIT 0x0010
 #define DIRECTIONBIT 0x80000000
 
-typedef  std::array<uint8_t, 5> MD3BlockArray;
+const int MD3BlockArraySize = 6;
+typedef  std::array<uint8_t, MD3BlockArraySize> MD3BlockArray;
 
-// Every block in MD3 is 5 bytes. If we dont have 5 bytes, we dont have a block. The last block is marked as such.
-// We will create a class to load the 5 byte array into, then we can just ask it to return the information in the variety of ways we require,
+uint8_t MD3CRC(const uint32_t data);
+bool MD3CRCCompare(const uint8_t crc1, const uint8_t crc2);
+
+
+// Every block in MD3 is 5 bytes, plus one zero byte. If we dont have 5 bytes, we dont have a block. The last block is marked as such.
+// We will create a class to load the 6 byte array into, then we can just ask it to return the information in the variety of ways we require,
 // depending on the block content.
 // There are two ways this class is used - one for decoding, one for encoding.
 // Create child classes for each of the functions where the data block has specific layout and meaning.
 class MD3Block
 {
 public:
-	// We have received 5 bytes (a block on a stream now we need to decode it)
+	// We have received 6 bytes (a block on a stream now we need to decode it)
 	MD3Block(const MD3BlockArray _data)
 	{
 		data = _data[0] << 24 | _data[1] << 16 | _data[2] << 8 | _data[3];
 		endbyte = _data[4];
+		assert(_data[5] == 0x00);	// Sixth byte should always be zero.
 	}
 
 	// Create a formatted block including checksum
@@ -139,13 +145,7 @@ public:
 	bool CheckSumPasses()
 	{
 		uint8_t calc = MD3CRC(data);
-		uint8_t check = endbyte & 0x3F;
-		// TODO: SJE CheckSum Enable
-		return true;
-		return (check == calc);	// Max 6 bits returned
-
-		// Have tried input reflected, output not. Noth not. Now think I have the poly correct. Question is the *0x40
-		// also no borrow no carry? Check this
+		return MD3CRCCompare(calc, endbyte);
 	}
 
 	uint16_t GetFirstWord()
@@ -170,6 +170,7 @@ public:
 		oss.put((data >> 8) & 0x0FF);
 		oss.put(data & 0x0FF);
 		oss.put(endbyte);
+		oss.put(0x00);
 
 		return oss.str();
 	}
@@ -184,14 +185,15 @@ public:
 		oss << ((data >> 8) & 0x0FF);
 		oss << ',';
 		oss << (data & 0x0FF);
+		oss << ',';
 		oss << (endbyte);
-
+		oss << ',';
+		oss << (0x00);
 		return oss.str();
 	}
 
 private:
 	uint32_t data = 0;
 	uint8_t endbyte = 0;
-
 };
 

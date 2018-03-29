@@ -94,6 +94,3 @@ enum MD3_FUNCTION_CODE
 };
 
 
-
-// BCC Code
-uint32_t MD3CRC(const uint32_t data);

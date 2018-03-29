@@ -64,6 +64,18 @@ public:
 	void ProcessMD3Message(std::vector<MD3Block> &CompleteMD3Message);
 
 	void DoAnalogUnconditional(std::vector<MD3Block>& CompleteMD3Message);
+	void DoDigitalUnconditional(std::vector<MD3Block>& CompleteMD3Message);
+
+	// Methods to access the outstation point table
+	//TODO: Point access extract to separate class maybe..
+	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res);
+	bool SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
+	bool GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t &res);
+	bool SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas);
+	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res);
+	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas);
+	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res);
+	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas);
 
 	void SendResponse(std::vector<MD3Block>& CompleteMD3Message);
 
@@ -81,6 +93,9 @@ private:
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
 	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing
 
+	// Worker functions to try and clean up the code...
+	MD3PortConf* MyConf();
+	std::shared_ptr<MD3PointConf> MyPointConf();
 };
 
 #endif

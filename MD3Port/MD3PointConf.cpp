@@ -114,8 +114,8 @@ void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t,
 		{
 			for (auto index = start; index <= stop; index++)
 			{
-				uint16_t moduleaddress = module + (index - start + offset) / 16;
-				uint8_t channel = (uint8_t)((offset + (index-start)) % 16);
+				uint16_t moduleaddress = module + ((uint16_t)index - (uint16_t)start + offset) / 16;
+				uint8_t channel = (uint8_t)((offset + ((uint16_t)index- (uint16_t)start)) % 16);
 
 				uint16_t md3index = (moduleaddress << 8) | channel;
 

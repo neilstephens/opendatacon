@@ -74,7 +74,7 @@ public:
 		pPointConf.reset(new MD3PointConf(FileName, ConfOverrides));
 	}
 
-	std::unique_ptr<MD3PointConf> pPointConf;
+	std::shared_ptr<MD3PointConf> pPointConf;
 	MD3AddrConf mAddrConf;
 	uint32_t TCPConnectRetryPeriodms;
 };
