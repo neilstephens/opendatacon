@@ -79,6 +79,15 @@ public:
 		endbyte |= FOMBIT;	// NOT a formatted block, must be 1
 		endbyte |= lastblock ? EOMBIT : 0x00;
 	}
+	MD3Block(char b1, char b2, char b3, char b4, bool lastblock = false)
+	{
+		data = (((uint32_t)b1 &0x0FF) << 24) | (((uint32_t)b2 & 0x0FF) << 16) | (((uint32_t)b3 & 0x0FF) << 8) | ((uint32_t)b4 & 0x0FF);
+
+		endbyte = MD3CRC(data);	// Max 6 bits returned
+
+		endbyte |= FOMBIT;	// NOT a formatted block, must be 1
+		endbyte |= lastblock ? EOMBIT : 0x00;
+	}
 
 	MD3Block(uint32_t _data, bool lastblock = false)
 	{
@@ -93,6 +102,10 @@ public:
 	bool IsEndOfMessageBlock()
 	{
 		return ((endbyte & EOMBIT) == EOMBIT);
+	}
+	void MarkAsEndOfMessageBlock()
+	{
+		endbyte |= EOMBIT;	// Does not change CRC
 	}
 	bool IsFormattedBlock()
 	{

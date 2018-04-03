@@ -221,162 +221,6 @@ void MD3OutstationPort::RouteMD3Message(std::vector<MD3Block> &CompleteMD3Messag
 	this->ProcessMD3Message(CompleteMD3Message);
 }
 
-void MD3OutstationPort::ProcessMD3Message(std::vector<MD3Block> &CompleteMD3Message)
-{
-	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
-	assert(CompleteMD3Message.size() != 0);
-
-	uint8_t ExpectedStationAddress = MyConf()->mAddrConf.OutstationAddr;
-
-	// Now based on the Command Function, take action. Some of these are responses from - not commands to an OutStation.
-	// All are included to allow better error reporting.
-	switch (CompleteMD3Message[0].GetFunctionCode())
-	{
-	case ANALOG_UNCONDITIONAL:	// Command and reply
-		DoAnalogUnconditional(CompleteMD3Message);
-		break;
-	case ANALOG_DELTA_SCAN:		// Command and reply
-		break;
-	case DIGITAL_UNCONDITIONAL_OBS:
-		break;
-	case DIGITAL_DELTA_SCAN:
-		break;
-	case HRER_LIST_SCAN:
-		break;
-	case DIGITAL_CHANGE_OF_STATE:
-		break;
-	case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
-		break;
-	case DIGITAL_UNCONDITIONAL:
-		DoDigitalUnconditional(CompleteMD3Message);
-		break;
-	case ANALOG_NO_CHANGE_REPLY:
-		break;
-	case DIGITAL_NO_CHANGE_REPLY:
-		break;
-	case CONTROL_REQUEST_OK:
-		break;
-	case FREEZE_AND_RESET:
-		break;
-	case POM_TYPE_CONTROL :
-		break;
-	case DOM_TYPE_CONTROL:
-		break;
-	case INPUT_POINT_CONTROL:
-		break;
-	case RAISE_LOWER_TYPE_CONTROL :
-		break;
-	case AOM_TYPE_CONTROL :
-		break;
-	case CONTROL_OR_SCAN_REQUEST_REJECTED:
-		break;
-	case COUNTER_SCAN :
-		break;
-	case SYSTEM_SIGNON_CONTROL:
-		break;
-	case SYSTEM_SIGNOFF_CONTROL:
-		break;
-	case SYSTEM_RESTART_CONTROL:
-		break;
-	case SYSTEM_SET_DATETIME_CONTROL:
-		break;
-	case FILE_DOWNLOAD:
-		break;
-	case FILE_UPLOAD :
-		break;
-	case SYSTEM_FLAG_SCAN:
-		break;
-	case LOW_RES_EVENTS_LIST_SCAN :
-		break;
-	default:
-		LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Unknown Command Function - " + std::to_string(CompleteMD3Message[0].GetFunctionCode()) + " On Station Address - " + std::to_string(CompleteMD3Message[0].GetStationAddress()));
-		break;
-	}
-}
-// Function 5
-void MD3OutstationPort::DoAnalogUnconditional(std::vector<MD3Block> &CompleteMD3Message)
-{
-	// This has only one response
-	std::vector<MD3Block> ResponseMD3Message;
-
-	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	MD3Block FormattedBlock = MD3Block(CompleteMD3Message[0].GetStationAddress(), false, (MD3_FUNCTION_CODE)CompleteMD3Message[0].GetFunctionCode(), CompleteMD3Message[0].GetModuleAddress(), CompleteMD3Message[0].GetChannels());
-	ResponseMD3Message.push_back(FormattedBlock);
-
-	int NumberOfDataBlocks = CompleteMD3Message[0].GetChannels() / 2 + CompleteMD3Message[0].GetChannels() % 2;	// 2 --> 1, 3 -->2
-
-	for (int i = 0; i < NumberOfDataBlocks; i++)
-	{
-		bool lastblock = (i+1 == NumberOfDataBlocks);
-		uint16_t Res1 = 0x8000;
-		uint16_t Res2 = 0x8000;
-
-		// Could check the result, but the value is not changed if not found, so not necessary.
-		GetAnalogValueUsingMD3Index(CompleteMD3Message[0].GetModuleAddress(), 2 * i, Res1);
-
-		//TODO :Should just be the next entry, we could increment the iterator and check - would be quicker
-		GetAnalogValueUsingMD3Index(CompleteMD3Message[0].GetModuleAddress(), 2 * i + 1, Res2);
-
-		auto block = MD3Block(Res1, Res2, lastblock);
-		ResponseMD3Message.push_back(block);
-	}
-	SendResponse(ResponseMD3Message);
-}
-// Function 7
-void MD3OutstationPort::DoDigitalUnconditional(std::vector<MD3Block> &CompleteMD3Message)
-{
-	// For this function, the channels field is actually the number of consecutive modules to return. We always return 16 channel bits.
-	// If there is an invalid module, we return a different block for that module.
-	std::vector<MD3Block> ResponseMD3Message;
-
-	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	MD3Block FormattedBlock = MD3Block(CompleteMD3Message[0].GetStationAddress(), false, (MD3_FUNCTION_CODE)CompleteMD3Message[0].GetFunctionCode(), CompleteMD3Message[0].GetModuleAddress(), CompleteMD3Message[0].GetChannels());
-	ResponseMD3Message.push_back(FormattedBlock);
-
-	int NumberOfDataBlocks = CompleteMD3Message[0].GetChannels(); // Actually the number of modules - 0 numbered, does not make sense to ask for none...
-
-	for (int i = 0; i < NumberOfDataBlocks; i++)
-	{
-		bool lastblock = (i + 1 == NumberOfDataBlocks);
-
-		// Have to collect all the bits into a uint16_t
-		uint16_t wordres = 0;
-		bool missingdata = false;
-
-		for (int j = 0; j < 16; j++)
-		{
-			uint8_t bitres = 0;
-
-			if ( !GetBinaryValueUsingMD3Index(CompleteMD3Message[0].GetModuleAddress()+i, j, bitres))
-			{
-				// Data is missing, need to send the error block for this module address.
-				missingdata = true;
-			}
-			else
-			{
-				// TODO: Check the bit order here of the binaries
-				wordres |= (uint16_t)bitres << (15 - j);
-			}
-		}
-		if (missingdata)
-		{
-			// Queue the error block
-			uint8_t errorflags = 0;		// Application dependent, depends on the outstation implementation/master expectations.
-			uint16_t lowword = (uint16_t)errorflags << 8 | (CompleteMD3Message[0].GetModuleAddress() + i);
-			auto block = MD3Block((uint16_t)CompleteMD3Message[0].GetStationAddress() << 8, lowword, lastblock);	// Read the MD3 Data Structure - Module and Channel - dummy at the moment...
-			ResponseMD3Message.push_back(block);
-		}
-		else
-		{
-			// Queue the data block
-			uint16_t address = (uint16_t)CompleteMD3Message[0].GetStationAddress() << 8 | (CompleteMD3Message[0].GetModuleAddress() + i);
-			auto block = MD3Block(address, wordres, lastblock);
-			ResponseMD3Message.push_back(block);
-		}
-	}
-	SendResponse(ResponseMD3Message);
-}
-
 
 #pragma region  PointTableAccess
 MD3PortConf* MD3OutstationPort::MyConf()
@@ -396,6 +240,21 @@ bool MD3OutstationPort::GetAnalogValueUsingMD3Index(const uint16_t module, const
 	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->Analog;
+		MD3PointMapIter->second->LastReadAnalog = res;	// We assume it is sent to the master. May need better way to do this
+		return true;
+	}
+	return false;
+}
+bool MD3OutstationPort::GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta)
+{
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3PointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
+	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
+	{
+		res = MD3PointMapIter->second->Analog;
+		delta = (int)res - (int)MD3PointMapIter->second->LastReadAnalog;
+		MD3PointMapIter->second->LastReadAnalog = res;	// We assume it is sent to the master. May need better way to do this
 		return true;
 	}
 	return false;
@@ -432,7 +291,7 @@ bool MD3OutstationPort::SetAnalogValueUsingODCIndex(const uint16_t index, const 
 	}
 	return false;
 }
-bool MD3OutstationPort::GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res)
+bool MD3OutstationPort::GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed)
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
@@ -440,10 +299,31 @@ bool MD3OutstationPort::GetBinaryValueUsingMD3Index(const uint16_t module, const
 	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->Binary;
+		if (MD3PointMapIter->second->Changed)
+		{
+			changed = true;
+			MD3PointMapIter->second->Changed = false;
+		}
 		return true;
 	}
 	return false;
 }
+bool MD3OutstationPort::GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed)
+{
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3PointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
+	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
+	{
+		if (MD3PointMapIter->second->Changed)
+		{
+			changed = MD3PointMapIter->second->Changed;
+		}
+		return true;
+	}
+	return false;
+}
+
 bool MD3OutstationPort::SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas)
 {
 	uint16_t Md3Index = (module << 8) | channel;
@@ -452,16 +332,22 @@ bool MD3OutstationPort::SetBinaryValueUsingMD3Index(const uint16_t module, const
 	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
 	{
 		MD3PointMapIter->second->Binary = meas;
+		MD3PointMapIter->second->Changed = true;
 		return true;
 	}
 	return false;
 }
-bool MD3OutstationPort::GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res)
+bool MD3OutstationPort::GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed)
 {
 	ODCPointMapIterType ODCPointMapIter = MyPointConf()->BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != MyPointConf()->BinaryODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->Binary;
+		if (ODCPointMapIter->second->Changed)
+		{
+			changed = true;
+			ODCPointMapIter->second->Changed = false;
+		}
 		return true;
 	}
 	return false;
@@ -472,6 +358,7 @@ bool MD3OutstationPort::SetBinaryValueUsingODCIndex(const uint16_t index, const 
 	if (ODCPointMapIter != MyPointConf()->BinaryODCPointMap.end())
 	{
 		ODCPointMapIter->second->Binary = meas;
+		ODCPointMapIter->second->Changed = true;
 		return true;
 	}
 	return false;

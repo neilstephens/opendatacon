@@ -72,7 +72,9 @@ public:
 	uint8_t ModuleAddress;
 	uint8_t Channel;
 	uint16_t Analog = 0x8000;
+	uint16_t LastReadAnalog = 0x8000;
 	uint8_t Binary = 0x01;
+	bool Changed = true;	//TODO: Concurrency issues around the MD3 Point object?? Use this for Binary only?
 };
 
 typedef std::map<uint32_t, std::shared_ptr<MD3Point>>::iterator ODCPointMapIterType;

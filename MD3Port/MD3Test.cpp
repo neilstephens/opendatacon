@@ -28,7 +28,7 @@ const char *conffile = R"001(
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
-	"Binaries" : [{"Index": 20,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}],
+	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0}],
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
 	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 4}, "Module" : 35, "Offset" : 0}]
 
@@ -335,6 +335,18 @@ namespace UnitTests
 		REQUIRE(!b.IsFormattedBlock());
 		REQUIRE(b.CheckSumPasses());
 	}
+	TEST_CASE(SUITE("MD3BlockClassConstructor5Test"))
+	{
+		uint32_t data = 0x32F1F203;
+		bool lastblock = true;
+
+		MD3Block b = MD3Block::MD3Block(0x32,0xF1,0xf2,0x03, lastblock);
+
+		REQUIRE(b.GetBlockData() == data);
+		REQUIRE(b.IsEndOfMessageBlock() == lastblock);
+		REQUIRE(!b.IsFormattedBlock());
+		REQUIRE(b.CheckSumPasses());
+	}
 	TEST_CASE(SUITE("AnalogUnconditionalTest1"))
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
@@ -394,6 +406,99 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
+	TEST_CASE(SUITE("AnalogDeltaScanTest1"))
+	{
+		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
+		// Checks the TCP send output for correct data and format.
+
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+
+		MD3Port->Enable();
+
+		// Call the Event functions to set the MD3 table data to what we are expecting to get back.
+		// Write to the analog registers that we are going to request the values for.
+		for (int i = 0; i < 16; i++)
+		{
+			const odc::Analog a(4096 + i + i * 0x100);
+			auto res = MD3Port->Event(a, i, "TestHarness");
+
+			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
+		}
+
+		// Request Analog Delta Scan, Station 0x7C, Module 0x20, 16 Channels
+		MD3Block commandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+
+		// Send the command in as if came from TCP channel
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult1 = { (char)0xfc,0x05,0x20,0x0f,0x0d,0x00,	// Echoed block
+			0x10,0x00,0x11,0x01,(char)0x84,0x00,			// Channel 0 and 1
+			0x12,0x02,0x13,0x03,(char)0xb7,0x00,		// Channel 2 and 3 etc
+			0x14,0x04,0x15,0x05,(char)0xb9,0x00,
+			0x16,0x06,0x17,0x07,(char)0x8a,0x00,
+			0x18,0x08,0x19,0x09,(char)0xa5,0x00,
+			0x1A,0x0A,0x1B,0x0B,(char)0x96,0x00,
+			0x1C,0x0C,0x1D,0x0D,(char)0x98,0x00,
+			0x1E,0x0E,0x1F,0x0F,(char)0xeb,0x00 };
+
+		// We should get an identical response to an analog unconditonal here
+		REQUIRE(Response == DesiredResult1);
+		//------------------------------
+
+		output << commandblock.ToBinaryString();
+
+		// Make changes to 5 channels
+		for (int i = 0; i < 5; i++)
+		{
+			const odc::Analog a(4096 + i + i * 0x100 + ((i % 2)==0?50:-50));	// +/- 50 either side of original value
+			auto res = MD3Port->Event(a, i, "TestHarness");
+
+			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
+		}
+
+		// Send the command in as if came from TCP channel
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult2 = { (char)0xfc,0x06,0x20,0x0f,0x29,0x00,
+			0x32,(char)0xce,0x32,(char)0xce,(char)0x8b,0x00,
+			0x32,0x00,0x00,0x00,(char)0x92,0x00,
+			0x00,0x00,0x00,0x00,(char)0xbf,0x00,
+			0x00,0x00,0x00,0x00,(char)0xff,0x00 };
+
+		// Now a delta scan
+		REQUIRE(Response == DesiredResult2);
+		//------------------------------
+
+		output << commandblock.ToBinaryString();
+
+		// Send the command in as if came from TCP channel
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult3 = { (char)0xfc,0x0d,0x20,0x0f,0x40,0x00 };
+
+		// Now no changes so should get analog no change response.
+		REQUIRE(Response == DesiredResult3);
+
+		IOMgr.Shutdown();
+	}
+
 	TEST_CASE(SUITE("DigitalUnconditionalTest1"))
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
@@ -422,8 +527,8 @@ namespace UnitTests
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
 
-		// Request Digital Unconditional (Fn 7), Station 0x7C, Module 33, 2 Modules(Channels)
-		MD3Block commandblock(0x7C, true, DIGITAL_UNCONDITIONAL, 33, 2, true);
+		// Request Digital Unconditional (Fn 7), Station 0x7C, Module 33, 3 Modules(Channels)
+		MD3Block commandblock(0x7C, true, DIGITAL_UNCONDITIONAL_OBS, 33, 3, true);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
@@ -437,12 +542,82 @@ namespace UnitTests
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult = { (char)0xfc,0x0c,0x21,0x01,0x3a,0x00,
-											0x7c,0x00,0x00,0x21,(char)0x86,0x00,
-											0x7c,0x22,(char)0xaa,(char)0xaa,(char)0xf9,0x00 };
+		const std::string DesiredResult = { (char)0xfc,0x07,0x21,0x02,0x3e,0x00,
+											0x7c,0x00,0x00,0x21,(char)0x86,0x00,				// Error block - missing values?
+											0x7c,0x22,(char)0xaa,(char)0xaa,(char)0xb9,0x00,	// We set these values
+											0x7c,0x23,(char)0xff,(char)0xff,(char)0xc0,0x00};	// Default on values.
 
 		// No need to delay to process result, all done in the ReadCompletionHandler at call time.
 		REQUIRE(Response == DesiredResult);
+
+		IOMgr.Shutdown();
+	}
+	TEST_CASE(SUITE("DigitalChangeOnlyTest1"))
+	{
+		// Tests triggering events to set the Outstation data points, Send only changed data. Need to send all first, then make a change and then send again
+		// Checks the TCP send output for correct data and format.
+
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+
+		MD3Port->Enable();
+
+		// Request Digital Unconditional (Fn 7), Station 0x7C, Module 34, 2 Modules( fills the Channels field)
+		MD3Block commandblock(0x7C, true, DIGITAL_DELTA_SCAN, 34, 2, true);
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+
+		// Send the Digital Uncoditional command in as if came from TCP channel
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult1 = { (char)0xfc,0x07,0x22,0x01,0x25,0x00,
+			0x7c,0x22,(char)0xff,(char)0xff,(char)0x9c,0x00,		// All on
+			0x7c,0x23,(char)0xff,(char)0xff,(char)0xc0,0x00 };		// All on
+
+		REQUIRE(Response == DesiredResult1);
+
+		// Write to the first module, but not the second. Should get only the first module results sent.
+		for (int i = 0; i < 16; i++)
+		{
+			const odc::Binary b((i % 2) == 0);
+			auto res = MD3Port->Event(b, i, "TestHarness");
+
+			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
+		}
+
+		// The command remains the same each time, but is consumed in the readcompletionhandler
+		output << commandblock.ToBinaryString();
+		// Send the Digital Uncoditional command in as if came from TCP channel
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult2 = { (char)0xfc,0x08,0x22,0x00,0x3c,0x00,				// Return function 8, Channels == 0, so 1 block to follow.
+											0x7c,0x22,(char)0xaa,(char)0xaa,(char)0xf9,0x00 };	// Default on values.
+
+		REQUIRE(Response == DesiredResult2);
+
+		// Now repeat the command with no changes, should get the no change response.
+
+		// The command remains the same each time, but is consumed in the readcompletionhandler
+		output << commandblock.ToBinaryString();
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult3 = { (char)0xfc,0x0e,0x22,0x01,0x74,0x00 };	// Digital No Change response
+
+		REQUIRE(Response == DesiredResult3);
 
 		IOMgr.Shutdown();
 	}
@@ -474,7 +649,7 @@ namespace UnitTests
 		REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set. 1 is defined
 
 		// Test on an undefined binary point. 40 NOT defined in the config text at the top of this file.
-		const int index2 = 40;
+		const int index2 = 200;
 		auto res2 = MD3Port->Event(b, index2, "TestHarness");
 		REQUIRE((res2.get() == odc::CommandStatus::UNDEFINED));	// The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
 		// Wait for some period to do something?? Check that the port is open and we can connect to it?

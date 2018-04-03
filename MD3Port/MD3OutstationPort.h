@@ -38,6 +38,8 @@
 
 class MD3OutstationPort: public MD3Port
 {
+	enum AnalogChangeType {NoChange, DeltaChange, AllChange};
+
 public:
 	MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 	~MD3OutstationPort() override;
@@ -64,17 +66,28 @@ public:
 	void ProcessMD3Message(std::vector<MD3Block> &CompleteMD3Message);
 
 	void DoAnalogUnconditional(std::vector<MD3Block>& CompleteMD3Message);
-	void DoDigitalUnconditional(std::vector<MD3Block>& CompleteMD3Message);
+	void DoAnalogDeltaScan(std::vector<MD3Block>& CompleteMD3Message);
+	void ReadAnalogRange(int ModuleAddress, int Channels, MD3OutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues);
+	void SendAnalogUnconditional(std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
+	void SendAnalogDelta(std::vector<int> Deltas, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
+	void SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
+
+	void DoDigitalUnconditionalObs(std::vector<MD3Block>& CompleteMD3Message);
+	int CheckDigitalChangeBlocks(int NumberOfDataBlocks, int StartModuleAddress);
+	void BuildDigitalReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3Block> &ResponseMD3Message);
+	void DoDigitalChangeOnly(std::vector<MD3Block>& CompleteMD3Message);
 
 	// Methods to access the outstation point table
 	//TODO: Point access extract to separate class maybe..
 	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res);
+	bool GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta);
 	bool SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
 	bool GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t &res);
 	bool SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas);
-	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res);
+	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed);
+	bool GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed);
 	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas);
-	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res);
+	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
 	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas);
 
 	void SendResponse(std::vector<MD3Block>& CompleteMD3Message);
