@@ -74,6 +74,8 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
+	int Limit(int val, int max);
+
 protected:
 	bool isServer;
 	std::unique_ptr<TCPSocketManager<std::string>> pSockMan;

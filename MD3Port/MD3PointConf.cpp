@@ -93,6 +93,7 @@ void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t,
 
 		uint32_t module = 0;
 		uint32_t offset = 0;
+		bool timetagged = false;
 
 		if (JSONNode[n].isMember("Module"))
 			module = JSONNode[n]["Module"].asUInt();
@@ -109,6 +110,10 @@ void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t,
 			std::cout << "A point needs an \"Offset\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
 			error = true;
 		}
+
+		// Defaults to false
+		if (JSONNode[n].isMember("TimeTagged"))
+			timetagged = JSONNode[n]["TimeTagged"].asBool();		
 
 		if (!error)
 		{
@@ -129,7 +134,7 @@ void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t,
 				}
 				else
 				{
-					auto pt = std::make_shared<MD3Point>(index, moduleaddress, channel);
+					auto pt = std::make_shared<MD3Point>(index, moduleaddress, channel, timetagged);
 					MD3PointMap[md3index] = pt;
 					ODCPointMap[index] = pt;
 				}

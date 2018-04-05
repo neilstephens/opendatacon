@@ -62,15 +62,18 @@ using namespace odc;
 class MD3Point
 {
 public:
-	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel) :
+	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, bool timetagged) :
 		Index(index),
 		ModuleAddress(moduleaddress),
-		Channel(channel)
+		Channel(channel),
+		TimeTagged(timetagged)
 	{};
 
 	uint32_t Index;
 	uint8_t ModuleAddress;
+	bool ModuleFailed = false;	// Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
 	uint8_t Channel;
+	bool TimeTagged;
 	uint16_t Analog = 0x8000;
 	uint16_t LastReadAnalog = 0x8000;
 	uint8_t Binary = 0x01;

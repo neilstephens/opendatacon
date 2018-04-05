@@ -28,7 +28,7 @@ const char *conffile = R"001(
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
-	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0}],
+	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0, "TimeTagged" : true}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0, "TimeTagged" : false}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "TimeTagged" : false}],
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
 	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 4}, "Module" : 35, "Offset" : 0}]
 
@@ -343,10 +343,27 @@ namespace UnitTests
 		MD3Block b = MD3Block::MD3Block(0x32,0xF1,0xf2,0x03, lastblock);
 
 		REQUIRE(b.GetBlockData() == data);
+		REQUIRE(b.GetByte(0) == 0x32);
+		REQUIRE(b.GetByte(1) == 0xF1);
+		REQUIRE(b.GetByte(2) == 0xF2);
+		REQUIRE(b.GetByte(3) == 0x03);
 		REQUIRE(b.IsEndOfMessageBlock() == lastblock);
 		REQUIRE(!b.IsFormattedBlock());
 		REQUIRE(b.CheckSumPasses());
 	}
+	TEST_CASE(SUITE("MD3BlockSpecialClassTest"))
+	{
+		MD3BlockFn11 b11 = MD3Block::MD3Block(0x32, 0xF1, 0xf2, 0x43, true);
+		REQUIRE(b11.GetDigitalSequenceNumber() == 4);
+		REQUIRE(b11.GetTaggedEventCount() == 0xf);
+		REQUIRE(b11.GetModuleCount() == 3);
+
+		MD3BlockFn12 b12 = MD3Block::MD3Block(0x32, 0xF1, 0x72, 0x43, true);
+		REQUIRE(b12.GetDigitalSequenceNumber() == 4);
+		REQUIRE(b12.GetStartingModuleAddress() == 0x72);
+		REQUIRE(b12.GetModuleCount() == 3);
+	}
+
 	TEST_CASE(SUITE("AnalogUnconditionalTest1"))
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
@@ -616,6 +633,103 @@ namespace UnitTests
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		const std::string DesiredResult3 = { (char)0xfc,0x0e,0x22,0x01,0x74,0x00 };	// Digital No Change response
+
+		REQUIRE(Response == DesiredResult3);
+
+		IOMgr.Shutdown();
+	}
+	TEST_CASE(SUITE("DigitalCOSFn11Test1"))
+	{
+		// pcap DigitalCOS
+		// 0xe6, 0x0b, 0x03, 0x02, 0x11, 0x00,
+		// 0x10, 0x00, 0xca, 0x00, 0x91, 0x00,
+		// 0x11, 0x00, 0x17, 0xfe, 0xd5, 0x00
+
+		// pcap DigitalCOS Station 96
+		// 0xe0,0x0b, 0x0e, 0x02, 0x1d, 0x00
+		// 0x06, 0x00, 0x44, 0xd2, 0xa7, 0x00
+		// 0x07, 0x00, 0x00, 0x00, 0xf5, 0x00
+
+		// pcap Set System Date and Time message
+		// 0x7d, 0x2b, 0x02, 0x2b, 0x1d, 0x00
+		// 0x59, 0x31, 0x75, 0x81, 0xf9, 0x00
+
+		// Tests triggering events to set the Outstation data points, Send only changed data. Need to send all first, then make a change and then send again
+		// Checks the TCP send output for correct data and format.
+
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+
+		MD3Port->Enable();
+
+		// Request Digital COS (Fn 11), Station 0x7C
+
+		MD3Block commandblock = MD3BlockFn11(0x7C, true, 15, 1, 15, true);
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+
+		// Send the Digital Uncoditional command in as if came from TCP channel
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		// Will get all data changing this time around
+		const std::string DesiredResult1 = { (char)0xfc,0x0b,0x10,0x12,0x02,0x00 };		// More to come
+
+		REQUIRE(Response == DesiredResult1);
+
+		//---------------------
+		// No data changes so should get a no change Fn14 block
+		commandblock = MD3BlockFn11(0x7C, true, 15, 2, 15, true);	// Sequence number must increase
+		output << commandblock.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult2 = { (char)0xfc,0x0e,0x22,0x01,0x74,0x00 };	// Digital No Change response
+
+		REQUIRE(Response == DesiredResult2);
+
+		//---------------------
+		// No sequence number shange, so should get the same data back as above.
+		commandblock = MD3BlockFn11(0x7C, true, 15, 2, 15, true);	// Sequence number must increase - but for this test not
+		output << commandblock.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		REQUIRE(Response == DesiredResult2);
+
+
+		//---------------------
+		// Now change data in one block only
+		commandblock = MD3BlockFn11(0x7C, true, 15, 3, 15, true);	// Sequence number must increase
+		output << commandblock.ToBinaryString();
+
+		// Write to the first module, but not the second. Should get only the first module results sent.
+		for (int i = 0; i < 16; i++)
+		{
+			const odc::Binary b((i % 2) == 0);
+			auto res = MD3Port->Event(b, i, "TestHarness");
+
+			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
+		}
+
+		// The command remains the same each time, but is consumed in the readcompletionhandler
+		output << commandblock.ToBinaryString();
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult3 = { (char)0xfc,0x0e,0x22,0x01,0x74,0x00 };
 
 		REQUIRE(Response == DesiredResult3);
 

@@ -153,3 +153,8 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 			std::cout << "Invalid MD3 Port server type: '" << JSONRoot["ServerType"].asString() << "'." << std::endl;
 	}
 }
+
+int MD3Port::Limit(int val, int max)
+{
+	return val > max ? max : val;
+}

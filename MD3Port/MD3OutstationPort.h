@@ -67,14 +67,17 @@ public:
 
 	void DoAnalogUnconditional(std::vector<MD3Block>& CompleteMD3Message);
 	void DoAnalogDeltaScan(std::vector<MD3Block>& CompleteMD3Message);
+	void DoDigitalScan(std::vector<MD3Block>& CompleteMD3Message);
+	void DoDigitalUnconditional(std::vector<MD3Block>& CompleteMD3Message);
 	void ReadAnalogRange(int ModuleAddress, int Channels, MD3OutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues);
 	void SendAnalogUnconditional(std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 	void SendAnalogDelta(std::vector<int> Deltas, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 	void SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 
 	void DoDigitalUnconditionalObs(std::vector<MD3Block>& CompleteMD3Message);
-	int CheckDigitalChangeBlocks(int NumberOfDataBlocks, int StartModuleAddress);
-	void BuildDigitalReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3Block> &ResponseMD3Message);
+	int CheckBinaryChangeBlocks(int & ChangedTimeTaggedBlocks, bool SendEverything);
+	int CheckBinaryChangeBlocksGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
+	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3Block> &ResponseMD3Message);
 	void DoDigitalChangeOnly(std::vector<MD3Block>& CompleteMD3Message);
 
 	// Methods to access the outstation point table
@@ -102,6 +105,9 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 
 	std::vector<MD3Block> MD3Message;
+
+	int LastDigitalScanSequenceNumber = 0;	// Used to remember the last digital scan we had
+	std::vector<MD3Block> LastDigitialScanResponseMD3Message;
 
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
 	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing

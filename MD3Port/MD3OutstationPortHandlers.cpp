@@ -108,8 +108,10 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3Block> &CompleteMD3Mess
 	case DIGITAL_CHANGE_OF_STATE:
 		break;
 	case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
+		DoDigitalScan(CompleteMD3Message);
 		break;
 	case DIGITAL_UNCONDITIONAL:
+		DoDigitalUnconditional(CompleteMD3Message);
 		break;
 	case ANALOG_NO_CHANGE_REPLY:
 		// Master Only
@@ -294,7 +296,7 @@ void MD3OutstationPort::DoDigitalUnconditionalObs(std::vector<MD3Block> &Complet
 
 	int NumberOfDataBlocks = CompleteMD3Message[0].GetChannels(); // Actually the number of modules - 0 numbered, does not make sense to ask for none...
 
-	BuildDigitalReturnBlocks(NumberOfDataBlocks, CompleteMD3Message[0].GetModuleAddress(), CompleteMD3Message[0].GetStationAddress(), true, ResponseMD3Message);
+	BuildBinaryReturnBlocks(NumberOfDataBlocks, CompleteMD3Message[0].GetModuleAddress(), CompleteMD3Message[0].GetStationAddress(), true, ResponseMD3Message);
 	SendResponse(ResponseMD3Message);
 }
 // Function 8
@@ -314,11 +316,11 @@ void MD3OutstationPort::DoDigitalChangeOnly(std::vector<MD3Block> &CompleteMD3Me
 	bool SomeChange = false;
 	int NumberOfDataBlocks = CompleteMD3Message[0].GetChannels(); // Actually the number of modules - 0 numbered, does not make sense to ask for none...
 
-	int ChangedBlocks = CheckDigitalChangeBlocks(NumberOfDataBlocks, CompleteMD3Message[0].GetModuleAddress());
+	int ChangedBlocks = CheckBinaryChangeBlocksGivenRange(NumberOfDataBlocks, CompleteMD3Message[0].GetModuleAddress());
 
 	if (ChangedBlocks == 0)	// No change
 	{
-		MD3Block FormattedBlock = MD3Block(CompleteMD3Message[0].GetStationAddress(), false, DIGITAL_NO_CHANGE_REPLY, CompleteMD3Message[0].GetModuleAddress(), CompleteMD3Message[0].GetChannels(), true);
+		MD3Block FormattedBlock = MD3BlockFn14(CompleteMD3Message[0].GetStationAddress(), CompleteMD3Message[0].GetModuleAddress(), CompleteMD3Message[0].GetChannels());
 		ResponseMD3Message.push_back(FormattedBlock);
 
 		SendResponse(ResponseMD3Message);
@@ -329,7 +331,7 @@ void MD3OutstationPort::DoDigitalChangeOnly(std::vector<MD3Block> &CompleteMD3Me
 		MD3Block FormattedBlock = MD3Block(CompleteMD3Message[0].GetStationAddress(), false, DIGITAL_DELTA_SCAN, CompleteMD3Message[0].GetModuleAddress(), ChangedBlocks);
 		ResponseMD3Message.push_back(FormattedBlock);
 
-		BuildDigitalReturnBlocks(NumberOfDataBlocks, CompleteMD3Message[0].GetModuleAddress(), CompleteMD3Message[0].GetStationAddress(), false, ResponseMD3Message);
+		BuildBinaryReturnBlocks(NumberOfDataBlocks, CompleteMD3Message[0].GetModuleAddress(), CompleteMD3Message[0].GetStationAddress(), false, ResponseMD3Message);
 
 		SendResponse(ResponseMD3Message);
 	}
@@ -340,7 +342,134 @@ void MD3OutstationPort::DoDigitalChangeOnly(std::vector<MD3Block> &CompleteMD3Me
 	}
 }
 
-int MD3OutstationPort::CheckDigitalChangeBlocks(int NumberOfDataBlocks, int StartModuleAddress)
+// Function 11
+void MD3OutstationPort::DoDigitalScan(std::vector<MD3Block> &CompleteMD3Message)
+{
+	//TODO: Implement this first assuming there are no time tag capable modules in the system....then add the rest
+	// So we scan all our digital modules, creating change records for where there are changes.
+	// We can return non-time tagged data - up to the number given by ModuleCount.
+	// Following this we can return time tagged data - up to the the number given by TaggedEventCount. Both are 1 numbered - i.e. 0 is a valid value.
+	// The time tagging in the modules is optional, so need to build that into our config file. It is the module capability that determines what we return.
+
+	// If the sequence number is zero, every time tagged module will be sent. It is used by the master to reset its state on power up.
+
+	// The date and time block is a 32 bit number representing the number of seconds (assume from some 0 date/time which we will need to work out.
+	// The milliseconds component is derived from the offset component in the module data block.
+
+	// If we get another scan message (and nothing else changes) we will send the next block of changes and so on.
+	std::vector<MD3Block> ResponseMD3Message;
+	MD3BlockFn11 Header = CompleteMD3Message[0];
+
+	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
+	{
+		// The last time we sent this, it did not get there, so we have to just resend that stored set of blocks. Dont do anything else.
+		// If we go back and reread the Binary bits, the change information will already have been lost, as we assume it was sent when we read it last time.
+		// It would get very tricky to only commit change written information only when a new sequence number turns up.
+		// The downside is that the stored message could be a no change message, but data may have changed since we last sent it.
+
+		SendResponse(LastDigitialScanResponseMD3Message);
+		return;
+	}
+
+	bool SendEverything = false;
+
+	if (Header.GetDigitalSequenceNumber() == 0)
+	{
+		// Special case, send every time tagged capable event...
+		//TODO: The spec says only send all time tagged data when the digital sequence is zero. Need to look at packet dumps to check.
+		// The problem is not all data can be sent in one packet, so how do we get all the data without restarting each time.
+		SendEverything = true;
+	}
+
+	int ChangedTimeTaggedBlocks = 0;
+
+	int ChangedBlocks = CheckBinaryChangeBlocks(ChangedTimeTaggedBlocks, SendEverything);
+
+	if (ChangedBlocks == 0)
+	{
+		//TODO: Digital No Change - check assumption that the second word needs to mirror that sent in the function 11 command (tagged event count, digital sequence # and ModuleCount
+		MD3Block FormattedBlock = MD3BlockFn14(Header.GetStationAddress(), Header.GetTaggedEventCount(), Header.GetDigitalSequenceNumber(), Header.GetModuleCount());
+		ResponseMD3Message.push_back(FormattedBlock);
+	}
+	else
+	{
+		// We have data to send.
+
+		int TaggedEventCount = Limit(ChangedTimeTaggedBlocks,Header.GetTaggedEventCount());
+		int ModuleCount = Limit(ChangedBlocks - ChangedTimeTaggedBlocks, Header.GetModuleCount());
+
+		// Setup the response block
+		MD3BlockFn11 FormattedBlock = MD3BlockFn11(Header.GetStationAddress(), false, TaggedEventCount, Header.GetDigitalSequenceNumber(), ModuleCount);
+		ResponseMD3Message.push_back(FormattedBlock);
+
+		// Add non-time tagged data. We can return a data block or a status block for each module.
+
+		// If we dont send data - the flags on the Binaries dont get reset, so we keep trying to resend the data!!!
+
+		// Do this later!
+		// Add TimeDate Block
+
+		// Add timetagged data
+	}
+	SendResponse(ResponseMD3Message);
+
+	// Store this set of packets in case we have to resend
+	//TODO: Is the sequence number function dependent - i.e. do we maintain one for each digital function or is it common across all digital functions.
+	LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
+	LastDigitialScanResponseMD3Message = ResponseMD3Message;
+}
+
+// Function 12
+void MD3OutstationPort::DoDigitalUnconditional(std::vector<MD3Block> &CompleteMD3Message)
+{
+	std::vector<MD3Block> ResponseMD3Message;
+	MD3BlockFn12 Header = CompleteMD3Message[0];
+
+	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
+	{
+		// The last time we sent this, it did not get there, so we have to just resend that stored set of blocks. Dont do anything else.
+		// If we go back and reread the Binary bits, the change information will already have been lost, as we assume it was sent when we read it last time.
+		// It would get very tricky to only commit change written information only when a new sequence number turns up.
+		// The downside is that the stored message could be a no change message, but data may have changed since we last sent it.
+
+		SendResponse(LastDigitialScanResponseMD3Message);
+		return;
+	}
+
+	// The reply is the same format as for Fn11, but without time tagged data. Is the function code returned 11 or 12?
+
+}
+
+// Scan all binary/digital blocks for changes - used to determine what response we need to send
+// We return the total number of changed blocks, as well as the number that are timetagged.
+// If SendEverything is true,
+int MD3OutstationPort::CheckBinaryChangeBlocks(int &ChangedTimeTaggedBlocks, bool SendEverything)
+{
+	int changedblocks = 0;
+	int lastblock = -1;	// Non valid value
+
+	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
+	for (auto md3pt : MyPointConf()->BinaryMD3PointMap)
+	{
+		if ((*md3pt.second).Changed || SendEverything)
+		{
+			// Multiple bits can be changed in the block, but only the first one is required to trigger a send of the block.
+			if (lastblock != (*md3pt.second).ModuleAddress)
+			{
+				lastblock = (*md3pt.second).ModuleAddress;
+				changedblocks++;
+
+				// A block (all 16 bits at a given moduleaddress) is either timetagged or not - no spliting.
+				if ((*md3pt.second).TimeTagged == true)
+					ChangedTimeTaggedBlocks++;
+			}
+		}
+	}
+
+	return changedblocks;
+}
+// This is used to determine which response we should send NoChange, DeltaChange or AllChange
+int MD3OutstationPort::CheckBinaryChangeBlocksGivenRange(int NumberOfDataBlocks, int StartModuleAddress)
 {
 	int changedblocks = 0;
 
@@ -370,7 +499,7 @@ int MD3OutstationPort::CheckDigitalChangeBlocks(int NumberOfDataBlocks, int Star
 	}
 	return changedblocks;
 }
-void MD3OutstationPort::BuildDigitalReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3Block> &ResponseMD3Message)
+void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3Block> &ResponseMD3Message)
 {
 	for (int i = 0; i < NumberOfDataBlocks; i++)
 	{
