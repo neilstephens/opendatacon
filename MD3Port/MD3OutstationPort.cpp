@@ -62,6 +62,8 @@ void MD3OutstationPort::SetSendTCPDataFn(std::function<void(std::string)> Send)
 	SendTCPDataFn = Send;
 }
 
+
+
 void MD3OutstationPort::Enable()
 {
 	if (enabled) return;
@@ -122,8 +124,14 @@ void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LO
 }
 
 // The only method that sends to the TCP Socket
-void MD3OutstationPort::SendResponse(std::vector<MD3Block> &CompleteMD3Message)
+void MD3OutstationPort::SendResponse(std::vector<MD3DataBlock> &CompleteMD3Message)
 {
+	if (CompleteMD3Message.size() == 0)
+	{
+		LOG("MD3OutstationPort", openpal::logflags::ERR, "", "Tried to send an empty response");
+		return;
+	}
+
 	// Turn the blocks into a binary string.
 	std::string MD3Message;
 	for (auto blk : CompleteMD3Message)
@@ -156,7 +164,7 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 			readbuf.consume(1);
 		}
 
-		auto md3block = MD3Block(d);	// Supposed to be a 6 byte array..
+		auto md3block = MD3DataBlock(d);	// Supposed to be a 6 byte array..
 
 		if (md3block.CheckSumPasses())
 		{
@@ -201,14 +209,14 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 	}
 }
 
-void MD3OutstationPort::RouteMD3Message(std::vector<MD3Block> &CompleteMD3Message)
+void MD3OutstationPort::RouteMD3Message(std::vector<MD3DataBlock> &CompleteMD3Message)
 {
 	// Only passing in the variable to make unit testing simpler.
 	// We have a full set of MD3 message blocks from a minimum of 1.
 	assert(CompleteMD3Message.size() != 0);
 
 	uint8_t ExpectedStationAddress = MyConf()->mAddrConf.OutstationAddr;
-	uint8_t StationAddress = CompleteMD3Message[0].GetStationAddress();
+	uint8_t StationAddress = ((MD3FormattedBlock)CompleteMD3Message[0]).GetStationAddress();
 
 	// Change this to route to the correct outstation in future.
 	if (ExpectedStationAddress != StationAddress)
@@ -352,17 +360,30 @@ bool MD3OutstationPort::GetBinaryValueUsingODCIndex(const uint16_t index, uint8_
 	}
 	return false;
 }
-bool MD3OutstationPort::SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas)
+bool MD3OutstationPort::SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, uint64_t eventtime)
 {
 	ODCPointMapIterType ODCPointMapIter = MyPointConf()->BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != MyPointConf()->BinaryODCPointMap.end())
 	{
 		ODCPointMapIter->second->Binary = meas;
 		ODCPointMapIter->second->Changed = true;
+
+		// We now need to add the change to the separate digital/binary event list
+		if (ODCPointMapIter->second->TimeTagged)
+		{
+			ODCPointMapIter->second->ChangedTime = eventtime;
+			MD3Point CopyOfPoint(*(ODCPointMapIter->second));
+			MyPointConf()->BinaryTimeTaggedEventQueue.Push(CopyOfPoint);	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
+		}
 		return true;
 	}
 	return false;
 }
+void MD3OutstationPort::AddToDigitalEvents(const MD3Point & pt)
+{
+	MyPointConf()->BinaryTimeTaggedEventQueue.Push(pt);
+}
+
 #pragma endregion
 
 
@@ -448,7 +469,10 @@ inline std::future<CommandStatus> MD3OutstationPort::EventT(T& meas, uint16_t in
 	}
 	else if (std::is_same<T, const Binary>::value)
 	{
-		if (!SetBinaryValueUsingODCIndex(index, (uint8_t)meas.value))
+		// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
+		uint64_t eventtime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+
+		if (!SetBinaryValueUsingODCIndex(index, (uint8_t)meas.value, eventtime))
 		{
 			LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Tried to set the value for an invalid binary point index " + std::to_string(index));
 			return IOHandler::CommandFutureUndefined();

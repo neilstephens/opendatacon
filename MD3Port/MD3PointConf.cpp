@@ -113,7 +113,7 @@ void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t,
 
 		// Defaults to false
 		if (JSONNode[n].isMember("TimeTagged"))
-			timetagged = JSONNode[n]["TimeTagged"].asBool();		
+			timetagged = JSONNode[n]["TimeTagged"].asBool();
 
 		if (!error)
 		{
