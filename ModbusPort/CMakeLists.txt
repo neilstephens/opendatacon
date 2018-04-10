@@ -25,7 +25,7 @@ set(MODBUS_HOME_INSTRUCTIONS "Choose the location of libmodbus: where it was ins
 if(DEFINED MODBUS_HOME)
 	set(MODBUS_HOME ${MODBUS_HOME} CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
 else()
-	set(MODBUS_HOME "/usr/local" CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
+	set(MODBUS_HOME "/usr" CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
 endif()
 
 include_directories(
