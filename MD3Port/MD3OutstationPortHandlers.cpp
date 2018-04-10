@@ -110,7 +110,7 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3DataBlock> &CompleteMD3
 		DoDigitalHRER((MD3BlockFn9)Header);
 		break;
 	case DIGITAL_CHANGE_OF_STATE:
-		DoDigitalCOSScan(Header);
+		DoDigitalCOSScan((MD3BlockFn10)Header);
 		break;
 	case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
 		DoDigitalScan((MD3BlockFn11MtoS)Header);
@@ -464,7 +464,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
 }
 
 // Function 10
-void MD3OutstationPort::DoDigitalCOSScan(MD3FormattedBlock &Header)
+void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 {
 	// Have two possible replies COSScan #10 and Digital No Change #14
 	// So the data is deemed to have changed if a bit has changed, or the status has changed.
@@ -478,13 +478,13 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3FormattedBlock &Header)
 
 	bool NoChange = true;
 	bool SomeChange = false;
-	int NumberOfDataBlocks = Header.GetChannels(); // Actually the number of modules - 0 numbered, does not make sense to ask for none...
+	int NumberOfDataBlocks = Header.GetModuleCount();
 
 	bool ChangedBlocks = CheckForBinaryBlockChanges();
 
 	if (ChangedBlocks == false)	// No change
 	{
-		MD3DataBlock FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+		MD3DataBlock FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), (uint8_t)0);
 		ResponseMD3Message.push_back(FormattedBlock);
 
 		SendResponse(ResponseMD3Message);
@@ -492,10 +492,13 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3FormattedBlock &Header)
 	else
 	{
 		// The number of changed blocks is how many will follow the header packet. Have to change the value at the end...
-		MD3DataBlock FormattedBlock = MD3FormattedBlock(Header.GetStationAddress(), false, DIGITAL_CHANGE_OF_STATE, Header.GetModuleAddress(), 0);
+		MD3BlockFn10 FormattedBlock = MD3BlockFn10(Header.GetStationAddress(), false,  Header.GetModuleAddress(), 0, false);
 		ResponseMD3Message.push_back(FormattedBlock);
 
-		BuildBinaryReturnBlocks(NumberOfDataBlocks, Header.GetModuleAddress(), Header.GetStationAddress(), false, ResponseMD3Message);
+		BuildBinaryScanReturnBlocks(NumberOfDataBlocks, Header.GetModuleAddress(), Header.GetStationAddress(), ResponseMD3Message);
+
+		MD3BlockFn10 &firstblock = (MD3BlockFn10 &)ResponseMD3Message[0];
+		firstblock.SetModuleCount(ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
 
 		SendResponse(ResponseMD3Message);
 	}
@@ -670,9 +673,10 @@ bool MD3OutstationPort::CheckForBinaryBlockChanges()
 	}
 	return result;
 }
+// Used in Fn7 and Fn8
 void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3DataBlock> &ResponseMD3Message)
 {
-	//TODO: Refactor to build a list of modules to send, then pass to the code to build the response on that.
+	// We have a list of modules to send...
 	for (int i = 0; i < NumberOfDataBlocks; i++)
 	{
 		// Have to collect all the bits into a uint16_t
@@ -722,10 +726,52 @@ void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int Star
 	MD3DataBlock &lastblock = ResponseMD3Message.back();
 	lastblock.MarkAsEndOfMessageBlock();
 }
+// Used in Fn10
 void MD3OutstationPort::BuildBinaryScanReturnBlocks(int MaxNumberOfDataBlocks, int StartModuleAddress, int StationAddress, std::vector<MD3DataBlock> &ResponseMD3Message)
 {
 	// First we have to get to a matching ModuleAddress
-	bool WeAreScanning = false;
+	std::vector<uint8_t> ModuleList;
+
+	BuildListOfModuleAddressesWithChanges(StartModuleAddress, ModuleList);
+
+	BuildScanReturnBlocksFromList(ModuleList, MaxNumberOfDataBlocks, StationAddress, ResponseMD3Message);
+}
+// Can we use this for Fn7,8 and 10...
+void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, std::vector<MD3DataBlock> & ResponseMD3Message)
+{
+	// For each module address, or the max we can send
+	for (int i = 0; (i < ModuleList.size()) && (i < MaxNumberOfDataBlocks); i++)
+	{
+		uint8_t ModuleAddress = ModuleList[i];
+
+		// Have to collect all the bits into a uint16_t
+		uint16_t wordres = 0;
+
+		for (int j = 0; j < 16; j++)
+		{
+			uint8_t bitres = 0;
+			bool changed = false;
+
+			if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed))	// Reading this clears the changed bit
+			{
+				//TODO: Check the bit order here of the binaries
+				wordres |= (uint16_t)bitres << (15 - j);
+			}
+		}
+
+		// Queue the data block
+		uint16_t address = (uint16_t)StationAddress << 8 | (ModuleAddress);
+		auto block = MD3DataBlock(address, wordres, false);
+		ResponseMD3Message.push_back(block);
+	}
+	// Not sure which is the last block for the send only changes..so just mark it when we get to here.
+	MD3DataBlock &lastblock = ResponseMD3Message.back();
+	lastblock.MarkAsEndOfMessageBlock();
+}
+void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList)
+{
+	uint8_t LastModuleAddress = 0;
+	bool WeAreScanning = (StartModuleAddress == 0);	// If the startmoduleaddress is zero, we store changes from the start.
 
 	for (auto MapPt : MyPointConf()->BinaryMD3PointMap)
 	{
@@ -737,40 +783,33 @@ void MD3OutstationPort::BuildBinaryScanReturnBlocks(int MaxNumberOfDataBlocks, i
 		if (ModuleAddress == StartModuleAddress)
 			WeAreScanning = true;
 
-		if (WeAreScanning && MDPt.Changed)
+		if (WeAreScanning && MDPt.Changed && (LastModuleAddress != ModuleAddress))
 		{
 			// We should save the module address so we have a list of modules that have changed
+			ModuleList.push_back(ModuleAddress);
+			LastModuleAddress = ModuleAddress;
 		}
 	}
-
-	//TODO: Refactor to send a list of modules
-	// For each module address
+	if (StartModuleAddress != 0)
 	{
-		uint8_t ModuleAddress = 1;
-
-		// Have to collect all the bits into a uint16_t
-		uint16_t wordres = 0;
-
-		for (int j = 0; j < 16; j++)
+		// We have to then start again from zero, if we did not start from there.
+		for (auto MapPt : MyPointConf()->BinaryMD3PointMap)
 		{
-			uint8_t bitres = 0;
-			bool changed = false;
+			auto MDPt = *(MapPt.second);
+			auto Address = (MapPt.first);
+			uint8_t ModuleAddress = (Address >> 8);
+			uint8_t Channel = (Address & 0x0FF);
 
-			if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed))	//TODO: Reading this clears the changed bit, does this need to be smarter???
+			if (ModuleAddress == StartModuleAddress)
+				WeAreScanning = false;	// Stop when we reach the start again
+
+			if (WeAreScanning && MDPt.Changed && (LastModuleAddress != ModuleAddress))
 			{
-				// TODO: Check the bit order here of the binaries
-				wordres |= (uint16_t)bitres << (15 - j);
+				// We should save the module address so we have a list of modules that have changed
+				ModuleList.push_back(ModuleAddress);
+				LastModuleAddress = ModuleAddress;
 			}
 		}
-
-		// Queue the data block
-		uint16_t address = (uint16_t)StationAddress << 8 | (ModuleAddress);
-		auto block = MD3DataBlock(address, wordres, false);
-		ResponseMD3Message.push_back(block);
-
 	}
-	// Not sure which is the last block for the send only changes..so just mark it when we get to here.
-	MD3DataBlock &lastblock = ResponseMD3Message.back();
-	lastblock.MarkAsEndOfMessageBlock();
 }
 #pragma endregion

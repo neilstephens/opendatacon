@@ -299,6 +299,50 @@ public:
 		return 0;
 	}
 };
+class MD3BlockFn10 : public MD3FormattedBlock
+{
+public:
+	MD3BlockFn10(MD3DataBlock& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+	MD3BlockFn10(uint8_t stationaddress, bool mastertostation, uint8_t moduleaddress, uint8_t modulecount, bool lastblock, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((stationaddress & 0x7F) == stationaddress);	// Max of 7 bits;
+		assert((modulecount & 0x0F) == modulecount);	// Max 4 bits;
+
+		uint32_t flags = 0;
+		flags |= APL ? APLBIT : 0x0000;
+		flags |= RSF ? RSFBIT : 0x0000;
+		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= DCP ? DCPBIT : 0x0000;
+
+		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_CHANGE_OF_STATE << 16 | (uint32_t)moduleaddress << 8 | flags | (modulecount & 0x0F);
+
+		endbyte = MD3CRC(data);	// Max 6 bits returned
+
+								// endbyte |= FOMBIT;	// This is a formatted block must be zero
+		endbyte |= lastblock ? EOMBIT : 0x00;
+	}
+
+	uint8_t GetModuleCount()
+	{
+		// Can be a zero module count
+		return (data & 0x0F);
+	}
+	void SetModuleCount(uint8_t modulecount)
+	{
+		data &= ~(0x0F);	// Clear the bits we are going to set.
+		data |= modulecount;
+
+		endbyte &= 0xC0;			// Clear the CRC bits
+		endbyte |= MD3CRC(data);	// Max 6 bits returned
+	}
+};
+
 class MD3BlockFn11MtoS : public MD3FormattedBlock
 {
 public:

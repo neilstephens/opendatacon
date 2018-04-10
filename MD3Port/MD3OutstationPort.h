@@ -65,6 +65,7 @@ public:
 	void RouteMD3Message(std::vector<MD3DataBlock> &CompleteMD3Message);
 	void ProcessMD3Message(std::vector<MD3DataBlock> &CompleteMD3Message);
 
+	// Analog
 	void DoAnalogUnconditional(MD3FormattedBlock &Header);
 	void DoAnalogDeltaScan(MD3FormattedBlock &Header);
 
@@ -73,25 +74,24 @@ public:
 	void SendAnalogDelta(std::vector<int> Deltas, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 	void SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 
-
-
-
-
-	void DoDigitalScan(MD3BlockFn11MtoS & Header);			// Fn 7
-	void DoDigitalChangeOnly(MD3FormattedBlock & Header);	// Fn 8
-	void DoDigitalHRER(MD3BlockFn9 & Header);				// Fn 9
-	void DoDigitalCOSScan(MD3FormattedBlock & Header);		// Fn 10
+	// Digital/Binary
+	void DoDigitalScan(MD3BlockFn11MtoS & Header);				// Fn 7
+	void DoDigitalChangeOnly(MD3FormattedBlock & Header);		// Fn 8
+	void DoDigitalHRER(MD3BlockFn9 & Header);					// Fn 9
+	void DoDigitalCOSScan(MD3BlockFn10 & Header);				// Fn 10
 	void DoDigitalUnconditionalObs(MD3FormattedBlock & Header);	// Fn 11
-	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header);	// Fn 12
+	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header);		// Fn 12
 
 	int CheckBinaryChangeBlocks(int & ChangedTimeTaggedBlocks, bool SendEverything);
 	int CheckBinaryChangeBlocksGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
 	bool CheckForBinaryBlockChanges();
 	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3DataBlock> &ResponseMD3Message);
 	void BuildBinaryScanReturnBlocks(int MaxNumberOfDataBlocks, int StartModuleAddress, int StationAddress, std::vector<MD3DataBlock>& ResponseMD3Message);
+	void BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, std::vector<MD3DataBlock> & ResponseMD3Message);
+	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
 
 	// Methods to access the outstation point table
-	//TODO: Point access extract to separate class maybe..
+	//TODO: Point container access extract to separate class maybe..
 	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res);
 	bool GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta);
 	bool SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);

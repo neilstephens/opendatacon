@@ -829,8 +829,8 @@ namespace UnitTests
 
 		MD3Port->Enable();
 
-		// Request Digital Unconditional (Fn 7), Station 0x7C, Module 0 scan from the first module, Modules 2 max number to return
-		MD3FormattedBlock commandblock(0x7C, true, DIGITAL_CHANGE_OF_STATE, 0, 2, true);
+		// Request Digital Change Only Fn 10, Station 0x7C, Module 0 scan from the first module, Modules 2 max number to return
+		MD3BlockFn10 commandblock(0x7C, true, 0, 2, true);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
@@ -839,41 +839,37 @@ namespace UnitTests
 		// &Response - had to make response global to get access - having trouble with casting...
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
 
-		// Send the Digital Uncoditional command in as if came from TCP channel
+
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult1 = { (char)0xfc,0x0A,0x22,0x01,0x25,0x00,
-			0x7c,0x22,(char)0xff,(char)0xff,(char)0x9c,0x00,		// All on
-			0x7c,0x23,(char)0xff,(char)0xff,(char)0xc0,0x00 };		// All on
+		const std::string DesiredResult1 = { (char)0xfc,0x0A,0x00,0x02,0x38,0x00,
+											0x7c,0x21,(char)0x80,(char)0x00,(char)0x82,0x00,		// One On
+											0x7c,0x22,(char)0xff,(char)0xff,(char)0xdc,0x00 };		// All on
 
 		REQUIRE(Response == DesiredResult1);
 
-		// Write to the first module, but not the second. Should get only the first module results sent.
-		for (int i = 0; i < 16; i++)
-		{
-			const odc::Binary b((i % 2) == 0);
-			auto res = MD3Port->Event(b, i, "TestHarness");
+		const odc::Binary b(false);
+		auto res = MD3Port->Event(b, 100, "TestHarness");	// 0x21, bit 1
 
-			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
-		}
-
-		// The command remains the same each time, but is consumed in the readcompletionhandler
+		// Send the command but start from module 0x22, we did not get all the blocks last time. Test the wrap around
+		commandblock = MD3BlockFn10(0x7C, true, 0x22, 2, true);
 		output << commandblock.ToBinaryString();
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult2 = { (char)0xfc,0x08,0x22,0x00,0x3c,0x00,				// Return function 8, Channels == 0, so 1 block to follow.
-			0x7c,0x22,(char)0xaa,(char)0xaa,(char)0xf9,0x00 };	// Default on values.
+		const std::string DesiredResult2 = { (char)0xfc,0xa,0x22,0x02,0x32,0x00,				// Return function 10, ModuleCount =2 so 2 blocks to follow.
+												0x7c,0x23,(char)0xff,(char)0xff,(char)0x80,0x00,
+												0x7c,0x21,0x00,0x00,(char)0xcc,0x00 };
 
 		REQUIRE(Response == DesiredResult2);
 
-		// Now repeat the command with no changes, should get the no change response.
-
-		// The command remains the same each time, but is consumed in the readcompletionhandler
+		// Send the command with 0 startmodule, should return a no change block.
+		commandblock = MD3BlockFn10(0x7C, true, 0, 2, true);
 		output << commandblock.ToBinaryString();
+
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult3 = { (char)0xfc,0x0e,0x22,0x02,0x59,0x00 };	// Digital No Change response
+		const std::string DesiredResult3 = { (char)0xfc,0x0e,0x0,0x00,0x65,0x00 };	// Digital No Change response
 
 		REQUIRE(Response == DesiredResult3);
 
