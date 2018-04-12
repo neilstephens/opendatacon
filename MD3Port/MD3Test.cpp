@@ -1,6 +1,6 @@
 #include <array>
-#include "catchvs.hpp"
-#include "Trompeloeil.hpp"
+#include <catchvs.hpp>		// This version has the hooks to display the tests in the VS Test Explorer
+#include <Trompeloeil.hpp>
 #include <opendnp3/LogLevels.h>
 #include <asiodnp3/ConsoleLogger.h>
 #include <asiopal/UTCTimeSource.h>
