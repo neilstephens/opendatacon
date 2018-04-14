@@ -45,17 +45,19 @@ add_custom_command(
 	COMMAND ${CMAKE_COMMAND} -P "version.cmake"
 	DEPENDS always_rebuild
 )
-#version info target that our other targets can have a dependance on
+#version info target that our other targets can have a dependence on
 add_custom_target(version DEPENDS "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h")
 
+
 # various optional libraries and projects
-option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, Tests, ConsoleUI, WebUI)" OFF)
+option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, MD3Port, SimPort, Tests, ConsoleUI, WebUI)" OFF)
 
 set(TESTS OFF CACHE BOOL "Build tests"					)
 set(WEBUI OFF CACHE BOOL "Build the http(s) web user interface"	)
 set(DNP3PORT OFF CACHE BOOL "Build DNP3 Port"				)
 set(JSONPORT OFF CACHE BOOL "Build JSON Port"				)
 set(MODBUSPORT OFF CACHE BOOL "Build Modbus Port"			)
+set(MD3PORT OFF CACHE BOOL "Build MD3 Port"			)
 set(SIMPORT OFF CACHE BOOL "Build Simulation Port"			)
 set(CONSOLEUI OFF CACHE BOOL "Build the console user interface"	)
 
@@ -69,6 +71,7 @@ if(FULL)
 	set(DNP3PORT ON CACHE BOOL "Build DNP3 Port"			   	FORCE)
 	set(JSONPORT ON CACHE BOOL "Build JSON Port"			   	FORCE)
 	set(MODBUSPORT ON CACHE BOOL "Build Modbus Port"		   	FORCE)
+	set(MD3PORT ON CACHE BOOL "Build MD3 Port"		   			FORCE)
 	set(SIMPORT ON CACHE BOOL "Build Simulation Port"		   	FORCE)
 	set(CONSOLEUI ON CACHE BOOL "Build the console user interface"	FORCE)
 endif()
@@ -158,9 +161,9 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 		OUTPUT_VARIABLE std_lib
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
-	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
+	#hide (in non-advanced mode) the library paths in cmake guis since they are derived
 	mark_as_advanced(FORCE std_lib)
-	get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symolic link
+	get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symbolic link
 	if(${_resolvedFile} STREQUAL ${std_lib})
 		#not a link - just install file
 		install(FILES "${std_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
@@ -203,6 +206,7 @@ endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 # Locate opendnp3 - this can be moved into DNP3Port when the other projects are decoupled from opendnp3
 set(DNP3_HOME_INSTRUCTIONS "Choose the location of opendnp3: where it was installed - there should be lib and include directories within")
+
 if(DEFINED DNP3_HOME)
 	set(DNP3_HOME ${DNP3_HOME} CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
 else()
@@ -213,18 +217,20 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 	add_library(${component}_target UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_target PROPERTY IMPORTED_LOCATION "${${component}_lib}")
+
 	# Look for debug libraries
 	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 	add_library(${component}_dtarget UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
+
 	#set a variable to use for linking
 	set(${component}_libs debug ${component}_dtarget optimized ${component}_target )
 
-	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
+	#hide (in non-advanced mode) the library paths in cmake guis since they are derived
 	mark_as_advanced(FORCE ${component}_lib ${component}_dlib)
 
 	#include in install/packaging
-	get_filename_component(_resolvedFile "${${component}_lib}" REALPATH) #check for symolic link
+	get_filename_component(_resolvedFile "${${component}_lib}" REALPATH) #check for symbolic link
 	if(${_resolvedFile} STREQUAL ${${component}_lib})
 		#not a link - just install file
 		install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
@@ -232,7 +238,7 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 		#is a link -install link and file
 		install(FILES "${${component}_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
 	endif()
-	get_filename_component(_resolvedFile "${${component}_dlib}" REALPATH) #check for symolic link
+	get_filename_component(_resolvedFile "${${component}_dlib}" REALPATH) #check for symbolic link
 	if(${_resolvedFile} STREQUAL ${${component}_dlib})
 		#not a link - just install file
 		install(FILES "${${component}_dlib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
@@ -248,6 +254,7 @@ if(DEFINED ASIO_HOME)
 else()
 	set(ASIO_HOME "/usr/local" CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
 endif()
+
 
 message("add subdir JSON")
 add_subdirectory(JSON)
@@ -282,9 +289,13 @@ if(MODBUSPORT)
 	message("add subdir ModbusPort")
 	add_subdirectory(ModbusPort)
 endif()
+if(MD3PORT)
+	message("add subdir MD3Port")
+	add_subdirectory(MD3Port)
+endif()
 if(SIMPORT)
 	message("add subdir SimPort")
 	add_subdirectory(SimPort)
-endif()	
+endif()
 message("add subdir install")
 add_subdirectory("install")
