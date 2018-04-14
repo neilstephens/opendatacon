@@ -49,3 +49,11 @@ extern "C" void delete_MD3OutstationPort(MD3OutstationPort* aMD3OutstationPort_p
 	delete aMD3OutstationPort_ptr;
 	return;
 }
+
+#define CATCH_CONFIG_RUNNER
+#include <catchvs.hpp>		// This version has the hooks to display the tests in the VS Test Explorer
+extern "C" int run_tests( int argc, char* argv[] )
+{
+	return Catch::Session().run( argc, argv );
+}
+
