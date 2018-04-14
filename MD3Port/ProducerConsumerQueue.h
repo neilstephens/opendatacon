@@ -66,6 +66,6 @@ public:
 	bool IsFull()
 	{
 		std::unique_lock<std::mutex> lck(Mut);
-		return (Queue.size >= Size)
+		return (Queue.size >= Size);
 	}
 };

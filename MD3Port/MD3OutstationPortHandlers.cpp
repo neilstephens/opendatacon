@@ -107,16 +107,16 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3DataBlock> &CompleteMD3
 		DoDigitalChangeOnly(Header);
 		break;
 	case HRER_LIST_SCAN:
-		DoDigitalHRER((MD3BlockFn9)Header);
+		DoDigitalHRER(static_cast<MD3BlockFn9&>(Header));
 		break;
 	case DIGITAL_CHANGE_OF_STATE:
-		DoDigitalCOSScan((MD3BlockFn10)Header);
+		DoDigitalCOSScan(static_cast<MD3BlockFn10&>(Header));
 		break;
 	case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
-		DoDigitalScan((MD3BlockFn11MtoS)Header);
+		DoDigitalScan(static_cast<MD3BlockFn11MtoS&>(Header));
 		break;
 	case DIGITAL_UNCONDITIONAL:
-		DoDigitalUnconditional((MD3BlockFn12MtoS)Header);
+		DoDigitalUnconditional(static_cast<MD3BlockFn12MtoS&>(Header));
 		break;
 	case ANALOG_NO_CHANGE_REPLY:
 		// Master Only

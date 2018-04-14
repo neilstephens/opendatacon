@@ -1,6 +1,7 @@
 #include <array>
+#include <fstream>
 #include <catchvs.hpp>		// This version has the hooks to display the tests in the VS Test Explorer
-#include <Trompeloeil.hpp>
+#include <trompeloeil.hpp>
 #include <opendnp3/LogLevels.h>
 #include <asiodnp3/ConsoleLogger.h>
 #include <asiopal/UTCTimeSource.h>
@@ -99,7 +100,8 @@ namespace UnitTests
 
 		MD3BlockArray msg = { 0x7C,0x05,0x20,0x0F,0x52, 0x00 };	// From a packet capture
 
-		MD3FormattedBlock b = MD3DataBlock::MD3DataBlock(msg);
+		MD3DataBlock db(msg);
+		MD3FormattedBlock b(db);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -127,7 +129,7 @@ namespace UnitTests
 		bool HCP = false;
 		bool DCP = false;
 
-		MD3FormattedBlock b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		MD3FormattedBlock b(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -143,7 +145,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		mastertostation = true;
-		b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -159,7 +161,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		lastblock = false;
-		b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -175,7 +177,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		channels = 1;
-		b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -191,7 +193,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		moduleaddress = 0xFF;
-		b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -207,7 +209,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		stationaddress = 0x7F;
-		b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -225,7 +227,7 @@ namespace UnitTests
 		stationaddress = 0x01;
 		moduleaddress = 0x01;
 		APL = true;
-		b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -241,7 +243,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		RSF = true;
-		b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -257,7 +259,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		HCP = true;
-		b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -273,7 +275,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		DCP = true;
-		b = MD3FormattedBlock::MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -294,7 +296,7 @@ namespace UnitTests
 		uint16_t secondword = 32000;
 		bool lastblock = true;
 
-		MD3DataBlock b = MD3DataBlock::MD3DataBlock(firstword, secondword, lastblock);
+		MD3DataBlock b(firstword, secondword, lastblock);
 
 		REQUIRE(b.GetFirstWord() == firstword);
 		REQUIRE(b.GetSecondWord() == secondword);
@@ -306,7 +308,7 @@ namespace UnitTests
 		secondword = 16000;
 		lastblock = false;
 
-		b = MD3DataBlock::MD3DataBlock(firstword, secondword, lastblock);
+		b = MD3DataBlock(firstword, secondword, lastblock);
 
 		REQUIRE(b.GetFirstWord() == firstword);
 		REQUIRE(b.GetSecondWord() == secondword);
@@ -319,7 +321,7 @@ namespace UnitTests
 		uint32_t data = 128364324;
 		bool lastblock = true;
 
-		MD3DataBlock b = MD3DataBlock::MD3DataBlock(data, lastblock);
+		MD3DataBlock b(data, lastblock);
 
 		REQUIRE(b.GetData() == data);
 		REQUIRE(b.IsEndOfMessageBlock() == lastblock);
@@ -329,7 +331,7 @@ namespace UnitTests
 		data = 8364324;
 		lastblock = false;
 
-		b = MD3DataBlock::MD3DataBlock(data, lastblock);
+		b = MD3DataBlock(data, lastblock);
 
 		REQUIRE(b.GetData() == data);
 		REQUIRE(b.IsEndOfMessageBlock() == lastblock);
@@ -341,7 +343,7 @@ namespace UnitTests
 		uint32_t data = 0x32F1F203;
 		bool lastblock = true;
 
-		MD3DataBlock b = MD3DataBlock::MD3DataBlock(0x32,0xF1,0xf2,0x03, lastblock);
+		MD3DataBlock b(0x32,0xF1,0xf2,0x03, lastblock);
 
 		REQUIRE(b.GetData() == data);
 		REQUIRE(b.GetByte(0) == 0x32);
@@ -428,7 +430,8 @@ namespace UnitTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -487,7 +490,8 @@ namespace UnitTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -580,7 +584,8 @@ namespace UnitTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -631,7 +636,8 @@ namespace UnitTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -699,7 +705,8 @@ namespace UnitTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -825,7 +832,8 @@ namespace UnitTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -905,7 +913,8 @@ namespace UnitTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -988,7 +997,8 @@ namespace UnitTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, (openpal::LogFilters)opendnp3::levels::NORMAL);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
 
 		MD3Port->Enable();
 
