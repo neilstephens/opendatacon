@@ -37,7 +37,6 @@
 #include <sstream>
 
 #include "MD3.h"
-#include "CRC.h"
 
 #define EOMBIT 0x40
 #define FOMBIT 0x80

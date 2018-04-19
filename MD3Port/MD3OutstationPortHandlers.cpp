@@ -38,9 +38,7 @@
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include "MD3Engine.h"
 #include "MD3OutstationPort.h"
-#include "LogMacro.h"
 #include "MD3.h"
-#include "CRC.h"
 
 #include <opendnp3/LogLevels.h>
 
