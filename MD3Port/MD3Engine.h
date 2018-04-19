@@ -1,4 +1,31 @@
-#pragma once
+/*	opendatacon
+*
+*	Copyright (c) 2018:
+*
+*		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+*		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+*
+*	Licensed under the Apache License, Version 2.0 (the "License");
+*	you may not use this file except in compliance with the License.
+*	You may obtain a copy of the License at
+*
+*		http://www.apache.org/licenses/LICENSE-2.0
+*
+*	Unless required by applicable law or agreed to in writing, software
+*	distributed under the License is distributed on an "AS IS" BASIS,
+*	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*	See the License for the specific language governing permissions and
+*	limitations under the License.
+*/
+/*
+* MD3Engine.h
+*
+*  Created on: 01/04/2018
+*      Author: Scott Ellis <scott.ellis@novatex.com.au>
+*/
+
+#ifndef MD3ENGINE_H_
+#define MD3ENGINE_H_
 
 // We want to use the asiosocketmanager for communications, but wrap it in a class derived from a "general" comms interface class.This way can add serial later if necessary.
 // Also this will allow us to more easily mock the comms layer for unit testing.
@@ -10,7 +37,6 @@
 #include <sstream>
 
 #include "MD3.h"
-#include "CRC.h"
 
 #define EOMBIT 0x40
 #define FOMBIT 0x80
@@ -551,3 +577,4 @@ public:
 		return (data & 0x0F);
 	}
 };
+#endif

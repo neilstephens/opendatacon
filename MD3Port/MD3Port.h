@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2018:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -21,7 +21,7 @@
  * MD3Port.h
  *
  *  Created on: 1/2/2018
- *      Author: Scott Ellis - derived from MD3 version
+ *      Author: Scott Ellis <scott.ellis@novatex.com.au> - derived from MD3 version
  */
 
 #ifndef MD3PORT_H_
