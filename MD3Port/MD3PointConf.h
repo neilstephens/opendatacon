@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2018:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -21,7 +21,7 @@
  * MD3PointConf.h
  *
  *  Created on: 10/03/2018
- *      Author: Scott Ellis - Derived from  DNP3PointConf.h
+ *      Author: Scott Ellis <scott.ellis@novatex.com.au> - Derived from  DNP3PointConf.h
  */
 
 #ifndef MD3POINTCONF_H_

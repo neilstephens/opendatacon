@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2018:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -20,12 +20,12 @@
 /*
  * MD3ClientPort.h
  *
- *  Created on: 15/07/2014
- *      Author: Neil Stephens <dearknarl@gmail.com>
+ *  Created on: 01/04/2018
+ *      Author: Scott Ellis <scott.ellis@novatex.com.au>
  */
 
-#ifndef MD3CLIENTPORT_H_
-#define MD3CLIENTPORT_H_
+#ifndef MD3MASTERPORT_H_
+#define MD3MASTERPORT_H_
 
 #include <queue>
 #include <opendnp3/master/ISOEHandler.h>
@@ -117,4 +117,4 @@ private:
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 };
 
-#endif /* MD3CLIENTPORT_H_ */
+#endif /* MD3MASTERPORT_H_ */
