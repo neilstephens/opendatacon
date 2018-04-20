@@ -75,6 +75,34 @@ namespace UnitTests
 	}
 	std::string Response;
 
+	// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
+	// Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent
+	std::string BuildHexStringFromASCIIHexString(const std::string &as)
+	{
+		assert(as.size() % 2 == 0);	// Must be even length
+
+		// Create, we know how big it will be
+		auto res = std::string(as.size() / 2, 0);
+
+		// Take chars in chunks of 2 and convert to a hex equivalent
+		for (int i = 0; i < (as.size() / 2); i++)
+		{
+			auto hexpair = as.substr(i * 2, 2);
+			res[i] = std::stol(hexpair, nullptr, 16);
+		}
+		return res;
+	}
+
+	TEST_CASE(SUITE("HexStringTest"))
+	{
+		std::string ts = "c406400f0b00"  "0000fffe9000";
+		std::string w1 = {(char)0xc4,0x06,0x40,0x0f,0x0b,0x00 };
+		std::string w2 = { 0x00,0x00,(char)0xff,(char)0xfe,(char)0x90,0x00 };
+
+		std::string res = BuildHexStringFromASCIIHexString(ts);
+		REQUIRE(res==(w1+w2));
+	}
+
 	TEST_CASE(SUITE("MD3CRCTest"))
 	{
 		/* Sample full packet, 5 blocks
@@ -386,59 +414,98 @@ namespace UnitTests
 
 		REQUIRE(b9.GetStationAddress() == 0x20);
 		REQUIRE(b9.IsMasterToStationMessage() == true);
+		REQUIRE(b9.GetFunctionCode() == 9);
 		REQUIRE(b9.GetMoreEventsFlag() == false);
 		REQUIRE(b9.GetSequenceNumber() == 3);
 		REQUIRE(b9.GetEventCount() == 100);
 		REQUIRE(b9.IsEndOfMessageBlock() == true);
+		REQUIRE(b9.CheckSumPasses());
 
 		b9.SetEventCountandMoreEventsFlag(130, true);
 
 		REQUIRE(b9.GetStationAddress() == 0x20);
 		REQUIRE(b9.IsMasterToStationMessage() == true);
+		REQUIRE(b9.GetFunctionCode() == 9);
 		REQUIRE(b9.GetMoreEventsFlag() == true);
 		REQUIRE(b9.GetSequenceNumber() == 3);
 		REQUIRE(b9.GetEventCount() == 130);
 		REQUIRE(b9.IsEndOfMessageBlock() == true);
+		REQUIRE(b9.CheckSumPasses());
 
 		MD3BlockFn11MtoS b11(0x32, 15, 3,14, true);
 		REQUIRE(b11.GetStationAddress() == 0x32);
 		REQUIRE(b11.IsMasterToStationMessage() == true);
+		REQUIRE(b11.GetFunctionCode() == 11);
 		REQUIRE(b11.GetDigitalSequenceNumber() == 3);
 		REQUIRE(b11.GetTaggedEventCount() == 15);
 		REQUIRE(b11.GetModuleCount() == 14);
 		REQUIRE(b11.IsEndOfMessageBlock() == true);
+		REQUIRE(b11.CheckSumPasses());
 
 		MD3BlockFn11StoM b11a(0x32, 14, 4,13, true);
 		REQUIRE(b11a.GetStationAddress() == 0x32);
 		REQUIRE(b11a.IsMasterToStationMessage() == false);
+		REQUIRE(b11a.GetFunctionCode() == 11);
 		REQUIRE(b11a.GetDigitalSequenceNumber() == 4);
 		REQUIRE(b11a.GetTaggedEventCount() == 14);
 		REQUIRE(b11a.GetModuleCount() == 13);
 		REQUIRE(b11a.IsEndOfMessageBlock() == true);
+		REQUIRE(b11a.CheckSumPasses());
 
  		MD3BlockFn12MtoS b12(0x32, 70, 7, 15, true);
 		REQUIRE(b12.GetStationAddress() == 0x32);
 		REQUIRE(b12.IsMasterToStationMessage() == true);
+		REQUIRE(b12.GetFunctionCode() == 12);
 		REQUIRE(b12.GetDigitalSequenceNumber() == 7);
 		REQUIRE(b12.GetStartingModuleAddress() == 70);
 		REQUIRE(b12.GetModuleCount() == 15);
+		REQUIRE(b12.CheckSumPasses());
 
 		// New style no change response constructor - contains a digital sequence number (6)
 		MD3BlockFn14StoM b14(0x25, 6);
 		REQUIRE(b14.IsMasterToStationMessage() == false);
 		REQUIRE(b14.GetStationAddress() == 0x25);
 		REQUIRE(b14.GetDigitalSequenceNumber() == 6);
+		REQUIRE(b14.GetFunctionCode() == 14);
 		REQUIRE(b14.GetData() == 0xa50e0600);
 		REQUIRE(b14.IsEndOfMessageBlock() == true);
+		REQUIRE(b14.CheckSumPasses());
 
 		// Old style no change response constructor - contains a module address (0x70) and # of modules 0x0E
 		MD3BlockFn14StoM b14a(0x25, 0x70, (uint8_t)0x0E);
 		REQUIRE(b14a.IsMasterToStationMessage() == false);
 		REQUIRE(b14a.GetStationAddress() == 0x25);
 		REQUIRE(b14a.GetModuleAddress() == 0x70);
+		REQUIRE(b14a.GetFunctionCode() == 14);
 		REQUIRE(b14a.GetModuleCount() == 0x0E);
 		REQUIRE(b14a.GetData() == 0xa50e700e);
 		REQUIRE(b14a.IsEndOfMessageBlock() == true);
+		REQUIRE(b14a.CheckSumPasses());
+
+		MD3BlockFn43MtoS b43(0x38, 999);
+		REQUIRE(b43.GetMilliseconds() == 999);
+		REQUIRE(b43.GetStationAddress() == 0x38);
+		REQUIRE(b43.IsMasterToStationMessage() == true);
+		REQUIRE(b43.GetFunctionCode() == 43);
+		REQUIRE(b43.IsEndOfMessageBlock() == false);
+		REQUIRE(b43.IsFormattedBlock() == true);
+		REQUIRE(b43.CheckSumPasses());
+
+		MD3BlockFn15StoM b15(b43);
+		REQUIRE(b15.GetStationAddress() == 0x38);
+		REQUIRE(b15.IsMasterToStationMessage() == false);
+		REQUIRE(b15.GetFunctionCode() == 15);
+		REQUIRE(b15.IsEndOfMessageBlock() == true);
+		REQUIRE(b15.IsFormattedBlock() == true);
+		REQUIRE(b15.CheckSumPasses());
+
+		MD3BlockFn30StoM b30(b43);
+		REQUIRE(b30.GetStationAddress() == 0x38);
+		REQUIRE(b30.IsMasterToStationMessage() == false);
+		REQUIRE(b30.GetFunctionCode() == 30);
+		REQUIRE(b30.IsEndOfMessageBlock() == true);
+		REQUIRE(b30.IsFormattedBlock() == true);
+		REQUIRE(b30.CheckSumPasses());
 	}
 
 	TEST_CASE(SUITE("AnalogUnconditionalTest1"))
@@ -639,10 +706,7 @@ namespace UnitTests
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult = { (char)0xfc,0x07,0x21,0x02,0x3e,0x00,
-											0x7c,0x00,0x00,0x21,(char)0x86,0x00,				// Error block - missing values?
-											0x7c,0x22,(char)0xaa,(char)0xaa,(char)0xb9,0x00,	// We set these values
-											0x7c,0x23,(char)0xff,(char)0xff,(char)0xc0,0x00};	// Default on values.
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0721023e00" "7c0000218600" "7c22aaaab900" "7c23ffffc000");
 
 		// No need to delay to process result, all done in the ReadCompletionHandler at call time.
 		REQUIRE(Response == DesiredResult);
@@ -803,7 +867,7 @@ namespace UnitTests
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		// Will get all data changing this time around
-		const std::string DesiredResult2 = { (char)0xfc,0x09,0x40,0x00,0x6d,0x00 };		// No events, seq # = 4
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0940006d00"); // No events, seq # = 4
 
 		REQUIRE(Response == DesiredResult2);
 
@@ -1041,6 +1105,66 @@ namespace UnitTests
 		auto res2 = MD3Port->Event(b, index2, "TestHarness");
 		REQUIRE((res2.get() == odc::CommandStatus::UNDEFINED));	// The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
 		// Wait for some period to do something?? Check that the port is open and we can connect to it?
+
+		IOMgr.Shutdown();
+	}
+	TEST_CASE(SUITE("ChangeTimeDateFn43Test1"))
+	{
+		// This test was written for where the outstation is simply sinking the timedate change command
+		// Will have to change if passed to ODC and events handled here
+		// One of the few multiblock commands
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+
+		// TimeChange command (Fn 43), Station 0x7C
+		MD3BlockFn43MtoS commandblock(0x7C, currenttime % 1000);
+
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		MD3DataBlock datablock(currenttime / 1000,true);
+		output << datablock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+
+		// Send the Command
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		// No need to delay to process result, all done in the ReadCompletionHandler at call time.
+		REQUIRE(Response[0] == (char)0xFC);
+		REQUIRE(Response[1] == (char)0x0F);	// OK Command
+
+		// Now do again with a bodgy time.
+		output << commandblock.ToBinaryString();
+		MD3DataBlock datablock2(1000, true);	// Non sensical time
+		output << datablock2.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+
+		// Send the Command
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		// No need to delay to process result, all done in the ReadCompletionHandler at call time.
+		REQUIRE(Response[0] == (char)0xFC);
+		REQUIRE(Response[1] == (char)30);	// Control/Scan Rejected Command
 
 		IOMgr.Shutdown();
 	}

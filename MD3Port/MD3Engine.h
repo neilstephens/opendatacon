@@ -577,4 +577,84 @@ public:
 		return (data & 0x0F);
 	}
 };
+
+class MD3BlockFn43MtoS : public MD3FormattedBlock
+{
+public:
+	MD3BlockFn43MtoS(MD3DataBlock& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+	MD3BlockFn43MtoS(uint8_t stationaddress, uint16_t milliseconds)
+	{
+		bool lastblock = false;	// Must always be followed by another data block
+		bool mastertostation = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((stationaddress & 0x7F) == stationaddress);	// Max of 7 bits;
+		assert(milliseconds < 1000);	// Max 10 bits;
+
+		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)SYSTEM_SET_DATETIME_CONTROL << 16 | ((uint32_t)milliseconds & 0x03FF);
+
+		endbyte = MD3CRC(data);	// Max 6 bits returned
+
+								// endbyte |= FOMBIT;	// This is a formatted block must be zero
+		endbyte |= lastblock ? EOMBIT : 0x00;
+	}
+
+	uint16_t GetMilliseconds()
+	{
+		// Function 11 and 12 This is the same part of the packet that is used for the 4 flags in other commands
+		return (data & 0x03FF);
+	}
+};
+class MD3BlockFn15StoM : public MD3FormattedBlock
+{
+public:
+	MD3BlockFn15StoM(MD3DataBlock& parent)
+	{
+		// This Blockformat is a copy of the orginating block header data, with the function code changed.
+		//
+		// We change the function code, change the direction bit, mark as last block and recalc the checksum.
+		data = parent.GetData();
+
+		bool mastertostation = false;
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		data &= ~((uint32_t)0x0FF << 16 | direction);			// Clear the bits we are going to set.
+		data |= (uint32_t)CONTROL_REQUEST_OK << 16 | direction;	// Set the function code
+
+		// Regenerate the last byte
+		bool lastblock = true;	// Only this block will be returned.
+		endbyte = MD3CRC(data);	// Max 6 bits returned
+								// endbyte |= FOMBIT;	// This is a formatted block must be zero
+		endbyte |= lastblock ? EOMBIT : 0x00;
+	}
+};
+
+class MD3BlockFn30StoM : public MD3FormattedBlock
+{
+public:
+	MD3BlockFn30StoM(MD3DataBlock& parent)
+	{
+		// This Blockformat is a copy of the orginating block header data, with the function code changed.
+		//
+		// We change the function code, change the direction bit, mark as last block and recalc the checksum.
+		data = parent.GetData();
+
+		bool mastertostation = false;
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		data &= ~((uint32_t)0x0FF << 16 | direction);			// Clear the bits we are going to set.
+		data |= (uint32_t)CONTROL_OR_SCAN_REQUEST_REJECTED << 16 | direction;	// Set the function code
+
+																// Regenerate the last byte
+		bool lastblock = true;	// Only this block will be returned.
+		endbyte = MD3CRC(data);	// Max 6 bits returned
+								// endbyte |= FOMBIT;	// This is a formatted block must be zero
+		endbyte |= lastblock ? EOMBIT : 0x00;
+	}
+};
 #endif

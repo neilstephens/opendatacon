@@ -147,6 +147,8 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3DataBlock> &CompleteMD3
 	case SYSTEM_RESTART_CONTROL:
 		break;
 	case SYSTEM_SET_DATETIME_CONTROL:
+		ExpectedMessageSize = 2;
+		DoSetDateTime(static_cast<MD3BlockFn43MtoS&>(Header), CompleteMD3Message);
 		break;
 	case FILE_DOWNLOAD:
 		break;
@@ -356,16 +358,16 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3FormattedBlock &Header)
 void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
 {
 	// We have a separate queue of time tagged digital events. This method only processes that queue.
-
+	//
 	// The master will start with sequence # of zero, and there after use 1-15. If we get zero, we respond with 1
 	// If the sequence number is non-zero, we resend that response.
-
+	//
 	// If the maxiumum events field is zero, then the next block in the message will contain the time. Another way to set the time.
 	//TODO: Process FN9 zero maxiumumevents used to set time in outstation.
-
+	//
 	// The date and time block is a 32 bit number representing the number of seconds since 1/1/1970
 	// The milliseconds component is derived from the offset component in the module data block.
-
+	//
 	// Because there can be 3 different tyeps of 16 bit words in the response, including filler packets,
 	// we need to build the response as those words first, then convert to MD3Blocks - with a potential filler packet in the last word of the last block.
 
@@ -404,8 +406,8 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
 		if (EventCount == 0)
 		{
 			// First packet is the time/date block and a millseconds packet
-			uint32_t FirstEventSeconds = CurrentPoint.ChangedTime / 1000;
-			uint16_t FirstEventMSec = CurrentPoint.ChangedTime % 1000;
+			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.ChangedTime / 1000);
+			uint16_t FirstEventMSec = (uint16_t)(CurrentPoint.ChangedTime % 1000);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
 			ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket(FirstEventMSec));
@@ -454,7 +456,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
 	MD3DataBlock &lastblock = ResponseMD3Message.back();
 	lastblock.MarkAsEndOfMessageBlock();
 
-	MD3BlockFn9 &firstblock = (MD3BlockFn9 &)ResponseMD3Message[0];
+	MD3BlockFn9 &firstblock = static_cast<MD3BlockFn9&>(ResponseMD3Message[0]);
 	firstblock.SetEventCountandMoreEventsFlag(EventCount, !MyPointConf()->BinaryTimeTaggedEventQueue.IsEmpty());	// If not empty, set more events (MEV) flag
 
 	LastDigitialHRERResponseMD3Message = ResponseMD3Message;	// Copy so we can resend if necessary
@@ -810,4 +812,75 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 		}
 	}
 }
+#pragma endregion
+
+#pragma region SYSTEM
+void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3DataBlock> &CompleteMD3Message)
+{
+	// We have two blocks incomming, not just one.
+	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+	// We have to pass the command to  ODC, then setup a lambda to handle the sending of the response - when we get it.
+
+	// Two possible responses, they depend on the future result - of type CommandStatus.
+	// SUCCESS = 0 /// command was accepted, initiated, or queue
+	// TIMEOUT = 1 /// command timed out before completing
+	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
+	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
+	// Non-zero will be a fail.
+
+	if (Header.GetStationAddress() != 0)
+	{
+		if (CompleteMD3Message.size() != 2)
+		{
+			SendControlOrScanRejected(Header);	// If we did not get two blocks, then send back a command rejected message.
+			return;
+		}
+
+		MD3DataBlock &timedateblock = CompleteMD3Message[1];
+
+		// If date time is within a window of now, accept. Otherwise send command rejected.
+		uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
+
+		// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
+		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+
+		if (abs((int64_t)msecsinceepoch - (int64_t)currenttime) > 30000)	// Set window as +-30 seconds
+		{
+			SendControlOrScanRejected(Header);
+		}
+		else
+		{
+			//TODO: SJE Send the timechange command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
+			SendControlOK(Header);
+		}
+	}
+	else
+	{
+		// No response
+	}
+}
+
+// Function 15 Output
+void MD3OutstationPort::SendControlOK(MD3FormattedBlock &Header)
+{
+	// The Control OK block seems to return the orginating message first block, but with the function code changed to 15
+	std::vector<MD3DataBlock> ResponseMD3Message;
+
+	// The MD3BlockFn15StoM does the changes we need for us.
+	MD3BlockFn15StoM FormattedBlock(Header);
+	ResponseMD3Message.push_back(FormattedBlock);
+	SendResponse(ResponseMD3Message);
+}
+// Function 30 Output
+void MD3OutstationPort::SendControlOrScanRejected(MD3FormattedBlock &Header)
+{
+	// The Control rejected block seems to return the orginating message first block, but with the function code changed to 30
+	std::vector<MD3DataBlock> ResponseMD3Message;
+
+	// The MD3BlockFn30StoM does the changes we need for us.
+	MD3BlockFn30StoM FormattedBlock(Header);
+	ResponseMD3Message.push_back(FormattedBlock);
+	SendResponse(ResponseMD3Message);
+}
+
 #pragma endregion

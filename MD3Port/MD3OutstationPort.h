@@ -90,6 +90,10 @@ public:
 	void BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, std::vector<MD3DataBlock> & ResponseMD3Message);
 	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
 
+	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3DataBlock>& CompleteMD3Message);	// Fn 43
+	void SendControlOK(MD3FormattedBlock & Header);					// Fn 15
+	void SendControlOrScanRejected(MD3FormattedBlock & Header);		// Fn 30
+
 	// Methods to access the outstation point table
 	//TODO: Point container access extract to separate class maybe..
 	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res);
