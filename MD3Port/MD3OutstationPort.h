@@ -82,15 +82,18 @@ public:
 	void DoDigitalUnconditionalObs(MD3FormattedBlock & Header);	// Fn 11
 	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header);		// Fn 12
 
-	int CheckBinaryChangeBlocks(int & ChangedTimeTaggedBlocks, bool SendEverything);
-	int CheckBinaryChangeBlocksGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
-	bool CheckForBinaryBlockChanges();
+	void MarkAllBinaryBlocksAsChanged();
+	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);
+	int CountBinaryBlocksWithChanges();
+	int CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
+	void BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
 	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3DataBlock> &ResponseMD3Message);
-	void BuildBinaryScanReturnBlocks(int MaxNumberOfDataBlocks, int StartModuleAddress, int StationAddress, std::vector<MD3DataBlock>& ResponseMD3Message);
-	void BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, std::vector<MD3DataBlock> & ResponseMD3Message);
+	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3DataBlock>& ResponseMD3Message);	
 	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
 
 	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3DataBlock>& CompleteMD3Message);	// Fn 43
+	void DoSystemFlagScan(MD3FormattedBlock & Header, std::vector<MD3DataBlock>& CompleteMD3Message);	// Fn 52
+
 	void SendControlOK(MD3FormattedBlock & Header);					// Fn 15
 	void SendControlOrScanRejected(MD3FormattedBlock & Header);		// Fn 30
 

@@ -61,21 +61,19 @@ using namespace odc;
 class MD3Point
 {
 	//TODO:  Split to parent and three child classes for functionality. MD3Point, MD3BinaryPoint, MD3AnalogPoint, MD3ControlPoint
-	//TODO: Make MD3Point thread safe
+	//TODO: Make MD3Point thread safe - look at strands
 public:
 	MD3Point() {};
 
 	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, bool timetagged) :
 		Index(index),
 		ModuleAddress(moduleaddress),
-		Channel(channel),
-		TimeTagged(timetagged)
+		Channel(channel)
 	{};
 	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, bool timetagged, uint8_t binval, bool changed, uint64_t changedtime) :
 		Index(index),
 		ModuleAddress(moduleaddress),
 		Channel(channel),
-		TimeTagged(timetagged),
 		Binary(binval),
 		Changed(changed),
 		ChangedTime(changedtime)
@@ -85,7 +83,6 @@ public:
 	uint8_t ModuleAddress = 0;
 	bool ModuleFailed = false;	// Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
 	uint8_t Channel = 0;
-	bool TimeTagged = false;
 	uint16_t Analog = 0x8000;
 	uint16_t LastReadAnalog = 0x8000;
 	uint8_t Binary = 0x01;
@@ -108,9 +105,6 @@ public:
 
 	void ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3Point>> &MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3Point>> &ODCPointMap);
 
-	unsigned LinkNumRetry = 0;
-	unsigned LinkTimeoutms = 0;
-
 	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
 	std::map<uint16_t , std::shared_ptr<MD3Point>> BinaryMD3PointMap;	// ModuleAndChannel, MD3Point
 	std::map<uint32_t , std::shared_ptr<MD3Point>> BinaryODCPointMap;	// Index OpenDataCon, MD3Point
@@ -123,27 +117,4 @@ public:
 
 	ProducerConsumerQueue<MD3Point> BinaryTimeTaggedEventQueue;	// Separate queue for time tagged binary events. Used for COS request functions
 };
-
-/* Thread safe copy and =
-Queue( const Queue& other)
-{
-std::lock_guard guard( other.mutex_ );
-queue_ = other.queue_;
-}
-Queue& operator= (Queue& other)
-{
-if(&other == this)
-return *this;
-std::unique_lock lock1( mutex_, std::defer_lock);
-std::unique_lock lock2( other.mutex_, std::defer_lock);
-std::lock( lock1, lock2);
-queue_ = other.queue_;
-return *this;
-}
-
-to prevent this
-In such a case, declare it non copyable and not assignable by adding:
-Queue(const Queue &) = delete;
-Queue &operator=(const Queue &) = delete;
-*/
 #endif /* MD3POINTCONF_H_ */

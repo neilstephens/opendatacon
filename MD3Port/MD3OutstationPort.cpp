@@ -367,12 +367,10 @@ bool MD3OutstationPort::SetBinaryValueUsingODCIndex(const uint16_t index, const 
 		ODCPointMapIter->second->Changed = true;
 
 		// We now need to add the change to the separate digital/binary event list
-		if (ODCPointMapIter->second->TimeTagged)
-		{
-			ODCPointMapIter->second->ChangedTime = eventtime;
-			MD3Point CopyOfPoint(*(ODCPointMapIter->second));
-			MyPointConf()->BinaryTimeTaggedEventQueue.Push(CopyOfPoint);	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
-		}
+
+		ODCPointMapIter->second->ChangedTime = eventtime;
+		MD3Point CopyOfPoint(*(ODCPointMapIter->second));
+		MyPointConf()->BinaryTimeTaggedEventQueue.Push(CopyOfPoint);	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
 		return true;
 	}
 	return false;

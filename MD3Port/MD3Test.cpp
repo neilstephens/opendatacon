@@ -56,7 +56,7 @@ const char *conffile = R"001(
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
-	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0, "TimeTagged" : false}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0, "TimeTagged" : true}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "TimeTagged" : true}],
+	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0}],
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
 	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 4}, "Module" : 35, "Offset" : 0}]
 
@@ -76,7 +76,7 @@ namespace UnitTests
 	std::string Response;
 
 	// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
-	// Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent
+	// Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
 	std::string BuildHexStringFromASCIIHexString(const std::string &as)
 	{
 		assert(as.size() % 2 == 0);	// Must be even length
@@ -447,8 +447,13 @@ namespace UnitTests
 		REQUIRE(b11a.IsMasterToStationMessage() == false);
 		REQUIRE(b11a.GetFunctionCode() == 11);
 		REQUIRE(b11a.GetDigitalSequenceNumber() == 4);
+		REQUIRE(b11a.CheckSumPasses());
 		REQUIRE(b11a.GetTaggedEventCount() == 14);
+		b11a.SetTaggedEventCount(7);
+		REQUIRE(b11a.GetTaggedEventCount() == 7);
 		REQUIRE(b11a.GetModuleCount() == 13);
+		b11a.SetModuleCount(5);
+		REQUIRE(b11a.GetModuleCount() == 5);
 		REQUIRE(b11a.IsEndOfMessageBlock() == true);
 		REQUIRE(b11a.CheckSumPasses());
 
@@ -706,7 +711,10 @@ namespace UnitTests
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0721023e00" "7c0000218600" "7c22aaaab900" "7c23ffffc000");
+		// Address 21, only 1 bit, set by default - check bit order
+		// Address 22, set to alternating on/off above
+		// Address 23, all on by default
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0721023e00" "7c2180008200" "7c22aaaab900" "7c23ffffc000");
 
 		// No need to delay to process result, all done in the ReadCompletionHandler at call time.
 		REQUIRE(Response == DesiredResult);
@@ -976,23 +984,6 @@ namespace UnitTests
 
 	TEST_CASE(SUITE("DigitalCOSFn11Test1"))
 	{
-		// pcap DigitalCOS
-		// 0xe6, 0x0b, 0x03, 0x02, 0x11, 0x00,
-		// 0x10, 0x00, 0xca, 0x00, 0x91, 0x00,
-		// 0x11, 0x00, 0x17, 0xfe, 0xd5, 0x00
-
-		// pcap DigitalCOS Station 96
-		// 0xe0,0x0b, 0x0e, 0x02, 0x1d, 0x00
-		// 0x06, 0x00, 0x44, 0xd2, 0xa7, 0x00
-		// 0x07, 0x00, 0x00, 0x00, 0xf5, 0x00
-
-		// pcap Set System Date and Time message
-		// 0x7d, 0x2b, 0x02, 0x2b, 0x1d, 0x00
-		// 0x59, 0x31, 0x75, 0x81, 0xf9, 0x00
-
-		// Tests triggering events to set the Outstation data points, Send only changed data. Need to send all first, then make a change and then send again
-		// Checks the TCP send output for correct data and format.
-
 		WriteConfFileToCurrentWorkingDirectory();
 
 		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
@@ -1008,7 +999,7 @@ namespace UnitTests
 
 		MD3Port->Enable();
 
-		// Request Digital COS (Fn 11), Station 0x7C
+		// Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on startup to send all data, 15 modules returned
 
 		MD3DataBlock commandblock = MD3BlockFn11MtoS(0x7C, 15, 1, 15, true);
 		asio::streambuf write_buffer;
@@ -1016,14 +1007,13 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		// Will get all data changing this time around
-		const std::string DesiredResult1 = { (char)0xfc,0x0b,0x10,0x12,0x02,0x00 };		// More to come
+		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01032d00" "210080008100" "2200ffff8300" "2300ffffe200");
 
 		REQUIRE(Response == DesiredResult1);
 
@@ -1034,7 +1024,7 @@ namespace UnitTests
 
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult2 = { (char)0xfc,0x0e,0x22,0x01,0x74,0x00 };	// Digital No Change response
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0e02004100");	// Digital No Change response for Fn 11 - different for 7,8,10
 
 		REQUIRE(Response == DesiredResult2);
 
@@ -1046,7 +1036,6 @@ namespace UnitTests
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		REQUIRE(Response == DesiredResult2);
-
 
 		//---------------------
 		// Now change data in one block only
@@ -1066,9 +1055,47 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult3 = { (char)0xfc,0x0e,0x22,0x01,0x74,0x00 };
+		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0b03013f00" "2200aaaae600");
 
 		REQUIRE(Response == DesiredResult3);
+
+		//TODO: Need to do all the tiime tagged stuff....
+
+		IOMgr.Shutdown();
+	}
+	TEST_CASE(SUITE("DigitalUnconditionalFn12Test1"))
+	{
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+
+		// Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 15 modules returned
+
+		MD3DataBlock commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 1, 3, true);
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+
+		// Send the Digital Uncoditional command in as if came from TCP channel
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01032d00" "210080008100" "2200ffff8300" "2300ffffe200");
+
+		REQUIRE(Response == DesiredResult1);
 
 		IOMgr.Shutdown();
 	}

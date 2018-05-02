@@ -155,6 +155,8 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3DataBlock> &CompleteMD3
 	case FILE_UPLOAD :
 		break;
 	case SYSTEM_FLAG_SCAN:
+		ExpectedMessageSize = CompleteMD3Message.size();	// Variable size
+		DoSystemFlagScan(Header, CompleteMD3Message);
 		break;
 	case LOW_RES_EVENTS_LIST_SCAN :
 		break;
@@ -306,7 +308,7 @@ void MD3OutstationPort::DoDigitalUnconditionalObs(MD3FormattedBlock &Header)
 	MD3FormattedBlock FormattedBlock = MD3FormattedBlock(Header.GetStationAddress(), false, DIGITAL_UNCONDITIONAL_OBS, Header.GetModuleAddress(), Header.GetChannels());
 	ResponseMD3Message.push_back(FormattedBlock);
 
-	int NumberOfDataBlocks = Header.GetChannels(); // Actually the number of modules - 0 numbered, does not make sense to ask for none...
+	int NumberOfDataBlocks = Header.GetChannels(); // Actually the number of modules
 
 	BuildBinaryReturnBlocks(NumberOfDataBlocks, Header.GetModuleAddress(), Header.GetStationAddress(), true, ResponseMD3Message);
 	SendResponse(ResponseMD3Message);
@@ -328,7 +330,7 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3FormattedBlock &Header)
 	bool SomeChange = false;
 	int NumberOfDataBlocks = Header.GetChannels(); // Actually the number of modules - 0 numbered, does not make sense to ask for none...
 
-	int ChangedBlocks = CheckBinaryChangeBlocksGivenRange(NumberOfDataBlocks, Header.GetModuleAddress());
+	int ChangedBlocks = CountBinaryBlocksWithChangesGivenRange(NumberOfDataBlocks, Header.GetModuleAddress());
 
 	if (ChangedBlocks == 0)	// No change
 	{
@@ -480,7 +482,7 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 	bool SomeChange = false;
 	int NumberOfDataBlocks = Header.GetModuleCount();
 
-	bool ChangedBlocks = CheckForBinaryBlockChanges();
+	bool ChangedBlocks = (CountBinaryBlocksWithChanges() != 0);
 
 	if (ChangedBlocks == false)	// No change
 	{
@@ -495,7 +497,11 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 		MD3BlockFn10 FormattedBlock = MD3BlockFn10(Header.GetStationAddress(), false,  Header.GetModuleAddress(), 0, false);
 		ResponseMD3Message.push_back(FormattedBlock);
 
-		BuildBinaryScanReturnBlocks(NumberOfDataBlocks, Header.GetModuleAddress(), Header.GetStationAddress(), ResponseMD3Message);
+		// First we have to get the changed ModuleAddresses
+		std::vector<uint8_t> ModuleList;
+		BuildListOfModuleAddressesWithChanges(Header.GetModuleAddress(), ModuleList);
+
+		BuildScanReturnBlocksFromList(ModuleList, NumberOfDataBlocks, Header.GetStationAddress(), false, ResponseMD3Message);
 
 		MD3BlockFn10 &firstblock = (MD3BlockFn10 &)ResponseMD3Message[0];
 		firstblock.SetModuleCount(ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
@@ -531,45 +537,55 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 		return;
 	}
 
-	bool SendEverything = false;
-
 	if (Header.GetDigitalSequenceNumber() == 0)
 	{
-		// Special case, send every time tagged capable event...
-		//TODO: The spec says only send all time tagged data when the digital sequence is zero. Need to look at packet dumps to check.
-		// The problem is not all data can be sent in one packet, so how do we get all the data without restarting each time.
-		SendEverything = true;
+		// Special case, mark every module with data changed, then send the first group.
+		// There may be more to send, the master will get those with another command, with a normal sequence number.
+		MarkAllBinaryBlocksAsChanged();
 	}
 
-	int ChangedTimeTaggedBlocks = 0;
-
-	int ChangedBlocks = CheckBinaryChangeBlocks(ChangedTimeTaggedBlocks, SendEverything);
+	int ChangedBlocks = CountBinaryBlocksWithChanges();
 
 	if (ChangedBlocks == 0)
 	{
 		//TODO: Digital No Change - check assumption that the second word needs to mirror that sent in the function 11 command (tagged event count, digital sequence # and ModuleCount
-		MD3FormattedBlock FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetTaggedEventCount(), Header.GetDigitalSequenceNumber(), Header.GetModuleCount());
+		MD3FormattedBlock FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetDigitalSequenceNumber());
 		ResponseMD3Message.push_back(FormattedBlock);
 	}
 	else
 	{
 		// We have data to send.
-
-		int TaggedEventCount = Limit(ChangedTimeTaggedBlocks,Header.GetTaggedEventCount());
-		int ModuleCount = Limit(ChangedBlocks - ChangedTimeTaggedBlocks, Header.GetModuleCount());
+		int TaggedEventCount = 0; //TODO: Limit(ChangedTimeTaggedBlocks, Header.GetTaggedEventCount());
+		int ModuleCount = Limit(ChangedBlocks, Header.GetModuleCount());
 
 		// Setup the response block
 		MD3BlockFn11StoM FormattedBlock(Header.GetStationAddress(), TaggedEventCount, Header.GetDigitalSequenceNumber(), ModuleCount);
 		ResponseMD3Message.push_back(FormattedBlock);
 
 		// Add non-time tagged data. We can return a data block or a status block for each module.
+		// If the module is active (not faulted) return the data, otherwise return the status block..
+		// We always just start with the first module and move up through changed blocks until we reach the ChangedBlocks count
+		//TODO: For remotes with latching digital changes - we can reply with two data blocks, the first being the latched change, the second being the current data - not sure how this works...
 
-		// If we dont send data - the flags on the Binaries dont get reset, so we keep trying to resend the data!!!
+		std::vector<uint8_t> ModuleList;
+		BuildListOfModuleAddressesWithChanges(0, ModuleList);
 
-		// Do this later!
-		// Add TimeDate Block
+		BuildScanReturnBlocksFromList(ModuleList, Header.GetModuleCount(), Header.GetStationAddress(), true, ResponseMD3Message);
+
+		FormattedBlock.SetModuleCount(ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
+
+		// Add TimeDate Block - only if we have tagged data to return
 
 		// Add timetagged data
+
+		FormattedBlock.SetTaggedEventCount(0);	// No timetagged data at the moment
+
+		// Mark the last block
+		if (ResponseMD3Message.size() != 0)
+		{
+			MD3DataBlock &lastblock = ResponseMD3Message.back();
+			lastblock.MarkAsEndOfMessageBlock();
+		}
 	}
 	SendResponse(ResponseMD3Message);
 
@@ -596,13 +612,66 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 	}
 
 	// The reply is the same format as for Fn11, but without time tagged data. Is the function code returned 11 or 12?
+	std::vector<uint8_t> ModuleList;
+	BuildListOfModuleAddressesWithChanges(Header.GetModuleCount(),Header.GetModuleAddress(), true, ModuleList);
 
+	// Setup the response block - module count to be updated
+	MD3BlockFn11StoM FormattedBlock(Header.GetStationAddress(), 0, Header.GetDigitalSequenceNumber(), Header.GetModuleCount());
+	ResponseMD3Message.push_back(FormattedBlock);
+
+	BuildScanReturnBlocksFromList(ModuleList, Header.GetModuleCount(), Header.GetStationAddress(), true, ResponseMD3Message);
+
+	FormattedBlock.SetModuleCount(ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
+
+	// Mark the last block
+	if (ResponseMD3Message.size() != 0)
+	{
+		MD3DataBlock &lastblock = ResponseMD3Message.back();
+		lastblock.MarkAsEndOfMessageBlock();
+	}
+
+	SendResponse(ResponseMD3Message);
+
+	// Store this set of packets in case we have to resend
+	//TODO: Is the sequence number function dependent - i.e. do we maintain one for each digital function or is it common across all digital functions.
+	LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
+	LastDigitialScanResponseMD3Message = ResponseMD3Message;
 }
 
+// This will be called when we get a zero sequence number for Fn 11 or 12. It is sent on Master startup to ensure that all data is sent in following
+// change only commands - if there are sufficient modules
+//TODO: Have to think about how zero sequence number is passed through ODC to our master talking to the real slave
+void MD3OutstationPort::MarkAllBinaryBlocksAsChanged()
+{
+	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
+	for (auto md3pt : MyPointConf()->BinaryMD3PointMap)
+	{
+		(*md3pt.second).Changed = true;
+	}
+}
+
+uint16_t MD3OutstationPort::CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool &ModuleFailed)
+{
+	uint16_t wordres = 0;
+
+	for (int j = 0; j < 16; j++)
+	{
+		uint8_t bitres = 0;
+		bool changed = false;	// We dont care about the returned value
+
+		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed))	// Reading this clears the changed bit
+		{
+			//TODO: Check the bit order here of the binaries
+			wordres |= (uint16_t)bitres << (15 - j);
+		}
+		//TODO: Check and update the module failed status for this module.
+	}
+	return wordres;
+}
 // Scan all binary/digital blocks for changes - used to determine what response we need to send
-// We return the total number of changed blocks, as well as the number that are timetagged.
+// We return the total number of changed blocks we assume every block supports time tagging
 // If SendEverything is true,
-int MD3OutstationPort::CheckBinaryChangeBlocks(int &ChangedTimeTaggedBlocks, bool SendEverything)
+int MD3OutstationPort::CountBinaryBlocksWithChanges()
 {
 	int changedblocks = 0;
 	int lastblock = -1;	// Non valid value
@@ -610,25 +679,20 @@ int MD3OutstationPort::CheckBinaryChangeBlocks(int &ChangedTimeTaggedBlocks, boo
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
 	for (auto md3pt : MyPointConf()->BinaryMD3PointMap)
 	{
-		if ((*md3pt.second).Changed || SendEverything)
+		if ((*md3pt.second).Changed)
 		{
 			// Multiple bits can be changed in the block, but only the first one is required to trigger a send of the block.
 			if (lastblock != (*md3pt.second).ModuleAddress)
 			{
 				lastblock = (*md3pt.second).ModuleAddress;
 				changedblocks++;
-
-				// A block (all 16 bits at a given moduleaddress) is either timetagged or not - no spliting.
-				if ((*md3pt.second).TimeTagged == true)
-					ChangedTimeTaggedBlocks++;
 			}
 		}
 	}
-
 	return changedblocks;
 }
 // This is used to determine which response we should send NoChange, DeltaChange or AllChange
-int MD3OutstationPort::CheckBinaryChangeBlocksGivenRange(int NumberOfDataBlocks, int StartModuleAddress)
+int MD3OutstationPort::CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBlocks, int StartModuleAddress)
 {
 	int changedblocks = 0;
 
@@ -658,30 +722,13 @@ int MD3OutstationPort::CheckBinaryChangeBlocksGivenRange(int NumberOfDataBlocks,
 	}
 	return changedblocks;
 }
-// This just gives us a count of the modules that have changes. Used in COS Scan method so we can determine if to send a no change packet.
-bool MD3OutstationPort::CheckForBinaryBlockChanges()
-{
-	// We need to iterate through the MD3Index looking for changes - any change will be enough!
-	bool result = false;
 
-	// TODO: Can we extract the PointMap iteration to call a lambda, so we keep the PointMap access in the one place...
-	for (auto MapPt : MyPointConf()->BinaryMD3PointMap)
-	{
-		auto MDPt = *(MapPt.second);
-		if (MDPt.Changed)
-			result = true;
-	}
-	return result;
-}
-// Used in Fn7 and Fn8
-void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3DataBlock> &ResponseMD3Message)
+// Used in Fn7, Fn8 and Fn12
+void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t> &ModuleList)
 {
-	// We have a list of modules to send...
+	// We want a list of modules to send...
 	for (int i = 0; i < NumberOfDataBlocks; i++)
 	{
-		// Have to collect all the bits into a uint16_t
-		uint16_t wordres = 0;
-		bool missingdata = false;
 		bool datachanged = false;
 
 		for (int j = 0; j < 16; j++)
@@ -689,85 +736,21 @@ void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int Star
 			uint8_t bitres = 0;
 			bool changed = false;
 
-			if (!GetBinaryValueUsingMD3Index(StartModuleAddress + i, j, bitres, changed))	//TODO: Reading this clears the changed bit, does this need to be smarter???
+			if (!GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed))
 			{
 				// Data is missing, need to send the error block for this module address.
-				missingdata = true;
 				changed = true;
-			}
-			else
-			{
-				// TODO: Check the bit order here of the binaries
-				wordres |= (uint16_t)bitres << (15 - j);
 			}
 			if (changed)
 				datachanged = true;
 		}
 		if (datachanged || forcesend)
 		{
-			if (missingdata)
-			{
-				// Queue the error block
-				uint8_t errorflags = 0;		//TODO: Application dependent, depends on the outstation implementation/master expectations. We could build in functionality here
-				uint16_t lowword = (uint16_t)errorflags << 8 | (StartModuleAddress + i);
-				auto block = MD3DataBlock((uint16_t)StationAddress << 8, lowword, false);	// Read the MD3 Data Structure - Module and Channel - dummy at the moment...
-				ResponseMD3Message.push_back(block);
-			}
-			else
-			{
-				// Queue the data block
-				uint16_t address = (uint16_t)StationAddress << 8 | (StartModuleAddress + i);
-				auto block = MD3DataBlock(address, wordres, false);
-				ResponseMD3Message.push_back(block);
-			}
+			ModuleList.push_back(StartModuleAddress + i);
 		}
 	}
-	// Not sure which is the last block for the send only changes..so just mark it when we get to here.
-	MD3DataBlock &lastblock = ResponseMD3Message.back();
-	lastblock.MarkAsEndOfMessageBlock();
 }
-// Used in Fn10
-void MD3OutstationPort::BuildBinaryScanReturnBlocks(int MaxNumberOfDataBlocks, int StartModuleAddress, int StationAddress, std::vector<MD3DataBlock> &ResponseMD3Message)
-{
-	// First we have to get to a matching ModuleAddress
-	std::vector<uint8_t> ModuleList;
-
-	BuildListOfModuleAddressesWithChanges(StartModuleAddress, ModuleList);
-
-	BuildScanReturnBlocksFromList(ModuleList, MaxNumberOfDataBlocks, StationAddress, ResponseMD3Message);
-}
-// Can we use this for Fn7,8 and 10...
-void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, std::vector<MD3DataBlock> & ResponseMD3Message)
-{
-	// For each module address, or the max we can send
-	for (int i = 0; (i < ModuleList.size()) && (i < MaxNumberOfDataBlocks); i++)
-	{
-		uint8_t ModuleAddress = ModuleList[i];
-
-		// Have to collect all the bits into a uint16_t
-		uint16_t wordres = 0;
-
-		for (int j = 0; j < 16; j++)
-		{
-			uint8_t bitres = 0;
-			bool changed = false;
-
-			if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed))	// Reading this clears the changed bit
-			{
-				//TODO: Check the bit order here of the binaries
-				wordres |= (uint16_t)bitres << (15 - j);
-			}
-		}
-
-		// Queue the data block
-		uint16_t address = (uint16_t)StationAddress << 8 | (ModuleAddress);
-		auto block = MD3DataBlock(address, wordres, false);
-		ResponseMD3Message.push_back(block);
-	}
-	// Not sure which is the last block for the send only changes..so just mark it when we get to here.
-	MD3DataBlock &lastblock = ResponseMD3Message.back();
-	lastblock.MarkAsEndOfMessageBlock();
-}
+// Fn 10
 void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList)
 {
 	uint8_t LastModuleAddress = 0;
@@ -812,9 +795,76 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 		}
 	}
 }
+// Fn 7,8
+void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3DataBlock> &ResponseMD3Message)
+{
+	std::vector<uint8_t> ModuleList;
+	BuildListOfModuleAddressesWithChanges(NumberOfDataBlocks, StartModuleAddress, forcesend, ModuleList);
+	// We have a list of modules to send...
+	BuildScanReturnBlocksFromList(ModuleList, NumberOfDataBlocks, StationAddress,false, ResponseMD3Message);
+}
+
+// Fn 7, 8 and 10
+void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3DataBlock> & ResponseMD3Message)
+{
+	// For each module address, or the max we can send
+	for (int i = 0; (i < ModuleList.size()) && (i < MaxNumberOfDataBlocks); i++)
+	{
+		uint8_t ModuleAddress = ModuleList[i];
+
+		// Have to collect all the bits into a uint16_t
+		bool ModuleFailed = false;
+
+		uint16_t wordres = CollectModuleBitsIntoWordandResetChangeFlags(ModuleAddress, ModuleFailed);
+
+		if (ModuleFailed)
+		{
+			if (FormatForFn11and12)
+			{
+
+			}
+			else
+			{
+				// Queue the error block - Fn 7, 8 and 10 format
+				uint8_t errorflags = 0;		//TODO: Application dependent, depends on the outstation implementation/master expectations. We could build in functionality here
+				uint16_t lowword = (uint16_t)errorflags << 8 | (ModuleAddress);
+				auto block = MD3DataBlock((uint16_t)StationAddress << 8, lowword, false);
+				ResponseMD3Message.push_back(block);
+			}
+		}
+		else
+		{
+			if (FormatForFn11and12)
+			{
+				// For Fn11 and 12 the data format is:
+				uint16_t address = (uint16_t)ModuleAddress << 8;	// Low byte is msec offset - which is 0 for non time tagged data
+				auto block = MD3DataBlock(address, wordres, false);
+				ResponseMD3Message.push_back(block);
+			}
+			else
+			{
+				// Queue the data block Fn 7,8 and 10
+				uint16_t address = (uint16_t)StationAddress << 8 | (ModuleAddress);
+				auto block = MD3DataBlock(address, wordres, false);
+				ResponseMD3Message.push_back(block);
+			}
+		}
+	}
+	// Not sure which is the last block for the send only changes..so just mark it when we get to here.
+	// Format Fn 11 and 12 may not be the end of packet
+	if ((ResponseMD3Message.size() != 0) && !FormatForFn11and12)
+	{
+		MD3DataBlock &lastblock = ResponseMD3Message.back();
+		lastblock.MarkAsEndOfMessageBlock();
+	}
+}
+
+
 #pragma endregion
 
 #pragma region SYSTEM
+
+// Function 43
 void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3DataBlock> &CompleteMD3Message)
 {
 	// We have two blocks incomming, not just one.
@@ -858,6 +908,36 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3D
 	{
 		// No response
 	}
+}
+
+// Function 52
+void MD3OutstationPort::DoSystemFlagScan(MD3FormattedBlock &Header, std::vector<MD3DataBlock> &CompleteMD3Message)
+{
+	// Normally will be just one block and the reply will be one block, but can be more than one, and is contract dependent.
+	//
+	// As far as we can tell AusGrid does not have any extra packets
+	//
+	// The second 16 bits of the response are the flag bits. A change in any will set the RSF bit in ANY scan/control replies.
+	//TODO: Make sure the RSF bit gets set appropriately in the reply blocks, from a global flag. Reset it in DoSystemFlagScan
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		//TODO Handle Flag scan conmmands with more than one block
+		SendControlOrScanRejected(Header);	// If we did not get one blocks, then send back a command rejected message - for NOW
+		return;
+	}
+
+
+	//TODO: SJE Dont think the flag scan will be passed through ODC, will just mirror what we know about the outstation
+	std::vector<MD3DataBlock> ResponseMD3Message;
+
+	// Change the direction, set the flag data.
+	MD3FormattedBlock RetBlock(Header.GetStationAddress(), false, SYSTEM_FLAG_SCAN, 0,0);
+	// Need to set the second word values to the flag values.
+
+	ResponseMD3Message.push_back(RetBlock);
+	// Set the flags????
+	SendResponse(ResponseMD3Message);
 }
 
 // Function 15 Output

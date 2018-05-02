@@ -241,6 +241,20 @@ public:
 		return (data & 0x0F)+1;
 	}
 
+	// Set the RSF flag. This comes from a global flag we maintain, and we set just before we send.
+	// Some of the child classes DONT have this flag, so we need to override to stop them from corrupting data.
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		uint32_t flags = 0;
+		flags |= RSF ? RSFBIT : 0x0000;
+		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= DCP ? DCPBIT : 0x0000;
+		data &= ~(RSFBIT|HCPBIT|DCPBIT);	// Clear the bits we are going to set.
+		data |= flags;
+
+		endbyte &= 0xC0;			// Clear the CRC bits
+		endbyte |= MD3CRC(data);	// Max 6 bits returned
+	}
 	bool GetAPL()
 	{
 		return ((data & APLBIT) == APLBIT);
@@ -323,6 +337,11 @@ public:
 	static uint16_t FillerPacket()
 	{
 		return 0;
+	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
 	}
 };
 class MD3BlockFn10 : public MD3FormattedBlock
@@ -409,6 +428,11 @@ public:
 		// Can be a zero module count
 		return (data & 0x0F);
 	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
 };
 class MD3BlockFn11StoM : public MD3FormattedBlock
 {
@@ -447,6 +471,14 @@ public:
 		// Can be a zero event count - in the spec 1's numbered. (0's numbered is when 0 is equivalent to 1 - 0 is not valid)
 		return (data >> 12) & 0x0F;
 	}
+	void SetTaggedEventCount(uint8_t eventcount)
+	{
+		data &= ~(0x0F << 12);	// Clear the bits we are going to set.
+		data |= (uint32_t)eventcount << 12;
+
+		endbyte &= 0xC0;			// Clear the CRC bits
+		endbyte |= MD3CRC(data);	// Max 6 bits returned
+	}
 	uint8_t GetDigitalSequenceNumber()
 	{
 		// Function 11 and 12 This is the same part of the packet that is used for the 4 flags in other commands
@@ -456,6 +488,14 @@ public:
 	{
 		// Can be a zero module count
 		return (data & 0x0F);
+	}
+	void SetModuleCount(uint8_t modulecount)
+	{
+		data &= ~(0x0F);	// Clear the bits we are going to set.
+		data |= modulecount;
+
+		endbyte &= 0xC0;			// Clear the CRC bits
+		endbyte |= MD3CRC(data);	// Max 6 bits returned
 	}
 };
 // The reply to Fn12 is actually a Fn11 packet
@@ -496,17 +536,13 @@ public:
 		// 1's numbered
 		return (data & 0x0F);
 	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
 };
 
-// Only ever station to master, a couple of constructors to deal with the two use cases.
-// There is no specific definition in the spec.
-// 9d 0e 04 00 64 00
-// 9d 0e 05 00 76 00
-// 9d 0e 07 00 52 00
-// ae 0e 06 00 4c 00
-// 8b 0e 0d 00 5e 00
-//  These all correspond to the second constuctor, where the  bottom 4 bits of the third byte is digital sequence number.
-// It seems like the stations are mixing the old and new codes...
 
 class MD3BlockFn14StoM : public MD3FormattedBlock
 {
@@ -609,6 +645,11 @@ public:
 		// Function 11 and 12 This is the same part of the packet that is used for the 4 flags in other commands
 		return (data & 0x03FF);
 	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
 };
 class MD3BlockFn15StoM : public MD3FormattedBlock
 {
@@ -623,7 +664,7 @@ public:
 		bool mastertostation = false;
 		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
-		data &= ~((uint32_t)0x0FF << 16 | direction);			// Clear the bits we are going to set.
+		data &= ~((uint32_t)0x0FF << 16 | DIRECTIONBIT);			// Clear the bits we are going to set.
 		data |= (uint32_t)CONTROL_REQUEST_OK << 16 | direction;	// Set the function code
 
 		// Regenerate the last byte
@@ -632,12 +673,17 @@ public:
 								// endbyte |= FOMBIT;	// This is a formatted block must be zero
 		endbyte |= lastblock ? EOMBIT : 0x00;
 	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		assert(false);
+		// No flags in this formatted packet
+	}
 };
 
 class MD3BlockFn30StoM : public MD3FormattedBlock
 {
 public:
-	MD3BlockFn30StoM(MD3DataBlock& parent)
+	MD3BlockFn30StoM(MD3DataBlock& parent, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
 	{
 		// This Blockformat is a copy of the orginating block header data, with the function code changed.
 		//
@@ -647,7 +693,16 @@ public:
 		bool mastertostation = false;
 		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
-		data &= ~((uint32_t)0x0FF << 16 | direction);			// Clear the bits we are going to set.
+		uint32_t flags = 0;
+		flags |= APL ? APLBIT : 0x0000;
+		flags |= RSF ? RSFBIT : 0x0000;
+		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= DCP ? DCPBIT : 0x0000;
+
+		data &= ~(APLBIT | RSFBIT | HCPBIT | DCPBIT);	// Clear the bits we are going to set.
+		data |= flags;
+
+		data &= ~((uint32_t)0x0FF << 16 | DIRECTIONBIT);			// Clear the bits we are going to set.
 		data |= (uint32_t)CONTROL_OR_SCAN_REQUEST_REJECTED << 16 | direction;	// Set the function code
 
 																// Regenerate the last byte
