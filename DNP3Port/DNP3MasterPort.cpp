@@ -53,8 +53,6 @@ void DNP3MasterPort::Enable()
 	}
 
 	enabled = true;
-	//initialise as comms down - in case they never come up
-	PortDown();
 
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
