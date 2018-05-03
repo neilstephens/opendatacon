@@ -54,17 +54,35 @@ namespace platformtime
 	}
 }
 
-void LogToFile::Log( const openpal::LogEntry& arEntry )
+void LogToFile::OpenNextLog()
 {
-	std::string time_str = platformtime::time_string();
+	//Find the first log file that's not full
+	size_t starting_index = mFileIndex;
+	do
+	{
+		mLogFile.open(mLogName+std::to_string(mFileIndex)+".txt", std::ios::ate | std::ios::in | std::ios::out);
+		if(mLogFile.fail() || mLogFile.tellp() < (int)mFileSizekB*1024)
+			break;
+		mLogFile.close();
+		++mFileIndex %= mNumFiles;
+	}while(mFileIndex != starting_index);
 
-	std::lock_guard<std::mutex> get_lock(mMutex);
+	//If no logs in progress, open the first one we can
 	if(!mLogFile.is_open())
 	{
 		mLogFile.open(mLogName+std::to_string(mFileIndex)+".txt");
 		if(mLogFile.fail())
 			throw std::runtime_error("Failed to open log file");
 	}
+}
+
+void LogToFile::Log( const openpal::LogEntry& arEntry )
+{
+	std::string time_str = platformtime::time_string();
+
+	std::lock_guard<std::mutex> get_lock(mMutex);
+	if(!mLogFile.is_open())
+		OpenNextLog();
 
 	mLogFile <<time_str<<" - "<< FilterToString(arEntry.GetFilters())<<" - "<<arEntry.GetAlias();
 	if(mPrintLocation && !arEntry.GetLocation())
@@ -74,11 +92,10 @@ void LogToFile::Log( const openpal::LogEntry& arEntry )
 		mLogFile << " - " << arEntry.GetErrorCode();
 	mLogFile <<std::endl;
 
-	if (mLogFile.tellp() > (int)mFileSizekB*1024)
+	if (mLogFile.tellp() >= (int)mFileSizekB*1024)
 	{
 		mLogFile.close();
-		mFileIndex++;
-		mFileIndex %= mNumFiles;
+		++mFileIndex %= mNumFiles;
 	}
 }
 
