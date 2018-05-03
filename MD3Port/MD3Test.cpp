@@ -554,6 +554,7 @@ namespace UnitTests
 		// Hook the output function with a lambda
 		// &Response - had to make response global to get access - having trouble with casting...
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
 
 		// Send the Analog Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -612,6 +613,7 @@ namespace UnitTests
 		// Hook the output function with a lambda
 		// &Response - had to make response global to get access - having trouble with casting...
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
 
 		// Send the command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -630,8 +632,6 @@ namespace UnitTests
 		REQUIRE(Response == DesiredResult1);
 		//------------------------------
 
-		output << commandblock.ToBinaryString();
-
 		// Make changes to 5 channels
 		for (int i = 0; i < 5; i++)
 		{
@@ -641,7 +641,7 @@ namespace UnitTests
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
 
-		// Send the command in as if came from TCP channel
+		output << commandblock.ToBinaryString();
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		const std::string DesiredResult2 = { (char)0xfc,0x06,0x20,0x0f,0x29,0x00,
@@ -655,8 +655,6 @@ namespace UnitTests
 		//------------------------------
 
 		output << commandblock.ToBinaryString();
-
-		// Send the command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		const std::string DesiredResult3 = { (char)0xfc,0x0d,0x20,0x0f,0x40,0x00 };
@@ -702,13 +700,11 @@ namespace UnitTests
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
 
-		// Call the Event functions to set the MD3 table data to what we are expecting to get back.
-
 		// Hook the output function with a lambda
 		// &Response - had to make response global to get access - having trouble with casting...
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
 
-		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		// Address 21, only 1 bit, set by default - check bit order
@@ -748,6 +744,7 @@ namespace UnitTests
 		// Hook the output function with a lambda
 		// &Response - had to make response global to get access - having trouble with casting...
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -769,11 +766,10 @@ namespace UnitTests
 
 		// The command remains the same each time, but is consumed in the readcompletionhandler
 		output << commandblock.ToBinaryString();
-		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		const std::string DesiredResult2 = { (char)0xfc,0x08,0x22,0x00,0x3c,0x00,				// Return function 8, Channels == 0, so 1 block to follow.
-											0x7c,0x22,(char)0xaa,(char)0xaa,(char)0xf9,0x00 };	// Default on values.
+											0x7c,0x22,(char)0xaa,(char)0xaa,(char)0xf9,0x00 };	// Values set above
 
 		REQUIRE(Response == DesiredResult2);
 
@@ -817,6 +813,7 @@ namespace UnitTests
 		// Hook the output function with a lambda
 		// &Response - had to make response global to get access - having trouble with casting...
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -914,6 +911,20 @@ namespace UnitTests
 
 		REQUIRE(Response.size() == 18);	// DecodeFnResponse(Response)
 
+		//---------------------
+		// Test rejection of set time command - which is when MaximumEvents is set to 0
+		commandblock = MD3BlockFn9(0x7C, true, 5, 0, true, true);
+		output << commandblock.ToBinaryString();
+
+		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+		MD3DataBlock datablock(currenttime / 1000, true );
+		output << datablock.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e58004900"); // Should get a command rejected response
+		REQUIRE(Response == DesiredResult3);
+
 		IOMgr.Shutdown();
 	}
 
@@ -944,6 +955,7 @@ namespace UnitTests
 		// Hook the output function with a lambda
 		// &Response - had to make response global to get access - having trouble with casting...
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
 
 
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -960,7 +972,6 @@ namespace UnitTests
 		// Send the command but start from module 0x22, we did not get all the blocks last time. Test the wrap around
 		commandblock = MD3BlockFn10(0x7C, true, 0x22, 2, true);
 		output << commandblock.ToBinaryString();
-		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		const std::string DesiredResult2 = { (char)0xfc,0xa,0x22,0x02,0x32,0x00,				// Return function 10, ModuleCount =2 so 2 blocks to follow.
@@ -972,7 +983,6 @@ namespace UnitTests
 		// Send the command with 0 startmodule, should return a no change block.
 		commandblock = MD3BlockFn10(0x7C, true, 0, 2, true);
 		output << commandblock.ToBinaryString();
-
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		const std::string DesiredResult3 = { (char)0xfc,0x0e,0x0,0x00,0x65,0x00 };	// Digital No Change response
@@ -1008,6 +1018,7 @@ namespace UnitTests
 
 		// Hook the output function with a lambda
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1021,7 +1032,6 @@ namespace UnitTests
 		// No data changes so should get a no change Fn14 block
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15, true);	// Sequence number must increase
 		output << commandblock.ToBinaryString();
-
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0e02004100");	// Digital No Change response for Fn 11 - different for 7,8,10
@@ -1032,7 +1042,6 @@ namespace UnitTests
 		// No sequence number shange, so should get the same data back as above.
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15, true);	// Sequence number must increase - but for this test not
 		output << commandblock.ToBinaryString();
-
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		REQUIRE(Response == DesiredResult2);
@@ -1089,6 +1098,7 @@ namespace UnitTests
 
 		// Hook the output function with a lambda
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1096,6 +1106,35 @@ namespace UnitTests
 		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01032d00" "210080008100" "2200ffff8300" "2300ffffe200");
 
 		REQUIRE(Response == DesiredResult1);
+
+		//--------------------------------
+		// Change the data at 0x22 to 0xaaaa
+		//
+		// Write to the first module, but not the second. Should get only the first module results sent.
+		for (int i = 0; i < 16; i++)
+		{
+			const odc::Binary b((i % 2) == 0);
+			auto res = MD3Port->Event(b, i, "TestHarness");
+
+			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
+		}
+
+		//--------------------------------
+		// Send the same command and sequence number, should get the same data as before - even though we have changed it
+		output << commandblock.ToBinaryString();
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		REQUIRE(Response == DesiredResult1);
+
+		//--------------------------------
+		commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 2, 3, true);	// Have to change the sequence number
+		output << commandblock.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0b02031b00" "210080008100" "2200aaaaa600" "2300ffffe200");
+
+		REQUIRE(Response == DesiredResult2);
 
 		IOMgr.Shutdown();
 	}
@@ -1169,6 +1208,7 @@ namespace UnitTests
 		// Hook the output function with a lambda
 		// &Response - had to make response global to get access - having trouble with casting...
 		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
 
 		// Send the Command
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1182,11 +1222,6 @@ namespace UnitTests
 		MD3DataBlock datablock2(1000, true);	// Non sensical time
 		output << datablock2.ToBinaryString();
 
-		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-
-		// Send the Command
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		// No need to delay to process result, all done in the ReadCompletionHandler at call time.

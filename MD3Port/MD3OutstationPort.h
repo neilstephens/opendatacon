@@ -75,20 +75,23 @@ public:
 	void SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 
 	// Digital/Binary
-	void DoDigitalScan(MD3BlockFn11MtoS & Header);				// Fn 7
+	void DoDigitalScan(MD3BlockFn11MtoS & Header);				// Fn 7	
 	void DoDigitalChangeOnly(MD3FormattedBlock & Header);		// Fn 8
-	void DoDigitalHRER(MD3BlockFn9 & Header);					// Fn 9
+	void DoDigitalHRER(MD3BlockFn9 & Header, std::vector<MD3DataBlock>& CompleteMD3Message);	// Fn 9
+	void Fn9AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalCOSScan(MD3BlockFn10 & Header);				// Fn 10
 	void DoDigitalUnconditionalObs(MD3FormattedBlock & Header);	// Fn 11
+	void Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header);		// Fn 12
 
 	void MarkAllBinaryBlocksAsChanged();
 	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);
+	uint16_t CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool & ModuleFailed);
 	int CountBinaryBlocksWithChanges();
 	int CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
 	void BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
 	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3DataBlock> &ResponseMD3Message);
-	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3DataBlock>& ResponseMD3Message);	
+	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3DataBlock>& ResponseMD3Message);
 	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
 
 	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3DataBlock>& CompleteMD3Message);	// Fn 43
@@ -105,6 +108,7 @@ public:
 	bool GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t &res);
 	bool SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas);
 	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed);
+	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t & res);
 	bool GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed);
 	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas);
 	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
@@ -115,7 +119,7 @@ public:
 	// Testing and Debugging Methods - no other use
 	// This allows us to hook the TCP Data Send Fucntion for testing.
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
-	void AddToDigitalEvents(const MD3Point & pt);
+	void AddToDigitalEvents(MD3Point & pt);
 private:
 
 	void SocketStateHandler(bool state);

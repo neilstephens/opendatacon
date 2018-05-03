@@ -497,6 +497,15 @@ public:
 		endbyte &= 0xC0;			// Clear the CRC bits
 		endbyte |= MD3CRC(data);	// Max 6 bits returned
 	}
+	static uint16_t FillerPacket()
+	{
+		return 0;
+	}
+	static uint16_t MilliSecondsDiv256OffsetPacket(uint16_t allmsec)
+	{
+		// There is a msec in the data packet, this is to allow us extra offset - should be divisible by 256 for accuracy
+		return  allmsec/256;
+	}
 };
 // The reply to Fn12 is actually a Fn11 packet
 class MD3BlockFn12MtoS : public MD3FormattedBlock

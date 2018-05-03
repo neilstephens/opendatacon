@@ -105,7 +105,12 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3DataBlock> &CompleteMD3
 		DoDigitalChangeOnly(Header);
 		break;
 	case HRER_LIST_SCAN:
-		DoDigitalHRER(static_cast<MD3BlockFn9&>(Header));
+		// Can be a size of 1 or 2
+		ExpectedMessageSize = CompleteMD3Message.size();
+		if ((ExpectedMessageSize == 1) || (ExpectedMessageSize == 2))
+			DoDigitalHRER(static_cast<MD3BlockFn9&>(Header), CompleteMD3Message);
+		else
+			ExpectedMessageSize = 1;
 		break;
 	case DIGITAL_CHANGE_OF_STATE:
 		DoDigitalCOSScan(static_cast<MD3BlockFn10&>(Header));
@@ -357,7 +362,7 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3FormattedBlock &Header)
 }
 
 // Function 9
-void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
+void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3DataBlock> &CompleteMD3Message)
 {
 	// We have a separate queue of time tagged digital events. This method only processes that queue.
 	//
@@ -365,7 +370,6 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
 	// If the sequence number is non-zero, we resend that response.
 	//
 	// If the maxiumum events field is zero, then the next block in the message will contain the time. Another way to set the time.
-	//TODO: Process FN9 zero maxiumumevents used to set time in outstation.
 	//
 	// The date and time block is a 32 bit number representing the number of seconds since 1/1/1970
 	// The milliseconds component is derived from the offset component in the module data block.
@@ -374,7 +378,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
 	// we need to build the response as those words first, then convert to MD3Blocks - with a potential filler packet in the last word of the last block.
 
 	std::vector<MD3DataBlock> ResponseMD3Message;
-	std::vector<uint16_t> ResponseWords;
+
 
 	if (Header.GetSequenceNumber() == LastHRERSequenceNumber)
 	{
@@ -386,6 +390,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
 		SendResponse(LastDigitialHRERResponseMD3Message);
 		return;
 	}
+
 	if (Header.GetSequenceNumber() == 0)
 	{
 		// The master has just started up. We will respond with a sequence number of 1.
@@ -397,13 +402,58 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
 	// Have to change the last two variables (event count and more events) after we have processed the queue.
 	MD3BlockFn9 FormattedBlock = MD3BlockFn9(Header.GetStationAddress(), false, LastHRERSequenceNumber, 0, true);
 	ResponseMD3Message.push_back(FormattedBlock);
-
 	int EventCount = 0;
+
+	if (Header.GetEventCount() == 0)
+	{
+		// There should be a second packet, and this is actually a set time/date command
+		SendControlOrScanRejected(Header);	// We are not supporting this message so send command rejected message.
+
+		// We just log that we got it at the moment
+		LOG("MD3OutstationPort", openpal::logflags::ERR, "", "Received a Fn 9 Set Time/Date Command - not handled. Station Address - " + std::to_string(Header.GetStationAddress()));
+		//TODO: Pass through FN9 zero maxiumumevents used to set time in outstation.
+		return;
+	}
+	else
+	{
+		std::vector<uint16_t> ResponseWords;
+
+		// Handle a normal packet - each event can be a word( 16 bits) plus time and other words
+		Fn9AddTimeTaggedDataToResponseWords( Header.GetEventCount(), EventCount, ResponseWords);
+
+		//TODO: Fn9 Add any Internal HRER events unrelated to the digital bits. EventBufferOverflow (1) is the only one of interest. Use Zero Module address and 1 in the channel field. The time is when this occurred
+
+		if ((ResponseWords.size() % 2) != 0)
+		{
+			// Add a filler packet if necessary
+			ResponseWords.push_back(MD3BlockFn9::FillerPacket());
+		}
+
+		// Now translate the 16 bit packets into the 32 bit MD3 blocks.
+		for (uint16_t i = 0; i < ResponseWords.size(); i = i + 2)
+		{
+			MD3DataBlock blk(ResponseWords[i], ResponseWords[i + 1]);
+			ResponseMD3Message.push_back(blk);
+		}
+	}
+
+	MD3DataBlock &lastblock = ResponseMD3Message.back();
+	lastblock.MarkAsEndOfMessageBlock();
+
+	MD3BlockFn9 &firstblock = static_cast<MD3BlockFn9&>(ResponseMD3Message[0]);
+	firstblock.SetEventCountandMoreEventsFlag(EventCount, !MyPointConf()->BinaryTimeTaggedEventQueue.IsEmpty());	// If not empty, set more events (MEV) flag
+
+	LastDigitialHRERResponseMD3Message = ResponseMD3Message;	// Copy so we can resend if necessary
+	SendResponse(ResponseMD3Message);
+}
+
+void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, int &EventCount, std::vector<uint16_t> &ResponseWords)
+{
 	MD3Point CurrentPoint;
 	uint64_t LastPointmsec = 0;
 	bool CanSend = true;
 
-	while (MyPointConf()->BinaryTimeTaggedEventQueue.Peek(CurrentPoint) && (EventCount < Header.GetEventCount()) && CanSend)
+	while (MyPointConf()->BinaryTimeTaggedEventQueue.Peek(CurrentPoint) && (EventCount < MaxEventCount) && CanSend)
 	{
 		if (EventCount == 0)
 		{
@@ -439,30 +489,6 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header)
 			EventCount++;
 		}
 	}
-
-	//TODO: Fn9 Add any Internal HRER events unrelated to the digital bits. EventBufferOverflow (1) is the only one of interest. Use Zero Module address and 1 in the channel field. The time is when this occurred
-
-	if ((ResponseWords.size() % 2) != 0)
-	{
-		// Add a filler packet if necessary
-		ResponseWords.push_back(MD3BlockFn9::FillerPacket());
-	}
-
-	// Now translate the 16 bit packets into the 32 bit MD3 blocks.
-	for (uint16_t i = 0; i < ResponseWords.size(); i = i + 2)
-	{
-		MD3DataBlock blk(ResponseWords[i], ResponseWords[i + 1]);
-		ResponseMD3Message.push_back(blk);
-	}
-
-	MD3DataBlock &lastblock = ResponseMD3Message.back();
-	lastblock.MarkAsEndOfMessageBlock();
-
-	MD3BlockFn9 &firstblock = static_cast<MD3BlockFn9&>(ResponseMD3Message[0]);
-	firstblock.SetEventCountandMoreEventsFlag(EventCount, !MyPointConf()->BinaryTimeTaggedEventQueue.IsEmpty());	// If not empty, set more events (MEV) flag
-
-	LastDigitialHRERResponseMD3Message = ResponseMD3Message;	// Copy so we can resend if necessary
-	SendResponse(ResponseMD3Message);
 }
 
 // Function 10
@@ -512,18 +538,18 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 // Function 11
 void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 {
-	//TODO: Implement this first assuming there are no time tag capable modules in the system....then add the rest
 	// So we scan all our digital modules, creating change records for where there are changes.
 	// We can return non-time tagged data - up to the number given by ModuleCount.
 	// Following this we can return time tagged data - up to the the number given by TaggedEventCount. Both are 1 numbered - i.e. 0 is a valid value.
 	// The time tagging in the modules is optional, so need to build that into our config file. It is the module capability that determines what we return.
-
+	//
 	// If the sequence number is zero, every time tagged module will be sent. It is used by the master to reset its state on power up.
-
+	//
 	// The date and time block is a 32 bit number representing the number of seconds since 1/1/1970
 	// The milliseconds component is derived from the offset component in the module data block.
-
+	//
 	// If we get another scan message (and nothing else changes) we will send the next block of changes and so on.
+
 	std::vector<MD3DataBlock> ResponseMD3Message;
 
 	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
@@ -545,6 +571,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	}
 
 	int ChangedBlocks = CountBinaryBlocksWithChanges();
+	bool AreThereTaggedEvents = !(MyPointConf()->BinaryModuleTimeTaggedEventQueue.IsEmpty());
 
 	if (ChangedBlocks == 0)
 	{
@@ -555,7 +582,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	else
 	{
 		// We have data to send.
-		int TaggedEventCount = 0; //TODO: Limit(ChangedTimeTaggedBlocks, Header.GetTaggedEventCount());
+		int TaggedEventCount = 0;
 		int ModuleCount = Limit(ChangedBlocks, Header.GetModuleCount());
 
 		// Setup the response block
@@ -574,11 +601,29 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 		FormattedBlock.SetModuleCount(ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
 
-		// Add TimeDate Block - only if we have tagged data to return
+		if (AreThereTaggedEvents)
+		{
+			// Add timetagged data
+			std::vector<uint16_t> ResponseWords;
 
-		// Add timetagged data
+			Fn11AddTimeTaggedDataToResponseWords(Header.GetTaggedEventCount(), TaggedEventCount, ResponseWords);
 
-		FormattedBlock.SetTaggedEventCount(0);	// No timetagged data at the moment
+			// Convert data to 32 bit blocks and pad if necessary.
+			if ((ResponseWords.size() % 2) != 0)
+			{
+				// Add a filler packet if necessary
+				ResponseWords.push_back(MD3BlockFn11StoM::FillerPacket());
+			}
+
+			// Now translate the 16 bit packets into the 32 bit MD3 blocks.
+			for (uint16_t i = 0; i < ResponseWords.size(); i = i + 2)
+			{
+				MD3DataBlock blk(ResponseWords[i], ResponseWords[i + 1]);
+				ResponseMD3Message.push_back(blk);
+			}
+		}
+		else
+			FormattedBlock.SetTaggedEventCount(TaggedEventCount);		// Update to the number we are sending
 
 		// Mark the last block
 		if (ResponseMD3Message.size() != 0)
@@ -595,6 +640,48 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	LastDigitialScanResponseMD3Message = ResponseMD3Message;
 }
 
+void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int &EventCount, std::vector<uint16_t> &ResponseWords)
+{
+	MD3Point CurrentPoint;
+	uint64_t LastPointmsec = 0;
+
+	while (MyPointConf()->BinaryModuleTimeTaggedEventQueue.Peek(CurrentPoint) && (EventCount < MaxEventCount) && CanSend)
+	{
+		// The time date is seconds, the data block contains a msec entry.
+		// The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
+		// add a time packet to bridge the gap.
+
+		if (EventCount == 0)
+		{
+			// First packet is the time/date block
+			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.ChangedTime / 1000);
+			ResponseWords.push_back(FirstEventSeconds >> 16);
+			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
+			LastPointmsec = CurrentPoint.ChangedTime - CurrentPoint.ChangedTime % 1000;	// The first one is seconds only. Later events have actual msec
+		}
+		else
+		{
+			// Do we need a Milliseconds packet? If so, is the gap more than 31 seconds? If so, finish this response off, so master can issue a new HRER request.
+			uint64_t delta = CurrentPoint.ChangedTime - LastPointmsec;
+			if (delta > 31999)
+			{
+				//Delta > 31.999 seconds, We can't send this point, finish the packet so the master can ask for a new HRER response.
+				//		ResponseWords.push_back(MD3BlockFn11StoM::MilliSecondsDiv256OffsetPacket(FirstEventMSec));
+
+			}
+			else if (delta != 0)
+			{
+				ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket(delta));
+				LastPointmsec = CurrentPoint.ChangedTime;						// The last point time moves with time added by the msec packets
+			}
+		}
+
+			//ResponseWords.push_back(MD3BlockFn9::HREREventPacket(CurrentPoint.Binary, CurrentPoint.Channel, CurrentPoint.ModuleAddress));
+
+			MyPointConf()->BinaryModuleTimeTaggedEventQueue.Pop();
+			EventCount++;
+	}
+}
 // Function 12
 void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 {
@@ -660,6 +747,24 @@ uint16_t MD3OutstationPort::CollectModuleBitsIntoWordandResetChangeFlags(const u
 		bool changed = false;	// We dont care about the returned value
 
 		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed))	// Reading this clears the changed bit
+		{
+			//TODO: Check the bit order here of the binaries
+			wordres |= (uint16_t)bitres << (15 - j);
+		}
+		//TODO: Check and update the module failed status for this module.
+	}
+	return wordres;
+}
+uint16_t MD3OutstationPort::CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool &ModuleFailed)
+{
+	uint16_t wordres = 0;
+
+	for (int j = 0; j < 16; j++)
+	{
+		uint8_t bitres = 0;
+		bool changed = false;	// We dont care about the returned value
+
+		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres))	// Reading this clears the changed bit
 		{
 			//TODO: Check the bit order here of the binaries
 			wordres |= (uint16_t)bitres << (15 - j);
@@ -821,7 +926,7 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 		{
 			if (FormatForFn11and12)
 			{
-
+				//TODO: Module failed response for Fn11/12 BuildScanReturnBlocksFromList
 			}
 			else
 			{

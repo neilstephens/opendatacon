@@ -187,7 +187,8 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 			}
 
 			// The start and any other block can be the end block
-			if (md3block.IsEndOfMessageBlock())
+			// We might get an end block outof order, so just ignore.
+			if (md3block.IsEndOfMessageBlock() && (MD3Message.size() != 0))
 			{
 				// Once we have the last block, then hand off MD3Message to process.
 				RouteMD3Message(MD3Message);
@@ -297,6 +298,7 @@ bool MD3OutstationPort::SetAnalogValueUsingODCIndex(const uint16_t index, const 
 	}
 	return false;
 }
+// Gets and Clears changed flag
 bool MD3OutstationPort::GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed)
 {
 	uint16_t Md3Index = (module << 8) | channel;
@@ -310,6 +312,19 @@ bool MD3OutstationPort::GetBinaryValueUsingMD3Index(const uint16_t module, const
 			changed = true;
 			MD3PointMapIter->second->Changed = false;
 		}
+		return true;
+	}
+	return false;
+}
+// Only gets value, does not clear changed flag
+bool MD3OutstationPort::GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res)
+{
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3PointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
+	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
+	{
+		res = MD3PointMapIter->second->Binary;
 		return true;
 	}
 	return false;
@@ -367,17 +382,25 @@ bool MD3OutstationPort::SetBinaryValueUsingODCIndex(const uint16_t index, const 
 		ODCPointMapIter->second->Changed = true;
 
 		// We now need to add the change to the separate digital/binary event list
-
 		ODCPointMapIter->second->ChangedTime = eventtime;
 		MD3Point CopyOfPoint(*(ODCPointMapIter->second));
-		MyPointConf()->BinaryTimeTaggedEventQueue.Push(CopyOfPoint);	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
+		AddToDigitalEvents(CopyOfPoint);
 		return true;
 	}
 	return false;
 }
-void MD3OutstationPort::AddToDigitalEvents(const MD3Point & pt)
+void MD3OutstationPort::AddToDigitalEvents(MD3Point & pt)
 {
+	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
 	MyPointConf()->BinaryTimeTaggedEventQueue.Push(pt);
+
+	// Have to collect all the bits in the module to which this point belongs into a uint16_t
+	bool ModuleFailed = false;
+	uint16_t wordres = CollectModuleBitsIntoWordandResetChangeFlags(pt.ModuleAddress, ModuleFailed);
+
+	// Save it in the snapshot that is used for the Fn11 COS time tagged events.
+	pt.ModuleBinarySnapShot = wordres;
+	MyPointConf()->BinaryModuleTimeTaggedEventQueue.Push(pt);
 }
 
 #pragma endregion

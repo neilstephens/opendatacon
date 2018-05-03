@@ -86,6 +86,7 @@ public:
 	uint16_t Analog = 0x8000;
 	uint16_t LastReadAnalog = 0x8000;
 	uint8_t Binary = 0x01;
+	uint16_t ModuleBinarySnapShot = 0;	// Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
 	bool Changed = true;
 	uint64_t ChangedTime = 0;	// msec since epoch. 1970,1,1
 };
@@ -116,5 +117,6 @@ public:
 	std::map<uint32_t, std::shared_ptr<MD3Point>> BinaryControlODCPointMap;	// Index OpenDataCon, MD3Point
 
 	ProducerConsumerQueue<MD3Point> BinaryTimeTaggedEventQueue;	// Separate queue for time tagged binary events. Used for COS request functions
+	ProducerConsumerQueue<MD3Point> BinaryModuleTimeTaggedEventQueue;	// This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
 };
 #endif /* MD3POINTCONF_H_ */
