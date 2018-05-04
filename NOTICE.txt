@@ -1,3 +1,5 @@
+---Copies of licenses referenced below are contained in 3rdPartyLicenses directory
+
 
 opendatacon bundles some third party source code:
 
@@ -56,7 +58,7 @@ opendatacon bundles some third party source code:
 	 *  Copyright (c) 2012 Two Blue Cubes Ltd. All rights reserved.
 	 *
 	 *  Distributed under the Boost Software License, Version 1.0. (See accompanying
-	 *  file include/LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+	 *  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 	 */ 
 
 it also (optionally) bundles some third party binary libraries in the installation package:

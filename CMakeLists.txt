@@ -36,6 +36,7 @@ endif()
 project(opendatacon_suite C CXX)
 install(FILES "LICENSE.txt" DESTINATION ".")
 install(FILES "NOTICE.txt" DESTINATION ".")
+install(DIRECTORY "./3rdPartyLicenses" DESTINATION ".")
 
 #Generate version info now, and set to generate on every build
 include(version.cmake)
