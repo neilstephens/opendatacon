@@ -1,0 +1,160 @@
+
+opendatacon bundles some third party source code:
+
+	/*
+	 *  JSON/jsoncpp.cpp
+	 *  JSON/json/json-forwards.h
+	 *  JSON/json/json.h
+	 *
+	 *  JsonCpp - https://github.com/open-source-parsers/jsoncpp
+	 *  -------------------------
+	 *  ========================================================================
+	 *  Copyright (c) 2007-2010 Baptiste Lepilleur and The JsonCpp Authors
+	 *  
+	 *  Permission is hereby granted, free of charge, to any person
+	 *  obtaining a copy of this software and associated documentation
+	 *  files (the "Software"), to deal in the Software without
+	 *  restriction, including without limitation the rights to use, copy,
+	 *  modify, merge, publish, distribute, sublicense, and/or sell copies
+	 *  of the Software, and to permit persons to whom the Software is
+	 *  furnished to do so, subject to the following conditions:
+	 *  
+	 *  The above copyright notice and this permission notice shall be
+	 *  included in all copies or substantial portions of the Software.
+	 *  
+	 *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+	 *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+	 *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+	 *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+	 *  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+	 *  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+	 *  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	 *  SOFTWARE.
+	 *  ========================================================================
+	 */
+	 
+	and
+	
+	/*
+	 * ConsoleUI/tinycon.h
+	 * ConsoleUI/tinycon.cpp
+	 *
+	 * TinyCon - A tiny console library, written for C++
+	 * https://sourceforge.net/projects/tinycon/
+	 * ------------------------------------------------------
+	 * License:  BSD
+	 * Author:   Unix-Ninja | chris (at) unix-ninja (dot) com
+	 */
+	 
+	and
+
+	/*
+	 * include/catch.hpp
+	 *
+	 *  Catch
+	 *  ----------------------------------------------------------
+	 *  Copyright (c) 2012 Two Blue Cubes Ltd. All rights reserved.
+	 *
+	 *  Distributed under the Boost Software License, Version 1.0. (See accompanying
+	 *  file include/LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+	 */ 
+
+it also (optionally) bundles some third party binary libraries in the installation package:
+
+	/*
+	 *  opendnp3 - github.com/automatak/dnp3
+	 *  ------------------------------------
+	 *  Copyright (c) (http://www.greenenergycorp.com/) and Automatak LLC (https://wwww.automatak.com),
+	 *  under the Apache License, Version 2.0
+	 */
+	 
+	and
+	
+	/*
+	 *  libmicrohttpd
+	 *  Source code can be found on the main GNU ftp server: https://ftp.gnu.org/gnu/libmicrohttpd/ (via HTTPS)
+	 *  and ftp://ftp.gnu.org/gnu/libmicrohttpd/ (via FTP). It can also be found on the GNU mirrors.
+	 *  ------------------------------------
+	 *	 Copyright (C) 2006-2015 Christian Grothoff (and other contributing authors)
+	 *
+	 *	 This library is free software; you can redistribute it and/or
+	 *	 modify it under the terms of the GNU Lesser General Public
+	 *	 License as published by the Free Software Foundation; either
+	 *	 version 2.1 of the License, or (at your option) any later version.
+	 *
+	 *	 This library is distributed in the hope that it will be useful,
+	 *	 but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	 *	 Lesser General Public License for more details.
+	 *
+	 *	 You should have received a copy of the GNU Lesser General Public
+	 *	 License along with this library; if not, write to the Free Software
+	 *	 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+	 */
+	 
+	and
+	 
+	/*
+	 * libmodbus - http://libmodbus.org/download/ for source code
+	 * ------------------------------------
+	 * Copyright © 2001-2011 Stéphane Raimbault <stephane.raimbault@gmail.com>
+	 *
+	 * This library is free software; you can redistribute it and/or
+	 * modify it under the terms of the GNU Lesser General Public
+	 * License as published by the Free Software Foundation; either
+	 * version 2.1 of the License, or (at your option) any later version.
+	 *
+	 * This library is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	 * Lesser General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU Lesser General Public
+	 * License along with this library; if not, write to the Free Software
+	 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+	 */
+
+it is also compiled with some external third party dependancies:
+
+	//
+	// asio.hpp - https://think-async.com/
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	//
+	// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+	//
+	// Distributed under the Boost Software License, Version 1.0. (See accompanying
+	// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+	//
+
+	and
+	
+	/*
+	 * Templatized C++ Command Line Parser - https://sourceforge.net/projects/tclap/
+	 * -----------------------------------------------------------------------------
+	 * Copyright (c) 2003 Michael E. Smoot 
+	 *
+	 * Permission is hereby granted, free of charge, to any person 
+	 * obtaining a copy of this software and associated documentation 
+	 * files (the "Software"), to deal in the Software without restriction, 
+	 * including without limitation the rights to use, copy, modify, merge, 
+	 * publish, distribute, sublicense, and/or sell copies of the Software, 
+	 * and to permit persons to whom the Software is furnished to do so, 
+	 * subject to the following conditions:
+	 * 
+	 * The above copyright notice and this permission notice shall be 
+	 * included in all copies or substantial portions of the Software.
+	 * 
+	 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+	 * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
+	 * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+	 * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS 
+	 * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN 
+	 * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR 
+	 * IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
+	 * THE SOFTWARE.
+	 */
+
+
+
+
+
