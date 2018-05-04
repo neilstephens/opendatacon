@@ -34,6 +34,8 @@ if(POLICY CMP0048)
 endif()
 
 project(opendatacon_suite C CXX)
+install(FILES "LICENSE.txt" DESTINATION ".")
+install(FILES "NOTICE.txt" DESTINATION ".")
 
 #Generate version info now, and set to generate on every build
 include(version.cmake)
@@ -136,6 +138,10 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
+	option(STATIC_LIBSTDC++ "Link libstdc++ statically" OFF)
+	if(STATIC_LIBSTDC++)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
+	endif()
 
 	# different release and debug flags
 	set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -152,21 +158,24 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	endif()
 
 	#package the c++ standard library
-	execute_process(
-		COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so.6
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		OUTPUT_VARIABLE std_lib
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-	)
-	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
-	mark_as_advanced(FORCE std_lib)
-	get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${std_lib})
-		#not a link - just install file
-		install(FILES "${std_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
-	else()
-		#is a link -install link and file
-		install(FILES "${std_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+	option(PACKAGE_LIBSTDC++ "Package libstdc++ in c-pack installer" OFF)
+	if(PACKAGE_LIBSTDC++)
+		execute_process(
+			COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so.6
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+			OUTPUT_VARIABLE std_lib
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+		#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
+		mark_as_advanced(FORCE std_lib)
+		get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symolic link
+		if(${_resolvedFile} STREQUAL ${std_lib})
+			#not a link - just install file
+			install(FILES "${std_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+		else()
+			#is a link -install link and file
+			install(FILES "${std_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+		endif()
 	endif()
 endif()
 
