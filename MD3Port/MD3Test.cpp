@@ -749,9 +749,7 @@ namespace UnitTests
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult1 = { (char)0xfc,0x07,0x22,0x01,0x25,0x00,
-			0x7c,0x22,(char)0xff,(char)0xff,(char)0x9c,0x00,		// All on
-			0x7c,0x23,(char)0xff,(char)0xff,(char)0xc0,0x00 };		// All on
+		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0722012500" "7c22ffff9c00" "7c23ffffc000");		// All on
 
 		REQUIRE(Response == DesiredResult1);
 
@@ -768,8 +766,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult2 = { (char)0xfc,0x08,0x22,0x00,0x3c,0x00,				// Return function 8, Channels == 0, so 1 block to follow.
-											0x7c,0x22,(char)0xaa,(char)0xaa,(char)0xf9,0x00 };	// Values set above
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0822003c00"	// Return function 8, Channels == 0, so 1 block to follow.
+																			"7c22aaaaf900");	// Values set above
 
 		REQUIRE(Response == DesiredResult2);
 
@@ -779,7 +777,7 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult3 = { (char)0xfc,0x0e,0x22,0x02,0x59,0x00 };	// Digital No Change response
+		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e22025900");	// Digital No Change response
 
 		REQUIRE(Response == DesiredResult3);
 
@@ -1064,7 +1062,10 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0b03013f00" "2200aaaae600");
+		// The second block is time, adn will change each run.
+		// The other blocks will have the msec part of the field change.
+		//TODO: Will have to cast to MD3Blocks and check the parts that we can check...
+		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0b03013f00" "5aebf9259c00" "800a801aa900" "80010000fc00");
 
 		REQUIRE(Response == DesiredResult3);
 

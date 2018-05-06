@@ -573,7 +573,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	int ChangedBlocks = CountBinaryBlocksWithChanges();
 	bool AreThereTaggedEvents = !(MyPointConf()->BinaryModuleTimeTaggedEventQueue.IsEmpty());
 
-	if (ChangedBlocks == 0)
+	if ((ChangedBlocks == 0) && !AreThereTaggedEvents)
 	{
 		//TODO: Digital No Change - check assumption that the second word needs to mirror that sent in the function 11 command (tagged event count, digital sequence # and ModuleCount
 		MD3FormattedBlock FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetDigitalSequenceNumber());
@@ -615,6 +615,8 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 				ResponseWords.push_back(MD3BlockFn11StoM::FillerPacket());
 			}
 
+			//TODO: A flag block can appear in the Fn11 time tagged response - which can indicate Internal Buffer Overflow, Time sync fail and restoration.
+
 			// Now translate the 16 bit packets into the 32 bit MD3 blocks.
 			for (uint16_t i = 0; i < ResponseWords.size(); i = i + 2)
 			{
@@ -645,7 +647,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 	MD3Point CurrentPoint;
 	uint64_t LastPointmsec = 0;
 
-	while (MyPointConf()->BinaryModuleTimeTaggedEventQueue.Peek(CurrentPoint) && (EventCount < MaxEventCount) && CanSend)
+	while (MyPointConf()->BinaryModuleTimeTaggedEventQueue.Peek(CurrentPoint) && (EventCount < MaxEventCount))
 	{
 		// The time date is seconds, the data block contains a msec entry.
 		// The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
@@ -659,27 +661,32 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
 			LastPointmsec = CurrentPoint.ChangedTime - CurrentPoint.ChangedTime % 1000;	// The first one is seconds only. Later events have actual msec
 		}
-		else
-		{
-			// Do we need a Milliseconds packet? If so, is the gap more than 31 seconds? If so, finish this response off, so master can issue a new HRER request.
-			uint64_t delta = CurrentPoint.ChangedTime - LastPointmsec;
-			if (delta > 31999)
-			{
-				//Delta > 31.999 seconds, We can't send this point, finish the packet so the master can ask for a new HRER response.
-				//		ResponseWords.push_back(MD3BlockFn11StoM::MilliSecondsDiv256OffsetPacket(FirstEventMSec));
 
-			}
-			else if (delta != 0)
+		uint16_t msecoffset = CurrentPoint.ChangedTime - LastPointmsec;
+
+		if (msecoffset > 255)	// Do we need a Milliseconds extension packet? A TimeBlock
+		{
+			uint16_t msecoffsetdiv256 = msecoffset / 256;
+
+			if (msecoffsetdiv256 > 255)
 			{
-				ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket(delta));
-				LastPointmsec = CurrentPoint.ChangedTime;						// The last point time moves with time added by the msec packets
+				// Huston we have a problem, to much time offset..
+				// The master will have to do another scan to get this data. So here we will just return as if we have sent all we can
+				// The point we were looking at remains on the queue to be processed on the next call.
+				return;
 			}
+
+			ResponseWords.push_back(msecoffsetdiv256);
+			LastPointmsec += msecoffsetdiv256*256;	// The last point time moves with time added by the msec packet
 		}
 
-			//ResponseWords.push_back(MD3BlockFn9::HREREventPacket(CurrentPoint.Binary, CurrentPoint.Channel, CurrentPoint.ModuleAddress));
+		// Push the block onto the response word list
+		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleAddress << 8 | msecoffset);
+		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleBinarySnapShot);
 
-			MyPointConf()->BinaryModuleTimeTaggedEventQueue.Pop();
-			EventCount++;
+		LastPointmsec = CurrentPoint.ChangedTime;	// Update the last changed time to match what we have just sent.
+		MyPointConf()->BinaryModuleTimeTaggedEventQueue.Pop();
+		EventCount++;
 	}
 }
 // Function 12

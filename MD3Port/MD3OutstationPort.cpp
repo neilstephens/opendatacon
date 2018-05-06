@@ -394,9 +394,11 @@ void MD3OutstationPort::AddToDigitalEvents(MD3Point & pt)
 	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
 	MyPointConf()->BinaryTimeTaggedEventQueue.Push(pt);
 
-	// Have to collect all the bits in the module to which this point belongs into a uint16_t
+	// Have to collect all the bits in the module to which this point belongs into a uint16_t,
+	// just to support COS Fn 11 where the whole 16 bits are returned for a possibly single bit change.
+	// Do not effect the change flags which are needed for normal scanning
 	bool ModuleFailed = false;
-	uint16_t wordres = CollectModuleBitsIntoWordandResetChangeFlags(pt.ModuleAddress, ModuleFailed);
+	uint16_t wordres = CollectModuleBitsIntoWord(pt.ModuleAddress, ModuleFailed);
 
 	// Save it in the snapshot that is used for the Fn11 COS time tagged events.
 	pt.ModuleBinarySnapShot = wordres;
