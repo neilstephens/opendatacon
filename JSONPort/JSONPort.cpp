@@ -30,7 +30,7 @@
 
 using namespace odc;
 
-JSONPort::JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides, bool aisServer):
+JSONPort::JSONPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, bool aisServer):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	isServer(aisServer),
 	pSockMan(nullptr)

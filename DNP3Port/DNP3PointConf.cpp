@@ -32,7 +32,7 @@
 #include <iostream> // TODO: remove include, should be met using logging mechanism
 
 
-DNP3PointConf::DNP3PointConf(std::string FileName, const Json::Value& ConfOverrides):
+DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides),
 	// DNP3 Link Configuration
 	LinkNumRetry(0),

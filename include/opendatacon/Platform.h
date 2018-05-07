@@ -172,7 +172,7 @@ static const std::initializer_list<u_int8_t> SIG_SHUTDOWN = { SIGTERM, SIGABRT, 
 static const std::initializer_list<u_int8_t> SIG_IGNORE = { SIGINT };
 #endif
 
-inline std::string GetLibFileName(const std::string LibName)
+inline std::string GetLibFileName(const std::string& LibName)
 {
 	return DYNLIBPRE + LibName + DYNLIBEXT;
 }

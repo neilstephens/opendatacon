@@ -301,7 +301,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 
 			//try to load the lib
-			auto* portlib = LoadModule(libname.c_str());
+			auto* portlib = LoadModule(libname);
 
 			if(portlib == nullptr)
 			{

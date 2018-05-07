@@ -36,7 +36,7 @@
 class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
 {
 public:
-	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	DNP3MasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		DNP3Port(aName, aConfFilename, aConfOverrides),
 		pMaster(nullptr),
 		stack_enabled(false),

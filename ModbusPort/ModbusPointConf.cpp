@@ -32,7 +32,7 @@
 
 using namespace odc;
 
-ModbusPointConf::ModbusPointConf(std::string FileName):
+ModbusPointConf::ModbusPointConf(const std::string& FileName):
 	ConfigParser(FileName)
 {
 	ProcessFile();

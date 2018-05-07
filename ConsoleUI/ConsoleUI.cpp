@@ -96,7 +96,7 @@ ConsoleUI::ConsoleUI():
 ConsoleUI::~ConsoleUI(void)
 {}
 
-void ConsoleUI::AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc)
+void ConsoleUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
 {
 	mCmds[name] = callback;
 	mDescriptions[name] = desc;
@@ -303,7 +303,7 @@ int ConsoleUI::hotkeys(char c)
 }
 
 
-void ConsoleUI::AddResponder(const std::string name, const IUIResponder& pResponder)
+void ConsoleUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
 {
 	Responders[ name ] = &pResponder;
 }

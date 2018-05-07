@@ -37,7 +37,7 @@ using namespace odc;
 class JSONPort: public DataPort
 {
 public:
-	JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides, bool aisServer);
+	JSONPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, bool aisServer);
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 

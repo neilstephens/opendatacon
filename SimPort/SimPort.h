@@ -37,7 +37,7 @@ class SimPort: public DataPort
 {
 public:
 	//Implement DataPort interface
-	SimPort(std::string Name, std::string File, const Json::Value Overrides);
+	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
 	void Enable() final;
 	void Disable() final;
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) final;

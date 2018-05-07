@@ -39,7 +39,7 @@ typedef opendnp3::ChannelState ChannelState;
 class DataPort: public IOHandler, public ConfigParser
 {
 public:
-	DataPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	DataPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		IOHandler(aName),
 		ConfigParser(aConfFilename, aConfOverrides),
 		pConf(nullptr)

@@ -44,7 +44,7 @@ typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
 class IOHandler
 {
 public:
-	IOHandler(std::string aName);
+	IOHandler(const std::string& aName);
 	virtual ~IOHandler(){}
 
 	static std::future<CommandStatus> CommandFutureSuccess()
