@@ -842,7 +842,7 @@ namespace UnitTests
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		// Will have a set of blocks containing 10 change records. Need to decode to test as the times will vary by run.
+		//TODO: Fn9 Test - Will have a set of blocks containing 10 change records. Need to decode to test as the times will vary by run.
 		// Need to write the master station decode - code for this in order to be able to check it. The message is going to change each time
 
 		REQUIRE(Response[2] == 0x28);	// Seq 3, MEV == 1
@@ -886,8 +886,8 @@ namespace UnitTests
 		// Cheat and write directly to the HRER queue
 		uint64_t changedtime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
-		MD3Point pt1(1, 33, 1, true, 1, 1, changedtime);
-		MD3Point pt2(2, 33, 2, true, 0, 1, changedtime+32000);
+		MD3Point pt1(1, 34, 1, true, 1, 1, changedtime);
+		MD3Point pt2(2, 34, 2, true, 0, 1, changedtime+32000);
 		MD3Port->AddToDigitalEvents(pt1);
 		MD3Port->AddToDigitalEvents(pt2);
 
@@ -1049,8 +1049,9 @@ namespace UnitTests
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 3, 15, true);	// Sequence number must increase
 		output << commandblock.ToBinaryString();
 
-		// Write to the first module, but not the second. Should get only the first module results sent.
-		for (int i = 0; i < 16; i++)
+		// Write to the first module 0-16 index, but not the second. Should get only the first module results sent.
+		//TODO: Fn11 Test - Pass the digital change time in the Event as part of the binary object
+		for (int i = 0; i < 4; i++)
 		{
 			const odc::Binary b((i % 2) == 0);
 			auto res = MD3Port->Event(b, i, "TestHarness");
@@ -1064,12 +1065,40 @@ namespace UnitTests
 
 		// The second block is time, adn will change each run.
 		// The other blocks will have the msec part of the field change.
-		//TODO: Will have to cast to MD3Blocks and check the parts that we can check...
-		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0b03013f00" "5aebf9259c00" "800a801aa900" "80010000fc00");
+		//TODO: Fn11 Test - Will have to cast to MD3Blocks and check the parts that we can check...
+	//	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0b03013f00" "5aebf9259c00" "800a801aa900" "80010000fc00");
 
-		REQUIRE(Response == DesiredResult3);
+		REQUIRE(Response.size() == 0x30);
 
-		//TODO: Need to do all the tiime tagged stuff....
+		//-----------------------------------------
+		// Need to test the code path where the delta between two records is > 255 milliseconds. Also when it is more than 0xFFFF
+		// Cheat and write directly to the DCOS queue
+		uint64_t changedtime = 0x0000016338b6d4fb; //asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+
+		MD3Point pt1(1, 34, 1, true, 1, 1, changedtime);
+		MD3Point pt2(2, 34, 2, true, 0, 1, changedtime + 256);
+		MD3Point pt3(3, 34, 3, true, 1, 1, changedtime + 0x20000);	// Time gap too big, will require another Master request
+		MD3Port->AddToDigitalEvents(pt1);
+		MD3Port->AddToDigitalEvents(pt2);
+		MD3Port->AddToDigitalEvents(pt3);
+
+		commandblock = MD3BlockFn11MtoS(0x7C, 15, 4, 0, true);	// Sequence number must increase
+		output << commandblock.ToBinaryString();
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult4 = BuildHexStringFromASCIIHexString("fc0b04000100" "5aefcc809300" "22fbafff9a00" "00012200a900"	"afff0000e600");
+
+		REQUIRE(Response == DesiredResult4);
+
+		//-----------------------------------------
+		// Get the single event left in the queue
+		commandblock = MD3BlockFn11MtoS(0x7C, 15, 5, 0, true);	// Sequence number must increase
+		output << commandblock.ToBinaryString();
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult5 = BuildHexStringFromASCIIHexString("fc0b05001300" "5aefcd03a500" "00012243ad00" "afff0000e600");
+
+		REQUIRE(Response == DesiredResult5);
 
 		IOMgr.Shutdown();
 	}

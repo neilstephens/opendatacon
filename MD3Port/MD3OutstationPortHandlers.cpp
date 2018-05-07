@@ -624,8 +624,8 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 				ResponseMD3Message.push_back(blk);
 			}
 		}
-		else
-			FormattedBlock.SetTaggedEventCount(TaggedEventCount);		// Update to the number we are sending
+
+		FormattedBlock.SetTaggedEventCount(TaggedEventCount);		// Update to the number we are sending
 
 		// Mark the last block
 		if (ResponseMD3Message.size() != 0)
@@ -662,11 +662,11 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 			LastPointmsec = CurrentPoint.ChangedTime - CurrentPoint.ChangedTime % 1000;	// The first one is seconds only. Later events have actual msec
 		}
 
-		uint16_t msecoffset = CurrentPoint.ChangedTime - LastPointmsec;
+		uint64_t msecoffset = CurrentPoint.ChangedTime - LastPointmsec;
 
 		if (msecoffset > 255)	// Do we need a Milliseconds extension packet? A TimeBlock
 		{
-			uint16_t msecoffsetdiv256 = msecoffset / 256;
+			uint64_t msecoffsetdiv256 = msecoffset / 256;
 
 			if (msecoffsetdiv256 > 255)
 			{
@@ -675,13 +675,15 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 				// The point we were looking at remains on the queue to be processed on the next call.
 				return;
 			}
-
-			ResponseWords.push_back(msecoffsetdiv256);
+			assert(msecoffsetdiv256 < 256);
+			ResponseWords.push_back((uint16_t)msecoffsetdiv256);
 			LastPointmsec += msecoffsetdiv256*256;	// The last point time moves with time added by the msec packet
+			msecoffset = CurrentPoint.ChangedTime - LastPointmsec;
 		}
 
 		// Push the block onto the response word list
-		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleAddress << 8 | msecoffset);
+		assert(msecoffset < 256);
+		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleAddress << 8 | (uint16_t)msecoffset);
 		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleBinarySnapShot);
 
 		LastPointmsec = CurrentPoint.ChangedTime;	// Update the last changed time to match what we have just sent.
