@@ -26,7 +26,7 @@
 
 #include "JSONPort.h"
 
-extern "C" JSONPort* new_JSONClientPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" JSONPort* new_JSONClientPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
 {
 	return new JSONPort(Name,File,Overrides,false);
 }
@@ -37,7 +37,7 @@ extern "C" void delete_JSONClientPort(JSONPort* aJSONClientPort_ptr)
 	return;
 }
 
-extern "C" JSONPort* new_JSONServerPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" JSONPort* new_JSONServerPort(const std::string& Name, const std::string& File, const Json::Value Overrides)
 {
 	return new JSONPort(Name,File,Overrides,true);
 }

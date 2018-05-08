@@ -230,7 +230,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 
 		//little functor to traverse any paths, starting at the root
 		//pass a JSON array of nodes representing the path (that's how we store our point config after all)
-		auto TraversePath = [&JSONRoot](const Json::Value nodes)
+		auto TraversePath = [&JSONRoot](const Json::Value& nodes)
 		{
 			//val will traverse any paths, starting at the root
 			auto val = JSONRoot;

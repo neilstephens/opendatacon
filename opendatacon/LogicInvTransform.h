@@ -34,7 +34,7 @@
 class LogicInvTransform: public Transform
 {
 public:
-	LogicInvTransform(Json::Value params):
+	LogicInvTransform(const Json::Value& params):
 		Transform(params)
 	{}
 

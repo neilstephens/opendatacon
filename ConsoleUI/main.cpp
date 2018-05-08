@@ -20,7 +20,7 @@
 
 #include "ConsoleUI.h"
 
-extern "C" ConsoleUI* new_ConsoleUIPlugin(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" ConsoleUI* new_ConsoleUIPlugin(const std::string& Name, const std::string& File, const Json::Value& Overrides)
 {
 	if(Overrides.isObject())
 	{}

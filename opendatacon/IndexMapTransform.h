@@ -34,7 +34,7 @@ using namespace odc;
 class IndexMapTransform: public Transform
 {
 public:
-	IndexMapTransform(Json::Value params): Transform(params)
+	IndexMapTransform(const Json::Value& params): Transform(params)
 	{
 		auto load_map = [&](const std::string& map_name, std::unordered_map<uint16_t,uint16_t>& map)
 		{
