@@ -62,12 +62,12 @@ public:
 
 	// only public for unit testing - could use a friend class to access?
 	void ReadCompletionHandler(buf_t& readbuf);
-	void RouteMD3Message(std::vector<MD3DataBlock> &CompleteMD3Message);
-	void ProcessMD3Message(std::vector<MD3DataBlock> &CompleteMD3Message);
+	void RouteMD3Message(std::vector<MD3BlockData> &CompleteMD3Message);
+	void ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message);
 
 	// Analog
-	void DoAnalogUnconditional(MD3FormattedBlock &Header);
-	void DoAnalogDeltaScan(MD3FormattedBlock &Header);
+	void DoAnalogUnconditional(MD3BlockFormatted &Header);
+	void DoAnalogDeltaScan(MD3BlockFormatted &Header);
 
 	void ReadAnalogRange(int ModuleAddress, int Channels, MD3OutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues);
 	void SendAnalogUnconditional(std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
@@ -75,12 +75,12 @@ public:
 	void SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 
 	// Digital/Binary
-	void DoDigitalScan(MD3BlockFn11MtoS & Header);				// Fn 7	
-	void DoDigitalChangeOnly(MD3FormattedBlock & Header);		// Fn 8
-	void DoDigitalHRER(MD3BlockFn9 & Header, std::vector<MD3DataBlock>& CompleteMD3Message);	// Fn 9
+	void DoDigitalScan(MD3BlockFn11MtoS & Header);				// Fn 7
+	void DoDigitalChangeOnly(MD3BlockFormatted & Header);		// Fn 8
+	void DoDigitalHRER(MD3BlockFn9 & Header, std::vector<MD3BlockData>& CompleteMD3Message);	// Fn 9
 	void Fn9AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalCOSScan(MD3BlockFn10 & Header);				// Fn 10
-	void DoDigitalUnconditionalObs(MD3FormattedBlock & Header);	// Fn 11
+	void DoDigitalUnconditionalObs(MD3BlockFormatted & Header);	// Fn 11
 	void Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header);		// Fn 12
 
@@ -90,15 +90,16 @@ public:
 	int CountBinaryBlocksWithChanges();
 	int CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
 	void BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
-	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3DataBlock> &ResponseMD3Message);
-	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3DataBlock>& ResponseMD3Message);
+	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3BlockData> &ResponseMD3Message);
+	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3BlockData>& ResponseMD3Message);
 	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
 
-	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3DataBlock>& CompleteMD3Message);	// Fn 43
-	void DoSystemFlagScan(MD3FormattedBlock & Header, std::vector<MD3DataBlock>& CompleteMD3Message);	// Fn 52
+	void DoSystemSignOnControl(MD3BlockFn40 & Header);
+	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);	// Fn 43
+	void DoSystemFlagScan(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);	// Fn 52
 
-	void SendControlOK(MD3FormattedBlock & Header);					// Fn 15
-	void SendControlOrScanRejected(MD3FormattedBlock & Header);		// Fn 30
+	void SendControlOK(MD3BlockFormatted & Header);					// Fn 15
+	void SendControlOrScanRejected(MD3BlockFormatted & Header);		// Fn 30
 
 	// Methods to access the outstation point table
 	//TODO: Point container access extract to separate class maybe..
@@ -114,7 +115,7 @@ public:
 	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
 	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, uint64_t eventtime);
 
-	void SendResponse(std::vector<MD3DataBlock>& CompleteMD3Message);
+	void SendResponse(std::vector<MD3BlockData>& CompleteMD3Message);
 
 	// Testing and Debugging Methods - no other use
 	// This allows us to hook the TCP Data Send Fucntion for testing.
@@ -126,12 +127,12 @@ private:
 
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 
-	std::vector<MD3DataBlock> MD3Message;
+	std::vector<MD3BlockData> MD3Message;
 
 	int LastHRERSequenceNumber = 100;	// Used to remember the last HRER scan we sent, starts with an invalid value
 	int LastDigitalScanSequenceNumber = 0;	// Used to remember the last digital scan we had
-	std::vector<MD3DataBlock> LastDigitialScanResponseMD3Message;
-	std::vector<MD3DataBlock> LastDigitialHRERResponseMD3Message;
+	std::vector<MD3BlockData> LastDigitialScanResponseMD3Message;
+	std::vector<MD3BlockData> LastDigitialHRERResponseMD3Message;
 
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
 	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing

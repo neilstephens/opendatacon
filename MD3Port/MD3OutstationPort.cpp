@@ -122,7 +122,7 @@ void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LO
 }
 
 // The only method that sends to the TCP Socket
-void MD3OutstationPort::SendResponse(std::vector<MD3DataBlock> &CompleteMD3Message)
+void MD3OutstationPort::SendResponse(std::vector<MD3BlockData> &CompleteMD3Message)
 {
 	if (CompleteMD3Message.size() == 0)
 	{
@@ -162,7 +162,7 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 			readbuf.consume(1);
 		}
 
-		auto md3block = MD3DataBlock(d);	// Supposed to be a 6 byte array..
+		auto md3block = MD3BlockData(d);	// Supposed to be a 6 byte array..
 
 		if (md3block.CheckSumPasses())
 		{
@@ -208,17 +208,19 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 	}
 }
 
-void MD3OutstationPort::RouteMD3Message(std::vector<MD3DataBlock> &CompleteMD3Message)
+void MD3OutstationPort::RouteMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
 {
 	// Only passing in the variable to make unit testing simpler.
 	// We have a full set of MD3 message blocks from a minimum of 1.
 	assert(CompleteMD3Message.size() != 0);
 
 	uint8_t ExpectedStationAddress = MyConf()->mAddrConf.OutstationAddr;
-	uint8_t StationAddress = ((MD3FormattedBlock)CompleteMD3Message[0]).GetStationAddress();
+	uint8_t StationAddress = ((MD3BlockFormatted)CompleteMD3Message[0]).GetStationAddress();
 
 	// Change this to route to the correct outstation in future.
-	if (ExpectedStationAddress != StationAddress)
+	// Or if zero, route to all outstations!
+	// Most zero station address functions do not send a response - the SystemSignOnMessage is an exception.
+	if ((ExpectedStationAddress != StationAddress) && (StationAddress != 0))
 	{
 		LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Recevied non-matching outstation address - Expected " + std::to_string(ExpectedStationAddress) + " Got - " + std::to_string(StationAddress));
 		return;

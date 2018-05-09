@@ -105,14 +105,6 @@ namespace UnitTests
 
 	TEST_CASE(SUITE("MD3CRCTest"))
 	{
-		/* Sample full packet, 5 blocks
-		c4 : 06 : 40  :0f : 0b : 00 :
-		00 : 00 : ff : fe :	90 : 00 :
-		fe : fe : 00 : 00 : 9c : 00 :
-		00 : 00 : 00 : 00 : bf : 00 :
-		00 : 00 : 00 : 00 : ff : 00
-		*/
-
 		// The first 4 are all formatted first and only packets
 		uint32_t res = MD3CRC(0x7C05200F);
 		REQUIRE(MD3CRCCompare(res, 0x52));
@@ -154,8 +146,8 @@ namespace UnitTests
 
 		MD3BlockArray msg = { 0x7C,0x05,0x20,0x0F,0x52, 0x00 };	// From a packet capture
 
-		MD3DataBlock db(msg);
-		MD3FormattedBlock b(db);
+		MD3BlockData db(msg);
+		MD3BlockFormatted b(db);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -183,7 +175,7 @@ namespace UnitTests
 		bool HCP = false;
 		bool DCP = false;
 
-		MD3FormattedBlock b(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		MD3BlockFormatted b(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -199,7 +191,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		mastertostation = true;
-		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -215,7 +207,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		lastblock = false;
-		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -231,7 +223,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		channels = 1;
-		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -247,7 +239,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		moduleaddress = 0xFF;
-		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -263,7 +255,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		stationaddress = 0x7F;
-		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -281,7 +273,7 @@ namespace UnitTests
 		stationaddress = 0x01;
 		moduleaddress = 0x01;
 		APL = true;
-		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -297,7 +289,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		RSF = true;
-		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -313,7 +305,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		HCP = true;
-		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -329,7 +321,7 @@ namespace UnitTests
 		REQUIRE(b.CheckSumPasses());
 
 		DCP = true;
-		b = MD3FormattedBlock(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+		b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
 
 		REQUIRE(b.GetStationAddress() == stationaddress);
 		REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -350,7 +342,7 @@ namespace UnitTests
 		uint16_t secondword = 32000;
 		bool lastblock = true;
 
-		MD3DataBlock b(firstword, secondword, lastblock);
+		MD3BlockData b(firstword, secondword, lastblock);
 
 		REQUIRE(b.GetFirstWord() == firstword);
 		REQUIRE(b.GetSecondWord() == secondword);
@@ -362,7 +354,7 @@ namespace UnitTests
 		secondword = 16000;
 		lastblock = false;
 
-		b = MD3DataBlock(firstword, secondword, lastblock);
+		b = MD3BlockData(firstword, secondword, lastblock);
 
 		REQUIRE(b.GetFirstWord() == firstword);
 		REQUIRE(b.GetSecondWord() == secondword);
@@ -375,7 +367,7 @@ namespace UnitTests
 		uint32_t data = 128364324;
 		bool lastblock = true;
 
-		MD3DataBlock b(data, lastblock);
+		MD3BlockData b(data, lastblock);
 
 		REQUIRE(b.GetData() == data);
 		REQUIRE(b.IsEndOfMessageBlock() == lastblock);
@@ -385,7 +377,7 @@ namespace UnitTests
 		data = 8364324;
 		lastblock = false;
 
-		b = MD3DataBlock(data, lastblock);
+		b = MD3BlockData(data, lastblock);
 
 		REQUIRE(b.GetData() == data);
 		REQUIRE(b.IsEndOfMessageBlock() == lastblock);
@@ -397,7 +389,7 @@ namespace UnitTests
 		uint32_t data = 0x32F1F203;
 		bool lastblock = true;
 
-		MD3DataBlock b(0x32,0xF1,0xf2,0x03, lastblock);
+		MD3BlockData b(0x32,0xF1,0xf2,0x03, lastblock);
 
 		REQUIRE(b.GetData() == data);
 		REQUIRE(b.GetByte(0) == 0x32);
@@ -511,6 +503,14 @@ namespace UnitTests
 		REQUIRE(b30.IsEndOfMessageBlock() == true);
 		REQUIRE(b30.IsFormattedBlock() == true);
 		REQUIRE(b30.CheckSumPasses());
+
+		MD3BlockFn40 b40(0x3F);
+		REQUIRE(b40.IsValid());
+		REQUIRE(b40.GetData() == 0x3f28c0d7);
+		REQUIRE(b40.GetStationAddress() == 0x3F);
+		REQUIRE(b40.IsEndOfMessageBlock());
+		REQUIRE(b40.IsFormattedBlock());
+		REQUIRE(b40.CheckSumPasses());
 	}
 
 	TEST_CASE(SUITE("AnalogUnconditionalTest1"))
@@ -605,7 +605,7 @@ namespace UnitTests
 		}
 
 		// Request Analog Delta Scan, Station 0x7C, Module 0x20, 16 Channels
-		MD3FormattedBlock commandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
+		MD3BlockFormatted commandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
@@ -695,7 +695,7 @@ namespace UnitTests
 		}
 
 		// Request Digital Unconditional (Fn 7), Station 0x7C, Module 33, 3 Modules(Channels)
-		MD3FormattedBlock commandblock(0x7C, true, DIGITAL_UNCONDITIONAL_OBS, 33, 3, true);
+		MD3BlockFormatted commandblock(0x7C, true, DIGITAL_UNCONDITIONAL_OBS, 33, 3, true);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
@@ -736,7 +736,7 @@ namespace UnitTests
 		MD3Port->Enable();
 
 		// Request Digital Unconditional (Fn 7), Station 0x7C, Module 34, 2 Modules( fills the Channels field)
-		MD3FormattedBlock commandblock(0x7C, true, DIGITAL_DELTA_SCAN, 34, 2, true);
+		MD3BlockFormatted commandblock(0x7C, true, DIGITAL_DELTA_SCAN, 34, 2, true);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
@@ -915,7 +915,7 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
-		MD3DataBlock datablock(currenttime / 1000, true );
+		MD3BlockData datablock(currenttime / 1000, true );
 		output << datablock.ToBinaryString();
 
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1009,7 +1009,7 @@ namespace UnitTests
 
 		// Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on startup to send all data, 15 modules returned
 
-		MD3DataBlock commandblock = MD3BlockFn11MtoS(0x7C, 15, 1, 15, true);
+		MD3BlockData commandblock = MD3BlockFn11MtoS(0x7C, 15, 1, 15, true);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
@@ -1068,7 +1068,7 @@ namespace UnitTests
 		//TODO: Fn11 Test - Will have to cast to MD3Blocks and check the parts that we can check...
 	//	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0b03013f00" "5aebf9259c00" "800a801aa900" "80010000fc00");
 
-		REQUIRE(Response.size() == 0x30);
+	//	REQUIRE(Response.size() == 0x30);
 
 		//-----------------------------------------
 		// Need to test the code path where the delta between two records is > 255 milliseconds. Also when it is more than 0xFFFF
@@ -1121,7 +1121,7 @@ namespace UnitTests
 
 		// Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 15 modules returned
 
-		MD3DataBlock commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 1, 3, true);
+		MD3BlockData commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 1, 3, true);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
@@ -1204,6 +1204,47 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
+
+	TEST_CASE(SUITE("SystemsSignOnFn40Test1"))
+	{
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+
+		// System SignOn Command, Station 0 - the slave only responds to a zero address - where it is asked to indetify itself.
+		MD3BlockFn40 commandblock(0);
+
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
+
+		// Send the Command
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc2883d77100");
+
+		REQUIRE(Response == DesiredResult);
+
+		IOMgr.Shutdown();
+	}
+
 	TEST_CASE(SUITE("ChangeTimeDateFn43Test1"))
 	{
 		// This test was written for where the outstation is simply sinking the timedate change command
@@ -1232,7 +1273,7 @@ namespace UnitTests
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
 
-		MD3DataBlock datablock(currenttime / 1000,true);
+		MD3BlockData datablock(currenttime / 1000,true);
 		output << datablock.ToBinaryString();
 
 		// Hook the output function with a lambda
@@ -1249,7 +1290,7 @@ namespace UnitTests
 
 		// Now do again with a bodgy time.
 		output << commandblock.ToBinaryString();
-		MD3DataBlock datablock2(1000, true);	// Non sensical time
+		MD3BlockData datablock2(1000, true);	// Non sensical time
 		output << datablock2.ToBinaryString();
 
 		MD3Port->ReadCompletionHandler(write_buffer);

@@ -59,20 +59,20 @@ bool MD3CRCCompare(const uint8_t crc1, const uint8_t crc2);
 // depending on the block content.
 // There are two ways this class is used - one for decoding, one for encoding.
 // Create child classes for each of the functions where the data block has specific layout and meaning.
-class MD3DataBlock
+class MD3BlockData
 {
 public:
-	MD3DataBlock() {};
+	MD3BlockData() {};
 
 	// We have received 6 bytes (a block on a stream now we need to decode it)
-	MD3DataBlock(const MD3BlockArray _data)
+	MD3BlockData(const MD3BlockArray _data)
 	{
 		data = _data[0] << 24 | _data[1] << 16 | _data[2] << 8 | _data[3];
 		endbyte = _data[4];
 		assert(_data[5] == 0x00);	// Sixth byte should always be zero.
 	}
 
-	MD3DataBlock(uint16_t firstword, uint16_t secondword, bool lastblock = false)
+	MD3BlockData(uint16_t firstword, uint16_t secondword, bool lastblock = false)
 	{
 		data = (uint32_t)firstword << 16 | (uint32_t)secondword;
 
@@ -82,7 +82,7 @@ public:
 		endbyte |= lastblock ? EOMBIT : 0x00;
 	}
 
-	MD3DataBlock(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, bool lastblock = false)
+	MD3BlockData(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, bool lastblock = false)
 	{
 		data = (((uint32_t)b1 & 0x0FF) << 24) | (((uint32_t)b2 & 0x0FF) << 16) | (((uint32_t)b3 & 0x0FF) << 8) | ((uint32_t)b4 & 0x0FF);
 
@@ -92,7 +92,7 @@ public:
 		endbyte |= lastblock ? EOMBIT : 0x00;
 	}
 
-	MD3DataBlock(uint32_t _data, bool lastblock = false)
+	MD3BlockData(uint32_t _data, bool lastblock = false)
 	{
 		data = _data;
 
@@ -177,11 +177,11 @@ protected:
 	uint32_t data = 0;
 	uint8_t endbyte = 0;
 };
-class MD3FormattedBlock : public MD3DataBlock
+class MD3BlockFormatted : public MD3BlockData
 {
 public:
-	MD3FormattedBlock() {};
-	MD3FormattedBlock(MD3DataBlock& parent)
+	MD3BlockFormatted() {};
+	MD3BlockFormatted(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -189,7 +189,7 @@ public:
 
 	// Create a formatted block including checksum
 	// Note if the station address is set to 0x7F (MD3_EXTENDED_ADDRESS_MARKER), then the next data block contains the address.
-	MD3FormattedBlock(uint8_t stationaddress, bool mastertostation, MD3_FUNCTION_CODE functioncode, uint8_t moduleaddress, uint8_t channels, bool lastblock = false,
+	MD3BlockFormatted(uint8_t stationaddress, bool mastertostation, MD3_FUNCTION_CODE functioncode, uint8_t moduleaddress, uint8_t channels, bool lastblock = false,
 		bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
 	{
 		// Channels -> 0 on the wire == 1 channel, 15 == 16
@@ -275,10 +275,10 @@ public:
 
 // The datablocks can take on different formats where the bytes and buts in the block change meaning.
 // Use child classes to separate out this on a function by function basis
-class MD3BlockFn9 : public MD3FormattedBlock
+class MD3BlockFn9 : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn9(MD3DataBlock& parent)
+	MD3BlockFn9(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -344,10 +344,10 @@ public:
 		assert(false);
 	}
 };
-class MD3BlockFn10 : public MD3FormattedBlock
+class MD3BlockFn10 : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn10(MD3DataBlock& parent)
+	MD3BlockFn10(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -388,10 +388,10 @@ public:
 	}
 };
 
-class MD3BlockFn11MtoS : public MD3FormattedBlock
+class MD3BlockFn11MtoS : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn11MtoS(MD3DataBlock& parent)
+	MD3BlockFn11MtoS(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -434,10 +434,10 @@ public:
 		assert(false);
 	}
 };
-class MD3BlockFn11StoM : public MD3FormattedBlock
+class MD3BlockFn11StoM : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn11StoM(MD3DataBlock& parent)
+	MD3BlockFn11StoM(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -508,10 +508,10 @@ public:
 	}
 };
 // The reply to Fn12 is actually a Fn11 packet
-class MD3BlockFn12MtoS : public MD3FormattedBlock
+class MD3BlockFn12MtoS : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn12MtoS( MD3DataBlock& parent)
+	MD3BlockFn12MtoS( MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -553,10 +553,10 @@ public:
 };
 
 
-class MD3BlockFn14StoM : public MD3FormattedBlock
+class MD3BlockFn14StoM : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn14StoM(MD3DataBlock& parent)
+	MD3BlockFn14StoM(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -623,10 +623,10 @@ public:
 	}
 };
 
-class MD3BlockFn43MtoS : public MD3FormattedBlock
+class MD3BlockFn43MtoS : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn43MtoS(MD3DataBlock& parent)
+	MD3BlockFn43MtoS(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -660,10 +660,10 @@ public:
 		assert(false);
 	}
 };
-class MD3BlockFn15StoM : public MD3FormattedBlock
+class MD3BlockFn15StoM : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn15StoM(MD3DataBlock& parent)
+	MD3BlockFn15StoM(MD3BlockData& parent)
 	{
 		// This Blockformat is a copy of the orginating block header data, with the function code changed.
 		//
@@ -689,10 +689,10 @@ public:
 	}
 };
 
-class MD3BlockFn30StoM : public MD3FormattedBlock
+class MD3BlockFn30StoM : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn30StoM(MD3DataBlock& parent, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
+	MD3BlockFn30StoM(MD3BlockData& parent, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
 	{
 		// This Blockformat is a copy of the orginating block header data, with the function code changed.
 		//
@@ -719,6 +719,42 @@ public:
 		endbyte = MD3CRC(data);	// Max 6 bits returned
 								// endbyte |= FOMBIT;	// This is a formatted block must be zero
 		endbyte |= lastblock ? EOMBIT : 0x00;
+	}
+};
+
+class MD3BlockFn40 : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn40(MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+	MD3BlockFn40(uint8_t stationaddress, bool mastertostation = true)
+	{
+		bool lastblock = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((stationaddress & 0x7F) == stationaddress);	// Max of 7 bits;
+
+		uint16_t lowword = 0x8000 | (uint16_t)(~stationaddress) << 8 | ((uint16_t)(~SYSTEM_SIGNON_CONTROL) & 0x00FF);
+		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)SYSTEM_SIGNON_CONTROL << 16 | (uint32_t)lowword;
+
+		endbyte = MD3CRC(data);	// Max 6 bits returned
+
+		// endbyte |= FOMBIT;	// This is a formatted block must be zero
+		endbyte |= lastblock ? EOMBIT : 0x00;
+	}
+	bool IsValid()
+	{
+		// Check that the complements and the orginals match
+		if (((data >> 24) & 0x7f) != ((~data >> 8) & 0x7F))	// Is the station address correct?
+			return false;
+		if (((data >> 16) & 0x0ff) != ((~data) & 0x0FF))	// Is the function code correct?
+			return false;
+
+		return true;
 	}
 };
 #endif
