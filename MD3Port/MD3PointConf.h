@@ -65,12 +65,12 @@ class MD3Point
 public:
 	MD3Point() {};
 
-	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, bool timetagged) :
+	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel) :
 		Index(index),
 		ModuleAddress(moduleaddress),
 		Channel(channel)
 	{};
-	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, bool timetagged, uint8_t binval, bool changed, uint64_t changedtime) :
+	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, uint64_t changedtime) :
 		Index(index),
 		ModuleAddress(moduleaddress),
 		Channel(channel),
@@ -112,6 +112,9 @@ public:
 
 	std::map<uint16_t, std::shared_ptr<MD3Point>> AnalogMD3PointMap;	// ModuleAndChannel, MD3Point
 	std::map<uint32_t, std::shared_ptr<MD3Point>> AnalogODCPointMap;	// Index OpenDataCon, MD3Point
+
+	std::map<uint16_t, std::shared_ptr<MD3Point>> CounterMD3PointMap;	// ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3Point>> CounterODCPointMap;	// Index OpenDataCon, MD3Point
 
 	std::map<uint16_t, std::shared_ptr<MD3Point>> BinaryControlMD3PointMap;	// ModuleAndChannel, MD3Point
 	std::map<uint32_t, std::shared_ptr<MD3Point>> BinaryControlODCPointMap;	// Index OpenDataCon, MD3Point

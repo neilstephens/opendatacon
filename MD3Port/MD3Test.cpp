@@ -56,10 +56,10 @@ const char *conffile = R"001(
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
-	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0}],
+	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0}, {"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0}],
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
-	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 4}, "Module" : 35, "Offset" : 0}]
-
+	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 4}, "Module" : 35, "Offset" : 0}],
+	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })001";
 
 namespace UnitTests
@@ -160,6 +160,11 @@ namespace UnitTests
 		REQUIRE(b.GetRSF() == RSF);
 		REQUIRE(b.GetHCP() == HCP);
 		REQUIRE(b.GetDCP() == DCP);
+		REQUIRE(b.CheckSumPasses());
+
+
+		msg = { 0xd4,0x1f,0x00,0x10,0x77, 0x00 };	// From a Fn 31 packet capture
+		MD3BlockData fn31(msg);
 		REQUIRE(b.CheckSumPasses());
 	}
 	TEST_CASE(SUITE("MD3BlockClassConstructor2Test"))
@@ -886,8 +891,8 @@ namespace UnitTests
 		// Cheat and write directly to the HRER queue
 		uint64_t changedtime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
-		MD3Point pt1(1, 34, 1, true, 1, 1, changedtime);
-		MD3Point pt2(2, 34, 2, true, 0, 1, changedtime+32000);
+		MD3Point pt1(1, 34, 1, 1, true, changedtime);
+		MD3Point pt2(2, 34, 2, 0, true, changedtime+32000);
 		MD3Port->AddToDigitalEvents(pt1);
 		MD3Port->AddToDigitalEvents(pt2);
 
@@ -958,9 +963,7 @@ namespace UnitTests
 
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult1 = { (char)0xfc,0x0A,0x00,0x02,0x38,0x00,
-											0x7c,0x21,(char)0x80,(char)0x00,(char)0x82,0x00,		// One On
-											0x7c,0x22,(char)0xff,(char)0xff,(char)0xdc,0x00 };		// All on
+		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0A00023800" "7c2180008200" "7c22ffffdc00");
 
 		REQUIRE(Response == DesiredResult1);
 
@@ -968,13 +971,14 @@ namespace UnitTests
 		auto res = MD3Port->Event(b, 100, "TestHarness");	// 0x21, bit 1
 
 		// Send the command but start from module 0x22, we did not get all the blocks last time. Test the wrap around
-		commandblock = MD3BlockFn10(0x7C, true, 0x22, 2, true);
+		commandblock = MD3BlockFn10(0x7C, true, 0x22, 3, true);
 		output << commandblock.ToBinaryString();
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult2 = { (char)0xfc,0xa,0x22,0x02,0x32,0x00,				// Return function 10, ModuleCount =2 so 2 blocks to follow.
-												0x7c,0x23,(char)0xff,(char)0xff,(char)0x80,0x00,
-												0x7c,0x21,0x00,0x00,(char)0xcc,0x00 };
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0a22032900"				// Return function 10, ModuleCount =2 so 2 blocks to follow.
+												"7c23ffff8000"
+												"7c3fffffbc00"
+												"7c210000cc00");
 
 		REQUIRE(Response == DesiredResult2);
 
@@ -983,7 +987,7 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult3 = { (char)0xfc,0x0e,0x0,0x00,0x65,0x00 };	// Digital No Change response
+		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e00006500");	// Digital No Change response
 
 		REQUIRE(Response == DesiredResult3);
 
@@ -1022,7 +1026,7 @@ namespace UnitTests
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		// Will get all data changing this time around
-		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01032d00" "210080008100" "2200ffff8300" "2300ffffe200");
+		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01043700" "210080008100" "2200ffff8300" "2300ffffa200" "3f00ffffca00");
 
 		REQUIRE(Response == DesiredResult1);
 
@@ -1075,9 +1079,9 @@ namespace UnitTests
 		// Cheat and write directly to the DCOS queue
 		uint64_t changedtime = 0x0000016338b6d4fb; //asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
-		MD3Point pt1(1, 34, 1, true, 1, 1, changedtime);
-		MD3Point pt2(2, 34, 2, true, 0, 1, changedtime + 256);
-		MD3Point pt3(3, 34, 3, true, 1, 1, changedtime + 0x20000);	// Time gap too big, will require another Master request
+		MD3Point pt1(1, 34, 1, 1, true,  changedtime);
+		MD3Point pt2(2, 34, 2, 0, true,  changedtime + 256);
+		MD3Point pt3(3, 34, 3, 1, true,  changedtime + 0x20000);	// Time gap too big, will require another Master request
 		MD3Port->AddToDigitalEvents(pt1);
 		MD3Port->AddToDigitalEvents(pt2);
 		MD3Port->AddToDigitalEvents(pt3);

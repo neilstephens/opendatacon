@@ -52,20 +52,25 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("Analogs"))
 	{
-		const auto BinaryControls = JSONRoot["Analogs"];
-		ProcessPoints(BinaryControls, AnalogMD3PointMap, AnalogODCPointMap);
+		const auto Analogs = JSONRoot["Analogs"];
+		ProcessPoints(Analogs, AnalogMD3PointMap, AnalogODCPointMap);
 	}
 
 	if (JSONRoot.isMember("Binaries"))
 	{
-		const auto BinaryControls = JSONRoot["Binaries"];
-		ProcessPoints(BinaryControls, BinaryMD3PointMap, BinaryODCPointMap);
+		const auto Binaries = JSONRoot["Binaries"];
+		ProcessPoints(Binaries, BinaryMD3PointMap, BinaryODCPointMap);
 	}
 
 	if (JSONRoot.isMember("BinaryControls"))
 	{
 		const auto BinaryControls = JSONRoot["BinaryControls"];
 		ProcessPoints(BinaryControls, BinaryControlMD3PointMap, BinaryControlODCPointMap);
+	}
+	if (JSONRoot.isMember("Counters"))
+	{
+		const auto Counters = JSONRoot["Counters"];
+		ProcessPoints(Counters, CounterMD3PointMap, CounterODCPointMap);
 	}
 }
 
@@ -96,7 +101,6 @@ void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t,
 
 		uint32_t module = 0;
 		uint32_t offset = 0;
-		bool timetagged = false;
 
 		if (JSONNode[n].isMember("Module"))
 			module = JSONNode[n]["Module"].asUInt();
@@ -113,10 +117,6 @@ void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t,
 			std::cout << "A point needs an \"Offset\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
 			error = true;
 		}
-
-		// Defaults to false
-		if (JSONNode[n].isMember("TimeTagged"))
-			timetagged = JSONNode[n]["TimeTagged"].asBool();
 
 		if (!error)
 		{
@@ -137,7 +137,7 @@ void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t,
 				}
 				else
 				{
-					auto pt = std::make_shared<MD3Point>(index, moduleaddress, channel, timetagged);
+					auto pt = std::make_shared<MD3Point>(index, moduleaddress, channel);
 					MD3PointMap[md3index] = pt;
 					ODCPointMap[index] = pt;
 				}

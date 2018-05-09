@@ -46,26 +46,26 @@
 
 /*func, count, name Analysis of traffic results
 
-11 , 138125            Digital COS Time Tagged
-12 , 45678              Digital Unconditional
-13 , 3710363          Analog No Change Reply
-14 , 32040              Digital No Change Reply
-15 , 20165              Control Request OK
+11 , 138125            Digital COS Time Tagged - Done
+12 , 45678              Digital Unconditional - Done
+13 , 3710363          Analog No Change Reply - Done
+14 , 32040              Digital No Change Reply - Done
+15 , 20165              Control Request OK - Done
 16 , 2                       Freeze And Reset
 17 , 53                    POM Type Control
 19 , 2                      DOM Type Control
 21 , 1                      Raise Lower Type Control
 23 , 1                       AOM Type Control
-30 , 135                  Control or Scan Request Rejected
-31 , 1                      Counter Scan
-40 , 1                       System SIGNON Control - but failed checksum
-43 , 23274              System SET DATE AND TIME Control
-5 , 380836              Analog Unconditional
-52 , 6120                System Flag Scan
-6 , 7041839            Analog Delta Scan
-7 , 14                      Obsolete Digital Unconditional
-8 , 1                         Digital Delta Scan
-9 , 10                       HRER List Scan
+30 , 135                  Control or Scan Request Rejected - Done
+31 , 1                      Counter Scan - checksum passes
+40 , 1                       System SIGNON Control  - Done - but failed checksum so probably not used
+43 , 23274              System SET DATE AND TIME Control - Done
+5 , 380836              Analog Unconditional - Done
+52 , 6120                System Flag Scan - Done
+6 , 7041839            Analog Delta Scan - Done
+7 , 14                      Obsolete Digital Unconditional - Done
+8 , 1                         Digital Delta Scan - Done
+9 , 10                       HRER List Scan - Done
 */
 
 // The list of codes in use
@@ -166,6 +166,7 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 	case CONTROL_OR_SCAN_REQUEST_REJECTED:
 		break;
 	case COUNTER_SCAN :
+		DoCounterScan(Header);
 		break;
 	case SYSTEM_SIGNON_CONTROL:
 		DoSystemSignOnControl(static_cast<MD3BlockFn40&>(Header));
@@ -209,12 +210,30 @@ void MD3OutstationPort::DoAnalogUnconditional(MD3BlockFormatted &Header)
 	std::vector<int> AnalogDeltaValues;
 	AnalogChangeType ResponseType = NoChange;
 
-	ReadAnalogRange(Header.GetModuleAddress(), Header.GetChannels(), ResponseType, AnalogValues, AnalogDeltaValues);
+	ReadAnalogOrCounterRange(Header.GetModuleAddress(), Header.GetChannels(), ResponseType, AnalogValues, AnalogDeltaValues);
 
 	// Now send those values.
-	SendAnalogUnconditional(AnalogValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+	SendAnalogOrCounterUnconditional(ANALOG_UNCONDITIONAL,AnalogValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
 }
 
+// Function 31 - Esentially the same as Analog Unconditional. Either can be used to return either analog or counter, or both.
+// The only difference is that an analog module seems to have 16 channels, the counter module only 8.
+// The expectation is that if you ask for more than 8 from a counter module, it will roll over to the next counter module.
+// As an analog module has 16, the most that can be requested the overflow never happens.
+// In order to make this work, we need to know if the module we are dealing with is a counter or analog module.
+void MD3OutstationPort::DoCounterScan(MD3BlockFormatted &Header)
+{
+	// This has only one response
+	std::vector<uint16_t> AnalogValues;
+	std::vector<int> AnalogDeltaValues;
+	AnalogChangeType ResponseType = NoChange;
+
+	// This is the method that has to deal with analog/counter channel overflow issues - into the next module.
+	ReadAnalogOrCounterRange(Header.GetModuleAddress(), Header.GetChannels(), ResponseType, AnalogValues, AnalogDeltaValues);
+
+	// Now send those values.
+	SendAnalogOrCounterUnconditional(COUNTER_SCAN, AnalogValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+}
 // Function 6
 void MD3OutstationPort::DoAnalogDeltaScan( MD3BlockFormatted &Header )
 {
@@ -223,12 +242,12 @@ void MD3OutstationPort::DoAnalogDeltaScan( MD3BlockFormatted &Header )
 	std::vector<int> AnalogDeltaValues;
 	AnalogChangeType ResponseType = NoChange;
 
-	ReadAnalogRange(Header.GetModuleAddress(), Header.GetChannels(), ResponseType, AnalogValues, AnalogDeltaValues);
+	ReadAnalogOrCounterRange(Header.GetModuleAddress(), Header.GetChannels(), ResponseType, AnalogValues, AnalogDeltaValues);
 
 	// Now we know what type of response we are going to send.
 	if (ResponseType == AllChange)
 	{
-		SendAnalogUnconditional(AnalogValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+		SendAnalogOrCounterUnconditional(ANALOG_UNCONDITIONAL,AnalogValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
 	}
 	else if (ResponseType == DeltaChange)
 	{
@@ -240,8 +259,10 @@ void MD3OutstationPort::DoAnalogDeltaScan( MD3BlockFormatted &Header )
 	}
 }
 
-void MD3OutstationPort::ReadAnalogRange(int ModuleAddress, int Channels, MD3OutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues)
+void MD3OutstationPort::ReadAnalogOrCounterRange(int ModuleAddress, int Channels, MD3OutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues)
 {
+	// The Analog and Counters are  maintained in two lists, we need to deal with both of them as they both can be read by this method.
+
 	for (int i = 0; i < Channels; i++)
 	{
 		uint16_t wordres = 0;
@@ -269,12 +290,12 @@ void MD3OutstationPort::ReadAnalogRange(int ModuleAddress, int Channels, MD3Outs
 		}
 	}
 }
-void MD3OutstationPort::SendAnalogUnconditional(std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
+void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE functioncode, std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
 {
 	std::vector<MD3BlockData> ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_UNCONDITIONAL, ModuleAddress, Channels);
+	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, functioncode, ModuleAddress, Channels);
 	ResponseMD3Message.push_back(FormattedBlock);
 
 	assert(Channels == Analogs.size());
