@@ -365,7 +365,13 @@ inline std::future<CommandStatus> DNP3MasterPort::EventT(T& arCommand, uint16_t 
 			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
 
-			this->pMaster->DirectOperate(lCommand,index,CommandCorrespondant::GetCallback(std::move(cmd_promise)));
+			auto pCallbackPromise = std::make_shared<CommandCallbackPromise>(std::move(cmd_promise));
+			auto Callback = [pCallbackPromise](const opendnp3::ICommandTaskResult& response)
+			{
+				pCallbackPromise->OnComplete(response);
+			};
+
+			this->pMaster->DirectOperate(lCommand,index,Callback);
 
 			return cmd_future;
 		}
