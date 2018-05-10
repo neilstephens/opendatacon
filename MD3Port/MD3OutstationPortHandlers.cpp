@@ -201,7 +201,7 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 				" Function - " + std::to_string(Header.GetFunctionCode()));
 	}
 }
-#pragma region ANALOG
+#pragma region ANALOG and COUNTER
 // Function 5
 void MD3OutstationPort::DoAnalogUnconditional(MD3BlockFormatted &Header)
 {
@@ -262,12 +262,53 @@ void MD3OutstationPort::DoAnalogDeltaScan( MD3BlockFormatted &Header )
 void MD3OutstationPort::ReadAnalogOrCounterRange(int ModuleAddress, int Channels, MD3OutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues)
 {
 	// The Analog and Counters are  maintained in two lists, we need to deal with both of them as they both can be read by this method.
+	// So if we find an entry in the analog list, we dont have to worry about overflow, as there are 16 channels, and the most we can ask for is 16.
+	//
+	uint16_t wordres = 0;
+	int deltares = 0;
 
+	// Is it a counter module? Fails if not at this address
+	if (GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres))
+	{
+		// We have a counter module, can get up to 8 values from it
+		int chancnt = Channels >= 8 ? 8 : Channels;
+		GetAnalogModuleValues(CounterModule,chancnt, ModuleAddress, ResponseType, AnalogValues, AnalogDeltaValues);
+
+		if (Channels > 8)
+		{
+			// Now we have to get the remaining channels (up to 8) from the next module, if it exists.
+			// Check if it is a counter, otherwise assume analog. Will return correct error codes if not there
+			if (GetCounterValueUsingMD3Index(ModuleAddress+1, 0, wordres))
+			{
+				GetAnalogModuleValues(CounterModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
+			}
+			else
+			{
+				GetAnalogModuleValues(AnalogModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
+			}
+		}
+	}
+	else
+	{
+		// It must be an analog module (if it does not exist, we return appropriate error codes anyway
+		// Yes proceed , up to 16 channels.
+		GetAnalogModuleValues(AnalogModule, Channels, ModuleAddress, ResponseType, AnalogValues, AnalogDeltaValues);
+	}
+}
+void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterOrAnalog, int Channels, int ModuleAddress, MD3OutstationPort::AnalogChangeType & ResponseType, std::vector<uint16_t> & AnalogValues, std::vector<int> & AnalogDeltaValues)
+{
 	for (int i = 0; i < Channels; i++)
 	{
 		uint16_t wordres = 0;
 		int deltares = 0;
-		if (!GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares))
+		bool foundentry = GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+
+		if (IsCounterOrAnalog == CounterModule)
+		{
+			foundentry = GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+		}
+
+		if (!foundentry)
 		{
 			// Point does not exist - need to send analog unconditional as response.
 			ResponseType = AllChange;

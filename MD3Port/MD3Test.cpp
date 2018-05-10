@@ -538,23 +538,21 @@ namespace UnitTests
 
 		MD3Port->Enable();
 
+		// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
+		MD3BlockFormatted commandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Call the Event functions to set the MD3 table data to what we are expecting to get back.
 		// Write to the analog registers that we are going to request the values for.
 		for (int i = 0; i < 16; i++)
 		{
-			const odc::Analog a(4096+i+i*0x100);
+			const odc::Analog a(4096 + i + i * 0x100);
 			auto res = MD3Port->Event(a, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
-
-		// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
-		std::array<uint8_t, 6> MD3data{ 0x7C, 0x05, 0x20, 0x0F, 0x52, 0x00 };
-		asio::streambuf write_buffer;
-		std::ostream output(&write_buffer);
-		for (const auto& b : MD3data)
-			output << b;
-
-		// Call the Event functions to set the MD3 table data to what we are expecting to get back.
 
 		// Hook the output function with a lambda
 		// &Response - had to make response global to get access - having trouble with casting...
@@ -564,18 +562,82 @@ namespace UnitTests
 		// Send the Analog Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
 
-		const std::string DesiredResult = { (char)0xfc,0x05,0x20,0x0f,0x0d,0x00,	// Echoed block
-								0x10,0x00,0x11,0x01,(char)0x84,0x00,			// Channel 0 and 1
-								0x12,0x02,0x13,0x03,(char)0xb7,0x00,		// Channel 2 and 3 etc
-								0x14,0x04,0x15,0x05,(char)0xb9,0x00,
-								0x16,0x06,0x17,0x07,(char)0x8a,0x00,
-								0x18,0x08,0x19,0x09,(char)0xa5,0x00,
-								0x1A,0x0A,0x1B,0x0B,(char)0x96,0x00,
-								0x1C,0x0C,0x1D,0x0D,(char)0x98,0x00,
-								0x1E,0x0E,0x1F,0x0F,(char)0xeb,0x00 };
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc05200f0d00"	// Echoed block
+			"100011018400"			// Channel 0 and 1
+			"12021303b700"		// Channel 2 and 3 etc
+			"14041505b900"
+			"160617078a00"
+			"18081909a500"
+			"1A0A1B0B9600"
+			"1C0C1D0D9800"
+			"1E0E1F0Feb00");
 
 		// No need to delay to process result, all done in the ReadCompletionHandler at call time.
 		REQUIRE(Response == DesiredResult);
+
+		IOMgr.Shutdown();
+	}
+	TEST_CASE(SUITE("CounterScanTest1"))
+	{
+		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
+		// Checks the TCP send output for correct data and format.
+
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+
+		// Do the same test as analog unconditional, we should give teh same response from the Counter Scan.
+		MD3BlockFormatted commandblock(0x7C, true, COUNTER_SCAN, 0x20, 16, true);
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Call the Event functions to set the MD3 table data to what we are expecting to get back.
+		// Write to the analog registers that we are going to request the values for.
+		for (int i = 0; i < 16; i++)
+		{
+			const odc::Analog a(4096 + i + i * 0x100);
+			auto res = MD3Port->Event(a, i, "TestHarness");
+
+			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
+		}
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
+
+		// Send the Analog Uncoditional command in as if came from TCP channel
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc1f200f2200"	// Echoed block
+			"100011018400"			// Channel 0 and 1
+			"12021303b700"		// Channel 2 and 3 etc
+			"14041505b900"
+			"160617078a00"
+			"18081909a500"
+			"1A0A1B0B9600"
+			"1C0C1D0D9800"
+			"1E0E1F0Feb00");
+
+		// No need to delay to process result, all done in the ReadCompletionHandler at call time.
+		REQUIRE(Response == DesiredResult);
+
+		// Station 0x7c, Module 61 and 62 - 8 channels each.
+		MD3BlockFormatted commandblock2(0x7C, true, COUNTER_SCAN, 61, 16, true);
+		output << commandblock2.ToBinaryString();
+
 
 		IOMgr.Shutdown();
 	}

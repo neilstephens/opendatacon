@@ -241,6 +241,34 @@ std::shared_ptr<MD3PointConf> MD3OutstationPort::MyPointConf()
 	return MyConf()->pPointConf;
 };
 
+bool MD3OutstationPort::GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res)
+{
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3PointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
+	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
+	{
+		res = MD3PointMapIter->second->Analog;
+		return true;
+	}
+	return false;
+}
+bool MD3OutstationPort::GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta)
+{
+	// Change being update the last read value
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3PointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
+	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
+	{
+		res = MD3PointMapIter->second->Analog;
+		delta = (int)res - (int)MD3PointMapIter->second->LastReadAnalog;
+		MD3PointMapIter->second->LastReadAnalog = res;	// We assume it is sent to the master. May need better way to do this
+		return true;
+	}
+	return false;
+}
+
 bool MD3OutstationPort::GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res)
 {
 	uint16_t Md3Index = (module << 8) | channel;
@@ -249,7 +277,6 @@ bool MD3OutstationPort::GetAnalogValueUsingMD3Index(const uint16_t module, const
 	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->Analog;
-		MD3PointMapIter->second->LastReadAnalog = res;	// We assume it is sent to the master. May need better way to do this
 		return true;
 	}
 	return false;
