@@ -268,6 +268,16 @@ bool MD3OutstationPort::GetCounterValueAndChangeUsingMD3Index(const uint16_t mod
 	}
 	return false;
 }
+bool MD3OutstationPort::SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas)
+{
+	ODCPointMapIterType ODCPointMapIter = MyPointConf()->CounterODCPointMap.find(index);
+	if (ODCPointMapIter != MyPointConf()->CounterODCPointMap.end())
+	{
+		ODCPointMapIter->second->Analog = meas;
+		return true;
+	}
+	return false;
+}
 
 bool MD3OutstationPort::GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res)
 {
@@ -418,6 +428,14 @@ bool MD3OutstationPort::SetBinaryValueUsingODCIndex(const uint16_t index, const 
 	}
 	return false;
 }
+bool MD3OutstationPort::CheckBinaryControlExistsUsingMD3Index(const uint16_t module, const uint8_t channel)
+{
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3PointMapIterType MD3PointMapIter = MyPointConf()->BinaryControlMD3PointMap.find(Md3Index);
+	return (MD3PointMapIter != MyPointConf()->BinaryControlMD3PointMap.end());
+}
+
 void MD3OutstationPort::AddToDigitalEvents(MD3Point & pt)
 {
 	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
@@ -514,6 +532,14 @@ inline std::future<CommandStatus> MD3OutstationPort::EventT(T& meas, uint16_t in
 		if ( !SetAnalogValueUsingODCIndex(index, (uint16_t)meas.value) )
 		{
 			LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Tried to set the value for an invalid analog point index " + std::to_string(index));
+			return IOHandler::CommandFutureUndefined();
+		}
+	}
+	else if (std::is_same<T, const Counter>::value)
+	{
+		if (!SetCounterValueUsingODCIndex(index, (uint16_t)meas.value))
+		{
+			LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Tried to set the value for an invalid counter point index " + std::to_string(index));
 			return IOHandler::CommandFutureUndefined();
 		}
 	}

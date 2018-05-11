@@ -95,6 +95,7 @@ public:
 	void BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
 	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3BlockData> &ResponseMD3Message);
 	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3BlockData>& ResponseMD3Message);
+	void DoPOMControl(MD3BlockFn17MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
 
 	void DoSystemSignOnControl(MD3BlockFn40 & Header);
@@ -104,11 +105,11 @@ public:
 	void SendControlOK(MD3BlockFormatted & Header);					// Fn 15
 	void SendControlOrScanRejected(MD3BlockFormatted & Header);		// Fn 30
 
-	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res);
-
 	// Methods to access the outstation point table
 	//TODO: Point container access extract to separate class maybe..
+	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res);
 	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta);
+	bool SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas);
 
 	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res);
 	bool GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta);
@@ -122,6 +123,8 @@ public:
 	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas);
 	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
 	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, uint64_t eventtime);
+
+	bool CheckBinaryControlExistsUsingMD3Index(const uint16_t module, const uint8_t channel);
 
 	void SendResponse(std::vector<MD3BlockData>& CompleteMD3Message);
 

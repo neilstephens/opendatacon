@@ -57,7 +57,7 @@
 21 , 1                      Raise Lower Type Control
 23 , 1                       AOM Type Control
 30 , 135                  Control or Scan Request Rejected - Done
-31 , 1                      Counter Scan - checksum passes
+31 , 1                      Counter Scan - Done - checksum passes
 40 , 1                       System SIGNON Control  - Done - but failed checksum so probably not used
 43 , 23274              System SET DATE AND TIME Control - Done
 5 , 380836              Analog Unconditional - Done
@@ -154,6 +154,8 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 	case FREEZE_AND_RESET:
 		break;
 	case POM_TYPE_CONTROL :
+		ExpectedMessageSize = 2;
+		DoPOMControl(static_cast<MD3BlockFn17MtoS&>(Header), CompleteMD3Message);
 		break;
 	case DOM_TYPE_CONTROL: // NOT USED
 		break;
@@ -218,7 +220,7 @@ void MD3OutstationPort::DoAnalogUnconditional(MD3BlockFormatted &Header)
 
 // Function 31 - Esentially the same as Analog Unconditional. Either can be used to return either analog or counter, or both.
 // The only difference is that an analog module seems to have 16 channels, the counter module only 8.
-// The expectation is that if you ask for more than 8 from a counter module, it will roll over to the next counter module.
+// The expectation is that if you ask for more than 8 from a counter module, it will roll over to the next module (counter or analog).
 // As an analog module has 16, the most that can be requested the overflow never happens.
 // In order to make this work, we need to know if the module we are dealing with is a counter or analog module.
 void MD3OutstationPort::DoCounterScan(MD3BlockFormatted &Header)
@@ -1055,6 +1057,68 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 	{
 		MD3BlockData &lastblock = ResponseMD3Message.back();
 		lastblock.MarkAsEndOfMessageBlock();
+	}
+}
+
+
+#pragma endregion
+
+#pragma region CONTROL
+
+void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+{
+	// We have two blocks incomming, not just one.
+	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+	// We have to pass the command to ODC, then setup a lambda to handle the sending of the response - when we get it.
+
+	// Two possible responses, they depend on the future result - of type CommandStatus.
+	// SUCCESS = 0 /// command was accepted, initiated, or queue
+	// TIMEOUT = 1 /// command timed out before completing
+	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
+	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
+	// Non-zero will be a fail.
+
+	bool failed = false;
+
+	// Check all the things we can
+	if (CompleteMD3Message.size() != 2)
+	{
+		// If we did not get two blocks, then send back a command rejected message.
+		failed = true;
+	}
+
+	if (!Header.VerifyAgainstSecondBlock(CompleteMD3Message[1]))
+	{
+		// Message verification failed - something was corrupted
+		failed = true;
+	}
+
+	// Check that the control point is defined, otherwise return a fail. The value 0 to 15 is a trip or close for points 0 to 7 (hence mod 8?)
+	bool foundentry = CheckBinaryControlExistsUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8);
+	if (!foundentry)
+	{
+		// Control point does not exist...
+		failed = true;
+	}
+
+	if (Header.GetStationAddress() != 0)
+	{
+		if (failed)
+		{
+			SendControlOrScanRejected(Header);
+			return;
+		}
+
+		//TODO: SJE Send the POM Control command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
+		SendControlOK(Header);
+	}
+	else
+	{
+		if (!failed)
+		{
+			//TODO: SJE Send the POM Control command through ODC but dont wait for a response. There will be none.
+			// No response
+		}
 	}
 }
 

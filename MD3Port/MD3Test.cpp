@@ -58,7 +58,7 @@ const char *conffile = R"001(
 	//-------Point conf--------#
 	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0}, {"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0}],
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
-	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 4}, "Module" : 35, "Offset" : 0}],
+	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Module" : 35, "Offset" : 0}],
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })001";
 
@@ -516,6 +516,20 @@ namespace UnitTests
 		REQUIRE(b40.IsEndOfMessageBlock());
 		REQUIRE(b40.IsFormattedBlock());
 		REQUIRE(b40.CheckSumPasses());
+
+		MD3BlockFn17MtoS b17(0x63, 0xF0, 15);
+		REQUIRE(b17.GetStationAddress() == 0x63);
+		REQUIRE(b17.GetModuleAddress() == 0xF0);
+		REQUIRE(b17.GetOutputSelection() == 15);
+		REQUIRE(!b17.IsEndOfMessageBlock());
+		REQUIRE(b17.IsFormattedBlock());
+		REQUIRE(b17.CheckSumPasses());
+
+		MD3BlockData SecondBlock = b17.GenerateSecondBlock();
+		REQUIRE(b17.VerifyAgainstSecondBlock(SecondBlock));
+		REQUIRE(SecondBlock.IsEndOfMessageBlock());
+		REQUIRE(!SecondBlock.IsFormattedBlock());
+		REQUIRE(SecondBlock.CheckSumPasses());
 	}
 
 	TEST_CASE(SUITE("AnalogUnconditionalTest1"))
@@ -638,6 +652,32 @@ namespace UnitTests
 		MD3BlockFormatted commandblock2(0x7C, true, COUNTER_SCAN, 61, 16, true);
 		output << commandblock2.ToBinaryString();
 
+		// Set the counter values to match what the analogs were set to.
+		for (int i = 0; i < 16; i++)
+		{
+			const odc::Counter c(4096 + i + i * 0x100);
+			auto res = MD3Port->Event(c, i, "TestHarness");
+
+			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
+		}
+
+		Response = "Not Set";
+
+		// Send the Analog Uncoditional command in as if came from TCP channel
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1f3d0f1200"	// Echoed block
+			"100011018400"			// Channel 0 and 1
+			"12021303b700"		// Channel 2 and 3 etc
+			"14041505b900"
+			"160617078a00"
+			"18081909a500"
+			"1A0A1B0B9600"
+			"1C0C1D0D9800"
+			"1E0E1F0Feb00");
+
+		// No need to delay to process result, all done in the ReadCompletionHandler at call time.
+		REQUIRE(Response == DesiredResult2);
 
 		IOMgr.Shutdown();
 	}
@@ -1234,6 +1274,77 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
+	TEST_CASE(SUITE("POMControlFn17Test1"))
+	{
+		// This test was written for where the outstation is simply sinking the timedate change command
+		// Will have to change if passed to ODC and events handled here
+		// One of the few multiblock commands
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+
+		//  Station 0x7C
+		MD3BlockFn17MtoS commandblock(0x7C, 35, 1);
+
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		MD3BlockData datablock = commandblock.GenerateSecondBlock();
+		output << datablock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
+
+		// Send the Command
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f23017a00");
+
+		REQUIRE(Response == DesiredResult);	// OK Command
+
+		//---------------------------
+		// Now do again with a bodgy second block.
+		output << commandblock.ToBinaryString();
+		MD3BlockData datablock2(1000, true);	// Non sensical block
+		output << datablock2.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e23017c00");
+
+		REQUIRE(Response == DesiredResult2);	// Control/Scan Rejected Command
+
+		//---------------------------
+		MD3BlockFn17MtoS commandblock2(0x7C, 36, 1);	// Invalid control point
+		output << commandblock2.ToBinaryString();
+
+		MD3BlockData datablock3 = commandblock.GenerateSecondBlock();
+		output << datablock3.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24015900");
+
+		REQUIRE(Response == DesiredResult3);	// Control/Scan Rejected Command
+
+		IOMgr.Shutdown();
+	}
+
 	TEST_CASE(SUITE("BinaryEventTest"))
 	{
 		WriteConfFileToCurrentWorkingDirectory();
