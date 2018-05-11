@@ -35,6 +35,7 @@
 #include <cassert>
 #include <array>
 #include <sstream>
+#include <iomanip>
 
 #include "MD3.h"
 
@@ -155,10 +156,10 @@ public:
 
 		return oss.str();
 	}
-	std::string ToString()
+	std::string ToPrintString()
 	{
 		std::ostringstream oss;
-
+		oss << std::hex;
 		oss << (data >> 24);
 		oss << ',';
 		oss << ((data >> 16) & 0x0FF);
@@ -170,6 +171,19 @@ public:
 		oss << (endbyte);
 		oss << ',';
 		oss << (0x00);
+		return oss.str();
+	}
+	std::string ToString()
+	{
+		std::ostringstream oss;
+		oss.fill('0');
+		oss << std::hex;
+		oss << std::setw(2) << (data >> 24);
+		oss << std::setw(2) << ((data >> 16) & 0x0FF);
+		oss << std::setw(2) << ((data >> 8) & 0x0FF);
+		oss << std::setw(2) << (data & 0x0FF);
+		oss << std::setw(2) << (uint32_t)(endbyte);
+		oss << "00";
 		return oss.str();
 	}
 
@@ -684,8 +698,8 @@ public:
 	// The second block in the message only contains a different format of the information in the first
 	MD3BlockData GenerateSecondBlock()
 	{
-		uint16_t lowword = 1 << GetOutputSelection();
-		uint32_t direction = GetData() & 0x8000;
+		uint16_t lowword = 1 << (15 - GetOutputSelection());
+		uint32_t direction = GetData() & DIRECTIONBIT;
 		uint32_t seconddata = direction | ((uint32_t)~GetStationAddress() & 0x07f) << 24 | (((uint32_t)~GetModuleAddress() & 0x0FF) << 16) | (uint32_t)lowword;
 		MD3BlockData sb(seconddata, true);
 		return sb;
@@ -700,7 +714,7 @@ public:
 		if ((GetModuleAddress() & 0x0ff) != ((~SecondBlock.GetData() >> 16) & 0x0FF))	// Is the function code correct?
 			return false;
 
-		uint16_t lowword = 1 << GetOutputSelection();
+		uint16_t lowword = 1 << (15 - GetOutputSelection());
 		if (lowword != SecondBlock.GetSecondWord())
 			return false;
 

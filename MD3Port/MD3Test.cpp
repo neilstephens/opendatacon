@@ -1276,6 +1276,12 @@ namespace UnitTests
 	}
 	TEST_CASE(SUITE("POMControlFn17Test1"))
 	{
+		// Test that we can generate a packet set that matches a captured packet
+		MD3BlockFn17MtoS testblock(0x27, 0xa5, 0);
+		REQUIRE(testblock.ToString() == "2711a5000300");
+		MD3BlockData sb = testblock.GenerateSecondBlock();
+		REQUIRE(sb.ToString() == "585a8000d500");
+
 		// This test was written for where the outstation is simply sinking the timedate change command
 		// Will have to change if passed to ODC and events handled here
 		// One of the few multiblock commands

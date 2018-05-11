@@ -179,7 +179,7 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 			}
 			else if (MD3Message.size() == 0)
 			{
-				LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToString());
+				LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToPrintString());
 			}
 			else
 			{
@@ -196,7 +196,7 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 			}
 		}
 		else
-			LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Checksum failure on received MD3 block - " + md3block.ToString());
+			LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Checksum failure on received MD3 block - " + md3block.ToPrintString());
 	}
 
 	// Check for and consume any not 6 byte block data - should never happen...
