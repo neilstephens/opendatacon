@@ -95,8 +95,10 @@ public:
 	void BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
 	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3BlockData> &ResponseMD3Message);
 	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3BlockData>& ResponseMD3Message);
-	void DoPOMControl(MD3BlockFn17MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
+
+	void DoPOMControl(MD3BlockFn17MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
+	void DoDOMControl(MD3BlockFn19MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 
 	void DoSystemSignOnControl(MD3BlockFn40 & Header);
 	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);	// Fn 43

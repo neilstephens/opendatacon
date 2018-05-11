@@ -121,6 +121,7 @@ public:
 		uint8_t calc = MD3CRC(data);
 		return MD3CRCCompare(calc, endbyte);
 	}
+	// Index 0 to 4 as you would expect
 	uint8_t GetByte(int b)
 	{
 		assert((b >= 0) && (b < 4));
@@ -711,11 +712,75 @@ public:
 		if (GetStationAddress() != ((~SecondBlock.GetData() >> 24) & 0x7F))	// Is the station address correct?
 			return false;
 
-		if ((GetModuleAddress() & 0x0ff) != ((~SecondBlock.GetData() >> 16) & 0x0FF))	// Is the function code correct?
+		if ((GetModuleAddress() & 0x0ff) != ((~SecondBlock.GetData() >> 16) & 0x0FF))	// Is the module address correct?
 			return false;
 
 		uint16_t lowword = 1 << (15 - GetOutputSelection());
 		if (lowword != SecondBlock.GetSecondWord())
+			return false;
+
+		return true;
+	}
+
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
+};
+class MD3BlockFn19MtoS : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn19MtoS(MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+
+	MD3BlockFn19MtoS(uint8_t StationAddress, uint8_t ModuleAddress)
+	{
+		bool lastblock = false;
+		bool mastertostation = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((StationAddress & 0x7F) == StationAddress);	// Max of 7 bits;
+
+		uint16_t lowword = ((uint16_t)ModuleAddress << 8) | ((uint16_t)~ModuleAddress & 0x00FF);
+		data = direction | (uint32_t)StationAddress << 24 | (uint32_t)DOM_TYPE_CONTROL << 16 | (uint32_t)lowword;
+
+		endbyte = MD3CRC(data);	// Max 6 bits returned
+
+		// endbyte |= FOMBIT;	// This is a formatted block must be zero
+		endbyte |= lastblock ? EOMBIT : 0x00;
+	}
+
+	// The second block in the message only contains a different format of the information in the first
+	MD3BlockData GenerateSecondBlock(uint16_t OutputData)
+	{
+		uint32_t checkdata = (OutputData & 0x0FF) + ((OutputData >> 8) & 0x0FF);
+		uint32_t seconddata = ((uint32_t)OutputData << 16) | checkdata << 8 | ((uint32_t)~GetStationAddress() & 0x07f);
+		MD3BlockData sb(seconddata, true);
+		return sb;
+	}
+	// Possibly should have second block class for this function...
+	uint16_t GetOutputFromSecondBlock(MD3BlockData &SecondBlock)
+	{
+		return SecondBlock.GetFirstWord();
+	}
+
+	// Check the second block against the first (this one) to see if we have a valid POM command
+	bool VerifyAgainstSecondBlock(MD3BlockData &SecondBlock)
+	{
+		// Check that the complements and the orginals match
+		if (GetStationAddress() != (~SecondBlock.GetByte(3) & 0x7F))	// Is the station address correct?
+			return false;
+
+		if ((GetModuleAddress() & 0x0ff) != (~GetByte(3) & 0x0FF))	// Is the module address correct?
+			return false;
+
+		uint8_t checkdata = (SecondBlock.GetFirstWord() & 0x0FF) + ((SecondBlock.GetFirstWord() >> 8) & 0x0FF);
+		if (checkdata != SecondBlock.GetByte(2))
 			return false;
 
 		return true;

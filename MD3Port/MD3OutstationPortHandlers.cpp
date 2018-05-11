@@ -52,8 +52,8 @@
 14 , 32040              Digital No Change Reply - Done
 15 , 20165              Control Request OK - Done
 16 , 2                       Freeze And Reset
-17 , 53                    POM Type Control
-19 , 2                      DOM Type Control
+17 , 53                    POM Type Control - Done
+19 , 2                      DOM Type Control - Done - Cant find example in the data
 21 , 1                      Raise Lower Type Control
 23 , 1                       AOM Type Control
 30 , 135                  Control or Scan Request Rejected - Done
@@ -83,7 +83,7 @@ DIGITAL_NO_CHANGE_REPLY = 14,	// HAS MODULE INFORMATION ATTACHED
 CONTROL_REQUEST_OK = 15,
 FREEZE_AND_RESET = 16,
 POM_TYPE_CONTROL = 17,
-DOM_TYPE_CONTROL = 19,	// NOT USED
+DOM_TYPE_CONTROL = 19,
 INPUT_POINT_CONTROL = 20,
 RAISE_LOWER_TYPE_CONTROL = 21,
 AOM_TYPE_CONTROL = 23,
@@ -157,7 +157,9 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 		ExpectedMessageSize = 2;
 		DoPOMControl(static_cast<MD3BlockFn17MtoS&>(Header), CompleteMD3Message);
 		break;
-	case DOM_TYPE_CONTROL: // NOT USED
+	case DOM_TYPE_CONTROL:
+		ExpectedMessageSize = 2;
+		DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
 		break;
 	case INPUT_POINT_CONTROL:
 		break;
@@ -1068,6 +1070,7 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
 {
 	// We have two blocks incomming, not just one.
+	// Seems we dont have any POM control signals greater than 7 in the data I have seen??
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
 	// We have to pass the command to ODC, then setup a lambda to handle the sending of the response - when we get it.
 
@@ -1122,6 +1125,64 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3Bl
 	}
 }
 
+void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+{
+	// We have two blocks incomming, not just one.
+	// Seems we dont have any POM control signals greater than 7 in the data I have seen??
+	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+	// We have to pass the command to ODC, then setup a lambda to handle the sending of the response - when we get it.
+
+	// Two possible responses, they depend on the future result - of type CommandStatus.
+	// SUCCESS = 0 /// command was accepted, initiated, or queue
+	// TIMEOUT = 1 /// command timed out before completing
+	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
+	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
+	// Non-zero will be a fail.
+
+	bool failed = false;
+
+	// Check all the things we can
+	if (CompleteMD3Message.size() != 2)
+	{
+		// If we did not get two blocks, then send back a command rejected message.
+		failed = true;
+	}
+
+	if (!Header.VerifyAgainstSecondBlock(CompleteMD3Message[1]))
+	{
+		// Message verification failed - something was corrupted
+		failed = true;
+	}
+
+	// Check that the control point is defined, otherwise return a fail. The value 0 to 15 is a trip or close for points 0 to 7 (hence mod 8?)
+	// Check that the first one exists, not all 16 may exist.
+	bool foundentry = CheckBinaryControlExistsUsingMD3Index(Header.GetModuleAddress(), 0);
+	if (!foundentry)
+	{
+		// Control point does not exist...
+		failed = true;
+	}
+
+	if (Header.GetStationAddress() != 0)
+	{
+		if (failed)
+		{
+			SendControlOrScanRejected(Header);
+			return;
+		}
+
+		//TODO: SJE Send the POM Control command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
+		SendControlOK(Header);
+	}
+	else
+	{
+		if (!failed)
+		{
+			//TODO: SJE Send the POM Control command through ODC but dont wait for a response. There will be none.
+			// No response
+		}
+	}
+}
 
 #pragma endregion
 

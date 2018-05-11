@@ -530,6 +530,20 @@ namespace UnitTests
 		REQUIRE(SecondBlock.IsEndOfMessageBlock());
 		REQUIRE(!SecondBlock.IsFormattedBlock());
 		REQUIRE(SecondBlock.CheckSumPasses());
+
+		MD3BlockFn19MtoS b19(0x63, 0xF0);
+		REQUIRE(b19.GetStationAddress() == 0x63);
+		REQUIRE(b19.GetModuleAddress() == 0xF0);
+		REQUIRE(!b19.IsEndOfMessageBlock());
+		REQUIRE(b19.IsFormattedBlock());
+		REQUIRE(b19.CheckSumPasses());
+
+		MD3BlockData Block2 = b19.GenerateSecondBlock(0x55);
+		REQUIRE(b19.VerifyAgainstSecondBlock(Block2));
+		REQUIRE(b19.GetOutputFromSecondBlock(Block2) == 0x55);
+		REQUIRE(Block2.IsEndOfMessageBlock());
+		REQUIRE(!Block2.IsFormattedBlock());
+		REQUIRE(Block2.CheckSumPasses());
 	}
 
 	TEST_CASE(SUITE("AnalogUnconditionalTest1"))
@@ -1282,6 +1296,11 @@ namespace UnitTests
 		MD3BlockData sb = testblock.GenerateSecondBlock();
 		REQUIRE(sb.ToString() == "585a8000d500");
 
+		MD3BlockFn17MtoS testblock2(0x26, 0xa4, 4);
+		REQUIRE(testblock2.ToString() == "2611a4040700");
+		MD3BlockData sb2 = testblock2.GenerateSecondBlock();
+		REQUIRE(sb2.ToString() == "595b0800c000");
+
 		// This test was written for where the outstation is simply sinking the timedate change command
 		// Will have to change if passed to ODC and events handled here
 		// One of the few multiblock commands
@@ -1345,6 +1364,82 @@ namespace UnitTests
 		MD3Port->ReadCompletionHandler(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24015900");
+
+		REQUIRE(Response == DesiredResult3);	// Control/Scan Rejected Command
+
+		IOMgr.Shutdown();
+	}
+	TEST_CASE(SUITE("DOMControlFn19Test1"))
+	{
+		// Test that we can generate a packet set that matches a captured packet
+		MD3BlockFn19MtoS testblock(0x27, 0xa5);
+		REQUIRE(testblock.ToString() == "2713a55a2000");
+		MD3BlockData sb = testblock.GenerateSecondBlock(0x12);
+		REQUIRE(sb.ToString() == "00121258c300");
+
+		// This test was written for where the outstation is simply sinking the timedate change command
+		// Will have to change if passed to ODC and events handled here
+		// One of the few multiblock commands
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+
+		//  Station 0x7C
+		MD3BlockFn19MtoS commandblock(0x7C, 35);
+
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		MD3BlockData datablock = commandblock.GenerateSecondBlock(0x34);
+		output << datablock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
+
+		// Send the Command
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f23dc7200");
+
+		REQUIRE(Response == DesiredResult);	// OK Command
+
+											//---------------------------
+											// Now do again with a bodgy second block.
+		output << commandblock.ToBinaryString();
+		MD3BlockData datablock2(1000, true);	// Non sensical block
+		output << datablock2.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e230c6500");
+
+		REQUIRE(Response == DesiredResult2);	// Control/Scan Rejected Command
+
+												//---------------------------
+		MD3BlockFn19MtoS commandblock2(0x7C, 36);	// Invalid control point
+		output << commandblock2.ToBinaryString();
+
+		MD3BlockData datablock3 = commandblock.GenerateSecondBlock(0x73);
+		output << datablock3.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e240b5a00");
 
 		REQUIRE(Response == DesiredResult3);	// Control/Scan Rejected Command
 
