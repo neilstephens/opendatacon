@@ -3,13 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <string>
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-#include <conio.h>
-#include <Windows.h>
-#else
-#include <termios.h>
-#include <unistd.h>
-#endif
 
 // Keyboard Scan Codes
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
@@ -39,7 +32,6 @@
 const char NEWLINE = '\r';
 #else
 const char NEWLINE = '\n';
-int getch();
 #endif
 
 // getLine modes

@@ -177,4 +177,4 @@ inline std::string GetLibFileName(const std::string& LibName)
 	return DYNLIBPRE + LibName + DYNLIBEXT;
 }
 
-#endif
+#endif //ODC_PLATFORM_H_
