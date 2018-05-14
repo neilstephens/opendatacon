@@ -150,8 +150,10 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 		// Master Only
 		break;
 	case CONTROL_REQUEST_OK:
+		// Master Only
 		break;
 	case FREEZE_AND_RESET:
+		DoFreezeResetCounters(static_cast<MD3BlockFn16MtoS&>(Header));
 		break;
 	case POM_TYPE_CONTROL :
 		ExpectedMessageSize = 2;
@@ -168,6 +170,7 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 	case AOM_TYPE_CONTROL :
 		break;
 	case CONTROL_OR_SCAN_REQUEST_REJECTED:
+		// Master Only
 		break;
 	case COUNTER_SCAN :
 		DoCounterScan(Header);
@@ -1066,6 +1069,47 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 #pragma endregion
 
 #pragma region CONTROL
+
+void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
+{
+	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+	// We have to pass the command to ODC, then setup a lambda to handle the sending of the response - when we get it.
+
+	// Two possible responses, they depend on the future result - of type CommandStatus.
+	// SUCCESS = 0 /// command was accepted, initiated, or queue
+	// TIMEOUT = 1 /// command timed out before completing
+	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
+	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
+	// Non-zero will be a fail.
+
+	bool failed = false;
+
+	if (!Header.IsValid())
+	{
+		// Message verification failed - something was corrupted
+		failed = true;
+	}
+
+	if (Header.GetStationAddress() != 0)
+	{
+		if (failed)
+		{
+			SendControlOrScanRejected(Header);
+			return;
+		}
+
+		//TODO: SJE Send the Freeze-Reset Counter command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
+		SendControlOK(Header);
+	}
+	else
+	{
+		if (!failed)
+		{
+			//TODO: SJE Send the Freeze-Reset Counter command through ODC but dont wait for a response. There will be none.
+			// No response
+		}
+	}
+}
 
 void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
 {

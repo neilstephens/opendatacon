@@ -162,10 +162,9 @@ namespace UnitTests
 		REQUIRE(b.GetDCP() == DCP);
 		REQUIRE(b.CheckSumPasses());
 
-
-		msg = { 0xd4,0x1f,0x00,0x10,0x77, 0x00 };	// From a Fn 31 packet capture
-		MD3BlockData fn31(msg);
-		REQUIRE(b.CheckSumPasses());
+		MD3BlockData b2("d41f00103c00");
+		REQUIRE(b2.GetData() == 0xd41f0010);
+		REQUIRE(b2.CheckSumPasses());
 	}
 	TEST_CASE(SUITE("MD3BlockClassConstructor2Test"))
 	{
@@ -544,6 +543,22 @@ namespace UnitTests
 		REQUIRE(Block2.IsEndOfMessageBlock());
 		REQUIRE(!Block2.IsFormattedBlock());
 		REQUIRE(Block2.CheckSumPasses());
+
+		MD3BlockFn16MtoS b16(0x63, true);
+		REQUIRE(b16.GetStationAddress() == 0x63);
+		REQUIRE(b16.IsEndOfMessageBlock());
+		REQUIRE(b16.IsFormattedBlock());
+		REQUIRE(b16.CheckSumPasses());
+		REQUIRE(b16.IsValid());
+		REQUIRE(b16.GetNoCounterReset() == true);
+
+		MD3BlockFn16MtoS b16b(0x73, false);
+		REQUIRE(b16b.GetStationAddress() == 0x73);
+		REQUIRE(b16b.IsEndOfMessageBlock());
+		REQUIRE(b16b.IsFormattedBlock());
+		REQUIRE(b16b.CheckSumPasses());
+		REQUIRE(b16b.IsValid());
+		REQUIRE(b16b.GetNoCounterReset() == false);
 	}
 
 	TEST_CASE(SUITE("AnalogUnconditionalTest1"))
@@ -1288,6 +1303,56 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
+	TEST_CASE(SUITE("FreezeResetFn16Test1"))
+	{
+		// This test was written for where the outstation is simply sinking the timedate change command
+		// Will have to change if passed to ODC and events handled here
+		// One of the few multiblock commands
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+
+		//  Station 0x7C
+		MD3BlockFn16MtoS commandblock(0x7C, true);
+
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
+
+		// Send the Command
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f01034600");
+
+		REQUIRE(Response == DesiredResult);	// OK Command
+
+		//---------------------------
+		MD3BlockFn16MtoS commandblock2(0, false);	// Reset all counters on all stations
+		output << commandblock2.ToBinaryString();
+		Response = "Not Set";
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		REQUIRE(Response =="Not Set");	// As address zero, no response expected
+
+		IOMgr.Shutdown();
+	}
 	TEST_CASE(SUITE("POMControlFn17Test1"))
 	{
 		// Test that we can generate a packet set that matches a captured packet
@@ -1318,7 +1383,6 @@ namespace UnitTests
 		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
 
 		MD3Port->Enable();
-		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
 		//  Station 0x7C
 		MD3BlockFn17MtoS commandblock(0x7C, 35, 1);
@@ -1377,6 +1441,13 @@ namespace UnitTests
 		MD3BlockData sb = testblock.GenerateSecondBlock(0x12);
 		REQUIRE(sb.ToString() == "00121258c300");
 
+		// From a Fn19 packet capture - but direction is wrong...so is checksuM!
+		//MD3BlockData b("91130d013100");
+		//REQUIRE(b.CheckSumPasses());
+		// The second packet passed however!!
+		MD3BlockData b2("1000600cf100");
+		REQUIRE(b2.CheckSumPasses());
+
 		// This test was written for where the outstation is simply sinking the timedate change command
 		// Will have to change if passed to ODC and events handled here
 		// One of the few multiblock commands
@@ -1418,8 +1489,8 @@ namespace UnitTests
 
 		REQUIRE(Response == DesiredResult);	// OK Command
 
-											//---------------------------
-											// Now do again with a bodgy second block.
+		//---------------------------
+		// Now do again with a bodgy second block.
 		output << commandblock.ToBinaryString();
 		MD3BlockData datablock2(1000, true);	// Non sensical block
 		output << datablock2.ToBinaryString();
@@ -1430,7 +1501,7 @@ namespace UnitTests
 
 		REQUIRE(Response == DesiredResult2);	// Control/Scan Rejected Command
 
-												//---------------------------
+		//---------------------------
 		MD3BlockFn19MtoS commandblock2(0x7C, 36);	// Invalid control point
 		output << commandblock2.ToBinaryString();
 

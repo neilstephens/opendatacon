@@ -97,6 +97,7 @@ public:
 	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3BlockData>& ResponseMD3Message);
 	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
 
+	void DoFreezeResetCounters(MD3BlockFn16MtoS & Header);
 	void DoPOMControl(MD3BlockFn17MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 	void DoDOMControl(MD3BlockFn19MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 
