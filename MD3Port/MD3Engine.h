@@ -82,10 +82,10 @@ public:
 		auto res = std::string(hexdata.size() / 2, 0);
 
 		// Take chars in chunks of 2 and convert to a hex equivalent
-		for (int i = 0; i < (hexdata.size() / 2); i++)
+		for (uint32_t i = 0; i < (hexdata.size() / 2); i++)
 		{
 			auto hexpair = hexdata.substr(i * 2, 2);
-			res[i] = std::stol(hexpair, nullptr, 16);
+			res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
 		}
 
 		data = (uint32_t)res[0] << 24 | (uint32_t)res[1] << 16 | (uint32_t)res[2] << 8 | (uint32_t)res[3];
@@ -703,6 +703,7 @@ public:
 		assert(false);
 	}
 };
+// POM Control
 class MD3BlockFn17MtoS : public MD3BlockFormatted
 {
 public:
@@ -762,6 +763,7 @@ public:
 		assert(false);
 	}
 };
+// DOM Control
 class MD3BlockFn19MtoS : public MD3BlockFormatted
 {
 public:
@@ -808,6 +810,78 @@ public:
 			return false;
 
 		if ((GetModuleAddress() & 0x0ff) != (~GetByte(3) & 0x0FF))	// Is the module address correct?
+			return false;
+
+		uint8_t checkdata = (SecondBlock.GetFirstWord() & 0x0FF) + ((SecondBlock.GetFirstWord() >> 8) & 0x0FF);
+		if (checkdata != SecondBlock.GetByte(2))
+			return false;
+
+		return true;
+	}
+
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
+};
+// AOM Control
+class MD3BlockFn23MtoS : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn23MtoS(MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+
+	MD3BlockFn23MtoS(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channel)
+	{
+		bool lastblock = false;
+		bool mastertostation = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((StationAddress & 0x7F) == StationAddress);	// Max of 7 bits;
+
+		uint16_t lowword = ((uint16_t)ModuleAddress << 8) | ((uint16_t)Channel & 0x00FF);
+		data = direction | (uint32_t)StationAddress << 24 | (uint32_t)AOM_TYPE_CONTROL << 16 | (uint32_t)lowword;
+
+		SetEndByte(FormattedBlock, lastblock);
+	}
+	uint8_t GetChannel()
+	{
+		return (data & 0x0FF);
+	}
+	uint8_t GetModuleAddress()
+	{
+		return (data >> 8) & 0x0FF;
+	}
+	// The second block in the message only contains a different format of the information in the first
+	MD3BlockData GenerateSecondBlock(uint16_t OutputData)
+	{
+		uint16_t hiword = (uint16_t)~GetChannel() << 12 | (OutputData & 0xFFF);
+
+		uint32_t checkdata = (hiword & 0x0FF) + ((hiword >> 8) & 0x0FF);
+
+		uint32_t seconddata = ((uint32_t)hiword << 16) | (checkdata << 8) | ((uint32_t)~GetModuleAddress() & 0x0FF);
+		MD3BlockData sb(seconddata, true);
+		return sb;
+	}
+	// Possibly should have second block class for this function...
+	uint16_t GetOutputFromSecondBlock(MD3BlockData &SecondBlock)
+	{
+		return SecondBlock.GetFirstWord() & 0x0FFF;
+	}
+
+	// Check the second block against the first (this one) to see if we have a valid AOM command
+	bool VerifyAgainstSecondBlock(MD3BlockData &SecondBlock)
+	{
+		// Check that the complements and the orginals match
+		if ((GetChannel() & 0x0f) != (~(SecondBlock.GetByte(0) >> 4) & 0x0F))	// Is the channel correct?
+			return false;
+
+		if ((GetModuleAddress() & 0x0ff) != (~SecondBlock.GetByte(3) & 0x0FF))	// Is the module address correct?
 			return false;
 
 		uint8_t checkdata = (SecondBlock.GetFirstWord() & 0x0FF) + ((SecondBlock.GetFirstWord() >> 8) & 0x0FF);

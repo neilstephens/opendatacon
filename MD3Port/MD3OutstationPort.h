@@ -100,6 +100,7 @@ public:
 	void DoFreezeResetCounters(MD3BlockFn16MtoS & Header);
 	void DoPOMControl(MD3BlockFn17MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 	void DoDOMControl(MD3BlockFn19MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
+	void DoAOMControl(MD3BlockFn23MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 
 	void DoSystemSignOnControl(MD3BlockFn40 & Header);
 	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);	// Fn 43

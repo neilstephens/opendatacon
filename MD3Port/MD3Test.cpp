@@ -45,9 +45,6 @@ const char *conffilename = "MD3Config.conf";
 // We actually have the conf file here to match the tests it is used in below. We write out to a file (overwrite) on each test so it can be read back in.
 const char *conffile = R"001(
 {
-	// MD3 Test Configuration - Only need to know what to pass, don't actually need to know what it is?
-	// What about analog/digital? Need to know that for MD3 Module 0 has special meaning - not sure if Module == Index??
-
 	"IP" : "127.0.0.1",
 	"Port" : 20000,
 	"MasterAddr" : 0,
@@ -85,15 +82,15 @@ namespace UnitTests
 		auto res = std::string(as.size() / 2, 0);
 
 		// Take chars in chunks of 2 and convert to a hex equivalent
-		for (int i = 0; i < (as.size() / 2); i++)
+		for (uint32_t i = 0; i < (as.size() / 2); i++)
 		{
 			auto hexpair = as.substr(i * 2, 2);
-			res[i] = std::stol(hexpair, nullptr, 16);
+			res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
 		}
 		return res;
 	}
 
-	TEST_CASE(SUITE("HexStringTest"))
+	TEST_CASE("Utility - HexStringTest")
 	{
 		std::string ts = "c406400f0b00"  "0000fffe9000";
 		std::string w1 = {(char)0xc4,0x06,0x40,0x0f,0x0b,0x00 };
@@ -103,7 +100,7 @@ namespace UnitTests
 		REQUIRE(res==(w1+w2));
 	}
 
-	TEST_CASE(SUITE("MD3CRCTest"))
+	TEST_CASE("Utility - MD3CRCTest")
 	{
 		// The first 4 are all formatted first and only packets
 		uint32_t res = MD3CRC(0x7C05200F);
@@ -131,7 +128,9 @@ namespace UnitTests
 		REQUIRE(MD3CRCCompare(res, 0xff));
 	}
 
-	TEST_CASE(SUITE("MD3BlockClassConstructor1Test"))
+#pragma region Block Tests
+
+	TEST_CASE("MD3Block - ClassConstructor1")
 	{
 		uint8_t stationaddress = 124;
 		bool mastertostation = true;
@@ -166,7 +165,7 @@ namespace UnitTests
 		REQUIRE(b2.GetData() == 0xd41f0010);
 		REQUIRE(b2.CheckSumPasses());
 	}
-	TEST_CASE(SUITE("MD3BlockClassConstructor2Test"))
+	TEST_CASE("MD3Block - ClassConstructor2")
 	{
 		uint8_t stationaddress = 0x33;
 		bool mastertostation = false;
@@ -340,7 +339,7 @@ namespace UnitTests
 		REQUIRE(b.GetDCP() == DCP);
 		REQUIRE(b.CheckSumPasses());
 	}
-	TEST_CASE(SUITE("MD3BlockClassConstructor3Test"))
+	TEST_CASE("MD3Block - ClassConstructor3")
 	{
 		uint16_t firstword = 12;
 		uint16_t secondword = 32000;
@@ -366,7 +365,7 @@ namespace UnitTests
 		REQUIRE(!b.IsFormattedBlock());
 		REQUIRE(b.CheckSumPasses());
 	}
-	TEST_CASE(SUITE("MD3BlockClassConstructor4Test"))
+	TEST_CASE("MD3Block - ClassConstructor4")
 	{
 		uint32_t data = 128364324;
 		bool lastblock = true;
@@ -388,7 +387,7 @@ namespace UnitTests
 		REQUIRE(!b.IsFormattedBlock());
 		REQUIRE(b.CheckSumPasses());
 	}
-	TEST_CASE(SUITE("MD3BlockClassConstructor5Test"))
+	TEST_CASE("MD3Block - ClassConstructor5")
 	{
 		uint32_t data = 0x32F1F203;
 		bool lastblock = true;
@@ -404,7 +403,7 @@ namespace UnitTests
 		REQUIRE(!b.IsFormattedBlock());
 		REQUIRE(b.CheckSumPasses());
 	}
-	TEST_CASE(SUITE("MD3BlockSpecialClassTest"))
+	TEST_CASE("MD3Block - Fn9")
 	{
 		MD3BlockFn9 b9(0x20, true, 3, 100, false, true);
 
@@ -427,8 +426,10 @@ namespace UnitTests
 		REQUIRE(b9.GetEventCount() == 130);
 		REQUIRE(b9.IsEndOfMessageBlock() == true);
 		REQUIRE(b9.CheckSumPasses());
-
-		MD3BlockFn11MtoS b11(0x32, 15, 3,14, true);
+	}
+	TEST_CASE("MD3Block - Fn11")
+	{
+		MD3BlockFn11MtoS b11(0x32, 15, 3, 14, true);
 		REQUIRE(b11.GetStationAddress() == 0x32);
 		REQUIRE(b11.IsMasterToStationMessage() == true);
 		REQUIRE(b11.GetFunctionCode() == 11);
@@ -438,7 +439,7 @@ namespace UnitTests
 		REQUIRE(b11.IsEndOfMessageBlock() == true);
 		REQUIRE(b11.CheckSumPasses());
 
-		MD3BlockFn11StoM b11a(0x32, 14, 4,13, true);
+		MD3BlockFn11StoM b11a(0x32, 14, 4, 13, true);
 		REQUIRE(b11a.GetStationAddress() == 0x32);
 		REQUIRE(b11a.IsMasterToStationMessage() == false);
 		REQUIRE(b11a.GetFunctionCode() == 11);
@@ -452,8 +453,10 @@ namespace UnitTests
 		REQUIRE(b11a.GetModuleCount() == 5);
 		REQUIRE(b11a.IsEndOfMessageBlock() == true);
 		REQUIRE(b11a.CheckSumPasses());
-
- 		MD3BlockFn12MtoS b12(0x32, 70, 7, 15, true);
+	}
+	TEST_CASE("MD3Block - Fn12")
+	{
+		MD3BlockFn12MtoS b12(0x32, 70, 7, 15, true);
 		REQUIRE(b12.GetStationAddress() == 0x32);
 		REQUIRE(b12.IsMasterToStationMessage() == true);
 		REQUIRE(b12.GetFunctionCode() == 12);
@@ -461,7 +464,9 @@ namespace UnitTests
 		REQUIRE(b12.GetStartingModuleAddress() == 70);
 		REQUIRE(b12.GetModuleCount() == 15);
 		REQUIRE(b12.CheckSumPasses());
-
+	}
+	TEST_CASE("MD3Block - Fn14")
+	{
 		// New style no change response constructor - contains a digital sequence number (6)
 		MD3BlockFn14StoM b14(0x25, 6);
 		REQUIRE(b14.IsMasterToStationMessage() == false);
@@ -482,7 +487,86 @@ namespace UnitTests
 		REQUIRE(b14a.GetData() == 0xa50e700e);
 		REQUIRE(b14a.IsEndOfMessageBlock() == true);
 		REQUIRE(b14a.CheckSumPasses());
+	}
+	TEST_CASE("MD3Block - Fn17")
+	{
+		MD3BlockFn17MtoS b17(0x63, 0xF0, 15);
+		REQUIRE(b17.GetStationAddress() == 0x63);
+		REQUIRE(b17.GetModuleAddress() == 0xF0);
+		REQUIRE(b17.GetOutputSelection() == 15);
+		REQUIRE(!b17.IsEndOfMessageBlock());
+		REQUIRE(b17.IsFormattedBlock());
+		REQUIRE(b17.CheckSumPasses());
 
+		MD3BlockData SecondBlock = b17.GenerateSecondBlock();
+		REQUIRE(b17.VerifyAgainstSecondBlock(SecondBlock));
+		REQUIRE(SecondBlock.IsEndOfMessageBlock());
+		REQUIRE(!SecondBlock.IsFormattedBlock());
+		REQUIRE(SecondBlock.CheckSumPasses());
+	}
+	TEST_CASE("MD3Block - Fn19")
+	{
+		MD3BlockFn19MtoS b19(0x63, 0xF0);
+		REQUIRE(b19.GetStationAddress() == 0x63);
+		REQUIRE(b19.GetModuleAddress() == 0xF0);
+		REQUIRE(!b19.IsEndOfMessageBlock());
+		REQUIRE(b19.IsFormattedBlock());
+		REQUIRE(b19.CheckSumPasses());
+
+		MD3BlockData Block2 = b19.GenerateSecondBlock(0x55);
+		REQUIRE(b19.VerifyAgainstSecondBlock(Block2));
+		REQUIRE(b19.GetOutputFromSecondBlock(Block2) == 0x55);
+		REQUIRE(Block2.IsEndOfMessageBlock());
+		REQUIRE(!Block2.IsFormattedBlock());
+		REQUIRE(Block2.CheckSumPasses());
+	}
+	TEST_CASE("MD3Block - Fn16")
+	{
+		MD3BlockFn16MtoS b16(0x63, true);
+		REQUIRE(b16.GetStationAddress() == 0x63);
+		REQUIRE(b16.IsEndOfMessageBlock());
+		REQUIRE(b16.IsFormattedBlock());
+		REQUIRE(b16.CheckSumPasses());
+		REQUIRE(b16.IsValid());
+		REQUIRE(b16.GetNoCounterReset() == true);
+
+		MD3BlockFn16MtoS b16b(0x73, false);
+		REQUIRE(b16b.GetStationAddress() == 0x73);
+		REQUIRE(b16b.IsEndOfMessageBlock());
+		REQUIRE(b16b.IsFormattedBlock());
+		REQUIRE(b16b.CheckSumPasses());
+		REQUIRE(b16b.IsValid());
+		REQUIRE(b16b.GetNoCounterReset() == false);
+	}
+	TEST_CASE("MD3Block - Fn23")
+	{
+		MD3BlockFn23MtoS b23(0x63, 0x37, 15);
+		REQUIRE(b23.GetStationAddress() == 0x63);
+		REQUIRE(b23.GetModuleAddress() == 0x37);
+		REQUIRE(b23.GetChannel() == 15);
+		REQUIRE(!b23.IsEndOfMessageBlock());
+		REQUIRE(b23.IsFormattedBlock());
+		REQUIRE(b23.CheckSumPasses());
+
+		MD3BlockData SecondBlock23 = b23.GenerateSecondBlock(0x55);
+		REQUIRE(b23.VerifyAgainstSecondBlock(SecondBlock23));
+		REQUIRE(b23.GetOutputFromSecondBlock(SecondBlock23) == 0x55);
+		REQUIRE(SecondBlock23.IsEndOfMessageBlock());
+		REQUIRE(!SecondBlock23.IsFormattedBlock());
+		REQUIRE(SecondBlock23.CheckSumPasses());
+	}
+	TEST_CASE("MD3Block - Fn40")
+	{
+		MD3BlockFn40 b40(0x3F);
+		REQUIRE(b40.IsValid());
+		REQUIRE(b40.GetData() == 0x3f28c0d7);
+		REQUIRE(b40.GetStationAddress() == 0x3F);
+		REQUIRE(b40.IsEndOfMessageBlock());
+		REQUIRE(b40.IsFormattedBlock());
+		REQUIRE(b40.CheckSumPasses());
+	}
+	TEST_CASE("MD3Block - Fn43 Fn15 Fn30")
+	{
 		MD3BlockFn43MtoS b43(0x38, 999);
 		REQUIRE(b43.GetMilliseconds() == 999);
 		REQUIRE(b43.GetStationAddress() == 0x38);
@@ -507,61 +591,49 @@ namespace UnitTests
 		REQUIRE(b30.IsEndOfMessageBlock() == true);
 		REQUIRE(b30.IsFormattedBlock() == true);
 		REQUIRE(b30.CheckSumPasses());
-
-		MD3BlockFn40 b40(0x3F);
-		REQUIRE(b40.IsValid());
-		REQUIRE(b40.GetData() == 0x3f28c0d7);
-		REQUIRE(b40.GetStationAddress() == 0x3F);
-		REQUIRE(b40.IsEndOfMessageBlock());
-		REQUIRE(b40.IsFormattedBlock());
-		REQUIRE(b40.CheckSumPasses());
-
-		MD3BlockFn17MtoS b17(0x63, 0xF0, 15);
-		REQUIRE(b17.GetStationAddress() == 0x63);
-		REQUIRE(b17.GetModuleAddress() == 0xF0);
-		REQUIRE(b17.GetOutputSelection() == 15);
-		REQUIRE(!b17.IsEndOfMessageBlock());
-		REQUIRE(b17.IsFormattedBlock());
-		REQUIRE(b17.CheckSumPasses());
-
-		MD3BlockData SecondBlock = b17.GenerateSecondBlock();
-		REQUIRE(b17.VerifyAgainstSecondBlock(SecondBlock));
-		REQUIRE(SecondBlock.IsEndOfMessageBlock());
-		REQUIRE(!SecondBlock.IsFormattedBlock());
-		REQUIRE(SecondBlock.CheckSumPasses());
-
-		MD3BlockFn19MtoS b19(0x63, 0xF0);
-		REQUIRE(b19.GetStationAddress() == 0x63);
-		REQUIRE(b19.GetModuleAddress() == 0xF0);
-		REQUIRE(!b19.IsEndOfMessageBlock());
-		REQUIRE(b19.IsFormattedBlock());
-		REQUIRE(b19.CheckSumPasses());
-
-		MD3BlockData Block2 = b19.GenerateSecondBlock(0x55);
-		REQUIRE(b19.VerifyAgainstSecondBlock(Block2));
-		REQUIRE(b19.GetOutputFromSecondBlock(Block2) == 0x55);
-		REQUIRE(Block2.IsEndOfMessageBlock());
-		REQUIRE(!Block2.IsFormattedBlock());
-		REQUIRE(Block2.CheckSumPasses());
-
-		MD3BlockFn16MtoS b16(0x63, true);
-		REQUIRE(b16.GetStationAddress() == 0x63);
-		REQUIRE(b16.IsEndOfMessageBlock());
-		REQUIRE(b16.IsFormattedBlock());
-		REQUIRE(b16.CheckSumPasses());
-		REQUIRE(b16.IsValid());
-		REQUIRE(b16.GetNoCounterReset() == true);
-
-		MD3BlockFn16MtoS b16b(0x73, false);
-		REQUIRE(b16b.GetStationAddress() == 0x73);
-		REQUIRE(b16b.IsEndOfMessageBlock());
-		REQUIRE(b16b.IsFormattedBlock());
-		REQUIRE(b16b.CheckSumPasses());
-		REQUIRE(b16b.IsValid());
-		REQUIRE(b16b.GetNoCounterReset() == false);
 	}
 
-	TEST_CASE(SUITE("AnalogUnconditionalTest1"))
+#pragma endregion
+
+#pragma region Station Tests
+
+	TEST_CASE("Station - BinaryEvent")
+	{
+		WriteConfFileToCurrentWorkingDirectory();
+
+		WARN("Trying to construct an OutStationPort");
+
+		// The 1 is for concurrency hint - usually the number of cores.
+		IOManager IOMgr(1);
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+
+		// TEST EVENTS WITH DIRECT CALL
+		// Test on a valid binary point
+		const odc::Binary b((bool)true);
+		const int index = 1;
+		auto res = MD3Port->Event(b, index, "TestHarness");
+
+		REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set. 1 is defined
+
+																// Test on an undefined binary point. 40 NOT defined in the config text at the top of this file.
+		const int index2 = 200;
+		auto res2 = MD3Port->Event(b, index2, "TestHarness");
+		REQUIRE((res2.get() == odc::CommandStatus::UNDEFINED));	// The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
+																// Wait for some period to do something?? Check that the port is open and we can connect to it?
+
+		IOMgr.Shutdown();
+	}
+	TEST_CASE("Station - AnalogUnconditionalF5")
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
 		// Checks the TCP send output for correct data and format.
@@ -620,7 +692,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-	TEST_CASE(SUITE("CounterScanTest1"))
+	TEST_CASE("Station - CounterScanFn30")
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
 		// Checks the TCP send output for correct data and format.
@@ -710,7 +782,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-	TEST_CASE(SUITE("AnalogDeltaScanTest1"))
+	TEST_CASE("Station - AnalogDeltaScanFn6")
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
 		// Checks the TCP send output for correct data and format.
@@ -800,8 +872,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-
-	TEST_CASE(SUITE("DigitalUnconditionalTest1"))
+	TEST_CASE("Station - DigitalUnconditionalFn7")
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
 		// Checks the TCP send output for correct data and format.
@@ -853,7 +924,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-	TEST_CASE(SUITE("DigitalChangeOnlyFn8Test1"))
+	TEST_CASE("Station - DigitalChangeOnlyFn8")
 	{
 		// Tests time tagged change response Fn 8
 		WriteConfFileToCurrentWorkingDirectory();
@@ -919,7 +990,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-	TEST_CASE(SUITE("DigitalHRERFn9Test1"))
+	TEST_CASE("Station - DigitalHRERFn9")
 	{
 		// Tests time tagged change response Fn 9
 
@@ -1051,7 +1122,7 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
-		MD3BlockData datablock(currenttime / 1000, true );
+		MD3BlockData datablock((uint32_t)(currenttime / 1000), true );
 		output << datablock.ToBinaryString();
 
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1061,8 +1132,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-
-	TEST_CASE(SUITE("DigitalCOSScanFn10Test1"))
+	TEST_CASE("Station - DigitalCOSScanFn10")
 	{
 		// Tests change response Fn 10
 		WriteConfFileToCurrentWorkingDirectory();
@@ -1124,8 +1194,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-
-	TEST_CASE(SUITE("DigitalCOSFn11Test1"))
+	TEST_CASE("Station - DigitalCOSFn11")
 	{
 		WriteConfFileToCurrentWorkingDirectory();
 
@@ -1237,7 +1306,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-	TEST_CASE(SUITE("DigitalUnconditionalFn12Test1"))
+	TEST_CASE("Station - DigitalUnconditionalFn12")
 	{
 		WriteConfFileToCurrentWorkingDirectory();
 
@@ -1303,11 +1372,8 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-	TEST_CASE(SUITE("FreezeResetFn16Test1"))
+	TEST_CASE("Station - FreezeResetFn16")
 	{
-		// This test was written for where the outstation is simply sinking the timedate change command
-		// Will have to change if passed to ODC and events handled here
-		// One of the few multiblock commands
 		WriteConfFileToCurrentWorkingDirectory();
 
 		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
@@ -1353,7 +1419,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-	TEST_CASE(SUITE("POMControlFn17Test1"))
+	TEST_CASE("Station - POMControlFn17")
 	{
 		// Test that we can generate a packet set that matches a captured packet
 		MD3BlockFn17MtoS testblock(0x27, 0xa5, 0);
@@ -1366,8 +1432,6 @@ namespace UnitTests
 		MD3BlockData sb2 = testblock2.GenerateSecondBlock();
 		REQUIRE(sb2.ToString() == "595b0800c000");
 
-		// This test was written for where the outstation is simply sinking the timedate change command
-		// Will have to change if passed to ODC and events handled here
 		// One of the few multiblock commands
 		WriteConfFileToCurrentWorkingDirectory();
 
@@ -1433,7 +1497,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-	TEST_CASE(SUITE("DOMControlFn19Test1"))
+	TEST_CASE("Station - DOMControlFn19")
 	{
 		// Test that we can generate a packet set that matches a captured packet
 		MD3BlockFn19MtoS testblock(0x27, 0xa5);
@@ -1516,15 +1580,12 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-
-	TEST_CASE(SUITE("BinaryEventTest"))
+	TEST_CASE("Station - AOMControlFn23")
 	{
+		// One of the few multiblock commands
 		WriteConfFileToCurrentWorkingDirectory();
 
-		WARN("Trying to construct an OutStationPort");
-
-		// The 1 is for concurrency hint - usually the number of cores.
-		IOManager IOMgr(1);
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
 		asio::io_service IOS(1);
 
 		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
@@ -1537,24 +1598,56 @@ namespace UnitTests
 
 		MD3Port->Enable();
 
-		// TEST EVENTS WITH DIRECT CALL
-		// Test on a valid binary point
-		const odc::Binary b((bool)true);
-		const int index = 1;
-		auto res = MD3Port->Event(b, index, "TestHarness");
+		//  Station 0x7C
+		MD3BlockFn23MtoS commandblock(0x7C, 35, 1);
 
-		REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set. 1 is defined
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
 
-		// Test on an undefined binary point. 40 NOT defined in the config text at the top of this file.
-		const int index2 = 200;
-		auto res2 = MD3Port->Event(b, index2, "TestHarness");
-		REQUIRE((res2.get() == odc::CommandStatus::UNDEFINED));	// The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
-		// Wait for some period to do something?? Check that the port is open and we can connect to it?
+		MD3BlockData datablock = commandblock.GenerateSecondBlock(0x55);
+		output << datablock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
+
+		// Send the Command
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f23017a00");
+
+		REQUIRE(Response == DesiredResult);	// OK Command
+
+		//---------------------------
+		// Now do again with a bodgy second block.
+		output << commandblock.ToBinaryString();
+		MD3BlockData datablock2(1000, true);	// Non sensical block
+		output << datablock2.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e23017c00");
+
+		REQUIRE(Response == DesiredResult2);	// Control/Scan Rejected Command
+
+												//---------------------------
+		MD3BlockFn23MtoS commandblock2(0x7C, 36, 1);	// Invalid control point
+		output << commandblock2.ToBinaryString();
+
+		MD3BlockData datablock3 = commandblock.GenerateSecondBlock(0x55);
+		output << datablock3.ToBinaryString();
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24015900");
+
+		REQUIRE(Response == DesiredResult3);	// Control/Scan Rejected Command
 
 		IOMgr.Shutdown();
 	}
-
-	TEST_CASE(SUITE("SystemsSignOnFn40Test1"))
+	TEST_CASE("Station - SystemsSignOnFn40")
 	{
 		WriteConfFileToCurrentWorkingDirectory();
 
@@ -1593,8 +1686,7 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
-
-	TEST_CASE(SUITE("ChangeTimeDateFn43Test1"))
+	TEST_CASE("Station - ChangeTimeDateFn43")
 	{
 		// This test was written for where the outstation is simply sinking the timedate change command
 		// Will have to change if passed to ODC and events handled here
@@ -1622,7 +1714,7 @@ namespace UnitTests
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
 
-		MD3BlockData datablock(currenttime / 1000,true);
+		MD3BlockData datablock((uint32_t)(currenttime / 1000),true);
 		output << datablock.ToBinaryString();
 
 		// Hook the output function with a lambda
@@ -1650,4 +1742,57 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
+
+	TEST_CASE("Station - MultiDropUsingFn16")
+	{
+		// Here we test the abilility to support multiple Stations on the one Port/IP Combination.
+		// The Stations will be 0x7C, 0x01, 0x5C
+		//
+
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+
+		//  Station 0x7C
+		MD3BlockFn16MtoS commandblock(0x7C, true);
+
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Hook the output function with a lambda
+		// &Response - had to make response global to get access - having trouble with casting...
+		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
+		Response = "Not Set";
+
+		// Send the Command
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f01034600");
+
+		REQUIRE(Response == DesiredResult);	// OK Command
+
+											//---------------------------
+		MD3BlockFn16MtoS commandblock2(0, false);	// Reset all counters on all stations
+		output << commandblock2.ToBinaryString();
+		Response = "Not Set";
+
+		MD3Port->ReadCompletionHandler(write_buffer);
+
+		REQUIRE(Response == "Not Set");	// As address zero, no response expected
+
+		IOMgr.Shutdown();
+	}
+#pragma endregion
 }

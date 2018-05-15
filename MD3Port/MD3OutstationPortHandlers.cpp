@@ -51,11 +51,11 @@
 13 , 3710363          Analog No Change Reply - Done
 14 , 32040              Digital No Change Reply - Done
 15 , 20165              Control Request OK - Done
-16 , 2                       Freeze And Reset
+16 , 2                       Freeze And Reset - Done
 17 , 53                    POM Type Control - Done
 19 , 2                      DOM Type Control - Done - Cant find example in the data
-21 , 1                      Raise Lower Type Control
-23 , 1                       AOM Type Control
+21 , 1                      Raise Lower Type Control - This is reserved for future use...
+23 , 1                       AOM Type Control - No valid example.. yet
 30 , 135                  Control or Scan Request Rejected - Done
 31 , 1                      Counter Scan - Done - checksum passes
 40 , 1                       System SIGNON Control  - Done - but failed checksum so probably not used
@@ -168,6 +168,8 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 	case RAISE_LOWER_TYPE_CONTROL :
 		break;
 	case AOM_TYPE_CONTROL :
+		ExpectedMessageSize = 2;
+		DoAOMControl(static_cast<MD3BlockFn23MtoS&>(Header), CompleteMD3Message);
 		break;
 	case CONTROL_OR_SCAN_REQUEST_REJECTED:
 		// Master Only
@@ -1207,6 +1209,64 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3Bl
 		failed = true;
 	}
 
+	if (Header.GetStationAddress() != 0)
+	{
+		if (failed)
+		{
+			SendControlOrScanRejected(Header);
+			return;
+		}
+
+		//TODO: SJE Send the POM Control command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
+		SendControlOK(Header);
+	}
+	else
+	{
+		if (!failed)
+		{
+			//TODO: SJE Send the POM Control command through ODC but dont wait for a response. There will be none.
+			// No response
+		}
+	}
+}
+
+void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+{
+	// We have two blocks incomming, not just one.
+	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+	// We have to pass the command to ODC, then setup a lambda to handle the sending of the response - when we get it.
+
+	// Two possible responses, they depend on the future result - of type CommandStatus.
+	// SUCCESS = 0 /// command was accepted, initiated, or queue
+	// TIMEOUT = 1 /// command timed out before completing
+	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
+	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
+	// Non-zero will be a fail.
+
+	bool failed = false;
+
+	// Check all the things we can
+	if (CompleteMD3Message.size() != 2)
+	{
+		// If we did not get two blocks, then send back a command rejected message.
+		failed = true;
+	}
+
+	if (!Header.VerifyAgainstSecondBlock(CompleteMD3Message[1]))
+	{
+		// Message verification failed - something was corrupted
+		failed = true;
+	}
+
+	// Check that the control point is defined, otherwise return a fail. The value 0 to 15 is a trip or close for points 0 to 7 (hence mod 8?)
+	//TODO: SJE AOM Control needs analog points to control
+/*	bool foundentry = CheckBinaryControlExistsUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel());
+	if (!foundentry)
+	{
+		// Control point does not exist...
+		failed = true;
+	}
+*/
 	if (Header.GetStationAddress() != 0)
 	{
 		if (failed)
