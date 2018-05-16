@@ -44,6 +44,10 @@
 
 //TODO: Check out http://www.pantheios.org/ logging library..
 
+//#define SOCK
+
+std::unordered_map<std::string, std::shared_ptr<MD3Connection>> MD3Connection::ConnectionMap;
+
 MD3OutstationPort::MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
 	MD3Port(aName, aConfFilename, aConfOverrides)
 {
@@ -53,6 +57,7 @@ MD3OutstationPort::MD3OutstationPort(std::string aName, std::string aConfFilenam
 MD3OutstationPort::~MD3OutstationPort()
 {
 	Disable();
+	// Remove any this pointers so they cant be accessed!
 }
 
 void MD3OutstationPort::SetSendTCPDataFn(std::function<void(std::string)> Send)
@@ -60,16 +65,22 @@ void MD3OutstationPort::SetSendTCPDataFn(std::function<void(std::string)> Send)
 	SendTCPDataFn = Send;
 }
 
-
-
 void MD3OutstationPort::Enable()
 {
 	if (enabled) return;
 	try
 	{
+#ifdef SOCK
 		if (pSockMan.get() == nullptr)
 			throw std::runtime_error("Socket manager uninitilised");
+
 		pSockMan->Open();
+#else
+		if (pConnection.get() == nullptr)
+			throw std::runtime_error("Connection manager uninitilised");
+
+		pConnection->Open();	// Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+#endif
 		enabled = true;
 	}
 	catch (std::exception& e)
@@ -82,11 +93,18 @@ void MD3OutstationPort::Disable()
 {
 	if (!enabled) return;
 	enabled = false;
+#ifdef SOCK
 	if (pSockMan.get() == nullptr)
 		return;
 	pSockMan->Close();
+#else
+	if (pConnection.get() == nullptr)
+		return;
+	pConnection->Close(); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+#endif
 }
 
+// Have to fire the SocketStateHandler for all other OutStations sharing this socket.
 void MD3OutstationPort::SocketStateHandler(bool state)
 {
 	std::string msg;
@@ -103,23 +121,39 @@ void MD3OutstationPort::SocketStateHandler(bool state)
 	LOG("MD3OutstationPort", openpal::logflags::INFO, "", msg);
 }
 
-
 void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
 {
-	//TODO: Do we re-read the conf file - so we can do a live reload?
-
-	//TODO: We need a static list of sockets, so that if the socket already exists, we dont try and create it again.
-	// The socket id will be ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
-	// We also need a list of Outstations on this socket, so that we can call the appropriate
+	//TODO: Do we re-read the conf file - so we can do a live reload? - How do we kill all the sockets and connections properly?
 
 	//TODO: use event buffer size once socket manager supports it
+
+#ifdef SOCK
+	// Remember reset for a shared pointer is the same as a new for an old pointer!
 	pSockMan.reset(new TCPSocketManager<std::string>
 		(pIOS, isServer, MyConf()->mAddrConf.IP, std::to_string(MyConf()->mAddrConf.Port),
 			std::bind(&MD3OutstationPort::ReadCompletionHandler, this, std::placeholders::_1),
 			std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1),
 			true,
 			MyConf()->TCPConnectRetryPeriodms));
+#else
+	std::string ChannelID = MyConf()->mAddrConf.IP + ":" + std::to_string(MyConf()->mAddrConf.Port);
+
+	pConnection = MD3Connection::GetConnection(ChannelID); //Static method
+
+	if (pConnection == nullptr)
+	{
+		pConnection.reset(new MD3Connection(pIOS, isServer, MyConf()->mAddrConf.IP,
+			std::to_string(MyConf()->mAddrConf.Port), true, MyConf()->TCPConnectRetryPeriodms));	// Retry period cannot be different for multidrop outstations
+
+		MD3Connection::AddConnection(ChannelID, pConnection);	//Static method
+	}
+
+	pConnection->AddOutStation(MyConf()->mAddrConf.OutstationAddr,
+		std::bind(&MD3OutstationPort::RouteMD3Message, this, std::placeholders::_1),
+		std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1) );
+#endif
 }
+
 
 // The only method that sends to the TCP Socket
 void MD3OutstationPort::SendResponse(std::vector<MD3BlockData> &CompleteMD3Message)
@@ -138,13 +172,23 @@ void MD3OutstationPort::SendResponse(std::vector<MD3BlockData> &CompleteMD3Messa
 	}
 
 	// This is a pointer to a function, so that we can hook it for testing. Otherwise calls the pSockMan Write templated function
-	// Small overhead to allow for testing - Is there a better way? - could not hook the pSockMan->Write function and/or another passed in function due to difference between method and lambda
+	// Small overhead to allow for testing - Is there a better way? - could not hook the pSockMan->Write function and/or another passed in function due to differences between a method and a lambda
 	if (SendTCPDataFn != nullptr)
 		SendTCPDataFn(MD3Message);
 	else
+	{
+#ifdef SOCK
 		pSockMan->Write(std::string(MD3Message));
+#else
+		pConnection->Write(std::string(MD3Message));
+#endif
+	}
 }
 
+// We need one read completion handler hooked to each address/port combination. This method is reentrant,
+// so could make it static and have mutliple ports call this
+// Then we just need to be able to find the correct outstation to give the data to...
+// If this was static, you dont know which address/port combination you came from...
 void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 {
 	// We are currently assuming a whole complete packet will turn up in one unit. If not it will be difficult to do the packet decoding and multidrop routing.

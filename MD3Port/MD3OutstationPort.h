@@ -35,11 +35,12 @@
 #include "MD3.h"
 #include "MD3Port.h"
 #include "MD3Engine.h"
+#include "MD3Connection.h"
 
-class MD3OutstationPort: public MD3Port
+class MD3OutstationPort : public MD3Port
 {
-	enum AnalogChangeType {NoChange, DeltaChange, AllChange};
-	enum AnalogCounterModuleType {CounterModule, AnalogModule};
+	enum AnalogChangeType { NoChange, DeltaChange, AllChange };
+	enum AnalogCounterModuleType { CounterModule, AnalogModule };
 
 public:
 	MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
@@ -152,9 +153,14 @@ private:
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
 	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing
 
+	// We need a list of OutStations on a given Channel ID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
+	// When we get data rxd by the port we can then send it to the appropriate OutStation
+	// static std::unordered_map<std::string, std::shared_ptr<MD3Connection>> ConnectionMap;
+
 	// Worker functions to try and clean up the code...
 	MD3PortConf* MyConf();
 	std::shared_ptr<MD3PointConf> MyPointConf();
+	std::shared_ptr<MD3Connection> pConnection;
 };
 
 #endif

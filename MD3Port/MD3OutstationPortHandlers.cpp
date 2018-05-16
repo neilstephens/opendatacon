@@ -570,7 +570,7 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 			}
 			else if (delta != 0)
 			{
-				ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket(delta));
+				ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket((uint16_t)delta));
 				LastPointmsec = CurrentPoint.ChangedTime;						// The last point time moves with time added by the msec packets
 			}
 		}
@@ -624,7 +624,7 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 		BuildScanReturnBlocksFromList(ModuleList, NumberOfDataBlocks, Header.GetStationAddress(), false, ResponseMD3Message);
 
 		MD3BlockFn10 &firstblock = (MD3BlockFn10 &)ResponseMD3Message[0];
-		firstblock.SetModuleCount(ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
+		firstblock.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
 
 		SendResponse(ResponseMD3Message);
 	}
@@ -693,7 +693,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 		BuildScanReturnBlocksFromList(ModuleList, Header.GetModuleCount(), Header.GetStationAddress(), true, ResponseMD3Message);
 
-		FormattedBlock.SetModuleCount(ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
+		FormattedBlock.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
 
 		if (AreThereTaggedEvents)
 		{
@@ -811,7 +811,7 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 
 	BuildScanReturnBlocksFromList(ModuleList, Header.GetModuleCount(), Header.GetStationAddress(), true, ResponseMD3Message);
 
-	FormattedBlock.SetModuleCount(ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
+	FormattedBlock.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
 
 	// Mark the last block
 	if (ResponseMD3Message.size() != 0)
@@ -1016,7 +1016,7 @@ void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int Star
 void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3BlockData> & ResponseMD3Message)
 {
 	// For each module address, or the max we can send
-	for (int i = 0; (i < ModuleList.size()) && (i < MaxNumberOfDataBlocks); i++)
+	for (int i = 0; (i < (int)ModuleList.size()) && (i < MaxNumberOfDataBlocks); i++)
 	{
 		uint8_t ModuleAddress = ModuleList[i];
 

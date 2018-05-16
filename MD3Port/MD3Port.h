@@ -78,7 +78,7 @@ public:
 
 protected:
 	bool isServer;
-	std::unique_ptr<TCPSocketManager<std::string>> pSockMan;
+	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 	TCPClientServer ClientOrServer();
 };
 

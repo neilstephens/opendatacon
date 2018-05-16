@@ -29,7 +29,6 @@
 #include "MD3PortConf.h"
 #include <openpal/logging/LogLevels.h>
 
-
 MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pSockMan(nullptr)

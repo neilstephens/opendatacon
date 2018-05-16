@@ -1743,6 +1743,93 @@ namespace UnitTests
 		IOMgr.Shutdown();
 	}
 
+	void ReadCompletionHandler(buf_t& readbuf)
+	{
+		int bufsize = readbuf.size();
+		std::string S(bufsize, 0);
+
+		for (int i = 0; i < bufsize; i++)
+		{
+			S[i] = readbuf.sgetc();
+			readbuf.consume(1);
+		}
+
+		Response = S;	// Set global variable
+	}
+	void SocketStateHandler(bool state)
+	{
+		std::string msg;
+		if (state)
+		{
+
+			msg = "Connection established.";
+		}
+		else
+		{
+			msg = "Connection closed.";
+		}
+	}
+	void nevercomesback()
+	{
+		while (1);
+	}
+
+	TEST_CASE("Station - SocketTest")
+	{
+		// Here we test the abilility to support multiple Stations on the one Port/IP Combination.
+		// The Stations will be 0x7C, 0x01, 0x5C
+		//
+
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
+
+		Response = "Not Set";
+
+		// Open a listening socket on 127.0.0.1, 20000 and see if we get what we expect...
+		pSockMan.reset(new TCPSocketManager<std::string>
+			(&IOS, true, "127.0.0.1", "20000", ReadCompletionHandler, SocketStateHandler, true,	2000));
+
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+
+		//  Station 0x7C
+		MD3BlockFn16MtoS commandblock(0x7C, true);
+
+		// Send the Command
+		pSockMan->Write(commandblock.ToBinaryString());
+
+		// Spin our wheels for a while allow asio to switch to another strand
+
+		// Need to do an IOS.run() command, and exit to make this work...
+
+		uint64_t eventtime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch + 2000;
+
+		while (eventtime > asiopal::UTCTimeSource::Instance().Now().msSinceEpoch)
+		{
+			//not ready - let's lend a hand to speed things up
+			IOS.poll_one();
+		}
+
+		// That should have been enough for asio to do the TCP IO.
+
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f01034600");
+
+		REQUIRE(Response == DesiredResult);	// OK Command
+
+		IOMgr.Shutdown();
+	}
 	TEST_CASE("Station - MultiDropUsingFn16")
 	{
 		// Here we test the abilility to support multiple Stations on the one Port/IP Combination.
