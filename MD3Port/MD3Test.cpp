@@ -46,7 +46,7 @@ const char *conffilename = "MD3Config.conf";
 const char *conffile = R"001(
 {
 	"IP" : "127.0.0.1",
-	"Port" : 20000,
+	"Port" : 1000,
 	"MasterAddr" : 0,
 	"OutstationAddr" : 124,
 	"ServerType" : "PERSISTENT",
@@ -70,7 +70,6 @@ namespace UnitTests
 		ofs << conffile;
 		ofs.close();
 	}
-	std::string Response;
 
 	// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
 	// Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
@@ -670,9 +669,8 @@ namespace UnitTests
 		}
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Analog Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -729,9 +727,8 @@ namespace UnitTests
 		}
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Analog Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -819,9 +816,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -908,9 +904,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		MD3Port->ReadCompletionHandler(write_buffer);
 
@@ -949,9 +944,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1016,9 +1010,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1157,9 +1150,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1219,8 +1211,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1331,8 +1323,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1397,9 +1389,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1459,9 +1450,8 @@ namespace UnitTests
 		output << datablock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1542,9 +1532,8 @@ namespace UnitTests
 		output << datablock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1609,9 +1598,8 @@ namespace UnitTests
 		output << datablock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1673,9 +1661,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1718,9 +1705,8 @@ namespace UnitTests
 		output << datablock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
 		MD3Port->ReadCompletionHandler(write_buffer);
@@ -1742,6 +1728,8 @@ namespace UnitTests
 
 		IOMgr.Shutdown();
 	}
+
+	std::string Response;
 
 	void ReadCompletionHandler(buf_t& readbuf)
 	{
@@ -1769,10 +1757,6 @@ namespace UnitTests
 			msg = "Connection closed.";
 		}
 	}
-	void nevercomesback()
-	{
-		while (1);
-	}
 
 	TEST_CASE("Station - SocketTest")
 	{
@@ -1791,11 +1775,6 @@ namespace UnitTests
 
 		Response = "Not Set";
 
-		// Open a listening socket on 127.0.0.1, 20000 and see if we get what we expect...
-		pSockMan.reset(new TCPSocketManager<std::string>
-			(&IOS, true, "127.0.0.1", "20000", ReadCompletionHandler, SocketStateHandler, true,	2000));
-
-
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
@@ -1804,25 +1783,37 @@ namespace UnitTests
 
 		MD3Port->Enable();
 
+		// We dont have to consider the timer going out of scope in this use case.
+		Timer_t timer(IOS);
+		timer.expires_from_now(std::chrono::seconds(5));
+		timer.async_wait([&IOS,&MD3Port](asio::error_code err_code)	// [=] all autos by copy, [&] all autos by ref
+		{
+			// If there was no more work, the asio::io_service will exit from the IOS.run() below.
+			// However something is keeping it running, so use the stop command to force the issue.
+			MD3Port->Disable();
+			IOS.stop();
+		});
+
+		// An outstation is a server by default (Master connects to it...)
+		// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
+		pSockMan.reset(new TCPSocketManager<std::string>
+			(&IOS, false, "127.0.0.1", "1000",
+				std::bind(&ReadCompletionHandler, std::placeholders::_1),
+				std::bind(&SocketStateHandler, std::placeholders::_1),
+				true, 500));
+		pSockMan->Open();
+
+		// Send the Command - results in an async write
 		//  Station 0x7C
 		MD3BlockFn16MtoS commandblock(0x7C, true);
-
-		// Send the Command
 		pSockMan->Write(commandblock.ToBinaryString());
 
-		// Spin our wheels for a while allow asio to switch to another strand
 
-		// Need to do an IOS.run() command, and exit to make this work...
+		IOS.run();	// Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
+					// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
+					// If the IOS runs out of work, it must be reset before being run again.
 
-		uint64_t eventtime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch + 2000;
-
-		while (eventtime > asiopal::UTCTimeSource::Instance().Now().msSinceEpoch)
-		{
-			//not ready - let's lend a hand to speed things up
-			IOS.poll_one();
-		}
-
-		// That should have been enough for asio to do the TCP IO.
+		pSockMan->Close();
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f01034600");
 
@@ -1859,9 +1850,8 @@ namespace UnitTests
 		output << commandblock.ToBinaryString();
 
 		// Hook the output function with a lambda
-		// &Response - had to make response global to get access - having trouble with casting...
-		MD3Port->SetSendTCPDataFn([](std::string MD3Message) { Response = MD3Message; });
-		Response = "Not Set";
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
 		MD3Port->ReadCompletionHandler(write_buffer);

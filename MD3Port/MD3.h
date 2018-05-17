@@ -28,10 +28,17 @@
 #define MD3_H_
 
 #include <cstdint>
+#include <opendatacon/DataPort.h>
+#include <opendatacon/util.h>
 
 // Hide some of the code to make Logging cleaner
 #define LOG(logger, filters, location, msg) \
 	pLoggers->Log(openpal::LogEntry(logger, filters, location, std::string(msg).c_str(),-1));
+
+
+typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+typedef std::shared_ptr<Timer_t> pTimer_t;
+
 
 // Note that in the message block format, these characters are not excluded from appearing - so their appearance and use is message state dependent
 // THESE ARE NOT PRESENT IN THE tcp STREAMS...

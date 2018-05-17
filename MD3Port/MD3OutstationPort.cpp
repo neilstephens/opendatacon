@@ -44,7 +44,7 @@
 
 //TODO: Check out http://www.pantheios.org/ logging library..
 
-//#define SOCK
+#define SOCK
 
 std::unordered_map<std::string, std::shared_ptr<MD3Connection>> MD3Connection::ConnectionMap;
 

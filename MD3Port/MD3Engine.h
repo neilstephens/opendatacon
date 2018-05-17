@@ -68,12 +68,11 @@ public:
 
 	MD3BlockData() {};
 
-	// We have received 6 bytes (a block on a stream now we need to decode it)
+	// We have received 6 bytes (a block on a stream now we need to decode it) it may not be valid!
 	MD3BlockData(const MD3BlockArray _data)
 	{
 		data = _data[0] << 24 | _data[1] << 16 | _data[2] << 8 | _data[3];
 		endbyte = _data[4];
-		assert(_data[5] == 0x00);	// Sixth byte should always be zero.
 	}
 	MD3BlockData(std::string hexdata)
 	{
