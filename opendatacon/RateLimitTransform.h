@@ -35,7 +35,7 @@
 class RateLimitTransform: public Transform
 {
 public:
-	RateLimitTransform(Json::Value params):
+	RateLimitTransform(const Json::Value& params):
 		Transform(params)
 	{
 		std::string name = "DEFAULT";

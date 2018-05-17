@@ -170,12 +170,12 @@ const auto SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGBREAK };
 const auto SIG_IGNORE = { SIGINT };
 #else
 static const std::initializer_list<u_int8_t> SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGQUIT };
-static const std::initializer_list<u_int8_t> SIG_IGNORE = { SIGINT };
+static const std::initializer_list<u_int8_t> SIG_IGNORE = { SIGINT, SIGTSTP };
 #endif
 
-inline std::string GetLibFileName(const std::string LibName)
+inline std::string GetLibFileName(const std::string& LibName)
 {
 	return DYNLIBPRE + LibName + DYNLIBEXT;
 }
 
-#endif
+#endif //ODC_PLATFORM_H_

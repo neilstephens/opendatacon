@@ -54,7 +54,8 @@ public:
 	std::string GetLogName();
 
 private:
-	static std::string FilterToString(const openpal::LogFilters& filters);
+	void OpenNextLog();
+	static std::string FilterToString(const openpal::LogFilters& filters); 
 
 	bool mPrintLocation;
 	std::string mLogName;

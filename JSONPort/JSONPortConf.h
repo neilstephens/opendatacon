@@ -40,7 +40,7 @@ typedef struct
 class JSONPortConf: public DataPortConf
 {
 public:
-	JSONPortConf(std::string FileName, const Json::Value& ConfOverrides):
+	JSONPortConf(const std::string& FileName, const Json::Value& ConfOverrides):
 		retry_time_ms(3000),
 		evt_buffer_size(1000),
 		style_output(false)

@@ -35,7 +35,7 @@
 class ModbusOutstationPort: public ModbusPort
 {
 public:
-	ModbusOutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	ModbusOutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~ModbusOutstationPort() override;
 
 	void Enable() override;

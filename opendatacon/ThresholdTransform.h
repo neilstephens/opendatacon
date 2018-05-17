@@ -34,7 +34,7 @@
 class ThresholdTransform: public Transform
 {
 public:
-	ThresholdTransform(Json::Value params):
+	ThresholdTransform(const Json::Value& params):
 		Transform(params),
 		pass_on(false),
 		already_under(false),

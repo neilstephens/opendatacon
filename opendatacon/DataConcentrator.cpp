@@ -72,7 +72,11 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	for(auto& interface : Interfaces)
 	{
-		interface.second->AddCommand("shutdown",[this](std::stringstream& ss){this->Shutdown();},"Shutdown opendatacon");
+		interface.second->AddCommand("shutdown",[this](std::stringstream& ss)
+									{
+										std::thread([this](){this->Shutdown();}).detach();
+									}
+							,"Shutdown opendatacon");
 		interface.second->AddCommand("version",[] (std::stringstream& ss){
 		                                   std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;
 						     },"Print version information");
@@ -301,7 +305,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 
 			//try to load the lib
-			auto* portlib = LoadModule(libname.c_str());
+			auto* portlib = LoadModule(libname);
 
 			if(portlib == nullptr)
 			{

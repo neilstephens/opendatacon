@@ -33,7 +33,7 @@
 class RandTransform: public Transform
 {
 public:
-	RandTransform(Json::Value params):
+	RandTransform(const Json::Value& params):
 		Transform(params)
 	{}
 

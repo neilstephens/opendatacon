@@ -47,7 +47,7 @@ public:
 		sender_ref(find_marker(sender_marker,JV))
 	{}
 	template<typename T>
-	Json::Value Instantiate(const T& event, uint16_t index, const std::string Name = "", const std::string Sender = "")
+	Json::Value Instantiate(const T& event, uint16_t index, const std::string& Name = "", const std::string& Sender = "")
 	{
 		Json::Value instance = JV;
 		if(!ind_ref.isNull())

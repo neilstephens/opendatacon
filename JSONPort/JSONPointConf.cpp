@@ -29,7 +29,7 @@
 #include <cstdint>
 #include "JSONPointConf.h"
 
-JSONPointConf::JSONPointConf(std::string FileName, const Json::Value &ConfOverrides):
+JSONPointConf::JSONPointConf(const std::string& FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides),
 	pJOT(nullptr)
 {

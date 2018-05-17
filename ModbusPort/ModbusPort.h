@@ -35,7 +35,7 @@ using namespace odc;
 class ModbusPort: public DataPort
 {
 public:
-	ModbusPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	ModbusPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 
 	void Enable() override =0;
 	void Disable() override =0;

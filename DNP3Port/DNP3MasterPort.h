@@ -36,7 +36,7 @@
 class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
 {
 public:
-	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	DNP3MasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		DNP3Port(aName, aConfFilename, aConfOverrides),
 		pMaster(nullptr),
 		stack_enabled(false),
@@ -114,9 +114,9 @@ private:
 	void PortDown();
 	inline void EnableStack()
 	{
+		PortDown(); //initialise as comms down - in case they never come up
 		pMaster->Enable();
 		stack_enabled = true;
-		//TODO: this scan isn't needed if we remember quality on PortDown() and reinstate in PortUp();
 		IntegrityScan.Demand();
 	}
 	inline void DisableStack()

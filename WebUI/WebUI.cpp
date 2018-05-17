@@ -127,12 +127,12 @@ WebUI::WebUI(uint16_t pPort):
 	}
 }
 
-void WebUI::AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc)
+void WebUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
 {
 	// TODO: complete
 }
 
-void WebUI::AddResponder(const std::string name, const IUIResponder& pResponder)
+void WebUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
 {
 	Responders["/" + name] = &pResponder;
 }

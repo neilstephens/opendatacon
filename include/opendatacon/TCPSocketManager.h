@@ -84,8 +84,8 @@ public:
 	 bool aisServer,							//Whether to act as a server or client
 	 const std::string& aEndPoint,				//IP addr or hostname (to connect to if client, or bind to if server)
 	 const std::string& aPort,					//Port to connect to if client, or listen on if server
-	 const std::function<void(buf_t&)> aReadCallback,	//Handler for data read off socket
-	 const std::function<void(bool)> aStateCallback,	//Handler for communicating the connection state of the socket
+	 const std::function<void(buf_t&)>& aReadCallback,	//Handler for data read off socket
+	 const std::function<void(bool)>& aStateCallback,	//Handler for communicating the connection state of the socket
 	 bool aauto_reopen = false,					//Keeps the socket open (retry on error), unless you explicitly Close() it
 	 uint16_t aretry_time_ms = 0):				//You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
 		isConnected(false),

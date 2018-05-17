@@ -30,7 +30,6 @@
 #include <iostream>
 #include <future>
 #include <opendnp3/master/ITaskCallback.h>
-#include "CommandCorrespondant.h"
 
 class CommandCallbackPromise
 {
@@ -59,7 +58,6 @@ public:
 		}
 		if(mCompletionHook != nullptr)
 			mCompletionHook();
-		CommandCorrespondant::ReleaseCallback(this);
 	}
 
 private:

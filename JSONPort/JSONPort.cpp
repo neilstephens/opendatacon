@@ -30,7 +30,7 @@
 
 using namespace odc;
 
-JSONPort::JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides, bool aisServer):
+JSONPort::JSONPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, bool aisServer):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	isServer(aisServer),
 	pSockMan(nullptr)
@@ -230,7 +230,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 
 		//little functor to traverse any paths, starting at the root
 		//pass a JSON array of nodes representing the path (that's how we store our point config after all)
-		auto TraversePath = [&JSONRoot](const Json::Value nodes)
+		auto TraversePath = [&JSONRoot](const Json::Value& nodes)
 		{
 			//val will traverse any paths, starting at the root
 			auto val = JSONRoot;
