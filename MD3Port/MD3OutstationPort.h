@@ -63,8 +63,8 @@ public:
 	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
 
 	// only public for unit testing - could use a friend class to access?
-	void ReadCompletionHandler(buf_t& readbuf);
-	void RouteMD3Message(std::vector<MD3BlockData> &CompleteMD3Message);
+//	void ReadCompletionHandler(buf_t& readbuf);
+
 	void ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message);
 
 	// Analog
@@ -133,10 +133,13 @@ public:
 
 	void SendResponse(std::vector<MD3BlockData>& CompleteMD3Message);
 
+
 	// Testing and Debugging Methods - no other use
 	// This allows us to hook the TCP Data Send Fucntion for testing.
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void AddToDigitalEvents(MD3Point & pt);
+	void InjectCommand(buf_t & readbuf);	// Equivalent of the callback handler in the MD3Connection.
+
 private:
 
 	void SocketStateHandler(bool state);

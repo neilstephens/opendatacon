@@ -44,9 +44,6 @@
 
 //TODO: Check out http://www.pantheios.org/ logging library..
 
-#define SOCK
-
-std::unordered_map<std::string, std::shared_ptr<MD3Connection>> MD3Connection::ConnectionMap;
 
 MD3OutstationPort::MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
 	MD3Port(aName, aConfFilename, aConfOverrides)
@@ -70,17 +67,10 @@ void MD3OutstationPort::Enable()
 	if (enabled) return;
 	try
 	{
-#ifdef SOCK
-		if (pSockMan.get() == nullptr)
-			throw std::runtime_error("Socket manager uninitilised");
-
-		pSockMan->Open();
-#else
 		if (pConnection.get() == nullptr)
 			throw std::runtime_error("Connection manager uninitilised");
 
 		pConnection->Open();	// Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
-#endif
 		enabled = true;
 	}
 	catch (std::exception& e)
@@ -93,15 +83,10 @@ void MD3OutstationPort::Disable()
 {
 	if (!enabled) return;
 	enabled = false;
-#ifdef SOCK
-	if (pSockMan.get() == nullptr)
-		return;
-	pSockMan->Close();
-#else
+
 	if (pConnection.get() == nullptr)
 		return;
 	pConnection->Close(); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
-#endif
 }
 
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
@@ -125,33 +110,22 @@ void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LO
 {
 	//TODO: Do we re-read the conf file - so we can do a live reload? - How do we kill all the sockets and connections properly?
 
-	//TODO: use event buffer size once socket manager supports it
 
-#ifdef SOCK
-	// Remember reset for a shared pointer is the same as a new for an old pointer!
-	pSockMan.reset(new TCPSocketManager<std::string>
-		(pIOS, isServer, MyConf()->mAddrConf.IP, std::to_string(MyConf()->mAddrConf.Port),
-			std::bind(&MD3OutstationPort::ReadCompletionHandler, this, std::placeholders::_1),
-			std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1),
-			true,
-			MyConf()->TCPConnectRetryPeriodms));
-#else
 	std::string ChannelID = MyConf()->mAddrConf.IP + ":" + std::to_string(MyConf()->mAddrConf.Port);
 
 	pConnection = MD3Connection::GetConnection(ChannelID); //Static method
 
 	if (pConnection == nullptr)
 	{
-		pConnection.reset(new MD3Connection(pIOS, isServer, MyConf()->mAddrConf.IP,
+	pConnection.reset(new MD3Connection(pIOS, isServer, MyConf()->mAddrConf.IP,
 			std::to_string(MyConf()->mAddrConf.Port), true, MyConf()->TCPConnectRetryPeriodms));	// Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection);	//Static method
 	}
 
 	pConnection->AddOutStation(MyConf()->mAddrConf.OutstationAddr,
-		std::bind(&MD3OutstationPort::RouteMD3Message, this, std::placeholders::_1),
+		std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1),
 		std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1) );
-#endif
 }
 
 
@@ -177,25 +151,18 @@ void MD3OutstationPort::SendResponse(std::vector<MD3BlockData> &CompleteMD3Messa
 		SendTCPDataFn(MD3Message);
 	else
 	{
-#ifdef SOCK
-		pSockMan->Write(std::string(MD3Message));
-#else
 		pConnection->Write(std::string(MD3Message));
-#endif
 	}
 }
 
-// We need one read completion handler hooked to each address/port combination. This method is reentrant,
-// so could make it static and have mutliple ports call this
-// Then we just need to be able to find the correct outstation to give the data to...
-// If this was static, you dont know which address/port combination you came from...
-void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
+void MD3OutstationPort::InjectCommand(buf_t&readbuf)
 {
 	// We are currently assuming a whole complete packet will turn up in one unit. If not it will be difficult to do the packet decoding and multidrop routing.
 	// MD3 only has addressing information in the first block of the packet.
 
 	// We should have a multiple of 6 bytes. 5 data bytes and one padding byte for every MD3 block, then possibkly mutiple blocks
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
+	std::vector<MD3BlockData> MD3Message;
 
 	while (readbuf.size() >= MD3BlockArraySize)
 	{
@@ -206,7 +173,7 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 			readbuf.consume(1);
 		}
 
-		auto md3block = MD3BlockData(d);	// Supposed to be a 6 byte array..
+		auto md3block = MD3BlockData(d);    // Supposed to be a 6 byte array..
 
 		if (md3block.CheckSumPasses())
 		{
@@ -216,18 +183,18 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 				// We know we are looking for the first block if MD3Message is empty.
 				if (MD3Message.size() != 0)
 				{
-					LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a start block when we have not got to an end block - discarding data blocks - " + std::to_string(MD3Message.size()));
+					//						LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a start block when we have not got to an end block - discarding data blocks - " + std::to_string(MD3Message.size()));
 					MD3Message.clear();
 				}
-				MD3Message.push_back(md3block);	// Takes a copy of the block
+				MD3Message.push_back(md3block); // Takes a copy of the block
 			}
 			else if (MD3Message.size() == 0)
 			{
-				LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToPrintString());
+				//					LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToPrintString());
 			}
 			else
 			{
-				MD3Message.push_back(md3block);	// Takes a copy of the block
+				MD3Message.push_back(md3block); // Takes a copy of the block
 			}
 
 			// The start and any other block can be the end block
@@ -235,43 +202,23 @@ void MD3OutstationPort::ReadCompletionHandler(buf_t& readbuf)
 			if (md3block.IsEndOfMessageBlock() && (MD3Message.size() != 0))
 			{
 				// Once we have the last block, then hand off MD3Message to process.
-				RouteMD3Message(MD3Message);
-				MD3Message.clear();	// Empty message block queue
+				ProcessMD3Message(MD3Message);
+				MD3Message.clear(); // Empty message block queue
 			}
 		}
 		else
-			LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Checksum failure on received MD3 block - " + md3block.ToPrintString());
+		{
+			//				LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Checksum failure on received MD3 block - " + md3block.ToPrintString());
+		}
 	}
 
 	// Check for and consume any not 6 byte block data - should never happen...
 	if (readbuf.size() > 0)
 	{
 		int bytesleft = readbuf.size();
-		LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Had data left over after reading blocks - " + std::to_string(bytesleft) +" bytes");
+		//		LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Had data left over after reading blocks - " + std::to_string(bytesleft) + " bytes");
 		readbuf.consume(readbuf.size());
 	}
-}
-
-void MD3OutstationPort::RouteMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
-{
-	// Only passing in the variable to make unit testing simpler.
-	// We have a full set of MD3 message blocks from a minimum of 1.
-	assert(CompleteMD3Message.size() != 0);
-
-	uint8_t ExpectedStationAddress = MyConf()->mAddrConf.OutstationAddr;
-	uint8_t StationAddress = ((MD3BlockFormatted)CompleteMD3Message[0]).GetStationAddress();
-
-	// Change this to route to the correct outstation in future.
-	// Or if zero, route to all outstations!
-	// Most zero station address functions do not send a response - the SystemSignOnMessage is an exception.
-	if ((ExpectedStationAddress != StationAddress) && (StationAddress != 0))
-	{
-		LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Recevied non-matching outstation address - Expected " + std::to_string(ExpectedStationAddress) + " Got - " + std::to_string(StationAddress));
-		return;
-	}
-	//TODO: Replace with a call to the same method on the correct instance of this class.
-	// We will have a static list of instances and their address to look up.
-	this->ProcessMD3Message(CompleteMD3Message);
 }
 
 
