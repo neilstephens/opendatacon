@@ -37,7 +37,7 @@
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 #include <chrono>
-#include "ProducerConsumerQueue.h"
+#include <boost/lockfree/spsc_queue.hpp>
 
 using namespace odc;
 
@@ -70,29 +70,53 @@ public:
 		ModuleAddress(moduleaddress),
 		Channel(channel)
 	{};
-	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, uint64_t changedtime) :
-		Index(index),
-		ModuleAddress(moduleaddress),
-		Channel(channel),
-		Binary(binval),
-		Changed(changed),
-		ChangedTime(changedtime)
-	{};
 
 	uint32_t Index = 0;
 	uint8_t ModuleAddress = 0;
 	bool ModuleFailed = false;	// Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
 	uint8_t Channel = 0;
-	uint16_t Analog = 0x8000;
-	uint16_t LastReadAnalog = 0x8000;
+};
+
+class MD3BinaryPoint : public MD3Point
+{
+public:
+	MD3BinaryPoint() {};
+
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel) :MD3Point(index, moduleaddress, channel)
+	{};
+
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, uint64_t changedtime) :
+		MD3Point(index, moduleaddress,  channel),
+		Binary(binval),
+		Changed(changed),
+		ChangedTime(changedtime)
+	{};
+
+	// Only the values below will be changed in two places
 	uint8_t Binary = 0x01;
 	uint16_t ModuleBinarySnapShot = 0;	// Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
 	bool Changed = true;
 	uint64_t ChangedTime = 0;	// msec since epoch. 1970,1,1
 };
 
-typedef std::map<uint32_t, std::shared_ptr<MD3Point>>::iterator ODCPointMapIterType;
-typedef std::map<uint16_t, std::shared_ptr<MD3Point>>::iterator MD3PointMapIterType;
+class MD3AnalogCounterPoint : public MD3Point
+{
+
+public:
+	MD3AnalogCounterPoint() {};
+
+	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel) :MD3Point(index, moduleaddress, channel)
+	{};
+
+	// Only the values below will be changed in two places
+	uint16_t Analog = 0x8000;
+	uint16_t LastReadAnalog = 0x8000;
+};
+
+typedef std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>::iterator ODCBinaryPointMapIterType;
+typedef std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>::iterator MD3BinaryPointMapIterType;
+typedef std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator ODCAnalogCounterPointMapIterType;
+typedef std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator MD3AnalogCounterPointMapIterType;
 
 class MD3PointConf: public ConfigParser
 {
@@ -104,22 +128,24 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
-	void ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3Point>> &MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3Point>> &ODCPointMap);
+	void ProcessBinaryPoints(const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>& ODCPointMap);
+	void ProcessAnalogCounterPoints(const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>& ODCPointMap);
+
 
 	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
-	std::map<uint16_t , std::shared_ptr<MD3Point>> BinaryMD3PointMap;	// ModuleAndChannel, MD3Point
-	std::map<uint32_t , std::shared_ptr<MD3Point>> BinaryODCPointMap;	// Index OpenDataCon, MD3Point
+	std::map<uint16_t , std::shared_ptr<MD3BinaryPoint>> BinaryMD3PointMap;	// ModuleAndChannel, MD3Point
+	std::map<uint32_t , std::shared_ptr<MD3BinaryPoint>> BinaryODCPointMap;	// Index OpenDataCon, MD3Point
 
-	std::map<uint16_t, std::shared_ptr<MD3Point>> AnalogMD3PointMap;	// ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3Point>> AnalogODCPointMap;	// Index OpenDataCon, MD3Point
+	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogMD3PointMap;	// ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogODCPointMap;	// Index OpenDataCon, MD3Point
 
-	std::map<uint16_t, std::shared_ptr<MD3Point>> CounterMD3PointMap;	// ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3Point>> CounterODCPointMap;	// Index OpenDataCon, MD3Point
+	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterMD3PointMap;	// ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterODCPointMap;	// Index OpenDataCon, MD3Point
 
-	std::map<uint16_t, std::shared_ptr<MD3Point>> BinaryControlMD3PointMap;	// ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3Point>> BinaryControlODCPointMap;	// Index OpenDataCon, MD3Point
+	std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlMD3PointMap;	// ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlODCPointMap;	// Index OpenDataCon, MD3Point
 
-	ProducerConsumerQueue<MD3Point> BinaryTimeTaggedEventQueue;	// Separate queue for time tagged binary events. Used for COS request functions
-	ProducerConsumerQueue<MD3Point> BinaryModuleTimeTaggedEventQueue;	// This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
+	boost::lockfree::spsc_queue<MD3BinaryPoint, boost::lockfree::capacity<256> > BinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events. Used for COS request functions
+	boost::lockfree::spsc_queue<MD3BinaryPoint, boost::lockfree::capacity<256> > BinaryModuleTimeTaggedEventQueue;	// This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
 };
 #endif /* MD3POINTCONF_H_ */

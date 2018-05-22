@@ -62,9 +62,6 @@ public:
 	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex);
 	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
 
-	// only public for unit testing - could use a friend class to access?
-//	void ReadCompletionHandler(buf_t& readbuf);
-
 	void ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message);
 
 	// Analog
@@ -133,11 +130,10 @@ public:
 
 	void SendResponse(std::vector<MD3BlockData>& CompleteMD3Message);
 
-
 	// Testing and Debugging Methods - no other use
 	// This allows us to hook the TCP Data Send Fucntion for testing.
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
-	void AddToDigitalEvents(MD3Point & pt);
+	void AddToDigitalEvents(MD3BinaryPoint & pt);
 	void InjectCommand(buf_t & readbuf);	// Equivalent of the callback handler in the MD3Connection.
 
 private:
@@ -155,10 +151,6 @@ private:
 
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
 	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing
-
-	// We need a list of OutStations on a given Channel ID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
-	// When we get data rxd by the port we can then send it to the appropriate OutStation
-	// static std::unordered_map<std::string, std::shared_ptr<MD3Connection>> ConnectionMap;
 
 	// Worker functions to try and clean up the code...
 	MD3PortConf* MyConf();

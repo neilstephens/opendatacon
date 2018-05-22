@@ -53,29 +53,29 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("Analogs"))
 	{
 		const auto Analogs = JSONRoot["Analogs"];
-		ProcessPoints(Analogs, AnalogMD3PointMap, AnalogODCPointMap);
+		ProcessAnalogCounterPoints(Analogs, AnalogMD3PointMap, AnalogODCPointMap);
 	}
 
 	if (JSONRoot.isMember("Binaries"))
 	{
 		const auto Binaries = JSONRoot["Binaries"];
-		ProcessPoints(Binaries, BinaryMD3PointMap, BinaryODCPointMap);
+		ProcessBinaryPoints(Binaries, BinaryMD3PointMap, BinaryODCPointMap);
 	}
 
 	if (JSONRoot.isMember("BinaryControls"))
 	{
 		const auto BinaryControls = JSONRoot["BinaryControls"];
-		ProcessPoints(BinaryControls, BinaryControlMD3PointMap, BinaryControlODCPointMap);
+		ProcessBinaryPoints(BinaryControls, BinaryControlMD3PointMap, BinaryControlODCPointMap);
 	}
 	if (JSONRoot.isMember("Counters"))
 	{
 		const auto Counters = JSONRoot["Counters"];
-		ProcessPoints(Counters, CounterMD3PointMap, CounterODCPointMap);
+		ProcessAnalogCounterPoints(Counters, CounterMD3PointMap, CounterODCPointMap);
 	}
 }
 
-void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3Point>> &MD3PointMap,
-																std::map<uint32_t, std::shared_ptr<MD3Point>> &ODCPointMap)
+void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> &MD3PointMap,
+																std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> &ODCPointMap)
 {
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
@@ -137,7 +137,78 @@ void MD3PointConf::ProcessPoints(const Json::Value& JSONNode, std::map<uint16_t,
 				}
 				else
 				{
-					auto pt = std::make_shared<MD3Point>(index, moduleaddress, channel);
+					auto pt = std::make_shared<MD3BinaryPoint>(index, moduleaddress, channel);
+					MD3PointMap[md3index] = pt;
+					ODCPointMap[index] = pt;
+				}
+			}
+		}
+	}
+}
+void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> &MD3PointMap,
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> &ODCPointMap)
+{
+	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
+	{
+		bool error = false;
+
+		size_t start, stop;
+		if (JSONNode[n].isMember("Index"))
+		{
+			start = stop = JSONNode[n]["Index"].asUInt();
+		}
+		else if (JSONNode[n]["Range"].isMember("Start") && JSONNode[n]["Range"].isMember("Stop"))
+		{
+			start = JSONNode[n]["Range"]["Start"].asUInt();
+			stop = JSONNode[n]["Range"]["Stop"].asUInt();
+		}
+		else
+		{
+			std::cout << "A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			start = 1;
+			stop = 0;
+			error = true;
+		}
+
+		uint32_t module = 0;
+		uint32_t offset = 0;
+
+		if (JSONNode[n].isMember("Module"))
+			module = JSONNode[n]["Module"].asUInt();
+		else
+		{
+			std::cout << "A point needs an \"Module\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			error = true;
+		}
+
+		if (JSONNode[n].isMember("Offset"))
+			offset = JSONNode[n]["Offset"].asUInt();
+		else
+		{
+			std::cout << "A point needs an \"Offset\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			error = true;
+		}
+
+		if (!error)
+		{
+			for (auto index = start; index <= stop; index++)
+			{
+				uint16_t moduleaddress = module + ((uint16_t)index - (uint16_t)start + offset) / 16;
+				uint8_t channel = (uint8_t)((offset + ((uint16_t)index - (uint16_t)start)) % 16);
+
+				uint16_t md3index = (moduleaddress << 8) | channel;
+
+				if (MD3PointMap.find(md3index) != MD3PointMap.end())
+				{
+					std::cout << "Duplicate MD3 Index '" << JSONNode[n].toStyledString() << "'" << std::endl;
+				}
+				else if (ODCPointMap.find(index) != ODCPointMap.end())
+				{
+					std::cout << "Duplicate ODC Index : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+				}
+				else
+				{
+					auto pt = std::make_shared<MD3AnalogCounterPoint>(index, moduleaddress, channel);
 					MD3PointMap[md3index] = pt;
 					ODCPointMap[index] = pt;
 				}

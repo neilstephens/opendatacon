@@ -34,8 +34,7 @@
 #include <unordered_map>
 #include "MD3.h"
 #include "MD3Engine.h"
-
-class MD3OutstationPort;
+#include "MD3Port.h"
 
 /*
 This class is used to manage and share a TCPSocket for MD3 OutStations
@@ -57,7 +56,7 @@ public:
 		bool aisServer,							//Whether to act as a server or client
 		const std::string& aEndPoint,				//IP addr or hostname (to connect to if client, or bind to if server)
 		const std::string& aPort,					//Port to connect to if client, or listen on if server
-	   // const std::unique_ptr<asiopal::LogFanoutHandler> apLoggers,
+	    const MD3Port *OutStationPortInstance,	// Messy, just used so we can access pLogger
 		bool aauto_reopen = false,					//Keeps the socket open (retry on error), unless you explicitly Close() it
 		uint16_t aretry_time_ms = 0);
 
@@ -96,7 +95,7 @@ private:
 
 	bool isServer;
 	bool enabled = false;
-	//const std::unique_ptr<asiopal::LogFanoutHandler> pLoggers;
+	const MD3Port* pParentPort = nullptr;
 	bool auto_reopen;
 	uint16_t retry_time_ms;
 

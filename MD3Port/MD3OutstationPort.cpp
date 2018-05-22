@@ -36,11 +36,12 @@
 #include <chrono>
 #include <asiopal/UTCTimeSource.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
+#include <opendnp3/LogLevels.h>
+
+#include "MD3.h"
 #include "MD3Engine.h"
 #include "MD3OutstationPort.h"
-#include "MD3.h"
 
-#include <opendnp3/LogLevels.h>
 
 //TODO: Check out http://www.pantheios.org/ logging library..
 
@@ -117,8 +118,8 @@ void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LO
 
 	if (pConnection == nullptr)
 	{
-	pConnection.reset(new MD3Connection(pIOS, isServer, MyConf()->mAddrConf.IP,
-			std::to_string(MyConf()->mAddrConf.Port), true, MyConf()->TCPConnectRetryPeriodms));	// Retry period cannot be different for multidrop outstations
+		pConnection.reset(new MD3Connection(pIOS, isServer, MyConf()->mAddrConf.IP,
+			std::to_string(MyConf()->mAddrConf.Port), this, true, MyConf()->TCPConnectRetryPeriodms));	// Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection);	//Static method
 	}
@@ -155,70 +156,11 @@ void MD3OutstationPort::SendResponse(std::vector<MD3BlockData> &CompleteMD3Messa
 	}
 }
 
+// Test only method for simulating input from the TCP Connection.
 void MD3OutstationPort::InjectCommand(buf_t&readbuf)
 {
-	// We are currently assuming a whole complete packet will turn up in one unit. If not it will be difficult to do the packet decoding and multidrop routing.
-	// MD3 only has addressing information in the first block of the packet.
-
-	// We should have a multiple of 6 bytes. 5 data bytes and one padding byte for every MD3 block, then possibkly mutiple blocks
-	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
-	std::vector<MD3BlockData> MD3Message;
-
-	while (readbuf.size() >= MD3BlockArraySize)
-	{
-		MD3BlockArray d;
-		for (int i = 0; i < MD3BlockArraySize; i++)
-		{
-			d[i] = readbuf.sgetc();
-			readbuf.consume(1);
-		}
-
-		auto md3block = MD3BlockData(d);    // Supposed to be a 6 byte array..
-
-		if (md3block.CheckSumPasses())
-		{
-			if (md3block.IsFormattedBlock())
-			{
-				// This only occurs for the first block. So if we are not expecting it we need to clear out the Message Block Vector
-				// We know we are looking for the first block if MD3Message is empty.
-				if (MD3Message.size() != 0)
-				{
-					//						LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a start block when we have not got to an end block - discarding data blocks - " + std::to_string(MD3Message.size()));
-					MD3Message.clear();
-				}
-				MD3Message.push_back(md3block); // Takes a copy of the block
-			}
-			else if (MD3Message.size() == 0)
-			{
-				//					LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToPrintString());
-			}
-			else
-			{
-				MD3Message.push_back(md3block); // Takes a copy of the block
-			}
-
-			// The start and any other block can be the end block
-			// We might get an end block outof order, so just ignore.
-			if (md3block.IsEndOfMessageBlock() && (MD3Message.size() != 0))
-			{
-				// Once we have the last block, then hand off MD3Message to process.
-				ProcessMD3Message(MD3Message);
-				MD3Message.clear(); // Empty message block queue
-			}
-		}
-		else
-		{
-			//				LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Checksum failure on received MD3 block - " + md3block.ToPrintString());
-		}
-	}
-
-	// Check for and consume any not 6 byte block data - should never happen...
-	if (readbuf.size() > 0)
-	{
-		int bytesleft = readbuf.size();
-		//		LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Had data left over after reading blocks - " + std::to_string(bytesleft) + " bytes");
-		readbuf.consume(readbuf.size());
-	}
+	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
+	pConnection->ReadCompletionHandler(readbuf);
 }
 
 
@@ -236,7 +178,7 @@ bool MD3OutstationPort::GetCounterValueUsingMD3Index(const uint16_t module, cons
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
+	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->Analog;
@@ -249,7 +191,7 @@ bool MD3OutstationPort::GetCounterValueAndChangeUsingMD3Index(const uint16_t mod
 	// Change being update the last read value
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
+	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->Analog;
@@ -261,7 +203,7 @@ bool MD3OutstationPort::GetCounterValueAndChangeUsingMD3Index(const uint16_t mod
 }
 bool MD3OutstationPort::SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas)
 {
-	ODCPointMapIterType ODCPointMapIter = MyPointConf()->CounterODCPointMap.find(index);
+	ODCAnalogCounterPointMapIterType ODCPointMapIter = MyPointConf()->CounterODCPointMap.find(index);
 	if (ODCPointMapIter != MyPointConf()->CounterODCPointMap.end())
 	{
 		ODCPointMapIter->second->Analog = meas;
@@ -274,7 +216,7 @@ bool MD3OutstationPort::GetAnalogValueUsingMD3Index(const uint16_t module, const
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
+	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->Analog;
@@ -286,7 +228,7 @@ bool MD3OutstationPort::GetAnalogValueAndChangeUsingMD3Index(const uint16_t modu
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
+	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->Analog;
@@ -300,7 +242,7 @@ bool MD3OutstationPort::SetAnalogValueUsingMD3Index(const uint16_t module, const
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
+	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
 	{
 		MD3PointMapIter->second->Analog = meas;
@@ -310,7 +252,7 @@ bool MD3OutstationPort::SetAnalogValueUsingMD3Index(const uint16_t module, const
 }
 bool MD3OutstationPort::GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t &res)
 {
-	ODCPointMapIterType ODCPointMapIter = MyPointConf()->AnalogODCPointMap.find(index);
+	ODCAnalogCounterPointMapIterType ODCPointMapIter = MyPointConf()->AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != MyPointConf()->AnalogODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->Analog;
@@ -320,7 +262,7 @@ bool MD3OutstationPort::GetAnalogValueUsingODCIndex(const uint16_t index, uint16
 }
 bool MD3OutstationPort::SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas)
 {
-	ODCPointMapIterType ODCPointMapIter = MyPointConf()->AnalogODCPointMap.find(index);
+	ODCAnalogCounterPointMapIterType ODCPointMapIter = MyPointConf()->AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != MyPointConf()->AnalogODCPointMap.end())
 	{
 		ODCPointMapIter->second->Analog = meas;
@@ -333,7 +275,7 @@ bool MD3OutstationPort::GetBinaryValueUsingMD3Index(const uint16_t module, const
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
+	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->Binary;
@@ -351,7 +293,7 @@ bool MD3OutstationPort::GetBinaryValueUsingMD3Index(const uint16_t module, const
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
+	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->Binary;
@@ -363,7 +305,7 @@ bool MD3OutstationPort::GetBinaryChangedUsingMD3Index(const uint16_t module, con
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
+	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
 	{
 		if (MD3PointMapIter->second->Changed)
@@ -379,7 +321,7 @@ bool MD3OutstationPort::SetBinaryValueUsingMD3Index(const uint16_t module, const
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
+	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
 	{
 		MD3PointMapIter->second->Binary = meas;
@@ -390,7 +332,7 @@ bool MD3OutstationPort::SetBinaryValueUsingMD3Index(const uint16_t module, const
 }
 bool MD3OutstationPort::GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed)
 {
-	ODCPointMapIterType ODCPointMapIter = MyPointConf()->BinaryODCPointMap.find(index);
+	ODCBinaryPointMapIterType ODCPointMapIter = MyPointConf()->BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != MyPointConf()->BinaryODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->Binary;
@@ -405,7 +347,7 @@ bool MD3OutstationPort::GetBinaryValueUsingODCIndex(const uint16_t index, uint8_
 }
 bool MD3OutstationPort::SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, uint64_t eventtime)
 {
-	ODCPointMapIterType ODCPointMapIter = MyPointConf()->BinaryODCPointMap.find(index);
+	ODCBinaryPointMapIterType ODCPointMapIter = MyPointConf()->BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != MyPointConf()->BinaryODCPointMap.end())
 	{
 		ODCPointMapIter->second->Binary = meas;
@@ -413,7 +355,7 @@ bool MD3OutstationPort::SetBinaryValueUsingODCIndex(const uint16_t index, const 
 
 		// We now need to add the change to the separate digital/binary event list
 		ODCPointMapIter->second->ChangedTime = eventtime;
-		MD3Point CopyOfPoint(*(ODCPointMapIter->second));
+		MD3BinaryPoint CopyOfPoint(*(ODCPointMapIter->second));
 		AddToDigitalEvents(CopyOfPoint);
 		return true;
 	}
@@ -423,14 +365,14 @@ bool MD3OutstationPort::CheckBinaryControlExistsUsingMD3Index(const uint16_t mod
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
-	MD3PointMapIterType MD3PointMapIter = MyPointConf()->BinaryControlMD3PointMap.find(Md3Index);
+	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryControlMD3PointMap.find(Md3Index);
 	return (MD3PointMapIter != MyPointConf()->BinaryControlMD3PointMap.end());
 }
 
-void MD3OutstationPort::AddToDigitalEvents(MD3Point & pt)
+void MD3OutstationPort::AddToDigitalEvents(MD3BinaryPoint & pt)
 {
 	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
-	MyPointConf()->BinaryTimeTaggedEventQueue.Push(pt);
+	MyPointConf()->BinaryTimeTaggedEventQueue.push(pt);
 
 	// Have to collect all the bits in the module to which this point belongs into a uint16_t,
 	// just to support COS Fn 11 where the whole 16 bits are returned for a possibly single bit change.
@@ -440,7 +382,7 @@ void MD3OutstationPort::AddToDigitalEvents(MD3Point & pt)
 
 	// Save it in the snapshot that is used for the Fn11 COS time tagged events.
 	pt.ModuleBinarySnapShot = wordres;
-	MyPointConf()->BinaryModuleTimeTaggedEventQueue.Push(pt);
+	MyPointConf()->BinaryModuleTimeTaggedEventQueue.push(pt);
 }
 
 #pragma endregion

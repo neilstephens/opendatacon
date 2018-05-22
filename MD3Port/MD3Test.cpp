@@ -625,8 +625,6 @@ namespace UnitTests
 	{
 		WriteConfFileToCurrentWorkingDirectory();
 
-		WARN("Trying to construct an OutStationPort");
-
 		// The 1 is for concurrency hint - usually the number of cores.
 		IOManager IOMgr(1);
 		asio::io_service IOS(1);
@@ -1111,8 +1109,8 @@ namespace UnitTests
 		// Cheat and write directly to the HRER queue
 		uint64_t changedtime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
-		MD3Point pt1(1, 34, 1, 1, true, changedtime);
-		MD3Point pt2(2, 34, 2, 0, true, changedtime+32000);
+		MD3BinaryPoint pt1(1, 34, 1, 1, true, changedtime);
+		MD3BinaryPoint pt2(2, 34, 2, 0, true, changedtime+32000);
 		MD3Port->AddToDigitalEvents(pt1);
 		MD3Port->AddToDigitalEvents(pt2);
 
@@ -1296,9 +1294,9 @@ namespace UnitTests
 		// Cheat and write directly to the DCOS queue
 		uint64_t changedtime = 0x0000016338b6d4fb; //asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
-		MD3Point pt1(1, 34, 1, 1, true,  changedtime);
-		MD3Point pt2(2, 34, 2, 0, true,  changedtime + 256);
-		MD3Point pt3(3, 34, 3, 1, true,  changedtime + 0x20000);	// Time gap too big, will require another Master request
+		MD3BinaryPoint pt1(1, 34, 1, 1, true,  changedtime);
+		MD3BinaryPoint pt2(2, 34, 2, 0, true,  changedtime + 256);
+		MD3BinaryPoint pt3(3, 34, 3, 1, true,  changedtime + 0x20000);	// Time gap too big, will require another Master request
 		MD3Port->AddToDigitalEvents(pt1);
 		MD3Port->AddToDigitalEvents(pt2);
 		MD3Port->AddToDigitalEvents(pt3);

@@ -513,7 +513,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 		std::vector<uint16_t> ResponseWords;
 
 		// Handle a normal packet - each event can be a word( 16 bits) plus time and other words
-		Fn9AddTimeTaggedDataToResponseWords( Header.GetEventCount(), EventCount, ResponseWords);
+		Fn9AddTimeTaggedDataToResponseWords(Header.GetEventCount(), EventCount, ResponseWords);
 
 		//TODO: Fn9 Add any Internal HRER events unrelated to the digital bits. EventBufferOverflow (1) is the only one of interest. Use Zero Module address and 1 in the channel field. The time is when this occurred
 
@@ -535,7 +535,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 	lastblock.MarkAsEndOfMessageBlock();
 
 	MD3BlockFn9 &firstblock = static_cast<MD3BlockFn9&>(ResponseMD3Message[0]);
-	firstblock.SetEventCountandMoreEventsFlag(EventCount, !MyPointConf()->BinaryTimeTaggedEventQueue.IsEmpty());	// If not empty, set more events (MEV) flag
+	firstblock.SetEventCountandMoreEventsFlag(EventCount, (MyPointConf()->BinaryTimeTaggedEventQueue.read_available() > 0));	// If not empty, set more events (MEV) flag
 
 	LastDigitialHRERResponseMD3Message = ResponseMD3Message;	// Copy so we can resend if necessary
 	SendResponse(ResponseMD3Message);
@@ -543,12 +543,14 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 
 void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, int &EventCount, std::vector<uint16_t> &ResponseWords)
 {
-	MD3Point CurrentPoint;
+	MD3BinaryPoint CurrentPoint;
 	uint64_t LastPointmsec = 0;
 	bool CanSend = true;
 
-	while (MyPointConf()->BinaryTimeTaggedEventQueue.Peek(CurrentPoint) && (EventCount < MaxEventCount) && CanSend)
+	while ((MyPointConf()->BinaryTimeTaggedEventQueue.read_available() > 0) && (EventCount < MaxEventCount) && CanSend)
 	{
+		CurrentPoint = MyPointConf()->BinaryTimeTaggedEventQueue.front();
+
 		if (EventCount == 0)
 		{
 			// First packet is the time/date block and a millseconds packet
@@ -579,7 +581,7 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 		{
 			ResponseWords.push_back(MD3BlockFn9::HREREventPacket(CurrentPoint.Binary, CurrentPoint.Channel, CurrentPoint.ModuleAddress));
 
-			MyPointConf()->BinaryTimeTaggedEventQueue.Pop();
+			MyPointConf()->BinaryTimeTaggedEventQueue.pop();
 			EventCount++;
 		}
 	}
@@ -665,7 +667,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	}
 
 	int ChangedBlocks = CountBinaryBlocksWithChanges();
-	bool AreThereTaggedEvents = !(MyPointConf()->BinaryModuleTimeTaggedEventQueue.IsEmpty());
+	bool AreThereTaggedEvents = (MyPointConf()->BinaryModuleTimeTaggedEventQueue.read_available() > 0);
 
 	if ((ChangedBlocks == 0) && !AreThereTaggedEvents)
 	{
@@ -738,11 +740,13 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int &EventCount, std::vector<uint16_t> &ResponseWords)
 {
-	MD3Point CurrentPoint;
+	MD3BinaryPoint CurrentPoint;
 	uint64_t LastPointmsec = 0;
 
-	while (MyPointConf()->BinaryModuleTimeTaggedEventQueue.Peek(CurrentPoint) && (EventCount < MaxEventCount))
+	while ((MyPointConf()->BinaryModuleTimeTaggedEventQueue.read_available() > 0) && (EventCount < MaxEventCount))
 	{
+		CurrentPoint = MyPointConf()->BinaryModuleTimeTaggedEventQueue.front();
+
 		// The time date is seconds, the data block contains a msec entry.
 		// The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
 		// add a time packet to bridge the gap.
@@ -781,7 +785,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleBinarySnapShot);
 
 		LastPointmsec = CurrentPoint.ChangedTime;	// Update the last changed time to match what we have just sent.
-		MyPointConf()->BinaryModuleTimeTaggedEventQueue.Pop();
+		MyPointConf()->BinaryModuleTimeTaggedEventQueue.pop();
 		EventCount++;
 	}
 }

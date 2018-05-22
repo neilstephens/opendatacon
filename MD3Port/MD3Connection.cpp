@@ -29,11 +29,18 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
+#include <opendnp3/LogLevels.h>
+
 #include "MD3.h"
 #include "MD3Engine.h"
 #include "MD3Connection.h"
 
 using namespace odc;
+
+// Hide some of the code to make Logging cleaner - slightly different version to the rest of the code.
+#define LOG(logger, filters, location, msg) \
+	pParentPort->pLoggers->Log(openpal::LogEntry(logger, filters, location, std::string(msg).c_str(),-1));
+
 
 std::unordered_map<std::string, std::shared_ptr<MD3Connection>> MD3Connection::ConnectionMap;
 
@@ -41,14 +48,14 @@ MD3Connection::MD3Connection (asio::io_service* apIOS,                   //point
 	bool aisServer,							//Whether to act as a server or client
 	const std::string& aEndPoint,				//IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,					//Port to connect to if client, or listen on if server
-   // const std::unique_ptr<asiopal::LogFanoutHandler> apLoggers,
+	const MD3Port *OutStationPortInstance,	// Messy, just used so we can access pLogger
 	bool aauto_reopen,                 //Keeps the socket open (retry on error), unless you explicitly Close() it
 	uint16_t aretry_time_ms) :
 	EndPoint(aEndPoint),
 	Port(aPort),
 	pIOS(apIOS),
 	isServer(aisServer),
-	//TODO: SJE pLoggers(apLoggers), in MD3Connection
+	pParentPort(OutStationPortInstance),
 	auto_reopen(aauto_reopen),
 	retry_time_ms(aretry_time_ms)
 {
@@ -59,6 +66,8 @@ MD3Connection::MD3Connection (asio::io_service* apIOS,                   //point
 			true,
 			retry_time_ms));
 	ChannelID = EndPoint + ":" + Port;
+
+	LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Opened an MD3Connection object "+ChannelID);
 }
 
 void MD3Connection::AddOutStation(uint8_t StationAddress,	// For message routing, OutStation identification
@@ -97,9 +106,9 @@ void MD3Connection::Open()
 		pSockMan->Open();
 		enabled = true;
 	}
-	catch (std::exception&e)
+	catch (std::exception& e)
 	{
-		//	LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Problem opening connection : " + Name + " : " + e.what());
+		LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Problem opening connection : " + ChannelID + " - " + e.what());
 		return;
 	}
 }
@@ -128,7 +137,7 @@ void MD3Connection::Write(std::string &msg)
 }
 
 // We need one read completion handler hooked to each address/port combination. This method is reentrant,
-// We do some basic MD3 block identifiaction and procesing, enough to give us complete blocks and StationAddresses
+// We do some basic MD3 block identification and procesing, enough to give us complete blocks and StationAddresses
 void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 {
 	// We are currently assuming a whole complete packet will turn up in one unit. If not it will be difficult to do the packet decoding and multidrop routing.
@@ -157,14 +166,14 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 				// We know we are looking for the first block if MD3Message is empty.
 				if (MD3Message.size() != 0)
 				{
-					//						LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a start block when we have not got to an end block - discarding data blocks - " + std::to_string(MD3Message.size()));
+					LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a start block when we have not got to an end block - discarding data blocks - " + std::to_string(MD3Message.size()));
 					MD3Message.clear();
 				}
 				MD3Message.push_back(md3block); // Takes a copy of the block
 			}
 			else if (MD3Message.size() == 0)
 			{
-				//					LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToPrintString());
+				LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToPrintString());
 			}
 			else
 			{
@@ -182,7 +191,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 		}
 		else
 		{
-			//				LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Checksum failure on received MD3 block - " + md3block.ToPrintString());
+			LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Checksum failure on received MD3 block - " + md3block.ToPrintString());
 		}
 	}
 
@@ -190,7 +199,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 	if (readbuf.size() > 0)
 	{
 		int bytesleft = readbuf.size();
-		//		LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Had data left over after reading blocks - " + std::to_string(bytesleft) + " bytes");
+		LOG("DNP3OutstationPort", openpal::logflags::WARN, "", "Had data left over after reading blocks - " + std::to_string(bytesleft) + " bytes");
 		readbuf.consume(readbuf.size());
 	}
 }
@@ -218,7 +227,7 @@ void MD3Connection::RouteMD3Message(std::vector<MD3BlockData> &CompleteMD3Messag
 	else
 	{
 		// NO match
-		//			LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Recevied non-matching outstation address - " + std::to_string(StationAddress));
+		LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Recevied non-matching outstation address - " + std::to_string(StationAddress));
 
 	}
 }
