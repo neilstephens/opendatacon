@@ -359,7 +359,7 @@ void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE funct
 		auto block = MD3BlockData(Analogs[2 * i], Analogs[2 * i + 1], lastblock);
 		ResponseMD3Message.push_back(block);
 	}
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 }
 void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
 {
@@ -381,7 +381,7 @@ void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t Station
 		auto block = MD3BlockData((char)Deltas[i * 4], (char)Deltas[i * 4 + 1], (char)Deltas[i * 4 + 2], (char)Deltas[i * 4 + 3], lastblock);
 		ResponseMD3Message.push_back(block);
 	}
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 }
 void MD3OutstationPort::SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
 {
@@ -390,7 +390,7 @@ void MD3OutstationPort::SendAnalogNoChange(uint8_t StationAddress, uint8_t Modul
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
 	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_NO_CHANGE_REPLY, ModuleAddress, Channels, true);
 	ResponseMD3Message.push_back(FormattedBlock);
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 }
 
 #pragma endregion
@@ -410,7 +410,7 @@ void MD3OutstationPort::DoDigitalUnconditionalObs(MD3BlockFormatted &Header)
 	int NumberOfDataBlocks = Header.GetChannels(); // Actually the number of modules
 
 	BuildBinaryReturnBlocks(NumberOfDataBlocks, Header.GetModuleAddress(), Header.GetStationAddress(), true, ResponseMD3Message);
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 }
 // Function 8
 void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
@@ -436,7 +436,7 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
 		MD3BlockData FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
 		ResponseMD3Message.push_back(FormattedBlock);
 
-		SendResponse(ResponseMD3Message);
+		SendMD3Message(ResponseMD3Message);
 	}
 	else if (ChangedBlocks != NumberOfDataBlocks)	// Some change
 	{
@@ -446,7 +446,7 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
 
 		BuildBinaryReturnBlocks(NumberOfDataBlocks, Header.GetModuleAddress(), Header.GetStationAddress(), false, ResponseMD3Message);
 
-		SendResponse(ResponseMD3Message);
+		SendMD3Message(ResponseMD3Message);
 	}
 	else
 	{
@@ -481,7 +481,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 		// It would get very tricky to only commit change written information only when a new sequence number turns up.
 		// The downside is that the stored message could be a no change message, but data may have changed since we last sent it.
 
-		SendResponse(LastDigitialHRERResponseMD3Message);
+		SendMD3Message(LastDigitialHRERResponseMD3Message);
 		return;
 	}
 
@@ -538,7 +538,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 	firstblock.SetEventCountandMoreEventsFlag(EventCount, (MyPointConf()->BinaryTimeTaggedEventQueue.read_available() > 0));	// If not empty, set more events (MEV) flag
 
 	LastDigitialHRERResponseMD3Message = ResponseMD3Message;	// Copy so we can resend if necessary
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 }
 
 void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, int &EventCount, std::vector<uint16_t> &ResponseWords)
@@ -611,7 +611,7 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 		MD3BlockData FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), (uint8_t)0);
 		ResponseMD3Message.push_back(FormattedBlock);
 
-		SendResponse(ResponseMD3Message);
+		SendMD3Message(ResponseMD3Message);
 	}
 	else
 	{
@@ -628,7 +628,7 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 		MD3BlockFn10 &firstblock = (MD3BlockFn10 &)ResponseMD3Message[0];
 		firstblock.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1);	// The number of blocks taking away the header...
 
-		SendResponse(ResponseMD3Message);
+		SendMD3Message(ResponseMD3Message);
 	}
 }
 // Function 11
@@ -655,7 +655,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 		// It would get very tricky to only commit change written information only when a new sequence number turns up.
 		// The downside is that the stored message could be a no change message, but data may have changed since we last sent it.
 
-		SendResponse(LastDigitialScanResponseMD3Message);
+		SendMD3Message(LastDigitialScanResponseMD3Message);
 		return;
 	}
 
@@ -730,7 +730,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 			lastblock.MarkAsEndOfMessageBlock();
 		}
 	}
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 
 	// Store this set of packets in case we have to resend
 	//TODO: Is the sequence number function dependent - i.e. do we maintain one for each digital function or is it common across all digital functions.
@@ -801,7 +801,7 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 		// It would get very tricky to only commit change written information only when a new sequence number turns up.
 		// The downside is that the stored message could be a no change message, but data may have changed since we last sent it.
 
-		SendResponse(LastDigitialScanResponseMD3Message);
+		SendMD3Message(LastDigitialScanResponseMD3Message);
 		return;
 	}
 
@@ -824,7 +824,7 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 		lastblock.MarkAsEndOfMessageBlock();
 	}
 
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 
 	// Store this set of packets in case we have to resend
 	//TODO: Is the sequence number function dependent - i.e. do we maintain one for each digital function or is it common across all digital functions.
@@ -1311,7 +1311,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
 
 			std::vector<MD3BlockData> ResponseMD3Message;
 			ResponseMD3Message.push_back(FormattedBlock);
-			SendResponse(ResponseMD3Message);
+			SendMD3Message(ResponseMD3Message);
 		}
 
 		//TODO: SJE Send the systemsignoncontrol command through ODC and wait for a response.
@@ -1395,7 +1395,7 @@ void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, std::vector<
 
 	ResponseMD3Message.push_back(RetBlock);
 	// Set the flags????
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 }
 
 // Function 15 Output
@@ -1407,7 +1407,7 @@ void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
 	// The MD3BlockFn15StoM does the changes we need for us.
 	MD3BlockFn15StoM FormattedBlock(Header);
 	ResponseMD3Message.push_back(FormattedBlock);
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 }
 // Function 30 Output
 void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
@@ -1418,7 +1418,7 @@ void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
 	// The MD3BlockFn30StoM does the changes we need for us.
 	MD3BlockFn30StoM FormattedBlock(Header);
 	ResponseMD3Message.push_back(FormattedBlock);
-	SendResponse(ResponseMD3Message);
+	SendMD3Message(ResponseMD3Message);
 }
 
 #pragma endregion

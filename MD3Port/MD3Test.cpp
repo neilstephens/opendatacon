@@ -54,8 +54,11 @@ const char *conffile1 = R"001(
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
-	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0}, {"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0}],
-	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
+	// Cannot mix analog and binary points in a poll group. Group 1 is Binary, Group 2 is Analog in this example
+	"PollGroups" : [{"PollRate" : 1000, "ID" : 1}, {"PollRate" : 2000, "ID" : 2}],
+
+	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0, "PollGroup" : 1}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "PollGroup":1}, {"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0}],
+	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0, "PollGroup" : 2}],
 	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Module" : 35, "Offset" : 0}],
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })001";
@@ -78,50 +81,52 @@ const char *conffile2 = R"002(
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })002";
 
-namespace UnitTests
+// Write out the conf file information about into a file so that it can be read back in by the code.
+void WriteConfFileToCurrentWorkingDirectory()
 {
-	// Write out the conf file information about into a file so that it can be read back in by the code.
-	void WriteConfFileToCurrentWorkingDirectory()
+	std::ofstream ofs(conffilename1);
+	if (!ofs) REQUIRE("Could not open conffile2 for writing");
+
+	ofs << conffile1;
+	ofs.close();
+
+	std::ofstream ofs2(conffilename2);
+	if (!ofs2) REQUIRE("Could not open conffile2 for writing");
+
+	ofs2 << conffile2;
+	ofs.close();
+}
+
+// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
+// Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
+std::string BuildHexStringFromASCIIHexString(const std::string &as)
+{
+	assert(as.size() % 2 == 0);	// Must be even length
+
+								// Create, we know how big it will be
+	auto res = std::string(as.size() / 2, 0);
+
+	// Take chars in chunks of 2 and convert to a hex equivalent
+	for (uint32_t i = 0; i < (as.size() / 2); i++)
 	{
-		std::ofstream ofs(conffilename1);
-		if (!ofs) REQUIRE("Could not open conffile2 for writing");
-
-		ofs << conffile1;
-		ofs.close();
-
-		std::ofstream ofs2(conffilename2);
-		if (!ofs2) REQUIRE("Could not open conffile2 for writing");
-
-		ofs2 << conffile2;
-		ofs.close();
+		auto hexpair = as.substr(i * 2, 2);
+		res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
 	}
+	return res;
+}
 
-	// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
-	// Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
-	std::string BuildHexStringFromASCIIHexString(const std::string &as)
-	{
-		assert(as.size() % 2 == 0);	// Must be even length
 
-		// Create, we know how big it will be
-		auto res = std::string(as.size() / 2, 0);
-
-		// Take chars in chunks of 2 and convert to a hex equivalent
-		for (uint32_t i = 0; i < (as.size() / 2); i++)
-		{
-			auto hexpair = as.substr(i * 2, 2);
-			res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
-		}
-		return res;
-	}
+namespace SimpleUnitTests
+{
 
 	TEST_CASE("Utility - HexStringTest")
 	{
 		std::string ts = "c406400f0b00"  "0000fffe9000";
-		std::string w1 = {(char)0xc4,0x06,0x40,0x0f,0x0b,0x00 };
+		std::string w1 = { (char)0xc4,0x06,0x40,0x0f,0x0b,0x00 };
 		std::string w2 = { 0x00,0x00,(char)0xff,(char)0xfe,(char)0x90,0x00 };
 
 		std::string res = BuildHexStringFromASCIIHexString(ts);
-		REQUIRE(res==(w1+w2));
+		REQUIRE(res == (w1 + w2));
 	}
 
 	TEST_CASE("Utility - MD3CRCTest")
@@ -130,14 +135,14 @@ namespace UnitTests
 		uint32_t res = MD3CRC(0x7C05200F);
 		REQUIRE(MD3CRCCompare(res, 0x52));
 
-		res = MD3CRC(0x910d400f );
-		REQUIRE(MD3CRCCompare(res,0x76));
+		res = MD3CRC(0x910d400f);
+		REQUIRE(MD3CRCCompare(res, 0x76));
 
 		res = MD3CRC(0xaa0d160f);
-		REQUIRE(MD3CRCCompare(res,0x62));
+		REQUIRE(MD3CRCCompare(res, 0x62));
 
 		res = MD3CRC(0x8d0d200f);
-		REQUIRE(MD3CRCCompare(res,0x77));
+		REQUIRE(MD3CRCCompare(res, 0x77));
 
 		// Formatted first but not last packet
 		res = MD3CRC(0x9c06200f);
@@ -416,7 +421,7 @@ namespace UnitTests
 		uint32_t data = 0x32F1F203;
 		bool lastblock = true;
 
-		MD3BlockData b(0x32,0xF1,0xf2,0x03, lastblock);
+		MD3BlockData b(0x32, 0xF1, 0xf2, 0x03, lastblock);
 
 		REQUIRE(b.GetData() == data);
 		REQUIRE(b.GetByte(0) == 0x32);
@@ -618,7 +623,10 @@ namespace UnitTests
 	}
 
 #pragma endregion
+}
 
+namespace StationTests
+{
 #pragma region Station Tests
 
 	TEST_CASE("Station - BinaryEvent")
@@ -696,7 +704,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Analog Uncoditional command in as if came from TCP channel
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc05200f0d00"	// Echoed block
 			"100011018400"			// Channel 0 and 1
@@ -754,7 +762,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Analog Uncoditional command in as if came from TCP channel
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc1f200f2200"	// Echoed block
 			"100011018400"			// Channel 0 and 1
@@ -785,7 +793,7 @@ namespace UnitTests
 		Response = "Not Set";
 
 		// Send the Analog Uncoditional command in as if came from TCP channel
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1f3d0f1200"	// Echoed block
 			"100011018400"			// Channel 0 and 1
@@ -843,7 +851,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the command in as if came from TCP channel
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult1 = { (char)0xfc,0x05,0x20,0x0f,0x0d,0x00,	// Echoed block
 			0x10,0x00,0x11,0x01,(char)0x84,0x00,			// Channel 0 and 1
@@ -869,7 +877,7 @@ namespace UnitTests
 		}
 
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = { (char)0xfc,0x06,0x20,0x0f,0x29,0x00,
 			0x32,(char)0xce,0x32,(char)0xce,(char)0x8b,0x00,
@@ -882,7 +890,7 @@ namespace UnitTests
 		//------------------------------
 
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = { (char)0xfc,0x0d,0x20,0x0f,0x40,0x00 };
 
@@ -930,7 +938,7 @@ namespace UnitTests
 		std::string Response = "Not Set";
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		// Address 21, only 1 bit, set by default - check bit order
 		// Address 22, set to alternating on/off above
@@ -971,7 +979,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0722012500" "7c22ffff9c00" "7c23ffffc000");		// All on
 
@@ -988,7 +996,7 @@ namespace UnitTests
 
 		// The command remains the same each time, but is consumed in the InjectCommand
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0822003c00"	// Return function 8, Channels == 0, so 1 block to follow.
 																			"7c22aaaaf900");	// Values set above
@@ -999,7 +1007,7 @@ namespace UnitTests
 
 		// The command remains the same each time, but is consumed in the InjectCommand
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e22025900");	// Digital No Change response
 
@@ -1037,7 +1045,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		// List should be empty...
 		const std::string DesiredResult1 = { (char)0xfc,0x09,0x00,0x00,0x6a,0x00 };		// Empty HRER response?
@@ -1063,7 +1071,7 @@ namespace UnitTests
 		commandblock = MD3BlockFn9(0x7C, true, 2, 10, true, true);
 		output << commandblock.ToBinaryString();
 		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		//TODO: Fn9 Test - Will have a set of blocks containing 10 change records. Need to decode to test as the times will vary by run.
 		// Need to write the master station decode - code for this in order to be able to check it. The message is going to change each time
@@ -1079,7 +1087,7 @@ namespace UnitTests
 		// The command remains the same each time, but is consumed in the InjectCommand
 		commandblock = MD3BlockFn9(0x7C, true, 3, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		// Again need a decode function
 		REQUIRE(Response[2] == 0x30);	// Seq 3, MEV == 0
@@ -1090,7 +1098,7 @@ namespace UnitTests
 		// Send the command again, but we should get an empty response. Should only be the one block.
 		commandblock = MD3BlockFn9(0x7C, true, 4, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		// Will get all data changing this time around
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0940006d00"); // No events, seq # = 4
@@ -1100,7 +1108,7 @@ namespace UnitTests
 		// Send the command again, we should get the previous response - tests the recovery from lost packet code.
 		commandblock = MD3BlockFn9(0x7C, true, 4, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response == DesiredResult2);
 
@@ -1116,7 +1124,7 @@ namespace UnitTests
 
 		commandblock = MD3BlockFn9(0x7C, true,5, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response[2] == 0x58);	// Seq 5, MEV == 1	 The long delay will require another request from the master
 		REQUIRE(Response[3] == 1);
@@ -1125,7 +1133,7 @@ namespace UnitTests
 
 		commandblock = MD3BlockFn9(0x7C, true, 6, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response[2] == 0x60);	// Seq 6, MEV == 0	 The long delay will require another request from the master
 		REQUIRE(Response[3] == 1);
@@ -1141,7 +1149,7 @@ namespace UnitTests
 		MD3BlockData datablock((uint32_t)(currenttime / 1000), true );
 		output << datablock.ToBinaryString();
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e58004900"); // Should get a command rejected response
 		REQUIRE(Response == DesiredResult3);
@@ -1177,7 +1185,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0A00023800" "7c2180008200" "7c22ffffdc00");
 
@@ -1189,7 +1197,7 @@ namespace UnitTests
 		// Send the command but start from module 0x22, we did not get all the blocks last time. Test the wrap around
 		commandblock = MD3BlockFn10(0x7C, true, 0x22, 3, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0a22032900"				// Return function 10, ModuleCount =2 so 2 blocks to follow.
 												"7c23ffff8000"
@@ -1201,7 +1209,7 @@ namespace UnitTests
 		// Send the command with 0 startmodule, should return a no change block.
 		commandblock = MD3BlockFn10(0x7C, true, 0, 2, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e00006500");	// Digital No Change response
 
@@ -1238,7 +1246,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		// Will get all data changing this time around
 		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01043700" "210080008100" "2200ffff8300" "2300ffffa200" "3f00ffffca00");
@@ -1249,7 +1257,7 @@ namespace UnitTests
 		// No data changes so should get a no change Fn14 block
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15, true);	// Sequence number must increase
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0e02004100");	// Digital No Change response for Fn 11 - different for 7,8,10
 
@@ -1259,7 +1267,7 @@ namespace UnitTests
 		// No sequence number shange, so should get the same data back as above.
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15, true);	// Sequence number must increase - but for this test not
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response == DesiredResult2);
 
@@ -1280,7 +1288,7 @@ namespace UnitTests
 
 		// The command remains the same each time, but is consumed in the InjectCommand
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		// The second block is time, adn will change each run.
 		// The other blocks will have the msec part of the field change.
@@ -1303,7 +1311,7 @@ namespace UnitTests
 
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 4, 0, true);	// Sequence number must increase
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult4 = BuildHexStringFromASCIIHexString("fc0b04000100" "5aefcc809300" "22fbafff9a00" "00012200a900"	"afff0000e600");
 
@@ -1313,7 +1321,7 @@ namespace UnitTests
 		// Get the single event left in the queue
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 5, 0, true);	// Sequence number must increase
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult5 = BuildHexStringFromASCIIHexString("fc0b05001300" "5aefcd03a500" "00012243ad00" "afff0000e600");
 
@@ -1350,7 +1358,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01032d00" "210080008100" "2200ffff8300" "2300ffffe200");
 
@@ -1371,7 +1379,7 @@ namespace UnitTests
 		//--------------------------------
 		// Send the same command and sequence number, should get the same data as before - even though we have changed it
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response == DesiredResult1);
 
@@ -1379,7 +1387,7 @@ namespace UnitTests
 		commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 2, 3, true);	// Have to change the sequence number
 		output << commandblock.ToBinaryString();
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0b02031b00" "210080008100" "2200aaaaa600" "2300ffffe200");
 
@@ -1416,7 +1424,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f01034600");
 
@@ -1427,7 +1435,7 @@ namespace UnitTests
 		output << commandblock2.ToBinaryString();
 		Response = "Not Set";
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response =="Not Set");	// As address zero, no response expected
 
@@ -1477,7 +1485,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f23017a00");
 
@@ -1489,7 +1497,7 @@ namespace UnitTests
 		MD3BlockData datablock2(1000, true);	// Non sensical block
 		output << datablock2.ToBinaryString();
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e23017c00");
 
@@ -1502,7 +1510,7 @@ namespace UnitTests
 		MD3BlockData datablock3 = commandblock.GenerateSecondBlock();
 		output << datablock3.ToBinaryString();
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24015900");
 
@@ -1559,7 +1567,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f23dc7200");
 
@@ -1571,7 +1579,7 @@ namespace UnitTests
 		MD3BlockData datablock2(1000, true);	// Non sensical block
 		output << datablock2.ToBinaryString();
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e230c6500");
 
@@ -1584,7 +1592,7 @@ namespace UnitTests
 		MD3BlockData datablock3 = commandblock.GenerateSecondBlock(0x73);
 		output << datablock3.ToBinaryString();
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e240b5a00");
 
@@ -1625,7 +1633,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f23017a00");
 
@@ -1637,7 +1645,7 @@ namespace UnitTests
 		MD3BlockData datablock2(1000, true);	// Non sensical block
 		output << datablock2.ToBinaryString();
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e23017c00");
 
@@ -1650,7 +1658,7 @@ namespace UnitTests
 		MD3BlockData datablock3 = commandblock.GenerateSecondBlock(0x55);
 		output << datablock3.ToBinaryString();
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24015900");
 
@@ -1688,7 +1696,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc2883d77100");
 
@@ -1732,7 +1740,7 @@ namespace UnitTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		// No need to delay to process result, all done in the InjectCommand at call time.
 		REQUIRE(Response[0] == (char)0xFC);
@@ -1743,7 +1751,7 @@ namespace UnitTests
 		MD3BlockData datablock2(1000, true);	// Non sensical time
 		output << datablock2.ToBinaryString();
 
-		MD3Port->InjectCommand(write_buffer);
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		// No need to delay to process result, all done in the InjectCommand at call time.
 		REQUIRE(Response[0] == (char)0xFC);
@@ -1847,6 +1855,123 @@ namespace UnitTests
 		pSockMan->Close();
 //		MD3Port->Disable(); //TODO: SJE Have a problem with this not shutting down correctly. Have to look at that - casues usbsequent tests to fail
 //		MD3Port2->Disable();
+
+		// Need to handle multiple responses...
+		// Deal with the last response first...
+		REQUIRE(ResponseVec.size() == 2);
+
+		REQUIRE(ResponseVec.back() == BuildHexStringFromASCIIHexString("fd0f01027c00"));	// OK Command
+		ResponseVec.pop_back();
+
+		REQUIRE(ResponseVec.back() == BuildHexStringFromASCIIHexString("fc0f01034600"));	// OK Command
+		ResponseVec.pop_back();
+
+		REQUIRE(ResponseVec.empty());
+
+		IOMgr.Shutdown();
+	}
+#pragma endregion
+}
+
+namespace MasterTests
+{
+#pragma region Master Tests
+
+	std::vector<std::string> ResponseVec;
+
+	void ResponseCallback(buf_t& readbuf)
+	{
+		int bufsize = readbuf.size();
+		std::string S(bufsize, 0);
+
+		for (int i = 0; i < bufsize; i++)
+		{
+			S[i] = readbuf.sgetc();
+			readbuf.consume(1);
+		}
+
+		ResponseVec.push_back(S);	// Store so we can check
+	}
+	void SocketStateHandler(bool state)
+	{
+		std::string msg;
+		if (state)
+		{
+
+			msg = "Connection established.";
+		}
+		else
+		{
+			msg = "Connection closed.";
+		}
+	}
+
+	TEST_CASE("Master - Binary Scan Test")
+	{
+		// Here we test the abilility to support multiple Stations on the one Port/IP Combination.
+		// The Stations will be 0x7C, 0x01, 0x5C
+		//
+
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
+
+		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+
+		auto MD3Port2 = new  MD3OutstationPort("TestPLC", conffilename2, Json::nullValue);
+
+		MD3Port2->SetIOS(&IOS);
+		MD3Port2->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port2->Enable();
+
+		// We dont have to consider the timer going out of scope in this use case.
+		Timer_t timer(IOS);
+		timer.expires_from_now(std::chrono::seconds(5));
+		timer.async_wait([&IOS, &MD3Port, &MD3Port2](asio::error_code err_code)	// [=] all autos by copy, [&] all autos by ref
+		{
+			// If there was no more work, the asio::io_service will exit from the IOS.run() below.
+			// However something is keeping it running, so use the stop command to force the issue.
+			IOS.stop();
+		});
+
+		// An outstation is a server by default (Master connects to it...)
+		// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
+		pSockMan.reset(new TCPSocketManager<std::string>
+			(&IOS, false, "127.0.0.1", "1000",
+				std::bind(&ResponseCallback, std::placeholders::_1),
+				std::bind(&SocketStateHandler, std::placeholders::_1),
+				true, 500));
+		pSockMan->Open();
+
+		// Send the Command - results in an async write
+		//  Station 0x7C
+		MD3BlockFn16MtoS commandblock(0x7C, true);
+		pSockMan->Write(commandblock.ToBinaryString());
+
+		//  Station 0x7D
+		MD3BlockFn16MtoS commandblock2(0x7D, true);
+		pSockMan->Write(commandblock2.ToBinaryString());
+
+
+		IOS.run();	// Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
+					// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
+					// If the IOS runs out of work, it must be reset before being run again.
+
+		pSockMan->Close();
+		//		MD3Port->Disable(); //TODO: SJE Have a problem with this not shutting down correctly. Have to look at that - casues usbsequent tests to fail
+		//		MD3Port2->Disable();
 
 		// Need to handle multiple responses...
 		// Deal with the last response first...

@@ -55,12 +55,7 @@ MD3OutstationPort::MD3OutstationPort(std::string aName, std::string aConfFilenam
 MD3OutstationPort::~MD3OutstationPort()
 {
 	Disable();
-	// Remove any this pointers so they cant be accessed!
-}
-
-void MD3OutstationPort::SetSendTCPDataFn(std::function<void(std::string)> Send)
-{
-	SendTCPDataFn = Send;
+	//TODO: SJE Remove any connections that reference this Outstation so they cant be accessed!
 }
 
 void MD3OutstationPort::Enable()
@@ -110,8 +105,6 @@ void MD3OutstationPort::SocketStateHandler(bool state)
 void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
 {
 	//TODO: Do we re-read the conf file - so we can do a live reload? - How do we kill all the sockets and connections properly?
-
-
 	std::string ChannelID = MyConf()->mAddrConf.IP + ":" + std::to_string(MyConf()->mAddrConf.Port);
 
 	pConnection = MD3Connection::GetConnection(ChannelID); //Static method
@@ -124,55 +117,12 @@ void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LO
 		MD3Connection::AddConnection(ChannelID, pConnection);	//Static method
 	}
 
-	pConnection->AddOutStation(MyConf()->mAddrConf.OutstationAddr,
+	pConnection->AddOutstation(MyConf()->mAddrConf.OutstationAddr,
 		std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1),
 		std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1) );
 }
 
-
-// The only method that sends to the TCP Socket
-void MD3OutstationPort::SendResponse(std::vector<MD3BlockData> &CompleteMD3Message)
-{
-	if (CompleteMD3Message.size() == 0)
-	{
-		LOG("MD3OutstationPort", openpal::logflags::ERR, "", "Tried to send an empty response");
-		return;
-	}
-
-	// Turn the blocks into a binary string.
-	std::string MD3Message;
-	for (auto blk : CompleteMD3Message)
-	{
-		MD3Message += blk.ToBinaryString();
-	}
-
-	// This is a pointer to a function, so that we can hook it for testing. Otherwise calls the pSockMan Write templated function
-	// Small overhead to allow for testing - Is there a better way? - could not hook the pSockMan->Write function and/or another passed in function due to differences between a method and a lambda
-	if (SendTCPDataFn != nullptr)
-		SendTCPDataFn(MD3Message);
-	else
-	{
-		pConnection->Write(std::string(MD3Message));
-	}
-}
-
-// Test only method for simulating input from the TCP Connection.
-void MD3OutstationPort::InjectCommand(buf_t&readbuf)
-{
-	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
-	pConnection->ReadCompletionHandler(readbuf);
-}
-
-
 #pragma region  PointTableAccess
-MD3PortConf* MD3OutstationPort::MyConf()
-{
-	return static_cast<MD3PortConf*>(this->pConf.get());
-};
-std::shared_ptr<MD3PointConf> MD3OutstationPort::MyPointConf()
-{
-	return MyConf()->pPointConf;
-};
 
 bool MD3OutstationPort::GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res)
 {

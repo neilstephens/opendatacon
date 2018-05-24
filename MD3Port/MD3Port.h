@@ -27,12 +27,22 @@
 #ifndef MD3PORT_H_
 #define MD3PORT_H_
 
+#include <unordered_map>
+#include <vector>
+#include <functional>
+
 #include <opendatacon/DataPort.h>
 #include <opendnp3/gen/LinkStatus.h>
 #include <opendnp3/outstation/ICommandHandler.h>
+
+#include "MD3.h"
 #include "MD3PortConf.h"
+#include "MD3Engine.h"
+#include "MD3Connection.h"
 
 using namespace odc;
+
+class MD3Connection;
 
 class MD3Port: public DataPort
 {
@@ -74,12 +84,26 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
-	int Limit(int val, int max);
+	// Public only for UnitTesting
+	void SendMD3Message(std::vector<MD3BlockData>& CompleteMD3Message);
+	void SetSendTCPDataFn(std::function<void(std::string)> Send);
+	void InjectSimulatedTCPMessage(buf_t & readbuf);	// Equivalent of the callback handler in the MD3Connection.
 
 protected:
 	bool isServer;
-	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 	TCPClientServer ClientOrServer();
+
+	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
+	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing
+
+	// Worker functions to try and clean up the code...
+	MD3PortConf* MyConf();
+	std::shared_ptr<MD3PointConf> MyPointConf();	
+	int Limit(int val, int max);
+
+	// We need to support multidrop in both the OutStation and the Master.
+	// We have a separate OutStation or Master for each OutStation, but they could be sharing a TCP connection, then routing the traffic based on MD3 Station Address.
+	std::shared_ptr<MD3Connection> pConnection;
 };
 
 #endif /* MD3PORT_H_ */

@@ -72,6 +72,40 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto Counters = JSONRoot["Counters"];
 		ProcessAnalogCounterPoints(Counters, CounterMD3PointMap, CounterODCPointMap);
 	}
+	if (JSONRoot.isMember("PollGroups"))
+	{
+		auto jPollGroups = JSONRoot["PollGroups"];
+		for (Json::ArrayIndex n = 0; n < jPollGroups.size(); ++n)
+		{
+			if (!jPollGroups[n].isMember("ID"))
+			{
+				std::cout << "Poll group missing ID : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
+				continue;
+			}
+			if (!jPollGroups[n].isMember("PollRate"))
+			{
+				std::cout << "Poll group missing PollRate : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
+				continue;
+			}
+
+			uint32_t PollGroupID = jPollGroups[n]["ID"].asUInt();
+			uint32_t pollrate = jPollGroups[n]["PollRate"].asUInt();
+
+			if (PollGroupID == 0)
+			{
+				std::cout << "Poll group 0 is reserved (do not poll) : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
+				continue;
+			}
+
+			if (PollGroups.count(PollGroupID) > 0)
+			{
+				std::cout << "Duplicate poll group ignored : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
+				continue;
+			}
+
+			PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate));
+		}
+	}
 }
 
 void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> &MD3PointMap,
@@ -101,6 +135,7 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 
 		uint32_t module = 0;
 		uint32_t offset = 0;
+		uint32_t pollgroup = 0;
 
 		if (JSONNode[n].isMember("Module"))
 			module = JSONNode[n]["Module"].asUInt();
@@ -116,6 +151,11 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 		{
 			std::cout << "A point needs an \"Offset\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
 			error = true;
+		}
+
+		if (JSONNode[n].isMember("PollGroup"))
+		{
+			pollgroup = JSONNode[n]["PollGroup"].asUInt();
 		}
 
 		if (!error)
@@ -137,7 +177,7 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 				}
 				else
 				{
-					auto pt = std::make_shared<MD3BinaryPoint>(index, moduleaddress, channel);
+					auto pt = std::make_shared<MD3BinaryPoint>(index, moduleaddress, channel, (uint8_t)pollgroup);
 					MD3PointMap[md3index] = pt;
 					ODCPointMap[index] = pt;
 				}
@@ -172,6 +212,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::
 
 		uint32_t module = 0;
 		uint32_t offset = 0;
+		uint32_t pollgroup = 0;
 
 		if (JSONNode[n].isMember("Module"))
 			module = JSONNode[n]["Module"].asUInt();
@@ -187,6 +228,11 @@ void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::
 		{
 			std::cout << "A point needs an \"Offset\" : '" << JSONNode[n].toStyledString() << "'" << std::endl;
 			error = true;
+		}
+
+		if (JSONNode[n].isMember("PollGroup"))
+		{
+			pollgroup = JSONNode[n]["PollGroup"].asUInt();
 		}
 
 		if (!error)
@@ -208,7 +254,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::
 				}
 				else
 				{
-					auto pt = std::make_shared<MD3AnalogCounterPoint>(index, moduleaddress, channel);
+					auto pt = std::make_shared<MD3AnalogCounterPoint>(index, moduleaddress, channel,0);
 					MD3PointMap[md3index] = pt;
 					ODCPointMap[index] = pt;
 				}

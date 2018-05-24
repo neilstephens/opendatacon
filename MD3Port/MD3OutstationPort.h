@@ -31,7 +31,6 @@
 #include <vector>
 #include <functional>
 
-
 #include "MD3.h"
 #include "MD3Port.h"
 #include "MD3Engine.h"
@@ -128,34 +127,19 @@ public:
 
 	bool CheckBinaryControlExistsUsingMD3Index(const uint16_t module, const uint8_t channel);
 
-	void SendResponse(std::vector<MD3BlockData>& CompleteMD3Message);
-
 	// Testing and Debugging Methods - no other use
-	// This allows us to hook the TCP Data Send Fucntion for testing.
-	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void AddToDigitalEvents(MD3BinaryPoint & pt);
-	void InjectCommand(buf_t & readbuf);	// Equivalent of the callback handler in the MD3Connection.
 
 private:
 
 	void SocketStateHandler(bool state);
 
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-
-	std::vector<MD3BlockData> MD3Message;
+//	std::vector<MD3BlockData> MD3Message;
 
 	int LastHRERSequenceNumber = 100;	// Used to remember the last HRER scan we sent, starts with an invalid value
 	int LastDigitalScanSequenceNumber = 0;	// Used to remember the last digital scan we had
 	std::vector<MD3BlockData> LastDigitialScanResponseMD3Message;
 	std::vector<MD3BlockData> LastDigitialHRERResponseMD3Message;
-
-	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
-	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing
-
-	// Worker functions to try and clean up the code...
-	MD3PortConf* MyConf();
-	std::shared_ptr<MD3PointConf> MyPointConf();
-	std::shared_ptr<MD3Connection> pConnection;
 };
 
 #endif

@@ -37,7 +37,7 @@
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 #include <chrono>
-#include <boost/lockfree/spsc_queue.hpp>
+#include <boost/lockfree/spsc_queue.hpp>	// Alternative https://github.com/rigtorp/SPSCQueue ?
 
 using namespace odc;
 
@@ -65,16 +65,18 @@ class MD3Point
 public:
 	MD3Point() {};
 
-	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel) :
+	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup = 0) :
 		Index(index),
 		ModuleAddress(moduleaddress),
-		Channel(channel)
+		Channel(channel),
+		PollGroup(pollgroup)
 	{};
 
 	uint32_t Index = 0;
 	uint8_t ModuleAddress = 0;
 	bool ModuleFailed = false;	// Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
 	uint8_t Channel = 0;
+	uint8_t PollGroup = 0;
 };
 
 class MD3BinaryPoint : public MD3Point
@@ -82,7 +84,7 @@ class MD3BinaryPoint : public MD3Point
 public:
 	MD3BinaryPoint() {};
 
-	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel) :MD3Point(index, moduleaddress, channel)
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup) :MD3Point(index, moduleaddress, channel, pollgroup)
 	{};
 
 	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, uint64_t changedtime) :
@@ -96,7 +98,7 @@ public:
 	uint8_t Binary = 0x01;
 	uint16_t ModuleBinarySnapShot = 0;	// Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
 	bool Changed = true;
-	uint64_t ChangedTime = 0;	// msec since epoch. 1970,1,1
+	uint64_t ChangedTime = 0;	// msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data.
 };
 
 class MD3AnalogCounterPoint : public MD3Point
@@ -105,7 +107,7 @@ class MD3AnalogCounterPoint : public MD3Point
 public:
 	MD3AnalogCounterPoint() {};
 
-	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel) :MD3Point(index, moduleaddress, channel)
+	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup) :MD3Point(index, moduleaddress, channel, pollgroup)
 	{};
 
 	// Only the values below will be changed in two places
@@ -117,6 +119,24 @@ typedef std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>::iterator ODCBinaryP
 typedef std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>::iterator MD3BinaryPointMapIterType;
 typedef std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator ODCAnalogCounterPointMapIterType;
 typedef std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator MD3AnalogCounterPointMapIterType;
+
+
+class MD3PollGroup
+{
+public:
+	MD3PollGroup() :
+		ID(0),
+		pollrate(0)
+	{ }
+
+	MD3PollGroup(uint32_t ID_, uint32_t pollrate_) :
+		ID(ID_),
+		pollrate(pollrate_)
+	{ }
+
+	uint32_t ID;
+	uint32_t pollrate;
+};
 
 class MD3PointConf: public ConfigParser
 {
@@ -147,5 +167,7 @@ public:
 
 	boost::lockfree::spsc_queue<MD3BinaryPoint, boost::lockfree::capacity<256> > BinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events. Used for COS request functions
 	boost::lockfree::spsc_queue<MD3BinaryPoint, boost::lockfree::capacity<256> > BinaryModuleTimeTaggedEventQueue;	// This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
+
+	std::map<uint32_t, MD3PollGroup> PollGroups;
 };
 #endif /* MD3POINTCONF_H_ */

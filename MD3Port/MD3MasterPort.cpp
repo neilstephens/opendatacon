@@ -28,42 +28,117 @@
 #include <opendnp3/LogLevels.h>
 #include <thread>
 #include <chrono>
-#include <opendnp3/app/MeasurementTypes.h>
-#include "MD3MasterPort.h"
 #include <array>
+#include <opendnp3/app/MeasurementTypes.h>
+
+#include "MD3.h"
+#include "MD3Engine.h"
+#include "MD3MasterPort.h"
+
+
+MD3MasterPort::MD3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
+	MD3Port(aName, aConfFilename, aConfOverrides),
+	PollScheduler(nullptr)
+{}
 
 MD3MasterPort::~MD3MasterPort()
 {
 	Disable();
-//	if (mb != nullptr)
-//		MD3_free(mb);
-	if (MD3_read_buffer != nullptr)
-		free(MD3_read_buffer);
+	//TODO: SJE Remove any connections that reference this Master so they cant be accessed!
 }
 
 void MD3MasterPort::Enable()
 {
-	if(enabled) return;
-	enabled = true;
-
-	pTCPRetryTimer.reset(new Timer_t(*pIOS));
-	PollScheduler.reset(new ASIOScheduler(*pIOS));
-
-	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
-
-	// Only change stack state if it is a persistent server
-	if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
+	if (enabled) return;
+	try
 	{
-		this->Connect();
+		if (pConnection.get() == nullptr)
+			throw std::runtime_error("Connection manager uninitilised");
+
+		pConnection->Open();	// Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+
+		enabled = true;
+	}
+	catch (std::exception& e)
+	{
+		LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Problem opening connection : " + Name + " : " + e.what());
+		return;
 	}
 }
-
-void MD3MasterPort::Connect()
+void MD3MasterPort::Disable()
 {
-	if(!enabled) return;
-//	if (stack_enabled) return;
+	if (!enabled) return;
+	enabled = false;
 
-	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
+	if (pConnection.get() == nullptr)
+		return;
+	pConnection->Close(); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+}
+
+// Have to fire the SocketStateHandler for all other OutStations sharing this socket.
+void MD3MasterPort::SocketStateHandler(bool state)
+{
+	std::string msg;
+	if (state)
+	{
+		PollScheduler->Start();
+		PublishEvent(ConnectState::CONNECTED, 0);
+		msg = Name + ": Connection established.";
+	}
+	else
+	{
+		PollScheduler->Stop();
+		// MD3 Binary
+		//for(auto index : pConf->pPointConf->BinaryIndicies)
+		//for(uint16_t index = range.start; index < range.start + range.count; index++ )
+		//			PublishEvent(BinaryQuality::COMM_LOST, index);
+		// Do Analogs and Controls.
+
+		PublishEvent(ConnectState::DISCONNECTED, 0);
+		msg = Name + ": Connection closed.";
+	}
+	LOG("MD3OutstationPort", openpal::logflags::INFO, "", msg);
+}
+
+void MD3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+{
+	//TODO: Do we re-read the conf file - so we can do a live reload? - How do we kill all the sockets and connections properly?
+	std::string ChannelID = MyConf()->mAddrConf.IP + ":" + std::to_string(MyConf()->mAddrConf.Port);
+
+	if (PollScheduler == nullptr)
+		PollScheduler.reset(new ASIOScheduler(*pIOS));
+
+	pConnection = MD3Connection::GetConnection(ChannelID); //Static method
+
+	if (pConnection == nullptr)
+	{
+		pConnection.reset(new MD3Connection(pIOS, isServer, MyConf()->mAddrConf.IP,
+			std::to_string(MyConf()->mAddrConf.Port), this, true, MyConf()->TCPConnectRetryPeriodms));	// Retry period cannot be different for multidrop outstations
+
+		MD3Connection::AddConnection(ChannelID, pConnection);	//Static method
+	}
+
+	pConnection->AddMaster(MyConf()->mAddrConf.OutstationAddr,
+		std::bind(&MD3MasterPort::ProcessMD3Message, this, std::placeholders::_1),
+		std::bind(&MD3MasterPort::SocketStateHandler, this, std::placeholders::_1));
+
+	PollScheduler->Stop();
+	PollScheduler->Clear();
+	for (auto pg : MyPointConf()->PollGroups)
+	{
+		auto id = pg.second.ID;
+		auto action = [=]() {
+			this->DoPoll(id);
+		};
+		PollScheduler->Add(pg.second.pollrate, action);
+	}
+	//	PollScheduler->Start(); Will start when the conenction is up (and stop when it is down!)
+}
+
+//void MD3MasterPort::Connect()
+//{
+//	if(!enabled) return;
+//	if (stack_enabled) return;
 
 	/*
 	if (mb == NULL)
@@ -97,11 +172,7 @@ void MD3MasterPort::Connect()
 
 //	stack_enabled = true;
 
-	{
-		std::string msg = Name + ": Connect success!";
-		auto log_entry = openpal::LogEntry("MD3MasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-	}
+
 
 //	MD3_set_slave(mb, pConf->mAddrConf.OutstationAddr);
 
@@ -115,45 +186,10 @@ void MD3MasterPort::Connect()
 //	    pLoggers->Log(log_entry);
 //    }
 
-	PollScheduler->Clear();
-/*	for(auto pg : pConf->pPointConf->PollGroups)
-	{
-		auto id = pg.second.ID;
-		auto action = [=](){
-			this->DoPoll(id);
-		};
-		PollScheduler->Add(pg.second.pollrate, action);
-	}
-*/
-	PollScheduler->Start();
-}
 
-void MD3MasterPort::Disable()
-{
-	Disconnect();
-	enabled = false;
-}
+//}
 
-void MD3MasterPort::Disconnect()
-{
-//	if (!stack_enabled) return;
-//	stack_enabled = false;
 
-	//cancel the timers (otherwise it would tie up the io_service on shutdown)
-	pTCPRetryTimer->cancel();
-	PollScheduler->Stop();
-
-//	if(mb != nullptr) MD3_close(mb);
-
-	//Update the quality of point
-	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
-
-	// MD3 Binary
-	//for(auto index : pConf->pPointConf->BinaryIndicies)
-		//for(uint16_t index = range.start; index < range.start + range.count; index++ )
-//			PublishEvent(BinaryQuality::COMM_LOST, index);
-	// Do Analogs and Controls.
-}
 
 void MD3MasterPort::HandleError(int errnum, const std::string& source)
 {
@@ -213,18 +249,122 @@ CommandStatus MD3MasterPort::HandleWriteError(int errnum, const std::string& sou
 	}
 }
 
-void MD3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
 {
-	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
+	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
+	assert(CompleteMD3Message.size() != 0);
 
+	uint8_t ExpectedStationAddress = MyConf()->mAddrConf.OutstationAddr;
+	int ExpectedMessageSize = 1;	// Only set in switch statement if not 1
 
+	MD3BlockFormatted Header = CompleteMD3Message[0];
+	// Now based on the Command Function, take action. Some of these are responses from - not commands to an OutStation.
+
+	// All are included to allow better error reporting.
+	switch (Header.GetFunctionCode())
+	{
+	case ANALOG_UNCONDITIONAL:	// Command and reply
+	//	DoAnalogUnconditional(Header);
+		break;
+	case ANALOG_DELTA_SCAN:		// Command and reply
+	//	DoAnalogDeltaScan(Header);
+		break;
+	case DIGITAL_UNCONDITIONAL_OBS:
+	//	DoDigitalUnconditionalObs(Header);
+		break;
+	case DIGITAL_DELTA_SCAN:
+	//	DoDigitalChangeOnly(Header);
+		break;
+	case HRER_LIST_SCAN:
+		// Can be a size of 1 or 2
+		ExpectedMessageSize = CompleteMD3Message.size();
+	//	if ((ExpectedMessageSize == 1) || (ExpectedMessageSize == 2))
+	//		DoDigitalHRER(static_cast<MD3BlockFn9&>(Header), CompleteMD3Message);
+	//	else
+	//		ExpectedMessageSize = 1;
+		break;
+	case DIGITAL_CHANGE_OF_STATE:
+	//	DoDigitalCOSScan(static_cast<MD3BlockFn10&>(Header));
+		break;
+	case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
+	//	DoDigitalScan(static_cast<MD3BlockFn11MtoS&>(Header));
+		break;
+	case DIGITAL_UNCONDITIONAL:
+	//	DoDigitalUnconditional(static_cast<MD3BlockFn12MtoS&>(Header));
+		break;
+	case ANALOG_NO_CHANGE_REPLY:
+		// Master Only
+		break;
+	case DIGITAL_NO_CHANGE_REPLY:
+		// Master Only
+		break;
+	case CONTROL_REQUEST_OK:
+		// Master Only
+		break;
+	case FREEZE_AND_RESET:
+	//	DoFreezeResetCounters(static_cast<MD3BlockFn16MtoS&>(Header));
+		break;
+	case POM_TYPE_CONTROL:
+		ExpectedMessageSize = 2;
+	//	DoPOMControl(static_cast<MD3BlockFn17MtoS&>(Header), CompleteMD3Message);
+		break;
+	case DOM_TYPE_CONTROL:
+		ExpectedMessageSize = 2;
+	//	DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
+		break;
+	case INPUT_POINT_CONTROL:
+		break;
+	case RAISE_LOWER_TYPE_CONTROL:
+		break;
+	case AOM_TYPE_CONTROL:
+		ExpectedMessageSize = 2;
+	//	DoAOMControl(static_cast<MD3BlockFn23MtoS&>(Header), CompleteMD3Message);
+		break;
+	case CONTROL_OR_SCAN_REQUEST_REJECTED:
+		// Master Only
+		break;
+	case COUNTER_SCAN:
+	//	DoCounterScan(Header);
+		break;
+	case SYSTEM_SIGNON_CONTROL:
+	//	DoSystemSignOnControl(static_cast<MD3BlockFn40&>(Header));
+		break;
+	case SYSTEM_SIGNOFF_CONTROL:
+		break;
+	case SYSTEM_RESTART_CONTROL:
+		break;
+	case SYSTEM_SET_DATETIME_CONTROL:
+		ExpectedMessageSize = 2;
+	//	DoSetDateTime(static_cast<MD3BlockFn43MtoS&>(Header), CompleteMD3Message);
+		break;
+	case FILE_DOWNLOAD:
+		break;
+	case FILE_UPLOAD:
+		break;
+	case SYSTEM_FLAG_SCAN:
+		ExpectedMessageSize = CompleteMD3Message.size();	// Variable size
+	//	DoSystemFlagScan(Header, CompleteMD3Message);
+		break;
+	case LOW_RES_EVENTS_LIST_SCAN:
+		break;
+	default:
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Unknown Message Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		break;
+	}
+
+	if (ExpectedMessageSize != CompleteMD3Message.size())
+	{
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Unexpected Message Size - " + std::to_string(CompleteMD3Message.size()) +
+			" On Station Address - " + std::to_string(Header.GetStationAddress()) +
+			" Function - " + std::to_string(Header.GetFunctionCode()));
+	}
 }
 
-/*void MD3MasterPort::DoPoll(uint32_t pollgroup)
+void MD3MasterPort::DoPoll(uint32_t pollgroup)
 {
 	if(!enabled) return;
 
-	auto pConf = static_cast<MD3PortConf*>(this->pConf.get());
+/*	auto pConf = static_cast<MD3PortConf*>(this->pConf.get());
 	int rc;
 
 	// MD3 function code 0x01 (read coil status)
@@ -344,8 +484,9 @@ void MD3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LE
 			}
 		}
 	}
+	*/
 }
-*/
+
 
 //Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
 std::future<CommandStatus> MD3MasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
@@ -373,7 +514,7 @@ std::future<CommandStatus> MD3MasterPort::ConnectionEvent(ConnectState state, co
 		// Only change stack state if it is an on demand server
 		if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
-			this->Connect();
+			//this->Connect();
 		}
 	}
 

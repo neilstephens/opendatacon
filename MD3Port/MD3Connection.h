@@ -47,6 +47,7 @@ The MD3Connection class manages a static list of its own instances, so the OutSt
 
 using namespace odc;
 
+class MD3Port;
 
 class MD3Connection
 {
@@ -60,8 +61,13 @@ public:
 		bool aauto_reopen = false,					//Keeps the socket open (retry on error), unless you explicitly Close() it
 		uint16_t aretry_time_ms = 0);
 
-	void AddOutStation(uint8_t StationAddress,	// For message routing, OutStation identification
+	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
+	void AddOutstation(uint8_t StationAddress,	// For message routing, OutStation identification
 		const std::function<void(std::vector<MD3BlockData> MD3Message)> aReadCallback,
+		const std::function<void(bool)> aStateCallback);
+
+	void AddMaster(uint8_t TargetStationAddress,
+		const std::function<void(std::vector<MD3BlockData>MD3Message)> aReadCallback,
 		const std::function<void(bool)> aStateCallback);
 
 	// Two static methods to manage the map of connections. Can only have one for an address/port combination.
@@ -100,8 +106,8 @@ private:
 	uint16_t retry_time_ms;
 
 	// Need maps for these two...
-	std::unordered_map<uint8_t, std::function<void(std::vector<MD3BlockData> MD3Message)>> OutStationReadCallbackMap;
-	std::unordered_map<uint8_t, std::function<void(bool)>> OutStationStateCallbackMap;
+	std::unordered_map<uint8_t, std::function<void(std::vector<MD3BlockData> MD3Message)>> ReadCallbackMap;
+	std::unordered_map<uint8_t, std::function<void(bool)>> StateCallbackMap;
 
 	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 

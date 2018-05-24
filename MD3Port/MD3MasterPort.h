@@ -28,13 +28,14 @@
 #define MD3MASTERPORT_H_
 
 #include <queue>
+#include <utility>
 #include <opendnp3/master/ISOEHandler.h>
-
-//#include <MD3/MD3.h>
-#include "MD3Port.h"
 #include <opendatacon/ASIOScheduler.h>
 
-#include <utility>
+#include "MD3.h"
+#include "MD3Engine.h"
+#include "MD3Port.h"
+
 
 /*
 template <typename T, typename F>
@@ -71,21 +72,14 @@ capture_impl<T,F> capture( T && x, F && f )
 class MD3MasterPort: public MD3Port
 {
 public:
-	MD3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-		MD3Port(aName, aConfFilename, aConfOverrides),
-	//	mb(nullptr),
-		MD3_read_buffer(nullptr),
-		MD3_read_buffer_size(0)
-	{}
-
+	MD3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 	~MD3MasterPort() override;
 
-	// Implement MD3Port
 	void Enable() override;
 	void Disable() override;
-	void Connect();
-	void Disconnect();
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+
+	void SocketStateHandler(bool state);
 
 	// Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
 	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
@@ -98,22 +92,15 @@ public:
 
 
 private:
-	template<class T>
+//	template<class T>
 //	CommandStatus WriteObject(const T& command, uint16_t index);
 
 	void DoPoll(uint32_t pollgroup);
+	void ProcessMD3Message(std::vector<MD3BlockData>& CompleteMD3Message);
 
-private:
 	void HandleError(int errnum, const std::string& source);
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
-//	MD3ReadGroup<Binary>* GetRange(uint16_t index);
-
-	//MD3_t *mb;
-	void* MD3_read_buffer;
-	size_t MD3_read_buffer_size;
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pTCPRetryTimer;
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 };
 

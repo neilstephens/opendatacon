@@ -31,7 +31,7 @@
 
 MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
 	DataPort(aName, aConfFilename, aConfOverrides),
-	pSockMan(nullptr)
+	pConnection(nullptr)
 {
 	//the creation of a new MD3PortConf will get the point details
 	pConf.reset(new MD3PortConf(ConfFilename, ConfOverrides));
@@ -157,4 +157,51 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 int MD3Port::Limit(int val, int max)
 {
 	return val > max ? max : val;
+}
+MD3PortConf* MD3Port::MyConf()
+{
+	return static_cast<MD3PortConf*>(this->pConf.get());
+}
+
+std::shared_ptr<MD3PointConf> MD3Port::MyPointConf()
+{
+	return MyConf()->pPointConf;
+}
+
+void MD3Port::SetSendTCPDataFn(std::function<void(std::string)> Send)
+{
+	SendTCPDataFn = Send;
+}
+
+// Test only method for simulating input from the TCP Connection.
+void MD3Port::InjectSimulatedTCPMessage(buf_t&readbuf)
+{
+	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
+	pConnection->ReadCompletionHandler(readbuf);
+}
+
+// The only method that sends to the TCP Socket
+void MD3Port::SendMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
+{
+	if (CompleteMD3Message.size() == 0)
+	{
+		LOG("MD3Port", openpal::logflags::ERR, "", "Tried to send an empty response");
+		return;
+	}
+
+	// Turn the blocks into a binary string.
+	std::string MD3Message;
+	for (auto blk : CompleteMD3Message)
+	{
+		MD3Message += blk.ToBinaryString();
+	}
+
+	// This is a pointer to a function, so that we can hook it for testing. Otherwise calls the pSockMan Write templated function
+	// Small overhead to allow for testing - Is there a better way? - could not hook the pSockMan->Write function and/or another passed in function due to differences between a method and a lambda
+	if (SendTCPDataFn != nullptr)
+		SendTCPDataFn(MD3Message);
+	else
+	{
+		pConnection->Write(std::string(MD3Message));
+	}
 }
