@@ -49,6 +49,10 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot.isObject()) return;
 
 	// Root level Configuration values
+	if (JSONRoot.isMember("NewDigitalCommands"))
+	{
+		NewDigitalCommands = JSONRoot["Index"].asBool();
+	}
 
 	if (JSONRoot.isMember("Analogs"))
 	{
@@ -87,6 +91,11 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				std::cout << "Poll group missing PollRate : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
 				continue;
 			}
+			if (!jPollGroups[n].isMember("PointType"))
+			{
+				std::cout << "Poll group missing PollType (Binary or Analog) : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
+				continue;
+			}
 
 			uint32_t PollGroupID = jPollGroups[n]["ID"].asUInt();
 			uint32_t pollrate = jPollGroups[n]["PollRate"].asUInt();
@@ -103,7 +112,14 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				continue;
 			}
 
-			PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate));
+			PollGroupType polltype = BinaryPoints;	// Default to Binary
+
+			if (iequals(jPollGroups[n]["PointType"].asString(), "Analog"))
+			{
+				polltype = AnalogPoints;
+			}
+
+			PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate, polltype));
 		}
 	}
 }

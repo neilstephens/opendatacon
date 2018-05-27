@@ -111,6 +111,8 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 	MD3BlockFormatted Header = CompleteMD3Message[0];
 	// Now based on the Command Function, take action. Some of these are responses from - not commands to an OutStation.
 
+	//TODO: SJE Check that the flag to master in the message is not set - ie. is a message from a master!
+
 	// All are included to allow better error reporting.
 	switch (Header.GetFunctionCode())
 	{

@@ -36,6 +36,7 @@
 #include <array>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 
 #include "MD3.h"
 
@@ -55,6 +56,14 @@ typedef  std::array<uint8_t, MD3BlockArraySize> MD3BlockArray;
 uint8_t MD3CRC(const uint32_t data);
 bool MD3CRCCompare(const uint8_t crc1, const uint8_t crc2);
 
+bool iequals(const std::string& a, const std::string& b)
+{
+	return std::equal(a.begin(), a.end(),
+		b.begin(), b.end(),
+		[](char a, char b) {
+		return tolower(a) == tolower(b);
+	});
+}
 
 // Every block in MD3 is 5 bytes, plus one zero byte. If we dont have 5 bytes, we dont have a block. The last block is marked as such.
 // We will create a class to load the 6 byte array into, then we can just ask it to return the information in the variety of ways we require,

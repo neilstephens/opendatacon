@@ -132,65 +132,10 @@ void MD3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LE
 		};
 		PollScheduler->Add(pg.second.pollrate, action);
 	}
-	//	PollScheduler->Start(); Will start when the conenction is up (and stop when it is down!)
+	//	PollScheduler->Start(); Is started and stopped in the socket state handler
 }
 
-//void MD3MasterPort::Connect()
-//{
-//	if(!enabled) return;
-//	if (stack_enabled) return;
-
-	/*
-	if (mb == NULL)
-	{
-		std::string msg = Name+": Connect error: 'MD3 stack failed'";
-		auto log_entry = openpal::LogEntry("MD3MasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-		return;
-	}
-
-	if (MD3_connect(mb) == -1)
-	{
-		std::string msg = Name+": Connect error: '" + MD3_strerror(errno) + "'";
-		auto log_entry = openpal::LogEntry("MD3MasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-
-		//try again later - except for manual connections
-		if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-		{
-			pTCPRetryTimer->expires_from_now(std::chrono::seconds(5));
-			pTCPRetryTimer->async_wait(
-			      [this](asio::error_code err_code)
-			      {
-			            if(err_code != asio::error::operation_aborted)
-						this->Connect();
-				});
-		}
-		return;
-	}
-	*/
-
-//	stack_enabled = true;
-
-
-
-//	MD3_set_slave(mb, pConf->mAddrConf.OutstationAddr);
-
-// doesn't work - at least not with my serial RTU
-//    uint8_t tab_bytes[64];
-//    int rc = MD3_report_slave_id(mb, tab_bytes);
-//    if (rc > 1)
-//    {
-//	    std::string msg = Name + "Run Status Indicator: %s" + (tab_bytes[1] ? "ON" : "OFF");
-//	    auto log_entry = openpal::LogEntry("MD3MasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-//	    pLoggers->Log(log_entry);
-//    }
-
-
-//}
-
-
-
+// Modbus code
 void MD3MasterPort::HandleError(int errnum, const std::string& source)
 {
 	std::string msg = Name + ": " + source + " error: '";// +MD3_strerror(errno) + "'";
@@ -218,7 +163,7 @@ void MD3MasterPort::HandleError(int errnum, const std::string& source)
 //        }
 //    }
 }
-
+//Modbus code
 CommandStatus MD3MasterPort::HandleWriteError(int errnum, const std::string& source)
 {
 	HandleError(errnum, source);
@@ -259,6 +204,8 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 
 	MD3BlockFormatted Header = CompleteMD3Message[0];
 	// Now based on the Command Function, take action. Some of these are responses from - not commands to an OutStation.
+
+	//TODO: SJE Check that the flag to master in the message is set.
 
 	// All are included to allow better error reporting.
 	switch (Header.GetFunctionCode())
@@ -360,9 +307,13 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	}
 }
 
+// We will be called at the appropriate time to trigger an Unconditional or Delta scan
+// For digital scans there are two formats we might use. Set in the conf file.
 void MD3MasterPort::DoPoll(uint32_t pollgroup)
 {
 	if(!enabled) return;
+
+	bool NewCommands = MyPointConf()->NewDigitalCommands;
 
 /*	auto pConf = static_cast<MD3PortConf*>(this->pConf.get());
 	int rc;

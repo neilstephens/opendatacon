@@ -31,13 +31,16 @@
 #include <map>
 #include <unordered_map>
 #include <bitset>
+#include <chrono>
+
 #include <opendatacon/IOTypes.h>
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/gen/ControlCode.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
-#include <chrono>
-#include <boost/lockfree/spsc_queue.hpp>	// Alternative https://github.com/rigtorp/SPSCQueue ?
+
+#include <boost/lockfree/spsc_queue.hpp>	// Alternative https://github.com/rigtorp/SPSCQueue also check out Boost BCP to only pull in what you need?
+#include "MD3Engine.h"
 
 using namespace odc;
 
@@ -120,22 +123,26 @@ typedef std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>::iterator MD3BinaryP
 typedef std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator ODCAnalogCounterPointMapIterType;
 typedef std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator MD3AnalogCounterPointMapIterType;
 
+enum PollGroupType { BinaryPoints, AnalogPoints };
 
 class MD3PollGroup
 {
 public:
 	MD3PollGroup() :
 		ID(0),
-		pollrate(0)
+		pollrate(0),
+		polltype(BinaryPoints)
 	{ }
 
-	MD3PollGroup(uint32_t ID_, uint32_t pollrate_) :
+	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_) :
 		ID(ID_),
-		pollrate(pollrate_)
+		pollrate(pollrate_),
+		polltype(polltype_)
 	{ }
 
 	uint32_t ID;
 	uint32_t pollrate;
+	PollGroupType polltype;
 };
 
 class MD3PointConf: public ConfigParser
@@ -169,5 +176,7 @@ public:
 	boost::lockfree::spsc_queue<MD3BinaryPoint, boost::lockfree::capacity<256> > BinaryModuleTimeTaggedEventQueue;	// This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
 
 	std::map<uint32_t, MD3PollGroup> PollGroups;
+
+	bool NewDigitalCommands = true;
 };
 #endif /* MD3POINTCONF_H_ */
