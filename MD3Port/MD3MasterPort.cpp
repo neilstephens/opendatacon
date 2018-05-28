@@ -307,6 +307,12 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	}
 }
 
+//TODO: We will need a strand to make sure we are only sending (and waiting) for one command response pair at a time
+// We could have a poll below, along with a set time command that is passed through ODC trying to execute at the same time.
+// Do we just build a queue of commands and lambda call backs to handle when we get data back. Then we just process these one by one.
+// It eliminates the issue with needing strand protection. May need the ability to flush the queue at some point....
+// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used?
+
 // We will be called at the appropriate time to trigger an Unconditional or Delta scan
 // For digital scans there are two formats we might use. Set in the conf file.
 void MD3MasterPort::DoPoll(uint32_t pollgroup)
@@ -318,6 +324,23 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 		if (MyPointConf()->PollGroups[pollgroup].UnconditionalRequired)
 		{
 			// Use Unconditional Request Fn 5
+			// So now need to work out the start Module address and the number of channels to scan (can be Analog or Counter)
+			// For an analog, only one command to get the maximum of 16 channels. For counters it might be two modules that we can get with one command.
+
+			std::map<uint8_t, char>::iterator mait = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
+
+
+			// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
+			int ModuleAddress = 0x20;
+			int channels = 16;	// Most we can get in one command
+			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL,ModuleAddress, channels, true);
+
+			// Create a message for the command queue, and send it. It will do the command in a post() so we dont block here. 
+			// Each command will clear pending messages, then wait for the first return packet and process that.
+			pIOS->post([=]() { DoPoll(TargetRange->pollgroup); });
+			pConnection->Write(commandblock.ToBinaryString());
+
+			// Now need a lambda to handle what we get back...
 		}
 		else
 		{

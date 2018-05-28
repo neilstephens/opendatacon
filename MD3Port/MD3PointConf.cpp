@@ -192,6 +192,22 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 					auto pt = std::make_shared<MD3BinaryPoint>(index, moduleaddress, channel, (uint8_t)pollgroup);
 					MD3PointMap[md3index] = pt;
 					ODCPointMap[index] = pt;
+
+					// If the point is part of a scan group, add the module address. Dont duplicate the address.
+					if (pollgroup != 0)
+					{
+						if (PollGroups.count(pollgroup) == 0)
+						{
+							std::cout << "Poll Group Must Be Defined for use in a point : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+						}
+						else
+						{
+							// Control points and binary inputs are processed here.
+							// If the map does have an entry for moduleaddress, we just set the second element of the pair (to a non value).
+							// If it does not, add the moduleaddress,0 pair to the map - which will be sorted.
+							PollGroups[pollgroup].ModuleAddresses[moduleaddress] = 0;
+						}
+					}
 				}
 			}
 		}
@@ -266,9 +282,25 @@ void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::
 				}
 				else
 				{
-					auto pt = std::make_shared<MD3AnalogCounterPoint>(index, moduleaddress, channel,0);
+					auto pt = std::make_shared<MD3AnalogCounterPoint>(index, moduleaddress, channel, pollgroup);
 					MD3PointMap[md3index] = pt;
 					ODCPointMap[index] = pt;
+
+					// If the point is part of a scan group, add the module address. Dont duplicate the address.
+					if (pollgroup != 0)
+					{
+						if (PollGroups.count(pollgroup) == 0)
+						{
+							std::cout << "Poll Group Must Be Defined for use in a point : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+						}
+						else
+						{
+							// Control points and binary inputs are processed here.
+							// If the map does have an entry for moduleaddress, we just set the second element of the pair (to a non value).
+							// If it does not, add the moduleaddress,0 pair to the map - which will be sorted.
+							PollGroups[pollgroup].ModuleAddresses[moduleaddress] = 0;
+						}
+					}
 				}
 			}
 		}

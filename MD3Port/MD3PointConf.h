@@ -146,6 +146,8 @@ public:
 	uint32_t pollrate;
 	PollGroupType polltype;
 	bool UnconditionalRequired;	// Set to true on start up, and if other conditions are met
+	std::map<uint8_t,char> ModuleAddresses;	// The second value we do not use. Just using the sorted map properties.
+											// As we load points we will build this list
 };
 
 class MD3PointConf: public ConfigParser

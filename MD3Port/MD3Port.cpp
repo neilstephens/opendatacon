@@ -79,41 +79,6 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("IP") && JSONRoot.isMember("SerialDevice"))
 		std::cout << "Warning: MD3 port serial device AND IP address specified - IP overrides" << std::endl;
 
-	if (JSONRoot.isMember("SerialDevice"))
-	{
-		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.deviceName = JSONRoot["SerialDevice"].asString();
-		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.IP = "";
-
-		if (JSONRoot.isMember("BaudRate"))
-			static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.baud = JSONRoot["BaudRate"].asUInt();
-		if (JSONRoot.isMember("Parity"))
-		{
-			if (JSONRoot["Parity"].asString() == "EVEN")
-				static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::EVEN;
-			else if (JSONRoot["Parity"].asString() == "ODD")
-				static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::ODD;
-			else if (JSONRoot["Parity"].asString() == "NONE")
-				static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::NONE;
-			else
-				std::cout << "Warning: Invalid serial parity: " << JSONRoot["Parity"].asString() << ", should be EVEN, ODD, or NONE." << std::endl;
-		}
-		if (JSONRoot.isMember("DataBits"))
-			static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.dataBits = JSONRoot["DataBits"].asUInt();
-		if (JSONRoot.isMember("StopBits"))
-		{
-			if (JSONRoot["StopBits"].asFloat() == 0)
-				static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::NONE;
-			else if (JSONRoot["StopBits"].asFloat() == 1)
-				static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::ONE;
-			else if (JSONRoot["StopBits"].asFloat() == 1.5)
-				static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::ONE_POINT_FIVE;
-			else if (JSONRoot["StopBits"].asFloat() == 2)
-				static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::TWO;
-			else
-				std::cout << "Warning: Invalid serial stop bits: " << JSONRoot["StopBits"].asFloat() << ", should be 0, 1, 1.5, or 2" << std::endl;
-		}
-	}
-
 	if (JSONRoot.isMember("IP"))
 	{
 		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();

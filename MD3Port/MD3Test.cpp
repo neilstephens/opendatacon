@@ -58,6 +58,8 @@ const char *conffile1 = R"001(
 
 	// Cannot mix analog and binary points in a poll group. Group 1 is Binary, Group 2 is Analog in this example
 	// You will get errors if the wrong type of points are assigned to the wrong poll group
+	// We will scan the Analog and Counters to build a vector of poll group MD3 addresses
+	// Same for Binaries.
 	"PollGroups" : [{"PollRate" : 1000, "ID" : 1, "PointType" : "Binary"}, {"PollRate" : 2000, "ID" : 2, "PointType" : "Analog"}],
 
 	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0, "PollGroup" : 1}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "PollGroup":1}, {"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0}],
