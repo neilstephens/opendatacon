@@ -313,7 +313,43 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 {
 	if(!enabled) return;
 
-	bool NewCommands = MyPointConf()->NewDigitalCommands;
+	if (MyPointConf()->PollGroups[pollgroup].polltype == AnalogPoints)
+	{
+		if (MyPointConf()->PollGroups[pollgroup].UnconditionalRequired)
+		{
+			// Use Unconditional Request Fn 5
+		}
+		else
+		{
+			// Use a delta command Fn 6
+		}
+	}
+
+	if (MyPointConf()->PollGroups[pollgroup].polltype == BinaryPoints)
+	{
+		if (NewDigitalCommands)	// Old are 7,8,9,10 - New are 11 and 12
+		{
+			if (MyPointConf()->PollGroups[pollgroup].UnconditionalRequired)
+			{
+				// Use Unconditional Request Fn 12
+			}
+			else
+			{
+				// Use a delta command Fn 11
+			}
+		}
+		else
+		{
+			if (MyPointConf()->PollGroups[pollgroup].UnconditionalRequired)
+			{
+				// Use Unconditional Request Fn 7
+			}
+			else
+			{
+				// Use a delta command Fn 8
+			}
+		}
+	}
 
 /*	auto pConf = static_cast<MD3PortConf*>(this->pConf.get());
 	int rc;
@@ -462,11 +498,7 @@ std::future<CommandStatus> MD3MasterPort::ConnectionEvent(ConnectState state, co
 	//something upstream has connected
 	if(state == ConnectState::CONNECTED)
 	{
-		// Only change stack state if it is an on demand server
-		if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-		{
-			//this->Connect();
-		}
+
 	}
 
 	cmd_promise.set_value(CommandStatus::SUCCESS);

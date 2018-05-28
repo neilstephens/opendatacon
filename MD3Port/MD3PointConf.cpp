@@ -49,10 +49,6 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot.isObject()) return;
 
 	// Root level Configuration values
-	if (JSONRoot.isMember("NewDigitalCommands"))
-	{
-		NewDigitalCommands = JSONRoot["Index"].asBool();
-	}
 
 	if (JSONRoot.isMember("Analogs"))
 	{

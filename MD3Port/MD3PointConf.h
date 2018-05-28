@@ -131,18 +131,21 @@ public:
 	MD3PollGroup() :
 		ID(0),
 		pollrate(0),
-		polltype(BinaryPoints)
+		polltype(BinaryPoints),
+		UnconditionalRequired(true)
 	{ }
 
 	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_) :
 		ID(ID_),
 		pollrate(pollrate_),
-		polltype(polltype_)
+		polltype(polltype_),
+		UnconditionalRequired(true)
 	{ }
 
 	uint32_t ID;
 	uint32_t pollrate;
 	PollGroupType polltype;
+	bool UnconditionalRequired;	// Set to true on start up, and if other conditions are met
 };
 
 class MD3PointConf: public ConfigParser
@@ -176,7 +179,5 @@ public:
 	boost::lockfree::spsc_queue<MD3BinaryPoint, boost::lockfree::capacity<256> > BinaryModuleTimeTaggedEventQueue;	// This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
 
 	std::map<uint32_t, MD3PollGroup> PollGroups;
-
-	bool NewDigitalCommands = true;
 };
 #endif /* MD3POINTCONF_H_ */

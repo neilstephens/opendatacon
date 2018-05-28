@@ -138,19 +138,9 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("OutstationAddr"))
 		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.OutstationAddr = JSONRoot["OutstationAddr"].asUInt();
 
-	if (JSONRoot.isMember("MasterAddr"))
-		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.MasterAddr = JSONRoot["MasterAddr"].asUInt();
-
-	if (JSONRoot.isMember("ServerType"))
+	if (JSONRoot.isMember("NewDigitalCommands"))
 	{
-		if (JSONRoot["ServerType"].asString() == "ONDEMAND")
-			static_cast<MD3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::ONDEMAND;
-		else if (JSONRoot["ServerType"].asString() == "PERSISTENT")
-			static_cast<MD3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::PERSISTENT;
-		else if (JSONRoot["ServerType"].asString() == "MANUAL")
-			static_cast<MD3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::MANUAL;
-		else
-			std::cout << "Invalid MD3 Port server type: '" << JSONRoot["ServerType"].asString() << "'." << std::endl;
+		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.NewDigitalCommands = JSONRoot["NewDigitalCommands"].asBool();
 	}
 }
 

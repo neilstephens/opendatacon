@@ -92,13 +92,14 @@ public:
 protected:
 	bool isServer;
 	TCPClientServer ClientOrServer();
+	bool NewDigitalCommands = true;
 
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
 	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing
 
 	// Worker functions to try and clean up the code...
 	MD3PortConf* MyConf();
-	std::shared_ptr<MD3PointConf> MyPointConf();	
+	std::shared_ptr<MD3PointConf> MyPointConf();
 	int Limit(int val, int max);
 
 	// We need to support multidrop in both the OutStation and the Master.

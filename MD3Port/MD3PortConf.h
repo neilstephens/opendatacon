@@ -56,8 +56,8 @@ struct MD3AddrConf
 
 	//Common
 	uint8_t OutstationAddr;
-	uint16_t MasterAddr;
-	server_type_t ServerType;
+	bool NewDigitalCommands;
+
 
 	// Default address values can minimally set SerialDevice or IP.
 	MD3AddrConf() :
@@ -66,8 +66,7 @@ struct MD3AddrConf
 		Port(20000),
 		ClientServer(TCPClientServer::DEFAULT),
 		OutstationAddr(1),
-		MasterAddr(0),
-		ServerType(server_type_t::ONDEMAND)
+		NewDigitalCommands(true)
 	{}
 };
 
@@ -90,4 +89,4 @@ public:
 	uint16_t OutstationFlagRegister = SYSTEMPOWERUPFLAGBIT;	// Only one true on startup, will be filled from the real device through ODC
 };
 
-#endif 
+#endif

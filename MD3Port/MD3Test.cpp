@@ -48,14 +48,13 @@ const char *conffile1 = R"001(
 {
 	"IP" : "127.0.0.1",
 	"Port" : 1000,
-	"MasterAddr" : 0,
 	"OutstationAddr" : 124,
 	"ServerType" : "PERSISTENT",
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
 	// We have two modes for the digital/binary commands. Can be one or the other - not both!
-	"NewDigitalCommands : true,
+	"NewDigitalCommands" : true,
 
 	// Cannot mix analog and binary points in a poll group. Group 1 is Binary, Group 2 is Analog in this example
 	// You will get errors if the wrong type of points are assigned to the wrong poll group
