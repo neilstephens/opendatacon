@@ -102,6 +102,9 @@ private:
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
+	void ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
+	void ProcessAnalogDeltaScaReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
+
 };
 
 #endif /* MD3MASTERPORT_H_ */

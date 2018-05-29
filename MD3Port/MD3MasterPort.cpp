@@ -199,22 +199,24 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 	assert(CompleteMD3Message.size() != 0);
 
-	uint8_t ExpectedStationAddress = MyConf()->mAddrConf.OutstationAddr;
-	int ExpectedMessageSize = 1;	// Only set in switch statement if not 1
-
 	MD3BlockFormatted Header = CompleteMD3Message[0];
-	// Now based on the Command Function, take action. Some of these are responses from - not commands to an OutStation.
 
-	//TODO: SJE Check that the flag to master in the message is set.
+	if (Header.IsMasterToStationMessage() != false)
+	{
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a Master to Station message at the Master - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		//TODO: SJE Trip an error so we dont have to wait for timeout?
+		return;
+	}
 
+	// Now based on the Command Function, take action.
 	// All are included to allow better error reporting.
 	switch (Header.GetFunctionCode())
 	{
 	case ANALOG_UNCONDITIONAL:	// Command and reply
-	//	DoAnalogUnconditional(Header);
+		ProcessAnalogUnconditionalReturn(Header, CompleteMD3Message);
 		break;
 	case ANALOG_DELTA_SCAN:		// Command and reply
-	//	DoAnalogDeltaScan(Header);
+		ProcessAnalogDeltaScaReturn(Header, CompleteMD3Message);
 		break;
 	case DIGITAL_UNCONDITIONAL_OBS:
 	//	DoDigitalUnconditionalObs(Header);
@@ -223,12 +225,7 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	//	DoDigitalChangeOnly(Header);
 		break;
 	case HRER_LIST_SCAN:
-		// Can be a size of 1 or 2
-		ExpectedMessageSize = CompleteMD3Message.size();
-	//	if ((ExpectedMessageSize == 1) || (ExpectedMessageSize == 2))
 	//		DoDigitalHRER(static_cast<MD3BlockFn9&>(Header), CompleteMD3Message);
-	//	else
-	//		ExpectedMessageSize = 1;
 		break;
 	case DIGITAL_CHANGE_OF_STATE:
 	//	DoDigitalCOSScan(static_cast<MD3BlockFn10&>(Header));
@@ -252,11 +249,9 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	//	DoFreezeResetCounters(static_cast<MD3BlockFn16MtoS&>(Header));
 		break;
 	case POM_TYPE_CONTROL:
-		ExpectedMessageSize = 2;
 	//	DoPOMControl(static_cast<MD3BlockFn17MtoS&>(Header), CompleteMD3Message);
 		break;
 	case DOM_TYPE_CONTROL:
-		ExpectedMessageSize = 2;
 	//	DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
 		break;
 	case INPUT_POINT_CONTROL:
@@ -264,7 +259,6 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	case RAISE_LOWER_TYPE_CONTROL:
 		break;
 	case AOM_TYPE_CONTROL:
-		ExpectedMessageSize = 2;
 	//	DoAOMControl(static_cast<MD3BlockFn23MtoS&>(Header), CompleteMD3Message);
 		break;
 	case CONTROL_OR_SCAN_REQUEST_REJECTED:
@@ -281,7 +275,6 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	case SYSTEM_RESTART_CONTROL:
 		break;
 	case SYSTEM_SET_DATETIME_CONTROL:
-		ExpectedMessageSize = 2;
 	//	DoSetDateTime(static_cast<MD3BlockFn43MtoS&>(Header), CompleteMD3Message);
 		break;
 	case FILE_DOWNLOAD:
@@ -289,7 +282,6 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	case FILE_UPLOAD:
 		break;
 	case SYSTEM_FLAG_SCAN:
-		ExpectedMessageSize = CompleteMD3Message.size();	// Variable size
 	//	DoSystemFlagScan(Header, CompleteMD3Message);
 		break;
 	case LOW_RES_EVENTS_LIST_SCAN:
@@ -298,15 +290,115 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Unknown Message Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 		break;
 	}
+}
 
-	if (ExpectedMessageSize != CompleteMD3Message.size())
+// We have received data from an Analog command - could be  the result of Fn 5 or 6
+// Store the decoded data into the point lists. Counter scan comes back in an identical format
+void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
+
+	int NumberOfDataBlocks = Channels / 2 + Channels % 2;	// 2 --> 1, 3 -->2
+
+	if (NumberOfDataBlocks != CompleteMD3Message.size() - 1)
 	{
-		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Unexpected Message Size - " + std::to_string(CompleteMD3Message.size()) +
-			" On Station Address - " + std::to_string(Header.GetStationAddress()) +
-			" Function - " + std::to_string(Header.GetFunctionCode()));
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		//TODO: SJE Trip an error so we dont have to wait for timeout?
+		return;
+	}
+
+	// Unload the analog values from the blocks
+	std::vector<uint16_t> AnalogValues;
+	int ChanCount = 0;
+	for (int i = 0; i < NumberOfDataBlocks; i++)
+	{
+		AnalogValues.push_back(CompleteMD3Message[i + 1].GetFirstWord());
+		ChanCount++;
+
+		// The last block may only have one reading in it. The second might be filler.
+		if (ChanCount < Channels)
+		{
+			AnalogValues.push_back(CompleteMD3Message[i + 1].GetSecondWord());
+			ChanCount++;
+		}
+	}
+
+	// Now take the returned values and store them into the points
+	uint16_t wordres = 0;
+
+	// Search to see if the first value is a counter or analog
+	bool FirstModuleIsCounterModule = GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres);
+
+	for (int i = 0; i < Channels; i++)
+	{
+		// Code to adjust the ModuleAddress and index if the first module is a counter module (8 channels)
+		// 16 channels will cover two counters or one counter and 1/2 an analog, or one analog (16 channels).
+		// We assume that Analog and Counter modules cannot have the same module address - which we think is a safe assumption.
+		int idx = FirstModuleIsCounterModule ? i % 8 : i;
+		int maddress = (FirstModuleIsCounterModule && i > 8) ? ModuleAddress+1 : ModuleAddress;
+
+		if (SetAnalogValueUsingMD3Index(maddress, idx, AnalogValues[i]))
+		{
+			// We have succeeded in setting the value
+			//TODO: Trigger an event update on this analog value through ODC if value is 0x8000 - change quality value
+		}
+		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
+		{
+			// We have succeeded in setting the value
+			//TODO: Trigger an event update on this counter value through ODC if value is 0x8000 - change quality value
+		}
+		else
+		{
+			LOG("MD3MasterPort", openpal::logflags::ERR, "", "Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
+				+ " On Station Address - " + std::to_string(Header.GetStationAddress())
+				+ " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
+			//TODO: SJE Trip an error so we dont have to wait for timeout?
+		}
 	}
 }
 
+
+void MD3MasterPort::ProcessAnalogDeltaScaReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message)
+{
+}
+/*void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterOrAnalog, int Channels, int ModuleAddress, MD3OutstationPort::AnalogChangeType & ResponseType, std::vector<uint16_t> & AnalogValues, std::vector<int> & AnalogDeltaValues)
+{
+	for (int i = 0; i < Channels; i++)
+	{
+		uint16_t wordres = 0;
+		int deltares = 0;
+		bool foundentry = GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+
+		if (IsCounterOrAnalog == CounterModule)
+		{
+			foundentry = GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+		}
+
+		if (!foundentry)
+		{
+			// Point does not exist - need to send analog unconditional as response.
+			ResponseType = AllChange;
+			AnalogValues.push_back(0x8000);			// Magic value
+			AnalogDeltaValues.push_back(0);
+		}
+		else
+		{
+			AnalogValues.push_back(wordres);
+			AnalogDeltaValues.push_back(deltares);
+
+			if (abs(deltares) > 127)
+			{
+				ResponseType = AllChange;
+			}
+			else if (abs(deltares > 0) && (ResponseType != AllChange))
+			{
+				ResponseType = DeltaChange;
+			}
+		}
+	}
+}
+*/
 //TODO: We will need a strand to make sure we are only sending (and waiting) for one command response pair at a time
 // We could have a poll below, along with a set time command that is passed through ODC trying to execute at the same time.
 // Do we just build a queue of commands and lambda call backs to handle when we get data back. Then we just process these one by one.
@@ -327,17 +419,16 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 			// So now need to work out the start Module address and the number of channels to scan (can be Analog or Counter)
 			// For an analog, only one command to get the maximum of 16 channels. For counters it might be two modules that we can get with one command.
 
-			std::map<uint8_t, char>::iterator mait = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
-
+			ModuleMapType::iterator mait = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
 
 			// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
 			int ModuleAddress = 0x20;
 			int channels = 16;	// Most we can get in one command
 			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL,ModuleAddress, channels, true);
 
-			// Create a message for the command queue, and send it. It will do the command in a post() so we dont block here. 
+			// Create a message for the command queue, and send it. It will do the command in a post() so we dont block here.
 			// Each command will clear pending messages, then wait for the first return packet and process that.
-			pIOS->post([=]() { DoPoll(TargetRange->pollgroup); });
+		//	pIOS->post([=]() { DoPoll(TargetRange->pollgroup); });
 			pConnection->Write(commandblock.ToBinaryString());
 
 			// Now need a lambda to handle what we get back...

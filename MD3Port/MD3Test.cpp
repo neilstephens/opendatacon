@@ -1882,6 +1882,58 @@ namespace MasterTests
 {
 #pragma region Master Tests
 
+	TEST_CASE("Master - AnalogUnconditionalF5")
+	{
+		// Tests the decoding of return data  in the format of Fn 5
+
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3MasterPort("TestMaster", conffilename1, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
+		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+
+		MD3Port->Enable();
+
+		// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
+		MD3BlockFormatted commandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, false);
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		const std::string Payload = BuildHexStringFromASCIIHexString("fc05200f0d00"	// Echoed block
+			"100011018400"			// Channel 0 and 1
+			"12021303b700"		// Channel 2 and 3 etc
+			"14041505b900"
+			"160617078a00"
+			"18081909a500"
+			"1A0A1B0B9600"
+			"1C0C1D0D9800"
+			"1E0E1F0Feb00");
+
+		output << Payload;
+
+		// Send the Analog Uncoditional command in as if came from TCP channel
+		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+
+		// To check the result, see if the points in the master point list have been changed to the correct values.
+		uint16_t res = 0;
+		MD3Port->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		REQUIRE(res == 0x1000);
+
+		MD3Port->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		REQUIRE(res == 0x1808);
+
+		// Also need to check that the MasterPort fired off events to ODC.
+
+		IOMgr.Shutdown();
+	}
 	std::vector<std::string> ResponseVec;
 
 	void ResponseCallback(buf_t& readbuf)

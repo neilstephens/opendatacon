@@ -50,6 +50,13 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	// Root level Configuration values
 
+	// PollGroups must be processed first
+	if (JSONRoot.isMember("PollGroups"))
+	{
+		const auto PollGroups = JSONRoot["PollGroups"];
+		ProcessPollGroups(PollGroups);
+	}
+
 	if (JSONRoot.isMember("Analogs"))
 	{
 		const auto Analogs = JSONRoot["Analogs"];
@@ -72,54 +79,56 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto Counters = JSONRoot["Counters"];
 		ProcessAnalogCounterPoints(Counters, CounterMD3PointMap, CounterODCPointMap);
 	}
-	if (JSONRoot.isMember("PollGroups"))
+}
+
+// This method must be processed before points are loaded
+void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
+{
+	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
-		auto jPollGroups = JSONRoot["PollGroups"];
-		for (Json::ArrayIndex n = 0; n < jPollGroups.size(); ++n)
+		if (!JSONNode[n].isMember("ID"))
 		{
-			if (!jPollGroups[n].isMember("ID"))
-			{
-				std::cout << "Poll group missing ID : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
-				continue;
-			}
-			if (!jPollGroups[n].isMember("PollRate"))
-			{
-				std::cout << "Poll group missing PollRate : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
-				continue;
-			}
-			if (!jPollGroups[n].isMember("PointType"))
-			{
-				std::cout << "Poll group missing PollType (Binary or Analog) : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
-				continue;
-			}
-
-			uint32_t PollGroupID = jPollGroups[n]["ID"].asUInt();
-			uint32_t pollrate = jPollGroups[n]["PollRate"].asUInt();
-
-			if (PollGroupID == 0)
-			{
-				std::cout << "Poll group 0 is reserved (do not poll) : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
-				continue;
-			}
-
-			if (PollGroups.count(PollGroupID) > 0)
-			{
-				std::cout << "Duplicate poll group ignored : '" << jPollGroups[n].toStyledString() << "'" << std::endl;
-				continue;
-			}
-
-			PollGroupType polltype = BinaryPoints;	// Default to Binary
-
-			if (iequals(jPollGroups[n]["PointType"].asString(), "Analog"))
-			{
-				polltype = AnalogPoints;
-			}
-
-			PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate, polltype));
+			std::cout << "Poll group missing ID : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			continue;
 		}
+		if (!JSONNode[n].isMember("PollRate"))
+		{
+			std::cout << "Poll group missing PollRate : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			continue;
+		}
+		if (!JSONNode[n].isMember("PointType"))
+		{
+			std::cout << "Poll group missing PollType (Binary or Analog) : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			continue;
+		}
+
+		uint32_t PollGroupID = JSONNode[n]["ID"].asUInt();
+		uint32_t pollrate = JSONNode[n]["PollRate"].asUInt();
+
+		if (PollGroupID == 0)
+		{
+			std::cout << "Poll group 0 is reserved (do not poll) : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			continue;
+		}
+
+		if (PollGroups.count(PollGroupID) > 0)
+		{
+			std::cout << "Duplicate poll group ignored : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+			continue;
+		}
+
+		PollGroupType polltype = BinaryPoints;	// Default to Binary
+
+		if (iequals(JSONNode[n]["PointType"].asString(), "Analog"))
+		{
+			polltype = AnalogPoints;
+		}
+
+		PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate, polltype));
 	}
 }
 
+// This method loads both Binary read points, and Binary Control points.
 void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> &MD3PointMap,
 																std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> &ODCPointMap)
 {
@@ -198,7 +207,7 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 					{
 						if (PollGroups.count(pollgroup) == 0)
 						{
-							std::cout << "Poll Group Must Be Defined for use in a point : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+							std::cout << "Poll Group Must Be Defined for use in a Binary point : '" << JSONNode[n].toStyledString() << "'" << std::endl;
 						}
 						else
 						{
@@ -213,6 +222,8 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 		}
 	}
 }
+
+// This method loads both Analog and Counter/Timers. They look functionally siomilar in MD3
 void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> &MD3PointMap,
 	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> &ODCPointMap)
 {
@@ -291,7 +302,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::
 					{
 						if (PollGroups.count(pollgroup) == 0)
 						{
-							std::cout << "Poll Group Must Be Defined for use in a point : '" << JSONNode[n].toStyledString() << "'" << std::endl;
+							std::cout << "Poll Group Must Be Defined for use in an Analog point : '" << JSONNode[n].toStyledString() << "'" << std::endl;
 						}
 						else
 						{

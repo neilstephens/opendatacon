@@ -85,8 +85,7 @@ public:
 	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header);		// Fn 12
 
 	void MarkAllBinaryBlocksAsChanged();
-	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);
-	uint16_t CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool & ModuleFailed);
+
 	int CountBinaryBlocksWithChanges();
 	int CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
 	void BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
@@ -106,29 +105,6 @@ public:
 	void SendControlOK(MD3BlockFormatted & Header);					// Fn 15
 	void SendControlOrScanRejected(MD3BlockFormatted & Header);		// Fn 30
 
-	// Methods to access the outstation point table
-	//TODO: Point container access extract to separate class maybe..
-	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res);
-	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta);
-	bool SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas);
-
-	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res);
-	bool GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta);
-	bool SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
-	bool GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t &res);
-	bool SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas);
-
-	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed);
-	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t & res);
-	bool GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed);
-	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas);
-	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
-	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, uint64_t eventtime);
-
-	bool CheckBinaryControlExistsUsingMD3Index(const uint16_t module, const uint8_t channel);
-
-	// Testing and Debugging Methods - no other use
-	void AddToDigitalEvents(MD3BinaryPoint & pt);
 
 private:
 

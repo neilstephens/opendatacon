@@ -84,6 +84,34 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
+
+	// Methods to access the outstation point table
+	//TODO: Point container access extract to separate class maybe..
+	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res);
+	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta);
+	bool SetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
+	bool SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas);
+
+	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res);
+	bool GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta);
+	bool SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
+	bool GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t &res);
+	bool SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas);
+
+	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed);
+	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t & res);
+	bool GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed);
+	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas);
+	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
+	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, uint64_t eventtime);
+
+	bool CheckBinaryControlExistsUsingMD3Index(const uint16_t module, const uint8_t channel);
+	
+	void AddToDigitalEvents(MD3BinaryPoint & pt);
+	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);
+	uint16_t CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool & ModuleFailed);
+
+
 	// Public only for UnitTesting
 	void SendMD3Message(std::vector<MD3BlockData>& CompleteMD3Message);
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);

@@ -122,6 +122,7 @@ typedef std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>::iterator ODCBinaryP
 typedef std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>::iterator MD3BinaryPointMapIterType;
 typedef std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator ODCAnalogCounterPointMapIterType;
 typedef std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator MD3AnalogCounterPointMapIterType;
+typedef std::map<uint8_t, uint16_t> ModuleMapType;
 
 enum PollGroupType { BinaryPoints, AnalogPoints };
 
@@ -146,8 +147,8 @@ public:
 	uint32_t pollrate;
 	PollGroupType polltype;
 	bool UnconditionalRequired;	// Set to true on start up, and if other conditions are met
-	std::map<uint8_t,char> ModuleAddresses;	// The second value we do not use. Just using the sorted map properties.
-											// As we load points we will build this list
+	ModuleMapType ModuleAddresses;	// The second value we do not use. Just using the sorted map properties.
+									// As we load points we will build this list
 };
 
 class MD3PointConf: public ConfigParser
@@ -159,6 +160,8 @@ public:
 	MD3PointConf(std::string FileName, const Json::Value& ConfOverrides);
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
+
+	void ProcessPollGroups(const Json::Value & JSONRoot);
 
 	void ProcessBinaryPoints(const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>& ODCPointMap);
 	void ProcessAnalogCounterPoints(const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>& ODCPointMap);

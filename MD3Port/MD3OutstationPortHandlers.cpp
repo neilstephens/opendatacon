@@ -34,13 +34,15 @@
 #include <future>
 #include <regex>
 #include <chrono>
+
 #include <asiopal/UTCTimeSource.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
+#include <opendnp3/LogLevels.h>
+
+#include "MD3.h"
 #include "MD3Engine.h"
 #include "MD3OutstationPort.h"
-#include "MD3.h"
 
-#include <opendnp3/LogLevels.h>
 
 //TODO: Check out http://www.pantheios.org/ logging library..
 
@@ -105,13 +107,17 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 	assert(CompleteMD3Message.size() != 0);
 
-	uint8_t ExpectedStationAddress = MyConf()->mAddrConf.OutstationAddr;
 	int ExpectedMessageSize = 1;	// Only set in switch statement if not 1
 
 	MD3BlockFormatted Header = CompleteMD3Message[0];
 	// Now based on the Command Function, take action. Some of these are responses from - not commands to an OutStation.
 
-	//TODO: SJE Check that the flag to master in the message is not set - ie. is a message from a master!
+	if (Header.IsMasterToStationMessage() != true)
+	{
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a Station to Master message at the outstation - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		//TODO: SJE Trip an error so we dont have to wait for timeout?
+		return;
+	}
 
 	// All are included to allow better error reporting.
 	switch (Header.GetFunctionCode())
@@ -312,11 +318,15 @@ void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterO
 	{
 		uint16_t wordres = 0;
 		int deltares = 0;
-		bool foundentry = GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+		bool foundentry = false;
 
 		if (IsCounterOrAnalog == CounterModule)
 		{
 			foundentry = GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+		}
+		else
+		{
+			foundentry= GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
 		}
 
 		if (!foundentry)
@@ -846,42 +856,7 @@ void MD3OutstationPort::MarkAllBinaryBlocksAsChanged()
 	}
 }
 
-uint16_t MD3OutstationPort::CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool &ModuleFailed)
-{
-	uint16_t wordres = 0;
 
-	for (int j = 0; j < 16; j++)
-	{
-		uint8_t bitres = 0;
-		bool changed = false;	// We dont care about the returned value
-
-		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed))	// Reading this clears the changed bit
-		{
-			//TODO: Check the bit order here of the binaries
-			wordres |= (uint16_t)bitres << (15 - j);
-		}
-		//TODO: Check and update the module failed status for this module.
-	}
-	return wordres;
-}
-uint16_t MD3OutstationPort::CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool &ModuleFailed)
-{
-	uint16_t wordres = 0;
-
-	for (int j = 0; j < 16; j++)
-	{
-		uint8_t bitres = 0;
-		bool changed = false;	// We dont care about the returned value
-
-		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres))	// Reading this clears the changed bit
-		{
-			//TODO: Check the bit order here of the binaries
-			wordres |= (uint16_t)bitres << (15 - j);
-		}
-		//TODO: Check and update the module failed status for this module.
-	}
-	return wordres;
-}
 // Scan all binary/digital blocks for changes - used to determine what response we need to send
 // We return the total number of changed blocks we assume every block supports time tagging
 // If SendEverything is true,
