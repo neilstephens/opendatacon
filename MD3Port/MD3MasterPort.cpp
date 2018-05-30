@@ -88,11 +88,8 @@ void MD3MasterPort::SocketStateHandler(bool state)
 	else
 	{
 		PollScheduler->Stop();
-		// MD3 Binary
-		//for(auto index : pConf->pPointConf->BinaryIndicies)
-		//for(uint16_t index = range.start; index < range.start + range.count; index++ )
-		//			PublishEvent(BinaryQuality::COMM_LOST, index);
-		// Do Analogs and Controls.
+
+		SetAllPointsQualityToCommsLost();	// All the connected points need their quality set to comms lost.
 
 		PublishEvent(ConnectState::DISCONNECTED, 0);
 		msg = Name + ": Connection closed.";
@@ -588,48 +585,135 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 	*/
 }
 
+void MD3MasterPort::SetAllPointsQualityToCommsLost()
+{
+	// Loop through all Binary points.
+	for (auto const &Point : MyPointConf()->BinaryODCPointMap)
+	{
+		int index = Point.first;
+		PublishEvent(BinaryQuality::COMM_LOST, index);
+	}
+	// Analogs
+	for (auto const &Point : MyPointConf()->AnalogODCPointMap)
+	{
+		int index = Point.first;
+		PublishEvent(AnalogQuality::COMM_LOST, index);
+	}
+	// Counters
+	for (auto const &Point : MyPointConf()->CounterODCPointMap)
+	{
+		int index = Point.first;
+		PublishEvent(CounterQuality::COMM_LOST, index);
+	}
+	// Binary Control/Output
+	for (auto const &Point : MyPointConf()->BinaryControlODCPointMap)
+	{
+		int index = Point.first;
+		PublishEvent(BinaryOutputStatusQuality::COMM_LOST, index);
+	}
+}
 
-//Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
-std::future<CommandStatus> MD3MasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> MD3MasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> MD3MasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> MD3MasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> MD3MasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+// When a new device connects to us through ODC (or an exisiting one reconnects), send them everything we currently have.
+void MD3MasterPort::SendAllPointEvents()
+{
+	//TODO: SJE Set a quality of RESTART if we have just started up but not yet received information for a point. Not sure if super usefull...
 
+	// Quality of ONLINE means the data is GOOD.
+	for (auto const &Point : MyPointConf()->BinaryODCPointMap)
+	{
+		int index = Point.first;
+		uint8_t meas = Point.second->Binary;
+		uint8_t qual = (uint8_t)(enabled ? BinaryQuality::ONLINE : BinaryQuality::COMM_LOST);
+		PublishEvent(Binary( meas == 1, qual ),index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
+	}
+	// Binary Control/Output - the status of which we show as a binary - on our other end we look for the index in both binary lists
+	//TODO: SJE Check that we need to report BinaryOutput status, or if it is just assumed?
+	for (auto const &Point : MyPointConf()->BinaryControlODCPointMap)
+	{
+		int index = Point.first;
+		uint8_t meas = Point.second->Binary;
+		uint8_t qual = (uint8_t)(enabled ? BinaryQuality::ONLINE : BinaryQuality::COMM_LOST);
+		PublishEvent(Binary(meas == 1, qual), index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
+	}
+	// Analogs
+	for (auto const &Point : MyPointConf()->AnalogODCPointMap)
+	{
+		int index = Point.first;
+		uint16_t meas = Point.second->Analog;
+		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
+		uint8_t qual = enabled ? ((meas == 0x8000) ? 0 : (uint8_t)AnalogQuality::ONLINE) : (uint8_t)AnalogQuality::COMM_LOST;
+		PublishEvent(Analog(meas, qual), index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
+	}
+	// Counters
+	for (auto const &Point : MyPointConf()->CounterODCPointMap)
+	{
+		int index = Point.first;
+		uint16_t meas = Point.second->Analog;
+		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
+		uint8_t qual = enabled ? ((meas == 0x8000) ? 0 : (uint8_t)AnalogQuality::ONLINE) : (uint8_t)AnalogQuality::COMM_LOST;
+		PublishEvent(Counter(meas, qual), index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
+	}
+}
+
+
+// This will be fired by (typically) an MD3OutStation port on the "other" side of the ODC Event bus.
+// We should probably send all the points to the Outstation as we dont know what state the OutStation point table will be in.
 std::future<CommandStatus> MD3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
-	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
-
-	auto cmd_promise = std::promise<CommandStatus>();
-	auto cmd_future = cmd_promise.get_future();
-
-	if(!enabled)
+	if (!enabled)
 	{
-		cmd_promise.set_value(CommandStatus::UNDEFINED);
-		return cmd_future;
+		return IOHandler::CommandFutureUndefined();
 	}
 
 	//something upstream has connected
 	if(state == ConnectState::CONNECTED)
 	{
+		LOG("MD3MasterPort", openpal::logflags::INFO, "", "Upstream (other side of ODC) port enabled - Triggering sending of current data ");
+		// We dont know the state of the upstream data, so send event information for all points.
+		SendAllPointEvents();
+	}
+	else // ConnectState::DISCONNECTED
+	{
+		// If we were an on demand connection, we would take down the connection . For MD3 we are using persistent connections only.
+		// We have lost an ODC connection, so events we send dont go anywhere.
 
 	}
 
-	cmd_promise.set_value(CommandStatus::SUCCESS);
+	return IOHandler::CommandFutureSuccess();
+}
+
+//Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
+std::future<CommandStatus> MD3MasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) { return EventT(arCommand, index, SenderName); }
+std::future<CommandStatus> MD3MasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) { return EventT(arCommand, index, SenderName); }
+std::future<CommandStatus> MD3MasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) { return EventT(arCommand, index, SenderName); }
+std::future<CommandStatus> MD3MasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) { return EventT(arCommand, index, SenderName); }
+std::future<CommandStatus> MD3MasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) { return EventT(arCommand, index, SenderName); }
+
+// So we have received an event, which for the Master will result in a write to the Outstation, so the command is a Binary Output or Analog Output
+// see all 5 possible definitions above.
+// We will have to translate from the float values to the uint16_t that MD3 actually handles, and then it is only a 12 bit number.
+template<typename T>
+inline std::future<CommandStatus> MD3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
+{
+	std::unique_ptr<std::promise<CommandStatus> > cmd_promise{ new std::promise<CommandStatus>() };
+	auto cmd_future = cmd_promise->get_future();
+
+	if (!enabled)
+	{
+		cmd_promise->set_value(CommandStatus::UNDEFINED);
+		return cmd_future;
+	}
+
+	//	cmd_promise->set_value(WriteObject(arCommand, index));
+	/*
+	auto lambda = capture( std::move(cmd_promise),
+	[=]( std::unique_ptr<std::promise<CommandStatus>> & cmd_promise ) {
+	cmd_promise->set_value(WriteObject(arCommand, index));
+	} );
+	pIOS->post([&](){ lambda(); });
+	*/
 	return cmd_future;
 }
-
-/*MD3ReadGroup<Binary>* MD3MasterPort::GetRange(uint16_t index)
-{
-	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
-	for(auto& range : pConf->pPointConf->BitIndicies)
-	{
-		if ((index >= range.start) && (index < range.start + range.count))
-			return &range;
-	}
-	return nullptr;
-}
-*/
 
 /*
 template<>
@@ -734,28 +818,7 @@ CommandStatus MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, ui
 }
 */
 
-template<typename T>
-inline std::future<CommandStatus> MD3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
-{
-	std::unique_ptr<std::promise<CommandStatus> > cmd_promise { new std::promise<CommandStatus>() };
-	auto cmd_future = cmd_promise->get_future();
 
-	if(!enabled)
-	{
-		cmd_promise->set_value(CommandStatus::UNDEFINED);
-		return cmd_future;
-	}
-
-//	cmd_promise->set_value(WriteObject(arCommand, index));
-	/*
-	auto lambda = capture( std::move(cmd_promise),
-	                      [=]( std::unique_ptr<std::promise<CommandStatus>> & cmd_promise ) {
-	                          cmd_promise->set_value(WriteObject(arCommand, index));
-	                      } );
-	pIOS->post([&](){ lambda(); });
-	*/
-	return cmd_future;
-}
 
 
 

@@ -77,9 +77,13 @@ public:
 
 	void Enable() override;
 	void Disable() override;
+
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
 
 	void SocketStateHandler(bool state);
+
+	void SetAllPointsQualityToCommsLost();
+	void SendAllPointEvents();
 
 	// Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
 	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
