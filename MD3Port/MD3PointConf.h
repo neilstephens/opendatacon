@@ -39,8 +39,20 @@
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 
-#include <boost/lockfree/spsc_queue.hpp>	// Alternative https://github.com/rigtorp/SPSCQueue also check out Boost BCP to only pull in what you need?
+// This one has been given wraps: http://moodycamel.com/blog/2014/a-fast-general-purpose-lock-free-queue-for-c++
+// https://github.com/cameron314/concurrentqueue
+// And is faster than the lockfree queue from boost.
+//TODO: SJE Actually we really need a multi producer single consumer queue for this case. We consume the queue to create the MD3 packet to send to the master (if is asked for!)
+// Good article http://www.codersblock.org/blog/2016/6/02/ditching-the-mutex
+#include <boost/lockfree/spsc_queue.hpp>
 #include "MD3Engine.h"
+
+// Also I have concerns about blocking checks on futures, which would block one of the asio threads - we may only have 4!
+// This guys has some answers:
+// http://code-slim-jim.blogspot.com/2014/07/async-usage-of-futures-and-promises-in.html
+// So here is how you use std::promise and std::future in lambdas, binds, asio and anything else u cant move into.
+// I also tossed in an example of how to use non-blocking checks on the futures which is another key tool for using futures in asio code.
+// Apparently you can just call IOsvc.run() to yield the thread. It will come back when it has nothing to do.
 
 using namespace odc;
 

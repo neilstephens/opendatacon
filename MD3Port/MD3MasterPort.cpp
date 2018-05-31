@@ -419,16 +419,19 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 			ModuleMapType::iterator mait = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
 
 			// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
-			int ModuleAddress = 0x20;
+			int ModuleAddress = mait->first;
 			int channels = 16;	// Most we can get in one command
 			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL,ModuleAddress, channels, true);
 
 			// Create a message for the command queue, and send it. It will do the command in a post() so we dont block here.
-			// Each command will clear pending messages, then wait for the first return packet and process that.
-		//	pIOS->post([=]() { DoPoll(TargetRange->pollgroup); });
-			pConnection->Write(commandblock.ToBinaryString());
+			// Each command will clear pending messages, then wait for the first return packet to process. That processing will post events if the expected data has been received.
+			// The only other issue is a time out, but that will just result in an error message - and/or changing the quality/value of the points?
+			// The  post command should copy the lambda, so it controls the copies lifetime. One example from other code is: pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
 
-			// Now need a lambda to handle what we get back...
+			// This is a temp version.
+			//pIOS->post([commandblock,this](MD3BlockFormatted commandblock) {pConnection->Write(commandblock.ToBinaryString()); });
+			// Getting a problem with this:
+			// https://stackoverflow.com/questions/37709819/why-must-a-boost-asio-handler-be-copy-constructible
 		}
 		else
 		{
@@ -461,128 +464,6 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 			}
 		}
 	}
-
-/*	auto pConf = static_cast<MD3PortConf*>(this->pConf.get());
-	int rc;
-
-	// MD3 function code 0x01 (read coil status)
-	for(auto range : pConf->pPointConf->BitIndicies)
-	{
-		if (pollgroup && (range.pollgroup != pollgroup))
-			continue;
-		if (range.count > MD3_read_buffer_size)
-		{
-			if(MD3_read_buffer != nullptr)
-				free(MD3_read_buffer);
-			MD3_read_buffer = malloc(range.count);
-			MD3_read_buffer_size = range.count;
-		}
-//		rc = MD3_read_bits(mb, range.start, range.count, (uint8_t*)MD3_read_buffer);
-//		if (rc == -1)
-		{
-			HandleError(errno, "read bits poll");
-			if(!enabled) return;
-		}
-	//	else
-		{
-			uint16_t index = range.start;
-			for(uint16_t i = 0; i < rc; i++ )
-			{
-				PublishEvent(BinaryOutputStatus(((uint8_t*)MD3_read_buffer)[i] != false),index);
-				++index;
-			}
-		}
-	}
-
-	// MD3 function code 0x02 (read input status)
-	for(auto range : pConf->pPointConf->InputBitIndicies)
-	{
-		if (pollgroup && (range.pollgroup != pollgroup))
-			continue;
-
-		if (range.count > MD3_read_buffer_size)
-		{
-			if(MD3_read_buffer != nullptr)
-				free(MD3_read_buffer);
-			MD3_read_buffer = malloc(range.count);
-			MD3_read_buffer_size = range.count;
-		}
-	//	rc = MD3_read_input_bits(mb, range.start, range.count, (uint8_t*)MD3_read_buffer);
-		if (rc == -1)
-		{
-			HandleError(errno, "read input bits poll");
-			if(!enabled) return;
-		}
-		else
-		{
-			uint16_t index = range.start;
-			for(uint16_t i = 0; i < rc; i++ )
-			{
-				PublishEvent(Binary(((uint8_t*)MD3_read_buffer)[i] != false),index);
-				++index;
-			}
-		}
-	}
-
-	// MD3 function code 0x03 (read holding registers)
-	for(auto range : pConf->pPointConf->RegIndicies)
-	{
-		if (pollgroup && (range.pollgroup != pollgroup))
-			continue;
-
-		if (range.count*2 > MD3_read_buffer_size)
-		{
-			if(MD3_read_buffer != nullptr)
-				free(MD3_read_buffer);
-			MD3_read_buffer = malloc(range.count*2);
-			MD3_read_buffer_size = range.count*2;
-		}
-	//	rc = MD3_read_registers(mb, range.start, range.count, (uint16_t*)MD3_read_buffer);
-		if (rc == -1)
-		{
-			HandleError(errno, "read registers poll");
-			if(!enabled) return;
-		}
-		else
-		{
-			uint16_t index = range.start;
-			for(uint16_t i = 0; i < rc; i++ )
-			{
-				PublishEvent(AnalogOutputInt16(((uint16_t*)MD3_read_buffer)[i]),index);
-				++index;
-			}
-		}
-	}
-
-	// MD3 function code 0x04 (read input registers)
-	for(auto range : pConf->pPointConf->InputRegIndicies)
-	{
-		if (pollgroup && (range.pollgroup != pollgroup))
-			continue;
-		if (range.count*2 > MD3_read_buffer_size)
-		{
-			if(MD3_read_buffer != nullptr)
-				free(MD3_read_buffer);
-			MD3_read_buffer = malloc(range.count*2);
-			MD3_read_buffer_size = range.count*2;
-		}
-	//	rc = MD3_read_input_registers(mb, range.start, range.count, (uint16_t*)MD3_read_buffer);
-		if (rc == -1)
-		{
-			HandleError(errno, "read input registers poll");
-			if(!enabled) return;
-		}
-		else
-		{
-			uint16_t index = range.start;
-			for(uint16_t i = 0; i < rc; i++ )
-			{
-				PublishEvent(Analog(((uint16_t*)MD3_read_buffer)[i]),index);
-				++index;
-			}
-		}
-	}
-	*/
 }
 
 void MD3MasterPort::SetAllPointsQualityToCommsLost()
@@ -623,7 +504,7 @@ void MD3MasterPort::SendAllPointEvents()
 	{
 		int index = Point.first;
 		uint8_t meas = Point.second->Binary;
-		uint8_t qual = (uint8_t)(enabled ? BinaryQuality::ONLINE : BinaryQuality::COMM_LOST);
+		uint8_t qual = CalculateBinaryQuality(enabled);
 		PublishEvent(Binary( meas == 1, qual ),index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
 	}
 	// Binary Control/Output - the status of which we show as a binary - on our other end we look for the index in both binary lists
@@ -632,7 +513,7 @@ void MD3MasterPort::SendAllPointEvents()
 	{
 		int index = Point.first;
 		uint8_t meas = Point.second->Binary;
-		uint8_t qual = (uint8_t)(enabled ? BinaryQuality::ONLINE : BinaryQuality::COMM_LOST);
+		uint8_t qual = CalculateBinaryQuality(enabled);
 		PublishEvent(Binary(meas == 1, qual), index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
 	}
 	// Analogs
@@ -641,7 +522,7 @@ void MD3MasterPort::SendAllPointEvents()
 		int index = Point.first;
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		uint8_t qual = enabled ? ((meas == 0x8000) ? 0 : (uint8_t)AnalogQuality::ONLINE) : (uint8_t)AnalogQuality::COMM_LOST;
+		uint8_t qual = CalculateAnalogQuality(enabled, meas);
 		PublishEvent(Analog(meas, qual), index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
 	}
 	// Counters
@@ -650,11 +531,21 @@ void MD3MasterPort::SendAllPointEvents()
 		int index = Point.first;
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		uint8_t qual = enabled ? ((meas == 0x8000) ? 0 : (uint8_t)AnalogQuality::ONLINE) : (uint8_t)AnalogQuality::COMM_LOST;
+		uint8_t qual = CalculateAnalogQuality(enabled, meas);
 		PublishEvent(Counter(meas, qual), index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
 	}
 }
 
+// Binary quality only depends on our link status (at the moment) could also be age related?
+uint8_t MD3MasterPort::CalculateBinaryQuality(bool enabled)
+{
+	return (uint8_t)(enabled ? BinaryQuality::ONLINE : BinaryQuality::COMM_LOST);
+}
+// Use the measument value and if we are enabled to determine what the quality value should be.
+uint8_t MD3MasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas)
+{
+	return (enabled ? ((meas == 0x8000) ? (uint8_t)AnalogQuality::LOCAL_FORCED : (uint8_t)AnalogQuality::ONLINE) : (uint8_t)AnalogQuality::COMM_LOST);
+}
 
 // This will be fired by (typically) an MD3OutStation port on the "other" side of the ODC Event bus.
 // We should probably send all the points to the Outstation as we dont know what state the OutStation point table will be in.

@@ -85,6 +85,9 @@ public:
 	void SetAllPointsQualityToCommsLost();
 	void SendAllPointEvents();
 
+	uint8_t CalculateBinaryQuality(bool enabled);
+	uint8_t CalculateAnalogQuality(bool enabled, uint16_t meas);
+
 	// Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
 	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;

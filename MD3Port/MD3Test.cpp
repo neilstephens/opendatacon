@@ -1884,7 +1884,7 @@ namespace MasterTests
 
 	TEST_CASE("Master - AnalogUnconditionalF5")
 	{
-		// Tests the decoding of return data  in the format of Fn 5
+		// Tests the decoding of return data in the format of Fn 5
 
 		WriteConfFileToCurrentWorkingDirectory();
 
@@ -1902,6 +1902,8 @@ namespace MasterTests
 		MD3Port->Enable();
 
 		// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
+		// This must be triggered by injecting a command into the command queue, otherwise we will not be expecting a packet of this type..
+
 		MD3BlockFormatted commandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, false);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
