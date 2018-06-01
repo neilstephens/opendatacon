@@ -34,6 +34,7 @@
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 #include "MD3Engine.h"
+#include "ASIOStrandProtectedQueue.h"
 
 #define SUITE(name) "MD3Tests - " name
 
@@ -162,6 +163,43 @@ namespace SimpleUnitTests
 		REQUIRE(MD3CRCCompare(res, 0xff));
 	}
 
+	TEST_CASE("Utility - Strand Queue")
+	{
+		asio::io_service IOS(2);
+
+		asio::io_service::work work(IOS);	// Just to keep things from stopping..
+
+		std::thread t1([&]() {IOS.run(); });
+		std::thread t2([&]() {IOS.run(); });
+
+		StrandProtectedQueue<int> foo(IOS,10);
+		foo.sync_push(21);
+		foo.sync_push(31);
+		foo.sync_push(41);
+
+		int res;
+		bool success = foo.sync_pop(res);
+		REQUIRE(success);
+		REQUIRE(res == 21);
+
+		success = foo.sync_pop(res);
+		REQUIRE(success);
+		REQUIRE(res == 31);
+
+		foo.sync_push(2 * res);
+		success = foo.sync_pop(res);
+		REQUIRE(success);
+		REQUIRE(res == 41);
+
+		success = foo.sync_pop(res);
+		REQUIRE(success);
+		REQUIRE(res == 31 * 2);
+
+		IOS.stop();	// Or work.reset(), if work was a pointer.!
+
+		t1.join();	// Wait for thread to end
+		t2.join();
+	}
 #pragma region Block Tests
 
 	TEST_CASE("MD3Block - ClassConstructor1")
@@ -1888,7 +1926,7 @@ namespace MasterTests
 
 		WriteConfFileToCurrentWorkingDirectory();
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores. This fires up IOS.Run() threads
 		asio::io_service IOS(1);
 
 		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
@@ -2022,7 +2060,6 @@ namespace MasterTests
 		//  Station 0x7D
 		MD3BlockFn16MtoS commandblock2(0x7D, true);
 		pSockMan->Write(commandblock2.ToBinaryString());
-
 
 		IOS.run();	// Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
 					// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
