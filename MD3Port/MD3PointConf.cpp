@@ -214,7 +214,7 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 							// Control points and binary inputs are processed here.
 							// If the map does have an entry for moduleaddress, we just set the second element of the pair (to a non value).
 							// If it does not, add the moduleaddress,0 pair to the map - which will be sorted.
-							PollGroups[pollgroup].ModuleAddresses[moduleaddress] = 0;
+							PollGroups[pollgroup].ModuleAddresses[(uint8_t)moduleaddress] = 0;
 						}
 					}
 				}
@@ -309,7 +309,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::
 							// Control points and binary inputs are processed here.
 							// If the map does have an entry for moduleaddress, we just set the second element of the pair (to a non value).
 							// If it does not, add the moduleaddress,0 pair to the map - which will be sorted.
-							PollGroups[pollgroup].ModuleAddresses[moduleaddress] = 0;
+							PollGroups[pollgroup].ModuleAddresses[(uint8_t)moduleaddress] = 0;
 						}
 					}
 				}

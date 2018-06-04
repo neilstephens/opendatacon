@@ -32,13 +32,12 @@
 #include <functional>
 
 #include <opendatacon/DataPort.h>
-#include <opendnp3/gen/LinkStatus.h>
-#include <opendnp3/outstation/ICommandHandler.h>
 
 #include "MD3.h"
 #include "MD3PortConf.h"
 #include "MD3Engine.h"
 #include "MD3Connection.h"
+#include "StrandProtectedQueue.h"
 
 using namespace odc;
 
@@ -106,7 +105,7 @@ public:
 	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, uint64_t eventtime);
 
 	bool CheckBinaryControlExistsUsingMD3Index(const uint16_t module, const uint8_t channel);
-	
+
 	void AddToDigitalEvents(MD3BinaryPoint & pt);
 	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);
 	uint16_t CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool & ModuleFailed);
@@ -133,6 +132,9 @@ protected:
 	// We need to support multidrop in both the OutStation and the Master.
 	// We have a separate OutStation or Master for each OutStation, but they could be sharing a TCP connection, then routing the traffic based on MD3 Station Address.
 	std::shared_ptr<MD3Connection> pConnection;
+
+	std::shared_ptr<StrandProtectedQueue<MD3BinaryPoint>> pBinaryTimeTaggedEventQueue;			// Separate queue for time tagged binary events. Used for COS request functions
+	std::shared_ptr<StrandProtectedQueue<MD3BinaryPoint>> pBinaryModuleTimeTaggedEventQueue;	// This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
 };
 
 #endif /* MD3PORT_H_ */

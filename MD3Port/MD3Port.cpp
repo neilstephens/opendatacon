@@ -373,7 +373,7 @@ bool MD3Port::CheckBinaryControlExistsUsingMD3Index(const uint16_t module, const
 void MD3Port::AddToDigitalEvents(MD3BinaryPoint & pt)
 {
 	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
-	MyPointConf()->BinaryTimeTaggedEventQueue.push(pt);
+	pBinaryTimeTaggedEventQueue->async_push(pt);
 
 	// Have to collect all the bits in the module to which this point belongs into a uint16_t,
 	// just to support COS Fn 11 where the whole 16 bits are returned for a possibly single bit change.
@@ -383,7 +383,7 @@ void MD3Port::AddToDigitalEvents(MD3BinaryPoint & pt)
 
 	// Save it in the snapshot that is used for the Fn11 COS time tagged events.
 	pt.ModuleBinarySnapShot = wordres;
-	MyPointConf()->BinaryModuleTimeTaggedEventQueue.push(pt);
+	pBinaryModuleTimeTaggedEventQueue->async_push(pt);
 }
 uint16_t MD3Port::CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool &ModuleFailed)
 {

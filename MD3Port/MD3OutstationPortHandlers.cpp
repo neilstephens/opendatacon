@@ -547,7 +547,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 	lastblock.MarkAsEndOfMessageBlock();
 
 	MD3BlockFn9 &firstblock = static_cast<MD3BlockFn9&>(ResponseMD3Message[0]);
-	firstblock.SetEventCountandMoreEventsFlag(EventCount, (MyPointConf()->BinaryTimeTaggedEventQueue.read_available() > 0));	// If not empty, set more events (MEV) flag
+	firstblock.SetEventCountandMoreEventsFlag(EventCount, !pBinaryTimeTaggedEventQueue->sync_empty());	// If not empty, set more events (MEV) flag
 
 	LastDigitialHRERResponseMD3Message = ResponseMD3Message;	// Copy so we can resend if necessary
 	SendMD3Message(ResponseMD3Message);
@@ -559,10 +559,8 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 	uint64_t LastPointmsec = 0;
 	bool CanSend = true;
 
-	while ((MyPointConf()->BinaryTimeTaggedEventQueue.read_available() > 0) && (EventCount < MaxEventCount) && CanSend)
+	while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint) && (EventCount < MaxEventCount) && CanSend)
 	{
-		CurrentPoint = MyPointConf()->BinaryTimeTaggedEventQueue.front();
-
 		if (EventCount == 0)
 		{
 			// First packet is the time/date block and a millseconds packet
@@ -593,7 +591,7 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 		{
 			ResponseWords.push_back(MD3BlockFn9::HREREventPacket(CurrentPoint.Binary, CurrentPoint.Channel, CurrentPoint.ModuleAddress));
 
-			MyPointConf()->BinaryTimeTaggedEventQueue.pop();
+			pBinaryTimeTaggedEventQueue->sync_pop();
 			EventCount++;
 		}
 	}
@@ -679,7 +677,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	}
 
 	int ChangedBlocks = CountBinaryBlocksWithChanges();
-	bool AreThereTaggedEvents = (MyPointConf()->BinaryModuleTimeTaggedEventQueue.read_available() > 0);
+	bool AreThereTaggedEvents = !pBinaryModuleTimeTaggedEventQueue->sync_empty();
 
 	if ((ChangedBlocks == 0) && !AreThereTaggedEvents)
 	{
@@ -755,10 +753,8 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 	MD3BinaryPoint CurrentPoint;
 	uint64_t LastPointmsec = 0;
 
-	while ((MyPointConf()->BinaryModuleTimeTaggedEventQueue.read_available() > 0) && (EventCount < MaxEventCount))
+	while (pBinaryModuleTimeTaggedEventQueue->sync_front(CurrentPoint) && (EventCount < MaxEventCount))
 	{
-		CurrentPoint = MyPointConf()->BinaryModuleTimeTaggedEventQueue.front();
-
 		// The time date is seconds, the data block contains a msec entry.
 		// The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
 		// add a time packet to bridge the gap.
@@ -797,7 +793,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleBinarySnapShot);
 
 		LastPointmsec = CurrentPoint.ChangedTime;	// Update the last changed time to match what we have just sent.
-		MyPointConf()->BinaryModuleTimeTaggedEventQueue.pop();
+		pBinaryModuleTimeTaggedEventQueue->sync_pop();
 		EventCount++;
 	}
 }

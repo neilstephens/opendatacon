@@ -34,7 +34,7 @@
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 #include "MD3Engine.h"
-#include "ASIOStrandProtectedQueue.h"
+#include "StrandProtectedQueue.h"
 
 #define SUITE(name) "MD3Tests - " name
 
@@ -178,22 +178,29 @@ namespace SimpleUnitTests
 		foo.sync_push(41);
 
 		int res;
-		bool success = foo.sync_pop(res);
+		bool success = foo.sync_front(res);
 		REQUIRE(success);
 		REQUIRE(res == 21);
+		foo.sync_pop();
 
-		success = foo.sync_pop(res);
+		success = foo.sync_front(res);
 		REQUIRE(success);
 		REQUIRE(res == 31);
+		foo.sync_pop();
 
 		foo.sync_push(2 * res);
-		success = foo.sync_pop(res);
+		success = foo.sync_front(res);
+		foo.sync_pop();
 		REQUIRE(success);
 		REQUIRE(res == 41);
 
-		success = foo.sync_pop(res);
+		success = foo.sync_front(res);
+		foo.sync_pop();
 		REQUIRE(success);
 		REQUIRE(res == 31 * 2);
+
+		success = foo.sync_front(res);
+		REQUIRE(!success);
 
 		IOS.stop();	// Or work.reset(), if work was a pointer.!
 

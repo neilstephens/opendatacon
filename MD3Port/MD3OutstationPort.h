@@ -110,8 +110,6 @@ private:
 
 	void SocketStateHandler(bool state);
 
-//	std::vector<MD3BlockData> MD3Message;
-
 	int LastHRERSequenceNumber = 100;	// Used to remember the last HRER scan we sent, starts with an invalid value
 	int LastDigitalScanSequenceNumber = 0;	// Used to remember the last digital scan we had
 	std::vector<MD3BlockData> LastDigitialScanResponseMD3Message;

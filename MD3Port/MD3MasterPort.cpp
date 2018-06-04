@@ -105,6 +105,8 @@ void MD3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LE
 	if (PollScheduler == nullptr)
 		PollScheduler.reset(new ASIOScheduler(*pIOS));
 
+	pMasterCommandQueue.reset(new StrandProtectedQueue<MasterCommandQueueItem>(*pIOS, 256));	// If we get more than 256 commands in the queue we have a problem.
+
 	pConnection = MD3Connection::GetConnection(ChannelID); //Static method
 
 	if (pConnection == nullptr)
@@ -205,6 +207,10 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 		return;
 	}
 
+//if (Header.GetStationAddress() != ExpectedAddress)
+	{
+
+	}
 	// Now based on the Command Function, take action.
 	// All are included to allow better error reporting.
 	switch (Header.GetFunctionCode())
@@ -286,6 +292,13 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	default:
 		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Unknown Message Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 		break;
+	}
+	// Send the next command if there is one.
+	std::vector<MD3BlockData> NextCommand;
+	if (pMasterCommandQueue->sync_front(NextCommand))
+	{
+		pMasterCommandQueue->sync_pop();
+		SendMD3Message(NextCommand);
 	}
 }
 
@@ -423,15 +436,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 			int channels = 16;	// Most we can get in one command
 			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL,ModuleAddress, channels, true);
 
-			// Create a message for the command queue, and send it. It will do the command in a post() so we dont block here.
-			// Each command will clear pending messages, then wait for the first return packet to process. That processing will post events if the expected data has been received.
-			// The only other issue is a time out, but that will just result in an error message - and/or changing the quality/value of the points?
-			// The  post command should copy the lambda, so it controls the copies lifetime. One example from other code is: pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-			// This is a temp version.
-			//pIOS->post([commandblock,this](MD3BlockFormatted commandblock) {pConnection->Write(commandblock.ToBinaryString()); });
-			// Getting a problem with this:
-			// https://stackoverflow.com/questions/37709819/why-must-a-boost-asio-handler-be-copy-constructible
+			QueueMasterCommand(commandblock);
 		}
 		else
 		{

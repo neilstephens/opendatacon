@@ -42,9 +42,8 @@
 // This one has been given wraps: http://moodycamel.com/blog/2014/a-fast-general-purpose-lock-free-queue-for-c++
 // https://github.com/cameron314/concurrentqueue
 // And is faster than the lockfree queue from boost.
-//TODO: SJE Actually we really need a multi producer single consumer queue for this case. We consume the queue to create the MD3 packet to send to the master (if is asked for!)
 // Good article http://www.codersblock.org/blog/2016/6/02/ditching-the-mutex
-#include <boost/lockfree/spsc_queue.hpp>
+
 #include "MD3Engine.h"
 
 // Also I have concerns about blocking checks on futures, which would block one of the asio threads - we may only have 4!
@@ -191,9 +190,6 @@ public:
 
 	std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlMD3PointMap;	// ModuleAndChannel, MD3Point
 	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlODCPointMap;	// Index OpenDataCon, MD3Point
-
-	boost::lockfree::spsc_queue<MD3BinaryPoint, boost::lockfree::capacity<256> > BinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events. Used for COS request functions
-	boost::lockfree::spsc_queue<MD3BinaryPoint, boost::lockfree::capacity<256> > BinaryModuleTimeTaggedEventQueue;	// This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
 
 	std::map<uint32_t, MD3PollGroup> PollGroups;
 };
