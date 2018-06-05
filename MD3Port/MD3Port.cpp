@@ -202,6 +202,18 @@ bool MD3Port::SetCounterValueUsingMD3Index(const uint16_t module, const uint8_t 
 	}
 	return false;
 }
+bool MD3Port::GetCounterODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res)
+{
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
+	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
+	{
+		res = MD3PointMapIter->second->Index;
+		return true;
+	}
+	return false;
+}
 bool MD3Port::SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas)
 {
 	ODCAnalogCounterPointMapIterType ODCPointMapIter = MyPointConf()->CounterODCPointMap.find(index);
@@ -239,6 +251,18 @@ bool MD3Port::GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const 
 	}
 	return false;
 }
+bool MD3Port::GetAnalogODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res)
+{
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
+	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
+	{
+		res = MD3PointMapIter->second->Index;
+		return true;
+	}
+	return false;
+}
 bool MD3Port::SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas)
 {
 	uint16_t Md3Index = (module << 8) | channel;
@@ -267,6 +291,18 @@ bool MD3Port::SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t m
 	if (ODCPointMapIter != MyPointConf()->AnalogODCPointMap.end())
 	{
 		ODCPointMapIter->second->Analog = meas;
+		return true;
+	}
+	return false;
+}
+bool MD3Port::GetBinaryODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res)
+{
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
+	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
+	{
+		res = MD3PointMapIter->second->Index;
 		return true;
 	}
 	return false;

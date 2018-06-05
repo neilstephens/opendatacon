@@ -89,6 +89,7 @@ public:
 	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res);
 	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta);
 	bool SetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
+	bool GetCounterODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int & res);
 	bool SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas);
 
 	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res);
@@ -96,6 +97,9 @@ public:
 	bool SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
 	bool GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t &res);
 	bool SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas);
+
+	bool GetAnalogODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res);
+	bool GetBinaryODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res);
 
 	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed);
 	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t & res);

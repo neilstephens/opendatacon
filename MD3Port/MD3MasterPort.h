@@ -97,7 +97,34 @@ public:
 	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
 	template<typename T> std::future<CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
-
+	//*** PUBLIC for unit tests only
+	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
+	// The type of the queue will contain a function pointer to the completion function and the timeout function.
+	// There is a fixed timeout function (below) which will queue the next command and call any timeout function pointer
+	// If the ProcessMD3Message callback gets the command it expects, it will send the next command in the queue.
+	// If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
+	// This is nexcessary if somehow we get an old command sent to us, or a left over broadcast message.
+	typedef std::vector<MD3BlockData> MasterCommandQueueItem;
+	void QueueMD3Command(MasterCommandQueueItem &CompleteMD3Message)
+	{
+		if (pMasterCommandQueue->sync_empty())
+		{
+			// If nothing is queued, send now.
+			SendMD3Message(CompleteMD3Message);
+		}
+		else
+		{
+			// Take a copy!
+			pMasterCommandQueue->async_push(CompleteMD3Message);
+		}
+	};
+	// Handle the many single block command messages better
+	void QueueMD3Command(MD3BlockFormatted &SingleBlockMD3Message)
+	{
+		std::vector<MD3BlockData> CommandMD3Message;
+		CommandMD3Message.push_back(SingleBlockMD3Message);
+		QueueMD3Command(CommandMD3Message);
+	}
 private:
 //	template<class T>
 //	CommandStatus WriteObject(const T& command, uint16_t index);
@@ -112,33 +139,7 @@ private:
 	void ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 	void ProcessAnalogDeltaScaReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 
-	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
-	// The type of the queue will contain a function pointer to the completion function and the timeout function.
-	// There is a fixed timeout function (below) which will queue the next command and call any timeout function pointer
-	// If the ProcessMD3Message callback gets the command it expects, it will send the next command in the queue.
-	// If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
-	// This is nexcessary if somehow we get an old command sent to us, or a left over broadcast message.
-	typedef std::vector<MD3BlockData> MasterCommandQueueItem;
-	void QueueMasterCommand(MasterCommandQueueItem &CompleteMD3Message)
-	{
-		if (pMasterCommandQueue->sync_empty())
-		{
-			// If nothing is queued, send now.
-			SendMD3Message(CompleteMD3Message);
-		}
-		else
-		{
-			// Take a copy!
-			pMasterCommandQueue->async_push(CompleteMD3Message);
-		}
-	};
-	// Handle the many single block command messages better
-	void QueueMasterCommand(MD3BlockFormatted &SingleBlockMD3Message)
-	{
-		std::vector<MD3BlockData> CommandMD3Message;
-		CommandMD3Message.push_back(SingleBlockMD3Message);
-		QueueMasterCommand(CommandMD3Message);
-	}
+
 	std::shared_ptr<StrandProtectedQueue<MasterCommandQueueItem>> pMasterCommandQueue;
 };
 

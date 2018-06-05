@@ -75,7 +75,6 @@ const char *conffile2 = R"002(
 {
 	"IP" : "127.0.0.1",
 	"Port" : 1000,
-	"MasterAddr" : 0,
 	"OutstationAddr" : 125,
 	"ServerType" : "PERSISTENT",
 	"LinkNumRetry": 4,
@@ -86,6 +85,8 @@ const char *conffile2 = R"002(
 	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Module" : 35, "Offset" : 0}],
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })002";
+
+openpal::LogFilters DEBUG_LOG_LEVEL(opendnp3::levels::ALL);
 
 // Write out the conf file information about into a file so that it can be read back in by the code.
 void WriteConfFileToCurrentWorkingDirectory()
@@ -120,7 +121,37 @@ std::string BuildHexStringFromASCIIHexString(const std::string &as)
 	}
 	return res;
 }
+void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
+{
+	// We dont have to consider the timer going out of scope in this use case.
+	Timer_t timer(IOS);
+	timer.expires_from_now(std::chrono::seconds(seconds));
+	timer.async_wait([&IOS](asio::error_code err_code)	// [=] all autos by copy, [&] all autos by ref
+	{
+		// If there was no more work, the asio::io_service will exit from the IOS.run() below.
+		// However something is keeping it running, so use the stop command to force the issue.
+		IOS.stop();
+	});
 
+	IOS.run();	// Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
+				// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
+				// If the IOS runs out of work, it must be reset before being run again.
+}
+std::thread *StartIOSThread(asio::io_service &IOS)
+{
+	return new std::thread([&] { IOS.run(); });
+}
+void StopIOSThread(asio::io_service &IOS, std::thread *runthread)
+{
+	IOS.stop();
+	runthread->join();	// Wait for it to exit
+}
+void Wait(asio::io_service &IOS, int seconds)
+{
+	Timer_t timer(IOS);
+	timer.expires_from_now(std::chrono::seconds(seconds));
+	timer.wait();
+}
 
 namespace SimpleUnitTests
 {
@@ -692,8 +723,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -728,8 +758,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -786,8 +815,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -875,8 +903,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -964,8 +991,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -1013,8 +1039,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -1068,20 +1093,15 @@ namespace StationTests
 	TEST_CASE("Station - DigitalHRERFn9")
 	{
 		// Tests time tagged change response Fn 9
-
 		WriteConfFileToCurrentWorkingDirectory();
 
 		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
 		asio::io_service IOS(1);
-
 		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
 
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
-
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 		MD3Port->Enable();
 
 		// Request HRER List (Fn 9), Station 0x7C,  sequence # 0, max 10 events, mev = 1
@@ -1219,8 +1239,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -1279,8 +1298,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -1391,8 +1409,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -1457,8 +1474,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -1515,8 +1531,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -1596,8 +1611,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
@@ -1663,8 +1677,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
@@ -1728,8 +1741,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
@@ -1769,8 +1781,7 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
@@ -1842,9 +1853,7 @@ namespace StationTests
 	TEST_CASE("Station - Multidrop TCP Test")
 	{
 		// Here we test the abilility to support multiple Stations on the one Port/IP Combination.
-		// The Stations will be 0x7C, 0x01, 0x5C
-		//
-
+		// The Stations will be 0x7C, 0x7D
 		WriteConfFileToCurrentWorkingDirectory();
 
 		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
@@ -1857,27 +1866,15 @@ namespace StationTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
 		auto MD3Port2 = new  MD3OutstationPort("TestPLC", conffilename2, Json::nullValue);
 
 		MD3Port2->SetIOS(&IOS);
-		MD3Port2->BuildOrRebuild(IOMgr, lLOG_LEVEL);
-
+		MD3Port2->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 		MD3Port2->Enable();
-
-		// We dont have to consider the timer going out of scope in this use case.
-		Timer_t timer(IOS);
-		timer.expires_from_now(std::chrono::seconds(5));
-		timer.async_wait([&IOS,&MD3Port, &MD3Port2](asio::error_code err_code)	// [=] all autos by copy, [&] all autos by ref
-		{
-			// If there was no more work, the asio::io_service will exit from the IOS.run() below.
-			// However something is keeping it running, so use the stop command to force the issue.
-			IOS.stop();
-		});
 
 		// An outstation is a server by default (Master connects to it...)
 		// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
@@ -1897,14 +1894,8 @@ namespace StationTests
 		MD3BlockFn16MtoS commandblock2(0x7D, true);
 		pSockMan->Write(commandblock2.ToBinaryString());
 
-
-		IOS.run();	// Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
-					// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
-					// If the IOS runs out of work, it must be reset before being run again.
-
-		pSockMan->Close();
-//		MD3Port->Disable(); //TODO: SJE Have a problem with this not shutting down correctly. Have to look at that - casues usbsequent tests to fail
-//		MD3Port2->Disable();
+		RunIOSForXSeconds(IOS, 4);	// Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
+									// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
 
 		// Need to handle multiple responses...
 		// Deal with the last response first...
@@ -1918,6 +1909,10 @@ namespace StationTests
 
 		REQUIRE(ResponseVec.empty());
 
+		MD3Port->Disable(); //TODO: SJE Have a problem with this not shutting down correctly. Have to look at that - casues usbsequent tests to fail
+		MD3Port2->Disable();
+		pSockMan->Close();
+
 		IOMgr.Shutdown();
 	}
 #pragma endregion
@@ -1925,37 +1920,68 @@ namespace StationTests
 
 namespace MasterTests
 {
+
 #pragma region Master Tests
 
 	TEST_CASE("Master - AnalogUnconditionalF5")
 	{
 		// Tests the decoding of return data in the format of Fn 5
+		// We send the response to an analog unconditional command.
+		// Need the Master to send the correct command first, so that what we send back is expected.
+		// We need to create an OutStation port, and subscribe it to the Master Events, so that we can then see if the events are triggered.
+		// We can determine this by checking the values stored in the point table.
+		//TODO: SJE It would probably be ideal to have a TestOutStationPort and TestMasterPort that allow us to hook all events with lambdas from the test code. It would only have an ODC and Point table interface.
 
 		WriteConfFileToCurrentWorkingDirectory();
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores. This fires up IOS.Run() threads
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores. The number of IOS.Run() threads is checked against this.
 		asio::io_service IOS(1);
 
 		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
 
 		auto MD3Port = new  MD3MasterPort("TestMaster", conffilename1, Json::nullValue);
+		Json::Value portoverride;
+		portoverride["Port"] = (Json::UInt64)1001;
+		auto MD3OSPort = new  MD3OutstationPort("TestOutStation", conffilename1, portoverride);	// Loads the same config file to have the same points. Override the port
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
+		MD3OSPort->SetIOS(&IOS);
+		MD3OSPort->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
+
+		// We cannot manually publish an event, this happens within the port.
+		// MD3Port->PublishEvent(b, index);		// Looks at list of subscribers and calls the subscribed events with the parameters passed.
+		// We can manually call the event handler however for testing.
+		// auto res = MD3Port->EventT(b, index, "TestHarness");
+
+		MD3Port->Subscribe(MD3OSPort, "TestLink");	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
+													// Usually is a cross subscription, where each subscribes to the other.
+		MD3OSPort->Enable();
 		MD3Port->Enable();
 
-		// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
-		// This must be triggered by injecting a command into the command queue, otherwise we will not be expecting a packet of this type..
+		std::thread *pThread = StartIOSThread(IOS);
 
+		// Hook the output function with a lambda
+		std::string Response = "Not Set";
+		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+
+		// Now send a request analog unconditional command - asio does not need to run to see this processed.
+		MD3BlockFormatted sendcommandblock(0x7C, false, ANALOG_UNCONDITIONAL, 0x20, 16, true);
+		MD3Port->QueueMD3Command(sendcommandblock);
+
+		// We check the command, but it does not go anywhere, we inject the excpected response below.
+		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("fc05200f4d00");
+		REQUIRE(Response == DesiredResponse);
+
+		// We now inject the expected response to the command above.
 		MD3BlockFormatted commandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, false);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
 
 		const std::string Payload = BuildHexStringFromASCIIHexString("fc05200f0d00"	// Echoed block
-			"100011018400"			// Channel 0 and 1
+			"100011018400"		// Channel 0 and 1
 			"12021303b700"		// Channel 2 and 3 etc
 			"14041505b900"
 			"160617078a00"
@@ -1966,7 +1992,7 @@ namespace MasterTests
 
 		output << Payload;
 
-		// Send the Analog Uncoditional command in as if came from TCP channel
+		// Send the Analog Unconditional command in as if came from TCP channel
 		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		// To check the result, see if the points in the master point list have been changed to the correct values.
@@ -1977,10 +2003,50 @@ namespace MasterTests
 		MD3Port->GetAnalogValueUsingMD3Index(0x20, 8, res);
 		REQUIRE(res == 0x1808);
 
-		// Also need to check that the MasterPort fired off events to ODC.
+		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
+		// Need to give ASIO time to process them?
+		Wait(IOS, 2);
 
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		REQUIRE(res == 0x1000);
+
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		REQUIRE(res == 0x1808);
+
+		StopIOSThread(IOS, pThread);
 		IOMgr.Shutdown();
 	}
+
+	TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
+	{
+		// When ODC signals that it has regained communication up the line (or is a new connection), we will resend all data through ODC.
+		WriteConfFileToCurrentWorkingDirectory();
+
+		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores. The number of IOS.Run() threads is checked against this.
+		asio::io_service IOS(1);
+
+		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+
+		auto MD3Port = new  MD3MasterPort("TestMaster", conffilename1, Json::nullValue);
+
+		MD3Port->SetIOS(&IOS);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
+
+		MD3Port->Enable();
+
+		//  We need to register a couple of handlers to be able to receive the event sent below.
+		// The DataConnector normally handles this when ODC is running.
+
+		// This will result in sending all current data through ODC events.
+		auto res = MD3Port->ConnectionEvent(odc::CONNECTED,"TestHarness");
+
+		REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set. 1 is defined
+
+		// If we loose communication down the line (TCP) we then set all data to COMMS-LOST quality through ODC so the ports
+		// connected know that data is now not valid. As the MD3 slave maintains its own copy of data, to respond to polls, this is important.
+		IOMgr.Shutdown();
+	}
+
 	std::vector<std::string> ResponseVec;
 
 	void ResponseCallback(buf_t& readbuf)
@@ -2028,15 +2094,14 @@ namespace MasterTests
 		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
 
 		MD3Port->SetIOS(&IOS);
-		openpal::LogFilters lLOG_LEVEL(opendnp3::levels::NORMAL);
-		MD3Port->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port->Enable();
 
 		auto MD3Port2 = new  MD3OutstationPort("TestPLC", conffilename2, Json::nullValue);
 
 		MD3Port2->SetIOS(&IOS);
-		MD3Port2->BuildOrRebuild(IOMgr, lLOG_LEVEL);
+		MD3Port2->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3Port2->Enable();
 
@@ -2072,10 +2137,6 @@ namespace MasterTests
 					// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
 					// If the IOS runs out of work, it must be reset before being run again.
 
-		pSockMan->Close();
-		//		MD3Port->Disable(); //TODO: SJE Have a problem with this not shutting down correctly. Have to look at that - casues usbsequent tests to fail
-		//		MD3Port2->Disable();
-
 		// Need to handle multiple responses...
 		// Deal with the last response first...
 		REQUIRE(ResponseVec.size() == 2);
@@ -2087,6 +2148,10 @@ namespace MasterTests
 		ResponseVec.pop_back();
 
 		REQUIRE(ResponseVec.empty());
+
+		pSockMan->Close();
+		MD3Port->Disable(); //TODO: SJE Have a problem with this not shutting down correctly. Have to look at that - casues usbsequent tests to fail
+		MD3Port2->Disable();
 
 		IOMgr.Shutdown();
 	}

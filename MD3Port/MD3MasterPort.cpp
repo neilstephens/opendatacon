@@ -351,12 +351,24 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 		if (SetAnalogValueUsingMD3Index(maddress, idx, AnalogValues[i]))
 		{
 			// We have succeeded in setting the value
-			//TODO: Trigger an event update on this analog value through ODC if value is 0x8000 - change quality value
+			int intres;
+			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
+			{
+				//TODO: SJE Add time to Analog values through ODC
+				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i]);
+				PublishEvent(Analog(AnalogValues[i], qual), intres);
+			}
 		}
 		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
 		{
 			// We have succeeded in setting the value
-			//TODO: Trigger an event update on this counter value through ODC if value is 0x8000 - change quality value
+			int intres;
+			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
+			{
+				//TODO: SJE Add time to Analog values through ODC
+				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i]);
+				PublishEvent(Counter(AnalogValues[i], qual), intres);
+			}
 		}
 		else
 		{
@@ -436,7 +448,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 			int channels = 16;	// Most we can get in one command
 			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL,ModuleAddress, channels, true);
 
-			QueueMasterCommand(commandblock);
+			QueueMD3Command(commandblock);
 		}
 		else
 		{
