@@ -35,7 +35,6 @@
 #include <regex>
 #include <chrono>
 
-#include <asiopal/UTCTimeSource.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include <opendnp3/LogLevels.h>
 

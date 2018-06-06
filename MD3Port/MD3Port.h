@@ -106,7 +106,7 @@ public:
 	bool GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed);
 	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas);
 	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
-	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, uint64_t eventtime);
+	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, MD3Time eventtime);
 
 	bool CheckBinaryControlExistsUsingMD3Index(const uint16_t module, const uint8_t channel);
 
@@ -119,6 +119,7 @@ public:
 	void SendMD3Message(std::vector<MD3BlockData>& CompleteMD3Message);
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void InjectSimulatedTCPMessage(buf_t & readbuf);	// Equivalent of the callback handler in the MD3Connection.
+
 
 protected:
 	bool isServer;

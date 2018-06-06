@@ -74,16 +74,16 @@ using namespace odc;
 
 class MD3Point
 {
-	//TODO:  Split to parent and three child classes for functionality. MD3Point, MD3BinaryPoint, MD3AnalogPoint, MD3ControlPoint
 	//TODO: Make MD3Point thread safe - look at strands
 public:
 	MD3Point() {};
 
-	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup = 0) :
+	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, MD3Time changedtime, uint8_t pollgroup ) :
 		Index(index),
 		ModuleAddress(moduleaddress),
 		Channel(channel),
-		PollGroup(pollgroup)
+		PollGroup(pollgroup),
+		ChangedTime(changedtime)
 	{};
 
 	uint32_t Index = 0;
@@ -91,6 +91,7 @@ public:
 	bool ModuleFailed = false;	// Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
 	uint8_t Channel = 0;
 	uint8_t PollGroup = 0;
+	MD3Time ChangedTime = (MD3Time)0;	// msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data. TimeStamp is Uint48_t, MD3 is uint64_t but does not overflow.
 };
 
 class MD3BinaryPoint : public MD3Point
@@ -98,21 +99,19 @@ class MD3BinaryPoint : public MD3Point
 public:
 	MD3BinaryPoint() {};
 
-	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup) :MD3Point(index, moduleaddress, channel, pollgroup)
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup) :MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
 	{};
 
-	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, uint64_t changedtime) :
-		MD3Point(index, moduleaddress,  channel),
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, MD3Time changedtime) :
+		MD3Point(index, moduleaddress,  channel, changedtime,0),
 		Binary(binval),
-		Changed(changed),
-		ChangedTime(changedtime)
+		Changed(changed)
 	{};
 
 	// Only the values below will be changed in two places
 	uint8_t Binary = 0x01;
 	uint16_t ModuleBinarySnapShot = 0;	// Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
 	bool Changed = true;
-	uint64_t ChangedTime = 0;	// msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data.
 };
 
 class MD3AnalogCounterPoint : public MD3Point
@@ -121,7 +120,7 @@ class MD3AnalogCounterPoint : public MD3Point
 public:
 	MD3AnalogCounterPoint() {};
 
-	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup) :MD3Point(index, moduleaddress, channel, pollgroup)
+	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup) :MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
 	{};
 
 	// Only the values below will be changed in two places

@@ -152,7 +152,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 	// We are currently assuming a whole complete packet will turn up in one unit. If not it will be difficult to do the packet decoding and multidrop routing.
 	// MD3 only has addressing information in the first block of the packet.
 
-	// We should have a multiple of 6 bytes. 5 data bytes and one padding byte for every MD3 block, then possibkly mutiple blocks
+	// We should have a multiple of 6 bytes. 5 data bytes and one padding byte for every MD3 block, then possibly mutiple blocks
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
 	static std::vector<MD3BlockData> MD3Message;
 

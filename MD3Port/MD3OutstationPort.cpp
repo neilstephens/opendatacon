@@ -217,9 +217,11 @@ inline std::future<CommandStatus> MD3OutstationPort::EventT(T& meas, uint16_t in
 	else if (std::is_same<T, const Binary>::value)
 	{
 		// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
-		uint64_t eventtime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+		MD3Time eventtime = MD3Now();
 
-		if (!SetBinaryValueUsingODCIndex(index, (uint8_t)meas.value, eventtime))
+		//TODO: if we are passed a time, check if within range and if OK use it.
+
+		if (!SetBinaryValueUsingODCIndex(index, (uint8_t)meas.value, eventtime))	//TODO: Use meas.time
 		{
 			LOG("DNP3OutstationPort", openpal::logflags::ERR, "", "Tried to set the value for an invalid binary point index " + std::to_string(index));
 			return IOHandler::CommandFutureUndefined();

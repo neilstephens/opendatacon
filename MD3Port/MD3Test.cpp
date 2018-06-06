@@ -34,6 +34,7 @@
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 #include "MD3Engine.h"
+#include "TestLogger.h"
 #include "StrandProtectedQueue.h"
 
 #define SUITE(name) "MD3Tests - " name
@@ -1185,10 +1186,10 @@ namespace StationTests
 		//-----------------------------------------
 		// Need to test the code path where the delta between two records is > 31.999 seconds.
 		// Cheat and write directly to the HRER queue
-		uint64_t changedtime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+		MD3Time changedtime = MD3Now();
 
 		MD3BinaryPoint pt1(1, 34, 1, 1, true, changedtime);
-		MD3BinaryPoint pt2(2, 34, 2, 0, true, changedtime+32000);
+		MD3BinaryPoint pt2(2, 34, 2, 0, true, (MD3Time)(changedtime+32000));
 		MD3Port->AddToDigitalEvents(pt1);
 		MD3Port->AddToDigitalEvents(pt2);
 
@@ -1368,11 +1369,11 @@ namespace StationTests
 		//-----------------------------------------
 		// Need to test the code path where the delta between two records is > 255 milliseconds. Also when it is more than 0xFFFF
 		// Cheat and write directly to the DCOS queue
-		uint64_t changedtime = 0x0000016338b6d4fb; //asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+		MD3Time changedtime = (MD3Time)0x0000016338b6d4fb; //asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
 		MD3BinaryPoint pt1(1, 34, 1, 1, true,  changedtime);
-		MD3BinaryPoint pt2(2, 34, 2, 0, true,  changedtime + 256);
-		MD3BinaryPoint pt3(3, 34, 3, 1, true,  changedtime + 0x20000);	// Time gap too big, will require another Master request
+		MD3BinaryPoint pt2(2, 34, 2, 0, true, (MD3Time)(changedtime + 256));
+		MD3BinaryPoint pt3(3, 34, 3, 1, true, (MD3Time)(changedtime + 0x20000));	// Time gap too big, will require another Master request
 		MD3Port->AddToDigitalEvents(pt1);
 		MD3Port->AddToDigitalEvents(pt2);
 		MD3Port->AddToDigitalEvents(pt3);
@@ -1923,6 +1924,16 @@ namespace MasterTests
 
 #pragma region Master Tests
 
+#define LOG(logger, filters, location, msg) TL.Log(openpal::LogEntry(logger, filters, location, std::string(msg).c_str(),-1));
+	void DumpLoggedMessages(TestLogger & TL)
+	{
+		// Dump out logged messages to the console, Catch will output this for us at the end of the test run.
+		std::cout << std::endl << "Start of Logged Messages" << std::endl << std::endl;
+		std::string s;
+		while (TL.GetNextLine(s)) std::cout << s;
+		std::cout << std::endl << "End of Logged Messages" << std::endl << std::endl;
+	}
+
 	TEST_CASE("Master - AnalogUnconditionalF5")
 	{
 		// Tests the decoding of return data in the format of Fn 5
@@ -1937,7 +1948,9 @@ namespace MasterTests
 		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores. The number of IOS.Run() threads is checked against this.
 		asio::io_service IOS(1);
 
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+		TestLogger TL(30);	// Just adds the strings to a list which we empty at the end (or when we want to). Set initial size.
+
+		IOMgr.AddLogSubscriber(TL); // send log messages to the console
 
 		auto MD3Port = new  MD3MasterPort("TestMaster", conffilename1, Json::nullValue);
 		Json::Value portoverride;
@@ -1945,6 +1958,8 @@ namespace MasterTests
 		auto MD3OSPort = new  MD3OutstationPort("TestOutStation", conffilename1, portoverride);	// Loads the same config file to have the same points. Override the port
 
 		MD3Port->SetIOS(&IOS);
+		MD3Port->AddLogSubscriber(&TL);	// So we catch things!
+
 		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
 
 		MD3OSPort->SetIOS(&IOS);
@@ -1960,6 +1975,7 @@ namespace MasterTests
 		MD3OSPort->Enable();
 		MD3Port->Enable();
 
+		LOG("TEST CODE", openpal::logflags::INFO, "", "Starting ASIO Threads");
 		std::thread *pThread = StartIOSThread(IOS);
 
 		// Hook the output function with a lambda
@@ -1967,21 +1983,20 @@ namespace MasterTests
 		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Now send a request analog unconditional command - asio does not need to run to see this processed.
-		MD3BlockFormatted sendcommandblock(0x7C, false, ANALOG_UNCONDITIONAL, 0x20, 16, true);
+		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
 		MD3Port->QueueMD3Command(sendcommandblock);
 
 		// We check the command, but it does not go anywhere, we inject the excpected response below.
-		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("fc05200f4d00");
+		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c05200f5200");
 		REQUIRE(Response == DesiredResponse);
 
 		// We now inject the expected response to the command above.
-		MD3BlockFormatted commandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, false);
+		MD3BlockFormatted commandblock(0x7C, false, ANALOG_UNCONDITIONAL, 0x20, 16, false);
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
 
-		const std::string Payload = BuildHexStringFromASCIIHexString("fc05200f0d00"	// Echoed block
-			"100011018400"		// Channel 0 and 1
+		const std::string Payload = BuildHexStringFromASCIIHexString("100011018400"		// Channel 0 and 1
 			"12021303b700"		// Channel 2 and 3 etc
 			"14041505b900"
 			"160617078a00"
@@ -2013,8 +2028,11 @@ namespace MasterTests
 		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
 		REQUIRE(res == 0x1808);
 
+		LOG("TEST CODE", openpal::logflags::INFO, "", "Shutting Down ASIO Threads");
 		StopIOSThread(IOS, pThread);
 		IOMgr.Shutdown();
+
+		DumpLoggedMessages(TL);
 	}
 
 	TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")

@@ -198,6 +198,7 @@ bool MD3Port::SetCounterValueUsingMD3Index(const uint16_t module, const uint8_t 
 	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
 	{
 		MD3PointMapIter->second->Analog = meas;
+		MD3PointMapIter->second->ChangedTime = MD3Now();
 		return true;
 	}
 	return false;
@@ -271,6 +272,7 @@ bool MD3Port::SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t c
 	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
 	{
 		MD3PointMapIter->second->Analog = meas;
+		MD3PointMapIter->second->ChangedTime = MD3Now();
 		return true;
 	}
 	return false;
@@ -363,6 +365,7 @@ bool MD3Port::SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t c
 	{
 		MD3PointMapIter->second->Binary = meas;
 		MD3PointMapIter->second->Changed = true;
+		MD3PointMapIter->second->ChangedTime = MD3Now();
 		return true;
 	}
 	return false;
@@ -382,7 +385,7 @@ bool MD3Port::GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bo
 	}
 	return false;
 }
-bool MD3Port::SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, uint64_t eventtime)
+bool MD3Port::SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, MD3Time eventtime)
 {
 	ODCBinaryPointMapIterType ODCPointMapIter = MyPointConf()->BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != MyPointConf()->BinaryODCPointMap.end())

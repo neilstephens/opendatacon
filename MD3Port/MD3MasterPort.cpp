@@ -91,6 +91,8 @@ void MD3MasterPort::SocketStateHandler(bool state)
 
 		SetAllPointsQualityToCommsLost();	// All the connected points need their quality set to comms lost.
 
+		ClearMD3CommandQueue();				// Remove all waiting commands and callbacks
+
 		PublishEvent(ConnectState::DISCONNECTED, 0);
 		msg = Name + ": Connection closed.";
 	}
@@ -193,6 +195,60 @@ CommandStatus MD3MasterPort::HandleWriteError(int errnum, const std::string& sou
 	}
 }
 
+#pragma region MasterCommandQueue
+
+// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
+// The type of the queue will contain a function pointer to the completion function and the timeout function.
+// There is a fixed timeout function (below) which will queue the next command and call any timeout function pointer
+// If the ProcessMD3Message callback gets the command it expects, it will send the next command in the queue.
+// If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
+// This is nexcessary if somehow we get an old command sent to us, or a left over broadcast message.
+void MD3MasterPort::QueueMD3Command(MasterCommandQueueItem &CompleteMD3Message)
+{
+		// Take a copy!
+		pMasterCommandQueue->async_push(CompleteMD3Message);
+
+		// Will only send if we can - ie. not currently processing a command
+		SendNextMasterCommand();
+};
+
+// Handle the many single block command messages better
+void MD3MasterPort::QueueMD3Command(MD3BlockFormatted &SingleBlockMD3Message)
+{
+	std::vector<MD3BlockData> CommandMD3Message;
+	CommandMD3Message.push_back(SingleBlockMD3Message);
+	QueueMD3Command(CommandMD3Message);
+}
+// If a command is available in the queue, then send it.
+void MD3MasterPort::SendNextMasterCommand()
+{
+	//TODO: Mutex or other protection of ProcessingMD3Command flag - also reset in timeouts.
+	if (!ProcessingMD3Command)
+	{
+		// Send the next command if there is one.
+		std::vector<MD3BlockData> NextCommand;
+		if (pMasterCommandQueue->sync_front(NextCommand))
+		{
+			ProcessingMD3Command = true;
+			pMasterCommandQueue->sync_pop();
+			ExpectedFunctionCode = ((MD3BlockFormatted)NextCommand[0]).GetFunctionCode();
+			SendMD3Message(NextCommand);	// This should be the only place this is called for the MD3Master...
+		}
+	}
+}
+void MD3MasterPort::ClearMD3CommandQueue()
+{
+	std::vector<MD3BlockData> NextCommand;
+	while (pMasterCommandQueue->sync_front(NextCommand))
+	{
+		pMasterCommandQueue->sync_pop();
+	}
+	ExpectedFunctionCode = 0;
+	ProcessingMD3Command = false;
+}
+
+#pragma endregion
+
 void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
 {
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
@@ -200,16 +256,37 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 
 	MD3BlockFormatted Header = CompleteMD3Message[0];
 
+	ProcessingMD3Command = false;
+
 	if (Header.IsMasterToStationMessage() != false)
 	{
-		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a Master to Station message at the Master - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a Master to Station message at the Master - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+													" On Station Address - " + std::to_string(Header.GetStationAddress()));
 		//TODO: SJE Trip an error so we dont have to wait for timeout?
 		return;
 	}
 
-//if (Header.GetStationAddress() != ExpectedAddress)
+	if ((Header.GetStationAddress() != 0) && (Header.GetStationAddress() != MyConf()->mAddrConf.OutstationAddr))
 	{
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a message from the wrong address - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+			" On Station Address - " + std::to_string(Header.GetStationAddress()));
+		//TODO: SJE Trip an error so we dont have to wait for timeout?
+		return;
+	}
 
+	if (Header.GetFunctionCode() != ExpectedFunctionCode)
+	{
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a Function Code we were not expecting - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+													" Expecting "+ std::to_string(ExpectedFunctionCode)+ " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		//TODO: SJE Trip an error so we dont have to wait for timeout?
+		return;
+	}
+	if (Header.GetStationAddress() == 0)
+	{
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received broadcast return message - address 0 - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+			" On Station Address - " + std::to_string(Header.GetStationAddress()));
+		//TODO: SJE Trip an error so we dont have to wait for timeout?
+		return;
 	}
 	// Now based on the Command Function, take action.
 	// All are included to allow better error reporting.
@@ -293,13 +370,7 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Unknown Message Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 		break;
 	}
-	// Send the next command if there is one.
-	std::vector<MD3BlockData> NextCommand;
-	if (pMasterCommandQueue->sync_front(NextCommand))
-	{
-		pMasterCommandQueue->sync_pop();
-		SendMD3Message(NextCommand);
-	}
+	SendNextMasterCommand();
 }
 
 // We have received data from an Analog command - could be  the result of Fn 5 or 6
@@ -354,9 +425,8 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 			int intres;
 			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
 			{
-				//TODO: SJE Add time to Analog values through ODC
 				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i]);
-				PublishEvent(Analog(AnalogValues[i], qual), intres);
+				PublishEvent(Analog(AnalogValues[i], qual, MD3Now()), intres);		// We dont get counter time information through MD3, so add it as soon as possible
 			}
 		}
 		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
@@ -365,9 +435,8 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 			int intres;
 			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
 			{
-				//TODO: SJE Add time to Analog values through ODC
 				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i]);
-				PublishEvent(Counter(AnalogValues[i], qual), intres);
+				PublishEvent(Counter(AnalogValues[i], qual, MD3Now()), intres);		// We dont get analog time information through MD3, so add it as soon as possible
 			}
 		}
 		else
