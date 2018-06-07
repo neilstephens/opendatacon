@@ -42,10 +42,13 @@ MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value
 
 TCPClientServer MD3Port::ClientOrServer()
 {
-	MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
-	if (pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
+	if (MyConf()->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
 		return TCPClientServer::SERVER;
-	return pConf->mAddrConf.ClientServer;
+	return MyConf()->mAddrConf.ClientServer;
+}
+bool MD3Port::IsServer()
+{
+	return (TCPClientServer::SERVER == ClientOrServer());
 }
 
 //DataPort function for UI

@@ -122,8 +122,10 @@ public:
 
 
 protected:
-	bool isServer;
+	
 	TCPClientServer ClientOrServer();
+	bool  IsServer();
+
 	bool NewDigitalCommands = true;
 
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.

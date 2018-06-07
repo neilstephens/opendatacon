@@ -58,7 +58,6 @@ struct MD3AddrConf
 	uint8_t OutstationAddr;
 	bool NewDigitalCommands;
 
-
 	// Default address values can minimally set SerialDevice or IP.
 	MD3AddrConf() :
 		SerialSettings(),
@@ -68,6 +67,10 @@ struct MD3AddrConf
 		OutstationAddr(1),
 		NewDigitalCommands(true)
 	{}
+	std::string ChannelID()
+	{
+		return IP + ":" + std::to_string(Port) + ":" + std::to_string(ClientServer);
+	}
 };
 
 class MD3PortConf: public DataPortConf

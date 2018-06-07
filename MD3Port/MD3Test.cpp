@@ -52,6 +52,7 @@ const char *conffile1 = R"001(
 	"Port" : 1000,
 	"OutstationAddr" : 124,
 	"ServerType" : "PERSISTENT",
+	"TCPClientServer" : "SERVER",
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
@@ -78,6 +79,7 @@ const char *conffile2 = R"002(
 	"Port" : 1000,
 	"OutstationAddr" : 125,
 	"ServerType" : "PERSISTENT",
+	"TCPClientServer" : "SERVER",
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#

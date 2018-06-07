@@ -99,8 +99,7 @@ public:
 private:
 	asio::io_service* pIOS;
 	std::string EndPoint;
-	std::string Port;
-	std::string ChannelID;
+	std::string Port;	
 
 	bool isServer;
 	bool enabled = false;

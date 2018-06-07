@@ -65,7 +65,8 @@ MD3Connection::MD3Connection (asio::io_service* apIOS,                   //point
 			std::bind(&MD3Connection::SocketStateHandler, this, std::placeholders::_1),
 			true,
 			retry_time_ms));
-	ChannelID = EndPoint + ":" + Port;
+
+	std::string ChannelID = EndPoint + ":" + Port;
 
 	LOG("MD3Port", openpal::logflags::WARN, "", "Opened an MD3Connection object "+ChannelID);
 }
