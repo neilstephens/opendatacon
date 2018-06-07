@@ -24,26 +24,25 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include "JSONClientPort.h"
-#include "JSONServerPort.h"
+#include "JSONPort.h"
 
-extern "C" JSONClientPort* new_JSONClientPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" JSONPort* new_JSONClientPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
 {
-	return new JSONClientPort(Name,File,Overrides);
+	return new JSONPort(Name,File,Overrides,false);
 }
 
-extern "C" void delete_JSONClientPort(JSONClientPort* aJSONClientPort_ptr)
+extern "C" void delete_JSONClientPort(JSONPort* aJSONClientPort_ptr)
 {
 	delete aJSONClientPort_ptr;
 	return;
 }
 
-extern "C" JSONServerPort* new_JSONServerPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" JSONPort* new_JSONServerPort(const std::string& Name, const std::string& File, const Json::Value Overrides)
 {
-	return new JSONServerPort(Name,File,Overrides);
+	return new JSONPort(Name,File,Overrides,true);
 }
 
-extern "C" void delete_JSONServerPort(JSONServerPort* aJSONServerPort_ptr)
+extern "C" void delete_JSONServerPort(JSONPort* aJSONServerPort_ptr)
 {
 	delete aJSONServerPort_ptr;
 	return;

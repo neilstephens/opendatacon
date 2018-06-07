@@ -35,7 +35,7 @@ using namespace odc;
 class IndexOffsetTransform: public Transform
 {
 public:
-	IndexOffsetTransform(Json::Value params): Transform(params)
+	IndexOffsetTransform(const Json::Value& params): Transform(params)
 	{
 		if(params.isMember("Offset") && params["Offset"].isInt())
 			offset = params["Offset"].asInt();
@@ -45,18 +45,18 @@ public:
 			offset = 0;
 	}
 
-	bool Event(Binary& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(DoubleBitBinary& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(Analog& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(Counter& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(FrozenCounter& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(BinaryOutputStatus& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(AnalogOutputStatus& meas, uint16_t& index){return EventT(meas,index);}
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index){return EventT(arCommand,index);}
-	bool Event(AnalogOutputInt16& arCommand, uint16_t index){return EventT(arCommand,index);}
-	bool Event(AnalogOutputInt32& arCommand, uint16_t index){return EventT(arCommand,index);}
-	bool Event(AnalogOutputFloat32& arCommand, uint16_t index){return EventT(arCommand,index);}
-	bool Event(AnalogOutputDouble64& arCommand, uint16_t index){return EventT(arCommand,index);}
+	bool Event(Binary& meas, uint16_t& index) override{return EventT(meas,index);}
+	bool Event(DoubleBitBinary& meas, uint16_t& index) override{return EventT(meas,index);}
+	bool Event(Analog& meas, uint16_t& index) override{return EventT(meas,index);}
+	bool Event(Counter& meas, uint16_t& index) override{return EventT(meas,index);}
+	bool Event(FrozenCounter& meas, uint16_t& index) override{return EventT(meas,index);}
+	bool Event(BinaryOutputStatus& meas, uint16_t& index) override{return EventT(meas,index);}
+	bool Event(AnalogOutputStatus& meas, uint16_t& index) override{return EventT(meas,index);}
+	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) override{return EventT(arCommand,index);}
+	bool Event(AnalogOutputInt16& arCommand, uint16_t index) override{return EventT(arCommand,index);}
+	bool Event(AnalogOutputInt32& arCommand, uint16_t index) override{return EventT(arCommand,index);}
+	bool Event(AnalogOutputFloat32& arCommand, uint16_t index) override{return EventT(arCommand,index);}
+	bool Event(AnalogOutputDouble64& arCommand, uint16_t index) override{return EventT(arCommand,index);}
 
 	template<typename T> bool EventT(T& meas, uint16_t& index)
 	{

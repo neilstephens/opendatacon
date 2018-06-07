@@ -30,7 +30,7 @@
 #include <future>
 #include <unordered_map>
 #include <map>
-#include <asio.hpp>
+#include <opendatacon/asio.h>
 #include <asiopal/LogFanoutHandler.h>
 #include <opendatacon/IOTypes.h>
 
@@ -44,7 +44,7 @@ typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
 class IOHandler
 {
 public:
-	IOHandler(std::string aName);
+	IOHandler(const std::string& aName);
 	virtual ~IOHandler(){}
 
 	static std::future<CommandStatus> CommandFutureSuccess()
@@ -138,7 +138,7 @@ protected:
 			future_results.push_back(IOHandler_pair.second->Event(meas, index, Name));
 		}
 		
-		return std::move(future_results);
+		return future_results;
 	}
 
 private:

@@ -37,7 +37,7 @@ inline unsigned int random_interval(const unsigned int& average_interval, rand_t
 }
 
 //Implement DataPort interface
-SimPort::SimPort(std::string Name, std::string File, const Json::Value Overrides):
+SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
 	DataPort(Name, File, Overrides),
 	enabled(false)
 {
@@ -132,7 +132,10 @@ void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned
 	//Send an event out
 	//change value around mean
 	std::normal_distribution<double> distribution(pMean->value, std_dev);
-	PublishEvent(Analog(distribution(RandNumGenerator),pMean->quality), index);
+	PublishEvent(Analog(distribution(RandNumGenerator),
+				  pMean->quality,
+				  Timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())),
+			 index);
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
@@ -152,6 +155,8 @@ void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, si
 	//Send an event out
 	//toggle value
 	pVal->value = !pVal->value;
+	pVal->time = Timestamp(std::chrono::duration_cast<std::chrono::milliseconds>
+				     (std::chrono::system_clock::now().time_since_epoch()).count());
 	//pass a copy, because we don't know when the ref will go out of scope
 	PublishEvent(Binary(*pVal), index);
 

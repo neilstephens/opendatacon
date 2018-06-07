@@ -94,9 +94,11 @@ ConsoleUI::ConsoleUI():
 }
 
 ConsoleUI::~ConsoleUI(void)
-{}
+{
+	Disable();
+}
 
-void ConsoleUI::AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc)
+void ConsoleUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
 {
 	mCmds[name] = callback;
 	mDescriptions[name] = desc;
@@ -175,6 +177,7 @@ int ConsoleUI::trigger (std::string s)
 	else if(mCmds.count(cmd))
 	{
 		/* regular command */
+
 		mCmds[cmd](LineStream);
 	}
 	else
@@ -276,7 +279,7 @@ int ConsoleUI::hotkeys(char c)
 				buffer.assign(matching_cmds.back().begin(),matching_cmds.back().begin()+common_length);
 				std::string remainder;
 				remainder.assign(matching_cmds.back().begin()+partial_cmd.size(),matching_cmds.back().begin()+common_length);
-				std::cout<<remainder;
+				std::cout<<remainder<< std::flush;
 				line_pos = (int)common_length;
 			}
 			//otherwise we're at the branching point - list possible commands
@@ -285,13 +288,13 @@ int ConsoleUI::hotkeys(char c)
 				std::cout<<std::endl;
 				for(auto cmd : matching_cmds)
 					std::cout<<cmd<<std::endl;
-				std::cout<<_prompt<<partial_cmd;
+				std::cout<<_prompt<<partial_cmd<<std::flush;
 			}
 
-			//if there's just one match, we just auto-completed it. Now print a trailing space.
-			if(matching_cmds.size() == 1)
+			//if there's just one match, and we just auto-completed it, print a trailing space.
+			if(matching_cmds.size() == 1 && partial_cmd.size() <= matching_cmds.back().size())
 			{
-				std::cout<<' ';
+				std::cout<<' '<< std::flush;
 				buffer.push_back(' ');
 				line_pos++;
 			}
@@ -303,7 +306,7 @@ int ConsoleUI::hotkeys(char c)
 }
 
 
-void ConsoleUI::AddResponder(const std::string name, const IUIResponder& pResponder)
+void ConsoleUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
 {
 	Responders[ name ] = &pResponder;
 }
@@ -368,7 +371,7 @@ void ConsoleUI::Disable()
 	this->quit();
 	if (uithread)
 	{
-		//uithread->join();
+		uithread->join();
 		uithread.reset();
 	}
 }

@@ -34,36 +34,24 @@ if(POLICY CMP0048)
 endif()
 
 project(opendatacon_suite C CXX)
+install(FILES "LICENSE.txt" DESTINATION ".")
+install(FILES "NOTICE.txt" DESTINATION ".")
+install(FILES "README.md" DESTINATION ".")
+install(FILES "RELEASE_NOTES" DESTINATION ".")
+install(DIRECTORY "./3rdPartyLicenses" DESTINATION ".")
 
-find_package(Git)
-if(GIT_FOUND)
- 	message("-- git found: ${GIT_EXECUTABLE}, determining source version")
-	execute_process(
-		COMMAND git describe --long --match "[0-9]*\\.[0-9]*\\.[0-9]" --dirty
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		OUTPUT_VARIABLE GIT_DESCRIBE
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-	)
- 	#message(" Git describe: ${GIT_DESCRIBE}")
-	string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)-[0-9]+-([^-]+)-?([^-]*)$" GIT_REPO_MATCH ${GIT_DESCRIBE})
- 	#message(" Version: ${CMAKE_MATCH_1} ${CMAKE_MATCH_2} ${CMAKE_MATCH_3} ${CMAKE_MATCH_4}")
-
-	set(ODC_MAJOR_VERSION ${CMAKE_MATCH_1})
-	set(ODC_MINOR_VERSION ${CMAKE_MATCH_2})
-	set(ODC_MICRO_VERSION ${CMAKE_MATCH_3})
-	set(ODC_VERSION "${ODC_MAJOR_VERSION}.${ODC_MINOR_VERSION}.${ODC_MICRO_VERSION}")
-
-	set(GIT_REPO_COMMIT ${CMAKE_MATCH_4})
-	set(GIT_REPO_DIRTY ${CMAKE_MATCH_5})
-	message("-- opendatacon version: ${ODC_VERSION} ${GIT_REPO_COMMIT} ${GIT_REPO_DIRTY}")
-
-	configure_file (
-		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h.in"
-		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
-  	)
-
-endif()
-
+#Generate version info now, and set to generate on every build
+include(version.cmake)
+#This will run on every build, because output is never actually produced.
+add_custom_command(OUTPUT always_rebuild COMMAND ${CMAKE_COMMAND} -E echo)
+add_custom_command(
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	OUTPUT "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
+	COMMAND ${CMAKE_COMMAND} -P "version.cmake"
+	DEPENDS always_rebuild
+)
+#version info target that our other targets can have a dependance on
+add_custom_target(version DEPENDS "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h")
 
 # various optional libraries and projects
 option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, Tests, ConsoleUI, WebUI)" OFF)
@@ -114,7 +102,7 @@ if(WIN32)
 	set(INSTALLDIR_BINS ".")
 	set(INSTALLDIR_INCLUDES "include")
 	set(INSTALLDIR_LIBS "lib")
-	set(INSTALLDIR_MODULES "plugin")
+	set(INSTALLDIR_MODULES ".")
 endif()
 if(UNIX)
 	set(DL dl)
@@ -140,7 +128,6 @@ endif()
 # Compiler configuration
 
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
-
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
 	message("CMAKE configuring opendatacon for Visual Studio C++" )
@@ -154,10 +141,15 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
+	option(STATIC_LIBSTDC++ "Link libstdc++ statically" OFF)
+	if(STATIC_LIBSTDC++)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
+	endif()
 
 	# different release and debug flags
 	set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 	set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
+	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g")
 
 	if(COVERAGE)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -g -O0")
@@ -169,21 +161,24 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	endif()
 
 	#package the c++ standard library
-	execute_process(
-		COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so.6
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		OUTPUT_VARIABLE std_lib
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-	)
-	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
-	mark_as_advanced(FORCE std_lib)
-	get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${std_lib})
-		#not a link - just install file
-		install(FILES "${std_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
-	else()
-		#is a link -install link and file
-		install(FILES "${std_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+	option(PACKAGE_LIBSTDC++ "Package libstdc++ in c-pack installer" OFF)
+	if(PACKAGE_LIBSTDC++)
+		execute_process(
+			COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so.6
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+			OUTPUT_VARIABLE std_lib
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+		#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
+		mark_as_advanced(FORCE std_lib)
+		get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symolic link
+		if(${_resolvedFile} STREQUAL ${std_lib})
+			#not a link - just install file
+			install(FILES "${std_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+		else()
+			#is a link -install link and file
+			install(FILES "${std_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+		endif()
 	endif()
 endif()
 

@@ -25,7 +25,7 @@ set(MICROHTTPD_HOME_INSTRUCTIONS "Choose the location of libmicrohttpd: where it
 if(DEFINED MICROHTTPD_HOME)
 	set(MICROHTTPD_HOME ${MICROHTTPD_HOME} CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
 else()
-	set(MICROHTTPD_HOME "/usr/local" CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
+	set(MICROHTTPD_HOME "/usr" CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
 endif()
 
 include_directories(
@@ -46,13 +46,16 @@ set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
 mark_as_advanced(FORCE HTTPD_LIB)
 
 #include in install/packaging
-get_filename_component(_resolvedFile "${HTTPD_LIB}" REALPATH) #check for symolic link
-if(${_resolvedFile} STREQUAL ${HTTPD_LIB})
-	#not a link - just install file
-	install(FILES "${HTTPD_LIB}" DESTINATION ${INSTALLDIR_LIBS})
-else()
-	#is a link -install link and file
-	install(FILES "${HTTPD_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
+option(PACKAGE_LIBMICROHTTPD "Package libmicrohttpd in c-pack installer" ON)
+if(PACKAGE_LIBMICROHTTPD)
+	get_filename_component(_resolvedFile "${HTTPD_LIB}" REALPATH) #check for symolic link
+	if(${_resolvedFile} STREQUAL ${HTTPD_LIB})
+		#not a link - just install file
+		install(FILES "${HTTPD_LIB}" DESTINATION ${INSTALLDIR_LIBS})
+	else()
+		#is a link -install link and file
+		install(FILES "${HTTPD_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
+	endif()
 endif()
 
 link_directories("${DNP3_HOME}/lib")

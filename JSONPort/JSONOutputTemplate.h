@@ -36,17 +36,18 @@ public:
 	JSONOutputTemplate(const JSONOutputTemplate&) = delete;
 	JSONOutputTemplate& operator=(const JSONOutputTemplate&) = delete;
 
-	JSONOutputTemplate(const Json::Value& aJV, const std::string& ind_marker, const std::string& name_marker, const std::string& val_marker, const std::string& qual_marker, const std::string& time_marker):
-		NullJV(Json::Value::null),
+	JSONOutputTemplate(const Json::Value& aJV, const std::string& ind_marker, const std::string& name_marker, const std::string& val_marker, const std::string& qual_marker, const std::string& time_marker, const std::string& sender_marker):
+		NullJV(Json::Value::nullSingleton()),
 		JV(aJV),
 		ind_ref(find_marker(ind_marker,JV)),
 		name_ref(find_marker(name_marker,JV)),
 		val_ref(find_marker(val_marker,JV)),
 		qual_ref(find_marker(qual_marker,JV)),
-		time_ref(find_marker(time_marker,JV))
+		time_ref(find_marker(time_marker,JV)),
+		sender_ref(find_marker(sender_marker,JV))
 	{}
 	template<typename T>
-	Json::Value Instantiate(const T& event, u_int16_t index, const std::string Name = "")
+	Json::Value Instantiate(const T& event, uint16_t index, const std::string& Name = "", const std::string& Sender = "")
 	{
 		Json::Value instance = JV;
 		if(!ind_ref.isNull())
@@ -59,12 +60,14 @@ public:
 			find_marker(qual_ref.asString(), instance) = event.quality;
 		if(!time_ref.isNull())
 			find_marker(time_ref.asString(), instance) = (Json::UInt64)event.time.Get();
-		return std::move(instance);
+		if(!sender_ref.isNull())
+			find_marker(sender_ref.asString(), instance) = Sender;
+		return instance;
 	}
 private:
 	Json::Value NullJV;
 	const Json::Value JV;
-	const Json::Value &ind_ref, &name_ref, &val_ref, &qual_ref, &time_ref;
+	const Json::Value &ind_ref, &name_ref, &val_ref, &qual_ref, &time_ref, &sender_ref;
 	template<typename T>
 	T& find_marker(const std::string& marker, T& val)
 	{

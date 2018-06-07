@@ -33,6 +33,7 @@
 #include "ThresholdTransform.h"
 #include "RandTransform.h"
 #include "RateLimitTransform.h"
+#include "LogicInvTransform.h"
 #include <opendatacon/Platform.h>
 #include <opendatacon/IOManager.h>
 
@@ -100,31 +101,36 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					continue;
 				}
 
-				auto normal_delete = [](Transform* pTx){delete pTx;};
+				auto normal_delete = [] (Transform* pTx){delete pTx;};
 
 				if(Transforms[n]["Type"].asString() == "IndexOffset")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new IndexOffsetTransform(Transforms[n]["Parameters"]), normal_delete));
+					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexOffsetTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "IndexMap")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new IndexMapTransform(Transforms[n]["Parameters"]), normal_delete));
+					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexMapTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "Threshold")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new ThresholdTransform(Transforms[n]["Parameters"]), normal_delete));
+					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new ThresholdTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "Rand")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new RandTransform(Transforms[n]["Parameters"]), normal_delete));
+					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RandTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "RateLimit")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new RateLimitTransform(Transforms[n]["Parameters"]), normal_delete));
+					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RateLimitTransform(Transforms[n]["Parameters"]), normal_delete));
+					continue;
+				}
+				if(Transforms[n]["Type"].asString() == "LogicInv")
+				{
+					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new LogicInvTransform    (Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 
@@ -152,9 +158,9 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
 				//it should return a pointer to a heap allocated instance of a descendant of Transform
 				std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
-				auto new_tx_func = (Transform*(*)(const Json::Value))LoadSymbol(txlib, new_funcname.c_str());
+				auto new_tx_func = (Transform*(*)(const Json::Value&))LoadSymbol(txlib, new_funcname.c_str());
 				std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
-				auto delete_tx_func = (void(*)(Transform*))LoadSymbol(txlib, delete_funcname.c_str());
+				auto delete_tx_func = (void (*)(Transform*))LoadSymbol(txlib, delete_funcname.c_str());
 
 				if(new_tx_func == nullptr)
 					std::cout << "Warning: failed to load symbol '"<<new_funcname<< "' from library '" << libname << "' - " << LastSystemError() << std::endl;
@@ -167,7 +173,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				}
 
 				//call the creation function and wrap the returned pointer
-				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void(*)(Transform*)>(new_tx_func(Transforms[n]["Params"].asString()),delete_tx_func));
+				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new_tx_func(Transforms[n]["Params"].asString()),delete_tx_func));
 			}
 			catch (std::exception& e)
 			{

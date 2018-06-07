@@ -37,7 +37,7 @@ std::unordered_map<std::string, IOHandler*>& IOHandler::GetIOHandlers()
 	return IOHandler::IOHandlers;
 }
 
-IOHandler::IOHandler(std::string aName): Name(aName),
+IOHandler::IOHandler(const std::string& aName): Name(aName),
 	pLoggers(new asiopal::LogFanoutHandler()),
 	LOG_LEVEL(openpal::logflags::WARN),
 	enabled(false),

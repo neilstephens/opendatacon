@@ -34,8 +34,6 @@
 #include "ModbusPort.h"
 #include <opendatacon/ASIOScheduler.h>
 
-using namespace opendnp3;
-
 #include <utility>
 
 /*
@@ -73,29 +71,29 @@ capture_impl<T,F> capture( T && x, F && f )
 class ModbusMasterPort: public ModbusPort
 {
 public:
-	ModbusMasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	ModbusMasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		ModbusPort(aName, aConfFilename, aConfOverrides),
 		mb(nullptr),
 		modbus_read_buffer(nullptr),
 		modbus_read_buffer_size(0)
 	{}
 
-	~ModbusMasterPort();
+	~ModbusMasterPort() override;
 
 	// Implement ModbusPort
-	void Enable();
-	void Disable();
+	void Enable() override;
+	void Disable() override;
 	void Connect();
 	void Disconnect();
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
 
 	// Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName);
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName);
+	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
+	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
 	template<typename T> std::future<CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 
 

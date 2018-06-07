@@ -30,15 +30,61 @@
 
 using namespace odc;
 
-JSONPort::JSONPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+JSONPort::JSONPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, bool aisServer):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	write_queue()
+	isServer(aisServer),
+	pSockMan(nullptr)
 {
 	//the creation of a new PortConf will get the point details
 	pConf.reset(new JSONPortConf(ConfFilename, aConfOverrides));
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
+}
+
+void JSONPort::Enable()
+{
+	if(enabled) return;
+	try
+	{
+		if(pSockMan.get() == nullptr)
+			throw std::runtime_error("Socket manager uninitilised");
+		pSockMan->Open();
+		enabled = true;
+	}
+	catch(std::exception& e)
+	{
+		std::string msg = "Problem opening connection: "+Name+": "+e.what();
+		auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::ERR,"", msg.c_str(), -1);
+		pLoggers->Log(log_entry);
+		return;
+	}
+}
+
+void JSONPort::Disable()
+{
+	if(!enabled) return;
+	enabled = false;
+	if(pSockMan.get() == nullptr)
+		return;
+	pSockMan->Close();
+}
+
+void JSONPort::SocketStateHandler(bool state)
+{
+	std::string msg;
+	if(state)
+	{
+		PublishEvent(ConnectState::CONNECTED, 0);
+		msg = Name+": Connection established.";
+	}
+	else
+	{
+		PublishEvent(ConnectState::DISCONNECTED, 0);
+		msg = Name+": Connection closed.";
+	}
+	auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::INFO,"", msg.c_str(), -1);
+	pLoggers->Log(log_entry);
 }
 
 void JSONPort::ProcessElements(const Json::Value& JSONRoot)
@@ -54,7 +100,7 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 		static_cast<JSONPortConf*>(pConf.get())->retry_time_ms = JSONRoot["RetryTimems"].asUInt();
 	//TODO: document this
 	if(JSONRoot.isMember("EventBufferSize"))
-		static_cast<JSONPortConf*>(pConf.get())->evt_buffer_size = JSONRoot["RetryTimems"].asUInt();
+		static_cast<JSONPortConf*>(pConf.get())->evt_buffer_size = JSONRoot["EventBufferSize"].asUInt();
 	//TODO: document this
 	if(JSONRoot.isMember("StyleOutput"))
 		static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
@@ -62,31 +108,19 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 
 void JSONPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
 {
-	pWriteQueueStrand.reset(new asio::strand(*pIOS));
-}
-void JSONPort::Read()
-{
-	asio::async_read(*pSock.get(), readbuf,asio::transfer_at_least(1), std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1));
-}
-void JSONPort::ReadCompletionHandler(asio::error_code err_code)
-{
-	if(err_code)
-	{
-		if(err_code != asio::error::eof)
-		{
-			std::string msg = Name+": Read error: '"+err_code.message()+"'";
-			auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-			return;
-		}
-		else
-		{
-			std::string msg = Name+": '"+err_code.message()+"' : Retrying...";
-			auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-		}
-	}
+	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
+	//TODO: use event buffer size once socket manager supports it
+	pSockMan.reset(new TCPSocketManager<std::string>
+			   (pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
+			    std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
+			    std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
+			    true,
+			    pConf->retry_time_ms));
+}
+
+void JSONPort::ReadCompletionHandler(buf_t& readbuf)
+{
 	//transfer content between matched braces to get processed as json
 	char ch;
 	std::string braced;
@@ -98,16 +132,17 @@ void JSONPort::ReadCompletionHandler(asio::error_code err_code)
 		if(ch=='{')
 		{
 			count_open_braces++;
-			if(count_open_braces == 1)
+			if(count_open_braces == 1 && braced.length() > 0)
 				braced.clear(); //discard anything before the first brace
 		}
-		if(ch=='}')
+		else if(ch=='}')
 		{
 			count_close_braces++;
 			if(count_close_braces > count_open_braces)
 			{
 				braced.clear(); //discard because it must be outside matched braces
 				count_close_braces = count_open_braces = 0;
+				//TODO: log warning/info about malformed JSON being discarded
 			}
 		}
 		braced.push_back(ch);
@@ -122,21 +157,10 @@ void JSONPort::ReadCompletionHandler(asio::error_code err_code)
 	//put back the leftovers
 	for(auto ch : braced)
 		readbuf.sputc(ch);
-
-	if(!err_code) //not eof - read more
-		Read();
-	else
-	{
-		//remote end closed the connection - reset and try reconnecting
-		PublishEvent(ConnectState::DISCONNECTED , 0);
-		Disable();
-		Enable();
-	}
 }
 
 void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future_results, size_t index, std::shared_ptr<Timer_t> pTimer, double poll_time_ms, double backoff_factor)
 {
-	JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
 	bool ready = true;
 	bool success = true;
 	//for(auto& future_result : future_results)
@@ -160,19 +184,20 @@ void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future
 	if(ready)
 	{
 		Json::Value result;
-		//FIXME:
 		result["Command"]["Index"] =(Json::UInt64) index;
 		result["Command"]["Status"] = success ? "SUCCESS" : (future_results.size()==1 ? "FAIL" : "UNDEFINED");
-		if(pConf->style_output)
-		{
-			Json::StyledWriter writer;
-			QueueWrite(writer.write(result));
-		}
-		else
-		{
-			Json::FastWriter writer;
-			QueueWrite(writer.write(result));
-		}
+
+		auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
+		//TODO: make this writer reusable (class member)
+		//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+		Json::StreamWriterBuilder wbuilder;
+		if(!pConf->style_output)
+			wbuilder["indentation"] = "";
+		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
+		std::ostringstream oss;
+		pWriter->write(result, &oss); oss<<std::endl;
+		pSockMan->Write(oss.str());
 	}
 	else
 	{
@@ -186,18 +211,26 @@ void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future
 
 //At this point we have a whole (hopefully JSON) object - ie. {.*}
 //Here we parse it and extract any paths that match our point config
-void JSONPort::ProcessBraced(std::string braced)
+void JSONPort::ProcessBraced(const std::string& braced)
 {
+	//TODO: make this a reusable reader (class member)
+	Json::CharReaderBuilder rbuilder;
+	std::unique_ptr<Json::CharReader> const JSONReader(rbuilder.newCharReader());
+
+	char const* start = braced.c_str();
+	char const* stop = start + braced.size();
+
 	Json::Value JSONRoot; // will contain the root value after parsing.
-	Json::Reader JSONReader;
-	bool parsing_success = JSONReader.parse(braced, JSONRoot);
+	std::string err_str;
+
+	bool parsing_success = JSONReader->parse(start,stop,&JSONRoot,&err_str);
 	if (parsing_success)
 	{
 		JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
 		//little functor to traverse any paths, starting at the root
 		//pass a JSON array of nodes representing the path (that's how we store our point config after all)
-		auto TraversePath = [&JSONRoot](const Json::Value nodes)
+		auto TraversePath = [&JSONRoot](const Json::Value& nodes)
 		{
 			//val will traverse any paths, starting at the root
 			auto val = JSONRoot;
@@ -380,16 +413,17 @@ void JSONPort::ProcessBraced(std::string braced)
 									Json::Value result;
 									result["Command"]["Index"] = point_pair.first;
 									result["Command"]["Status"] = "UNDEFINED";
-									if(pConf->style_output)
-									{
-										Json::StyledWriter writer;
-										QueueWrite(writer.write(result));
-									}
-									else
-									{
-										Json::FastWriter writer;
-										QueueWrite(writer.write(result));
-									}
+
+									//TODO: make this writer reusable (class member)
+									//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+									Json::StreamWriterBuilder wbuilder;
+									if(!pConf->style_output)
+										wbuilder["indentation"] = "";
+									std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
+									std::ostringstream oss;
+									pWriter->write(result, &oss); oss<<std::endl;
+									pSockMan->Write(oss.str());
 								}
 							 });
 			}
@@ -397,7 +431,7 @@ void JSONPort::ProcessBraced(std::string braced)
 	}
 	else
 	{
-		std::string msg = "Error parsing JSON string: '"+braced+"'";
+		std::string msg = "Error parsing JSON string: '"+braced+"' : '"+err_str+"'";
 		auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::WARN,"", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
 	}
@@ -417,60 +451,6 @@ inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 	PublishEvent(meas, index);
 }
 
-void JSONPort::QueueWrite(const std::string &message)
-{
-	pWriteQueueStrand->post([this,message]()
-	{
-		write_queue.push_back(message);
-		if(write_queue.size() == 1) //need to kick off a write
-			Write();
-		else if(write_queue.size() > static_cast<JSONPortConf*>(this->pConf.get())->evt_buffer_size) //limit buffer size - drop event
-			write_queue.pop_front();
-	});
-}
-void JSONPort::Write()
-{
-	asio::async_write(*pSock.get(),
-				asio::buffer(write_queue[0].c_str(),write_queue[0].size()),
-				pWriteQueueStrand->wrap(std::bind(&JSONPort::WriteCompletionHandler,this,std::placeholders::_1,std::placeholders::_2))
-				);
-}
-void JSONPort::WriteCompletionHandler(asio::error_code err_code, size_t bytes_written)
-{
-	if(err_code)
-	{
-		if(err_code == asio::error::bad_descriptor) //not connected - retry later
-		{
-			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
-			pTimer->expires_from_now(std::chrono::milliseconds(static_cast<JSONPortConf*>(this->pConf.get())->retry_time_ms));
-			pTimer->async_wait([pTimer,this](asio::error_code err_code)
-						 {
-							if (err_code != asio::error::operation_aborted && enabled)
-								Write();
-						 });
-			return;
-		}
-		else if(err_code != asio::error::eof)
-		{
-			std::string msg = Name+": Write error: '"+err_code.message()+"'";
-			auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-			return;
-		}
-		else
-		{
-			std::string msg = Name+": '"+err_code.message()+"'";
-			auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-		}
-	}
-	else
-	{
-		write_queue.pop_front();
-	}
-	if(!write_queue.empty())
-		Write();
-}
 
 //Unsupported types - return as such
 std::future<CommandStatus> JSONPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
@@ -514,30 +494,31 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 	}
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	auto ToJSON = [pConf,index,&meas](std::map<uint16_t, Json::Value>& PointMap)->Json::Value
+	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap)->Json::Value
 	{
 		if(PointMap.count(index))
 		{
-			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString());
-			return std::move(output);
+			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
+			return output;
 		}
-		return Json::Value::null;
+		return Json::Value::nullSingleton();
 	};
 	auto output = std::is_same<T,Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
 			  std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
-										  Json::Value::null;
+										  Json::Value::nullSingleton();
 	if(output.isNull())
 		return IOHandler::CommandFutureNotSupported();
 
-	if(pConf->style_output)
-	{
-		Json::StyledWriter writer;
-		QueueWrite(writer.write(output));
-	}
-	else
-	{
-		Json::FastWriter writer;
-		QueueWrite(writer.write(output));
-	}
+	//TODO: make this writer reusable (class member)
+	//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+	Json::StreamWriterBuilder wbuilder;
+	if(!pConf->style_output)
+		wbuilder["indentation"] = "";
+	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
+	std::ostringstream oss;
+	pWriter->write(output, &oss); oss<<std::endl;
+	pSockMan->Write(oss.str());
+
 	return IOHandler::CommandFutureSuccess();
 }

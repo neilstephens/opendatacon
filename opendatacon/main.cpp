@@ -37,10 +37,7 @@
  *    -remove the need for two threadpools?
  *          -Mod to DNP3Manager to use existing io_service?
  *    -add a network interface to the console
- *	-network logging
- *	-daemon mode
  *	-more dataports to implement:
- *		-EventGenPort (random events ala old test_slaves util)
  *		-C37.118
  *		-NMEA 2k / CANv2
  *		-NMEA 0183
@@ -114,6 +111,12 @@ int main(int argc, char* argv[])
 		{
 			TheDataConcentrator->Shutdown();
 		};
+		auto ignore_func = [] (int signum)
+		{
+			std::cout<<"Signal "<<signum<<" ignored. Not designed to be interrupted or suspended.\n"
+					"To terminate, send a quit, kill, abort or break signal, or use a UI shutdown command.\n"
+					"To run in the background, run as a daemon or service."<<std::endl;
+		};
 
 		for (auto SIG : SIG_SHUTDOWN)
 		{
@@ -121,7 +124,7 @@ int main(int argc, char* argv[])
 		}
 		for (auto SIG : SIG_IGNORE)
 		{
-			::signal(SIG,SIG_IGN);
+			::signal(SIG,ignore_func);
 		}
 
 		// Start opendatacon, returns after a clean shutdown

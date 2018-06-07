@@ -39,11 +39,11 @@ public:
 	WebUI(uint16_t port);
 
 	/* Implement IUI interface */
-	void AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc = "No description available\n");
-	void AddResponder(const std::string name, const IUIResponder& pResponder);
-	void BuildOrRebuild();
-	void Enable();
-	void Disable();
+	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
+	void AddResponder(const std::string& name, const IUIResponder& pResponder) override;
+	void BuildOrRebuild() override;
+	void Enable() override;
+	void Disable() override;
 
 	/* HTTP response handler call back */
 	int http_ahc(void *cls,

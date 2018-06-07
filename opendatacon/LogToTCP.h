@@ -18,34 +18,30 @@
  *	limitations under the License.
  */
 /*
- * CommandCorrespondant.h
+ * LogToTCP.h
  *
- *  Created on: 07/08/2014
+ *  Created on: 2018-01-24
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+#ifndef LOGTOTCP_H
+#define LOGTOTCP_H
 
-#ifndef COMMANDCORRESPONDANT_H_
-#define COMMANDCORRESPONDANT_H_
+#include <openpal/logging/ILogHandler.h>
+#include <chrono>
+#include <opendatacon/TCPSocketManager.h>
 
-#include <future>
-#include <unordered_map>
-#include <opendnp3/gen/CommandStatus.h>
-#include <opendnp3/master/CommandCallbackT.h>
-#include <opendatacon/IOTypes.h>
-
-using namespace odc;
-
-class CommandCallbackPromise;
-
-class CommandCorrespondant
+class LogToTCP : public openpal::ILogHandler
 {
 public:
-	static opendnp3::CommandCallbackT GetCallback(std::promise<CommandStatus> aPromise, std::function<void()> aCompletionHook = nullptr);
-	static void ReleaseCallback(CommandCallbackPromise* pFinshedCallback);
-
+	LogToTCP();
+	void Startup(std::string IP, std::string Port, asio::io_service* pIOS, bool isClient = false);
+	void Log( const openpal::LogEntry& arEntry ) override;
+	void Shutdown();
 private:
-	CommandCorrespondant(){}
-	static std::unordered_map<CommandCallbackPromise*, std::shared_ptr<CommandCallbackPromise> > Callbacks;
+	std::unique_ptr<odc::TCPSocketManager<std::string>> pSockMan;
+
+	void ReadCallback(odc::buf_t& buf);
+	void StateCallback(bool connected);
 };
 
-#endif /* COMMANDCORRESPONDANT_H_ */
+#endif // LOGTOTCP_H

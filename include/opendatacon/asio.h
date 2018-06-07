@@ -18,29 +18,31 @@
  *	limitations under the License.
  */
 /*
- * JSONClientDataPort.h
+ * asio.h
  *
- *  Created on: 22/07/2014
+ *  Created on: 2018-01-28
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#ifndef JSONCLIENTDATAPORT_H_
-#define JSONCLIENTDATAPORT_H_
+#ifndef ASIO_H
+#define ASIO_H
 
-#include "JSONPort.h"
+#define ASIO_HAS_STD_ADDRESSOF
+#define ASIO_HAS_STD_ARRAY
+#define ASIO_HAS_CSTDINT
+#define ASIO_HAS_STD_TYPE_TRAITS
+#define ASIO_HAS_STD_SHARED_PTR
 
-class JSONClientPort: public JSONPort
+#include <asio.hpp>
+
+//use these to suppress warnings
+typedef struct
 {
-public:
-	JSONClientPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	const asio::error_category& use1 = asio::error::system_category;
+	const asio::error_category& use2 = asio::error::netdb_category;
+	const asio::error_category& use3 = asio::error::addrinfo_category;
+	const asio::error_category& use4 = asio::error::misc_category;
+}use_these_t;
 
-	void Enable();
-	void Disable();
+#endif // ASIO_H
 
-private:
-
-	void ConnectCompletionHandler(asio::error_code err_code);
-
-};
-
-#endif /* JSONCLIENTDATAPORT_H_ */

@@ -101,9 +101,9 @@ public:
 class ModbusPointConf: public ConfigParser
 {
 public:
-	ModbusPointConf(std::string FileName);
+	ModbusPointConf(const std::string& FileName);
 
-	void ProcessElements(const Json::Value& JSONRoot);
+	void ProcessElements(const Json::Value& JSONRoot) override;
 	uint8_t GetUnsolClassMask();
 
 	std::pair<Binary,size_t> mCommsPoint;

@@ -29,6 +29,7 @@ include_directories(
 )
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+add_dependencies(${PROJECT_NAME} version) #make sure version info is up-to-date first
 target_link_libraries(${PROJECT_NAME} JSON ${asiopal_libs})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_LIBS} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_BINS})

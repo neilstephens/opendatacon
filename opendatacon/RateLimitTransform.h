@@ -35,7 +35,7 @@
 class RateLimitTransform: public Transform
 {
 public:
-	RateLimitTransform(Json::Value params):
+	RateLimitTransform(const Json::Value& params):
 		Transform(params)
 	{
 		std::string name = "DEFAULT";
@@ -78,19 +78,19 @@ public:
 		}
 	}
 
-	bool Event(Binary& meas, uint16_t& index) { return CheckPass(meas); }
-	bool Event(Analog& meas, uint16_t& index) {return CheckPass(meas);}
-	bool Event(DoubleBitBinary& meas, uint16_t& index) { return CheckPass(meas); }
-	bool Event(Counter& meas, uint16_t& index) { return CheckPass(meas); }
-	bool Event(FrozenCounter& meas, uint16_t& index) { return CheckPass(meas); }
-	bool Event(BinaryOutputStatus& meas, uint16_t& index) { return CheckPass(meas); }
-	bool Event(AnalogOutputStatus& meas, uint16_t& index) { return CheckPass(meas); }
+	bool Event(Binary& meas, uint16_t& index) override { return CheckPass(meas); }
+	bool Event(Analog& meas, uint16_t& index) override {return CheckPass(meas);}
+	bool Event(DoubleBitBinary& meas, uint16_t& index) override { return CheckPass(meas); }
+	bool Event(Counter& meas, uint16_t& index) override { return CheckPass(meas); }
+	bool Event(FrozenCounter& meas, uint16_t& index) override { return CheckPass(meas); }
+	bool Event(BinaryOutputStatus& meas, uint16_t& index) override { return CheckPass(meas); }
+	bool Event(AnalogOutputStatus& meas, uint16_t& index) override { return CheckPass(meas); }
 
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputInt16& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputInt32& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputFloat32& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputDouble64& arCommand, uint16_t index){return true;}
+	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputInt16& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputInt32& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputFloat32& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputDouble64& arCommand, uint16_t index) override{return true;}
 
 private:
 	template<class T>

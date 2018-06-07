@@ -127,12 +127,12 @@ WebUI::WebUI(uint16_t pPort):
 	}
 }
 
-void WebUI::AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc)
+void WebUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
 {
 	// TODO: complete
 }
 
-void WebUI::AddResponder(const std::string name, const IUIResponder& pResponder)
+void WebUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
 {
 	Responders["/" + name] = &pResponder;
 }
@@ -186,13 +186,17 @@ int WebUI::http_ahc(void *cls,
 	{
 		const std::string command = GetFile(&url[ResponderName.length()]);
 
-		Json::FastWriter jsonout;
 		Json::Value event;
 
-		event = Responders[ResponderName]->ExecuteCommand(command, params);
+		//TODO: make this writer reusable (class member)
+		Json::StreamWriterBuilder wbuilder;
+		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+		std::ostringstream oss;
 
-		std::string jsonstring = jsonout.write(event);
-		const char* jsoncstr = jsonstring.c_str();
+		event = Responders[ResponderName]->ExecuteCommand(command, params);
+		pWriter->write(event, &oss); oss<<std::endl;
+
+		const char* jsoncstr = oss.str().c_str();
 
 		return ReturnJSON(connection, jsoncstr);
 	}

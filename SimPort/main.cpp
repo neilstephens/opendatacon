@@ -26,7 +26,7 @@
 
 #include "SimPort.h"
 
-extern "C" SimPort* new_SimPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" SimPort* new_SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
 {
 	return new SimPort(Name,File,Overrides);
 }

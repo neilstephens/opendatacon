@@ -68,7 +68,7 @@ class AdvancedLogger: public openpal::ILogHandler
 {
 public:
 	AdvancedLogger(openpal::ILogHandler& aBaseLogger, openpal::LogFilters aLOG_LEVEL);
-	void Log(const openpal::LogEntry& arEntry);
+	void Log(const openpal::LogEntry& arEntry) override;
 	void AddIngoreMultiple(const std::string& str);
 	void AddIngoreAlways(const std::string& str);
 	void AddIngoreDecimate(const std::string& str, int decimate);

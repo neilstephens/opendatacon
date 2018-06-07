@@ -27,7 +27,7 @@
 #ifndef DATACONCENTRATOR_H_
 #define DATACONCENTRATOR_H_
 
-#include <asio.hpp>
+#include <opendatacon/asio.h>
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/DataPortCollection.h>
@@ -42,6 +42,7 @@
 #include "DataConnector.h"
 #include "AdvancedLogger.h"
 #include "LogToFile.h"
+#include "LogToTCP.h"
 #include "LogCollection.h"
 
 #include <opendatacon/IUI.h>
@@ -50,7 +51,7 @@ class DataConcentrator: public ConfigParser, public IUIResponder
 {
 public:
 	DataConcentrator(std::string FileName);
-	~DataConcentrator();
+	~DataConcentrator() override;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void BuildOrRebuild();
@@ -70,6 +71,7 @@ private:
 
 	openpal::LogFilters LOG_LEVEL;
 	LogToFile FileLog;                             //Prints all messages to a rolling set of log files.
+	LogToTCP TCPLog;
 	asiopal::LogFanoutHandler FanoutHandler;
 };
 

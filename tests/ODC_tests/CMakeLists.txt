@@ -22,7 +22,6 @@ cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
 
 include_directories(
-	../catch
 	../../include
 	../../ODC
 )

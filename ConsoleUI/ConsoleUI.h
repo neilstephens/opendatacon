@@ -30,7 +30,7 @@
 
 #include <opendatacon/IUI.h>
 
-#include <asio.hpp>
+#include <opendatacon/asio.h>
 #include <vector>
 #include <map>
 #include <sstream>
@@ -41,7 +41,7 @@ class ConsoleUI: public IUI, tinyConsole
 {
 public:
 	ConsoleUI();
-	virtual ~ConsoleUI(void);
+	~ConsoleUI(void) override;
 
 	void AddHelp(std::string help);
 
@@ -50,11 +50,11 @@ public:
 	int hotkeys(char c) override;
 
 	/* Implement IUI interface */
-	void AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc = "No description available\n");
-	void AddResponder(const std::string name, const IUIResponder& pResponder);
-	virtual void BuildOrRebuild();
-	void Enable();
-	void Disable();
+	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
+	void AddResponder(const std::string& name, const IUIResponder& pResponder) override;
+	void BuildOrRebuild() override;
+	void Enable() override;
+	void Disable() override;
 
 private:
 	/* */

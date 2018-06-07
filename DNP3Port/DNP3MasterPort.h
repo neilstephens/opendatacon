@@ -33,18 +33,16 @@
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
 
-using namespace opendnp3;
-
 class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
 {
 public:
-	DNP3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+	DNP3MasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		DNP3Port(aName, aConfFilename, aConfOverrides),
 		pMaster(nullptr),
 		stack_enabled(false),
 		assign_class_sent(false)
 	{}
-	~DNP3MasterPort();
+	~DNP3MasterPort() override;
 
 protected:
 	/// Implement ODC::DataPort
@@ -70,26 +68,26 @@ protected:
 	void Start() override {}
 	void End() override {}
 
-	void Process(const HeaderInfo& info, const ICollection<Indexed<Binary> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<DoubleBitBinary> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<Analog> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<Counter> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<FrozenCounter> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<BinaryOutputStatus> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<AnalogOutputStatus> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<OctetString> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<TimeAndInterval> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<BinaryCommandEvent> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<AnalogCommandEvent> >& meas) override;
-	void Process(const HeaderInfo& info, const ICollection<Indexed<SecurityStat> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<Binary> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<DoubleBitBinary> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<Analog> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<Counter> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<FrozenCounter> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<BinaryOutputStatus> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<AnalogOutputStatus> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::TimeAndInterval> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryCommandEvent> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogCommandEvent> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::SecurityStat> >& meas) override;
 
 	/// Implement opendnp3::IMasterApplication
-	virtual void OnReceiveIIN(const opendnp3::IINField& iin) override final {}
-	virtual void OnTaskStart(opendnp3::MasterTaskType type, opendnp3::TaskId id) override final {}
-	virtual void OnTaskComplete(const opendnp3::TaskInfo& info) override final {}
-	virtual bool AssignClassDuringStartup() override final { return false; }
-	virtual void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) override final {}
-	virtual openpal::UTCTimestamp Now() override final
+	void OnReceiveIIN(const opendnp3::IINField& iin) final {}
+	void OnTaskStart(opendnp3::MasterTaskType type, opendnp3::TaskId id) final {}
+	void OnTaskComplete(const opendnp3::TaskInfo& info) final {}
+	bool AssignClassDuringStartup() final { return false; }
+	void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) final {}
+	openpal::UTCTimestamp Now() final
 	{
 		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		return openpal::UTCTimestamp(time);
@@ -138,7 +136,7 @@ private:
 	}
     
 	template<typename T> std::future<CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
-	template<typename T> void LoadT(const ICollection<Indexed<T> >& meas);
+	template<typename T> void LoadT(const opendnp3::ICollection<opendnp3::Indexed<T> >& meas);
 };
 
 #endif /* DNP3CLIENTPORT_H_ */

@@ -34,7 +34,7 @@
 class ThresholdTransform: public Transform
 {
 public:
-	ThresholdTransform(Json::Value params):
+	ThresholdTransform(const Json::Value& params):
 		Transform(params),
 		pass_on(false),
 		already_under(false),
@@ -53,19 +53,19 @@ public:
 		}
 	}
 
-	bool Event(Binary& meas, uint16_t& index){return true;}
-	bool Event(DoubleBitBinary& meas, uint16_t& index){return true;}
-	bool Event(Counter& meas, uint16_t& index){return true;}
-	bool Event(FrozenCounter& meas, uint16_t& index){return true;}
-	bool Event(BinaryOutputStatus& meas, uint16_t& index){return true;}
-	bool Event(AnalogOutputStatus& meas, uint16_t& index){return true;}
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputInt16& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputInt32& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputFloat32& arCommand, uint16_t index){return true;}
-	bool Event(AnalogOutputDouble64& arCommand, uint16_t index){return true;}
+	bool Event(Binary& meas, uint16_t& index) override{return true;}
+	bool Event(DoubleBitBinary& meas, uint16_t& index) override{return true;}
+	bool Event(Counter& meas, uint16_t& index) override{return true;}
+	bool Event(FrozenCounter& meas, uint16_t& index) override{return true;}
+	bool Event(BinaryOutputStatus& meas, uint16_t& index) override{return true;}
+	bool Event(AnalogOutputStatus& meas, uint16_t& index) override{return true;}
+	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputInt16& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputInt32& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputFloat32& arCommand, uint16_t index) override{return true;}
+	bool Event(AnalogOutputDouble64& arCommand, uint16_t index) override{return true;}
 
-	bool Event(Analog& meas, uint16_t& index)
+	bool Event(Analog& meas, uint16_t& index) override
 	{
 		if(!params["points"].isArray())
 			return true;

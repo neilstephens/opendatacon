@@ -37,12 +37,15 @@ class SimPort: public DataPort
 {
 public:
 	//Implement DataPort interface
-	SimPort(std::string Name, std::string File, const Json::Value Overrides);
+	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
 	void Enable() final;
 	void Disable() final;
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) final;
 	void ProcessElements(const Json::Value& JSONRoot) final;
 	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) final;
+
+	//so the compiler won't warn we're hiding the base class overload we still want to use
+	using DataPort::Event;
 
 	//Implement Event handlers from IOHandler
 

@@ -25,7 +25,7 @@ set(MODBUS_HOME_INSTRUCTIONS "Choose the location of libmodbus: where it was ins
 if(DEFINED MODBUS_HOME)
 	set(MODBUS_HOME ${MODBUS_HOME} CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
 else()
-	set(MODBUS_HOME "/usr/local" CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
+	set(MODBUS_HOME "/usr" CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
 endif()
 
 include_directories(
@@ -48,15 +48,17 @@ set_property(TARGET modbus_target PROPERTY IMPORTED_LOCATION "${MODBUS_LIB}")
 mark_as_advanced(FORCE MODBUS_LIB)
 
 #include in install/packaging
-get_filename_component(_resolvedFile "${MODBUS_LIB}" REALPATH) #check for symolic link
-if(${_resolvedFile} STREQUAL ${MODBUS_LIB})
-	#not a link - just install file
-	install(FILES "${MODBUS_LIB}" DESTINATION ${INSTALLDIR_LIBS})
-else()
-	#is a link -install link and file
-	install(FILES "${MODBUS_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
+option(PACKAGE_LIBMODBUS "Package libmodbus in c-pack installer" ON)
+if(PACKAGE_LIBMODBUS)
+	get_filename_component(_resolvedFile "${MODBUS_LIB}" REALPATH) #check for symolic link
+	if(${_resolvedFile} STREQUAL ${MODBUS_LIB})
+		#not a link - just install file
+		install(FILES "${MODBUS_LIB}" DESTINATION ${INSTALLDIR_LIBS})
+	else()
+		#is a link -install link and file
+		install(FILES "${MODBUS_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
+	endif()
 endif()
-
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC modbus_target ${openpal_libs} ${opendnp3_libs})
