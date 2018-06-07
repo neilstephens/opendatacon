@@ -44,7 +44,8 @@ MD3MasterPort::MD3MasterPort(std::string aName, std::string aConfFilename, const
 MD3MasterPort::~MD3MasterPort()
 {
 	Disable();
-	//TODO: SJE Remove any connections that reference this Master so they cant be accessed!
+	pConnection->RemoveMaster(MyConf()->mAddrConf.OutstationAddr);
+	// The pConnection will be closed by this point, so is not holding any resources, and will be freed on program close when the static list is destroyed.
 }
 
 void MD3MasterPort::Enable()
@@ -203,6 +204,7 @@ CommandStatus MD3MasterPort::HandleWriteError(int errnum, const std::string& sou
 // If the ProcessMD3Message callback gets the command it expects, it will send the next command in the queue.
 // If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
 // This is nexcessary if somehow we get an old command sent to us, or a left over broadcast message.
+// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used?
 void MD3MasterPort::QueueMD3Command(MasterCommandQueueItem &CompleteMD3Message)
 {
 		// Take a copy!
@@ -210,7 +212,7 @@ void MD3MasterPort::QueueMD3Command(MasterCommandQueueItem &CompleteMD3Message)
 
 		// Will only send if we can - ie. not currently processing a command
 		SendNextMasterCommand();
-};
+}
 
 // Handle the many single block command messages better
 void MD3MasterPort::QueueMD3Command(MD3BlockFormatted &SingleBlockMD3Message)
@@ -231,7 +233,7 @@ void MD3MasterPort::SendNextMasterCommand()
 		{
 			ProcessingMD3Command = true;
 			pMasterCommandQueue->sync_pop();
-			ExpectedFunctionCode = ((MD3BlockFormatted)NextCommand[0]).GetFunctionCode();
+			CurrentFunctionCode = ((MD3BlockFormatted)NextCommand[0]).GetFunctionCode();
 			SendMD3Message(NextCommand);	// This should be the only place this is called for the MD3Master...
 		}
 	}
@@ -243,16 +245,24 @@ void MD3MasterPort::ClearMD3CommandQueue()
 	{
 		pMasterCommandQueue->sync_pop();
 	}
-	ExpectedFunctionCode = 0;
+	CurrentFunctionCode = 0;
 	ProcessingMD3Command = false;
 }
 
 #pragma endregion
 
+// After we have sent a command, this is where we will end up when the OutStation replies.
+// If we get the wrong answer, we could ditch that command, and move on to the next one,
+// but then the actual reply might be in the following message and we would never re-sync.
+// If we timeout on (some) commands, we can ask the OutStation to resend the last command response.
+// We would have to limit how many times we could do this without giving up.
 void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
 {
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 	assert(CompleteMD3Message.size() != 0);
+
+	//! Anywhere we find that we dont have what we need, return. If we succeed we send the next command at the end of this method.
+	// If the timeout on the command is activated, then the next command will be sent - or resent.
 
 	MD3BlockFormatted Header = CompleteMD3Message[0];
 
@@ -265,7 +275,6 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 		//TODO: SJE Trip an error so we dont have to wait for timeout?
 		return;
 	}
-
 	if ((Header.GetStationAddress() != 0) && (Header.GetStationAddress() != MyConf()->mAddrConf.OutstationAddr))
 	{
 		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a message from the wrong address - ignoring - " + std::to_string(Header.GetFunctionCode()) +
@@ -273,11 +282,11 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 		//TODO: SJE Trip an error so we dont have to wait for timeout?
 		return;
 	}
-
-	if (Header.GetFunctionCode() != ExpectedFunctionCode)
+	// For a given command we can have multiple return codes. So check what we got...
+	if (!AllowableResponseToFunctionCode(CurrentFunctionCode,Header.GetFunctionCode()))
 	{
 		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a Function Code we were not expecting - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-													" Expecting "+ std::to_string(ExpectedFunctionCode)+ " On Station Address - " + std::to_string(Header.GetStationAddress()));
+													" Expecting "+ std::to_string(CurrentFunctionCode)+ " On Station Address - " + std::to_string(Header.GetStationAddress()));
 		//TODO: SJE Trip an error so we dont have to wait for timeout?
 		return;
 	}
@@ -288,15 +297,15 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 		//TODO: SJE Trip an error so we dont have to wait for timeout?
 		return;
 	}
-	// Now based on the Command Function, take action.
-	// All are included to allow better error reporting.
+
+	// Now based on the Command Function, take action. Not all codes are expected or result in action
 	switch (Header.GetFunctionCode())
 	{
 	case ANALOG_UNCONDITIONAL:	// Command and reply
 		ProcessAnalogUnconditionalReturn(Header, CompleteMD3Message);
 		break;
 	case ANALOG_DELTA_SCAN:		// Command and reply
-		ProcessAnalogDeltaScaReturn(Header, CompleteMD3Message);
+		ProcessAnalogDeltaScanReturn(Header, CompleteMD3Message);
 		break;
 	case DIGITAL_UNCONDITIONAL_OBS:
 	//	DoDigitalUnconditionalObs(Header);
@@ -317,7 +326,8 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 	//	DoDigitalUnconditional(static_cast<MD3BlockFn12MtoS&>(Header));
 		break;
 	case ANALOG_NO_CHANGE_REPLY:
-		// Master Only
+		//TODO: ANALOG_NO_CHANGE_REPLY do we update the times on the points that we asked to be updated?
+		// Master Only to receive.
 		break;
 	case DIGITAL_NO_CHANGE_REPLY:
 		// Master Only
@@ -410,6 +420,7 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 
 	// Search to see if the first value is a counter or analog
 	bool FirstModuleIsCounterModule = GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres);
+	MD3Time now = MD3Now();
 
 	for (int i = 0; i < Channels; i++)
 	{
@@ -425,8 +436,8 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 			int intres;
 			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
 			{
-				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i]);
-				PublishEvent(Analog(AnalogValues[i], qual, MD3Now()), intres);		// We dont get counter time information through MD3, so add it as soon as possible
+				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
+				PublishEvent(Analog(AnalogValues[i], qual, now), intres);		// We dont get counter time information through MD3, so add it as soon as possible
 			}
 		}
 		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
@@ -435,13 +446,13 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 			int intres;
 			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
 			{
-				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i]);
-				PublishEvent(Counter(AnalogValues[i], qual, MD3Now()), intres);		// We dont get analog time information through MD3, so add it as soon as possible
+				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
+				PublishEvent(Counter(AnalogValues[i], qual, now), intres);		// We dont get analog time information through MD3, so add it as soon as possible
 			}
 		}
 		else
 		{
-			LOG("MD3MasterPort", openpal::logflags::ERR, "", "Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
+			LOG("MD3MasterPort", openpal::logflags::ERR, "", "Fn5 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
 				+ " On Station Address - " + std::to_string(Header.GetStationAddress())
 				+ " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
 			//TODO: SJE Trip an error so we dont have to wait for timeout?
@@ -449,52 +460,183 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 	}
 }
 
+// Fn 6. This is only one of three possible responses to the Fn 6 command from the Master. The others are 5 (Unconditonal) and 13 (No change)
+// The data that comes back is up to 16 8 bit signed values represnting the change from the last sent value.
+// If there was a fault at the OutStation an Unconditional response will be sent instead.
+// If a channel is missing or in fault, the value will be 0, so it can still just be added to the value (even if it is 0x8000 - the fault value).
+void MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
 
-void MD3MasterPort::ProcessAnalogDeltaScaReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message)
-{
-}
-/*void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterOrAnalog, int Channels, int ModuleAddress, MD3OutstationPort::AnalogChangeType & ResponseType, std::vector<uint16_t> & AnalogValues, std::vector<int> & AnalogDeltaValues)
-{
-	for (int i = 0; i < Channels; i++)
+	int NumberOfDataBlocks = Channels / 4 + Channels % 4;	// 2 --> 1, 5 -->2
+
+	if (NumberOfDataBlocks != CompleteMD3Message.size() - 1)
 	{
-		uint16_t wordres = 0;
-		int deltares = 0;
-		bool foundentry = GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+							" On Station Address - " + std::to_string(Header.GetStationAddress()));
+		//TODO: SJE Trip an error so we dont have to wait for timeout?
+		return;
+	}
 
-		if (IsCounterOrAnalog == CounterModule)
+	// Unload the analog delta values from the blocks - 4 per block.
+	std::vector<int8_t> AnalogDeltaValues;
+	int ChanCount = 0;
+	for (int i = 0; i < NumberOfDataBlocks; i++)
+	{
+		for (int j = 0; j < 4; j++)
 		{
-			foundentry = GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
-		}
+			AnalogDeltaValues.push_back(CompleteMD3Message[i + 1].GetByte(j));	// Test unsigned/signed conversion here...
+			ChanCount++;
 
-		if (!foundentry)
-		{
-			// Point does not exist - need to send analog unconditional as response.
-			ResponseType = AllChange;
-			AnalogValues.push_back(0x8000);			// Magic value
-			AnalogDeltaValues.push_back(0);
-		}
-		else
-		{
-			AnalogValues.push_back(wordres);
-			AnalogDeltaValues.push_back(deltares);
-
-			if (abs(deltares) > 127)
+			// The last block may only have one reading in it. The 1,2,3 bytes might be filler.
+			if (ChanCount >= Channels)
 			{
-				ResponseType = AllChange;
-			}
-			else if (abs(deltares > 0) && (ResponseType != AllChange))
-			{
-				ResponseType = DeltaChange;
+				// Reached as far as we need to go.
+				break;
 			}
 		}
 	}
+
+	// Now take the returned values and add them to the points
+	uint16_t wordres = 0;
+
+	// Search to see if the first value is a counter or analog
+	bool FirstModuleIsCounterModule = GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres);
+	MD3Time now = MD3Now();
+
+	for (int i = 0; i < Channels; i++)
+	{
+		// Code to adjust the ModuleAddress and index if the first module is a counter module (8 channels)
+		// 16 channels will cover two counters or one counter and 1/2 an analog, or one analog (16 channels).
+		// We assume that Analog and Counter modules cannot have the same module address - which we think is a safe assumption.
+		int idx = FirstModuleIsCounterModule ? i % 8 : i;
+		int maddress = (FirstModuleIsCounterModule && i > 8) ? ModuleAddress + 1 : ModuleAddress;
+
+		if (GetAnalogValueUsingMD3Index(maddress, idx, wordres))
+		{
+			wordres += AnalogDeltaValues[i];	// Add the signed delta.
+			SetAnalogValueUsingMD3Index(maddress, idx, wordres);	//TODO Do all SetMethods need to have a time field as well? With a magic number (Say 10 which is in the past) as default which means no change?
+
+			int intres;
+			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
+			{
+				uint8_t qual = CalculateAnalogQuality(enabled, wordres, now);
+				PublishEvent(Analog(wordres, qual, now), intres);		// We dont get counter time information through MD3, so add it as soon as possible
+			}
+		}
+		else if (GetCounterValueUsingMD3Index(maddress, idx,wordres))
+		{
+			wordres += AnalogDeltaValues[i];	// Add the signed delta.
+			SetCounterValueUsingMD3Index(maddress, idx, wordres);
+
+			int intres;
+			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
+			{
+				uint8_t qual = CalculateAnalogQuality(enabled,wordres, now);
+				PublishEvent(Counter(wordres, qual, now), intres);		// We dont get analog time information through MD3, so add it as soon as possible
+			}
+		}
+		else
+		{
+			LOG("MD3MasterPort", openpal::logflags::ERR, "", "Fn6 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
+				+ " On Station Address - " + std::to_string(Header.GetStationAddress())
+				+ " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
+			//TODO: SJE Trip an error so we dont have to wait for timeout?
+		}
+	}
 }
-*/
-//TODO: We will need a strand to make sure we are only sending (and waiting) for one command response pair at a time
-// We could have a poll below, along with a set time command that is passed through ODC trying to execute at the same time.
-// Do we just build a queue of commands and lambda call backs to handle when we get data back. Then we just process these one by one.
-// It eliminates the issue with needing strand protection. May need the ability to flush the queue at some point....
-// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used?
+
+// Check that what we got is one that is expected for the current Function we are processing.
+bool MD3MasterPort::AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode)
+{
+	// Only some of these we should receive at the Master!
+	bool result = false;
+
+	switch (CurrentFunctionCode)
+	{
+	case ANALOG_UNCONDITIONAL:	// Command and reply
+		result = (FunctionCode == ANALOG_UNCONDITIONAL);
+		break;
+	case ANALOG_DELTA_SCAN:		// Command and reply
+		result = (FunctionCode == ANALOG_DELTA_SCAN) || (FunctionCode == ANALOG_UNCONDITIONAL) || (FunctionCode == ANALOG_NO_CHANGE_REPLY);
+		break;
+	case DIGITAL_UNCONDITIONAL_OBS:
+		//	DoDigitalUnconditionalObs(Header);
+		break;
+	case DIGITAL_DELTA_SCAN:
+		//	DoDigitalChangeOnly(Header);
+		break;
+	case HRER_LIST_SCAN:
+		//		DoDigitalHRER(static_cast<MD3BlockFn9&>(Header), CompleteMD3Message);
+		break;
+	case DIGITAL_CHANGE_OF_STATE:
+		//	DoDigitalCOSScan(static_cast<MD3BlockFn10&>(Header));
+		break;
+	case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
+		//	DoDigitalScan(static_cast<MD3BlockFn11MtoS&>(Header));
+		break;
+	case DIGITAL_UNCONDITIONAL:
+		//	DoDigitalUnconditional(static_cast<MD3BlockFn12MtoS&>(Header));
+		break;
+	case ANALOG_NO_CHANGE_REPLY:
+		//TODO: ANALOG_NO_CHANGE_REPLY do we update the times on the points that we asked to be updated?
+		// Master Only to receive.
+		break;
+	case DIGITAL_NO_CHANGE_REPLY:
+		// Master Only
+		break;
+	case CONTROL_REQUEST_OK:
+		// Master Only
+		break;
+	case FREEZE_AND_RESET:
+		//	DoFreezeResetCounters(static_cast<MD3BlockFn16MtoS&>(Header));
+		break;
+	case POM_TYPE_CONTROL:
+		//	DoPOMControl(static_cast<MD3BlockFn17MtoS&>(Header), CompleteMD3Message);
+		break;
+	case DOM_TYPE_CONTROL:
+		//	DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
+		break;
+	case INPUT_POINT_CONTROL:
+		break;
+	case RAISE_LOWER_TYPE_CONTROL:
+		break;
+	case AOM_TYPE_CONTROL:
+		//	DoAOMControl(static_cast<MD3BlockFn23MtoS&>(Header), CompleteMD3Message);
+		break;
+	case CONTROL_OR_SCAN_REQUEST_REJECTED:
+		// Master Only
+		break;
+	case COUNTER_SCAN:
+		//	DoCounterScan(Header);
+		break;
+	case SYSTEM_SIGNON_CONTROL:
+		//	DoSystemSignOnControl(static_cast<MD3BlockFn40&>(Header));
+		break;
+	case SYSTEM_SIGNOFF_CONTROL:
+		break;
+	case SYSTEM_RESTART_CONTROL:
+		break;
+	case SYSTEM_SET_DATETIME_CONTROL:
+		//	DoSetDateTime(static_cast<MD3BlockFn43MtoS&>(Header), CompleteMD3Message);
+		break;
+	case FILE_DOWNLOAD:
+		break;
+	case FILE_UPLOAD:
+		break;
+	case SYSTEM_FLAG_SCAN:
+		//	DoSystemFlagScan(Header, CompleteMD3Message);
+		break;
+	case LOW_RES_EVENTS_LIST_SCAN:
+		break;
+	default:
+		LOG("MD3MasterPort", openpal::logflags::ERR, "", "Illegal Function Code Received - " + std::to_string(FunctionCode));
+		break;
+	}
+
+	return result;
+}
 
 // We will be called at the appropriate time to trigger an Unconditional or Delta scan
 // For digital scans there are two formats we might use. Set in the conf file.
@@ -590,17 +732,18 @@ void MD3MasterPort::SendAllPointEvents()
 	{
 		int index = Point.first;
 		uint8_t meas = Point.second->Binary;
-		uint8_t qual = CalculateBinaryQuality(enabled);
-		PublishEvent(Binary( meas == 1, qual ),index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
+		uint8_t qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
+		PublishEvent(Binary( meas == 1, qual, Point.second->ChangedTime),index);
 	}
+
 	// Binary Control/Output - the status of which we show as a binary - on our other end we look for the index in both binary lists
 	//TODO: SJE Check that we need to report BinaryOutput status, or if it is just assumed?
 	for (auto const &Point : MyPointConf()->BinaryControlODCPointMap)
 	{
 		int index = Point.first;
 		uint8_t meas = Point.second->Binary;
-		uint8_t qual = CalculateBinaryQuality(enabled);
-		PublishEvent(Binary(meas == 1, qual), index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
+		uint8_t qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
+		PublishEvent(Binary(meas == 1, qual, Point.second->ChangedTime), index);
 	}
 	// Analogs
 	for (auto const &Point : MyPointConf()->AnalogODCPointMap)
@@ -608,8 +751,8 @@ void MD3MasterPort::SendAllPointEvents()
 		int index = Point.first;
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		uint8_t qual = CalculateAnalogQuality(enabled, meas);
-		PublishEvent(Analog(meas, qual), index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
+		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
+		PublishEvent(Analog(meas, qual, Point.second->ChangedTime), index);
 	}
 	// Counters
 	for (auto const &Point : MyPointConf()->CounterODCPointMap)
@@ -617,20 +760,20 @@ void MD3MasterPort::SendAllPointEvents()
 		int index = Point.first;
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		uint8_t qual = CalculateAnalogQuality(enabled, meas);
-		PublishEvent(Counter(meas, qual), index);	//TODO: SJE Really should have Time as part of this event (bool,  quality, time)
+		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
+		PublishEvent(Counter(meas, qual, Point.second->ChangedTime), index);
 	}
 }
 
-// Binary quality only depends on our link status (at the moment) could also be age related?
-uint8_t MD3MasterPort::CalculateBinaryQuality(bool enabled)
+// Binary quality only depends on our link status and if we have received data
+uint8_t MD3MasterPort::CalculateBinaryQuality(bool enabled, MD3Time time)
 {
-	return (uint8_t)(enabled ? BinaryQuality::ONLINE : BinaryQuality::COMM_LOST);
+	return (uint8_t)(enabled ? ((time == 0) ? BinaryQuality::RESTART : BinaryQuality::ONLINE) : BinaryQuality::COMM_LOST);
 }
 // Use the measument value and if we are enabled to determine what the quality value should be.
-uint8_t MD3MasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas)
+uint8_t MD3MasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time)
 {
-	return (enabled ? ((meas == 0x8000) ? (uint8_t)AnalogQuality::LOCAL_FORCED : (uint8_t)AnalogQuality::ONLINE) : (uint8_t)AnalogQuality::COMM_LOST);
+	return (uint8_t)(enabled ? (time == 0 ? AnalogQuality::RESTART : ((meas == 0x8000) ? AnalogQuality::LOCAL_FORCED : AnalogQuality::ONLINE)) : AnalogQuality::COMM_LOST);
 }
 
 // This will be fired by (typically) an MD3OutStation port on the "other" side of the ODC Event bus.

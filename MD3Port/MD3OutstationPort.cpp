@@ -55,7 +55,8 @@ MD3OutstationPort::MD3OutstationPort(std::string aName, std::string aConfFilenam
 MD3OutstationPort::~MD3OutstationPort()
 {
 	Disable();
-	//TODO: SJE Remove any connections that reference this Outstation so they cant be accessed!
+	pConnection->RemoveOutstation(MyConf()->mAddrConf.OutstationAddr);
+	// The pConnection will be closed by this point, so is not holding any resources, and will be freed on program close when the static list is destroyed.
 }
 
 void MD3OutstationPort::Enable()
@@ -107,7 +108,6 @@ void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LO
 	//TODO: Do we re-read the conf file - so we can do a live reload? - How do we kill all the sockets and connections properly?
 	std::string ChannelID = MyConf()->mAddrConf.IP + ":" + std::to_string(MyConf()->mAddrConf.Port);
 
-	//TODO: SJE Used in OutStation only at the moment - may be needed by master
 	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<MD3BinaryPoint>(*pIOS, 256));
 	pBinaryModuleTimeTaggedEventQueue.reset(new StrandProtectedQueue<MD3BinaryPoint>(*pIOS, 256));
 

@@ -66,12 +66,15 @@ public:
 		const std::function<void(std::vector<MD3BlockData> MD3Message)> aReadCallback,
 		const std::function<void(bool)> aStateCallback);
 
+	void RemoveOutstation(uint8_t StationAddress);
+
 	void AddMaster(uint8_t TargetStationAddress,
 		const std::function<void(std::vector<MD3BlockData>MD3Message)> aReadCallback,
 		const std::function<void(bool)> aStateCallback);
 
+	void RemoveMaster(uint8_t TargetStationAddress);
+
 	// Two static methods to manage the map of connections. Can only have one for an address/port combination.
-	//TODO: SJE How to remove/shut down the list of connections and outstations. How to do this on a rebuild?
 	static std::shared_ptr<MD3Connection> GetConnection(std::string ChannelID);
 
 	static void AddConnection(std::string ChannelID, std::shared_ptr<MD3Connection> pConnection);

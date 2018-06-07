@@ -85,8 +85,8 @@ public:
 	void SetAllPointsQualityToCommsLost();
 	void SendAllPointEvents();
 
-	uint8_t CalculateBinaryQuality(bool enabled);
-	uint8_t CalculateAnalogQuality(bool enabled, uint16_t meas);
+	uint8_t CalculateBinaryQuality(bool enabled, MD3Time time);
+	uint8_t CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time);
 
 	// Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
 	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
@@ -125,12 +125,14 @@ private:
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 	void ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
-	void ProcessAnalogDeltaScaReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
-
+	void ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 
 	std::shared_ptr<StrandProtectedQueue<MasterCommandQueueItem>> pMasterCommandQueue;
-	uint8_t ExpectedFunctionCode = 0;	// When we send a command, make sure the response we get is the one we are waiting for.
-	bool ProcessingMD3Command = false;
+	uint8_t CurrentFunctionCode = 0;	// When we send a command, make sure the response we get is one we are waiting for.
+	bool ProcessingMD3Command = false;	//TODO ProcessingMD3Command Will need to be atomic/and/or mutex protected or become part of the commandqueue class when refactored.
+
+	// Check that what we got is one that is expected for the current Function we are processing.
+	bool AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode);
 };
 
 #endif /* MD3MASTERPORT_H_ */

@@ -78,6 +78,11 @@ void MD3Connection::AddOutstation(uint8_t StationAddress,	// For message routing
 	ReadCallbackMap[StationAddress] = aReadCallback;	// Will overwrite if duplicate
 	StateCallbackMap[StationAddress] = aStateCallback;
 }
+void MD3Connection::RemoveOutstation(uint8_t StationAddress)
+{
+	ReadCallbackMap.erase(StationAddress);
+	StateCallbackMap.erase(StationAddress);
+}
 
 void MD3Connection::AddMaster(uint8_t TargetStationAddress,	// For message routing, Master is expecting replies from what Outstation?
 	const std::function<void(std::vector < MD3BlockData > MD3Message)> aReadCallback,
@@ -87,9 +92,16 @@ void MD3Connection::AddMaster(uint8_t TargetStationAddress,	// For message routi
 	ReadCallbackMap[TargetStationAddress] = aReadCallback;	// Will overwrite if duplicate
 	StateCallbackMap[TargetStationAddress] = aStateCallback;
 }
+void MD3Connection::RemoveMaster(uint8_t TargetStationAddress)
+{
+	ReadCallbackMap.erase(TargetStationAddress);
+	StateCallbackMap.erase(TargetStationAddress);
+}
 
 // Two static methods to manage the map of connections. Can only have one for an address/port combination.
-//TODO: SJE How to remove/shut down the list of connections and outstations. How to do this on a rebuild?
+// To be able to shut this down cleanly, I need to maintain a reference count, when the last one lets go, we can free the pSockMan  object.
+// The port will be closed, so do we really have to worry?
+//TODO: SJE Free pSockMan in MD3Connection class in destructor? The static list will have a reference to the shared_ptr...
 std::shared_ptr<MD3Connection> MD3Connection::GetConnection(std::string ChannelID)
 {
 	// Check if the entry exists without adding to the map..
@@ -135,8 +147,6 @@ void MD3Connection::Close()
 MD3Connection::~MD3Connection()
 {
 	Close();
-	// Remove outselves from the static list of connections
-	ConnectionMap.erase(ChannelID);
 }
 
 // We dont need to know who is doing the writing. Just pass to the socket
@@ -237,7 +247,6 @@ void MD3Connection::RouteMD3Message(std::vector<MD3BlockData> &CompleteMD3Messag
 	{
 		// NO match
 		LOG("MD3Port", openpal::logflags::ERR, "", "Recevied non-matching outstation address - " + std::to_string(StationAddress));
-
 	}
 }
 
