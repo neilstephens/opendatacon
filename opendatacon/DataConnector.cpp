@@ -233,7 +233,10 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 			for(auto& Transform : ConnectionTransforms[SenderName])
 			{
 				if(!Transform->Event(new_event_obj, index))
-					(*pStatusCallback)(CommandStatus::UNDEFINED); return;
+				{
+					(*pStatusCallback)(CommandStatus::UNDEFINED);
+					return;
+				}
 			}
 		}
 
@@ -261,7 +264,7 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 	auto log_entry = openpal::LogEntry("DataConnector", openpal::logflags::WARN,"", msg.c_str(), -1);
 	pLoggers->Log(log_entry);
 
-	(*pStatusCallback)(CommandStatus::UNDEFINED); return;
+	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
 void DataConnector::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)

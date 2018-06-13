@@ -351,7 +351,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					command.offTimeMS = point_pair.second["OffTimems"].asUInt();
 
 				auto pStatusCallback =
-				[=](CommandStatus command_stat)
+				std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
 				{
 					Json::Value result;
 					result["Command"]["Index"] = point_pair.first;
@@ -371,9 +371,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					std::ostringstream oss;
 					pWriter->write(result, &oss); oss<<std::endl;
 					pSockMan->Write(oss.str());
-				};
-				//TODO: pass above callback
-				PublishEvent(command,point_pair.first);
+				});
+				PublishEvent(command,point_pair.first,pStatusCallback);
 			}
 		}
 	}

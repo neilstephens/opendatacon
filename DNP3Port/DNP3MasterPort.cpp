@@ -381,7 +381,7 @@ inline void DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::stri
 						status = CommandStatus::UNDEFINED;
 						break;
 				}
-				(*pStatusCallback)(CommandStatus::SUCCESS);
+				(*pStatusCallback)(status);
 				return;
 			};
 
