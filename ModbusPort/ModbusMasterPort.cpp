@@ -398,13 +398,13 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 }
 
 //Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-void ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
+void ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
+void ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
+void ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
+void ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
 
-void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -541,7 +541,7 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputDouble64& command,
 }
 
 template<typename T>
-inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
+inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	if(!enabled)
 	{

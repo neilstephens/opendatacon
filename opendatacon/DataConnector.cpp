@@ -182,38 +182,38 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
-void DataConnector::Event(const Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DataConnector::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DataConnector::Event(const Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DataConnector::Event(const Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DataConnector::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DataConnector::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DataConnector::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void DataConnector::Event(const Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(meas, index, SenderName, status_callback); }
+void DataConnector::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(meas, index, SenderName, status_callback); }
+void DataConnector::Event(const Analog& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(meas, index, SenderName, status_callback); }
+void DataConnector::Event(const Counter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(meas, index, SenderName, status_callback); }
+void DataConnector::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(meas, index, SenderName, status_callback); }
+void DataConnector::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(meas, index, SenderName, status_callback); }
+void DataConnector::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(meas, index, SenderName, status_callback); }
 
-void DataConnector::Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-void DataConnector::Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-void DataConnector::Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-void DataConnector::Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-void DataConnector::Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-void DataConnector::Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-void DataConnector::Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+void DataConnector::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(qual, index, SenderName, status_callback); }
+void DataConnector::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(qual, index, SenderName, status_callback); }
+void DataConnector::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(qual, index, SenderName, status_callback); }
+void DataConnector::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(qual, index, SenderName, status_callback); }
+void DataConnector::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(qual, index, SenderName, status_callback); }
+void DataConnector::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(qual, index, SenderName, status_callback); }
+void DataConnector::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(qual, index, SenderName, status_callback); }
 
-void DataConnector::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void DataConnector::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void DataConnector::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void DataConnector::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void DataConnector::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void DataConnector::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
+void DataConnector::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
+void DataConnector::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
+void DataConnector::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
+void DataConnector::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
 
-void DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName)
+void DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	if(MuxConnectionEvents(state, SenderName))
-		return EventT(state, index, SenderName);
+		return EventT(state, index, SenderName, status_callback);
 	else
 		/*TODO: call callback with Undefined*/ return;
 }
 
 template<typename T>
-inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std::string& SenderName)
+inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	if(!enabled)
 	{
@@ -234,6 +234,13 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 			}
 		}
 
+		auto multi_callback = std::make_shared<std::function<void (CommandStatus status)>>
+		(
+			[status_callback](CommandStatus status)
+			{
+				//TODO: call the 'upstream' callback based on all the downstream calls to this
+			}
+		);
 		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 		{
 			//guess which one is the sendee
@@ -243,7 +250,7 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 			if(pSendee->Name == SenderName)
 				pSendee = Connections[aMatch_it->second].first;
 
-			pSendee->Event(new_event_obj, index, this->Name);
+			pSendee->Event(new_event_obj, index, this->Name, multi_callback);
 		}
 	}
 	//no connection for sender if we get here

@@ -224,13 +224,13 @@ inline CommandStatus ModbusOutstationPort::PerformT(T& arCommand, uint16_t aInde
 	/*TODO call callback with SUCCESS;*/ return;
 }
 
-void ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
 
 template<typename T>
 int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
@@ -243,7 +243,7 @@ int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
 }
 
 template<typename T>
-inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
+inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	if(!enabled)
 	{

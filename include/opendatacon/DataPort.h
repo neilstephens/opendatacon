@@ -51,15 +51,15 @@ public:
 	virtual void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)=0;
 	void ProcessElements(const Json::Value& JSONRoot) override =0;
 
-	void Event(ConnectState state, uint16_t index, const std::string& SenderName) final
+	void Event(ConnectState state, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) final
 	{
 		if(MuxConnectionEvents(state, SenderName))
-			return ConnectionEvent(state, SenderName);
+			return ConnectionEvent(state, SenderName, status_callback);
 		else
 			/*TODO: call callback with Undefined*/ return;
 	}
 
-	virtual void ConnectionEvent(ConnectState state, const std::string& SenderName) = 0;
+	virtual void ConnectionEvent(ConnectState state, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) = 0;
 
 	virtual const Json::Value GetStatistics() const
 	{

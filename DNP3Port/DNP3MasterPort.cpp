@@ -281,13 +281,13 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 }
 
 //Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
-void DNP3MasterPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void DNP3MasterPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void DNP3MasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void DNP3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-void DNP3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void DNP3MasterPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
+void DNP3MasterPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
+void DNP3MasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
+void DNP3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
+void DNP3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){EventT(arCommand, index, SenderName, status_callback); }
 
-void DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+void DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	if(!enabled)
 	{
@@ -333,7 +333,7 @@ void DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& Send
 }
 
 template<typename T>
-inline void DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
+inline void DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	// If the port is disabled, fail the command
 	if(!enabled)

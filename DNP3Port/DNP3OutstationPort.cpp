@@ -294,16 +294,16 @@ inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 	/*TODO call callback with SUCCESS;*/ return CommandStatus::SUCCESS;
 }
 
-void DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Binary>(qual,index,SenderName);}
-void DNP3OutstationPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::DoubleBitBinary>(qual,index,SenderName);}
-void DNP3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Analog>(qual,index,SenderName);}
-void DNP3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::Counter>(qual,index,SenderName);}
-void DNP3OutstationPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::FrozenCounter>(qual,index,SenderName);}
-void DNP3OutstationPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::BinaryOutputStatus>(qual,index,SenderName);}
-void DNP3OutstationPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){return EventQ<opendnp3::AnalogOutputStatus>(qual,index,SenderName);}
+void DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){return EventQ<opendnp3::Binary>(qual,index,SenderName,status_callback);}
+void DNP3OutstationPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){return EventQ<opendnp3::DoubleBitBinary>(qual,index,SenderName,status_callback);}
+void DNP3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){return EventQ<opendnp3::Analog>(qual,index,SenderName,status_callback);}
+void DNP3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){return EventQ<opendnp3::Counter>(qual,index,SenderName,status_callback);}
+void DNP3OutstationPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){return EventQ<opendnp3::FrozenCounter>(qual,index,SenderName,status_callback);}
+void DNP3OutstationPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){return EventQ<opendnp3::BinaryOutputStatus>(qual,index,SenderName,status_callback);}
+void DNP3OutstationPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){return EventQ<opendnp3::AnalogOutputStatus>(qual,index,SenderName,status_callback);}
 
 template<typename T, typename Q>
-inline void DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName)
+inline void DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	if (!enabled)
 	{
@@ -329,16 +329,16 @@ inline void DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::strin
 	/*TODO: call callback with Success*/ return;
 }
 
-void DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DNP3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DNP3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DNP3OutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DNP3OutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DNP3OutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-void DNP3OutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void DNP3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void DNP3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void DNP3OutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void DNP3OutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void DNP3OutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void DNP3OutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
 
 template<typename T>
-inline void DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
+inline void DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	if(!enabled)
 	{
@@ -366,7 +366,7 @@ inline void DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::strin
 	/*TODO: call callback with Success*/ return;
 }
 
-void DNP3OutstationPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+void DNP3OutstationPort::ConnectionEvent(ConnectState state, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
 {
 	if (!enabled)
 	{

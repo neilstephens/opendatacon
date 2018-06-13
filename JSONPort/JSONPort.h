@@ -46,34 +46,34 @@ public:
 
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
 
-	template<typename T> void EventT(const T& meas, uint16_t index, const std::string& SenderName);
-	template<typename T> void EventQ(const T& qual, uint16_t index, const std::string& SenderName);
+	template<typename T> void EventT(const T& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback);
+	template<typename T> void EventQ(const T& qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback);
 
 	//so the compiler won't warn we're hiding the base class overload we still want to use
 	using DataPort::Event;
 
-	void Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
-	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
-	void Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
-	void Event(const Counter& meas, uint16_t index, const std::string& SenderName) override;
-	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
-	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const Analog& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const Counter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
 
-	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
-	void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
-	void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
-	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
-	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
-	void ConnectionEvent(ConnectState state, const std::string& SenderName) override;
+	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void ConnectionEvent(ConnectState state, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
 
-	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) override;
-	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
-	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
+	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
+	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback) override;
 
 private:
 	bool isServer;
