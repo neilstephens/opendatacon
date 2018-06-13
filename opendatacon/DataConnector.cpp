@@ -24,7 +24,6 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <future>
 #include <iostream>
 #include <opendnp3/LogLevels.h>
 #include "DataConnector.h"
@@ -183,42 +182,42 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
-std::future<CommandStatus> DataConnector::Event(const Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void DataConnector::Event(const Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void DataConnector::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void DataConnector::Event(const Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void DataConnector::Event(const Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void DataConnector::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void DataConnector::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void DataConnector::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 
-std::future<CommandStatus> DataConnector::Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+void DataConnector::Event(const ::BinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+void DataConnector::Event(const ::DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+void DataConnector::Event(const ::AnalogQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+void DataConnector::Event(const ::CounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+void DataConnector::Event(const ::FrozenCounterQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+void DataConnector::Event(const ::BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
+void DataConnector::Event(const ::AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName){ return EventT(qual, index, SenderName); }
 
-std::future<CommandStatus> DataConnector::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> DataConnector::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void DataConnector::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void DataConnector::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void DataConnector::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void DataConnector::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void DataConnector::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
-std::future<CommandStatus> DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName)
+void DataConnector::Event(ConnectState state, uint16_t index, const std::string& SenderName)
 {
 	if(MuxConnectionEvents(state, SenderName))
 		return EventT(state, index, SenderName);
 	else
-		return IOHandler::CommandFutureUndefined();
+		/*TODO: call callback with Undefined*/ return;
 }
 
 template<typename T>
-inline std::future<CommandStatus> DataConnector::EventT(const T& event_obj, uint16_t index, const std::string& SenderName)
+inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std::string& SenderName)
 {
 	if(!enabled)
 	{
-		return IOHandler::CommandFutureUndefined();
+		/*TODO: call callback with Undefined*/ return;
 	}
 
 	auto bounds = SenderConnectionsLookup.equal_range(SenderName);
@@ -231,11 +230,10 @@ inline std::future<CommandStatus> DataConnector::EventT(const T& event_obj, uint
 			for(auto& Transform : ConnectionTransforms[SenderName])
 			{
 				if(!Transform->Event(new_event_obj, index))
-					return IOHandler::CommandFutureUndefined();
+					/*TODO: call callback with Undefined*/ return;
 			}
 		}
 
-		std::vector<std::future<CommandStatus> > returns;
 		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 		{
 			//guess which one is the sendee
@@ -245,21 +243,15 @@ inline std::future<CommandStatus> DataConnector::EventT(const T& event_obj, uint
 			if(pSendee->Name == SenderName)
 				pSendee = Connections[aMatch_it->second].first;
 
-			returns.push_back(pSendee->Event(new_event_obj, index, this->Name));
+			pSendee->Event(new_event_obj, index, this->Name);
 		}
-		for(auto& ret : returns)
-		{
-			if(ret.get() != CommandStatus::SUCCESS)
-				return IOHandler::CommandFutureUndefined();
-		}
-		return IOHandler::CommandFutureSuccess();
 	}
 	//no connection for sender if we get here
 	std::string msg = "Connector '"+this->Name+"' discarding event from '"+SenderName+"' (No connection defined)";
 	auto log_entry = openpal::LogEntry("DataConnector", openpal::logflags::WARN,"", msg.c_str(), -1);
 	pLoggers->Log(log_entry);
 
-	return IOHandler::CommandFutureUndefined();
+	/*TODO: call callback with Undefined*/ return;
 }
 
 void DataConnector::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)

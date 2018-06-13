@@ -398,23 +398,20 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 }
 
 //Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-std::future<CommandStatus> ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
 
-std::future<CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
-	auto cmd_promise = std::promise<CommandStatus>();
-	auto cmd_future = cmd_promise.get_future();
-
 	if(!enabled)
 	{
-		cmd_promise.set_value(CommandStatus::UNDEFINED);
-		return cmd_future;
+		//TODO: call callback with CommandStatus::UNDEFINED
+		return;
 	}
 
 	//something upstream has connected
@@ -427,8 +424,8 @@ std::future<CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state,
 		}
 	}
 
-	cmd_promise.set_value(CommandStatus::SUCCESS);
-	return cmd_future;
+	//TODO: call callback with CommandStatus::SUCCESS
+	return;
 }
 
 ModbusReadGroup<Binary>* ModbusMasterPort::GetRange(uint16_t index)
@@ -544,26 +541,17 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputDouble64& command,
 }
 
 template<typename T>
-inline std::future<CommandStatus> ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
+inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
 {
-	std::unique_ptr<std::promise<CommandStatus> > cmd_promise { new std::promise<CommandStatus>() };
-	auto cmd_future = cmd_promise->get_future();
-
 	if(!enabled)
 	{
-		cmd_promise->set_value(CommandStatus::UNDEFINED);
-		return cmd_future;
+		//TODO: call callback with CommandStatus::UNDEFINED
+		return;
 	}
 
-	cmd_promise->set_value(WriteObject(arCommand, index));
-	/*
-	auto lambda = capture( std::move(cmd_promise),
-	                      [=]( std::unique_ptr<std::promise<CommandStatus>> & cmd_promise ) {
-	                          cmd_promise->set_value(WriteObject(arCommand, index));
-	                      } );
-	pIOS->post([&](){ lambda(); });
-	*/
-	return cmd_future;
+	auto result = WriteObject(arCommand, index);
+	//TODO: call callback with result
+	return;
 }
 
 

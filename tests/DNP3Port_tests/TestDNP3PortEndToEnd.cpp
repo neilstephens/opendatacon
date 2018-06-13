@@ -19,6 +19,7 @@
  */
 /**
  */
+#include <thread>
 #include <catch.hpp>
 
 #include "DNP3OutstationPort.h"

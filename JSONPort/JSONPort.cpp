@@ -159,56 +159,6 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 		readbuf.sputc(ch);
 }
 
-void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future_results, size_t index, std::shared_ptr<Timer_t> pTimer, double poll_time_ms, double backoff_factor)
-{
-	bool ready = true;
-	bool success = true;
-	//for(auto& future_result : future_results)
-	while(future_results.size())
-	{
-		auto& future_result = future_results.back();
-		if(future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
-		{
-			ready = false;
-			break;
-		}
-		auto result = future_result.get();
-		future_results.pop_back();
-		//first one that isn't a success, we break
-		if(result != CommandStatus::SUCCESS)
-		{
-			success = false;
-			break;
-		}
-	}
-	if(ready)
-	{
-		Json::Value result;
-		result["Command"]["Index"] =(Json::UInt64) index;
-		result["Command"]["Status"] = success ? "SUCCESS" : (future_results.size()==1 ? "FAIL" : "UNDEFINED");
-
-		auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
-		//TODO: make this writer reusable (class member)
-		//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
-		Json::StreamWriterBuilder wbuilder;
-		if(!pConf->style_output)
-			wbuilder["indentation"] = "";
-		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
-
-		std::ostringstream oss;
-		pWriter->write(result, &oss); oss<<std::endl;
-		pSockMan->Write(oss.str());
-	}
-	else
-	{
-		pTimer->expires_from_now(std::chrono::milliseconds((unsigned int)poll_time_ms));
-		pTimer->async_wait([=,future_results=std::move(future_results)](asio::error_code err_code) mutable
-					 {
-						AsyncFuturesPoll(std::move(future_results), index, pTimer, backoff_factor*poll_time_ms, backoff_factor);
-					 });
-	}
-}
-
 //At this point we have a whole (hopefully JSON) object - ie. {.*}
 //Here we parse it and extract any paths that match our point config
 void JSONPort::ProcessBraced(const std::string& braced)
@@ -400,32 +350,30 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				if(point_pair.second.isMember("OffTimems"))
 					command.offTimeMS = point_pair.second["OffTimems"].asUInt();
 
-				auto future_results = PublishCommand(command,point_pair.first);
+				auto status_callback =
+				[=](CommandStatus command_stat)
+				{
+					Json::Value result;
+					result["Command"]["Index"] = point_pair.first;
 
-				auto pTimer =std::make_shared<Timer_t>(*pIOS);
-				pTimer->expires_from_now(std::chrono::milliseconds(10)); //TODO: expose pole time in config
-				pTimer->async_wait([=,future_results=std::move(future_results)](asio::error_code err_code) mutable
-							 {
-								if(!err_code)
-									AsyncFuturesPoll(std::move(future_results), point_pair.first, pTimer, 20, 2);
-								else
-								{
-									Json::Value result;
-									result["Command"]["Index"] = point_pair.first;
-									result["Command"]["Status"] = "UNDEFINED";
+					if(command_stat == CommandStatus::SUCCESS)
+						result["Command"]["Status"] = "SUCCESS";
+					else
+						result["Command"]["Status"] = "UNDEFINED";
 
-									//TODO: make this writer reusable (class member)
-									//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
-									Json::StreamWriterBuilder wbuilder;
-									if(!pConf->style_output)
-										wbuilder["indentation"] = "";
-									std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+					//TODO: make this writer reusable (class member)
+					//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+					Json::StreamWriterBuilder wbuilder;
+					if(!pConf->style_output)
+						wbuilder["indentation"] = "";
+					std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
 
-									std::ostringstream oss;
-									pWriter->write(result, &oss); oss<<std::endl;
-									pSockMan->Write(oss.str());
-								}
-							 });
+					std::ostringstream oss;
+					pWriter->write(result, &oss); oss<<std::endl;
+					pSockMan->Write(oss.str());
+				};
+				//TODO: pass above callback
+				PublishEvent(command,point_pair.first);
 			}
 		}
 	}
@@ -453,44 +401,44 @@ inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 
 
 //Unsupported types - return as such
-std::future<CommandStatus> JSONPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+void JSONPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
 
-std::future<CommandStatus> JSONPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::ConnectionEvent(ConnectState state, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+void JSONPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::ConnectionEvent(ConnectState state, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
 
-std::future<CommandStatus> JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+void JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
+void JSONPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { /*TODO: call callback with NotSupported*/ return; }
 
 //Supported types - call templates
-std::future<CommandStatus> JSONPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
-std::future<CommandStatus> JSONPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
-std::future<CommandStatus> JSONPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
-std::future<CommandStatus> JSONPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
+void JSONPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
+void JSONPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
+void JSONPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
+void JSONPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
 
 //Templates for supported types
 template<typename T>
-inline std::future<CommandStatus> JSONPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName)
+inline void JSONPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName)
 {
-	return IOHandler::CommandFutureUndefined();
+	/*TODO: call callback with Undefined*/ return;
 }
 
 template<typename T>
-inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index, const std::string& SenderName)
+inline void JSONPort::EventT(const T& meas, uint16_t index, const std::string& SenderName)
 {
 	if(!enabled)
 	{
-		return IOHandler::CommandFutureUndefined();
+		/*TODO: call callback with Undefined*/ return;
 	}
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
@@ -507,7 +455,7 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 			  std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
 										  Json::Value::nullSingleton();
 	if(output.isNull())
-		return IOHandler::CommandFutureNotSupported();
+		/*TODO: call callback with NotSupported*/ return;
 
 	//TODO: make this writer reusable (class member)
 	//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
@@ -520,5 +468,5 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 	pWriter->write(output, &oss); oss<<std::endl;
 	pSockMan->Write(oss.str());
 
-	return IOHandler::CommandFutureSuccess();
+	/*TODO: call callback with Success*/ return;
 }

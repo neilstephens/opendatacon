@@ -56,13 +56,13 @@ protected:
 	TCPClientServer ClientOrServer() override;
     
 	/// Implement some ODC::IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
-	std::future<CommandStatus> Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
 
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
+	void ConnectionEvent(ConnectState state, const std::string& SenderName) override;
 
 	/// Implement opendnp3::ISOEHandler
 	void Start() override {}
@@ -106,7 +106,6 @@ private:
 	bool stack_enabled;
 	bool assign_class_sent;
 	opendnp3::MasterScan IntegrityScan;
-	void SendAssignClass(std::promise<CommandStatus> cmd_promise);
 	void LinkStatusListener(opendnp3::LinkStatus status);
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){}
@@ -135,7 +134,7 @@ private:
 
 	}
     
-	template<typename T> std::future<CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
+	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName);
 	template<typename T> void LoadT(const opendnp3::ICollection<opendnp3::Indexed<T> >& meas);
 };
 

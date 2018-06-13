@@ -406,74 +406,74 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(pConf->ControlIndicies.begin(),pConf->ControlIndicies.end());
 	}
 }
-std::future<CommandStatus> SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+void SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
 {
-	return CommandFutureSuccess();
+	/*TODO: call callback with Success*/ return;
 }
 
 //Implement Event handlers from IOHandler - All not supported because SimPort is just a source.
 
 // measurement events
-std::future<CommandStatus> SimPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
 
 // change of quality Events
-std::future<CommandStatus> SimPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
 // control events
-std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName)
 {
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 	for(auto i : pConf->ControlIndicies)
@@ -506,7 +506,7 @@ std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arComma
 								break;
 							}
 							default:
-								return CommandFutureNotSupported();
+								/*TODO: call callback with NotSupported*/ return;
 						}
 					}
 					else
@@ -522,30 +522,30 @@ std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arComma
 								PublishEvent(fb.off_value,fb.binary_index);
 								break;
 							default:
-								return CommandFutureNotSupported();
+								/*TODO: call callback with NotSupported*/ return;
 						}
 					}
 				}
 			}
-			return CommandFutureSuccess();
+			/*TODO: call callback with Success*/ return;
 		}
 	}
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
-std::future<CommandStatus> SimPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName)
+void SimPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName)
 {
-	return CommandFutureNotSupported();
+	/*TODO: call callback with NotSupported*/ return;
 }
 

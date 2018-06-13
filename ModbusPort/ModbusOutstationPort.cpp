@@ -25,7 +25,6 @@
  */
 
 #include <iostream>
-#include <future>
 #include <regex>
 #include <chrono>
 #include <asiopal/UTCTimeSource.h>
@@ -196,7 +195,7 @@ template<typename T>
 inline CommandStatus ModbusOutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {
 	if(!enabled)
-		return CommandStatus::UNDEFINED;
+		/*TODO call callback with UNDEFINED;*/ return;
 
 	//FIXME: this is meant to return if we support the type of command
 	//at the moment we just return success if it's configured as a control
@@ -206,42 +205,32 @@ inline CommandStatus ModbusOutstationPort::SupportsT(T& arCommand, uint16_t aInd
 	    {
 	                    for(auto index : pConf->pPointConf->ControlIndicies)
 	                            if(index == aIndex)
-	                                    return CommandStatus::SUCCESS;
+							//TODO call callback with SUCCESS
+							return;
 	    }
 	*/
-	return CommandStatus::NOT_SUPPORTED;
+	/*TODO call callback with NOT_SUPPORTED;*/ return;
 }
 template<typename T>
 inline CommandStatus ModbusOutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 {
 	if(!enabled)
-		return CommandStatus::UNDEFINED;
+		/*TODO call callback with UNDEFINED;*/ return;
 	
-	auto future_results = PublishCommand(arCommand, aIndex);
+	PublishEvent(arCommand, aIndex);
 
-	for(auto& future_result : future_results)
-	{
-		//if results aren't ready, we'll try to do some work instead of blocking
-		while(future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
-		{
-			//not ready - let's lend a hand to speed things up
-			this->pIOS->poll_one();
-		}
-		//first one that isn't a success, we can return
-		if(future_result.get() != CommandStatus::SUCCESS)
-			return CommandStatus::UNDEFINED;
-	}
+	//TODO: think about the results of (multiple) downstream callbacks - base our result callback on that
 
-	return CommandStatus::SUCCESS;
+	/*TODO call callback with SUCCESS;*/ return;
 }
 
-std::future<CommandStatus> ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
 
 template<typename T>
 int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
@@ -254,14 +243,12 @@ int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
 }
 
 template<typename T>
-inline std::future<CommandStatus> ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
+inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
 {
-	auto cmd_promise = std::promise<CommandStatus>();
-
 	if(!enabled)
 	{
-		cmd_promise.set_value(CommandStatus::UNDEFINED);
-		return cmd_promise.get_future();
+		//TODO: call callback with CommandStatus::UNDEFINED
+		return;
 	}
 
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
@@ -277,6 +264,8 @@ inline std::future<CommandStatus> ModbusOutstationPort::EventT(T& meas, uint16_t
 			if(map_index >= 0)
 				*(mb_mapping->tab_registers + map_index) = (uint16_t)meas.value;
 		}
+		//TODO: call callback with CommandStatus::SUCCESS
+		return;
 	}
 	else if(std::is_same<T,Binary>::value)
 	{
@@ -289,10 +278,12 @@ inline std::future<CommandStatus> ModbusOutstationPort::EventT(T& meas, uint16_t
 			if(map_index >= 0)
 				*(mb_mapping->tab_bits + index) = (uint8_t)meas.value;
 		}
+		//TODO: call callback with CommandStatus::SUCCESS
+		return;
 	}
 	//TODO: impl other types
 
-	cmd_promise.set_value(CommandStatus::UNDEFINED);
-	return cmd_promise.get_future();
+	//TODO: call callback with CommandStatus::UNDEFINED
+	return;
 }
 

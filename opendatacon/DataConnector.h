@@ -40,29 +40,29 @@ public:
 	DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 	~DataConnector() override{}
 
-	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const Counter& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
 
-	std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
+	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) override;
+	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) override;
+	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) override;
+	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) override;
+	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) override;
+	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
+	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
 
-	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
+	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
 
-	std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) override;
+	void Event(ConnectState state, uint16_t index, const std::string& SenderName) override;
 
 	virtual const Json::Value GetStatistics() const
 	{
@@ -80,7 +80,7 @@ public:
 
 protected:
 	void ProcessElements(const Json::Value& JSONRoot) override;
-	template<typename T> std::future<CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
+	template<typename T> void EventT(const T& meas, uint16_t index, const std::string& SenderName);
 
 	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*> > Connections;
 	std::multimap<std::string,std::string> SenderConnectionsLookup;
