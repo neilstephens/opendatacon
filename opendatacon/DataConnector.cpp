@@ -223,9 +223,9 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 		return;
 	}
 
-	auto bounds = SenderConnectionsLookup.equal_range(SenderName);
+	auto connection_count = SenderConnectionsLookup.count(SenderName);
 	//Do we have a connection for this sender?
-	if(bounds.first != bounds.second) //yes
+	if(connection_count > 0)
 	{
 		auto new_event_obj(event_obj);
 		if(ConnectionTransforms.count(SenderName))
@@ -240,13 +240,8 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 			}
 		}
 
-		auto multi_callback = std::make_shared<std::function<void (CommandStatus status)>>
-		(
-			[pStatusCallback](CommandStatus status)
-			{
-				//TODO: call the 'upstream' callback based on all the downstream calls to this
-			}
-		);
+		auto multi_callback = SyncMultiCallback(connection_count,pStatusCallback);
+		auto bounds = SenderConnectionsLookup.equal_range(SenderName);
 		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 		{
 			//guess which one is the sendee

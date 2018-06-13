@@ -103,17 +103,36 @@ protected:
 	template<class T>
 	void PublishEvent(const T& meas, uint16_t index, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
 	{
-		auto multi_callback = std::make_shared<std::function<void (CommandStatus status)>>
-		(
-			[pStatusCallback](CommandStatus status)
-			{
-				//TODO: call the 'upstream' callback based on all the downstream calls to this
-			}
-		);
+		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(auto IOHandler_pair: Subscribers)
 		{
 			IOHandler_pair.second->Event(meas, index, Name, multi_callback);
 		}
+	}
+
+	std::shared_ptr<std::function<void(CommandStatus)>> SyncMultiCallback (const size_t cb_number, std::shared_ptr<std::function<void(CommandStatus)>> pStatusCallback)
+	{
+		auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
+		auto pExecCount = std::make_shared<size_t>(0);
+		auto pCB_sync = std::make_shared<asio::strand>(*pIOS);
+		return std::make_shared<std::function<void (CommandStatus status)>>
+		(pCB_sync->wrap([=](CommandStatus status)
+		{
+			if(*pCombinedStatus == CommandStatus::UNDEFINED)
+				return;
+
+			if(*pExecCount == 0)
+				*pCombinedStatus = status;
+			else if(status != *pCombinedStatus)
+			{
+				*pCombinedStatus = CommandStatus::UNDEFINED;
+				(*pStatusCallback)(*pCombinedStatus);
+			}
+			else if(++(*pExecCount) >= cb_number)
+			{
+				(*pStatusCallback)(*pCombinedStatus);
+			}
+		}));
 	}
 
 private:
