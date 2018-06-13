@@ -48,6 +48,8 @@ class MD3Port: public DataPort
 public:
 	MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 
+	void ProcessElements(const Json::Value& JSONRoot) final;
+
 	void Enable() override =0;
 	void Disable() override =0;
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override =0;
@@ -81,9 +83,6 @@ public:
 	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override { return IOHandler::CommandFutureNotSupported(); }
 	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override { return IOHandler::CommandFutureNotSupported(); }
 
-	void ProcessElements(const Json::Value& JSONRoot) override;
-
-
 	// Methods to access the outstation point table
 	//TODO: Point container access extract to separate class maybe..
 	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res);
@@ -108,7 +107,8 @@ public:
 	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
 	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, MD3Time eventtime);
 
-	bool CheckBinaryControlExistsUsingMD3Index(const uint16_t module, const uint8_t channel);
+	bool GetBinaryControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int & index);
+	bool GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int & index);
 
 	void AddToDigitalEvents(MD3BinaryPoint & pt);
 	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);
@@ -126,8 +126,6 @@ protected:
 	TCPClientServer ClientOrServer();
 	bool  IsServer();
 
-	bool NewDigitalCommands = true;
-
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
 	std::function<void(std::string)> SendTCPDataFn = nullptr;	// nullptr normally. Set to hook function for testing
 
@@ -136,7 +134,7 @@ protected:
 	std::shared_ptr<MD3PointConf> MyPointConf();
 	int Limit(int val, int max);
 
-	// We need to support multidrop in both the OutStation and the Master.
+	// We need to support multi-drop in both the OutStation and the Master.
 	// We have a separate OutStation or Master for each OutStation, but they could be sharing a TCP connection, then routing the traffic based on MD3 Station Address.
 	std::shared_ptr<MD3Connection> pConnection;
 

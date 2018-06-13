@@ -40,7 +40,7 @@ using namespace odc;
 MD3PointConf::MD3PointConf(std::string FileName, const Json::Value& ConfOverrides) :
 	ConfigParser(FileName, ConfOverrides)
 {
-	ProcessFile();
+	ProcessFile();	// This should call process elements below?
 }
 
 
@@ -79,6 +79,86 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto Counters = JSONRoot["Counters"];
 		ProcessAnalogCounterPoints(Counters, CounterMD3PointMap, CounterODCPointMap);
 	}
+	if (JSONRoot.isMember("AnalogControls"))
+	{
+		const auto AnalogControls = JSONRoot["AnalogControls"];
+		ProcessAnalogCounterPoints(AnalogControls, AnalogControlMD3PointMap, AnalogControlODCPointMap);
+	}
+
+	// TimeSet Point Configuration
+	if (JSONRoot.isMember("TimeSetPoint") && JSONRoot["TimeSetPoint"].isMember("Index"))
+	{
+		TimeSetPoint.first = opendnp3::AnalogOutputDouble64(0);		// Default to 0 - we know as unset - will never be used in operation.
+		TimeSetPoint.second = JSONRoot["TimeSetPoint"]["Index"].asUInt();
+	}
+	else
+	{
+		TimeSetPoint.first = opendnp3::AnalogOutputDouble64(0);		// Default to 0 - we know as unset - will never be used in operation.
+		TimeSetPoint.second = 64000;
+		std::cout << "TimeSetPoint must be defined and have an Index value - defaulting to 64000" << std::endl;
+	}
+
+	// SystemSignOnPoint Point Configuration
+	if (JSONRoot.isMember("SystemSignOnPoint") && JSONRoot["SystemSignOnPoint"].isMember("Index"))
+	{
+		SystemSignOnPoint.first = opendnp3::AnalogOutputInt32(0);		// Default to 0 - we know as unset - will never be used in operation.
+		SystemSignOnPoint.second = JSONRoot["SystemSignOnPoint"]["Index"].asUInt();
+	}
+	else
+	{
+		SystemSignOnPoint.first = opendnp3::AnalogOutputInt32(0);		// Default to 0 - we know as unset - will never be used in operation.
+		SystemSignOnPoint.second = 64001;
+		std::cout << "SystemSignOnPoint must be defined and have an Index value - defaulting to 64001" << std::endl;
+	}
+	// FreezeResetCountersPoint Point Configuration
+	if (JSONRoot.isMember("FreezeResetCountersPoint") && JSONRoot["FreezeResetCountersPoint"].isMember("Index"))
+	{
+		FreezeResetCountersPoint.first = opendnp3::AnalogOutputInt32(0);		// Default to 0 - we know as unset - will never be used in operation.
+		FreezeResetCountersPoint.second = JSONRoot["FreezeResetCountersPoint"]["Index"].asUInt();
+	}
+	else
+	{
+		FreezeResetCountersPoint.first = opendnp3::AnalogOutputInt32(0);		// Default to 0 - we know as unset - will never be used in operation.
+		FreezeResetCountersPoint.second = 64002;
+		std::cout << "FreezeResetCountersPoint must be defined and have an Index value - defaulting to 64002" << std::endl;
+	}
+	// POMControlPoint Point Configuration
+	if (JSONRoot.isMember("POMControlPoint") && JSONRoot["POMControlPoint"].isMember("Index"))
+	{
+		POMControlPoint.first = opendnp3::AnalogOutputInt32(0);		// Default to 0 - we know as unset - will never be used in operation.
+		POMControlPoint.second = JSONRoot["POMControlPoint"]["Index"].asUInt();
+	}
+	else
+	{
+		POMControlPoint.first = opendnp3::AnalogOutputInt32(0);		// Default to 0 - we know as unset - will never be used in operation.
+		POMControlPoint.second = 64003;
+		std::cout << "POMControlPoint must be defined and have an Index value - defaulting to 64003" << std::endl;
+	}
+	// DOMControlPoint Point Configuration
+	if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
+	{
+		DOMControlPoint.first = opendnp3::AnalogOutputInt32(0);		// Default to 0 - we know as unset - will never be used in operation.
+		DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
+	}
+	else
+	{
+		DOMControlPoint.first = opendnp3::AnalogOutputInt32(0);		// Default to 0 - we know as unset - will never be used in operation.
+		DOMControlPoint.second = 64004;
+		std::cout << "DOMControlPoint must be defined and have an Index value - defaulting to 64004" << std::endl;
+	}
+
+
+
+	if (JSONRoot.isMember("NewDigitalCommands"))
+	{
+		NewDigitalCommands = JSONRoot["NewDigitalCommands"].asBool();
+	}
+
+	if (JSONRoot.isMember("ODCCommandTimeoutmsec"))
+	{
+		ODCCommandTimeoutmsec = JSONRoot["ODCCommandTimeoutmsec"].asUInt();
+	}
+
 }
 
 // This method must be processed before points are loaded

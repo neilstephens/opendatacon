@@ -1051,7 +1051,7 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 {
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to ODC, then setup a lambda to handle the sending of the response - when we get it.
+	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
 
 	// Two possible responses, they depend on the future result - of type CommandStatus.
 	// SUCCESS = 0 /// command was accepted, initiated, or queue
@@ -1068,6 +1068,11 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 		failed = true;
 	}
 
+	uint32_t Index = MyPointConf()->FreezeResetCountersPoint.second;
+	MyPointConf()->FreezeResetCountersPoint.first = AnalogOutputInt32(Header.GetData());	// Pass the actual packet to the master across ODC
+
+	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+
 	if (Header.GetStationAddress() != 0)
 	{
 		if (failed)
@@ -1076,32 +1081,34 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 			return;
 		}
 
-		//TODO: SJE Send the Freeze-Reset Counter command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
-		SendControlOK(Header);
+		// This does a PublishCommand and waits for the result - or times out.
+		if (Perform(MyPointConf()->FreezeResetCountersPoint.first, Index, waitforresult) == odc::CommandStatus::SUCCESS)
+		{
+			SendControlOK(Header);
+		}
+		else
+		{
+			SendControlOrScanRejected(Header);
+		}
 	}
 	else
 	{
 		if (!failed)
 		{
-			//TODO: SJE Send the Freeze-Reset Counter command through ODC but dont wait for a response. There will be none.
-			// No response
+			// This is an all station (0 address) freeze reset function.
+			// No response, don't wait for a result
+			Perform(MyPointConf()->SystemSignOnPoint.first, Index, false);
 		}
 	}
 }
 
+// Think that POM stands for PULSE.
 void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
 {
-	// We have two blocks incomming, not just one.
-	// Seems we dont have any POM control signals greater than 7 in the data I have seen??
+	// We have two blocks incoming, not just one.
+	// Seems we don’t have any POM control signals greater than 7 in the data I have seen??
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to ODC, then setup a lambda to handle the sending of the response - when we get it.
-
-	// Two possible responses, they depend on the future result - of type CommandStatus.
-	// SUCCESS = 0 /// command was accepted, initiated, or queue
-	// TIMEOUT = 1 /// command timed out before completing
-	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
-	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
-	// Non-zero will be a fail.
+	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
 
 	bool failed = false;
 
@@ -1118,48 +1125,57 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3Bl
 		failed = true;
 	}
 
-	// Check that the control point is defined, otherwise return a fail. The value 0 to 15 is a trip or close for points 0 to 7 (hence mod 8?)
-	bool foundentry = CheckBinaryControlExistsUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8);
-	if (!foundentry)
+	// Check that the control point is defined, otherwise return a fail.
+	// Check the first point only. There are 8 bits sent in this message.
+	int index = 0;
+	failed = GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), 0, index) ? failed : true;
+
+	if (Header.GetStationAddress() == 0)
 	{
-		// Control point does not exist...
-		failed = true;
+		// An all station command we do not respond to.
+		return;
 	}
 
-	if (Header.GetStationAddress() != 0)
+	if (failed)
 	{
-		if (failed)
-		{
-			SendControlOrScanRejected(Header);
-			return;
-		}
+		SendControlOrScanRejected(Header);
+		return;
+	}
 
-		//TODO: SJE Send the POM Control command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
+	// Pass the actual packet to the master across ODC The second packet is just a check packet. No different information
+	// Should we be passing ODC OutputBinary points instead? Then the master has to work out how to turn that back into a command in MD3...
+	MyPointConf()->POMControlPoint.first = AnalogOutputInt32(Header.GetData());
+
+	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+
+	// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
+	for (int i = 0; i < 8; i++)
+	{
+		ControlRelayOutputBlock b((Header.GetOutputSelection() >> (7 - i) & 0x01) == 1);
+		if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, index))
+		{
+			Perform(b, index, waitforresult);	// If no subscribers will return quickly.
+		}
+	}
+
+	// Pass the command through ODC, just for MD3 on the other side.
+	if (Perform(MyPointConf()->POMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS)
+	{
 		SendControlOK(Header);
 	}
 	else
 	{
-		if (!failed)
-		{
-			//TODO: SJE Send the POM Control command through ODC but dont wait for a response. There will be none.
-			// No response
-		}
+		SendControlOrScanRejected(Header);
 	}
 }
 
+// DOM stands for DIGITAL.
 void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
 {
-	// We have two blocks incomming, not just one.
-	// Seems we dont have any POM control signals greater than 7 in the data I have seen??
+	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to ODC, then setup a lambda to handle the sending of the response - when we get it.
-
-	// Two possible responses, they depend on the future result - of type CommandStatus.
-	// SUCCESS = 0 /// command was accepted, initiated, or queue
-	// TIMEOUT = 1 /// command timed out before completing
-	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
-	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
-	// Non-zero will be a fail.
+	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
+	// The output is a 16bit word. Will send a 32 bit block through ODC that contains the output data , station address and module address.
 
 	bool failed = false;
 
@@ -1176,48 +1192,54 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3Bl
 		failed = true;
 	}
 
-	// Check that the control point is defined, otherwise return a fail. The value 0 to 15 is a trip or close for points 0 to 7 (hence mod 8?)
 	// Check that the first one exists, not all 16 may exist.
-	bool foundentry = CheckBinaryControlExistsUsingMD3Index(Header.GetModuleAddress(), 0);
-	if (!foundentry)
+	int index = 0;
+	failed = GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), 0, index) ? failed : true;
+
+	uint16_t output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
+	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+
+	if (Header.GetStationAddress() == 0)
 	{
-		// Control point does not exist...
-		failed = true;
+		// An all station command we do not respond to.
+		return;
 	}
 
-	if (Header.GetStationAddress() != 0)
+	if (failed)
 	{
-		if (failed)
-		{
-			SendControlOrScanRejected(Header);
-			return;
-		}
+		SendControlOrScanRejected(Header);
+		return;
+	}
 
-		//TODO: SJE Send the POM Control command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
+	// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
+	for (int i = 0; i < 16; i++)
+	{
+		ControlRelayOutputBlock b((output >> (15 - i) & 0x01) == 1);
+		if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, index))
+		{
+			Perform(b, index, waitforresult);	// If no subscribers will return quickly.
+		}
+	}
+
+	// Pass the command through ODC, just for MD3 on the other side.
+	MyPointConf()->DOMControlPoint.first = AnalogOutputInt32(Header.GetData());
+
+	if (Perform(MyPointConf()->DOMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS)
+	{
 		SendControlOK(Header);
 	}
 	else
 	{
-		if (!failed)
-		{
-			//TODO: SJE Send the POM Control command through ODC but dont wait for a response. There will be none.
-			// No response
-		}
+		SendControlOrScanRejected(Header);
 	}
 }
 
+// AOM is ANALOG output control.
 void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
 {
-	// We have two blocks incomming, not just one.
+	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to ODC, then setup a lambda to handle the sending of the response - when we get it.
-
-	// Two possible responses, they depend on the future result - of type CommandStatus.
-	// SUCCESS = 0 /// command was accepted, initiated, or queue
-	// TIMEOUT = 1 /// command timed out before completing
-	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
-	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
-	// Non-zero will be a fail.
+	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
 
 	bool failed = false;
 
@@ -1234,33 +1256,27 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, std::vector<MD3Bl
 		failed = true;
 	}
 
-	// Check that the control point is defined, otherwise return a fail. The value 0 to 15 is a trip or close for points 0 to 7 (hence mod 8?)
-	//TODO: SJE AOM Control needs analog points to control
-/*	bool foundentry = CheckBinaryControlExistsUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel());
-	if (!foundentry)
+	if (Header.GetStationAddress() == 0)
 	{
-		// Control point does not exist...
-		failed = true;
+		// An all station command we do not respond to.
+		return;
 	}
-*/
-	if (Header.GetStationAddress() != 0)
-	{
-		if (failed)
-		{
-			SendControlOrScanRejected(Header);
-			return;
-		}
 
-		//TODO: SJE Send the POM Control command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
+	// Check that the control point is defined, otherwise return a fail.
+	int index = 0;
+	failed = GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), index) ? failed : true;
+
+	AnalogOutputInt16 output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
+
+	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+
+	if (!failed && (Perform(output, index, waitforresult) == odc::CommandStatus::SUCCESS))
+	{
 		SendControlOK(Header);
 	}
 	else
 	{
-		if (!failed)
-		{
-			//TODO: SJE Send the POM Control command through ODC but dont wait for a response. There will be none.
-			// No response
-		}
+		SendControlOrScanRejected(Header);
 	}
 }
 
@@ -1269,6 +1285,7 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, std::vector<MD3Bl
 #pragma region SYSTEM
 
 // Function 40 - SYSTEM_SIGNON_CONTROL
+// The response is what we have received with the direction bit changed. If the address is zero, we send our address.
 void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
 {
 	// This is used to turn on radios (typically) before a real command is sent.
@@ -1276,17 +1293,27 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
 
 	if (Header.IsValid())
 	{
-		if (Header.GetStationAddress() == 0)
+		uint32_t Index = MyPointConf()->SystemSignOnPoint.second;
+		MyPointConf()->SystemSignOnPoint.first = AnalogOutputInt32(Header.GetData());	// Pass the actual packet to the master across ODC
+
+		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
+		bool waitforresult = !MyPointConf()->StandAloneOutstation;
+
+		// This does a PublishCommand and waits for the result - or times out.
+		if (Perform(MyPointConf()->SystemSignOnPoint.first, Index, waitforresult) == odc::CommandStatus::SUCCESS)
 		{
-			// Need to send a response by echoing the Header, but with the StationAddress set to match our address.
+			// Need to send a response by echoing the Header, but with the StationAddress set to match our address. Direction station to master!
 			MD3BlockFn40 FormattedBlock(MyConf()->mAddrConf.OutstationAddr, false);
 
 			std::vector<MD3BlockData> ResponseMD3Message;
 			ResponseMD3Message.push_back(FormattedBlock);
 			SendMD3Message(ResponseMD3Message);
 		}
-
-		//TODO: SJE Send the systemsignoncontrol command through ODC and wait for a response.
+		else
+		{
+			//TODO: Check if SIGNON can send back a rejected message
+			SendControlOrScanRejected(Header);
+		}
 	}
 	else
 	{
@@ -1296,9 +1323,9 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
 // Function 43
 void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
 {
-	// We have two blocks incomming, not just one.
+	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to  ODC, then setup a lambda to handle the sending of the response - when we get it.
+	// We have to pass the command to  ODC, then set-up a lambda to handle the sending of the response - when we get it.
 
 	// Two possible responses, they depend on the future result - of type CommandStatus.
 	// SUCCESS = 0 /// command was accepted, initiated, or queue
@@ -1307,39 +1334,46 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3B
 	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
 	// Non-zero will be a fail.
 
-	if (Header.GetStationAddress() != 0)
+	if ((CompleteMD3Message.size() != 2) && (Header.GetStationAddress() != 0))
 	{
-		if (CompleteMD3Message.size() != 2)
-		{
-			SendControlOrScanRejected(Header);	// If we did not get two blocks, then send back a command rejected message.
-			return;
-		}
+		SendControlOrScanRejected(Header);	// If we did not get two blocks, then send back a command rejected message.
+		return;
+	}
 
-		MD3BlockData &timedateblock = CompleteMD3Message[1];
+	MD3BlockData &timedateblock = CompleteMD3Message[1];
 
-		// If date time is within a window of now, accept. Otherwise send command rejected.
-		uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
+	// If date time is within a window of now, accept. Otherwise send command rejected.
+	uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
 
-		// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
-		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
+	uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
-		if (abs((int64_t)msecsinceepoch - (int64_t)currenttime) > 30000)	// Set window as +-30 seconds
-		{
+	if (abs((int64_t)msecsinceepoch - (int64_t)currenttime) > 30000)	// Set window as +-30 seconds
+	{
+		if (Header.GetStationAddress() != 0)
 			SendControlOrScanRejected(Header);
-		}
-		else
-		{
-			//TODO: SJE Send the timechange command through ODC and wait for a response. For the moment we are just sinking the command as if we were an outstation
-			SendControlOK(Header);
-		}
 	}
 	else
 	{
-		//TODO: SJE Send the timechange command through ODC dont wait for a response. There will be none.
-		// No response
+		uint32_t Index = MyPointConf()->TimeSetPoint.second;
+		MyPointConf()->TimeSetPoint.first = AnalogOutputDouble64((double)msecsinceepoch);	// Fit the 64 bit int into the 64 bit float.
+
+		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
+		bool waitforresult = !MyPointConf()->StandAloneOutstation;
+
+		// This does a PublishCommand and waits for the result - or times out.
+		if (Perform(MyPointConf()->TimeSetPoint.first, Index, waitforresult) == odc::CommandStatus::SUCCESS)
+		{
+			if (Header.GetStationAddress() != 0)
+				SendControlOK(Header);
+		}
+		else
+		{
+			if (Header.GetStationAddress() != 0)
+				SendControlOrScanRejected(Header);
+		}
 	}
 }
-
 // Function 52
 void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, std::vector<MD3BlockData> &CompleteMD3Message)
 {
@@ -1352,13 +1386,12 @@ void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, std::vector<
 
 	if (CompleteMD3Message.size() != 1)
 	{
-		//TODO Handle Flag scan conmmands with more than one block
+		//TODO Handle Flag scan commands with more than one block
 		SendControlOrScanRejected(Header);	// If we did not get one blocks, then send back a command rejected message - for NOW
 		return;
 	}
 
-
-	//TODO: SJE Dont think the flag scan will be passed through ODC, will just mirror what we know about the outstation
+	//TODO: SJE don’t think the flag scan will be passed through ODC, will just mirror what we know about the outstation
 	std::vector<MD3BlockData> ResponseMD3Message;
 
 	// Change the direction, set the flag data.
@@ -1373,7 +1406,7 @@ void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, std::vector<
 // Function 15 Output
 void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
 {
-	// The Control OK block seems to return the orginating message first block, but with the function code changed to 15
+	// The Control OK block seems to return the originating message first block, but with the function code changed to 15
 	std::vector<MD3BlockData> ResponseMD3Message;
 
 	// The MD3BlockFn15StoM does the changes we need for us.

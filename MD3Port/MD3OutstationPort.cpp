@@ -151,31 +151,60 @@ inline CommandStatus MD3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 	return CommandStatus::NOT_SUPPORTED;
 }
 
+CommandStatus MD3OutstationPort::Perform(const AnalogOutputDouble64& arCommand, uint16_t index, bool waitforresult) { return PerformT(arCommand, index, waitforresult); }
+CommandStatus MD3OutstationPort::Perform(const AnalogOutputInt32& arCommand, uint16_t index, bool waitforresult) { return PerformT(arCommand, index, waitforresult); }
+CommandStatus MD3OutstationPort::Perform(const AnalogOutputInt16& arCommand, uint16_t index, bool waitforresult) { return PerformT(arCommand, index, waitforresult); }
+CommandStatus MD3OutstationPort::Perform(const ControlRelayOutputBlock& arCommand, uint16_t index, bool waitforresult) { return PerformT(arCommand, index, waitforresult); }
+
+
 // We are going to send a command to the opendatacon connector to do some kind of operation.
 // If there is a master on that connector it will then send the command on down to the "real" outstation.
 // This method will be called in response to data appearing on our TCP connection.
-// TODO: SJE The question is, how do we respond up the line - do we need to wait for a response from down the line first?
+// Remember there can be multiple responders!
+//
+//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we don’t get stuck here.
+//TODO: The destructor of a future will wait until it gets a result. So we CANNOT do a time out here, or exit on first failure - we wait anyway....
 template<typename T>
-inline CommandStatus MD3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
+CommandStatus MD3OutstationPort::PerformT(T& arCommand, uint16_t aIndex, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;
 
+	//MD3Time ExpireTime = MD3Now() + (MD3Time)MyPointConf()->ODCCommandTimeoutmsec;
+
+	// This function (in IOHandler) goes through the list of subscribed events and calls them, putting their returned future result into the vector that we get
+	// back here. If the Event chooses to do everything synchronously then we get an answer straight away.
+	// THE EVENT MUST TIME OUT AND COME BACK TO US, OTHERWISE WE COULD HANG HERE.
+	// If the event chooses to POST the processing code to ASIO, then the future will be set when that finishes.
+	// If we try and exit here - the destructor on the future will wait for it to be set before exiting, so we can't exit early..
+	// So the event handlers are the ones that should always have a time out, so that a result is always returned so we cannot get stuck waiting for Event future results.
 	auto future_results = PublishCommand(arCommand, aIndex);
 
-	for (auto& future_result : future_results)
+	if (waitforresult)
 	{
-		//if results aren't ready, we'll try to do some work instead of blocking
-		while (future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
+		// We loop through the future results of each "subscriber" to out command.
+		// We end up waiting on the longest one
+		for (auto& future_result : future_results)
 		{
-			//not ready - let's lend a hand to speed things up
-			this->pIOS->poll_one();
-		}
-		//first one that isn't a success, we can return
-		if (future_result.get() != CommandStatus::SUCCESS)
-			return CommandStatus::UNDEFINED;
-	}
+			//if results aren't ready, we'll try to do some work instead of blocking
+			// We stay in this loop until we get an answer.
+			while (future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
+			{
+			/*	if (ExpireTime < MD3Now())
+				{
+					// We have timed out...
+					return CommandStatus::TIMEOUT;	//TODO: WILL NOT WORK
+				}
+*/
+				//not ready - let's lend a hand to speed things up
+				this->pIOS->poll_one();
+			}
 
+			//first one that isn't a success, we can return
+			if (future_result.get() != CommandStatus::SUCCESS)
+				return CommandStatus::UNDEFINED;	//TODO: Will wait for other futures to finish in the futures destructor.
+		}
+	}
 	return CommandStatus::SUCCESS;
 }
 

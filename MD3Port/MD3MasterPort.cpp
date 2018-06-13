@@ -669,7 +669,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 
 	if (MyPointConf()->PollGroups[pollgroup].polltype == BinaryPoints)
 	{
-		if (NewDigitalCommands)	// Old are 7,8,9,10 - New are 11 and 12
+		if (MyPointConf()->NewDigitalCommands)	// Old are 7,8,9,10 - New are 11 and 12
 		{
 			if (MyPointConf()->PollGroups[pollgroup].UnconditionalRequired)
 			{

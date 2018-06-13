@@ -59,6 +59,19 @@ const char *conffile1 = R"001(
 	// We have two modes for the digital/binary commands. Can be one or the other - not both!
 	"NewDigitalCommands" : true,
 
+	// This flag will have the OutStation respond without waiting for ODC responses - it will still send the ODC commands, just no feedback. Usefull for testing and connecting to the sim port.
+	// Set to false, the OutStation will setup ODC/timeout callbacks/lambdas for ODC responses. If not found will default to false.
+	"StandAloneOutStation" : true,
+
+	// Maximum time to wait for ODC to respond to a command. Remember there can be multiple responders!
+	"ODCCommandTimeoutmsec" : 2000,
+
+	// The magic points we use to pass through MD3 commands.
+	"TimeSetPoint" : {"Index" : 100000},
+	"SystemSignOnPoint" : {"Index" : 100001},
+	"FreezeResetCountersPoint"  : {"Index" : 100002},
+	"POMControlPoint" : {"Index" : 100003},
+
 	// Cannot mix analog and binary points in a poll group. Group 1 is Binary, Group 2 is Analog in this example
 	// You will get errors if the wrong type of points are assigned to the wrong poll group
 	// We will scan the Analog and Counters to build a vector of poll group MD3 addresses
@@ -67,8 +80,9 @@ const char *conffile1 = R"001(
 
 	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0, "PollGroup" : 1}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "PollGroup":1}, {"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0}],
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0, "PollGroup" : 2}],
-	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Module" : 35, "Offset" : 0}],
-	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
+	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Module" : 37, "Offset" : 0}],
+	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}],
+	"AnalogControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Module" : 38, "Offset" : 0}]
 })001";
 
 
@@ -83,6 +97,12 @@ const char *conffile2 = R"002(
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
+	// We have two modes for the digital/binary commands. Can be one or the other - not both!
+	"NewDigitalCommands" : true,
+
+	// The magic Analog point we use to pass through the MD3 time set command.
+	"TimeSetPoint" : {"Index" : 100000},
+
 	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0}, {"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0}],
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
 	"BinaryControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Module" : 35, "Offset" : 0}],
@@ -1157,13 +1177,12 @@ namespace StationTests
 		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
 		//TODO: Fn9 Test - Will have a set of blocks containing 10 change records. Need to decode to test as the times will vary by run.
-		// Need to write the master station decode - code for this in order to be able to check it. The message is going to change each time
+		//TODO: Need to write the master station decode - code for this in order to be able to check it. The message is going to change each time
 
 		REQUIRE(Response[2] == 0x28);	// Seq 3, MEV == 1
 		REQUIRE(Response[3] == 10);
 
 		REQUIRE(Response.size() == 72);	// DecodeFnResponse(Response)
-
 
 		// Now repeat the command to get the last 6 results
 
@@ -1533,7 +1552,7 @@ namespace StationTests
 		MD3BlockData sb2 = testblock2.GenerateSecondBlock();
 		REQUIRE(sb2.ToString() == "595b0800c000");
 
-		// One of the few multiblock commands
+		// One of the few multi-block commands
 		WriteConfFileToCurrentWorkingDirectory();
 
 		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
@@ -1549,7 +1568,7 @@ namespace StationTests
 		MD3Port->Enable();
 
 		//  Station 0x7C
-		MD3BlockFn17MtoS commandblock(0x7C, 35, 1);
+		MD3BlockFn17MtoS commandblock(0x7C, 37, 1);
 
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
@@ -1565,19 +1584,19 @@ namespace StationTests
 		// Send the Command
 		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
-		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f23017a00");
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f25014d00");
 
 		REQUIRE(Response == DesiredResult);	// OK Command
 
 		//---------------------------
 		// Now do again with a bodgy second block.
 		output << commandblock.ToBinaryString();
-		MD3BlockData datablock2(1000, true);	// Non sensical block
+		MD3BlockData datablock2(1000, true);	// Nonsensical block
 		output << datablock2.ToBinaryString();
 
 		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
-		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e23017c00");
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e25014b00");
 
 		REQUIRE(Response == DesiredResult2);	// Control/Scan Rejected Command
 
@@ -1630,7 +1649,7 @@ namespace StationTests
 		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
 		//  Station 0x7C
-		MD3BlockFn19MtoS commandblock(0x7C, 35);
+		MD3BlockFn19MtoS commandblock(0x7C, 37);
 
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
@@ -1646,19 +1665,19 @@ namespace StationTests
 		// Send the Command
 		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
-		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f23dc7200");
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f25da4400");
 
 		REQUIRE(Response == DesiredResult);	// OK Command
 
 		//---------------------------
 		// Now do again with a bodgy second block.
 		output << commandblock.ToBinaryString();
-		MD3BlockData datablock2(1000, true);	// Non sensical block
+		MD3BlockData datablock2(1000, true);	// Non nonsensical block
 		output << datablock2.ToBinaryString();
 
 		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
-		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e230c6500");
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e250a5300");
 
 		REQUIRE(Response == DesiredResult2);	// Control/Scan Rejected Command
 
@@ -1679,7 +1698,7 @@ namespace StationTests
 	}
 	TEST_CASE("Station - AOMControlFn23")
 	{
-		// One of the few multiblock commands
+		// One of the few multi-block commands
 		WriteConfFileToCurrentWorkingDirectory();
 
 		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
@@ -1695,7 +1714,7 @@ namespace StationTests
 		MD3Port->Enable();
 
 		//  Station 0x7C
-		MD3BlockFn23MtoS commandblock(0x7C, 35, 1);
+		MD3BlockFn23MtoS commandblock(0x7C, 38, 1);
 
 		asio::streambuf write_buffer;
 		std::ostream output(&write_buffer);
@@ -1711,19 +1730,19 @@ namespace StationTests
 		// Send the Command
 		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
-		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f23017a00");
+		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f26017b00");
 
 		REQUIRE(Response == DesiredResult);	// OK Command
 
 		//---------------------------
 		// Now do again with a bodgy second block.
 		output << commandblock.ToBinaryString();
-		MD3BlockData datablock2(1000, true);	// Non sensical block
+		MD3BlockData datablock2(1000, true);	// Non nonsensical block
 		output << datablock2.ToBinaryString();
 
 		MD3Port->InjectSimulatedTCPMessage(write_buffer);
 
-		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e23017c00");
+		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e26017d00");
 
 		REQUIRE(Response == DesiredResult2);	// Control/Scan Rejected Command
 
@@ -1869,6 +1888,7 @@ namespace StationTests
 
 		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
 		asio::io_service IOS(1);
+		auto work = std::make_shared<asio::io_service::work>(IOS);	// To keep run - running!
 
 		TestLogger TL(30);	// Just adds the strings to a list which we empty at the end (or when we want to). Set initial size.
 		IOMgr.AddLogSubscriber(TL); // send log messages to the console
@@ -1898,7 +1918,7 @@ namespace StationTests
 				true, 250));
 		pSockMan->Open();
 
-		Wait(IOS, 5);
+		Wait(IOS, 1);
 		REQUIRE(socketisopen);	// Should be set in a callback.
 
 		// Send the Command - results in an async write
@@ -1910,7 +1930,7 @@ namespace StationTests
 		MD3BlockFn16MtoS commandblock2(0x7D, true);
 		pSockMan->Write(commandblock2.ToBinaryString());
 
-		Wait(IOS, 5);	// Just pause to make sure any queued work is done (events)
+		Wait(IOS, 1);	// Just pause to make sure any queued work is done (events)
 
 		// Need to handle multiple responses...
 		// Deal with the last response first...
@@ -1924,11 +1944,12 @@ namespace StationTests
 
 		REQUIRE(ResponseVec.empty());
 
-		MD3Port->Disable(); //TODO: SJE Have a problem with this not shutting down correctly. Have to look at that - casues usbsequent tests to fail
+		MD3Port->Disable();
 		MD3Port2->Disable();
 		pSockMan->Close();
 
 		LOG("TEST CODE", openpal::logflags::INFO, "", "Shutting Down ASIO Threads");
+		work.reset();	// Close work.
 		StopIOSThread(IOS, pThread);
 		IOMgr.Shutdown();
 		DumpLoggedMessages(TL);
@@ -1954,6 +1975,7 @@ namespace MasterTests
 
 		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores. The number of IOS.Run() threads is checked against this.
 		asio::io_service IOS(1);
+		auto work = std::make_shared<asio::io_service::work>(IOS);	// To keep run - running!
 
 		TestLogger TL(30);	// Just adds the strings to a list which we empty at the end (or when we want to). Set initial size.
 		IOMgr.AddLogSubscriber(TL); // send log messages to the console
@@ -1983,7 +2005,6 @@ namespace MasterTests
 													// Usually is a cross subscription, where each subscribes to the other.
 		MD3OSPort->Enable();
 		MD3Port->Enable();
-
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
@@ -2032,7 +2053,7 @@ namespace MasterTests
 
 			// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 			// Need to give ASIO time to process them?
-			Wait(IOS, 2);
+			Wait(IOS, 1);
 
 			MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
 			REQUIRE(res == 0x1000);
@@ -2088,7 +2109,7 @@ namespace MasterTests
 
 			// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 			// Need to give ASIO time to process them?
-			Wait(IOS, 2);
+			Wait(IOS, 1);
 
 			MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
 			REQUIRE(res == 0x0FFF);	// -1
@@ -2102,6 +2123,7 @@ namespace MasterTests
 		}
 
 		LOG("TEST CODE", openpal::logflags::INFO, "", "Shutting Down ASIO Threads");
+		work.reset();
 		StopIOSThread(IOS, pThread);
 		IOMgr.Shutdown();
 		DumpLoggedMessages(TL);

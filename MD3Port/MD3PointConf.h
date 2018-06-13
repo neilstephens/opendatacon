@@ -187,9 +187,32 @@ public:
 	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterMD3PointMap;	// ModuleAndChannel, MD3Point
 	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterODCPointMap;	// Index OpenDataCon, MD3Point
 
+	//TODO: Are Binary control and binary points different? Yes and no. I think you use normal Binary commands to read control points, but obviously not all binary points can be set. I think maybe a flag?
 	std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlMD3PointMap;	// ModuleAndChannel, MD3Point
 	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlODCPointMap;	// Index OpenDataCon, MD3Point
 
+	//TODO: Are Analog Control points readable with normall analog/counter commands? Probably. Do we need a flag to mark a point as a control point?
+	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlMD3PointMap;	// ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlODCPointMap;	// Index OpenDataCon, MD3Point
+
+
 	std::map<uint32_t, MD3PollGroup> PollGroups;
+
+	// Time Set Point Configuration - this is a "special" point that is used to pass the time set command through ODC. Default to 100000
+	std::pair<AnalogOutputDouble64, uint32_t> TimeSetPoint;
+	// System Sign On Configuration - this is a "special" point that is used to pass the systemsignon command through ODC. Default to 100001
+	std::pair<AnalogOutputInt32, uint32_t> SystemSignOnPoint;
+	std::pair<AnalogOutputInt32, uint32_t> FreezeResetCountersPoint;
+	std::pair<AnalogOutputInt32, uint32_t> POMControlPoint;
+	std::pair<AnalogOutputInt32, uint32_t> DOMControlPoint;
+
+	// Use the OLD Digital Commands 7/8 or the NEW ones 9/10/11/12
+	bool NewDigitalCommands = true;
+
+	// If true, the outstation will send responses on the TCP connection without waiting for ODC responses.
+	bool StandAloneOutstation = false;
+
+	// Time to wait for ODC command to return a result before returning with an error of TIMEOUT. Remember there can be multiple responders!
+	uint32_t ODCCommandTimeoutmsec = 5000;
 };
 #endif /* MD3POINTCONF_H_ */

@@ -57,9 +57,17 @@ public:
 	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
 
-	template<typename T> CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
-	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex);
 	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
+
+	template<typename T> CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
+
+	CommandStatus Perform(const AnalogOutputDouble64 & arCommand, uint16_t index, bool waitforresult);
+	CommandStatus Perform(const AnalogOutputInt32 & arCommand, uint16_t index, bool waitforresult);
+	CommandStatus Perform(const AnalogOutputInt16 & arCommand, uint16_t index, bool waitforresult);
+
+	CommandStatus Perform(const ControlRelayOutputBlock & arCommand, uint16_t index, bool waitforresult);
+
+	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex, bool waitforresult);
 
 	void ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message);
 
