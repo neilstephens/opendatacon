@@ -191,46 +191,13 @@ void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters&
 	}
 }
 
-template<typename T>
-inline CommandStatus ModbusOutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
-{
-	if(!enabled)
-		/*TODO call callback with UNDEFINED;*/ return;
-
-	//FIXME: this is meant to return if we support the type of command
-	//at the moment we just return success if it's configured as a control
-	/*
-	    auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-	    if(std::is_same<T,ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
-	    {
-	                    for(auto index : pConf->pPointConf->ControlIndicies)
-	                            if(index == aIndex)
-							//TODO call callback with SUCCESS
-							return;
-	    }
-	*/
-	/*TODO call callback with NOT_SUPPORTED;*/ return;
-}
-template<typename T>
-inline CommandStatus ModbusOutstationPort::PerformT(T& arCommand, uint16_t aIndex)
-{
-	if(!enabled)
-		/*TODO call callback with UNDEFINED;*/ return;
-	
-	PublishEvent(arCommand, aIndex);
-
-	//TODO: think about the results of (multiple) downstream callbacks - base our result callback on that
-
-	/*TODO call callback with SUCCESS;*/ return;
-}
-
-void ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
-void ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
-void ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
-void ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
-void ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
-void ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
-void ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(meas, index, SenderName, status_callback); }
+void ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
 
 template<typename T>
 int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
@@ -243,11 +210,11 @@ int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
 }
 
 template<typename T>
-inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
+inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
 {
 	if(!enabled)
 	{
-		//TODO: call callback with CommandStatus::UNDEFINED
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
 
@@ -264,7 +231,7 @@ inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::str
 			if(map_index >= 0)
 				*(mb_mapping->tab_registers + map_index) = (uint16_t)meas.value;
 		}
-		//TODO: call callback with CommandStatus::SUCCESS
+		(*pStatusCallback)(CommandStatus::SUCCESS);
 		return;
 	}
 	else if(std::is_same<T,Binary>::value)
@@ -278,12 +245,11 @@ inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::str
 			if(map_index >= 0)
 				*(mb_mapping->tab_bits + index) = (uint8_t)meas.value;
 		}
-		//TODO: call callback with CommandStatus::SUCCESS
+		(*pStatusCallback)(CommandStatus::SUCCESS);
 		return;
 	}
 	//TODO: impl other types
 
-	//TODO: call callback with CommandStatus::UNDEFINED
-	return;
+	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 

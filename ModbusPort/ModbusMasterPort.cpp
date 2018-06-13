@@ -398,19 +398,19 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 }
 
 //Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-void ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
-void ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
-void ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
-void ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
-void ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback){ return EventT(arCommand, index, SenderName, status_callback); }
+void ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
+void ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
+void ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
+void ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
+void ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
 
-void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
+void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
 	if(!enabled)
 	{
-		//TODO: call callback with CommandStatus::UNDEFINED
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
 
@@ -424,8 +424,7 @@ void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& Se
 		}
 	}
 
-	//TODO: call callback with CommandStatus::SUCCESS
-	return;
+	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
 ModbusReadGroup<Binary>* ModbusMasterPort::GetRange(uint16_t index)
@@ -541,17 +540,15 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputDouble64& command,
 }
 
 template<typename T>
-inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> status_callback)
+inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
 {
 	if(!enabled)
 	{
-		//TODO: call callback with CommandStatus::UNDEFINED
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
 
-	auto result = WriteObject(arCommand, index);
-	//TODO: call callback with result
-	return;
+	(*pStatusCallback)(WriteObject(arCommand, index));
 }
 
 
