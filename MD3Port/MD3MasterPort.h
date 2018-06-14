@@ -47,6 +47,7 @@ public:
 	void Disable() override;
 
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+	void BuildOrRebuild();
 
 	void SocketStateHandler(bool state);
 

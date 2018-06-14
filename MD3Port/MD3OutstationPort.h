@@ -48,6 +48,7 @@ public:
 	void Enable() override;
 	void Disable() override;
 	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+	void BuildOrRebuild();
 
 	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
 	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;

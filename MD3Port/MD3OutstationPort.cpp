@@ -103,7 +103,12 @@ void MD3OutstationPort::SocketStateHandler(bool state)
 	LOG("MD3OutstationPort", openpal::logflags::INFO, "", msg);
 }
 
+// We don't use IOMgr - it is an OpenDNP requirement. We can pass in a null pointer.
 void MD3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+{
+	BuildOrRebuild();
+}
+void MD3OutstationPort::BuildOrRebuild()
 {
 	//TODO: Do we re-read the conf file - so we can do a live reload? - How do we kill all the sockets and connections properly?
 	std::string ChannelID = MyConf()->mAddrConf.ChannelID();

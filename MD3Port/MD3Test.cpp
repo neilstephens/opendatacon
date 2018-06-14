@@ -109,10 +109,11 @@ const char *conffile2 = R"002(
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })002";
 
+#pragma region TEST_HELPERS
 openpal::LogFilters DEBUG_LOG_LEVEL(opendnp3::levels::ALL);
 
 // Write out the conf file information about into a file so that it can be read back in by the code.
-void WriteConfFileToCurrentWorkingDirectory()
+void WriteConfFilesToCurrentWorkingDirectory()
 {
 	std::ofstream ofs(conffilename1);
 	if (!ofs) REQUIRE("Could not open conffile2 for writing");
@@ -166,7 +167,7 @@ std::thread *StartIOSThread(asio::io_service &IOS)
 }
 void StopIOSThread(asio::io_service &IOS, std::thread *runthread)
 {
-	IOS.stop();
+	IOS.stop();	// This does not block. The next line will! If we have multiple threads, have to join all of them.
 	runthread->join();	// Wait for it to exit
 }
 void Wait(asio::io_service &IOS, int seconds)
@@ -185,6 +186,43 @@ void DumpLoggedMessages(TestLogger & TL)
 	while (TL.GetNextLine(s)) std::cout << s;
 	std::cout << std::endl << "End of Logged Messages" << std::endl << std::endl;
 }
+
+
+// Don't like using macros, but we use the same test set up almost every time.
+#define STANDARD_TEST_SETUP()\
+	WriteConfFilesToCurrentWorkingDirectory();\
+	asio::io_service IOS(1);\
+	TestLogger TL(30);	/* Just adds the strings to a list which we empty at the end (or when we want to). Set initial size.*/
+
+#define START_IOS() \
+	LOG("TEST CODE", openpal::logflags::INFO, "", "Starting ASIO Threads"); \
+	auto work = std::make_shared<asio::io_service::work>(IOS);	/* To keep run - running!*/\
+	std::thread *pThread = StartIOSThread(IOS);
+
+#define STOP_IOS() \
+	LOG("TEST CODE", openpal::logflags::INFO, "", "Shutting Down ASIO Threads");	\
+	work.reset();	\
+	StopIOSThread(IOS, pThread);
+
+#define TEST_MD3MAPort(overridejson)\
+	auto MD3MAPort = new  MD3MasterPort("TestMaster", conffilename1, Json::nullValue); \
+	MD3MAPort->SetIOS(&IOS);	\
+	MD3MAPort->AddLogSubscriber(&TL);	\
+	MD3MAPort->BuildOrRebuild();
+
+#define TEST_MD3OSPort(overridejson)	\
+	auto MD3OSPort = new  MD3OutstationPort("TestOutStation", conffilename1, overridejson);	\
+	MD3OSPort->SetIOS(&IOS);	\
+	MD3OSPort->AddLogSubscriber(&TL);	\
+	MD3OSPort->BuildOrRebuild();
+
+#define TEST_MD3OSPort2(overridejson)	\
+	auto MD3OSPort2 = new  MD3OutstationPort("TestOutStation2", conffilename2, overridejson);	\
+	MD3OSPort2->SetIOS(&IOS);	\
+	MD3OSPort2->AddLogSubscriber(&TL);	\
+	MD3OSPort2->BuildOrRebuild();
+
+#pragma endregion TEST_HELPERS
 
 namespace SimpleUnitTests
 {
@@ -745,55 +783,35 @@ namespace StationTests
 
 	TEST_CASE("Station - BinaryEvent")
 	{
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		// The 1 is for concurrency hint - usually the number of cores.
-		IOManager IOMgr(1);
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		// TEST EVENTS WITH DIRECT CALL
 		// Test on a valid binary point
 		const odc::Binary b((bool)true);
 		const int index = 1;
-		auto res = MD3Port->Event(b, index, "TestHarness");
+		auto res = MD3OSPort->Event(b, index, "TestHarness");
 
 		REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set. 1 is defined
 
 																// Test on an undefined binary point. 40 NOT defined in the config text at the top of this file.
 		const int index2 = 200;
-		auto res2 = MD3Port->Event(b, index2, "TestHarness");
+		auto res2 = MD3OSPort->Event(b, index2, "TestHarness");
 		REQUIRE((res2.get() == odc::CommandStatus::UNDEFINED));	// The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
 																// Wait for some period to do something?? Check that the port is open and we can connect to it?
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - AnalogUnconditionalF5")
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
 		// Checks the TCP send output for correct data and format.
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		WriteConfFileToCurrentWorkingDirectory();
-
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
 		MD3BlockFormatted commandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
@@ -806,17 +824,17 @@ namespace StationTests
 		for (int i = 0; i < 16; i++)
 		{
 			const odc::Analog a(4096 + i + i * 0x100);
-			auto res = MD3Port->Event(a, i, "TestHarness");
+			auto res = MD3OSPort->Event(a, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Analog Uncoditional command in as if came from TCP channel
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc05200f0d00"	// Echoed block
 			"100011018400"			// Channel 0 and 1
@@ -831,26 +849,16 @@ namespace StationTests
 		// No need to delay to process result, all done in the InjectCommand at call time.
 		REQUIRE(Response == DesiredResult);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - CounterScanFn30")
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
 		// Checks the TCP send output for correct data and format.
 
-		WriteConfFileToCurrentWorkingDirectory();
-
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
+		MD3OSPort->Enable();
 
 		// Do the same test as analog unconditional, we should give teh same response from the Counter Scan.
 		MD3BlockFormatted commandblock(0x7C, true, COUNTER_SCAN, 0x20, 16, true);
@@ -863,17 +871,17 @@ namespace StationTests
 		for (int i = 0; i < 16; i++)
 		{
 			const odc::Analog a(4096 + i + i * 0x100);
-			auto res = MD3Port->Event(a, i, "TestHarness");
+			auto res = MD3OSPort->Event(a, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
-		// Send the Analog Uncoditional command in as if came from TCP channel
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		// Send the Analog Unconditional command in as if came from TCP channel
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc1f200f2200"	// Echoed block
 			"100011018400"			// Channel 0 and 1
@@ -896,15 +904,15 @@ namespace StationTests
 		for (int i = 0; i < 16; i++)
 		{
 			const odc::Counter c(4096 + i + i * 0x100);
-			auto res = MD3Port->Event(c, i, "TestHarness");
+			auto res = MD3OSPort->Event(c, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
 
 		Response = "Not Set";
 
-		// Send the Analog Uncoditional command in as if came from TCP channel
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		// Send the Analog Unconditional command in as if came from TCP channel
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1f3d0f1200"	// Echoed block
 			"100011018400"			// Channel 0 and 1
@@ -919,33 +927,23 @@ namespace StationTests
 		// No need to delay to process result, all done in the InjectCommand at call time.
 		REQUIRE(Response == DesiredResult2);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - AnalogDeltaScanFn6")
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
 		// Checks the TCP send output for correct data and format.
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		WriteConfFileToCurrentWorkingDirectory();
-
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		// Call the Event functions to set the MD3 table data to what we are expecting to get back.
 		// Write to the analog registers that we are going to request the values for.
 		for (int i = 0; i < 16; i++)
 		{
 			const odc::Analog a(4096 + i + i * 0x100);
-			auto res = MD3Port->Event(a, i, "TestHarness");
+			auto res = MD3OSPort->Event(a, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
@@ -958,10 +956,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the command in as if came from TCP channel
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult1 = { (char)0xfc,0x05,0x20,0x0f,0x0d,0x00,	// Echoed block
 			0x10,0x00,0x11,0x01,(char)0x84,0x00,			// Channel 0 and 1
@@ -973,7 +971,7 @@ namespace StationTests
 			0x1C,0x0C,0x1D,0x0D,(char)0x98,0x00,
 			0x1E,0x0E,0x1F,0x0F,(char)0xeb,0x00 };
 
-		// We should get an identical response to an analog unconditonal here
+		// We should get an identical response to an analog unconditional here
 		REQUIRE(Response == DesiredResult1);
 		//------------------------------
 
@@ -981,13 +979,13 @@ namespace StationTests
 		for (int i = 0; i < 5; i++)
 		{
 			const odc::Analog a(4096 + i + i * 0x100 + ((i % 2)==0?50:-50));	// +/- 50 either side of original value
-			auto res = MD3Port->Event(a, i, "TestHarness");
+			auto res = MD3OSPort->Event(a, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
 
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = { (char)0xfc,0x06,0x20,0x0f,0x29,0x00,
 			0x32,(char)0xce,0x32,(char)0xce,(char)0x8b,0x00,
@@ -1000,39 +998,29 @@ namespace StationTests
 		//------------------------------
 
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = { (char)0xfc,0x0d,0x20,0x0f,0x40,0x00 };
 
 		// Now no changes so should get analog no change response.
 		REQUIRE(Response == DesiredResult3);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - DigitalUnconditionalFn7")
 	{
 		// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
 		// Checks the TCP send output for correct data and format.
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		WriteConfFileToCurrentWorkingDirectory();
-
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		// Write to the analog registers that we are going to request the values for.
 		for (int i = 0; i < 16; i++)
 		{
 			const odc::Binary b((i%2) == 0);
-			auto res = MD3Port->Event(b, i, "TestHarness");
+			auto res = MD3OSPort->Event(b, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
@@ -1045,9 +1033,9 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		// Address 21, only 1 bit, set by default - check bit order
 		// Address 22, set to alternating on/off above
@@ -1057,24 +1045,15 @@ namespace StationTests
 		// No need to delay to process result, all done in the InjectCommand at call time.
 		REQUIRE(Response == DesiredResult);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - DigitalChangeOnlyFn8")
 	{
 		// Tests time tagged change response Fn 8
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		// Request Digital Unconditional (Fn 7), Station 0x7C, Module 34, 2 Modules( fills the Channels field)
 		MD3BlockFormatted commandblock(0x7C, true, DIGITAL_DELTA_SCAN, 34, 2, true);
@@ -1084,10 +1063,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
-		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		// Inject command as if it came from TCP channel
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0722012500" "7c22ffff9c00" "7c23ffffc000");		// All on
 
@@ -1097,14 +1076,14 @@ namespace StationTests
 		for (int i = 0; i < 16; i++)
 		{
 			const odc::Binary b((i % 2) == 0);
-			auto res = MD3Port->Event(b, i, "TestHarness");
+			auto res = MD3OSPort->Event(b, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
 
 		// The command remains the same each time, but is consumed in the InjectCommand
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0822003c00"	// Return function 8, Channels == 0, so 1 block to follow.
 																			"7c22aaaaf900");	// Values set above
@@ -1115,27 +1094,20 @@ namespace StationTests
 
 		// The command remains the same each time, but is consumed in the InjectCommand
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e22025900");	// Digital No Change response
 
 		REQUIRE(Response == DesiredResult3);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - DigitalHRERFn9")
 	{
 		// Tests time tagged change response Fn 9
-		WriteConfFileToCurrentWorkingDirectory();
-
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-		MD3Port->Enable();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
+		MD3OSPort->Enable();
 
 		// Request HRER List (Fn 9), Station 0x7C,  sequence # 0, max 10 events, mev = 1
 		MD3BlockFn9 commandblock(0x7C, true, 0, 10,true, true);
@@ -1145,10 +1117,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
-		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		// Inject command as if it came from TCP channel
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		// List should be empty...
 		const std::string DesiredResult1 = { (char)0xfc,0x09,0x00,0x00,0x6a,0x00 };		// Empty HRER response?
@@ -1163,7 +1135,7 @@ namespace StationTests
 		for (int i = 0; i < 16; i++)
 		{
 			const odc::Binary b((i % 2) == 0);
-			auto res = MD3Port->Event(b, i, "TestHarness");
+			auto res = MD3OSPort->Event(b, i, "TestHarness");
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -1173,8 +1145,8 @@ namespace StationTests
 		// The command remains the same each time, but is consumed in the InjectCommand
 		commandblock = MD3BlockFn9(0x7C, true, 2, 10, true, true);
 		output << commandblock.ToBinaryString();
-		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		// Inject command as if it came from TCP channel
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		//TODO: Fn9 Test - Will have a set of blocks containing 10 change records. Need to decode to test as the times will vary by run.
 		//TODO: Need to write the master station decode - code for this in order to be able to check it. The message is going to change each time
@@ -1189,7 +1161,7 @@ namespace StationTests
 		// The command remains the same each time, but is consumed in the InjectCommand
 		commandblock = MD3BlockFn9(0x7C, true, 3, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		// Again need a decode function
 		REQUIRE(Response[2] == 0x30);	// Seq 3, MEV == 0
@@ -1200,7 +1172,7 @@ namespace StationTests
 		// Send the command again, but we should get an empty response. Should only be the one block.
 		commandblock = MD3BlockFn9(0x7C, true, 4, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		// Will get all data changing this time around
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0940006d00"); // No events, seq # = 4
@@ -1210,7 +1182,7 @@ namespace StationTests
 		// Send the command again, we should get the previous response - tests the recovery from lost packet code.
 		commandblock = MD3BlockFn9(0x7C, true, 4, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response == DesiredResult2);
 
@@ -1221,12 +1193,12 @@ namespace StationTests
 
 		MD3BinaryPoint pt1(1, 34, 1, 1, true, changedtime);
 		MD3BinaryPoint pt2(2, 34, 2, 0, true, (MD3Time)(changedtime+32000));
-		MD3Port->AddToDigitalEvents(pt1);
-		MD3Port->AddToDigitalEvents(pt2);
+		MD3OSPort->AddToDigitalEvents(pt1);
+		MD3OSPort->AddToDigitalEvents(pt2);
 
 		commandblock = MD3BlockFn9(0x7C, true,5, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response[2] == 0x58);	// Seq 5, MEV == 1	 The long delay will require another request from the master
 		REQUIRE(Response[3] == 1);
@@ -1235,7 +1207,7 @@ namespace StationTests
 
 		commandblock = MD3BlockFn9(0x7C, true, 6, 10, true, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response[2] == 0x60);	// Seq 6, MEV == 0	 The long delay will require another request from the master
 		REQUIRE(Response[3] == 1);
@@ -1251,29 +1223,20 @@ namespace StationTests
 		MD3BlockData datablock((uint32_t)(currenttime / 1000), true );
 		output << datablock.ToBinaryString();
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e58004900"); // Should get a command rejected response
 		REQUIRE(Response == DesiredResult3);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - DigitalCOSScanFn10")
 	{
 		// Tests change response Fn 10
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		// Request Digital Change Only Fn 10, Station 0x7C, Module 0 scan from the first module, Modules 2 max number to return
 		MD3BlockFn10 commandblock(0x7C, true, 0, 2, true);
@@ -1283,22 +1246,22 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0A00023800" "7c2180008200" "7c22ffffdc00");
 
 		REQUIRE(Response == DesiredResult1);
 
 		const odc::Binary b(false);
-		auto res = MD3Port->Event(b, 100, "TestHarness");	// 0x21, bit 1
+		auto res = MD3OSPort->Event(b, 100, "TestHarness");	// 0x21, bit 1
 
 		// Send the command but start from module 0x22, we did not get all the blocks last time. Test the wrap around
 		commandblock = MD3BlockFn10(0x7C, true, 0x22, 3, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0a22032900"				// Return function 10, ModuleCount =2 so 2 blocks to follow.
 												"7c23ffff8000"
@@ -1307,32 +1270,23 @@ namespace StationTests
 
 		REQUIRE(Response == DesiredResult2);
 
-		// Send the command with 0 startmodule, should return a no change block.
+		// Send the command with 0 start module, should return a no change block.
 		commandblock = MD3BlockFn10(0x7C, true, 0, 2, true);
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e00006500");	// Digital No Change response
 
 		REQUIRE(Response == DesiredResult3);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - DigitalCOSFn11")
 	{
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		// Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on startup to send all data, 15 modules returned
 
@@ -1343,10 +1297,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
-		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		// Inject command as if it came from TCP channel
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		// Will get all data changing this time around
 		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01043700" "210080008100" "2200ffff8300" "2300ffffa200" "3f00ffffca00");
@@ -1357,7 +1311,7 @@ namespace StationTests
 		// No data changes so should get a no change Fn14 block
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15, true);	// Sequence number must increase
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0e02004100");	// Digital No Change response for Fn 11 - different for 7,8,10
 
@@ -1367,7 +1321,7 @@ namespace StationTests
 		// No sequence number shange, so should get the same data back as above.
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15, true);	// Sequence number must increase - but for this test not
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response == DesiredResult2);
 
@@ -1381,14 +1335,14 @@ namespace StationTests
 		for (int i = 0; i < 4; i++)
 		{
 			const odc::Binary b((i % 2) == 0);
-			auto res = MD3Port->Event(b, i, "TestHarness");
+			auto res = MD3OSPort->Event(b, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
 
 		// The command remains the same each time, but is consumed in the InjectCommand
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		// The second block is time, adn will change each run.
 		// The other blocks will have the msec part of the field change.
@@ -1405,13 +1359,13 @@ namespace StationTests
 		MD3BinaryPoint pt1(1, 34, 1, 1, true,  changedtime);
 		MD3BinaryPoint pt2(2, 34, 2, 0, true, (MD3Time)(changedtime + 256));
 		MD3BinaryPoint pt3(3, 34, 3, 1, true, (MD3Time)(changedtime + 0x20000));	// Time gap too big, will require another Master request
-		MD3Port->AddToDigitalEvents(pt1);
-		MD3Port->AddToDigitalEvents(pt2);
-		MD3Port->AddToDigitalEvents(pt3);
+		MD3OSPort->AddToDigitalEvents(pt1);
+		MD3OSPort->AddToDigitalEvents(pt2);
+		MD3OSPort->AddToDigitalEvents(pt3);
 
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 4, 0, true);	// Sequence number must increase
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult4 = BuildHexStringFromASCIIHexString("fc0b04000100" "5aefcc809300" "22fbafff9a00" "00012200a900"	"afff0000e600");
 
@@ -1421,29 +1375,20 @@ namespace StationTests
 		// Get the single event left in the queue
 		commandblock = MD3BlockFn11MtoS(0x7C, 15, 5, 0, true);	// Sequence number must increase
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult5 = BuildHexStringFromASCIIHexString("fc0b05001300" "5aefcd03a500" "00012243ad00" "afff0000e600");
 
 		REQUIRE(Response == DesiredResult5);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - DigitalUnconditionalFn12")
 	{
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		// Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 15 modules returned
 
@@ -1454,10 +1399,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
-		// Send the Digital Uncoditional command in as if came from TCP channel
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		// Inject command as if it came from TCP channel
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01032d00" "210080008100" "2200ffff8300" "2300ffffe200");
 
@@ -1470,7 +1415,7 @@ namespace StationTests
 		for (int i = 0; i < 16; i++)
 		{
 			const odc::Binary b((i % 2) == 0);
-			auto res = MD3Port->Event(b, i, "TestHarness");
+			auto res = MD3OSPort->Event(b, i, "TestHarness");
 
 			REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set.
 		}
@@ -1478,7 +1423,7 @@ namespace StationTests
 		//--------------------------------
 		// Send the same command and sequence number, should get the same data as before - even though we have changed it
 		output << commandblock.ToBinaryString();
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response == DesiredResult1);
 
@@ -1486,29 +1431,20 @@ namespace StationTests
 		commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 2, 3, true);	// Have to change the sequence number
 		output << commandblock.ToBinaryString();
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0b02031b00" "210080008100" "2200aaaaa600" "2300ffffe200");
 
 		REQUIRE(Response == DesiredResult2);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - FreezeResetFn16")
 	{
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		//  Station 0x7C
 		MD3BlockFn16MtoS commandblock(0x7C, true);
@@ -1519,10 +1455,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f01034600");
 
@@ -1533,11 +1469,11 @@ namespace StationTests
 		output << commandblock2.ToBinaryString();
 		Response = "Not Set";
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		REQUIRE(Response =="Not Set");	// As address zero, no response expected
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - POMControlFn17")
 	{
@@ -1553,19 +1489,10 @@ namespace StationTests
 		REQUIRE(sb2.ToString() == "595b0800c000");
 
 		// One of the few multi-block commands
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		//  Station 0x7C
 		MD3BlockFn17MtoS commandblock(0x7C, 37, 1);
@@ -1579,10 +1506,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f25014d00");
 
@@ -1594,7 +1521,7 @@ namespace StationTests
 		MD3BlockData datablock2(1000, true);	// Nonsensical block
 		output << datablock2.ToBinaryString();
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e25014b00");
 
@@ -1607,13 +1534,13 @@ namespace StationTests
 		MD3BlockData datablock3 = commandblock.GenerateSecondBlock();
 		output << datablock3.ToBinaryString();
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24015900");
 
 		REQUIRE(Response == DesiredResult3);	// Control/Scan Rejected Command
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - DOMControlFn19")
 	{
@@ -1633,19 +1560,10 @@ namespace StationTests
 		// This test was written for where the outstation is simply sinking the timedate change command
 		// Will have to change if passed to ODC and events handled here
 		// One of the few multiblock commands
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
 		//  Station 0x7C
@@ -1660,10 +1578,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f25da4400");
 
@@ -1675,7 +1593,7 @@ namespace StationTests
 		MD3BlockData datablock2(1000, true);	// Non nonsensical block
 		output << datablock2.ToBinaryString();
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e250a5300");
 
@@ -1688,30 +1606,21 @@ namespace StationTests
 		MD3BlockData datablock3 = commandblock.GenerateSecondBlock(0x73);
 		output << datablock3.ToBinaryString();
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e240b5a00");
 
 		REQUIRE(Response == DesiredResult3);	// Control/Scan Rejected Command
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - AOMControlFn23")
 	{
 		// One of the few multi-block commands
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 
 		//  Station 0x7C
 		MD3BlockFn23MtoS commandblock(0x7C, 38, 1);
@@ -1725,10 +1634,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f26017b00");
 
@@ -1740,7 +1649,7 @@ namespace StationTests
 		MD3BlockData datablock2(1000, true);	// Non nonsensical block
 		output << datablock2.ToBinaryString();
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e26017d00");
 
@@ -1753,29 +1662,20 @@ namespace StationTests
 		MD3BlockData datablock3 = commandblock.GenerateSecondBlock(0x55);
 		output << datablock3.ToBinaryString();
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24015900");
 
 		REQUIRE(Response == DesiredResult3);	// Control/Scan Rejected Command
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - SystemsSignOnFn40")
 	{
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
 		// System SignOn Command, Station 0 - the slave only responds to a zero address - where it is asked to indetify itself.
@@ -1787,35 +1687,26 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc2883d77100");
 
 		REQUIRE(Response == DesiredResult);
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 	TEST_CASE("Station - ChangeTimeDateFn43")
 	{
 		// This test was written for where the outstation is simply sinking the timedate change command
 		// Will have to change if passed to ODC and events handled here
 		// One of the few multiblock commands
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
-
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3OSPort->Enable();
 		uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 
 		// TimeChange command (Fn 43), Station 0x7C
@@ -1830,10 +1721,10 @@ namespace StationTests
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 		// Send the Command
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		// No need to delay to process result, all done in the InjectCommand at call time.
 		REQUIRE(Response[0] == (char)0xFC);
@@ -1841,16 +1732,16 @@ namespace StationTests
 
 		// Now do again with a bodgy time.
 		output << commandblock.ToBinaryString();
-		MD3BlockData datablock2(1000, true);	// Non sensical time
+		MD3BlockData datablock2(1000, true);	// Nonsensical time
 		output << datablock2.ToBinaryString();
 
-		MD3Port->InjectSimulatedTCPMessage(write_buffer);
+		MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 		// No need to delay to process result, all done in the InjectCommand at call time.
 		REQUIRE(Response[0] == (char)0xFC);
 		REQUIRE(Response[1] == (char)30);	// Control/Scan Rejected Command
 
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 	}
 
 	std::vector<std::string> ResponseVec;
@@ -1880,14 +1771,14 @@ namespace StationTests
 		}
 	}
 
-	TEST_CASE("Station - Multidrop TCP Test")
+	TEST_CASE("Station - Multi-drop TCP Test")
 	{
 		// Here we test the abilility to support multiple Stations on the one Port/IP Combination.
 		// The Stations will be 0x7C, 0x7D
-		WriteConfFileToCurrentWorkingDirectory();
+		WriteConfFilesToCurrentWorkingDirectory();
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
+		IOManager IOMgr(1);
+		asio::io_service IOS(1);	// The 1 is for concurrency hint - usually the number of cores.
 		auto work = std::make_shared<asio::io_service::work>(IOS);	// To keep run - running!
 
 		TestLogger TL(30);	// Just adds the strings to a list which we empty at the end (or when we want to). Set initial size.
@@ -1951,7 +1842,7 @@ namespace StationTests
 		LOG("TEST CODE", openpal::logflags::INFO, "", "Shutting Down ASIO Threads");
 		work.reset();	// Close work.
 		StopIOSThread(IOS, pThread);
-		IOMgr.Shutdown();
+		DumpLoggedMessages(TL);
 		DumpLoggedMessages(TL);
 	}
 #pragma endregion
@@ -1971,52 +1862,37 @@ namespace MasterTests
 		// We can determine this by checking the values stored in the point table.
 		//TODO: SJE It would probably be ideal to have a TestOutStationPort and TestMasterPort that allow us to hook all events with lambdas from the test code. It would only have an ODC and Point table interface.
 
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores. The number of IOS.Run() threads is checked against this.
-		asio::io_service IOS(1);
-		auto work = std::make_shared<asio::io_service::work>(IOS);	// To keep run - running!
+		TEST_MD3MAPort(Json::nullValue);
 
-		TestLogger TL(30);	// Just adds the strings to a list which we empty at the end (or when we want to). Set initial size.
-		IOMgr.AddLogSubscriber(TL); // send log messages to the console
-
-		LOG("TEST CODE", openpal::logflags::INFO, "", "Starting ASIO Threads");
-		std::thread *pThread = StartIOSThread(IOS);
-
-		auto MD3Port = new  MD3MasterPort("TestMaster", conffilename1, Json::nullValue);
 		Json::Value portoverride;
 		portoverride["Port"] = (Json::UInt64)1001;
-		auto MD3OSPort = new  MD3OutstationPort("TestOutStation", conffilename1, portoverride);	// Loads the same config file to have the same points. Override the port
+		TEST_MD3OSPort(portoverride);
 
-		MD3Port->SetIOS(&IOS);
-		MD3Port->AddLogSubscriber(&TL);	// So we catch things!
-
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3OSPort->SetIOS(&IOS);
-		MD3OSPort->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
+		START_IOS();
 
 		// We cannot manually publish an event, this happens within the port.
 		// MD3Port->PublishEvent(b, index);		// Looks at list of subscribers and calls the subscribed events with the parameters passed.
 		// We can manually call the event handler however for testing.
 		// auto res = MD3Port->EventT(b, index, "TestHarness");
 
-		MD3Port->Subscribe(MD3OSPort, "TestLink");	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
+		MD3MAPort->Subscribe(MD3OSPort, "TestLink");	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 													// Usually is a cross subscription, where each subscribes to the other.
 		MD3OSPort->Enable();
-		MD3Port->Enable();
+		MD3MAPort->Enable();
 
 		// Hook the output function with a lambda
 		std::string Response = "Not Set";
-		MD3Port->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+		MD3MAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
-		INFO("Analog Unconditonal Fn5");
+		INFO("Analog Unconditional Fn5");
 		{
 			// Now send a request analog unconditional command - asio does not need to run to see this processed.
 			MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
-			MD3Port->QueueMD3Command(sendcommandblock);
+			MD3MAPort->QueueMD3Command(sendcommandblock);
 
-			// We check the command, but it does not go anywhere, we inject the excpected response below.
+			// We check the command, but it does not go anywhere, we inject the expected response below.
 			const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c05200f5200");
 			REQUIRE(Response == DesiredResponse);
 
@@ -2038,17 +1914,17 @@ namespace MasterTests
 			output << Payload;
 
 			// Send the Analog Unconditional command in as if came from TCP channel
-			MD3Port->InjectSimulatedTCPMessage(write_buffer);
+			MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
 
 			// To check the result, see if the points in the master point list have been changed to the correct values.
 			uint16_t res = 0;
-			MD3Port->GetAnalogValueUsingMD3Index(0x20, 0, res);
+			MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
 			REQUIRE(res == 0x1000);
-			MD3Port->GetAnalogValueUsingMD3Index(0x20, 1, res);
+			MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res);
 			REQUIRE(res == 0x1101);
-			MD3Port->GetAnalogValueUsingMD3Index(0x20, 7, res);
+			MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res);
 			REQUIRE(res == 0x1707);
-			MD3Port->GetAnalogValueUsingMD3Index(0x20, 8, res);
+			MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
 			REQUIRE(res == 0x1808);
 
 			// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
@@ -2064,10 +1940,10 @@ namespace MasterTests
 
 		INFO("Analog Delta Fn6");
 		{
-			// We need to have done an Uncontional to correctly test a delta so do following the previous test.
+			// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 			// Same address and channels as above
 			MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
-			MD3Port->QueueMD3Command(sendcommandblock);
+			MD3MAPort->QueueMD3Command(sendcommandblock);
 
 			// We check the command, but it does not go anywhere, we inject the excpected response below.
 			const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c06200f7600");
@@ -2093,18 +1969,18 @@ namespace MasterTests
 			output << b4.ToBinaryString();
 
 			// Send the command in as if came from TCP channel
-			MD3Port->InjectSimulatedTCPMessage(write_buffer);
+			MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
 
 			// To check the result, see if the points in the master point list have been changed to the correct values.
 			uint16_t res = 0;
-			MD3Port->GetAnalogValueUsingMD3Index(0x20, 0, res);
+			MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
 			REQUIRE(res == 0x0FFF);	// -1
-			MD3Port->GetAnalogValueUsingMD3Index(0x20, 1, res);
+			MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res);
 			REQUIRE(res == 0x1102);	// +1
-			MD3Port->GetAnalogValueUsingMD3Index(0x20, 7, res);
+			MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res);
 			REQUIRE(res == 0x168A);	// 0x1707 - 125
 
-			MD3Port->GetAnalogValueUsingMD3Index(0x20, 8, res);
+			MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
 			REQUIRE(res == 0x1808);	// Unchanged
 
 			// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
@@ -2122,117 +1998,76 @@ namespace MasterTests
 			REQUIRE(res == 0x1808);	// Unchanged
 		}
 
-		LOG("TEST CODE", openpal::logflags::INFO, "", "Shutting Down ASIO Threads");
-		work.reset();
-		StopIOSThread(IOS, pThread);
-		IOMgr.Shutdown();
+		STOP_IOS();
 		DumpLoggedMessages(TL);
 	}
 
 	TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 	{
 		// When ODC signals that it has regained communication up the line (or is a new connection), we will resend all data through ODC.
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores. The number of IOS.Run() threads is checked against this.
-		asio::io_service IOS(1);
+		TEST_MD3MAPort(Json::nullValue);
 
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
-
-		auto MD3Port = new  MD3MasterPort("TestMaster", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
+		MD3MAPort->Enable();
 
 		//  We need to register a couple of handlers to be able to receive the event sent below.
 		// The DataConnector normally handles this when ODC is running.
 
 		// This will result in sending all current data through ODC events.
-		auto res = MD3Port->ConnectionEvent(odc::CONNECTED,"TestHarness");
+		auto res = MD3MAPort->ConnectionEvent(odc::CONNECTED,"TestHarness");
 
 		REQUIRE((res.get() == odc::CommandStatus::SUCCESS));	// The Get will Wait for the result to be set. 1 is defined
 
 		// If we loose communication down the line (TCP) we then set all data to COMMS-LOST quality through ODC so the ports
 		// connected know that data is now not valid. As the MD3 slave maintains its own copy of data, to respond to polls, this is important.
-		IOMgr.Shutdown();
-	}
 
-	std::vector<std::string> ResponseVec;
-
-	void ResponseCallback(buf_t& readbuf)
-	{
-		int bufsize = readbuf.size();
-		std::string S(bufsize, 0);
-
-		for (int i = 0; i < bufsize; i++)
-		{
-			S[i] = readbuf.sgetc();
-			readbuf.consume(1);
-		}
-
-		ResponseVec.push_back(S);	// Store so we can check
-	}
-	void SocketStateHandler(bool state)
-	{
-		std::string msg;
-		if (state)
-		{
-
-			msg = "Connection established.";
-		}
-		else
-		{
-			msg = "Connection closed.";
-		}
+		DumpLoggedMessages(TL);
 	}
 
 	TEST_CASE("Master - Binary Scan Test")
 	{
-		// Here we test the abilility to support multiple Stations on the one Port/IP Combination.
-		// The Stations will be 0x7C, 0x01, 0x5C
-		//
+		// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
 
-		WriteConfFileToCurrentWorkingDirectory();
+		STANDARD_TEST_SETUP();
+		TEST_MD3OSPort(Json::nullValue);
+		TEST_MD3OSPort2(Json::nullValue);
 
-		IOManager IOMgr(1);	// The 1 is for concurrency hint - usually the number of cores.
-		asio::io_service IOS(1);
+		START_IOS();
 
-		IOMgr.AddLogSubscriber(asiodnp3::ConsoleLogger::Instance()); // send log messages to the console
+		MD3OSPort->Enable();
+		MD3OSPort2->Enable();
 
-		std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
-
-		auto MD3Port = new  MD3OutstationPort("TestPLC", conffilename1, Json::nullValue);
-
-		MD3Port->SetIOS(&IOS);
-		MD3Port->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port->Enable();
-
-		auto MD3Port2 = new  MD3OutstationPort("TestPLC", conffilename2, Json::nullValue);
-
-		MD3Port2->SetIOS(&IOS);
-		MD3Port2->BuildOrRebuild(IOMgr, DEBUG_LOG_LEVEL);
-
-		MD3Port2->Enable();
-
-		// We dont have to consider the timer going out of scope in this use case.
-		Timer_t timer(IOS);
-		timer.expires_from_now(std::chrono::seconds(5));
-		timer.async_wait([&IOS, &MD3Port, &MD3Port2](asio::error_code err_code)	// [=] all autos by copy, [&] all autos by ref
+		std::vector<std::string> ResponseVec;
+		auto ResponseCallback = [&](buf_t& readbuf)
 		{
-			// If there was no more work, the asio::io_service will exit from the IOS.run() below.
-			// However something is keeping it running, so use the stop command to force the issue.
-			IOS.stop();
-		});
+			int bufsize = readbuf.size();
+			std::string S(bufsize, 0);
+
+			for (int i = 0; i < bufsize; i++)
+			{
+				S[i] = readbuf.sgetc();
+				readbuf.consume(1);
+			}
+			ResponseVec.push_back(S);	// Store so we can check
+		};
+
+		std::string msg;
+		auto SocketStateHandler = [&](bool state)
+		{
+			if (state)
+				msg = "Connection established.";
+			else
+				msg = "Connection closed.";
+		};
 
 		// An outstation is a server by default (Master connects to it...)
 		// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
+		std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 		pSockMan.reset(new TCPSocketManager<std::string>
 			(&IOS, false, "127.0.0.1", "1000",
-				std::bind(&ResponseCallback, std::placeholders::_1),
-				std::bind(&SocketStateHandler, std::placeholders::_1),
+				ResponseCallback, //std::bind(&ResponseCallback, this, std::placeholders::_1),
+				SocketStateHandler, //std::bind(&SocketStateHandler, this, std::placeholders::_1),
 				true, 500));
 		pSockMan->Open();
 
@@ -2245,9 +2080,7 @@ namespace MasterTests
 		MD3BlockFn16MtoS commandblock2(0x7D, true);
 		pSockMan->Write(commandblock2.ToBinaryString());
 
-		IOS.run();	// Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
-					// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
-					// If the IOS runs out of work, it must be reset before being run again.
+		Wait(IOS, 5);	// Allow async processes to run.
 
 		// Need to handle multiple responses...
 		// Deal with the last response first...
@@ -2262,10 +2095,11 @@ namespace MasterTests
 		REQUIRE(ResponseVec.empty());
 
 		pSockMan->Close();
-		MD3Port->Disable(); //TODO: SJE Have a problem with this not shutting down correctly. Have to look at that - casues usbsequent tests to fail
-		MD3Port2->Disable();
+		MD3OSPort->Disable();
+		MD3OSPort2->Disable();
 
-		IOMgr.Shutdown();
+		STOP_IOS();
+		DumpLoggedMessages(TL);
 	}
 #pragma endregion
 }
