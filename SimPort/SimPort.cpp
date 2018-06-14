@@ -528,6 +528,8 @@ void SimPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, co
 						}
 					}
 				}
+				(*pStatusCallback)(CommandStatus::SUCCESS);
+				return;
 			}
 			(*pStatusCallback)(CommandStatus::UNDEFINED);
 			return;
