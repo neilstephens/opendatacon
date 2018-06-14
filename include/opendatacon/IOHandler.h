@@ -125,14 +125,23 @@ protected:
 			if(*pCombinedStatus == CommandStatus::UNDEFINED)
 				return;
 
-			if(*pExecCount == 0)
+			if(++(*pExecCount) == 1)
+			{
 				*pCombinedStatus = status;
+				if(*pCombinedStatus == CommandStatus::UNDEFINED)
+				{
+					(*pStatusCallback)(*pCombinedStatus);
+					return;
+				}
+			}
 			else if(status != *pCombinedStatus)
 			{
 				*pCombinedStatus = CommandStatus::UNDEFINED;
 				(*pStatusCallback)(*pCombinedStatus);
+				return;
 			}
-			else if(++(*pExecCount) >= cb_number)
+
+			if(*pExecCount >= cb_number)
 			{
 				(*pStatusCallback)(*pCombinedStatus);
 			}
