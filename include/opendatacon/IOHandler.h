@@ -103,6 +103,10 @@ protected:
 	template<class T>
 	void PublishEvent(const T& meas, uint16_t index, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
 	{
+		if(pIOS == nullptr)
+		{
+			throw std::runtime_error("Uninitialised io_service on enabled IOHandler");
+		}
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(auto IOHandler_pair: Subscribers)
 		{

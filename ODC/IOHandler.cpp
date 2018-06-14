@@ -40,6 +40,7 @@ std::unordered_map<std::string, IOHandler*>& IOHandler::GetIOHandlers()
 IOHandler::IOHandler(const std::string& aName): Name(aName),
 	pLoggers(new asiopal::LogFanoutHandler()),
 	LOG_LEVEL(openpal::logflags::WARN),
+	pIOS(nullptr),
 	enabled(false),
 	InitState(InitState_t::ENABLED),
 	EnableDelayms(0)
