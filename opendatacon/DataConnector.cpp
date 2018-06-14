@@ -253,6 +253,7 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 
 			pSendee->Event(new_event_obj, index, this->Name, multi_callback);
 		}
+		return;
 	}
 	//no connection for sender if we get here
 	std::string msg = "Connector '"+this->Name+"' discarding event from '"+SenderName+"' (No connection defined)";
