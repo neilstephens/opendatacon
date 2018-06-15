@@ -311,15 +311,15 @@ inline void DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::strin
 	}
 	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 	auto lambda = [=](const T &existing)
-	{
-		//TODO: break out specialised templates for Binary types. The state bit for binary quality is 'reserved' for other currently supported types - preserving it will be OK for now
-		uint8_t state = existing.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::STATE);
+			  {
+				  //TODO: break out specialised templates for Binary types. The state bit for binary quality is 'reserved' for other currently supported types - preserving it will be OK for now
+				  uint8_t state = existing.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::STATE);
 
-		T updated = existing;
-		updated.quality = static_cast<uint8_t>(qual) | state;
-		updated.time = Timestamp(eventTime);
-		return updated;
-	};
+				  T updated = existing;
+				  updated.quality = static_cast<uint8_t>(qual) | state;
+				  updated.time = Timestamp(eventTime);
+				  return updated;
+			  };
 	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);
 	{ //transaction scope
 		asiodnp3::MeasUpdate tx(pOutstation);
@@ -352,9 +352,9 @@ inline void DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::strin
 		asiodnp3::MeasUpdate tx(pOutstation);
 
 		if (
-		      (pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-		      ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time == 0))
-		      )
+			(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
+			((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time == 0))
+			)
 		{
 			T newmeas(meas.value, meas.quality, opendnp3::DNPTime(eventTime));
 			tx.Update(newmeas, index);

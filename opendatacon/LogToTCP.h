@@ -30,7 +30,7 @@
 #include <chrono>
 #include <opendatacon/TCPSocketManager.h>
 
-class LogToTCP : public openpal::ILogHandler
+class LogToTCP: public openpal::ILogHandler
 {
 public:
 	LogToTCP();

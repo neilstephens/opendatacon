@@ -33,9 +33,9 @@ LogToTCP::LogToTCP():
 void LogToTCP::Startup(std::string IP, std::string Port, asio::io_service* pIOS, bool isClient)
 {
 	pSockMan.reset(new odc::TCPSocketManager<std::string>(pIOS,!isClient,IP,Port,
-			  std::bind(&LogToTCP::ReadCallback,this,std::placeholders::_1),
-			  std::bind(&LogToTCP::StateCallback,this,std::placeholders::_1),
-			  true));
+			std::bind(&LogToTCP::ReadCallback,this,std::placeholders::_1),
+			std::bind(&LogToTCP::StateCallback,this,std::placeholders::_1),
+			true));
 	pSockMan->Open();
 }
 
@@ -52,7 +52,7 @@ void LogToTCP::Log( const openpal::LogEntry& arEntry )
 		return;
 
 	std::string time_str = "TODO: timestamp"; //move platform specific timestamp code from LogToFile into Platform.h or util.h
-	std::string filter_str = "TODO: level"; //FilterToString(arEntry.GetFilters()); move from LogToFile into Platform.h or util.h
+	std::string filter_str = "TODO: level";   //FilterToString(arEntry.GetFilters()); move from LogToFile into Platform.h or util.h
 
 	std::stringstream SS;
 	SS <<time_str<<" - "<< filter_str<<" - "<<arEntry.GetAlias();

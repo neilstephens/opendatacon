@@ -178,9 +178,9 @@ void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters&
 
 	//Allocate memory for bits, input bits, registers, and input registers */
 	mb_mapping = modbus_mapping_new(pConf->pPointConf->BitIndicies.Total(),
-	                                pConf->pPointConf->InputBitIndicies.Total(),
-	                                pConf->pPointConf->RegIndicies.Total(),
-	                                pConf->pPointConf->InputRegIndicies.Total());
+		pConf->pPointConf->InputBitIndicies.Total(),
+		pConf->pPointConf->RegIndicies.Total(),
+		pConf->pPointConf->InputRegIndicies.Total());
 	if (mb_mapping == NULL)
 	{
 		std::string msg = Name + ": Failed to allocate the modbus register mapping: " + std::string(modbus_strerror(errno));

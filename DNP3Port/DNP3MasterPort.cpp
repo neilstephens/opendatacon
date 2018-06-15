@@ -95,18 +95,18 @@ void DNP3MasterPort::PortDown()
 {
 	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	
+
 	{
 		std::string msg = Name + ": Setting point quality to COMM_LOST";
 		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
 	}
-	
+
 	for (auto index : pConf->pPointConf->BinaryIndicies)
 		PublishEvent(BinaryQuality::COMM_LOST, index);
 	for (auto index : pConf->pPointConf->AnalogIndicies)
 		PublishEvent(AnalogQuality::COMM_LOST, index);
-	
+
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(BinaryQuality::ONLINE))
 	{
@@ -159,9 +159,9 @@ void DNP3MasterPort::OnLinkDown()
 
 			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
 			pIOS->post([&]()
-				     {
-					     DisableStack();
-				     });
+				{
+					DisableStack();
+				});
 		}
 	}
 }
@@ -266,18 +266,18 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 	Timestamp eventTime = Timestamp(asiopal::UTCTimeSource::Instance().Now().msSinceEpoch);
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	meas.ForeachItem([&](const opendnp3::Indexed<T>&pair)
-					 {
-						 if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-							 ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time == 0)))
-						 {
-							 decltype(pair.value) newmeas(pair.value.value, pair.value.quality, eventTime);
-							 PublishEvent(newmeas,pair.index);
-						 }
-						 else
-						 {
-							 PublishEvent(pair.value,pair.index);
-						 }
-					 });
+		{
+			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
+			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time == 0)))
+			{
+			      decltype(pair.value)newmeas(pair.value.value, pair.value.quality, eventTime);
+			      PublishEvent(newmeas,pair.index);
+			}
+			else
+			{
+			      PublishEvent(pair.value,pair.index);
+			}
+		});
 }
 
 //Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
@@ -315,19 +315,19 @@ void DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& Send
 		pLoggers->Log(log_entry);
 
 		pIOS->post([&]()
-		           {
-		                 EnableStack();
-			     });
+			{
+				EnableStack();
+			});
 	}
 
 	// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
 	if (stack_enabled && state == ConnectState::DISCONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 	{
 		pIOS->post([&]()
-		           {
-		                 DisableStack();
-		                 PortDown();
-			     });
+			{
+				DisableStack();
+				PortDown();
+			});
 	}
 
 	(*pStatusCallback)(CommandStatus::SUCCESS);
@@ -365,25 +365,25 @@ inline void DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::stri
 			pLoggers->Log(log_entry);
 
 			auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
-			{
-				auto status = CommandStatus::UNDEFINED;
-				switch(response.summary)
-				{
-					case opendnp3::TaskCompletion::SUCCESS:
-						status = CommandStatus::SUCCESS;
-						break;
-					case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
-						status = CommandStatus::TIMEOUT;
-						break;
-					case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
-					case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
-					default:
-						status = CommandStatus::UNDEFINED;
-						break;
-				}
-				(*pStatusCallback)(status);
-				return;
-			};
+						  {
+							  auto status = CommandStatus::UNDEFINED;
+							  switch(response.summary)
+							  {
+								  case opendnp3::TaskCompletion::SUCCESS:
+									  status = CommandStatus::SUCCESS;
+									  break;
+								  case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
+									  status = CommandStatus::TIMEOUT;
+									  break;
+								  case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
+								  case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
+								  default:
+									  status = CommandStatus::UNDEFINED;
+									  break;
+							  }
+							  (*pStatusCallback)(status);
+							  return;
+						  };
 
 			this->pMaster->DirectOperate(lCommand,index,DNP3Callback);
 

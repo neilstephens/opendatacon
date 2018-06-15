@@ -33,7 +33,8 @@
 #include "ConfigParser.h"
 #include "IUIResponder.h"
 
-namespace odc {
+namespace odc
+{
 typedef opendnp3::ChannelState ChannelState;
 
 class DataPort: public IOHandler, public ConfigParser
@@ -44,7 +45,7 @@ public:
 		ConfigParser(aConfFilename, aConfOverrides),
 		pConf(nullptr)
 	{}
-	~DataPort() override{}
+	~DataPort() override {}
 
 	void Enable() override =0;
 	void Disable() override =0;

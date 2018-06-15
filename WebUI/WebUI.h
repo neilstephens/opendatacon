@@ -47,13 +47,13 @@ public:
 
 	/* HTTP response handler call back */
 	int http_ahc(void *cls,
-	             struct MHD_Connection *connection,
-	             const char *url,
-	             const char *method,
-	             const char *version,
-	             const char *upload_data,
-	             size_t *upload_data_size,
-	             void **ptr);
+		struct MHD_Connection *connection,
+		const char *url,
+		const char *method,
+		const char *version,
+		const char *upload_data,
+		size_t *upload_data_size,
+		void **ptr);
 
 private:
 	struct MHD_Daemon * d;

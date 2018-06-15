@@ -72,7 +72,7 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 		if (!parse_success)
 		{
 			std::cout << "Failed to parse configuration from '"<<FileName<<"'\n"
-				    << err_str <<std::endl;
+			          << err_str <<std::endl;
 			return nullptr;
 		}
 	}

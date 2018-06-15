@@ -38,7 +38,7 @@ class DataConnector: public IOHandler, public ConfigParser
 {
 public:
 	DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
-	~DataConnector() override{}
+	~DataConnector() override {}
 
 	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override;
 	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override;
@@ -84,7 +84,7 @@ protected:
 
 	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*> > Connections;
 	std::multimap<std::string,std::string> SenderConnectionsLookup;
-	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform, void(*)(Transform*)> > > ConnectionTransforms;
+	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform, void (*)(Transform*)> > > ConnectionTransforms;
 };
 
 #endif /* DATACONNECTOR_H_ */

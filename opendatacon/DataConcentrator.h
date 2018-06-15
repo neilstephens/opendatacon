@@ -70,7 +70,7 @@ private:
 	std::once_flag shutdown_flag;
 
 	openpal::LogFilters LOG_LEVEL;
-	LogToFile FileLog;                             //Prints all messages to a rolling set of log files.
+	LogToFile FileLog; //Prints all messages to a rolling set of log files.
 	LogToTCP TCPLog;
 	asiopal::LogFanoutHandler FanoutHandler;
 };

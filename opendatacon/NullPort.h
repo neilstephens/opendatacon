@@ -43,12 +43,12 @@ public:
 	{
 		pTimer.reset(new Timer_t(*pIOS, std::chrono::seconds(3)));
 		pTimer->async_wait(
-		      [this](asio::error_code err_code)
-		      {
-		            if (err_code != asio::error::operation_aborted)
+			[this](asio::error_code err_code)
+			{
+				if (err_code != asio::error::operation_aborted)
 				{
-					PublishEvent(ConnectState::PORT_UP, 0);
-					PublishEvent(ConnectState::CONNECTED, 0);
+				      PublishEvent(ConnectState::PORT_UP, 0);
+				      PublishEvent(ConnectState::CONNECTED, 0);
 				}
 			});
 		return;
@@ -60,8 +60,8 @@ public:
 		PublishEvent(ConnectState::PORT_DOWN, 0);
 		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override{}
-	void ProcessElements(const Json::Value& JSONRoot) override{}
+	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override {}
+	void ProcessElements(const Json::Value& JSONRoot) override {}
 
 	//so the compiler won't warn we're hiding the base class overload we still want to use
 	using DataPort::Event;

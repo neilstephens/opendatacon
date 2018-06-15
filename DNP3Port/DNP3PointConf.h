@@ -119,7 +119,7 @@ public:
 	std::map<size_t, opendnp3::PointClass> BinaryClasses;
 	std::map<size_t, opendnp3::Binary::StaticVariation> StaticBinaryResponses;
 	std::map<size_t, opendnp3::Binary::EventVariation> EventBinaryResponses;
-	
+
 	std::vector<uint32_t> AnalogIndicies;
 	std::map<size_t, opendnp3::Analog> AnalogStartVals;
 	std::map<size_t, opendnp3::Analog::StaticVariation> StaticAnalogResponses;

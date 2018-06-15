@@ -23,10 +23,10 @@
 #pragma endregion
 
 DataConcentratorService::DataConcentratorService(ODCArgs& aArgs,
-                                                 PWSTR pszServiceName,
-                                                 BOOL fCanStop,
-                                                 BOOL fCanShutdown,
-                                                 BOOL fCanPauseContinue)
+	PWSTR pszServiceName,
+	BOOL fCanStop,
+	BOOL fCanShutdown,
+	BOOL fCanPauseContinue)
 	: CServiceBase(pszServiceName, fCanStop, fCanShutdown, fCanPauseContinue), Args(aArgs), TheDataConcentrator(nullptr)
 {
 	m_fStopping = FALSE;
@@ -80,7 +80,7 @@ void DataConcentratorService::OnStart(DWORD dwArgc, LPWSTR *lpszArgv)
 {
 	// Log a service start message to the Application log.
 	WriteEventLogEntry(L"CppWindowsService in OnStart",
-	                   EVENTLOG_INFORMATION_TYPE);
+		EVENTLOG_INFORMATION_TYPE);
 
 	try
 	{
@@ -134,7 +134,7 @@ void DataConcentratorService::OnStop()
 {
 	// Log a service stop message to the Application log.
 	WriteEventLogEntry(L"CppWindowsService in OnStop",
-	                   EVENTLOG_INFORMATION_TYPE);
+		EVENTLOG_INFORMATION_TYPE);
 
 	// Indicate that the service is stopping and wait for the finish of the
 	// main service function (ServiceWorkerThread).

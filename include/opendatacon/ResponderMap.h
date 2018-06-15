@@ -33,38 +33,39 @@
 #include <regex>
 
 template <class T>
-class ResponderMap: public std::unordered_map<std::string, std::unique_ptr<T,void(*)(T*)> >, public IUIResponder
+class ResponderMap: public std::unordered_map<std::string, std::unique_ptr<T,void (*)(T*)> >, public IUIResponder
 {
 public:
 	ResponderMap()
 	{
-		this->AddCommand("List", [this](const ParamCollection &params){
-		                       Json::Value result;
+		this->AddCommand("List", [this](const ParamCollection &params)
+			{
+				Json::Value result;
 
-		                       result["Commands"] = GetCommandList();
+				result["Commands"] = GetCommandList();
 
-					     Json::Value vec;
-					     if(params.count("Target") == 0)
-					     {
-						     for(auto& responder: *this)
-						     {
-							     vec.append(Json::Value(responder.first));
-						     }
-					     }
-					     else
-					     {
-						     auto list = GetTargetNames(params);
-						     for(auto& target: list)
-						     {
-							     vec.append(Json::Value(target));
-						     }
-					     }
-					     result["Items"]  = vec;
+				Json::Value vec;
+				if(params.count("Target") == 0)
+				{
+				      for(auto& responder: *this)
+				      {
+				            vec.append(Json::Value(responder.first));
+					}
+				}
+				else
+				{
+				      auto list = GetTargetNames(params);
+				      for(auto& target: list)
+				      {
+				            vec.append(Json::Value(target));
+					}
+				}
+				result["Items"]  = vec;
 
-		                       return result;
-				     }, "Returns a list of commands and items for this collection. Optional argument: regex for which items to match", false);
+				return result;
+			}, "Returns a list of commands and items for this collection. Optional argument: regex for which items to match", false);
 	}
-	~ResponderMap() override{}
+	~ResponderMap() override {}
 
 	std::vector<T*> GetTargets(const ParamCollection& params)
 	{

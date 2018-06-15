@@ -65,7 +65,7 @@ void LogToFile::OpenNextLog()
 			break;
 		mLogFile.close();
 		++mFileIndex %= mNumFiles;
-	}while(mFileIndex != starting_index);
+	} while(mFileIndex != starting_index);
 
 	//If no logs in progress, open the first one we can
 	if(!mLogFile.is_open())

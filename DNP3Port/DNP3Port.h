@@ -37,7 +37,7 @@ class DNP3Port: public DataPort
 {
 public:
 	DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
-	~DNP3Port() override{}
+	~DNP3Port() override {}
 
 	void Enable() override =0;
 	void Disable() override =0;

@@ -73,16 +73,16 @@ const std::string GetPath(const std::string& rUrl);
 const std::string GetFile(const std::string& rUrl);
 
 int CreateNewRequest(void *cls,
-                     struct MHD_Connection *connection,
-                     const char *url,
-                     const char *method,
-                     const char *version,
-                     const char *upload_data,
-                     size_t *upload_data_size,
-                     void **con_cls);
+	struct MHD_Connection *connection,
+	const char *url,
+	const char *method,
+	const char *version,
+	const char *upload_data,
+	size_t *upload_data_size,
+	void **con_cls);
 void request_completed(void *cls, struct MHD_Connection *connection,
-                       void **con_cls,
-                       enum MHD_RequestTerminationCode toe);
+	void **con_cls,
+	enum MHD_RequestTerminationCode toe);
 int ReturnFile(struct MHD_Connection *connection, const char *url);
 int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr);
 

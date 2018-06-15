@@ -36,7 +36,7 @@
 
 namespace odc
 {
-	
+
 enum ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 
 typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
@@ -99,7 +99,7 @@ protected:
 	bool InDemand();
 	std::map<std::string,bool> connection_demands;
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
-	
+
 	template<class T>
 	void PublishEvent(const T& meas, uint16_t index, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
 	{
@@ -120,32 +120,32 @@ protected:
 		auto pExecCount = std::make_shared<size_t>(0);
 		auto pCB_sync = std::make_shared<asio::strand>(*pIOS);
 		return std::make_shared<std::function<void (CommandStatus status)>>
-		(pCB_sync->wrap([=](CommandStatus status)
-		{
-			if(*pCombinedStatus == CommandStatus::UNDEFINED)
-				return;
+			       (pCB_sync->wrap([=](CommandStatus status)
+					 {
+						 if(*pCombinedStatus == CommandStatus::UNDEFINED)
+							 return;
 
-			if(++(*pExecCount) == 1)
-			{
-				*pCombinedStatus = status;
-				if(*pCombinedStatus == CommandStatus::UNDEFINED)
-				{
-					(*pStatusCallback)(*pCombinedStatus);
-					return;
-				}
-			}
-			else if(status != *pCombinedStatus)
-			{
-				*pCombinedStatus = CommandStatus::UNDEFINED;
-				(*pStatusCallback)(*pCombinedStatus);
-				return;
-			}
+						 if(++(*pExecCount) == 1)
+						 {
+						       *pCombinedStatus = status;
+						       if(*pCombinedStatus == CommandStatus::UNDEFINED)
+						       {
+						             (*pStatusCallback)(*pCombinedStatus);
+						             return;
+							 }
+						 }
+						 else if(status != *pCombinedStatus)
+						 {
+						       *pCombinedStatus = CommandStatus::UNDEFINED;
+						       (*pStatusCallback)(*pCombinedStatus);
+						       return;
+						 }
 
-			if(*pExecCount >= cb_number)
-			{
-				(*pStatusCallback)(*pCombinedStatus);
-			}
-		}));
+						 if(*pExecCount >= cb_number)
+						 {
+						       (*pStatusCallback)(*pCombinedStatus);
+						 }
+					 }));
 	}
 
 private:
@@ -154,7 +154,7 @@ private:
 	// Important that this is private - for inter process memory management
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;
 };
-	
+
 }
 
 #endif /* IOHANDLER_H_ */

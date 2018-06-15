@@ -112,11 +112,11 @@ void JSONPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
 
 	//TODO: use event buffer size once socket manager supports it
 	pSockMan.reset(new TCPSocketManager<std::string>
-			   (pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
-			    std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
-			    std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
-			    true,
-			    pConf->retry_time_ms));
+			(pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
+			std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
+			std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
+			true,
+			pConf->retry_time_ms));
 }
 
 void JSONPort::ReadCompletionHandler(buf_t& readbuf)
@@ -181,15 +181,15 @@ void JSONPort::ProcessBraced(const std::string& braced)
 		//little functor to traverse any paths, starting at the root
 		//pass a JSON array of nodes representing the path (that's how we store our point config after all)
 		auto TraversePath = [&JSONRoot](const Json::Value& nodes)
-		{
-			//val will traverse any paths, starting at the root
-			auto val = JSONRoot;
-			//traverse
-			for(unsigned int n = 0; n < nodes.size(); ++n)
-				if((val = val[nodes[n].asCString()]).isNull())
-					break;
-			return val;
-		};
+					  {
+						  //val will traverse any paths, starting at the root
+						  auto val = JSONRoot;
+						  //traverse
+						  for(unsigned int n = 0; n < nodes.size(); ++n)
+							  if((val = val[nodes[n].asCString()]).isNull())
+								  break;
+						  return val;
+					  };
 
 		Json::Value timestamp_val = TraversePath(pConf->pPointConf->TimestampPath);
 
@@ -262,45 +262,45 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				//work out control code to send
 				if(point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
 				{
-					auto check_val = [&](std::string truename, std::string falsename)->bool
-					{
-						bool ret = true;
-						if(point_pair.second.isMember(truename))
-						{
-							ret = (val == point_pair.second[truename]);
-							if(point_pair.second.isMember(falsename))
-								if (!ret && (val != point_pair.second[falsename]))
-									throw std::runtime_error("unexpected control value");
-						}
-						else if(point_pair.second.isMember(falsename))
-							ret = !(val == point_pair.second[falsename]);
-						else if(val.isNumeric() || val.isBool())
-							ret = val.asBool();
-						else if(val.isString()) //Guess some sensible default on/off/trip/close values
-						{
-							//TODO: replace with regex?
-							ret = (val.asString() == "true" ||
-								 val.asString() == "True" ||
-								 val.asString() == "TRUE" ||
-								 val.asString() == "on" ||
-								 val.asString() == "On" ||
-								 val.asString() == "ON" ||
-								 val.asString() == "close" ||
-								 val.asString() == "Close" ||
-								 val.asString() == "CLOSE");
-							if(!ret && (val.asString() != "false" &&
-									val.asString() != "False" &&
-									val.asString() != "FALSE" &&
-									val.asString() != "off" &&
-									val.asString() != "Off" &&
-									val.asString() != "OFF" &&
-									val.asString() != "trip" &&
-									val.asString() != "Trip" &&
-									val.asString() != "TRIP"))
-								throw std::runtime_error("unexpected control value");
-						}
-						return ret;
-					};
+					auto check_val = [&](std::string truename, std::string falsename) -> bool
+							     {
+								     bool ret = true;
+								     if(point_pair.second.isMember(truename))
+								     {
+									     ret = (val == point_pair.second[truename]);
+									     if(point_pair.second.isMember(falsename))
+										     if (!ret && (val != point_pair.second[falsename]))
+											     throw std::runtime_error("unexpected control value");
+								     }
+								     else if(point_pair.second.isMember(falsename))
+									     ret = !(val == point_pair.second[falsename]);
+								     else if(val.isNumeric() || val.isBool())
+									     ret = val.asBool();
+								     else if(val.isString()) //Guess some sensible default on/off/trip/close values
+								     {
+									     //TODO: replace with regex?
+									     ret = (val.asString() == "true" ||
+									            val.asString() == "True" ||
+									            val.asString() == "TRUE" ||
+									            val.asString() == "on" ||
+									            val.asString() == "On" ||
+									            val.asString() == "ON" ||
+									            val.asString() == "close" ||
+									            val.asString() == "Close" ||
+									            val.asString() == "CLOSE");
+									     if(!ret && (val.asString() != "false" &&
+									                 val.asString() != "False" &&
+									                 val.asString() != "FALSE" &&
+									                 val.asString() != "off" &&
+									                 val.asString() != "Off" &&
+									                 val.asString() != "OFF" &&
+									                 val.asString() != "trip" &&
+									                 val.asString() != "Trip" &&
+									                 val.asString() != "TRIP"))
+										     throw std::runtime_error("unexpected control value");
+								     }
+								     return ret;
+							     };
 
 					auto cm = point_pair.second["ControlMode"].asString();
 					if(cm == "LATCH")
@@ -351,27 +351,27 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					command.offTimeMS = point_pair.second["OffTimems"].asUInt();
 
 				auto pStatusCallback =
-				std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
-				{
-					Json::Value result;
-					result["Command"]["Index"] = point_pair.first;
+					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
+						{
+							Json::Value result;
+							result["Command"]["Index"] = point_pair.first;
 
-					if(command_stat == CommandStatus::SUCCESS)
-						result["Command"]["Status"] = "SUCCESS";
-					else
-						result["Command"]["Status"] = "UNDEFINED";
+							if(command_stat == CommandStatus::SUCCESS)
+								result["Command"]["Status"] = "SUCCESS";
+							else
+								result["Command"]["Status"] = "UNDEFINED";
 
-					//TODO: make this writer reusable (class member)
-					//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
-					Json::StreamWriterBuilder wbuilder;
-					if(!pConf->style_output)
-						wbuilder["indentation"] = "";
-					std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+							//TODO: make this writer reusable (class member)
+							//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+							Json::StreamWriterBuilder wbuilder;
+							if(!pConf->style_output)
+								wbuilder["indentation"] = "";
+							std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
 
-					std::ostringstream oss;
-					pWriter->write(result, &oss); oss<<std::endl;
-					pSockMan->Write(oss.str());
-				});
+							std::ostringstream oss;
+							pWriter->write(result, &oss); oss<<std::endl;
+							pSockMan->Write(oss.str());
+						});
 				PublishEvent(command,point_pair.first,pStatusCallback);
 			}
 		}
@@ -441,18 +441,18 @@ inline void JSONPort::EventT(const T& meas, uint16_t index, const std::string& S
 	}
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap)->Json::Value
-	{
-		if(PointMap.count(index))
-		{
-			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
-			return output;
-		}
-		return Json::Value::nullSingleton();
-	};
+	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap) -> Json::Value
+			  {
+				  if(PointMap.count(index))
+				  {
+					  Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
+					  return output;
+				  }
+				  return Json::Value::nullSingleton();
+			  };
 	auto output = std::is_same<T,Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
-			  std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
-										  Json::Value::nullSingleton();
+	              std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
+	              Json::Value::nullSingleton();
 	if(output.isNull())
 	{
 		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);

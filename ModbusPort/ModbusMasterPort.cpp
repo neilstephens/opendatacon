@@ -84,9 +84,9 @@ void ModbusMasterPort::Connect()
 		{
 			pTCPRetryTimer->expires_from_now(std::chrono::seconds(5));
 			pTCPRetryTimer->async_wait(
-			      [this](asio::error_code err_code)
-			      {
-			            if(err_code != asio::error::operation_aborted)
+				[this](asio::error_code err_code)
+				{
+					if(err_code != asio::error::operation_aborted)
 						this->Connect();
 				});
 		}
@@ -117,9 +117,10 @@ void ModbusMasterPort::Connect()
 	for(auto pg : pConf->pPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
-		auto action = [=](){
-			this->DoPoll(id);
-		};
+		auto action = [=]()
+				  {
+					  this->DoPoll(id);
+				  };
 		PollScheduler->Add(pg.second.pollrate, action);
 	}
 
@@ -150,17 +151,17 @@ void ModbusMasterPort::Disconnect()
 	for(auto range : pConf->pPointConf->BitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 			PublishEvent(BinaryQuality::COMM_LOST, index);
-	
+
 	// Modbus function code 0x02 (read input status)
 	for(auto range : pConf->pPointConf->InputBitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 			PublishEvent(BinaryQuality::COMM_LOST, index);
-	
+
 	// Modbus function code 0x03 (read holding registers)
 	for(auto range : pConf->pPointConf->RegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 			PublishEvent(AnalogQuality::COMM_LOST,index);
-	
+
 	// Modbus function code 0x04 (read input registers)
 	for(auto range : pConf->pPointConf->InputRegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
@@ -442,9 +443,9 @@ template<>
 CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index)
 {
 	if (
-	      (command.functionCode == ControlCode::NUL) ||
-	      (command.functionCode == ControlCode::UNDEFINED)
-	      )
+		(command.functionCode == ControlCode::NUL) ||
+		(command.functionCode == ControlCode::UNDEFINED)
+		)
 	{
 		return CommandStatus::FORMAT_ERROR;
 	}
@@ -455,9 +456,9 @@ CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& comma
 
 	int rc;
 	if (
-	      (command.functionCode == ControlCode::LATCH_OFF) ||
-	      (command.functionCode == ControlCode::TRIP_PULSE_ON)
-	      )
+		(command.functionCode == ControlCode::LATCH_OFF) ||
+		(command.functionCode == ControlCode::TRIP_PULSE_ON)
+		)
 	{
 		rc = modbus_write_bit(mb, index, false);
 	}

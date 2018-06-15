@@ -89,5 +89,5 @@ bool IOHandler::MuxConnectionEvents(ConnectState state, const std::string& Sende
 	}
 	return true;
 }
-	
+
 }
