@@ -27,6 +27,13 @@
 #ifndef MD3_H_
 #define MD3_H_
 
+////////////////// IMPORTANT //////////////////////////////
+// If we are compiling for external testing (or production) define this.
+// If we are using VS and its test framework, don't define this.
+// #define CATCH_CONFIG_RUNNER
+//
+////////////////// IMPORTANT //////////////////////////////
+
 #include <cstdint>
 #include <opendnp3/app/MeasurementTypes.h>
 #include <asiopal/UTCTimeSource.h>
