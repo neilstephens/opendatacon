@@ -51,28 +51,28 @@ public:
 	//so the compiler won't warn we're hiding the base class overload we still want to use
 	using DataPort::Event;
 
-	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const Analog& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const Counter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 
-	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 
 	/// Quality change events
-	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 

@@ -191,13 +191,13 @@ void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters&
 	}
 }
 
-void ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
 
 template<typename T>
 int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
@@ -210,7 +210,7 @@ int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
 }
 
 template<typename T>
-inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
 	{

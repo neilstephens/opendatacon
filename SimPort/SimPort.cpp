@@ -406,7 +406,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(pConf->ControlIndicies.begin(),pConf->ControlIndicies.end());
 	}
 }
-void SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
@@ -414,66 +414,66 @@ void SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName,
 //Implement Event handlers from IOHandler - All not supported because SimPort is just a source.
 
 // measurement events
-void SimPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
 
 // change of quality Events
-void SimPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
 // control events
-void SimPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 	for(auto i : pConf->ControlIndicies)
@@ -537,19 +537,19 @@ void SimPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, co
 	}
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, std::shared_ptr<std::function<void (CommandStatus status)>> pStatusCallback)
+void SimPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
