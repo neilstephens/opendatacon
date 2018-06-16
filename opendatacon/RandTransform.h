@@ -55,11 +55,6 @@ public:
 		meas.value = 100*ZERO_TO_ONE(seed);
 		return true;
 	}
-
-	bool pass_on;
-	bool already_under;
-	uint16_t threshold_point_index;
-	double threshold;
 };
 
-#endif /* THRESHOLDTRANSFORM_H_ */
+#endif /* RANDTRANSFORM_H_ */

@@ -18,7 +18,7 @@
  *	limitations under the License.
  */
 /*
- * IndexOffsetTransform.h
+ * ThresholdTransform.h
  *
  *  Created on: 30/07/2014
  *      Author: Neil Stephens <dearknarl@gmail.com>
