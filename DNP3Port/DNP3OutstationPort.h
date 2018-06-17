@@ -53,23 +53,23 @@ protected:
 	const Json::Value GetStatistics() const override;
 
 	/// Implement some ODC::IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
-	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
+	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
+	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 	/// Implement opendnp3::IOutstationApplication
 	// Called when a the reset/unreset status of the link layer changes (and on link up)
@@ -97,8 +97,8 @@ private:
 	asiodnp3::IOutstation* pOutstation;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
-	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
-	template<typename T, typename Q> std::future<CommandStatus> EventQ(Q& meas, uint16_t index, const std::string& SenderName);
+	template<typename T> void EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+	template<typename T, typename Q> void EventQ(Q& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
 	template<typename T> CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex);

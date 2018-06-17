@@ -112,11 +112,11 @@ void JSONPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
 
 	//TODO: use event buffer size once socket manager supports it
 	pSockMan.reset(new TCPSocketManager<std::string>
-			   (pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
-			    std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
-			    std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
-			    true,
-			    pConf->retry_time_ms));
+			(pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
+			std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
+			std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
+			true,
+			pConf->retry_time_ms));
 }
 
 void JSONPort::ReadCompletionHandler(buf_t& readbuf)
@@ -159,56 +159,6 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 		readbuf.sputc(ch);
 }
 
-void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future_results, size_t index, std::shared_ptr<Timer_t> pTimer, double poll_time_ms, double backoff_factor)
-{
-	bool ready = true;
-	bool success = true;
-	//for(auto& future_result : future_results)
-	while(future_results.size())
-	{
-		auto& future_result = future_results.back();
-		if(future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
-		{
-			ready = false;
-			break;
-		}
-		auto result = future_result.get();
-		future_results.pop_back();
-		//first one that isn't a success, we break
-		if(result != CommandStatus::SUCCESS)
-		{
-			success = false;
-			break;
-		}
-	}
-	if(ready)
-	{
-		Json::Value result;
-		result["Command"]["Index"] =(Json::UInt64) index;
-		result["Command"]["Status"] = success ? "SUCCESS" : (future_results.size()==1 ? "FAIL" : "UNDEFINED");
-
-		auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
-		//TODO: make this writer reusable (class member)
-		//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
-		Json::StreamWriterBuilder wbuilder;
-		if(!pConf->style_output)
-			wbuilder["indentation"] = "";
-		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
-
-		std::ostringstream oss;
-		pWriter->write(result, &oss); oss<<std::endl;
-		pSockMan->Write(oss.str());
-	}
-	else
-	{
-		pTimer->expires_from_now(std::chrono::milliseconds((unsigned int)poll_time_ms));
-		pTimer->async_wait([=,future_results=std::move(future_results)](asio::error_code err_code) mutable
-					 {
-						AsyncFuturesPoll(std::move(future_results), index, pTimer, backoff_factor*poll_time_ms, backoff_factor);
-					 });
-	}
-}
-
 //At this point we have a whole (hopefully JSON) object - ie. {.*}
 //Here we parse it and extract any paths that match our point config
 void JSONPort::ProcessBraced(const std::string& braced)
@@ -231,15 +181,15 @@ void JSONPort::ProcessBraced(const std::string& braced)
 		//little functor to traverse any paths, starting at the root
 		//pass a JSON array of nodes representing the path (that's how we store our point config after all)
 		auto TraversePath = [&JSONRoot](const Json::Value& nodes)
-		{
-			//val will traverse any paths, starting at the root
-			auto val = JSONRoot;
-			//traverse
-			for(unsigned int n = 0; n < nodes.size(); ++n)
-				if((val = val[nodes[n].asCString()]).isNull())
-					break;
-			return val;
-		};
+					  {
+						  //val will traverse any paths, starting at the root
+						  auto val = JSONRoot;
+						  //traverse
+						  for(unsigned int n = 0; n < nodes.size(); ++n)
+							  if((val = val[nodes[n].asCString()]).isNull())
+								  break;
+						  return val;
+					  };
 
 		Json::Value timestamp_val = TraversePath(pConf->pPointConf->TimestampPath);
 
@@ -312,45 +262,45 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				//work out control code to send
 				if(point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
 				{
-					auto check_val = [&](std::string truename, std::string falsename)->bool
-					{
-						bool ret = true;
-						if(point_pair.second.isMember(truename))
-						{
-							ret = (val == point_pair.second[truename]);
-							if(point_pair.second.isMember(falsename))
-								if (!ret && (val != point_pair.second[falsename]))
-									throw std::runtime_error("unexpected control value");
-						}
-						else if(point_pair.second.isMember(falsename))
-							ret = !(val == point_pair.second[falsename]);
-						else if(val.isNumeric() || val.isBool())
-							ret = val.asBool();
-						else if(val.isString()) //Guess some sensible default on/off/trip/close values
-						{
-							//TODO: replace with regex?
-							ret = (val.asString() == "true" ||
-								 val.asString() == "True" ||
-								 val.asString() == "TRUE" ||
-								 val.asString() == "on" ||
-								 val.asString() == "On" ||
-								 val.asString() == "ON" ||
-								 val.asString() == "close" ||
-								 val.asString() == "Close" ||
-								 val.asString() == "CLOSE");
-							if(!ret && (val.asString() != "false" &&
-									val.asString() != "False" &&
-									val.asString() != "FALSE" &&
-									val.asString() != "off" &&
-									val.asString() != "Off" &&
-									val.asString() != "OFF" &&
-									val.asString() != "trip" &&
-									val.asString() != "Trip" &&
-									val.asString() != "TRIP"))
-								throw std::runtime_error("unexpected control value");
-						}
-						return ret;
-					};
+					auto check_val = [&](std::string truename, std::string falsename) -> bool
+							     {
+								     bool ret = true;
+								     if(point_pair.second.isMember(truename))
+								     {
+									     ret = (val == point_pair.second[truename]);
+									     if(point_pair.second.isMember(falsename))
+										     if (!ret && (val != point_pair.second[falsename]))
+											     throw std::runtime_error("unexpected control value");
+								     }
+								     else if(point_pair.second.isMember(falsename))
+									     ret = !(val == point_pair.second[falsename]);
+								     else if(val.isNumeric() || val.isBool())
+									     ret = val.asBool();
+								     else if(val.isString()) //Guess some sensible default on/off/trip/close values
+								     {
+									     //TODO: replace with regex?
+									     ret = (val.asString() == "true" ||
+									            val.asString() == "True" ||
+									            val.asString() == "TRUE" ||
+									            val.asString() == "on" ||
+									            val.asString() == "On" ||
+									            val.asString() == "ON" ||
+									            val.asString() == "close" ||
+									            val.asString() == "Close" ||
+									            val.asString() == "CLOSE");
+									     if(!ret && (val.asString() != "false" &&
+									                 val.asString() != "False" &&
+									                 val.asString() != "FALSE" &&
+									                 val.asString() != "off" &&
+									                 val.asString() != "Off" &&
+									                 val.asString() != "OFF" &&
+									                 val.asString() != "trip" &&
+									                 val.asString() != "Trip" &&
+									                 val.asString() != "TRIP"))
+										     throw std::runtime_error("unexpected control value");
+								     }
+								     return ret;
+							     };
 
 					auto cm = point_pair.second["ControlMode"].asString();
 					if(cm == "LATCH")
@@ -400,32 +350,29 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				if(point_pair.second.isMember("OffTimems"))
 					command.offTimeMS = point_pair.second["OffTimems"].asUInt();
 
-				auto future_results = PublishCommand(command,point_pair.first);
+				auto pStatusCallback =
+					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
+						{
+							Json::Value result;
+							result["Command"]["Index"] = point_pair.first;
 
-				auto pTimer =std::make_shared<Timer_t>(*pIOS);
-				pTimer->expires_from_now(std::chrono::milliseconds(10)); //TODO: expose pole time in config
-				pTimer->async_wait([=,future_results=std::move(future_results)](asio::error_code err_code) mutable
-							 {
-								if(!err_code)
-									AsyncFuturesPoll(std::move(future_results), point_pair.first, pTimer, 20, 2);
-								else
-								{
-									Json::Value result;
-									result["Command"]["Index"] = point_pair.first;
-									result["Command"]["Status"] = "UNDEFINED";
+							if(command_stat == CommandStatus::SUCCESS)
+								result["Command"]["Status"] = "SUCCESS";
+							else
+								result["Command"]["Status"] = "UNDEFINED";
 
-									//TODO: make this writer reusable (class member)
-									//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
-									Json::StreamWriterBuilder wbuilder;
-									if(!pConf->style_output)
-										wbuilder["indentation"] = "";
-									std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+							//TODO: make this writer reusable (class member)
+							//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+							Json::StreamWriterBuilder wbuilder;
+							if(!pConf->style_output)
+								wbuilder["indentation"] = "";
+							std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
 
-									std::ostringstream oss;
-									pWriter->write(result, &oss); oss<<std::endl;
-									pSockMan->Write(oss.str());
-								}
-							 });
+							std::ostringstream oss;
+							pWriter->write(result, &oss); oss<<std::endl;
+							pSockMan->Write(oss.str());
+						});
+				PublishEvent(command,point_pair.first,pStatusCallback);
 			}
 		}
 	}
@@ -453,61 +400,64 @@ inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 
 
 //Unsupported types - return as such
-std::future<CommandStatus> JSONPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+void JSONPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 
-std::future<CommandStatus> JSONPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::ConnectionEvent(ConnectState state, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+void JSONPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 
-std::future<CommandStatus> JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
+void JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+void JSONPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 
 //Supported types - call templates
-std::future<CommandStatus> JSONPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
-std::future<CommandStatus> JSONPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
-std::future<CommandStatus> JSONPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
-std::future<CommandStatus> JSONPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
+void JSONPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventT(meas,index,SenderName, pStatusCallback);}
+void JSONPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventT(meas,index,SenderName, pStatusCallback);}
+void JSONPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ(qual,index,SenderName, pStatusCallback);}
+void JSONPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ(qual,index,SenderName, pStatusCallback);}
 
 //Templates for supported types
 template<typename T>
-inline std::future<CommandStatus> JSONPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName)
+inline void JSONPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	return IOHandler::CommandFutureUndefined();
+	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
 template<typename T>
-inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index, const std::string& SenderName)
+inline void JSONPort::EventT(const T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
 	{
-		return IOHandler::CommandFutureUndefined();
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
 	}
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap)->Json::Value
-	{
-		if(PointMap.count(index))
-		{
-			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
-			return output;
-		}
-		return Json::Value::nullSingleton();
-	};
+	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap) -> Json::Value
+			  {
+				  if(PointMap.count(index))
+				  {
+					  Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
+					  return output;
+				  }
+				  return Json::Value::nullSingleton();
+			  };
 	auto output = std::is_same<T,Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
-			  std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
-										  Json::Value::nullSingleton();
+	              std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
+	              Json::Value::nullSingleton();
 	if(output.isNull())
-		return IOHandler::CommandFutureNotSupported();
+	{
+		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+		return;
+	}
 
 	//TODO: make this writer reusable (class member)
 	//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
@@ -520,5 +470,5 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 	pWriter->write(output, &oss); oss<<std::endl;
 	pSockMan->Write(oss.str());
 
-	return IOHandler::CommandFutureSuccess();
+	(*pStatusCallback)(CommandStatus::SUCCESS);
 }

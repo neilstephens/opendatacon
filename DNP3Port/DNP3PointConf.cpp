@@ -342,7 +342,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					EventAnalogResponses[index] = StringToEventAnalogResponse(Analogs[n]["EventAnalogResponse"].asString());
 				else
 					EventAnalogResponses[index] = EventAnalogResponse;
-				
+
 				AnalogDeadbands[index] = deadband;
 
 				if(!exists)
@@ -412,7 +412,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					EventBinaryResponses[index] = StringToEventBinaryResponse(Binaries[n]["EventBinaryResponse"].asString());
 				else
 					EventBinaryResponses[index] = EventBinaryResponse;
-				
+
 				if(!exists)
 					BinaryIndicies.push_back(index);
 

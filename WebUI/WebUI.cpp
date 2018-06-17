@@ -83,13 +83,13 @@ DE+cahwFk7x5dZ28WePVnm/QqIFdyq3g9MliQrlIGVbbn3DtvVVBT5cc2/NPDnHN\
 
 /* response handler callback wrapper */
 static int ahc(void *cls,
-               struct MHD_Connection *connection,
-               const char *url,
-               const char *method,
-               const char *version,
-               const char *upload_data,
-               size_t *upload_data_size,
-               void **ptr)
+	struct MHD_Connection *connection,
+	const char *url,
+	const char *method,
+	const char *version,
+	const char *upload_data,
+	size_t *upload_data_size,
+	void **ptr)
 {
 	WebUI* test = (WebUI*)cls;
 	return test->http_ahc(cls, connection, url, method, version, upload_data, upload_data_size, ptr);
@@ -139,13 +139,13 @@ void WebUI::AddResponder(const std::string& name, const IUIResponder& pResponder
 
 /* HTTP access handler call back */
 int WebUI::http_ahc(void *cls,
-                    struct MHD_Connection *connection,
-                    const char *url,
-                    const char *method,
-                    const char *version,
-                    const char *upload_data,
-                    size_t *upload_data_size,
-                    void **con_cls)
+	struct MHD_Connection *connection,
+	const char *url,
+	const char *method,
+	const char *version,
+	const char *upload_data,
+	size_t *upload_data_size,
+	void **con_cls)
 {
 	struct connection_info_struct *con_info;
 
@@ -153,13 +153,13 @@ int WebUI::http_ahc(void *cls,
 	if(nullptr == *con_cls)
 	{
 		return CreateNewRequest(cls,
-		                        connection,
-		                        url,
-		                        method,
-		                        version,
-		                        upload_data,
-		                        upload_data_size,
-		                        con_cls);
+			connection,
+			url,
+			method,
+			version,
+			upload_data,
+			upload_data_size,
+			con_cls);
 	}
 
 	ParamCollection params;
@@ -221,28 +221,28 @@ void WebUI::Enable()
 	if (useSSL)
 	{
 		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG | MHD_USE_SSL,
-		                     port,                                                  // Port to bind to
-		                     nullptr,                                               // callback to call to check which clients allowed to connect
-		                     nullptr,                                               // extra argument to apc
-		                     &ahc,                                                  // handler called for all requests
-		                     this,                                                  // extra argument to dh
-		                     MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
-		                     MHD_OPTION_CONNECTION_TIMEOUT, 256,
-		                     MHD_OPTION_HTTPS_MEM_KEY, key_pem.c_str(),
-		                     MHD_OPTION_HTTPS_MEM_CERT, cert_pem.c_str(),
-		                     MHD_OPTION_END);
+			port,                                                  // Port to bind to
+			nullptr,                                               // callback to call to check which clients allowed to connect
+			nullptr,                                               // extra argument to apc
+			&ahc,                                                  // handler called for all requests
+			this,                                                  // extra argument to dh
+			MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
+			MHD_OPTION_CONNECTION_TIMEOUT, 256,
+			MHD_OPTION_HTTPS_MEM_KEY, key_pem.c_str(),
+			MHD_OPTION_HTTPS_MEM_CERT, cert_pem.c_str(),
+			MHD_OPTION_END);
 	}
 	else
 	{
 		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG,
-		                     port,                                                  // Port to bind to
-		                     nullptr,                                               // callback to call to check which clients allowed to connect
-		                     nullptr,                                               // extra argument to apc
-		                     &ahc,                                                  // handler called for all requests
-		                     this,                                                  // extra argument to dh
-		                     MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
-		                     MHD_OPTION_CONNECTION_TIMEOUT, 256,
-		                     MHD_OPTION_END);
+			port,                                                  // Port to bind to
+			nullptr,                                               // callback to call to check which clients allowed to connect
+			nullptr,                                               // extra argument to apc
+			&ahc,                                                  // handler called for all requests
+			this,                                                  // extra argument to dh
+			MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
+			MHD_OPTION_CONNECTION_TIMEOUT, 256,
+			MHD_OPTION_END);
 	}
 
 	if (d == nullptr)

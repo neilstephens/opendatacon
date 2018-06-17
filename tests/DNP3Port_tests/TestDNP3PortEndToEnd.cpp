@@ -19,6 +19,7 @@
  */
 /**
  */
+#include <thread>
 #include <catch.hpp>
 
 #include "DNP3OutstationPort.h"
@@ -53,6 +54,9 @@ TEST_CASE(SUITE("TCP link"))
 	MPUT->BuildOrRebuild(lDNP3Man,lLOG_LEVEL);
 
 	//turn them on
+	asio::io_service ios;
+	OPUT->SetIOS(&ios);
+	MPUT->SetIOS(&ios);
 	OPUT->Enable();
 	MPUT->Enable();
 
@@ -124,6 +128,9 @@ TEST_CASE(SUITE("Serial link"))
 	MPUT->BuildOrRebuild(lDNP3Man,lLOG_LEVEL);
 
 	//turn them on
+	asio::io_service ios;
+	OPUT->SetIOS(&ios);
+	MPUT->SetIOS(&ios);
 	OPUT->Enable();
 	MPUT->Enable();
 

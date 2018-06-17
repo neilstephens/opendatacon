@@ -47,24 +47,25 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	InitLibaryLoading();
 
 	//Version
-	this->AddCommand("version", [this](const ParamCollection &params) { //"Print version information"
-	                       Json::Value result;
-	                       result["version"] = ODC_VERSION_STRING;
-	                       return result;
-			     },"Return the version information of opendatacon.");
+	this->AddCommand("version", [this](const ParamCollection &params) //"Print version information"
+		{
+			Json::Value result;
+			result["version"] = ODC_VERSION_STRING;
+			return result;
+		},"Return the version information of opendatacon.");
 
 	//fire up some worker threads
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
 
-	AdvancedLoggers.emplace("Console Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
+	AdvancedLoggers.emplace("Console Log", std::unique_ptr<AdvancedLogger,void (*)(AdvancedLogger*)>(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
 	AdvancedLoggers.at("Console Log")->AddIngoreAlways(".*"); //silence all console messages by default
 	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("Console Log").get());
 
-	AdvancedLoggers.emplace("File Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(FileLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
+	AdvancedLoggers.emplace("File Log", std::unique_ptr<AdvancedLogger,void (*)(AdvancedLogger*)>(new AdvancedLogger(FileLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
 	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("File Log").get());
 
-	AdvancedLoggers.emplace("TCP Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(TCPLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
+	AdvancedLoggers.emplace("TCP Log", std::unique_ptr<AdvancedLogger,void (*)(AdvancedLogger*)>(new AdvancedLogger(TCPLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
 	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("TCP Log").get());
 
 	//Parse the configs and create all user interfaces, ports and connections
@@ -73,13 +74,14 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	for(auto& interface : Interfaces)
 	{
 		interface.second->AddCommand("shutdown",[this](std::stringstream& ss)
-									{
-										std::thread([this](){this->Shutdown();}).detach();
-									}
-							,"Shutdown opendatacon");
-		interface.second->AddCommand("version",[] (std::stringstream& ss){
-		                                   std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;
-						     },"Print version information");
+			{
+				std::thread([this](){this->Shutdown();}).detach();
+			}
+			,"Shutdown opendatacon");
+		interface.second->AddCommand("version",[] (std::stringstream& ss)
+			{
+				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;
+			},"Print version information");
 
 		interface.second->AddResponder("OpenDataCon", *this);
 		interface.second->AddResponder("DataPorts", DataPorts);
@@ -160,7 +162,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			auto new_plugin_func = (IUI*(*)(std::string, std::string, const Json::Value))LoadSymbol(pluginlib, new_funcname);
 
 			std::string delete_funcname = "delete_"+Plugins[n]["Type"].asString()+"Plugin";
-			auto delete_plugin_func = (void(*)(IUI*))LoadSymbol(pluginlib, delete_funcname);
+			auto delete_plugin_func = (void (*)(IUI*))LoadSymbol(pluginlib, delete_funcname);
 
 			if(new_plugin_func == nullptr)
 			{
@@ -177,7 +179,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 
 			//call the creation function and wrap the returned pointer to a new plugin
-			Interfaces.emplace(PluginName, std::unique_ptr<IUI,void(*)(IUI*)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), delete_plugin_func));
+			Interfaces.emplace(PluginName, std::unique_ptr<IUI,void (*)(IUI*)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), delete_plugin_func));
 		}
 	}
 
@@ -251,16 +253,16 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				if(Ports[n]["InitState"].asString() == "ENABLED")
 				{
 					set_init_mode = [](IOHandler* aIOH)
-					{
-						aIOH->InitState = InitState_t::ENABLED;
-					};
+							    {
+								    aIOH->InitState = InitState_t::ENABLED;
+							    };
 				}
 				else if(Ports[n]["InitState"].asString() == "DISABLED")
 				{
 					set_init_mode = [](IOHandler* aIOH)
-					{
-						aIOH->InitState = InitState_t::DISABLED;
-					};
+							    {
+								    aIOH->InitState = InitState_t::DISABLED;
+							    };
 				}
 				else if(Ports[n]["InitState"].asString() == "DELAYED")
 				{
@@ -274,10 +276,10 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 						std::cout<<"Warning: invalid port config: missing 'EnableDelayms': \n'"<<Ports[n].toStyledString()<<"\n' : defaulting to 0"<<std::endl;
 					}
 					set_init_mode = [=](IOHandler* aIOH)
-					{
-						aIOH->InitState = InitState_t::DELAYED;
-						aIOH->EnableDelayms = delay;
-					};
+							    {
+								    aIOH->InitState = InitState_t::DELAYED;
+								    aIOH->EnableDelayms = delay;
+							    };
 				}
 			}
 			else
@@ -287,7 +289,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			if(Ports[n]["Type"].asString() == "Null")
 			{
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
@@ -310,7 +312,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			if(portlib == nullptr)
 			{
 				std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
@@ -321,7 +323,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))LoadSymbol(portlib, new_funcname);
 
 			std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
-			auto delete_port_func = (void(*)(DataPort*))LoadSymbol(portlib, delete_funcname);
+			auto delete_port_func = (void (*)(DataPort*))LoadSymbol(portlib, delete_funcname);
 
 			if(new_port_func == nullptr)
 			{
@@ -334,13 +336,13 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			if(new_port_func == nullptr || delete_port_func == nullptr)
 			{
 				std::cout<<"Mapping '"<<Ports[n]["Type"].asString()<<"' to null port..."<<std::endl;
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
 
 			//call the creation function and wrap the returned pointer to a new port
-			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 		}
 	}
@@ -361,7 +363,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				std::cout<<"Warning: Duplicate Connector Name; ignoring:\n'"<<Connectors[n].toStyledString()<<"\n'"<<std::endl;
 				continue;
 			}
-			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void(*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
+			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void (*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
 			if(Connectors[n].isMember("InitState"))
 			{
 				if(Connectors[n]["InitState"].asString() == "ENABLED")
@@ -416,19 +418,19 @@ void DataConcentrator::Run()
 		if(Name_n_Conn.second->InitState == InitState_t::ENABLED)
 		{
 			IOS.post([&]()
-				   {
-					   Name_n_Conn.second->Enable();
-				   });
+				{
+					Name_n_Conn.second->Enable();
+				});
 		}
 		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
 		{
 			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(IOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
 			pTimer->async_wait([pTimer,this,&Name_n_Conn](asio::error_code err_code)
-						 {
-							//FIXME: check err_code?
-							 Name_n_Conn.second->Enable();
-						 });
+				{
+					//FIXME: check err_code?
+					Name_n_Conn.second->Enable();
+				});
 		}
 	}
 	std::cout << "Enabling DataPorts... " << std::endl;
@@ -437,28 +439,28 @@ void DataConcentrator::Run()
 		if(Name_n_Port.second->InitState == InitState_t::ENABLED)
 		{
 			IOS.post([&]()
-				   {
-					   Name_n_Port.second->Enable();
-				   });
+				{
+					Name_n_Port.second->Enable();
+				});
 		}
 		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
 		{
 			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(IOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
 			pTimer->async_wait([pTimer,this,&Name_n_Port](asio::error_code err_code)
-						 {
-							//FIXME: check err_code?
-							 Name_n_Port.second->Enable();
-						 });
+				{
+					//FIXME: check err_code?
+					Name_n_Port.second->Enable();
+				});
 		}
 	}
 	std::cout << "Enabling Interfaces... " << std::endl;
 	for(auto& Name_n_UI : Interfaces)
 	{
 		IOS.post([&]()
-			   {
-				   Name_n_UI.second->Enable();
-			   });
+			{
+				Name_n_UI.second->Enable();
+			});
 	}
 
 	std::cout << "Up and running." << std::endl;
@@ -482,24 +484,24 @@ void DataConcentrator::Shutdown()
 	//Shutdown gets called from various places (signal handling, user interface(s))
 	//ensure we only act once
 	std::call_once(shutdown_flag, [this]()
-	{
-		std::cout << "Disabling user interfaces... " << std::endl;
-		for(auto& Name_n_UI : Interfaces)
 		{
-			Name_n_UI.second->Disable();
-		}
-		std::cout << "Disabling data connectors... " << std::endl;
-		for(auto& Name_n_Conn : DataConnectors)
-		{
-			Name_n_Conn.second->Disable();
-		}
-		std::cout << "Disabling data ports... " << std::endl;
-		for(auto& Name_n_Port : DataPorts)
-		{
-			Name_n_Port.second->Disable();
-		}
-		TCPLog.Shutdown();
-		std::cout << "Finishing asynchronous tasks... " << std::endl;
-		ios_working.reset();
-	});
+			std::cout << "Disabling user interfaces... " << std::endl;
+			for(auto& Name_n_UI : Interfaces)
+			{
+			      Name_n_UI.second->Disable();
+			}
+			std::cout << "Disabling data connectors... " << std::endl;
+			for(auto& Name_n_Conn : DataConnectors)
+			{
+			      Name_n_Conn.second->Disable();
+			}
+			std::cout << "Disabling data ports... " << std::endl;
+			for(auto& Name_n_Port : DataPorts)
+			{
+			      Name_n_Port.second->Disable();
+			}
+			TCPLog.Shutdown();
+			std::cout << "Finishing asynchronous tasks... " << std::endl;
+			ios_working.reset();
+		});
 }

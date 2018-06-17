@@ -27,7 +27,6 @@
 #include <opendnp3/app/ClassField.h>
 #include <opendnp3/app/MeasurementTypes.h>
 #include "DNP3MasterPort.h"
-#include "CommandCallbackPromise.h"
 #include "ChannelStateSubscriber.h"
 #include <openpal/logging/LogLevels.h>
 #include <array>
@@ -96,18 +95,18 @@ void DNP3MasterPort::PortDown()
 {
 	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	
+
 	{
 		std::string msg = Name + ": Setting point quality to COMM_LOST";
 		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
 		pLoggers->Log(log_entry);
 	}
-	
+
 	for (auto index : pConf->pPointConf->BinaryIndicies)
 		PublishEvent(BinaryQuality::COMM_LOST, index);
 	for (auto index : pConf->pPointConf->AnalogIndicies)
 		PublishEvent(AnalogQuality::COMM_LOST, index);
-	
+
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(BinaryQuality::ONLINE))
 	{
@@ -160,9 +159,9 @@ void DNP3MasterPort::OnLinkDown()
 
 			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
 			pIOS->post([&]()
-				     {
-					     DisableStack();
-				     });
+				{
+					DisableStack();
+				});
 		}
 	}
 }
@@ -267,32 +266,33 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 	Timestamp eventTime = Timestamp(asiopal::UTCTimeSource::Instance().Now().msSinceEpoch);
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	meas.ForeachItem([&](const opendnp3::Indexed<T>&pair)
-					 {
-						 if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-							 ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time == 0)))
-						 {
-							 decltype(pair.value) newmeas(pair.value.value, pair.value.quality, eventTime);
-							 PublishEvent(newmeas,pair.index);
-						 }
-						 else
-						 {
-							 PublishEvent(pair.value,pair.index);
-						 }
-					 });
+		{
+			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
+			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time == 0)))
+			{
+			      decltype(pair.value)newmeas(pair.value.value, pair.value.quality, eventTime);
+			      PublishEvent(newmeas,pair.index);
+			}
+			else
+			{
+			      PublishEvent(pair.value,pair.index);
+			}
+		});
 }
 
 //Implement some IOHandler - parent DNP3Port implements the rest to return NOT_SUPPORTED
-std::future<CommandStatus> DNP3MasterPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> DNP3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void DNP3MasterPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){EventT(arCommand, index, SenderName, pStatusCallback); }
+void DNP3MasterPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){EventT(arCommand, index, SenderName, pStatusCallback); }
+void DNP3MasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){EventT(arCommand, index, SenderName, pStatusCallback); }
+void DNP3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){EventT(arCommand, index, SenderName, pStatusCallback); }
+void DNP3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){EventT(arCommand, index, SenderName, pStatusCallback); }
 
-std::future<CommandStatus> DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+void DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
 	{
-		return IOHandler::CommandFutureUndefined();
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 
 	// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
@@ -315,37 +315,39 @@ std::future<CommandStatus> DNP3MasterPort::ConnectionEvent(ConnectState state, c
 		pLoggers->Log(log_entry);
 
 		pIOS->post([&]()
-		           {
-		                 EnableStack();
-			     });
+			{
+				EnableStack();
+			});
 	}
 
 	// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
 	if (stack_enabled && state == ConnectState::DISCONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 	{
 		pIOS->post([&]()
-		           {
-		                 DisableStack();
-		                 PortDown();
-			     });
+			{
+				DisableStack();
+				PortDown();
+			});
 	}
 
-	return IOHandler::CommandFutureSuccess();
+	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
 template<typename T>
-inline std::future<CommandStatus> DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
+inline void DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	// If the port is disabled, fail the command
 	if(!enabled)
 	{
-		return IOHandler::CommandFutureUndefined();
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 
 	// If the stack is disabled, fail the command
 	if (!stack_enabled)
 	{
-		return IOHandler::CommandFutureUndefined();
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -353,9 +355,6 @@ inline std::future<CommandStatus> DNP3MasterPort::EventT(T& arCommand, uint16_t 
 	{
 		if(i == index)
 		{
-			auto cmd_promise = std::promise<CommandStatus>();
-			auto cmd_future = cmd_promise.get_future();
-
 			//make a copy of the command, so we can change it if needed
 			auto lCommand = arCommand;
 			//this will change the control code if the command is binary, and there's a defined override
@@ -365,21 +364,37 @@ inline std::future<CommandStatus> DNP3MasterPort::EventT(T& arCommand, uint16_t 
 			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
 			pLoggers->Log(log_entry);
 
-			auto pCallbackPromise = std::make_shared<CommandCallbackPromise>(std::move(cmd_promise));
-			auto Callback = [pCallbackPromise](const opendnp3::ICommandTaskResult& response)
-			{
-				pCallbackPromise->OnComplete(response);
-			};
+			auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
+						  {
+							  auto status = CommandStatus::UNDEFINED;
+							  switch(response.summary)
+							  {
+								  case opendnp3::TaskCompletion::SUCCESS:
+									  status = CommandStatus::SUCCESS;
+									  break;
+								  case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
+									  status = CommandStatus::TIMEOUT;
+									  break;
+								  case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
+								  case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
+								  default:
+									  status = CommandStatus::UNDEFINED;
+									  break;
+							  }
+							  (*pStatusCallback)(status);
+							  return;
+						  };
 
-			this->pMaster->DirectOperate(lCommand,index,Callback);
+			this->pMaster->DirectOperate(lCommand,index,DNP3Callback);
 
-			return cmd_future;
+			return;
 		}
 	}
 	std::string msg = "Control sent to invalid DNP3 index: " + std::to_string(index);
 	auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::WARN, "", msg.c_str(), -1);
 	pLoggers->Log(log_entry);
-	return IOHandler::CommandFutureUndefined();
+
+	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
 //DataPort function for UI

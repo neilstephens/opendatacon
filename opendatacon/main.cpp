@@ -108,15 +108,15 @@ int main(int argc, char* argv[])
 
 		// Configure signal handlers
 		auto shutdown_func = [] (int signum)
-		{
-			TheDataConcentrator->Shutdown();
-		};
+					   {
+						   TheDataConcentrator->Shutdown();
+					   };
 		auto ignore_func = [] (int signum)
-		{
-			std::cout<<"Signal "<<signum<<" ignored. Not designed to be interrupted or suspended.\n"
-					"To terminate, send a quit, kill, abort or break signal, or use a UI shutdown command.\n"
-					"To run in the background, run as a daemon or service."<<std::endl;
-		};
+					 {
+						 std::cout<<"Signal "<<signum<<" ignored. Not designed to be interrupted or suspended.\n"
+						                               "To terminate, send a quit, kill, abort or break signal, or use a UI shutdown command.\n"
+						                               "To run in the background, run as a daemon or service."<<std::endl;
+					 };
 
 		for (auto SIG : SIG_SHUTDOWN)
 		{

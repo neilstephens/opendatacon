@@ -33,6 +33,8 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 		REQUIRE(newOutstation);
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
+		asio::io_service ios;
+		OPUT->SetIOS(&ios);
 		OPUT->Enable();
 		OPUT->Disable();
 
@@ -44,6 +46,8 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 		REQUIRE(newOutstation);
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
+		asio::io_service ios;
+		OPUT->SetIOS(&ios);
 		OPUT->Enable();
 
 		delete OPUT;

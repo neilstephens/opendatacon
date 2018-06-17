@@ -183,10 +183,10 @@ asiodnp3::IChannel* DNP3Port::GetChannel(IOManager& IOMgr)
 		if(isSerial)
 		{
 			Channels[ChannelID] = IOMgr.AddSerial(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-									    opendnp3::ChannelRetry(
-										    openpal::TimeDuration::Milliseconds(500),
-										    openpal::TimeDuration::Milliseconds(5000)),
-									    pConf->mAddrConf.SerialSettings);
+				opendnp3::ChannelRetry(
+					openpal::TimeDuration::Milliseconds(500),
+					openpal::TimeDuration::Milliseconds(5000)),
+				pConf->mAddrConf.SerialSettings);
 		}
 		else
 		{
@@ -194,21 +194,21 @@ asiodnp3::IChannel* DNP3Port::GetChannel(IOManager& IOMgr)
 			{
 				case TCPClientServer::SERVER:
 					Channels[ChannelID] = IOMgr.AddTCPServer(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-												 opendnp3::ChannelRetry(
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMinms),
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMaxms)),
-												 pConf->mAddrConf.IP,
-												 pConf->mAddrConf.Port);
+					opendnp3::ChannelRetry(
+						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMinms),
+						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMaxms)),
+					pConf->mAddrConf.IP,
+					pConf->mAddrConf.Port);
 					break;
 
 				case TCPClientServer::CLIENT:
 					Channels[ChannelID] = IOMgr.AddTCPClient(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-												 opendnp3::ChannelRetry(
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
-												 pConf->mAddrConf.IP,
-												 "0.0.0.0",
-												 pConf->mAddrConf.Port);
+					opendnp3::ChannelRetry(
+						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
+						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
+					pConf->mAddrConf.IP,
+					"0.0.0.0",
+					pConf->mAddrConf.Port);
 					break;
 
 				default:

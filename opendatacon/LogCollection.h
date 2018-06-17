@@ -35,29 +35,34 @@ class LogCollection: public ResponderMap<AdvancedLogger>
 public:
 	LogCollection()
 	{
-		this->AddCommand("ignore", [this](const ParamCollection &params) {
-					     if(auto target = GetTarget(params)) if(params.count("filter"))
-		                       {
-						     target->AddIngoreAlways(params.at("filter"));
-		                             return IUIResponder::GenerateResult("Success");
-					     }
-		                       return IUIResponder::GenerateResult("Bad parameter");
-				     }, "Required parameter 'filter' - regex to silence matching messages from the logger.");
-		this->AddCommand("unignore", [this](const ParamCollection &params) {
-					     if(auto target = GetTarget(params)) if(params.count("filter"))
-					     {
-							target->RemoveIgnore(params.at("filter"));
-							return IUIResponder::GenerateResult("Success");
-					     }
-		                       return IUIResponder::GenerateResult("Bad parameter");
-				     }, "Required parameter 'filter' - regex to remove from the ignore list.");
-		this->AddCommand("ShowFilters", [this](const ParamCollection &params) {
-		                       if(auto target = GetTarget(params))
-		                       {
-		                             return target->ShowIgnored();
-					     }
-		                       return IUIResponder::GenerateResult("Bad parameter");
-				     }, "Shows all message ignore regexes and how many messages they've matched.");
+		this->AddCommand("ignore", [this](const ParamCollection &params)
+			{
+				if(auto target = GetTarget(params))
+					if(params.count("filter"))
+					{
+					      target->AddIngoreAlways(params.at("filter"));
+					      return IUIResponder::GenerateResult("Success");
+					}
+				return IUIResponder::GenerateResult("Bad parameter");
+			}, "Required parameter 'filter' - regex to silence matching messages from the logger.");
+		this->AddCommand("unignore", [this](const ParamCollection &params)
+			{
+				if(auto target = GetTarget(params))
+					if(params.count("filter"))
+					{
+					      target->RemoveIgnore(params.at("filter"));
+					      return IUIResponder::GenerateResult("Success");
+					}
+				return IUIResponder::GenerateResult("Bad parameter");
+			}, "Required parameter 'filter' - regex to remove from the ignore list.");
+		this->AddCommand("ShowFilters", [this](const ParamCollection &params)
+			{
+				if(auto target = GetTarget(params))
+				{
+				      return target->ShowIgnored();
+				}
+				return IUIResponder::GenerateResult("Bad parameter");
+			}, "Shows all message ignore regexes and how many messages they've matched.");
 	}
 	virtual ~LogCollection(){}
 };
