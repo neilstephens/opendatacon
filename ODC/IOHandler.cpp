@@ -90,4 +90,50 @@ bool IOHandler::MuxConnectionEvents(ConnectState state, const std::string& Sende
 	return true;
 }
 
+SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, SharedStatusCallback_t pStatusCallback)
+{
+	if(pIOS == nullptr)
+	{
+		throw std::runtime_error("Uninitialised io_service on enabled IOHandler");
+	}
+	if(cb_number == 1)
+		return pStatusCallback;
+
+	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
+	auto pExecCount = std::make_shared<size_t>(0);
+	auto pCB_sync = std::make_shared<asio::strand>(*pIOS);
+	return std::make_shared<std::function<void (CommandStatus status)>>
+		       (pCB_sync->wrap(
+				 [pCB_sync,
+				  pCombinedStatus,
+				  pExecCount,
+				  cb_number,
+				  pStatusCallback](CommandStatus status)
+				 {
+					 if(*pCombinedStatus == CommandStatus::UNDEFINED)
+						 return;
+
+					 if(++(*pExecCount) == 1)
+					 {
+					       *pCombinedStatus = status;
+					       if(*pCombinedStatus == CommandStatus::UNDEFINED)
+					       {
+					             (*pStatusCallback)(*pCombinedStatus);
+					             return;
+						 }
+					 }
+					 else if(status != *pCombinedStatus)
+					 {
+					       *pCombinedStatus = CommandStatus::UNDEFINED;
+					       (*pStatusCallback)(*pCombinedStatus);
+					       return;
+					 }
+
+					 if(*pExecCount >= cb_number)
+					 {
+					       (*pStatusCallback)(*pCombinedStatus);
+					 }
+				 }));
+}
+
 }

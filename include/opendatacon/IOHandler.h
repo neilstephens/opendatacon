@@ -103,12 +103,8 @@ protected:
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
 
 	template<class T>
-	void PublishEvent(const T& meas, uint16_t index, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	inline void PublishEvent(const T& meas, uint16_t index, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
 	{
-		if(pIOS == nullptr)
-		{
-			throw std::runtime_error("Uninitialised io_service on enabled IOHandler");
-		}
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(auto IOHandler_pair: Subscribers)
 		{
@@ -116,39 +112,7 @@ protected:
 		}
 	}
 
-	std::shared_ptr<std::function<void(CommandStatus)>> SyncMultiCallback (const size_t cb_number, std::shared_ptr<std::function<void(CommandStatus)>> pStatusCallback)
-	{
-		auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
-		auto pExecCount = std::make_shared<size_t>(0);
-		auto pCB_sync = std::make_shared<asio::strand>(*pIOS);
-		return std::make_shared<std::function<void (CommandStatus status)>>
-			       (pCB_sync->wrap([=](CommandStatus status)
-					 {
-						 if(*pCombinedStatus == CommandStatus::UNDEFINED)
-							 return;
-
-						 if(++(*pExecCount) == 1)
-						 {
-						       *pCombinedStatus = status;
-						       if(*pCombinedStatus == CommandStatus::UNDEFINED)
-						       {
-						             (*pStatusCallback)(*pCombinedStatus);
-						             return;
-							 }
-						 }
-						 else if(status != *pCombinedStatus)
-						 {
-						       *pCombinedStatus = CommandStatus::UNDEFINED;
-						       (*pStatusCallback)(*pCombinedStatus);
-						       return;
-						 }
-
-						 if(*pExecCount >= cb_number)
-						 {
-						       (*pStatusCallback)(*pCombinedStatus);
-						 }
-					 }));
-	}
+	SharedStatusCallback_t SyncMultiCallback (const size_t cb_number, SharedStatusCallback_t pStatusCallback);
 
 private:
 	std::unordered_map<std::string,IOHandler*> Subscribers;
