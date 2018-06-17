@@ -281,16 +281,31 @@ inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 	if(!enabled)
 		return CommandStatus::UNDEFINED;
 
-	PublishEvent(arCommand, aIndex);
-
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if (!pConf->pPointConf->WaitForCommandResponses)
 	{
+		PublishEvent(arCommand, aIndex);
 		return CommandStatus::SUCCESS;
 	}
 
 	//TODO: enquire about the possibility of the opendnp3 API having a callback for the result
-	return CommandStatus::SUCCESS;
+	// that would avoid the below polling loop
+	std::atomic_bool cb_executed;
+	CommandStatus cb_status;
+	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
+		{
+			cb_status = status;
+			cb_executed = true;
+		});
+	PublishEvent(arCommand, aIndex, StatusCallback);
+	while(!executed)
+	{
+		//This loop pegs a core and blocks the outstation strand,
+		//	but there's no other way to wait for the result.
+		//	We can maybe do some work while we wait.
+		pIOS->poll_one();
+	}
+	return cb_status;
 }
 
 void DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ<opendnp3::Binary>(qual,index,SenderName,pStatusCallback);}
