@@ -298,7 +298,7 @@ inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 			cb_executed = true;
 		});
 	PublishEvent(arCommand, aIndex, StatusCallback);
-	while(!executed)
+	while(!cb_executed)
 	{
 		//This loop pegs a core and blocks the outstation strand,
 		//	but there's no other way to wait for the result.
