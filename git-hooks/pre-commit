@@ -13,6 +13,13 @@ if(system("git rev-parse --verify HEAD >/dev/null 2>&1"))
 else
 {
 	$against="HEAD";
+}
+
+my $old_temp_files = `git status --porcelain`;
+
+while ($old_temp_files =~ /\?\? (\S+\.nocrust)/gs)
+{
+	`rm $1`;
 } 
 
 my $diff = `git diff-index --cached --name-only --diff-filter=ACMR $against --`;
