@@ -4,6 +4,12 @@
 use strict;
 use warnings;
 
+#Runs uncrustify on pre-commit image c++ files.
+#If check fails:
+#	-bails out commit and writes an uncrustified version of the file
+#	-recommends not to use --no-verify
+#	-mentions ' *INDENT-OFF*' and ' *INDENT-ON*' guard comments
+
 my $against;
 if(system("git rev-parse --verify HEAD >/dev/null 2>&1"))
 {
@@ -15,34 +21,35 @@ else
 	$against="HEAD";
 }
 
+#clean up after previous bailed commits
 my $old_temp_files = `git status --porcelain`;
-
 while ($old_temp_files =~ /\?\? (\S+\.nocrust)/gs)
 {
 	`rm $1`;
 } 
 
+#Get files included in commit (not deletes)
 my $diff = `git diff-index --cached --name-only --diff-filter=ACMR $against --`;
-
 my @files = split(/^/, $diff);
 chomp @files;
 
-my $return = 0;
+my $return = 0;#success
 foreach my $filename (@files)
 {
 	if($filename =~ /\.cpp$|\.h$/i)
 	{
+		#use git show to pipe staged image of file (not the working tree copy - might differ)
 		my $result = `git show :$filename | uncrustify -c uncrustify.cfg --check -l CPP 2>&1`;
 		unless($result =~ /PASS/)
 		{
 			print "Uncrustify formatting check failed on $filename.\n";
 			print "Writing reformatted changes to $filename.nocrust\n";
-			print "Either \n\t-merge the new formatting, \n\t-use git commit --no-verify (NOT RECOMMENDED),\n\t-Use comments containing ' *INDENT-OFF*' and ' *INDENT-ON*' to disable processing of parts of the source file (NOT RECOMMENDED)\n";
+			print "Either \n\t-merge the new formatting, \n\t-use git commit --no-verify (NOT RECOMMENDED),\n\t-Use comments containing '*INDENT-OFF*' and ' *INDENT-ON*' to disable processing of parts of the source file\n\t\t(NOT RECOMMENDED, but better than --no-verify)\n";
 			if(system("git show :$filename | uncrustify -c uncrustify.cfg -l CPP -o $filename.nocrust"))
 			{
 				print "Failed to write uncrustified changes: $!\n";
 			}
-			$return = 1;
+			$return = 1;#fail
 		}
 	}
 }
