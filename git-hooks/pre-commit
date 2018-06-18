@@ -1,0 +1,43 @@
+#!/usr/bin/perl
+#
+#
+use strict;
+use warnings;
+
+my $against;
+if(system("git rev-parse --verify HEAD >/dev/null 2>&1"))
+{
+	# Initial commit: diff against an empty tree object
+	$against="4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+}
+else
+{
+	$against="HEAD";
+} 
+
+my $diff = `git diff-index --cached --name-only --diff-filter=ACMR $against --`;
+
+my @files = split(/^/, $diff);
+
+my $return = 0;
+foreach my $filename (@files)
+{
+	if($filename =~ /\.cpp$|\.h$/i)
+	{
+		my $result = `git show :$filename | uncrustify -c uncrustify.cfg --check -l CPP 2>&1`;
+		unless($result =~ /PASS/)
+		{
+			print "Uncrustify formatting check failed on $filename.\n";
+			print "Writing reformatted changes to $filename.nocrust\n";
+			print "Either \n\t-merge the new formatting, \n\t-use git commit --no-verify (NOT RECOMMENDED),\n\t-Use comments containing ' *INDENT-OFF*' and ' *INDENT-ON*' to disable processing of parts of the source file (NOT RECOMMENDED)\n";
+			if(system("git show :$filename | uncrustify -c uncrustify.cfg -l CPP -o $filename.nocrust"))
+			{
+				print "Failed to write uncrustified changes: $!\n";
+			}
+			$return = 1;
+		}
+	}
+}
+
+exit($return);
+
