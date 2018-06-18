@@ -18,6 +18,7 @@ else
 my $diff = `git diff-index --cached --name-only --diff-filter=ACMR $against --`;
 
 my @files = split(/^/, $diff);
+chomp @files;
 
 my $return = 0;
 foreach my $filename (@files)
