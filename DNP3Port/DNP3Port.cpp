@@ -24,7 +24,6 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 #include "DNP3Port.h"
-#include <iostream>
 #include "DNP3PortConf.h"
 #include <openpal/logging/LogLevels.h>
 
@@ -97,11 +96,15 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		else if(value == "NOTHING")
 			LOG_LEVEL = opendnp3::levels::NOTHING;
 		else
-			std::cout << "Warning: invalid LOG_LEVEL setting: '" << value << "' : ignoring and using 'NORMAL' log level." << std::endl;
+		{
+			if(auto log = spdlog::get("DNP3Port"))
+				log->warn("Invalid LOG_LEVEL setting: '{}' - defaulting to 'NORMAL' log level.", value);
+		}
 	}
 
 	if(JSONRoot.isMember("IP") && JSONRoot.isMember("SerialDevice"))
-		std::cout<<"Warning: DNP3 port serial device AND IP address specified - IP overrides"<<std::endl;
+		if(auto log = spdlog::get("DNP3Port"))
+			log->warn("Serial device AND IP address specified - IP wins");
 
 	if(JSONRoot.isMember("SerialDevice"))
 	{
@@ -119,7 +122,10 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 			else if(JSONRoot["Parity"].asString() == "NONE")
 				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::NONE;
 			else
-				std::cout << "Warning: Invalid serial parity: " << JSONRoot["Parity"].asString() << ", should be EVEN, ODD, or NONE."<< std::endl;
+			{
+				if(auto log = spdlog::get("DNP3Port"))
+					log->warn("Invalid serial parity: {}, should be EVEN, ODD, or NONE.", JSONRoot["Parity"].asString());
+			}
 		}
 		if(JSONRoot.isMember("DataBits"))
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.dataBits = JSONRoot["DataBits"].asUInt();
@@ -134,7 +140,10 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 			else if(JSONRoot["StopBits"].asFloat() == 2)
 				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::TWO;
 			else
-				std::cout << "Warning: Invalid serial stop bits: " << JSONRoot["StopBits"].asFloat() << ", should be 0, 1, 1.5, or 2"<< std::endl;
+			{
+				if(auto log = spdlog::get("DNP3Port"))
+					log->warn("Invalid serial stop bits: {}, should be 0, 1, 1.5, or 2", JSONRoot["StopBits"].asFloat());
+			}
 		}
 	}
 
@@ -156,7 +165,10 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		else if(JSONRoot["TCPClientServer"].asString() == "DEFAULT")
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::DEFAULT;
 		else
-			std::cout << "Warning: Invalid TCP client/server type: " << JSONRoot["TCPClientServer"].asString() << ", should be CLIENT, SERVER, or DEFAULT."<< std::endl;
+		{
+			if(auto log = spdlog::get("DNP3Port"))
+				log->warn("Invalid TCP client/server type: {}, should be CLIENT, SERVER, or DEFAULT.", JSONRoot["TCPClientServer"].asString());
+		}
 	}
 
 	if(JSONRoot.isMember("OutstationAddr"))
@@ -174,7 +186,10 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		else if(JSONRoot["ServerType"].asString() == "MANUAL")
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::MANUAL;
 		else
-			std::cout<<"Invalid DNP3 Port server type: '"<<JSONRoot["ServerType"].asString()<<"'."<<std::endl;
+		{
+			if(auto log = spdlog::get("DNP3Port"))
+				log->warn("Invalid DNP3 Port server type: '{}'.", JSONRoot["ServerType"].asString());
+		}
 	}
 
 }
