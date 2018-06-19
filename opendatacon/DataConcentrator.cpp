@@ -73,7 +73,6 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		interface.second->AddResponder("OpenDataCon", *this);
 		interface.second->AddResponder("DataPorts", DataPorts);
 		interface.second->AddResponder("DataConnectors", DataConnectors);
-		interface.second->AddResponder("Loggers", AdvancedLoggers);
 		interface.second->AddResponder("Plugins", Interfaces);
 	}
 	for(auto& port : DataPorts)

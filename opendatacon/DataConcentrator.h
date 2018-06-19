@@ -42,8 +42,6 @@
 #include <spdlog/spdlog.h>
 
 #include "DataConnector.h"
-#include "AdvancedLogger.h"
-#include "LogCollection.h"
 
 #include <opendatacon/IUI.h>
 
@@ -61,7 +59,6 @@ public:
 private:
 	DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
-	LogCollection AdvancedLoggers;
 	InterfaceCollection Interfaces;
 
 	asio::io_service IOS;
