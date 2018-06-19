@@ -39,7 +39,7 @@ public:
 
 	void Enable() override =0;
 	void Disable() override =0;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override =0;
+	void BuildOrRebuild() override =0;
 
 	//so the compiler won't warn we're hiding the base class overload we still want to use
 	using DataPort::Event;

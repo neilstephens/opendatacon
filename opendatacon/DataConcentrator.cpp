@@ -27,21 +27,18 @@
 #include <thread>
 #include <opendatacon/asio.h>
 #include <asiodnp3/ConsoleLogger.h>
-#include <opendnp3/LogLevels.h>
+
+#include <spdlog/spdlog.h>
 
 #include <opendatacon/Version.h>
-
 #include "DataConcentrator.h"
 #include "NullPort.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
-	IOMgr(std::thread::hardware_concurrency()),
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS)),
-	LOG_LEVEL(opendnp3::levels::NORMAL),
-	FileLog("datacon_log"),
-	TCPLog()
+	pTCPostream(nullptr)
 {
 	// Enable loading of libraries
 	InitLibaryLoading();
@@ -57,16 +54,6 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	//fire up some worker threads
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		std::thread([&](){IOS.run();}).detach();
-
-	AdvancedLoggers.emplace("Console Log", std::unique_ptr<AdvancedLogger,void (*)(AdvancedLogger*)>(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
-	AdvancedLoggers.at("Console Log")->AddIngoreAlways(".*"); //silence all console messages by default
-	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("Console Log").get());
-
-	AdvancedLoggers.emplace("File Log", std::unique_ptr<AdvancedLogger,void (*)(AdvancedLogger*)>(new AdvancedLogger(FileLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
-	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("File Log").get());
-
-	AdvancedLoggers.emplace("TCP Log", std::unique_ptr<AdvancedLogger,void (*)(AdvancedLogger*)>(new AdvancedLogger(TCPLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
-	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("TCP Log").get());
 
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
@@ -90,21 +77,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		interface.second->AddResponder("Plugins", Interfaces);
 	}
 	for(auto& port : DataPorts)
-	{
-		port.second->AddLogSubscriber(AdvancedLoggers.at("Console Log").get());
-		port.second->AddLogSubscriber(AdvancedLoggers.at("File Log").get());
-		port.second->AddLogSubscriber(AdvancedLoggers.at("TCP Log").get());
 		port.second->SetIOS(&IOS);
-		port.second->SetLogLevel(LOG_LEVEL);
-	}
 	for(auto& conn : DataConnectors)
-	{
-		conn.second->AddLogSubscriber(AdvancedLoggers.at("Console Log").get());
-		conn.second->AddLogSubscriber(AdvancedLoggers.at("File Log").get());
-		conn.second->AddLogSubscriber(AdvancedLoggers.at("TCP Log").get());
 		conn.second->SetIOS(&IOS);
-		conn.second->SetLogLevel(LOG_LEVEL);
-	}
 }
 
 DataConcentrator::~DataConcentrator()
@@ -113,6 +88,64 @@ DataConcentrator::~DataConcentrator()
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
+
+	//setup log sinks
+	auto log_size_kb = JSONRoot.isMember("LogFileSizekB") ? JSONRoot["LogFileSizekB"].asUInt() : 5*1024;
+	auto log_num = JSONRoot.isMember("NumLogFiles") ? JSONRoot["NumLogFiles"].asUInt() : 5;
+	auto log_name = JSONRoot.isMember("LogName") ? JSONRoot["LogName"].asString() : "datacon_log";
+	auto log_level_name = JSONRoot.isMember("LogLevel") ? JSONRoot["LogLevel"].asString() : "info";
+
+	auto log_level = spdlog::level::info;
+	size_t level_number = spdlog::level::trace; //lowest log level
+	do
+	{
+		if(log_level_name == spdlog::level::level_names[level_number])
+		{
+			log_level = static_cast<spdlog::level::level_enum>(level_number);
+			break;
+		}
+	} while(level_number++ < spdlog::level::off); //highest log level
+
+	//TODO: document these config options
+	if(JSONRoot.isMember("TCPLog"))
+	{
+		auto TCPLogJSON = JSONRoot["TCPLog"];
+		if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
+		{
+			std::cout<<"Warning: invalid TCPLog config: need at least IP, Port, TCPClientServer: \n'"<<TCPLogJSON.toStyledString()<<"\n' : ignoring"<<std::endl;
+		}
+		else
+		{
+			bool isServer = true;
+
+			if(TCPLogJSON["TCPClientServer"].asString() == "CLIENT")
+				isServer = false;
+			else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
+				std::cout<<"Warning: invalid TCPLog TCPClientServer setting. Choose CLIENT or SERVER. Defaulting to SERVER."<<std::endl;
+
+			TCPbuf.Init(&IOS,isServer,TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString());
+			pTCPostream = std::make_unique<std::ostream>(&TCPbuf);
+		}
+	}
+
+	try
+	{
+		size_t q_size = 4096;
+		auto flush_interval = std::chrono::seconds(2);
+		spdlog::set_async_mode(q_size, spdlog::async_overflow_policy::discard_log_msg, nullptr, flush_interval);
+		spdlog::set_level(log_level);
+
+		LogSinks.push_back(std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_name, "txt", log_size_kb*1024, log_num));
+		if(pTCPostream)
+			LogSinks.push_back(std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostream.get()));
+		auto pMainLogger = std::make_shared<spdlog::logger>("opendatacon", begin(LogSinks), end(LogSinks));
+		spdlog::register_logger(pMainLogger);
+	}
+	catch (const spdlog::spdlog_ex& ex)
+	{
+		throw std::runtime_error("Main logger initialization failed: " + std::string(ex.what()));
+	}
+	spdlog::get("opendatacon")->info("Log level set to {}", spdlog::level::level_names[log_level]);
 
 	//Configure the user interface
 	if(JSONRoot.isMember("Plugins"))
@@ -180,54 +213,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			//call the creation function and wrap the returned pointer to a new plugin
 			Interfaces.emplace(PluginName, std::unique_ptr<IUI,void (*)(IUI*)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), delete_plugin_func));
+
+			//Create a logger if we haven't already
+			if(!spdlog::get(libname))
+			{
+				auto pLibLogger = std::make_shared<spdlog::logger>(libname, begin(LogSinks), end(LogSinks));
+				spdlog::register_logger(pLibLogger);
+			}
 		}
-	}
-
-	if(JSONRoot.isMember("LogFileSizekB"))
-		FileLog.SetLogFileSizekB(JSONRoot["LogFileSizekB"].asUInt());
-
-	if(JSONRoot.isMember("NumLogFiles"))
-		FileLog.SetNumLogFiles(JSONRoot["NumLogFiles"].asUInt());
-
-	if(JSONRoot.isMember("LogName"))
-		FileLog.SetLogName(JSONRoot["LogName"].asString());
-
-	//TODO: document this
-	if(JSONRoot.isMember("TCPLog"))
-	{
-		auto TCPLogJSON = JSONRoot["TCPLog"];
-		if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
-		{
-			std::cout<<"Warning: invalid TCPLog config: need at least IP, Port, TCPClientServer: \n'"<<TCPLogJSON.toStyledString()<<"\n' : ignoring"<<std::endl;
-		}
-		else
-		{
-			bool isClient = false;
-
-			if(TCPLogJSON["TCPClientServer"].asString() == "CLIENT")
-				isClient = true;
-			else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
-				std::cout<<"Warning: invalid TCPLog TCPClientServer setting. Choose CLIENT or SERVER. Defaulting to SERVER."<<std::endl;
-
-			TCPLog.Startup(TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString(),&IOS,isClient);
-		}
-	}
-
-	if(JSONRoot.isMember("LOG_LEVEL"))
-	{
-		std::string value = JSONRoot["LOG_LEVEL"].asString();
-		if(value == "ALL")
-			LOG_LEVEL = opendnp3::levels::ALL;
-		else if(value == "ALL_COMMS")
-			LOG_LEVEL = opendnp3::levels::ALL_COMMS;
-		else if(value == "NORMAL")
-			LOG_LEVEL = opendnp3::levels::NORMAL;
-		else if(value == "NOTHING")
-			LOG_LEVEL = opendnp3::levels::NOTHING;
-		else
-			std::cout << "Warning: invalid LOG_LEVEL setting: '" << value << "' : ignoring and using 'NORMAL' log level." << std::endl;
-		AdvancedLoggers.at("File Log")->SetLogLevel(LOG_LEVEL);
-		AdvancedLoggers.at("Console Log")->SetLogLevel(LOG_LEVEL);
 	}
 
 	if(JSONRoot.isMember("Ports"))
@@ -344,12 +337,22 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//call the creation function and wrap the returned pointer to a new port
 			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
+
+			//Create a logger if we haven't already
+			if(!spdlog::get(libname))
+			{
+				auto pLibLogger = std::make_shared<spdlog::logger>(libname, begin(LogSinks), end(LogSinks));
+				spdlog::register_logger(pLibLogger);
+			}
 		}
 	}
 
 	if(JSONRoot.isMember("Connectors"))
 	{
 		const Json::Value Connectors = JSONRoot["Connectors"];
+
+		auto pConnLogger = std::make_shared<spdlog::logger>("Connectors", begin(LogSinks), end(LogSinks));
+		spdlog::register_logger(pConnLogger);
 
 		for(Json::Value::ArrayIndex n = 0; n < Connectors.size(); ++n)
 		{
@@ -402,12 +405,12 @@ void DataConcentrator::BuildOrRebuild()
 	std::cout << "Initialising DataPorts" << std::endl;
 	for(auto& Name_n_Port : DataPorts)
 	{
-		Name_n_Port.second->BuildOrRebuild(IOMgr,LOG_LEVEL);
+		Name_n_Port.second->BuildOrRebuild();
 	}
 	std::cout << "Initialising DataConnectors" << std::endl;
 	for(auto& Name_n_Conn : DataConnectors)
 	{
-		Name_n_Conn.second->BuildOrRebuild(IOMgr,LOG_LEVEL);
+		Name_n_Conn.second->BuildOrRebuild();
 	}
 }
 void DataConcentrator::Run()
@@ -474,9 +477,6 @@ void DataConcentrator::Run()
 
 	std::cout << "Destoying DataPorts... " << std::endl;
 	DataPorts.clear();
-
-	std::cout << "Shutting down DNP3 manager... " << std::endl;
-	IOMgr.Shutdown();
 }
 
 void DataConcentrator::Shutdown()
@@ -500,7 +500,8 @@ void DataConcentrator::Shutdown()
 			{
 			      Name_n_Port.second->Disable();
 			}
-			TCPLog.Shutdown();
+			spdlog::get("opendatacon")->flush();
+			TCPbuf.DeInit();
 			std::cout << "Finishing asynchronous tasks... " << std::endl;
 			ios_working.reset();
 		});

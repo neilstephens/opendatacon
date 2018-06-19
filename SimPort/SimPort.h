@@ -40,7 +40,7 @@ public:
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
 	void Enable() final;
 	void Disable() final;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) final;
+	void BuildOrRebuild() final;
 	void ProcessElements(const Json::Value& JSONRoot) final;
 	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 

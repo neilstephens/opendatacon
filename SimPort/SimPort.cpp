@@ -170,7 +170,7 @@ void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, si
 		});
 }
 
-void SimPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void SimPort::BuildOrRebuild()
 {
 	pEnableDisableSync.reset(new asio::strand(*pIOS));
 }

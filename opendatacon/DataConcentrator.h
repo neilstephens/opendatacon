@@ -38,11 +38,11 @@
 #include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/ConfigParser.h>
+#include <opendatacon/TCPstringbuf.h>
+#include <spdlog/spdlog.h>
 
 #include "DataConnector.h"
 #include "AdvancedLogger.h"
-#include "LogToFile.h"
-#include "LogToTCP.h"
 #include "LogCollection.h"
 
 #include <opendatacon/IUI.h>
@@ -64,15 +64,15 @@ private:
 	LogCollection AdvancedLoggers;
 	InterfaceCollection Interfaces;
 
-	IOManager IOMgr;
 	asio::io_service IOS;
 	std::unique_ptr<asio::io_service::work> ios_working;
 	std::once_flag shutdown_flag;
 
-	openpal::LogFilters LOG_LEVEL;
-	LogToFile FileLog; //Prints all messages to a rolling set of log files.
-	LogToTCP TCPLog;
-	asiopal::LogFanoutHandler FanoutHandler;
+	//ostream for spdlog logging sink
+	TCPstringbuf TCPbuf;
+	std::unique_ptr<std::ostream> pTCPostream;
+
+	std::vector<spdlog::sink_ptr> LogSinks;
 };
 
 #endif /* DATACONCENTRATOR_H_ */

@@ -28,9 +28,9 @@
 #include <opendnp3/app/MeasurementTypes.h>
 #include "DNP3MasterPort.h"
 #include "ChannelStateSubscriber.h"
-#include <openpal/logging/LogLevels.h>
 #include <array>
 #include <asiopal/UTCTimeSource.h>
+#include <spdlog/spdlog.h>
 
 DNP3MasterPort::~DNP3MasterPort()
 {
@@ -44,10 +44,7 @@ void DNP3MasterPort::Enable()
 		return;
 	if(nullptr == pMaster)
 	{
-		std::string msg = Name + ": Port not configured.";
-		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-
+		spdlog::get("DNP3Port")->error("{}: DNP3 stack not initialised.", Name);
 		return;
 	}
 
@@ -81,11 +78,7 @@ void DNP3MasterPort::PortUp()
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(BinaryQuality::ONLINE))
 	{
-		{
-			std::string msg = Name + ": Updating comms state point to good";
-			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-		}
+		spdlog::get("DNP3Port")->debug("{}: Updating comms state point to good.", Name);
 		Binary commsUpEvent(!pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(BinaryQuality::ONLINE), Timestamp(eventTime));
 		PublishEvent(commsUpEvent, pConf->pPointConf->mCommsPoint.second);
 	}
@@ -96,11 +89,7 @@ void DNP3MasterPort::PortDown()
 	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	{
-		std::string msg = Name + ": Setting point quality to COMM_LOST";
-		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-	}
+	spdlog::get("DNP3Port")->debug("{}: Setting point quality to COMM_LOST.", Name);
 
 	for (auto index : pConf->pPointConf->BinaryIndicies)
 		PublishEvent(BinaryQuality::COMM_LOST, index);
@@ -110,11 +99,8 @@ void DNP3MasterPort::PortDown()
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(BinaryQuality::ONLINE))
 	{
-		{
-			std::string msg = Name + ": Updating comms state point to bad";
-			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::DBG, "", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
-		}
+		spdlog::get("DNP3Port")->debug("{}: Setting comms point to failed.", Name);
+
 		Binary commsDownEvent(pConf->pPointConf->mCommsPoint.first.value, static_cast<uint8_t>(BinaryQuality::ONLINE), Timestamp(eventTime));
 		PublishEvent(commsDownEvent, pConf->pPointConf->mCommsPoint.second);
 	}
@@ -153,9 +139,7 @@ void DNP3MasterPort::OnLinkDown()
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
 		{
-			std::string msg = Name + ": disabling stack following disconnect on non-persistent port.";
-			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			spdlog::get("DNP3Port")->info("{}: Disabling stack following disconnect on non-persistent port.", Name);
 
 			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
 			pIOS->post([&]()
@@ -185,17 +169,15 @@ TCPClientServer DNP3MasterPort::ClientOrServer()
 	return pConf->mAddrConf.ClientServer;
 }
 
-void DNP3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void DNP3MasterPort::BuildOrRebuild()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	pChannel = GetChannel(IOMgr);
+	pChannel = GetChannel();
 
 	if (pChannel == nullptr)
 	{
-		std::string msg = Name + ": Channel not found for masterstation.";
-		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("DNP3Port")->error("{}: Channel not found for masterstation.", Name);
 		return;
 	}
 
@@ -225,10 +207,7 @@ void DNP3MasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_L
 	ChannelStateSubscriber::Subscribe(this,pChannel);
 	if (pMaster == nullptr)
 	{
-		std::string msg = Name + ": Error creating masterstation.";
-		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-
+		spdlog::get("DNP3Port")->error("{}: Error creating masterstation.", Name);
 		return;
 	}
 
@@ -298,9 +277,7 @@ void DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& Send
 	// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
 	if (stack_enabled && state == ConnectState::PORT_UP)
 	{
-		std::string msg = Name + ": upstream port enabled, performing integrity scan.";
-		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("DNP3Port")->info("{}: Upstream port enabled, performing integrity scan.", Name);
 
 		IntegrityScan.Demand();
 	}
@@ -310,9 +287,7 @@ void DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& Send
 	// If an upstream port is connected, attempt a connection (if on demand)
 	if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 	{
-		std::string msg = Name + ": upstream port connected, performing on-demand connection.";
-		auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("DNP3Port")->info("{}: upstream port connected, performing on-demand connection.", Name);
 
 		pIOS->post([&]()
 			{
@@ -360,9 +335,7 @@ inline void DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::stri
 			//this will change the control code if the command is binary, and there's a defined override
 			DoOverrideControlCode(lCommand);
 
-			std::string msg = "Executing direct operate to index: " + std::to_string(index);
-			auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::INFO, "", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			spdlog::get("DNP3Port")->debug("{}: Executing direct operate to index: {}", Name, index);
 
 			auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
 						  {
@@ -390,9 +363,7 @@ inline void DNP3MasterPort::EventT(T& arCommand, uint16_t index, const std::stri
 			return;
 		}
 	}
-	std::string msg = "Control sent to invalid DNP3 index: " + std::to_string(index);
-	auto log_entry = openpal::LogEntry("DNP3MasterPort", openpal::logflags::WARN, "", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
+	spdlog::get("DNP3Port")->warn("{}: Control sent to invalid DNP3 index: {}", Name, index);
 
 	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }

@@ -1,0 +1,114 @@
+/*	opendatacon
+ *
+ *	Copyright (c) 2014:
+ *
+ *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+ *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+ *
+ *	Licensed under the Apache License, Version 2.0 (the "License");
+ *	you may not use this file except in compliance with the License.
+ *	You may obtain a copy of the License at
+ *
+ *		http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *	Unless required by applicable law or agreed to in writing, software
+ *	distributed under the License is distributed on an "AS IS" BASIS,
+ *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *	See the License for the specific language governing permissions and
+ *	limitations under the License.
+ */
+/*
+ * DNP3Log2spdlog.cpp
+ *
+ *  Created on: 2018-06-19
+ *      Author: Neil Stephens <dearknarl@gmail.com>
+ */
+
+#include "DNP3Log2spdlog.h"
+#include <spdlog/spdlog.h>
+#include <opendnp3/LogLevels.h>
+
+DNP3Log2spdlog::DNP3Log2spdlog()
+{}
+
+void DNP3Log2spdlog::Log( const openpal::LogEntry& arEntry )
+{
+//FIXME: Clash with windows #define
+#define GetMessage GetMessage
+
+	spdlog::level::level_enum spdlevel = FilterToLevel(arEntry.GetFilters());
+	if(spdlog::get("DNP3Port")->should_log(spdlevel))
+		spdlog::get("DNP3Port")->force_log(spdlevel, "{} - {} - {} - {} - Code: {}",
+			FilterToString(arEntry.GetFilters()),
+			arEntry.GetAlias(),
+			arEntry.GetLocation(),
+			arEntry.GetMessage(),
+			arEntry.GetErrorCode());
+}
+
+std::string DNP3Log2spdlog::FilterToString(const openpal::LogFilters& filters)
+{
+	switch (filters.GetBitfield())
+	{
+
+		case (opendnp3::flags::EVENT):
+			return "EVENT";
+		case (opendnp3::flags::ERR):
+			return "ERROR";
+		case (opendnp3::flags::WARN):
+			return "WARN";
+		case (opendnp3::flags::INFO):
+			return "INFO";
+		case (opendnp3::flags::DBG):
+			return "DEBUG";
+		case (opendnp3::flags::LINK_RX):
+		case (opendnp3::flags::LINK_RX_HEX):
+			return "<--LINK-";
+		case (opendnp3::flags::LINK_TX):
+		case (opendnp3::flags::LINK_TX_HEX):
+			return "-LINK-->";
+		case (opendnp3::flags::TRANSPORT_RX):
+			return "<--TRANS-";
+		case (opendnp3::flags::TRANSPORT_TX):
+			return "-TRANS-->";
+		case (opendnp3::flags::APP_HEADER_RX):
+		case (opendnp3::flags::APP_OBJECT_RX):
+			return "<--APP-";
+		case (opendnp3::flags::APP_HEADER_TX):
+		case (opendnp3::flags::APP_OBJECT_TX):
+			return "-APP-->";
+		default:
+			return "UNKNOWN";
+	}
+}
+
+spdlog::level::level_enum DNP3Log2spdlog::FilterToLevel(const openpal::LogFilters& filters)
+{
+	switch (filters.GetBitfield())
+	{
+
+		case (opendnp3::flags::EVENT):
+			return spdlog::level::alert;
+		case (opendnp3::flags::ERR):
+			return spdlog::level::err;
+		case (opendnp3::flags::WARN):
+			return spdlog::level::warn;
+		case (opendnp3::flags::INFO):
+			return spdlog::level::info;
+		case (opendnp3::flags::DBG):
+			return spdlog::level::debug;
+		case (opendnp3::flags::LINK_RX):
+		case (opendnp3::flags::LINK_RX_HEX):
+		case (opendnp3::flags::LINK_TX):
+		case (opendnp3::flags::LINK_TX_HEX):
+		case (opendnp3::flags::TRANSPORT_RX):
+		case (opendnp3::flags::TRANSPORT_TX):
+		case (opendnp3::flags::APP_HEADER_RX):
+		case (opendnp3::flags::APP_OBJECT_RX):
+		case (opendnp3::flags::APP_HEADER_TX):
+		case (opendnp3::flags::APP_OBJECT_TX):
+			return spdlog::level::trace;
+		default:
+			return spdlog::level::alert;
+	}
+}

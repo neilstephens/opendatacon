@@ -35,6 +35,7 @@
 #include "LogicInvTransform.h"
 #include <opendatacon/Platform.h>
 #include <opendatacon/IOManager.h>
+#include <spdlog/spdlog.h>
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	IOHandler(aName),
@@ -173,6 +174,14 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 
 				//call the creation function and wrap the returned pointer
 				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new_tx_func(Transforms[n]["Params"].asString()),delete_tx_func));
+
+				//FIXME: need access to LogSinks on the DataConcentrator object
+				//Create a logger if we haven't already
+//				if(!spdlog::get(libname))
+//				{
+//					auto pLibLogger = std::make_shared<spdlog::logger>(libname, begin(LogSinks), end(LogSinks));
+//					spdlog::register_logger(pLibLogger);
+//				}
 			}
 			catch (std::exception& e)
 			{
@@ -256,14 +265,12 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 		return;
 	}
 	//no connection for sender if we get here
-	std::string msg = "Connector '"+this->Name+"' discarding event from '"+SenderName+"' (No connection defined)";
-	auto log_entry = openpal::LogEntry("DataConnector", openpal::logflags::WARN,"", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
+	spdlog::get("Connectors")->warn("{}: discarding event from '", Name+SenderName+"' (No connection defined)");
 
 	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
-void DataConnector::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void DataConnector::BuildOrRebuild()
 {}
 void DataConnector::Enable()
 {

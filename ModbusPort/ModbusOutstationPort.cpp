@@ -31,7 +31,7 @@
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include "ModbusOutstationPort.h"
 
-#include <opendnp3/LogLevels.h>
+#include <spdlog/spdlog.h>
 
 ModbusOutstationPort::ModbusOutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	ModbusPort(aName, aConfFilename, aConfOverrides)
@@ -70,27 +70,21 @@ void ModbusOutstationPort::Connect()
 
 	if (mb == NULL)
 	{
-		std::string msg = Name+": Connect error: 'Modbus stack failed'";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("ModbusPort")->error("{}: Connect error: 'Modbus stack failed'", Name);
 		return;
 	}
 
 	int s = modbus_tcp_pi_listen(mb, 1);
 	if (s == -1)
 	{
-		std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("ModbusPort")->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 		return;
 	}
 
 	int r = modbus_tcp_pi_accept(mb, &s);
 	if (r == -1)
 	{
-		std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("ModbusPort")->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 		return;
 	}
 }
@@ -124,7 +118,7 @@ void ModbusOutstationPort::StateListener(ChannelState state)
 		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
 }
-void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void ModbusOutstationPort::BuildOrRebuild()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -138,9 +132,7 @@ void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters&
 		mb = modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
 		if (mb == NULL)
 		{
-			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			spdlog::get("ModbusPort")->error("{}: Stack error: 'Modbus stack creation failed'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
@@ -151,26 +143,20 @@ void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters&
 		mb = modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
 		if (mb == NULL)
 		{
-			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			spdlog::get("ModbusPort")->error("{}: Stack error: 'Modbus stack creation failed'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
 		if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
 		{
-			std::string msg = Name + ": Stack error: 'Failed to set Modbus serial mode to RS232'";
-			auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			spdlog::get("ModbusPort")->error("{}: Stack error: 'Failed to set Modbus serial mode to RS232'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
 	}
 	else
 	{
-		std::string msg = Name + ": No IP interface or serial device defined";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("ModbusPort")->error("{}: No IP interface or serial device defined", Name);
 		//TODO: should this throw an exception instead of return?
 		return;
 	}
@@ -183,9 +169,7 @@ void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters&
 		pConf->pPointConf->InputRegIndicies.Total());
 	if (mb_mapping == NULL)
 	{
-		std::string msg = Name + ": Failed to allocate the modbus register mapping: " + std::string(modbus_strerror(errno));
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("ModbusPort")->error("{}: Failed to allocate the modbus register mapping: {}", Name, modbus_strerror(errno));
 		//TODO: should this throw an exception instead of return?
 		return;
 	}

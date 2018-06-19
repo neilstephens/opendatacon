@@ -24,7 +24,7 @@
  *      Author: Alan Murray
  */
 
-#include <opendnp3/LogLevels.h>
+#include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
 
@@ -67,17 +67,13 @@ void ModbusMasterPort::Connect()
 
 	if (mb == NULL)
 	{
-		std::string msg = Name+": Connect error: 'Modbus stack failed'";
-		auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("ModbusPort")->error("{}: Connect error: 'Modbus stack failed'", Name);
 		return;
 	}
 
 	if (modbus_connect(mb) == -1)
 	{
-		std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
-		auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("ModbusPort")->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 
 		//try again later - except for manual connections
 		if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
@@ -94,12 +90,7 @@ void ModbusMasterPort::Connect()
 	}
 
 	stack_enabled = true;
-
-	{
-		std::string msg = Name + ": Connect success!";
-		auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-	}
+	spdlog::get("ModbusPort")->info("{}: Connect success!", Name);
 
 	modbus_set_slave(mb, pConf->mAddrConf.OutstationAddr);
 
@@ -170,9 +161,7 @@ void ModbusMasterPort::Disconnect()
 
 void ModbusMasterPort::HandleError(int errnum, const std::string& source)
 {
-	std::string msg = Name + ": " + source + " error: '" + modbus_strerror(errno) + "'";
-	auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
+	spdlog::get("ModbusPort")->warn("{}: {} error: '{}'", Name, source, modbus_strerror(errno));
 
 	// If not a modbus error, tear down the connection?
 //    if (errnum < MODBUS_ENOBASE)
@@ -224,7 +213,7 @@ CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& 
 	}
 }
 
-void ModbusMasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void ModbusMasterPort::BuildOrRebuild()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -239,8 +228,7 @@ void ModbusMasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG
 		if (mb == NULL)
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			spdlog::get("ModbusPort")->error(msg);
 			throw std::runtime_error(msg);
 		}
 	}
@@ -251,8 +239,7 @@ void ModbusMasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG
 		if (mb == NULL)
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			spdlog::get("ModbusPort")->error(msg);
 			throw std::runtime_error(msg);
 		}
 
@@ -268,8 +255,7 @@ void ModbusMasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG
 	else
 	{
 		std::string msg = Name + ": No IP address or serial device defined";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		spdlog::get("ModbusPort")->error(msg);
 		throw std::runtime_error(msg);
 	}
 }

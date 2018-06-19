@@ -85,7 +85,7 @@ public:
 	void Disable() override;
 	void Connect();
 	void Disconnect();
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+	void BuildOrRebuild() override;
 
 	// Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
 	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;

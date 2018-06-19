@@ -44,7 +44,7 @@ public:
 	void Enable() override;
 	void Disable() override;
 
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+	void BuildOrRebuild() override;
 
 	template<typename T> void EventT(const T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	template<typename T> void EventQ(const T& qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
