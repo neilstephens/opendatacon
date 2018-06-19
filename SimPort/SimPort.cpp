@@ -23,11 +23,11 @@
  *  Created on: 29/07/2015
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-
-#include "SimPort.h"
-#include "SimPortConf.h"
 #include <random>
 #include <limits>
+#include <spdlog/spdlog.h>
+#include "SimPort.h"
+#include "SimPortConf.h"
 
 inline unsigned int random_interval(const unsigned int& average_interval, rand_t& seed)
 {
@@ -194,9 +194,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Analogs[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = spdlog::get("SimPort"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -270,9 +270,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Binaries[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = spdlog::get("SimPort"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -331,9 +331,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<BinaryControls[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = spdlog::get("SimPort"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
