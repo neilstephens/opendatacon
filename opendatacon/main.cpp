@@ -131,7 +131,8 @@ int main(int argc, char* argv[])
 		TheDataConcentrator->Run();
 
 		std::cout << "opendatacon version " << ODC_VERSION_STRING << " shutdown cleanly." << std::endl;
-		spdlog::get("opendatacon")->flush();
+		if(auto log = spdlog::get("opendatacon"))
+			log->flush();
 		spdlog::drop_all();
 		return 0;
 	}

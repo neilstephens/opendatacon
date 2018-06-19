@@ -232,7 +232,8 @@ asiodnp3::IChannel* DNP3Port::GetChannel()
 
 				default:
 					const std::string msg(Name + ": Can't determine if TCP socket is client or server");
-					spdlog::get("DNP3Port")->error(msg);
+					if(auto log = spdlog::get("DNP3Port"))
+						log->error(msg);
 					throw std::runtime_error(msg);
 			}
 		}

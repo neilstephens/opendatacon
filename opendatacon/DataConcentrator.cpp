@@ -145,7 +145,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 	{
 		throw std::runtime_error("Main logger initialization failed: " + std::string(ex.what()));
 	}
-	spdlog::get("opendatacon")->info("Log level set to {}", spdlog::level::level_names[log_level]);
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Log level set to {}", spdlog::level::level_names[log_level]);
 
 	//Configure the user interface
 	if(JSONRoot.isMember("Plugins"))
@@ -502,7 +503,8 @@ void DataConcentrator::Shutdown()
 			{
 			      Name_n_Port.second->Disable();
 			}
-			spdlog::get("opendatacon")->flush();
+			if(auto log = spdlog::get("opendatacon"))
+				log->flush();
 			TCPbuf.DeInit();
 			std::cout << "Finishing asynchronous tasks... " << std::endl;
 			ios_working.reset();

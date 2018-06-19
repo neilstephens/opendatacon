@@ -67,13 +67,15 @@ void ModbusMasterPort::Connect()
 
 	if (mb == NULL)
 	{
-		spdlog::get("ModbusPort")->error("{}: Connect error: 'Modbus stack failed'", Name);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("{}: Connect error: 'Modbus stack failed'", Name);
 		return;
 	}
 
 	if (modbus_connect(mb) == -1)
 	{
-		spdlog::get("ModbusPort")->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
+		if(auto log = spdlog::get("ModbusPort"))
+			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 
 		//try again later - except for manual connections
 		if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
@@ -90,7 +92,8 @@ void ModbusMasterPort::Connect()
 	}
 
 	stack_enabled = true;
-	spdlog::get("ModbusPort")->info("{}: Connect success!", Name);
+	if(auto log = spdlog::get("ModbusPort"))
+		log->info("{}: Connect success!", Name);
 
 	modbus_set_slave(mb, pConf->mAddrConf.OutstationAddr);
 
@@ -161,7 +164,8 @@ void ModbusMasterPort::Disconnect()
 
 void ModbusMasterPort::HandleError(int errnum, const std::string& source)
 {
-	spdlog::get("ModbusPort")->warn("{}: {} error: '{}'", Name, source, modbus_strerror(errno));
+	if(auto log = spdlog::get("ModbusPort"))
+		log->warn("{}: {} error: '{}'", Name, source, modbus_strerror(errno));
 
 	// If not a modbus error, tear down the connection?
 //    if (errnum < MODBUS_ENOBASE)
@@ -228,7 +232,8 @@ void ModbusMasterPort::BuildOrRebuild()
 		if (mb == NULL)
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			spdlog::get("ModbusPort")->error(msg);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error(msg);
 			throw std::runtime_error(msg);
 		}
 	}
@@ -239,7 +244,8 @@ void ModbusMasterPort::BuildOrRebuild()
 		if (mb == NULL)
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			spdlog::get("ModbusPort")->error(msg);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error(msg);
 			throw std::runtime_error(msg);
 		}
 
@@ -255,7 +261,8 @@ void ModbusMasterPort::BuildOrRebuild()
 	else
 	{
 		std::string msg = Name + ": No IP address or serial device defined";
-		spdlog::get("ModbusPort")->error(msg);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error(msg);
 		throw std::runtime_error(msg);
 	}
 }

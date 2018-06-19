@@ -54,7 +54,8 @@ void JSONPort::Enable()
 	}
 	catch(std::exception& e)
 	{
-		spdlog::get("JSONPort")->error("{}: Problem opening connection:: {}", Name, e.what());
+		if(auto log = spdlog::get("JSONPort"))
+			log->error("{}: Problem opening connection:: {}", Name, e.what());
 		return;
 	}
 }
@@ -375,12 +376,16 @@ void JSONPort::ProcessBraced(const std::string& braced)
 		}
 	}
 	else
-		spdlog::get("JSONPort")->warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
+	{
+		if(auto log = spdlog::get("JSONPort"))
+			log->warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
+	}
 }
 template<typename T>
 inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 {
-	spdlog::get("JSONPort")->debug("Measurement Event '{}'", typeid(meas).name());
+	if(auto log = spdlog::get("JSONPort"))
+		log->debug("Measurement Event '{}'", typeid(meas).name());
 
 	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
 	{

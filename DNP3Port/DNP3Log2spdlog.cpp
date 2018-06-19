@@ -37,13 +37,14 @@ void DNP3Log2spdlog::Log( const openpal::LogEntry& arEntry )
 #define GetMessage GetMessage
 
 	spdlog::level::level_enum spdlevel = FilterToLevel(arEntry.GetFilters());
-	if(spdlog::get("DNP3Port")->should_log(spdlevel))
-		spdlog::get("DNP3Port")->force_log(spdlevel, "{} - {} - {} - {} - Code: {}",
-			FilterToString(arEntry.GetFilters()),
-			arEntry.GetAlias(),
-			arEntry.GetLocation(),
-			arEntry.GetMessage(),
-			arEntry.GetErrorCode());
+	if(auto log = spdlog::get("DNP3Port"))
+		if(log->should_log(spdlevel))
+			log->force_log(spdlevel, "{} - {} - {} - {} - Code: {}",
+				FilterToString(arEntry.GetFilters()),
+				arEntry.GetAlias(),
+				arEntry.GetLocation(),
+				arEntry.GetMessage(),
+				arEntry.GetErrorCode());
 }
 
 std::string DNP3Log2spdlog::FilterToString(const openpal::LogFilters& filters)

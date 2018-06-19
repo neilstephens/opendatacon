@@ -265,7 +265,8 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 		return;
 	}
 	//no connection for sender if we get here
-	spdlog::get("Connectors")->warn("{}: discarding event from '", Name+SenderName+"' (No connection defined)");
+	if(auto log = spdlog::get("Connectors"))
+		log->warn("{}: discarding event from '", Name+SenderName+"' (No connection defined)");
 
 	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }

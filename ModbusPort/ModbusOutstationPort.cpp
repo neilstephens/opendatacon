@@ -70,21 +70,24 @@ void ModbusOutstationPort::Connect()
 
 	if (mb == NULL)
 	{
-		spdlog::get("ModbusPort")->error("{}: Connect error: 'Modbus stack failed'", Name);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("{}: Connect error: 'Modbus stack failed'", Name);
 		return;
 	}
 
 	int s = modbus_tcp_pi_listen(mb, 1);
 	if (s == -1)
 	{
-		spdlog::get("ModbusPort")->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
+		if(auto log = spdlog::get("ModbusPort"))
+			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 		return;
 	}
 
 	int r = modbus_tcp_pi_accept(mb, &s);
 	if (r == -1)
 	{
-		spdlog::get("ModbusPort")->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
+		if(auto log = spdlog::get("ModbusPort"))
+			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 		return;
 	}
 }
@@ -132,7 +135,8 @@ void ModbusOutstationPort::BuildOrRebuild()
 		mb = modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
 		if (mb == NULL)
 		{
-			spdlog::get("ModbusPort")->error("{}: Stack error: 'Modbus stack creation failed'", Name);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error("{}: Stack error: 'Modbus stack creation failed'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
@@ -143,20 +147,23 @@ void ModbusOutstationPort::BuildOrRebuild()
 		mb = modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
 		if (mb == NULL)
 		{
-			spdlog::get("ModbusPort")->error("{}: Stack error: 'Modbus stack creation failed'", Name);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error("{}: Stack error: 'Modbus stack creation failed'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
 		if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
 		{
-			spdlog::get("ModbusPort")->error("{}: Stack error: 'Failed to set Modbus serial mode to RS232'", Name);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error("{}: Stack error: 'Failed to set Modbus serial mode to RS232'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
 	}
 	else
 	{
-		spdlog::get("ModbusPort")->error("{}: No IP interface or serial device defined", Name);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("{}: No IP interface or serial device defined", Name);
 		//TODO: should this throw an exception instead of return?
 		return;
 	}
@@ -169,7 +176,8 @@ void ModbusOutstationPort::BuildOrRebuild()
 		pConf->pPointConf->InputRegIndicies.Total());
 	if (mb_mapping == NULL)
 	{
-		spdlog::get("ModbusPort")->error("{}: Failed to allocate the modbus register mapping: {}", Name, modbus_strerror(errno));
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("{}: Failed to allocate the modbus register mapping: {}", Name, modbus_strerror(errno));
 		//TODO: should this throw an exception instead of return?
 		return;
 	}

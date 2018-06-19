@@ -54,7 +54,8 @@ void DNP3OutstationPort::Enable()
 		return;
 	if(nullptr == pOutstation)
 	{
-		spdlog::get("DNP3Port")->error("{}: DNP3 stack not configured.", Name);
+		if(auto log = spdlog::get("DNP3Port"))
+			log->error("{}: DNP3 stack not configured.", Name);
 
 		return;
 	}
@@ -125,7 +126,8 @@ void DNP3OutstationPort::BuildOrRebuild()
 
 	if (pChannel == nullptr)
 	{
-		spdlog::get("DNP3Port")->error("{}: Channel not found for outstation.", Name);
+		if(auto log = spdlog::get("DNP3Port"))
+			log->error("{}: Channel not found for outstation.", Name);
 		return;
 	}
 
@@ -167,7 +169,8 @@ void DNP3OutstationPort::BuildOrRebuild()
 
 	if (pOutstation == nullptr)
 	{
-		spdlog::get("DNP3Port")->error("{}: Error creating outstation.", Name);
+		if(auto log = spdlog::get("DNP3Port"))
+			log->error("{}: Error creating outstation.", Name);
 		return;
 	}
 
