@@ -171,20 +171,21 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			std::string libname;
 			if(Plugins[n].isMember("Library"))
 			{
-				libname = GetLibFileName(Plugins[n]["Library"].asString());
+				libname = Plugins[n]["Library"].asString();
 			}
 			//Otherwise use the naming convention lib<Type>Plugin.so to find the default lib that implements a type of plugin
 			else
 			{
-				libname = GetLibFileName(Plugins[n]["Type"].asString());
+				libname = Plugins[n]["Type"].asString();
 			}
+			std::string libfilename = GetLibFileName(libname);
 
 			//try to load the lib
-			auto* pluginlib = LoadModule(libname);
+			auto* pluginlib = LoadModule(libfilename);
 
 			if(pluginlib == nullptr)
 			{
-				std::cout << PluginName << " Info: dynamic library load failed '" << libname << "' skipping plugin..." << std::endl;
+				std::cout << PluginName << " Info: dynamic library load failed '" << libfilename << "' skipping plugin..." << std::endl;
 				std::cout << PluginName << " Error: failed to load plugin, skipping..." << std::endl;
 				continue;
 			}
@@ -199,11 +200,11 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			if(new_plugin_func == nullptr)
 			{
-				std::cout << PluginName << " Info: failed to load symbol '" << new_funcname << "' from library '" << libname << "' - " << LastSystemError() << std::endl;
+				std::cout << PluginName << " Info: failed to load symbol '" << new_funcname << "' from library '" << libfilename << "' - " << LastSystemError() << std::endl;
 			}
 			if(delete_plugin_func == nullptr)
 			{
-				std::cout << PluginName << " Info: failed to load symbol '" << delete_funcname << "' from library '" << libname << "' - " << LastSystemError() << std::endl;
+				std::cout << PluginName << " Info: failed to load symbol '" << delete_funcname << "' from library '" << libfilename << "' - " << LastSystemError() << std::endl;
 			}
 			if(new_plugin_func == nullptr || delete_plugin_func == nullptr)
 			{
@@ -291,20 +292,21 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			std::string libname;
 			if(Ports[n].isMember("Library"))
 			{
-				libname = GetLibFileName(Ports[n]["Library"].asString());
+				libname = Ports[n]["Library"].asString();
 			}
 			//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
 			else
 			{
-				libname = GetLibFileName(Ports[n]["Type"].asString()+"Port");
+				libname = Ports[n]["Type"].asString()+"Port";
 			}
+			std::string libfilename(GetLibFileName(libname));
 
 			//try to load the lib
-			auto* portlib = LoadModule(libname);
+			auto* portlib = LoadModule(libfilename);
 
 			if(portlib == nullptr)
 			{
-				std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
+				std::cout << "Warning: failed to load library '"<<libfilename<<"' mapping to null port..."<<std::endl;
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
