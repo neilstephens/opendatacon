@@ -158,7 +158,10 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				if(txlib == nullptr)
 				{
 					if(auto log = spdlog::get("Connectors"))
+					{
+						log->error("{}",LastSystemError());
 						log->error("Failed to load library '{}' skipping transform...", libfilename);
+					}
 					continue;
 				}
 
@@ -187,6 +190,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 //				if(!spdlog::get(libname))
 //				{
 //					auto pLibLogger = std::make_shared<spdlog::logger>(libname, begin(LogSinks), end(LogSinks));
+//					pLibLogger->set_level(spdlog::level::trace);
 //					spdlog::register_logger(pLibLogger);
 //				}
 

@@ -85,12 +85,15 @@ protected:
 	bool link_dead;
 	bool channel_dead;
 
-	static asiodnp3::DNP3Manager IOMgr;
-	static DNP3Log2spdlog DNP3LogHandler;
 	static std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
 
 	virtual void OnLinkDown()=0;
 	virtual TCPClientServer ClientOrServer()=0;
+
+private:
+	static asiodnp3::DNP3Manager IOMgr;
+	static DNP3Log2spdlog DNP3LogHandler;
+	static std::atomic_flag log_subscribed;
 };
 
 #endif /* DNP3PORT_H_ */

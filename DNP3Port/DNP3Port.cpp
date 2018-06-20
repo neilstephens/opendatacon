@@ -27,9 +27,11 @@
 #include "DNP3PortConf.h"
 #include <openpal/logging/LogLevels.h>
 
-asiodnp3::DNP3Manager IOMgr(std::thread::hardware_concurrency());
-DNP3Log2spdlog DNP3Port::DNP3LogHandler;
 std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::Channels;
+
+asiodnp3::DNP3Manager DNP3Port::IOMgr(std::thread::hardware_concurrency());
+DNP3Log2spdlog DNP3Port::DNP3LogHandler;
+std::atomic_flag DNP3Port::log_subscribed = ATOMIC_FLAG_INIT;
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -38,7 +40,8 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	link_dead(true),
 	channel_dead(true)
 {
-	IOMgr.AddLogSubscriber(DNP3LogHandler);
+	if(!log_subscribed.test_and_set(std::memory_order_acquire))
+		IOMgr.AddLogSubscriber(DNP3LogHandler);
 	//the creation of a new DNP3PortConf will get the point details
 	pConf.reset(new DNP3PortConf(ConfFilename, ConfOverrides));
 

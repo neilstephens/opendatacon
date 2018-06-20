@@ -37,7 +37,6 @@ public:
 	DNP3Log2spdlog();
 	void Log( const openpal::LogEntry& arEntry ) override;
 private:
-	std::string FilterToString(const openpal::LogFilters& filters);
 	spdlog::level::level_enum FilterToLevel(const openpal::LogFilters& filters);
 };
 

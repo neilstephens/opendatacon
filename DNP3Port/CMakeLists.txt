@@ -29,7 +29,6 @@ include_directories(
 	${ASIO_HOME}/include
 )
 
-#TODO add as module - can't atm, due to tests linking directly instead of dynamic loading
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC ${asiopal_libs} ${openpal_libs} ${asiodnp3_libs} ${opendnp3_libs})
 

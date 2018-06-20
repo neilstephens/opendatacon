@@ -109,9 +109,13 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		console_level = spdlog::level::err;
 	try
 	{
-		LogSinks.push_back(std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_name, log_size_kb*1024, log_num));
+		auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_name, log_size_kb*1024, log_num);
 		auto console = std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>();
+
+		file->set_level(log_level);
 		console->set_level(console_level);
+
+		LogSinks.push_back(file);
 		LogSinks.push_back(console);
 
 		//TODO: document these config options
@@ -139,9 +143,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		}
 
 		if(pTCPostream)
-			LogSinks.push_back(std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostream.get()));
+		{
+			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostream.get());
+			tcp->set_level(log_level);
+			LogSinks.push_back(tcp);
+		}
 		auto pMainLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
 			4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
+		pMainLogger->set_level(spdlog::level::trace);
 		spdlog::register_logger(pMainLogger);
 	}
 	catch (const spdlog::spdlog_ex& ex)
@@ -198,6 +207,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			if(pluginlib == nullptr)
 			{
+				log->error("{}",LastSystemError());
 				log->error("{} : Dynamic library '{}' load failed skipping plugin...", PluginName, libfilename);
 				continue;
 			}
@@ -224,6 +234,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinks), end(LogSinks),
 					4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
+				pLibLogger->set_level(spdlog::level::trace);
 				spdlog::register_logger(pLibLogger);
 			}
 
@@ -314,6 +325,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			if(portlib == nullptr)
 			{
+				log->error("{}",LastSystemError());
 				log->error("Failed to load library '{}' mapping {} to NullPort...", libfilename, Ports[n]["Name"].asString());
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
@@ -346,6 +358,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinks), end(LogSinks),
 					4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
+				pLibLogger->set_level(spdlog::level::trace);
 				spdlog::register_logger(pLibLogger);
 			}
 
@@ -362,6 +375,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		//make a logger for use by Connectors
 		auto pConnLogger = std::make_shared<spdlog::async_logger>("Connectors", begin(LogSinks), end(LogSinks),
 			4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
+		pConnLogger->set_level(spdlog::level::trace);
 		spdlog::register_logger(pConnLogger);
 
 		for(Json::Value::ArrayIndex n = 0; n < Connectors.size(); ++n)

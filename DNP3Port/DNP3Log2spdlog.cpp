@@ -36,50 +36,14 @@ void DNP3Log2spdlog::Log( const openpal::LogEntry& arEntry )
 //FIXME: Clash with windows #define
 #define GetMessage GetMessage
 
+	auto DNP3LevelName = opendnp3::LogFlagToString(arEntry.GetFilters().GetBitfield());
 	spdlog::level::level_enum spdlevel = FilterToLevel(arEntry.GetFilters());
 	if(auto log = spdlog::get("DNP3Port"))
-		log->log(spdlevel, "{} - {} - {} - {} - Code: {}",
-			FilterToString(arEntry.GetFilters()),
+		log->log(spdlevel, "{} - {} - {} - {}",
+			DNP3LevelName,
 			arEntry.GetAlias(),
-			arEntry.GetLocation(),
 			arEntry.GetMessage(),
 			arEntry.GetErrorCode());
-}
-
-std::string DNP3Log2spdlog::FilterToString(const openpal::LogFilters& filters)
-{
-	switch (filters.GetBitfield())
-	{
-
-		case (opendnp3::flags::EVENT):
-			return "EVENT";
-		case (opendnp3::flags::ERR):
-			return "ERROR";
-		case (opendnp3::flags::WARN):
-			return "WARN";
-		case (opendnp3::flags::INFO):
-			return "INFO";
-		case (opendnp3::flags::DBG):
-			return "DEBUG";
-		case (opendnp3::flags::LINK_RX):
-		case (opendnp3::flags::LINK_RX_HEX):
-			return "<--LINK-";
-		case (opendnp3::flags::LINK_TX):
-		case (opendnp3::flags::LINK_TX_HEX):
-			return "-LINK-->";
-		case (opendnp3::flags::TRANSPORT_RX):
-			return "<--TRANS-";
-		case (opendnp3::flags::TRANSPORT_TX):
-			return "-TRANS-->";
-		case (opendnp3::flags::APP_HEADER_RX):
-		case (opendnp3::flags::APP_OBJECT_RX):
-			return "<--APP-";
-		case (opendnp3::flags::APP_HEADER_TX):
-		case (opendnp3::flags::APP_OBJECT_TX):
-			return "-APP-->";
-		default:
-			return "UNKNOWN";
-	}
 }
 
 spdlog::level::level_enum DNP3Log2spdlog::FilterToLevel(const openpal::LogFilters& filters)
@@ -105,8 +69,10 @@ spdlog::level::level_enum DNP3Log2spdlog::FilterToLevel(const openpal::LogFilter
 		case (opendnp3::flags::TRANSPORT_TX):
 		case (opendnp3::flags::APP_HEADER_RX):
 		case (opendnp3::flags::APP_OBJECT_RX):
+		case (opendnp3::flags::APP_HEX_RX):
 		case (opendnp3::flags::APP_HEADER_TX):
 		case (opendnp3::flags::APP_OBJECT_TX):
+		case (opendnp3::flags::APP_HEX_TX):
 			return spdlog::level::trace;
 		default:
 			return spdlog::level::critical;
