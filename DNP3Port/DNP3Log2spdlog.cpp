@@ -38,13 +38,12 @@ void DNP3Log2spdlog::Log( const openpal::LogEntry& arEntry )
 
 	spdlog::level::level_enum spdlevel = FilterToLevel(arEntry.GetFilters());
 	if(auto log = spdlog::get("DNP3Port"))
-		if(log->should_log(spdlevel))
-			log->force_log(spdlevel, "{} - {} - {} - {} - Code: {}",
-				FilterToString(arEntry.GetFilters()),
-				arEntry.GetAlias(),
-				arEntry.GetLocation(),
-				arEntry.GetMessage(),
-				arEntry.GetErrorCode());
+		log->log(spdlevel, "{} - {} - {} - {} - Code: {}",
+			FilterToString(arEntry.GetFilters()),
+			arEntry.GetAlias(),
+			arEntry.GetLocation(),
+			arEntry.GetMessage(),
+			arEntry.GetErrorCode());
 }
 
 std::string DNP3Log2spdlog::FilterToString(const openpal::LogFilters& filters)
@@ -89,7 +88,7 @@ spdlog::level::level_enum DNP3Log2spdlog::FilterToLevel(const openpal::LogFilter
 	{
 
 		case (opendnp3::flags::EVENT):
-			return spdlog::level::alert;
+			return spdlog::level::critical;
 		case (opendnp3::flags::ERR):
 			return spdlog::level::err;
 		case (opendnp3::flags::WARN):
@@ -110,6 +109,6 @@ spdlog::level::level_enum DNP3Log2spdlog::FilterToLevel(const openpal::LogFilter
 		case (opendnp3::flags::APP_OBJECT_TX):
 			return spdlog::level::trace;
 		default:
-			return spdlog::level::alert;
+			return spdlog::level::critical;
 	}
 }

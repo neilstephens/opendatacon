@@ -368,7 +368,8 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 					{
 						if(!FeedbackBinaries[fbn].isMember("Index"))
 						{
-							std::cout<<"An 'Index' is required for Binary feedback : '"<<FeedbackBinaries[fbn].toStyledString()<<"'"<<std::endl;
+							if(auto log = spdlog::get("SimPort"))
+								log->error("An 'Index' is required for Binary feedback : '{}'",FeedbackBinaries[fbn].toStyledString());
 							continue;
 						}
 
@@ -396,7 +397,10 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							else if(mode == "LATCH")
 								fb.mode = FeedbackMode::LATCH;
 							else
-								std::cout<<"Warning: unrecognised feedback mode: '"<<FeedbackBinaries[fbn].toStyledString()<<"'"<<std::endl;
+							{
+								if(auto log = spdlog::get("SimPort"))
+									log->warn("Unrecognised feedback mode: '{}'",FeedbackBinaries[fbn].toStyledString());
+							}
 						}
 						pConf->ControlFeedback[index].push_back(std::move(fb));
 					}

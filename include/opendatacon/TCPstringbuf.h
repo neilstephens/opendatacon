@@ -3,6 +3,8 @@
 namespace odc
 {
 
+//implement a std::stringbuf with a TCP connection
+//for use in a std::ostream
 class TCPstringbuf: public std::stringbuf
 {
 public:
@@ -26,8 +28,9 @@ public:
 	{
 		if(pSockMan)
 		{
-			pSockMan->Write(str());
-			return 0; //success
+			pSockMan->Write(str()); //write
+			str("");                //clear
+			return 0;               //success
 		}
 		return -1; //fail
 	}

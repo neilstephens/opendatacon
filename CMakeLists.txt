@@ -260,7 +260,14 @@ set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it
 if(DEFINED ASIO_HOME)
 	set(ASIO_HOME ${ASIO_HOME} CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
 else()
-	set(ASIO_HOME "/usr/local" CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+	set(ASIO_HOME "/usr" CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+endif()
+
+set(SPDLOG_HOME_INSTRUCTIONS "Choose the location of spdlog header library (>= v0.17.0): where it was installed - there should be an include directory within")
+if(DEFINED SPDLOG_HOME)
+	set(SPDLOG_HOME ${SPDLOG_HOME} CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS})
+else()
+	set(SPDLOG_HOME "/usr" CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS})
 endif()
 
 message("add subdir JSON")
