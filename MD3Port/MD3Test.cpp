@@ -147,7 +147,7 @@ std::string BuildHexStringFromASCIIHexString(const std::string &as)
 }
 void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
 {
-	// We dont have to consider the timer going out of scope in this use case.
+	// We don’t have to consider the timer going out of scope in this use case.
 	Timer_t timer(IOS);
 	timer.expires_from_now(std::chrono::seconds(seconds));
 	timer.async_wait([&IOS](asio::error_code err_code)	// [=] all autos by copy, [&] all autos by ref
