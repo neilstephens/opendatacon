@@ -80,10 +80,10 @@ foreach my $filename (@files)
 
 if($return == 1)
 {
-	print "Uncrustify formatting check failed on:\n\t";
-	print join "\n\t", @failed_files;
-	print "Writing reformatted changes to <filename>.nocrust\n";
-	print "Either:\n\t-merge the new formatting,\n\t-use git commit --no-verify (NOT RECOMMENDED),\n\t-Use comments containing '*INDENT-OFF*' and ' *INDENT-ON*' to disable processing of parts of the source file\n\t\t(NOT RECOMMENDED, but better than --no-verify)\n";
+	print "\nUncrustify formatting check failed on:\n\t";
+	print join("\n\t", @failed_files)."\n";
+	print "\nWriting new formatting to <filename>.nocrust\n";
+	print "\nEither:\n\t-merge the new formatting,\n\t-use git commit --no-verify (NOT RECOMMENDED),\n\t-Use comments containing '*INDENT-OFF*' and '*INDENT-ON*',\n\t\tto disable processing of parts of the source file\n\t\t(NOT RECOMMENDED, but better than --no-verify)\n";
 }
 
 exit($return);
