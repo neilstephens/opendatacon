@@ -57,7 +57,7 @@ add_custom_command(
 add_custom_target(version DEPENDS "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h")
 
 # various optional libraries and projects
-option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, MD3Port Tests, ConsoleUI, WebUI)" OFF)
+option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, MD3Port, Tests, ConsoleUI, WebUI)" OFF)
 
 set(TESTS OFF CACHE BOOL "Build tests"					)
 set(WEBUI OFF CACHE BOOL "Build the http(s) web user interface"	)
