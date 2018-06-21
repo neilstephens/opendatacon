@@ -24,10 +24,13 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
 include_directories(
 	../../include
 	../../ODC
+	../../JSON
+	"${ASIO_HOME}/include"
+	"${DNP3_HOME}/include"
 )
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC JSON)
+target_link_libraries(${PROJECT_NAME} ODC JSON ${opendnp3_libs} ${openpal_libs} ${DL})
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)

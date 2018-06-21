@@ -29,7 +29,7 @@
 #include <opendnp3/app/ClassField.h>
 #include "DNP3PointConf.h"
 #include "OpenDNP3Helpers.h"
-#include <iostream> // TODO: remove include, should be met using logging mechanism
+#include <spdlog/spdlog.h>
 
 
 DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides):
@@ -133,7 +133,8 @@ opendnp3::PointClass GetClass(Json::Value JPoint)
 					clazz = opendnp3::PointClass::Class3;
 					break;
 				default:
-					std::cout<<"Invalid class for Point: '"<<JPoint.toStyledString()<<"'"<<std::endl;
+					if(auto log = spdlog::get("DNP3Port"))
+						log->error("Invalid class for Point: '{}'", JPoint.toStyledString());
 					break;
 			}
 		}
@@ -155,7 +156,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("LinkUseConfirms"))
 		LinkUseConfirms = JSONRoot["LinkUseConfirms"].asBool();
 	if (JSONRoot.isMember("UseConfirms"))
-		std::cout << "Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '" << JSONRoot["UseConfirms"].toStyledString() << "'" << std::endl;
+		if(auto log = spdlog::get("DNP3Port"))
+			log->error("Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '{}'", JSONRoot["UseConfirms"].toStyledString());
 
 	// Common application configuration
 	if (JSONRoot.isMember("EnableUnsol"))
@@ -208,20 +210,12 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// Master Station scanning configuration
 	if (JSONRoot.isMember("IntegrityScanRatems"))
 		IntegrityScanRatems = JSONRoot["IntegrityScanRatems"].asUInt();
-	if (JSONRoot.isMember("IntegrityScanRateSec"))
-		std::cout << "Use of 'IntegrityScanRateSec' is deprecated, use 'IntegrityScanRatems' instead : '" << JSONRoot["IntegrityScanRateSec"].toStyledString() << "'" << std::endl;
 	if (JSONRoot.isMember("EventClass1ScanRatems"))
 		EventClass1ScanRatems = JSONRoot["EventClass1ScanRatems"].asUInt();
-	if (JSONRoot.isMember("EventClass1ScanRateSec"))
-		std::cout << "Use of 'EventClass1ScanRateSec' is deprecated, use 'EventClass1ScanRatems' instead : '" << JSONRoot["EventClass1ScanRateSec"].toStyledString() << "'" << std::endl;
 	if (JSONRoot.isMember("EventClass2ScanRatems"))
 		EventClass2ScanRatems = JSONRoot["EventClass2ScanRatems"].asUInt();
-	if (JSONRoot.isMember("EventClass2ScanRateSec"))
-		std::cout << "Use of 'EventClass2ScanRateSec' is deprecated, use 'EventClass2ScanRatems' instead : '" << JSONRoot["EventClass2ScanRateSec"].toStyledString() << "'" << std::endl;
 	if (JSONRoot.isMember("EventClass3ScanRatems"))
 		EventClass3ScanRatems = JSONRoot["EventClass3ScanRatems"].asUInt();
-	if (JSONRoot.isMember("EventClass3ScanRateSec"))
-		std::cout << "Use of 'EventClass3ScanRateSec' is deprecated, use 'EventClass3ScanRatems' instead : '" << JSONRoot["EventClass3ScanRateSec"].toStyledString() << "'" << std::endl;
 
 	if (JSONRoot.isMember("DoAssignClassOnStartup"))
 		DoAssignClassOnStartup = JSONRoot["DoAssignClassOnStartup"].asBool();
@@ -290,7 +284,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		else if (JSONRoot["TimestampOverride"].asString() == "NEVER")
 			TimestampOverride = DNP3PointConf::TimestampOverride_t::NEVER;
 		else
-			std::cout << "Invalid TimestampOverride: " << JSONRoot["TimestampOverride"].asString() << ", should be ALWAYS, ZERO, or NEVER - defaulting to ZERO" << std::endl;
+		{
+			if(auto log = spdlog::get("DNP3Port"))
+				log->error("Invalid TimestampOverride: {}, should be ALWAYS, ZERO, or NEVER - defaulting to ZERO", JSONRoot["TimestampOverride"].asString());
+		}
 	}
 
 	// Event buffer limits
@@ -322,9 +319,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Analogs[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = spdlog::get("DNP3Port"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -342,7 +339,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					EventAnalogResponses[index] = StringToEventAnalogResponse(Analogs[n]["EventAnalogResponse"].asString());
 				else
 					EventAnalogResponses[index] = EventAnalogResponse;
-				
+
 				AnalogDeadbands[index] = deadband;
 
 				if(!exists)
@@ -391,9 +388,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Binaries[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = spdlog::get("DNP3Port"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -412,7 +409,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					EventBinaryResponses[index] = StringToEventBinaryResponse(Binaries[n]["EventBinaryResponse"].asString());
 				else
 					EventBinaryResponses[index] = EventBinaryResponse;
-				
+
 				if(!exists)
 					BinaryIndicies.push_back(index);
 
@@ -459,9 +456,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<BinaryControls[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = spdlog::get("DNP3Port"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{

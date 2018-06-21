@@ -106,9 +106,9 @@ public:
 
 		mTimer.expires_at(task->nextpoll);
 		mTimer.async_wait(
-		      [this](asio::error_code err_code)
-		      {
-		            if(err_code != asio::error::operation_aborted)
+			[this](asio::error_code err_code)
+			{
+				if(err_code != asio::error::operation_aborted)
 					this->DoScheduledTask();
 			});
 	}

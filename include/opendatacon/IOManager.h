@@ -30,8 +30,9 @@
 
 #include <asiodnp3/DNP3Manager.h>
 
-namespace odc {
-	typedef asiodnp3::DNP3Manager IOManager;
+namespace odc
+{
+typedef asiodnp3::DNP3Manager IOManager;
 }
 
 #endif

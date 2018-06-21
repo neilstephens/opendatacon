@@ -66,13 +66,13 @@ inline std::string LastSystemError()
 	DWORD dw = GetLastError();
 
 	auto res = FormatMessageA(
-	      FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-	      NULL,
-	      dw,
-	      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-	      (LPSTR)&lpMsgBuf,
-	      0,
-	      NULL);
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		dw,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPSTR)&lpMsgBuf,
+		0,
+		NULL);
 	std::string message;
 	if (res > 0)
 	{

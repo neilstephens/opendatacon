@@ -38,8 +38,8 @@ typedef opendnp3::CommandStatus CommandStatus;
 typedef opendnp3::ControlCode ControlCode;
 
 /// Timestamp
-typedef	opendnp3::DNPTime Timestamp;
-	
+typedef     opendnp3::DNPTime Timestamp;
+
 /// Measurement types
 typedef opendnp3::Binary Binary;
 typedef opendnp3::DoubleBitBinary DoubleBitBinary;

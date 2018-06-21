@@ -33,7 +33,8 @@
 #include "ConfigParser.h"
 #include "IUIResponder.h"
 
-namespace odc {
+namespace odc
+{
 typedef opendnp3::ChannelState ChannelState;
 
 class DataPort: public IOHandler, public ConfigParser
@@ -44,22 +45,25 @@ public:
 		ConfigParser(aConfFilename, aConfOverrides),
 		pConf(nullptr)
 	{}
-	~DataPort() override{}
+	~DataPort() override {}
 
 	void Enable() override =0;
 	void Disable() override =0;
-	virtual void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)=0;
+	virtual void BuildOrRebuild()=0;
 	void ProcessElements(const Json::Value& JSONRoot) override =0;
 
-	std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) final
+	void Event(ConnectState state, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final
 	{
 		if(MuxConnectionEvents(state, SenderName))
-			return ConnectionEvent(state, SenderName);
-		else
-			return IOHandler::CommandFutureUndefined();
+		{
+			ConnectionEvent(state, SenderName, pStatusCallback);
+			return;
+		}
+
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
 	}
 
-	virtual std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) = 0;
+	virtual void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	virtual const Json::Value GetStatistics() const
 	{

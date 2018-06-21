@@ -40,6 +40,9 @@ install(FILES "README.md" DESTINATION ".")
 install(FILES "RELEASE_NOTES" DESTINATION ".")
 install(DIRECTORY "./3rdPartyLicenses" DESTINATION ".")
 
+#Deploy git workflow hook scripts
+include(git-hooks.cmake)
+
 #Generate version info now, and set to generate on every build
 include(version.cmake)
 #This will run on every build, because output is never actually produced.
@@ -154,8 +157,7 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g")
 
 	if(COVERAGE)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -g -O0")
-		#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage -g -O0")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
 	endif()
 
 	if (WERROR)
@@ -260,7 +262,14 @@ set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it
 if(DEFINED ASIO_HOME)
 	set(ASIO_HOME ${ASIO_HOME} CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
 else()
-	set(ASIO_HOME "/usr/local" CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+	set(ASIO_HOME "/usr" CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+endif()
+
+set(SPDLOG_HOME_INSTRUCTIONS "Choose the location of spdlog header library (>= v0.17.0): where it was installed - there should be an include directory within")
+if(DEFINED SPDLOG_HOME)
+	set(SPDLOG_HOME ${SPDLOG_HOME} CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS})
+else()
+	set(SPDLOG_HOME "/usr" CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS})
 endif()
 
 message("add subdir JSON")

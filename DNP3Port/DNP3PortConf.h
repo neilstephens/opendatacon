@@ -27,6 +27,7 @@
 #ifndef DNP3OUTSTATIONPORTCONF_H_
 #define DNP3OUTSTATIONPORTCONF_H_
 
+#include <opendnp3/LogLevels.h>
 #include <opendatacon/DataPort.h>
 #include "DNP3PointConf.h"
 
@@ -61,13 +62,15 @@ struct DNP3AddrConf
 class DNP3PortConf: public DataPortConf
 {
 public:
-	DNP3PortConf(const std::string& FileName, const Json::Value& ConfOverrides)
+	DNP3PortConf(const std::string& FileName, const Json::Value& ConfOverrides):
+		LOG_LEVEL(opendnp3::levels::NORMAL)
 	{
 		pPointConf.reset(new DNP3PointConf(FileName, ConfOverrides));
 	}
 
 	std::unique_ptr<DNP3PointConf> pPointConf;
 	DNP3AddrConf mAddrConf;
+	openpal::LogFilters LOG_LEVEL;
 };
 
 #endif /* DNP3OUTSTATIONPORTCONF_H_ */

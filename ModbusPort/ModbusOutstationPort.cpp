@@ -25,14 +25,13 @@
  */
 
 #include <iostream>
-#include <future>
 #include <regex>
 #include <chrono>
 #include <asiopal/UTCTimeSource.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include "ModbusOutstationPort.h"
 
-#include <opendnp3/LogLevels.h>
+#include <spdlog/spdlog.h>
 
 ModbusOutstationPort::ModbusOutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	ModbusPort(aName, aConfFilename, aConfOverrides)
@@ -71,27 +70,24 @@ void ModbusOutstationPort::Connect()
 
 	if (mb == NULL)
 	{
-		std::string msg = Name+": Connect error: 'Modbus stack failed'";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("{}: Connect error: 'Modbus stack failed'", Name);
 		return;
 	}
 
 	int s = modbus_tcp_pi_listen(mb, 1);
 	if (s == -1)
 	{
-		std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 		return;
 	}
 
 	int r = modbus_tcp_pi_accept(mb, &s);
 	if (r == -1)
 	{
-		std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 		return;
 	}
 }
@@ -125,7 +121,7 @@ void ModbusOutstationPort::StateListener(ChannelState state)
 		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
 }
-void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void ModbusOutstationPort::BuildOrRebuild()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -139,9 +135,8 @@ void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters&
 		mb = modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
 		if (mb == NULL)
 		{
-			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error("{}: Stack error: 'Modbus stack creation failed'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
@@ -152,26 +147,23 @@ void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters&
 		mb = modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
 		if (mb == NULL)
 		{
-			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error("{}: Stack error: 'Modbus stack creation failed'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
 		if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
 		{
-			std::string msg = Name + ": Stack error: 'Failed to set Modbus serial mode to RS232'";
-			auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error("{}: Stack error: 'Failed to set Modbus serial mode to RS232'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
 	}
 	else
 	{
-		std::string msg = Name + ": No IP interface or serial device defined";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("{}: No IP interface or serial device defined", Name);
 		//TODO: should this throw an exception instead of return?
 		return;
 	}
@@ -179,69 +171,25 @@ void ModbusOutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters&
 
 	//Allocate memory for bits, input bits, registers, and input registers */
 	mb_mapping = modbus_mapping_new(pConf->pPointConf->BitIndicies.Total(),
-	                                pConf->pPointConf->InputBitIndicies.Total(),
-	                                pConf->pPointConf->RegIndicies.Total(),
-	                                pConf->pPointConf->InputRegIndicies.Total());
+		pConf->pPointConf->InputBitIndicies.Total(),
+		pConf->pPointConf->RegIndicies.Total(),
+		pConf->pPointConf->InputRegIndicies.Total());
 	if (mb_mapping == NULL)
 	{
-		std::string msg = Name + ": Failed to allocate the modbus register mapping: " + std::string(modbus_strerror(errno));
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("{}: Failed to allocate the modbus register mapping: {}", Name, modbus_strerror(errno));
 		//TODO: should this throw an exception instead of return?
 		return;
 	}
 }
 
-template<typename T>
-inline CommandStatus ModbusOutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
-{
-	if(!enabled)
-		return CommandStatus::UNDEFINED;
-
-	//FIXME: this is meant to return if we support the type of command
-	//at the moment we just return success if it's configured as a control
-	/*
-	    auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-	    if(std::is_same<T,ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
-	    {
-	                    for(auto index : pConf->pPointConf->ControlIndicies)
-	                            if(index == aIndex)
-	                                    return CommandStatus::SUCCESS;
-	    }
-	*/
-	return CommandStatus::NOT_SUPPORTED;
-}
-template<typename T>
-inline CommandStatus ModbusOutstationPort::PerformT(T& arCommand, uint16_t aIndex)
-{
-	if(!enabled)
-		return CommandStatus::UNDEFINED;
-	
-	auto future_results = PublishCommand(arCommand, aIndex);
-
-	for(auto& future_result : future_results)
-	{
-		//if results aren't ready, we'll try to do some work instead of blocking
-		while(future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
-		{
-			//not ready - let's lend a hand to speed things up
-			this->pIOS->poll_one();
-		}
-		//first one that isn't a success, we can return
-		if(future_result.get() != CommandStatus::SUCCESS)
-			return CommandStatus::UNDEFINED;
-	}
-
-	return CommandStatus::SUCCESS;
-}
-
-std::future<CommandStatus> ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
-std::future<CommandStatus> ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName){ return EventT(meas, index, SenderName); }
+void ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
+void ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
 
 template<typename T>
 int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
@@ -254,14 +202,12 @@ int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
 }
 
 template<typename T>
-inline std::future<CommandStatus> ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName)
+inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	auto cmd_promise = std::promise<CommandStatus>();
-
 	if(!enabled)
 	{
-		cmd_promise.set_value(CommandStatus::UNDEFINED);
-		return cmd_promise.get_future();
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
@@ -277,6 +223,8 @@ inline std::future<CommandStatus> ModbusOutstationPort::EventT(T& meas, uint16_t
 			if(map_index >= 0)
 				*(mb_mapping->tab_registers + map_index) = (uint16_t)meas.value;
 		}
+		(*pStatusCallback)(CommandStatus::SUCCESS);
+		return;
 	}
 	else if(std::is_same<T,Binary>::value)
 	{
@@ -289,10 +237,11 @@ inline std::future<CommandStatus> ModbusOutstationPort::EventT(T& meas, uint16_t
 			if(map_index >= 0)
 				*(mb_mapping->tab_bits + index) = (uint8_t)meas.value;
 		}
+		(*pStatusCallback)(CommandStatus::SUCCESS);
+		return;
 	}
 	//TODO: impl other types
 
-	cmd_promise.set_value(CommandStatus::UNDEFINED);
-	return cmd_promise.get_future();
+	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 

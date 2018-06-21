@@ -36,9 +36,9 @@ void ChannelStateSubscriber::Subscribe(DNP3Port* pPort, asiodnp3::IChannel* pCha
 	if(SubscriberMap.count(pChan) == 0)
 	{
 		pChan->AddStateListener([pChan](ChannelState state)
-		{
-			ChannelStateSubscriber::StateListener(pChan,state);
-		});
+			{
+				ChannelStateSubscriber::StateListener(pChan,state);
+			});
 	}
 	SubscriberMap.insert({pChan,pPort});
 }

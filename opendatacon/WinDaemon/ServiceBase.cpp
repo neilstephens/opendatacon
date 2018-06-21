@@ -79,7 +79,7 @@ void WINAPI CServiceBase::ServiceMain(DWORD dwArgc, PWSTR *pszArgv)
 
 	// Register the handler function for the service
 	s_service->m_statusHandle = RegisterServiceCtrlHandler(
-	      s_service->m_name, ServiceCtrlHandler);
+		s_service->m_name, ServiceCtrlHandler);
 	if (s_service->m_statusHandle == NULL)
 	{
 		throw GetLastError();
@@ -147,9 +147,9 @@ void WINAPI CServiceBase::ServiceCtrlHandler(DWORD dwCtrl)
 //   * fCanPauseContinue - the service can be paused and continued
 //
 CServiceBase::CServiceBase(PWSTR pszServiceName,
-                           BOOL fCanStop,
-                           BOOL fCanShutdown,
-                           BOOL fCanPauseContinue)
+	BOOL fCanStop,
+	BOOL fCanShutdown,
+	BOOL fCanPauseContinue)
 {
 	// Service name must be a valid string and cannot be NULL.
 	m_name = (pszServiceName == NULL) ? L"" : pszServiceName;
@@ -471,8 +471,8 @@ void CServiceBase::OnShutdown()
 //   * dwWaitHint - estimated time for pending operation, in milliseconds
 //
 void CServiceBase::SetServiceStatus(DWORD dwCurrentState,
-                                    DWORD dwWin32ExitCode,
-                                    DWORD dwWaitHint)
+	DWORD dwWin32ExitCode,
+	DWORD dwWaitHint)
 {
 	static DWORD dwCheckPoint = 1;
 
@@ -483,9 +483,9 @@ void CServiceBase::SetServiceStatus(DWORD dwCurrentState,
 	m_status.dwWaitHint = dwWaitHint;
 
 	m_status.dwCheckPoint =
-	      ((dwCurrentState == SERVICE_RUNNING) ||
-	       (dwCurrentState == SERVICE_STOPPED)) ?
-	      0 : dwCheckPoint++;
+		((dwCurrentState == SERVICE_RUNNING) ||
+		 (dwCurrentState == SERVICE_STOPPED)) ?
+		0 : dwCheckPoint++;
 
 	// Report the status of the service to the SCM.
 	::SetServiceStatus(m_statusHandle, &m_status);
@@ -521,15 +521,15 @@ void CServiceBase::WriteEventLogEntry(PWSTR pszMessage, WORD wType)
 		lpszStrings[1] = pszMessage;
 
 		ReportEvent(hEventSource, // Event log handle
-		            wType,        // Event type
-		            0,            // Event category
-		            0,            // Event identifier
-		            NULL,         // No security identifier
-		            2,            // Size of lpszStrings array
-		            0,            // No binary data
-		            lpszStrings,  // Array of strings
-		            NULL          // No binary data
-		            );
+			wType,              // Event type
+			0,                  // Event category
+			0,                  // Event identifier
+			NULL,               // No security identifier
+			2,                  // Size of lpszStrings array
+			0,                  // No binary data
+			lpszStrings,        // Array of strings
+			NULL                // No binary data
+			);
 
 		DeregisterEventSource(hEventSource);
 	}
@@ -549,7 +549,7 @@ void CServiceBase::WriteErrorLogEntry(PWSTR pszFunction, DWORD dwError)
 {
 	wchar_t szMessage[260];
 	StringCchPrintf(szMessage, ARRAYSIZE(szMessage),
-	                L"%s failed w/err 0x%08lx", pszFunction, dwError);
+		L"%s failed w/err 0x%08lx", pszFunction, dwError);
 	WriteEventLogEntry(szMessage, EVENTLOG_ERROR_TYPE);
 }
 

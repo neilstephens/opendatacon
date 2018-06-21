@@ -28,10 +28,10 @@ class DataConcentratorService: public CServiceBase
 public:
 
 	DataConcentratorService(ODCArgs& Args,
-	                        PWSTR pszServiceName,
-	                        BOOL fCanStop = TRUE,
-	                        BOOL fCanShutdown = TRUE,
-	                        BOOL fCanPauseContinue = FALSE);
+		PWSTR pszServiceName,
+		BOOL fCanStop = TRUE,
+		BOOL fCanShutdown = TRUE,
+		BOOL fCanPauseContinue = FALSE);
 	virtual ~DataConcentratorService(void);
 
 protected:

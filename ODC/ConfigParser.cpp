@@ -26,6 +26,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <spdlog/spdlog.h>
 #include <opendatacon/ConfigParser.h>
 
 std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
@@ -63,7 +64,11 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 		std::ifstream fin(FileName);
 		if (fin.fail())
 		{
-			std::cout << "WARNING: Config file " << FileName << " open fail." << std::endl;
+			std::string msg("Config file " + FileName + " open fail.");
+			if(auto log = spdlog::get("opendatacon"))
+				log->error(msg);
+			else
+				std::cout << "ERROR: " << msg << std::endl;
 			return nullptr;
 		}
 		Json::CharReaderBuilder JSONReader;
@@ -71,8 +76,11 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 		bool parse_success = Json::parseFromStream(JSONReader,fin, &JSONCache[FileName], &err_str);
 		if (!parse_success)
 		{
-			std::cout << "Failed to parse configuration from '"<<FileName<<"'\n"
-				    << err_str <<std::endl;
+			std::string msg("Failed to parse configuration from '" + FileName + "' : " + err_str);
+			if(auto log = spdlog::get("opendatacon"))
+				log->error(msg);
+			else
+				std::cout << "ERROR: " << msg <<std::endl;
 			return nullptr;
 		}
 	}
