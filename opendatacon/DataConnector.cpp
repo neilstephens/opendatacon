@@ -35,6 +35,7 @@
 #include "LogicInvTransform.h"
 #include <opendatacon/Platform.h>
 #include <opendatacon/IOManager.h>
+#include <spdlog/spdlog.h>
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	IOHandler(aName),
@@ -56,20 +57,23 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			{
 				if(!JConnections[n].isMember("Name") || !JConnections[n].isMember("Port1") || !JConnections[n].isMember("Port2"))
 				{
-					std::cout<<"Warning: invalid Connection config: need at least Name, From and To: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+					if(auto log = spdlog::get("Connectors"))
+						log->error("Invalid Connection config: need at least Name, From and To: \n'{}\n' : ignoring", JConnections[n].toStyledString());
 					continue;
 				}
 				auto ConName = JConnections[n]["Name"].asString();
 				if(Connections.count(ConName))
 				{
-					std::cout<<"Warning: invalid Connection config: Duplicate Name: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+					if(auto log = spdlog::get("Connectors"))
+						log->error("Invalid Connection config: Duplicate Name: \n'{}\n' : ignoring", JConnections[n].toStyledString());
 					continue;
 				}
 				auto ConPort1 = JConnections[n]["Port1"].asString();
 				auto ConPort2 = JConnections[n]["Port2"].asString();
 				if ((GetIOHandlers().count(ConPort1) == 0) || (GetIOHandlers().count(ConPort2) == 0))
 				{
-					std::cout << "Warning: invalid port on connection '" << ConName << "' skipping..." << std::endl;
+					if(auto log = spdlog::get("Connectors"))
+						log->error("Invalid port on connection '{}' skipping...", ConName);
 					continue;
 				}
 				Connections[ConName] = std::make_pair(GetIOHandlers()[ConPort1], GetIOHandlers()[ConPort2]);
@@ -82,7 +86,8 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			}
 			catch (std::exception& e)
 			{
-				std::cout<<"Warning: Exception raised when creating Connection from config: \n'"<<JConnections[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+				if(auto log = spdlog::get("Connectors"))
+					log->error("Exception raised when creating Connection from config: \n'{}\n' : ignoring", JConnections[n].toStyledString());
 			}
 		}
 	}
@@ -96,7 +101,8 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			{
 				if(!Transforms[n].isMember("Type") || !Transforms[n].isMember("Sender"))
 				{
-					std::cout<<"Warning: invalid Transform config: need at least Type and Sender: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+					if(auto log = spdlog::get("Connectors"))
+						log->error("Invalid Transform config: need at least Type and Sender: \n'{}\n' : ignoring", Transforms[n].toStyledString());
 					continue;
 				}
 
@@ -137,20 +143,25 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				std::string libname;
 				if(Transforms[n].isMember("Library"))
 				{
-					libname = GetLibFileName(Transforms[n]["Library"].asString());
+					libname = Transforms[n]["Library"].asString();
 				}
 				//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
 				else
 				{
-					libname = GetLibFileName(Transforms[n]["Type"].asString());
+					libname = Transforms[n]["Type"].asString();
 				}
+				auto libfilename = GetLibFileName(libname);
 
 				//try to load the lib
-				auto* txlib = LoadModule(libname.c_str());
+				auto* txlib = LoadModule(libfilename.c_str());
 
 				if(txlib == nullptr)
 				{
-					std::cout << "Warning: failed to load library '"<<libname<<"' skipping transform..."<<std::endl;
+					if(auto log = spdlog::get("Connectors"))
+					{
+						log->error("{}",LastSystemError());
+						log->error("Failed to load library '{}' skipping transform...", libfilename);
+					}
 					continue;
 				}
 
@@ -162,21 +173,34 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				auto delete_tx_func = (void (*)(Transform*))LoadSymbol(txlib, delete_funcname.c_str());
 
 				if(new_tx_func == nullptr)
-					std::cout << "Warning: failed to load symbol '"<<new_funcname<< "' from library '" << libname << "' - " << LastSystemError() << std::endl;
+					if(auto log = spdlog::get("Connectors"))
+						log->info("Failed to load symbol '{}' from library '{}' - {}" , new_funcname, libfilename, LastSystemError());
 				if(delete_tx_func == nullptr)
-					std::cout << "Warning: failed to load symbol '"<<delete_funcname<< "' from library '" << libname << "' - " << LastSystemError() << std::endl;
+					if(auto log = spdlog::get("Connectors"))
+						log->info("Failed to load symbol '{}' from library '{}' - {}" , delete_funcname, libfilename, LastSystemError());
 				if(new_tx_func == nullptr || delete_tx_func == nullptr)
 				{
-					std::cout<<"'Skipping transform '"<<Transforms[n]["Type"].asString()<<"'..."<<std::endl;
+					if(auto log = spdlog::get("Connectors"))
+						log->error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
 					continue;
 				}
+
+				//FIXME: need access to LogSinks on the DataConcentrator object
+				//Create a logger if we haven't already
+//				if(!spdlog::get(libname))
+//				{
+//					auto pLibLogger = std::make_shared<spdlog::logger>(libname, begin(LogSinks), end(LogSinks));
+//					pLibLogger->set_level(spdlog::level::trace);
+//					spdlog::register_logger(pLibLogger);
+//				}
 
 				//call the creation function and wrap the returned pointer
 				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new_tx_func(Transforms[n]["Params"].asString()),delete_tx_func));
 			}
 			catch (std::exception& e)
 			{
-				std::cout<<"Warning: Exception raised when creating Transform from config: \n'"<<Transforms[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+				if(auto log = spdlog::get("Connectors"))
+					log->error("Exception raised when creating Transform from config: \n'{}\n' : ignoring", Transforms[n].toStyledString());
 			}
 		}
 	}
@@ -256,14 +280,13 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 		return;
 	}
 	//no connection for sender if we get here
-	std::string msg = "Connector '"+this->Name+"' discarding event from '"+SenderName+"' (No connection defined)";
-	auto log_entry = openpal::LogEntry("DataConnector", openpal::logflags::WARN,"", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
+	if(auto log = spdlog::get("Connectors"))
+		log->warn("{}: discarding event from '", Name+SenderName+"' (No connection defined)");
 
 	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
-void DataConnector::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void DataConnector::BuildOrRebuild()
 {}
 void DataConnector::Enable()
 {

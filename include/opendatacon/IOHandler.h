@@ -83,13 +83,9 @@ public:
 	virtual void Disable()=0;
 
 	void Subscribe(IOHandler* pIOHandler, std::string aName);
-	void AddLogSubscriber(openpal::ILogHandler* logger);
-	void SetLogLevel(openpal::LogFilters LOG_LEVEL);
 	void SetIOS(asio::io_service* ios_ptr);
 
 	std::string Name;
-	std::unique_ptr<asiopal::LogFanoutHandler> pLoggers;
-	openpal::LogFilters LOG_LEVEL;
 	asio::io_service* pIOS;
 	bool enabled;
 	InitState_t InitState;

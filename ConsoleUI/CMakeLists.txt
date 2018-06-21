@@ -24,6 +24,7 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 include_directories(
 	../include
 	../JSON
+	${SPDLOG_HOME}/include
 	${ASIO_HOME}/include
 )
 

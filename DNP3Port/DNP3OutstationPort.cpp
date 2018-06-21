@@ -54,9 +54,8 @@ void DNP3OutstationPort::Enable()
 		return;
 	if(nullptr == pOutstation)
 	{
-		std::string msg = Name + ": Port not configured.";
-		auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("DNP3Port"))
+			log->error("{}: DNP3 stack not configured.", Name);
 
 		return;
 	}
@@ -119,17 +118,16 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 	return pConf->mAddrConf.ClientServer;
 }
 
-void DNP3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void DNP3OutstationPort::BuildOrRebuild()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	pChannel = GetChannel(IOMgr);
+	pChannel = GetChannel();
 
 	if (pChannel == nullptr)
 	{
-		std::string msg = Name + ": Channel not found for outstation.";
-		auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("DNP3Port"))
+			log->error("{}: Channel not found for outstation.", Name);
 		return;
 	}
 
@@ -171,9 +169,8 @@ void DNP3OutstationPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& L
 
 	if (pOutstation == nullptr)
 	{
-		std::string msg = Name + ": Error creating outstation.";
-		auto log_entry = openpal::LogEntry("DNP3OutstationPort", openpal::logflags::ERR, "", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("DNP3Port"))
+			log->error("{}: Error creating outstation.", Name);
 		return;
 	}
 

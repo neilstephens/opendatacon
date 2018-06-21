@@ -30,12 +30,13 @@ set(TCLAP_HOME_INSTRUCTIONS "Choose the location of tclap header library: where 
 if(DEFINED TCLAP_HOME)
 	set(TCLAP_HOME ${TCLAP_HOME} CACHE PATH ${TCLAP_HOME_INSTRUCTIONS})
 else()
-	set(TCLAP_HOME "/usr/local" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS})
+	set(TCLAP_HOME "/usr" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS})
 endif()
 
 include_directories(
 	"../include"
 	"../JSON"
+	"${SPDLOG_HOME}/include"
 	"${DNP3_HOME}/include"
 	"${ASIO_HOME}/include"
 	"${TCLAP_HOME}/include"

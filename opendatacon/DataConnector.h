@@ -76,7 +76,7 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
+	void BuildOrRebuild();
 
 protected:
 	void ProcessElements(const Json::Value& JSONRoot) override;

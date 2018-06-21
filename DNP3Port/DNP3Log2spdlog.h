@@ -18,30 +18,26 @@
  *	limitations under the License.
  */
 /*
- * LogToTCP.h
+ * DNP3Log2spdlog.h
  *
- *  Created on: 2018-01-24
+ *  Created on: 2018-06-19
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-#ifndef LOGTOTCP_H
-#define LOGTOTCP_H
+#ifndef DNP3Log2spdlog_H
+#define DNP3Log2spdlog_H
 
 #include <openpal/logging/ILogHandler.h>
 #include <chrono>
 #include <opendatacon/TCPSocketManager.h>
+#include <spdlog/spdlog.h>
 
-class LogToTCP: public openpal::ILogHandler
+class DNP3Log2spdlog: public openpal::ILogHandler
 {
 public:
-	LogToTCP();
-	void Startup(std::string IP, std::string Port, asio::io_service* pIOS, bool isClient = false);
+	DNP3Log2spdlog();
 	void Log( const openpal::LogEntry& arEntry ) override;
-	void Shutdown();
 private:
-	std::unique_ptr<odc::TCPSocketManager<std::string>> pSockMan;
-
-	void ReadCallback(odc::buf_t& buf);
-	void StateCallback(bool connected);
+	spdlog::level::level_enum FilterToLevel(const openpal::LogFilters& filters);
 };
 
-#endif // LOGTOTCP_H
+#endif // DNP3Log2spdlog_H

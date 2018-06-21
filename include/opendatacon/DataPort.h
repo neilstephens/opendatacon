@@ -49,7 +49,7 @@ public:
 
 	void Enable() override =0;
 	void Disable() override =0;
-	virtual void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)=0;
+	virtual void BuildOrRebuild()=0;
 	void ProcessElements(const Json::Value& JSONRoot) override =0;
 
 	void Event(ConnectState state, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final

@@ -38,8 +38,6 @@ std::unordered_map<std::string, IOHandler*>& IOHandler::GetIOHandlers()
 }
 
 IOHandler::IOHandler(const std::string& aName): Name(aName),
-	pLoggers(new asiopal::LogFanoutHandler()),
-	LOG_LEVEL(openpal::logflags::WARN),
 	pIOS(nullptr),
 	enabled(false),
 	InitState(InitState_t::ENABLED),
@@ -53,14 +51,6 @@ void IOHandler::Subscribe(IOHandler* pIOHandler, std::string aName)
 	this->Subscribers[aName] = pIOHandler;
 }
 
-void IOHandler::AddLogSubscriber(openpal::ILogHandler* logger)
-{
-	pLoggers->Subscribe(*logger);
-}
-void IOHandler::SetLogLevel(openpal::LogFilters LOG_LEVEL)
-{
-	this->LOG_LEVEL = LOG_LEVEL;
-}
 void IOHandler::SetIOS(asio::io_service* ios_ptr)
 {
 	pIOS = ios_ptr;

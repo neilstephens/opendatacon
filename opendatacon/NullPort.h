@@ -69,7 +69,7 @@ public:
 		PublishEvent(ConnectState::PORT_DOWN, 0);
 		PublishEvent(ConnectState::DISCONNECTED, 0);
 	}
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override {}
+	void BuildOrRebuild() override {}
 	void ProcessElements(const Json::Value& JSONRoot) override {}
 
 	//so the compiler won't warn we're hiding the base class overload we still want to use

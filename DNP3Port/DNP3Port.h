@@ -30,6 +30,7 @@
 #include <opendatacon/DataPort.h>
 #include <opendnp3/gen/LinkStatus.h>
 #include "DNP3PortConf.h"
+#include "DNP3Log2spdlog.h"
 
 using namespace odc;
 
@@ -41,7 +42,7 @@ public:
 
 	void Enable() override =0;
 	void Disable() override =0;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override =0;
+	void BuildOrRebuild() override =0;
 
 	void StateListener(ChannelState state);
 
@@ -77,16 +78,22 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 protected:
-	asiodnp3::IChannel* GetChannel(IOManager& IOMgr);
+	asiodnp3::IChannel* GetChannel();
 
 	asiodnp3::IChannel* pChannel;
-	static std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
 	opendnp3::LinkStatus status;
 	bool link_dead;
 	bool channel_dead;
 
+	static std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
+
 	virtual void OnLinkDown()=0;
 	virtual TCPClientServer ClientOrServer()=0;
+
+private:
+	static asiodnp3::DNP3Manager IOMgr;
+	static DNP3Log2spdlog DNP3LogHandler;
+	static std::atomic_flag log_subscribed;
 };
 
 #endif /* DNP3PORT_H_ */

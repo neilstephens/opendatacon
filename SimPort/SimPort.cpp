@@ -23,11 +23,11 @@
  *  Created on: 29/07/2015
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-
-#include "SimPort.h"
-#include "SimPortConf.h"
 #include <random>
 #include <limits>
+#include <spdlog/spdlog.h>
+#include "SimPort.h"
+#include "SimPortConf.h"
 
 inline unsigned int random_interval(const unsigned int& average_interval, rand_t& seed)
 {
@@ -170,7 +170,7 @@ void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, si
 		});
 }
 
-void SimPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void SimPort::BuildOrRebuild()
 {
 	pEnableDisableSync.reset(new asio::strand(*pIOS));
 }
@@ -194,9 +194,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Analogs[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = spdlog::get("SimPort"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -270,9 +270,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Binaries[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = spdlog::get("SimPort"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -331,9 +331,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<BinaryControls[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = spdlog::get("SimPort"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -368,7 +368,8 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 					{
 						if(!FeedbackBinaries[fbn].isMember("Index"))
 						{
-							std::cout<<"An 'Index' is required for Binary feedback : '"<<FeedbackBinaries[fbn].toStyledString()<<"'"<<std::endl;
+							if(auto log = spdlog::get("SimPort"))
+								log->error("An 'Index' is required for Binary feedback : '{}'",FeedbackBinaries[fbn].toStyledString());
 							continue;
 						}
 
@@ -396,7 +397,10 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							else if(mode == "LATCH")
 								fb.mode = FeedbackMode::LATCH;
 							else
-								std::cout<<"Warning: unrecognised feedback mode: '"<<FeedbackBinaries[fbn].toStyledString()<<"'"<<std::endl;
+							{
+								if(auto log = spdlog::get("SimPort"))
+									log->warn("Unrecognised feedback mode: '{}'",FeedbackBinaries[fbn].toStyledString());
+							}
 						}
 						pConf->ControlFeedback[index].push_back(std::move(fb));
 					}

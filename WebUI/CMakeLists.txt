@@ -31,6 +31,7 @@ endif()
 include_directories(
 	../include
 	../JSON
+	${SPDLOG_HOME}/include
 	${MICROHTTPD_HOME}/include
 )
 

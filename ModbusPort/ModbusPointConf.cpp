@@ -26,9 +26,10 @@
 
 #include <regex>
 #include <algorithm>
-#include "ModbusPointConf.h"
+#include <spdlog/spdlog.h>
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
+#include "ModbusPointConf.h"
 
 using namespace odc;
 
@@ -91,17 +92,17 @@ void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGrou
 		{
 			start = Ranges[n]["Range"]["Start"].asUInt();
 			stop = Ranges[n]["Range"]["Stop"].asUInt();
-			//TODO: propper error logging
 			if (start > stop)
 			{
-				std::cout<<"Invalid range: Start > Stop: '"<<Ranges[n].toStyledString()<<"'"<<std::endl;
+				if(auto log = spdlog::get("ModbusPort"))
+					log->error("Invalid range: Start > Stop: '{}'", Ranges[n].toStyledString());
 				continue;
 			}
 		}
 		else
 		{
-			std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Ranges[n].toStyledString()<<"'"<<std::endl;
-			continue;
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Ranges[n].toStyledString());
 		}
 
 		ReadGroup.emplace_back(start,stop-start+1,pollgroup,startval,offset);
@@ -128,12 +129,14 @@ void ModbusPointConf::ProcessElements(const Json::Value& JSONRoot)
 		{
 			if(!jPollGroups[n].isMember("ID"))
 			{
-				std::cout<<"Poll group missing ID : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
+				if(auto log = spdlog::get("ModbusPort"))
+					log->error("Poll group missing ID : '{}'", jPollGroups[n].toStyledString());
 				continue;
 			}
 			if(!jPollGroups[n].isMember("PollRate"))
 			{
-				std::cout<<"Poll group missing PollRate : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
+				if(auto log = spdlog::get("ModbusPort"))
+					log->error("Poll group missing PollRate : '{}'", jPollGroups[n].toStyledString());
 				continue;
 			}
 
@@ -142,13 +145,15 @@ void ModbusPointConf::ProcessElements(const Json::Value& JSONRoot)
 
 			if(PollGroupID == 0)
 			{
-				std::cout<<"Poll group 0 is reserved (do not poll) : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
+				if(auto log = spdlog::get("ModbusPort"))
+					log->error("Poll group 0 is reserved (do not poll) : '{}'", jPollGroups[n].toStyledString());
 				continue;
 			}
 
 			if(PollGroups.count(PollGroupID) > 0)
 			{
-				std::cout<<"Duplicate poll group ignored : '"<<jPollGroups[n].toStyledString()<<"'"<<std::endl;
+				if(auto log = spdlog::get("ModbusPort"))
+					log->error("Duplicate poll group ignored : '{}'", jPollGroups[n].toStyledString());
 				continue;
 			}
 

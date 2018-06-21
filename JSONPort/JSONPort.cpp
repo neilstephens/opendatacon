@@ -24,7 +24,7 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <opendnp3/LogLevels.h>
+#include <spdlog/spdlog.h>
 #include <chrono>
 #include "JSONPort.h"
 
@@ -54,9 +54,8 @@ void JSONPort::Enable()
 	}
 	catch(std::exception& e)
 	{
-		std::string msg = "Problem opening connection: "+Name+": "+e.what();
-		auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("JSONPort"))
+			log->error("{}: Problem opening connection:: {}", Name, e.what());
 		return;
 	}
 }
@@ -83,8 +82,8 @@ void JSONPort::SocketStateHandler(bool state)
 		PublishEvent(ConnectState::DISCONNECTED, 0);
 		msg = Name+": Connection closed.";
 	}
-	auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
+	if(auto log = spdlog::get("JSONPort"))
+		log->info(msg);
 }
 
 void JSONPort::ProcessElements(const Json::Value& JSONRoot)
@@ -106,7 +105,7 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 		static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
 }
 
-void JSONPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void JSONPort::BuildOrRebuild()
 {
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
@@ -378,17 +377,15 @@ void JSONPort::ProcessBraced(const std::string& braced)
 	}
 	else
 	{
-		std::string msg = "Error parsing JSON string: '"+braced+"' : '"+err_str+"'";
-		auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("JSONPort"))
+			log->warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
 	}
 }
 template<typename T>
 inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
 {
-	std::string msg = "Measurement Event '"+std::string(typeid(meas).name())+"'";
-	auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::DBG,"", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
+	if(auto log = spdlog::get("JSONPort"))
+		log->debug("Measurement Event '{}'", typeid(meas).name());
 
 	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
 	{
