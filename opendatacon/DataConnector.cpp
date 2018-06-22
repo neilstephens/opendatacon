@@ -25,7 +25,6 @@
  */
 
 #include <iostream>
-#include <opendnp3/LogLevels.h>
 #include "DataConnector.h"
 #include "IndexOffsetTransform.h"
 #include "IndexMapTransform.h"

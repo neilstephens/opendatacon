@@ -62,7 +62,7 @@ if(PACKAGE_LIBMODBUS)
 endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC modbus_target ${openpal_libs} ${opendnp3_libs})
+target_link_libraries(${PROJECT_NAME} ODC modbus_target)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

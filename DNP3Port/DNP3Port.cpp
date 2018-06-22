@@ -29,9 +29,9 @@
 
 std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::Channels;
 
-asiodnp3::DNP3Manager DNP3Port::IOMgr(std::thread::hardware_concurrency());
-DNP3Log2spdlog DNP3Port::DNP3LogHandler;
 std::atomic_flag DNP3Port::log_subscribed = ATOMIC_FLAG_INIT;
+DNP3Log2spdlog DNP3Port::DNP3LogHandler;
+asiodnp3::DNP3Manager DNP3Port::IOMgr(std::thread::hardware_concurrency());
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),

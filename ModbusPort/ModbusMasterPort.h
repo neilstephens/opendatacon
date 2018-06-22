@@ -28,7 +28,6 @@
 #define ModbusCLIENTPORT_H_
 
 #include <queue>
-#include <opendnp3/master/ISOEHandler.h>
 
 #include <modbus/modbus.h>
 #include "ModbusPort.h"

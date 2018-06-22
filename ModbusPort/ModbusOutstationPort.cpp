@@ -27,8 +27,6 @@
 #include <iostream>
 #include <regex>
 #include <chrono>
-#include <asiopal/UTCTimeSource.h>
-#include <opendnp3/outstation/IOutstationApplication.h>
 #include "ModbusOutstationPort.h"
 
 #include <spdlog/spdlog.h>
