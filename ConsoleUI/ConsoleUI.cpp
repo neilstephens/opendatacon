@@ -25,6 +25,8 @@
 #include <iomanip>
 #include <exception>
 
+using namespace odc;
+
 ConsoleUI::ConsoleUI():
 	tinyConsole("odc> "),
 	context("")

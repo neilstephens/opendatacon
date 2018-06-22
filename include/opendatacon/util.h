@@ -24,15 +24,28 @@
 #include <string>
 #include <map>
 #include <cstdint>
+#include <chrono>
 
 //fast rough random numbers
 #define CONG(jcong) (jcong = 69069*jcong+1234567)
 #define ZERO_TO_ONE(a) (CONG(a)*2.328306e-10)
+
+namespace odc
+{
+
 typedef uint32_t rand_t;
+
+inline uint64_t msSinceEpoch()
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds>
+		       (std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
 bool getline_noncomment(std::istream& is, std::string& line);
 bool extract_delimited_string(std::istream& ist, std::string& extracted);
 bool extract_delimited_string(const std::string& delims, std::istream& ist, std::string& extracted);
 
 bool GetBool(const std::string& value);
+
+} //namspace odc
 
