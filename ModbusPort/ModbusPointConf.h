@@ -32,8 +32,6 @@
 #include <unordered_map>
 #include <functional>
 #include <opendatacon/IOTypes.h>
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendnp3/gen/ControlCode.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 

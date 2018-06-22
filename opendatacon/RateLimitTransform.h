@@ -29,7 +29,6 @@
 
 #include <atomic>
 #include <opendatacon/Transform.h>
-#include <asiopal/UTCTimeSource.h>
 #include <unordered_map>
 #include <opendatacon/util.h>
 

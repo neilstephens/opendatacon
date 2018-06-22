@@ -28,7 +28,7 @@
 #include <thread>
 #include <chrono>
 
-#include <opendnp3/app/MeasurementTypes.h>
+#include <opendatacon/IOTypes.h>
 #include "ModbusMasterPort.h"
 #include <array>
 

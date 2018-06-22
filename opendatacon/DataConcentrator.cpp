@@ -26,7 +26,6 @@
 
 #include <thread>
 #include <opendatacon/asio.h>
-#include <asiodnp3/ConsoleLogger.h>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/ostream_sink.h>

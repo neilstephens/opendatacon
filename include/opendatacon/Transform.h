@@ -28,7 +28,7 @@
 #define TRANSFORM_H_
 
 #include <opendatacon/IOHandler.h>
-#include <opendnp3/app/MeasurementTypes.h>
+#include <opendatacon/IOTypes.h>
 #include <json/json.h>
 #include <string>
 

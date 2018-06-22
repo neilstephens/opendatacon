@@ -24,7 +24,6 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <openpal/logging/LogLevels.h>
 #include <opendatacon/IOHandler.h>
 
 namespace odc

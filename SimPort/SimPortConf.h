@@ -28,8 +28,6 @@
 #define SIMPORTCONF_H
 
 #include <opendatacon/DataPortConf.h>
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendnp3/app/ControlRelayOutputBlock.h>
 
 //DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
 //We can generalise, and come up with a simpler superset:

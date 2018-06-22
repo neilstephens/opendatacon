@@ -31,7 +31,6 @@
 #include <unordered_map>
 #include <map>
 #include <opendatacon/asio.h>
-#include <asiopal/LogFanoutHandler.h>
 #include <opendatacon/IOTypes.h>
 
 namespace odc
