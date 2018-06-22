@@ -33,6 +33,8 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 		REQUIRE(newMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
+		asio::io_service ios;
+		MPUT->SetIOS(&ios);
 		MPUT->Enable();
 		MPUT->Disable();
 
@@ -44,6 +46,8 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 		REQUIRE(newMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
+		asio::io_service ios;
+		MPUT->SetIOS(&ios);
 		MPUT->Enable();
 
 		delete MPUT;

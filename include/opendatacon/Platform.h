@@ -66,13 +66,13 @@ inline std::string LastSystemError()
 	DWORD dw = GetLastError();
 
 	auto res = FormatMessageA(
-	      FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-	      NULL,
-	      dw,
-	      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-	      (LPSTR)&lpMsgBuf,
-	      0,
-	      NULL);
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		dw,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPSTR)&lpMsgBuf,
+		0,
+		NULL);
 	std::string message;
 	if (res > 0)
 	{
@@ -170,12 +170,12 @@ const auto SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGBREAK };
 const auto SIG_IGNORE = { SIGINT };
 #else
 static const std::initializer_list<u_int8_t> SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGQUIT };
-static const std::initializer_list<u_int8_t> SIG_IGNORE = { SIGINT };
+static const std::initializer_list<u_int8_t> SIG_IGNORE = { SIGINT, SIGTSTP };
 #endif
 
-inline std::string GetLibFileName(const std::string LibName)
+inline std::string GetLibFileName(const std::string& LibName)
 {
 	return DYNLIBPRE + LibName + DYNLIBEXT;
 }
 
-#endif
+#endif //ODC_PLATFORM_H_

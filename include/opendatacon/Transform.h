@@ -38,7 +38,7 @@ namespace odc
 class Transform
 {
 public:
-	Transform(Json::Value params): params(params){}
+	Transform(const Json::Value& params): params(params){}
 	virtual ~Transform(){}
 
 	virtual bool Event(Binary& meas, uint16_t& index) { return true; }

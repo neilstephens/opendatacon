@@ -31,6 +31,11 @@
 #include <opendatacon/TCPSocketManager.h>
 #include "MD3PointConf.h"
 
+// Megadata System Flag register definition bits
+#define SYSTEMPOWERUPFLAGBIT 15
+#define SYSTEMTIMEINCORRECTFLAGBIT 14
+#define FILEUPLOADPENDINGFLAGBIT 13
+
 enum TCPClientServer { CLIENT, SERVER, DEFAULT };
 enum server_type_t { ONDEMAND, PERSISTENT, MANUAL };
 
@@ -51,8 +56,7 @@ struct MD3AddrConf
 
 	//Common
 	uint8_t OutstationAddr;
-	uint16_t MasterAddr;
-	server_type_t ServerType;
+	bool NewDigitalCommands;
 
 	// Default address values can minimally set SerialDevice or IP.
 	MD3AddrConf() :
@@ -61,9 +65,12 @@ struct MD3AddrConf
 		Port(20000),
 		ClientServer(TCPClientServer::DEFAULT),
 		OutstationAddr(1),
-		MasterAddr(0),
-		ServerType(server_type_t::ONDEMAND)
+		NewDigitalCommands(true)
 	{}
+	std::string ChannelID()
+	{
+		return IP + ":" + std::to_string(Port) + ":" + std::to_string(ClientServer);
+	}
 };
 
 class MD3PortConf: public DataPortConf
@@ -77,6 +84,12 @@ public:
 	std::shared_ptr<MD3PointConf> pPointConf;
 	MD3AddrConf mAddrConf;
 	uint32_t TCPConnectRetryPeriodms;
+	unsigned LinkNumRetry = 0;
+	unsigned LinkTimeoutms = 0;
+
+	bool RemoteStatusFlag = true;	// Will be true on start up. This sets the RSF flag in all reply headers. Cleared by Fn 52
+
+	uint16_t OutstationFlagRegister = SYSTEMPOWERUPFLAGBIT;	// Only one true on start up, will be filled from the real device through ODC
 };
 
-#endif /* MD3OUTSTATIONPORTCONF_H_ */
+#endif

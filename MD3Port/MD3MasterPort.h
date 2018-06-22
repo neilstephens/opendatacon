@@ -18,7 +18,7 @@
  *	limitations under the License.
  */
 /*
- * MD3ClientPort.h
+ * MD3MasterPort.h
  *
  *  Created on: 01/04/2018
  *      Author: Scott Ellis <scott.ellis@novatex.com.au>
@@ -28,93 +28,81 @@
 #define MD3MASTERPORT_H_
 
 #include <queue>
+#include <utility>
 #include <opendnp3/master/ISOEHandler.h>
-
-//#include <MD3/MD3.h>
-#include "MD3Port.h"
 #include <opendatacon/ASIOScheduler.h>
 
-#include <utility>
-
-/*
-template <typename T, typename F>
-class capture_impl
-{
-    T x;
-    F f;
-public:
-    capture_impl( T && x, F && f )
-    : x{std::forward<T>(x)}, f{std::forward<F>(f)}
-    {}
-
-    template <typename ...Ts> auto operator()( Ts&&...args )
-    -> decltype(f( x, std::forward<Ts>(args)... ))
-    {
-        return f( x, std::forward<Ts>(args)... );
-    }
-
-    template <typename ...Ts> auto operator()( Ts&&...args ) const
-    -> decltype(f( x, std::forward<Ts>(args)... ))
-    {
-        return f( x, std::forward<Ts>(args)... );
-    }
-};
-
-template <typename T, typename F>
-capture_impl<T,F> capture( T && x, F && f )
-{
-    return capture_impl<T,F>(
-                             std::forward<T>(x), std::forward<F>(f) );
-}*/
+#include "MD3.h"
+#include "MD3Engine.h"
+#include "MD3Port.h"
 
 
 class MD3MasterPort: public MD3Port
 {
 public:
-	MD3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
-		MD3Port(aName, aConfFilename, aConfOverrides),
-	//	mb(nullptr),
-		MD3_read_buffer(nullptr),
-		MD3_read_buffer_size(0)
-	{}
-
+	MD3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
 	~MD3MasterPort() override;
 
-	// Implement MD3Port
 	void Enable() override;
 	void Disable() override;
-	void Connect();
-	void Disconnect();
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+
+	void BuildOrRebuild() override;
+
+	void SocketStateHandler(bool state);
+
+	void SetAllPointsQualityToCommsLost();
+	void SendAllPointEvents();
+
+	uint8_t CalculateBinaryQuality(bool enabled, MD3Time time);
+	uint8_t CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time);
 
 	// Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
-	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
-	template<typename T> std::future<CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
+	void Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
+	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+
+	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+
+	//*** PUBLIC for unit tests only
+	//TODO: Add timeout callback and timeout period, plus command succeeded callback to MasterCommandQueueItem to add extra functionality.
+	typedef std::vector<MD3BlockData> MasterCommandQueueItem;
+
+	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
+	// The type of the queue will contain a function pointer to the completion function and the timeout function.
+	// There is a fixed timeout function (below) which will queue the next command and call any timeout function pointer
+	// If the ProcessMD3Message callback gets the command it expects, it will send the next command in the queue.
+	// If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
+	// This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
+	void QueueMD3Command(MasterCommandQueueItem &CompleteMD3Message);
+	// Handle the many single block command messages better
+	void QueueMD3Command(MD3BlockFormatted &SingleBlockMD3Message);
+	void SendNextMasterCommand();
+	void ClearMD3CommandQueue();
 
 private:
-	template<class T>
+//	template<class T>
 //	CommandStatus WriteObject(const T& command, uint16_t index);
 
 	void DoPoll(uint32_t pollgroup);
+	void ProcessMD3Message(std::vector<MD3BlockData>& CompleteMD3Message);
 
-private:
 	void HandleError(int errnum, const std::string& source);
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
-//	MD3ReadGroup<Binary>* GetRange(uint16_t index);
-
-	//MD3_t *mb;
-	void* MD3_read_buffer;
-	size_t MD3_read_buffer_size;
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pTCPRetryTimer;
 	std::unique_ptr<ASIOScheduler> PollScheduler;
+	void ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
+	void ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
+
+	std::shared_ptr<StrandProtectedQueue<MasterCommandQueueItem>> pMasterCommandQueue;
+	uint8_t CurrentFunctionCode = 0;   // When we send a command, make sure the response we get is one we are waiting for.
+	bool ProcessingMD3Command = false; //TODO ProcessingMD3Command Will need to be atomic/and/or mutex protected or become part of the commandqueue class when refactored.
+
+	// Check that what we got is one that is expected for the current Function we are processing.
+	bool AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode);
 };
 
 #endif /* MD3MASTERPORT_H_ */

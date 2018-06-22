@@ -39,7 +39,7 @@
 class DNP3PointConf: public ConfigParser
 {
 public:
-	DNP3PointConf(std::string FileName, const Json::Value &ConfOverrides);
+	DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides);
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
@@ -119,7 +119,7 @@ public:
 	std::map<size_t, opendnp3::PointClass> BinaryClasses;
 	std::map<size_t, opendnp3::Binary::StaticVariation> StaticBinaryResponses;
 	std::map<size_t, opendnp3::Binary::EventVariation> EventBinaryResponses;
-	
+
 	std::vector<uint32_t> AnalogIndicies;
 	std::map<size_t, opendnp3::Analog> AnalogStartVals;
 	std::map<size_t, opendnp3::Analog::StaticVariation> StaticAnalogResponses;

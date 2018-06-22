@@ -27,7 +27,7 @@
 #ifndef IOHANDLER_H_
 #define IOHANDLER_H_
 
-#include <future>
+#include <functional>
 #include <unordered_map>
 #include <map>
 #include <opendatacon/asio.h>
@@ -36,79 +36,56 @@
 
 namespace odc
 {
-	
+
 enum ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 
 typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
 
+typedef std::shared_ptr<std::function<void (CommandStatus status)>> SharedStatusCallback_t;
+
 class IOHandler
 {
 public:
-	IOHandler(std::string aName);
+	IOHandler(const std::string& aName);
 	virtual ~IOHandler(){}
-
-	static std::future<CommandStatus> CommandFutureSuccess()
-	{
-		auto Promise = std::promise<CommandStatus>();
-		Promise.set_value(CommandStatus::SUCCESS);
-		return Promise.get_future();
-	}
-
-	static std::future<CommandStatus> CommandFutureUndefined()
-	{
-		auto Promise = std::promise<CommandStatus>();
-		Promise.set_value(CommandStatus::UNDEFINED);
-		return Promise.get_future();
-	}
-
-	static std::future<CommandStatus> CommandFutureNotSupported()
-	{
-		auto Promise = std::promise<CommandStatus>();
-		Promise.set_value(CommandStatus::NOT_SUPPORTED);
-		return Promise.get_future();
-	}
 
 	//Create an overloaded Event function for every type of event
 
 	// measurement events
-	virtual std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) = 0;
+	virtual void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	// change of quality events
-	virtual std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) = 0;
+	virtual void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	// control events
-	virtual std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) = 0;
+	virtual void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	//Connection events:
-	virtual std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) = 0;
+	virtual void Event(ConnectState state, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
 
 	void Subscribe(IOHandler* pIOHandler, std::string aName);
-	void AddLogSubscriber(openpal::ILogHandler* logger);
-	void SetLogLevel(openpal::LogFilters LOG_LEVEL);
 	void SetIOS(asio::io_service* ios_ptr);
 
 	std::string Name;
-	std::unique_ptr<asiopal::LogFanoutHandler> pLoggers;
-	openpal::LogFilters LOG_LEVEL;
 	asio::io_service* pIOS;
 	bool enabled;
 	InitState_t InitState;
@@ -120,26 +97,18 @@ protected:
 	bool InDemand();
 	std::map<std::string,bool> connection_demands;
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
-	
-	template<class T>
-	void PublishEvent(const T& meas, uint16_t index) {
-		for(auto IOHandler_pair: Subscribers)
-		{
-			IOHandler_pair.second->Event(meas, index, Name);
-		}
-	}
-	
-	template<class T>
-	std::vector<std::future<CommandStatus> > PublishCommand(const T& meas, uint16_t index) {
-		std::vector<std::future<CommandStatus> > future_results;
 
+	template<class T>
+	inline void PublishEvent(const T& meas, uint16_t index, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	{
+		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(auto IOHandler_pair: Subscribers)
 		{
-			future_results.push_back(IOHandler_pair.second->Event(meas, index, Name));
+			IOHandler_pair.second->Event(meas, index, Name, multi_callback);
 		}
-		
-		return future_results;
 	}
+
+	SharedStatusCallback_t SyncMultiCallback (const size_t cb_number, SharedStatusCallback_t pStatusCallback);
 
 private:
 	std::unordered_map<std::string,IOHandler*> Subscribers;
@@ -147,7 +116,7 @@ private:
 	// Important that this is private - for inter process memory management
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;
 };
-	
+
 }
 
 #endif /* IOHANDLER_H_ */

@@ -75,7 +75,7 @@ struct ModbusAddrConf
 class ModbusPortConf: public DataPortConf
 {
 public:
-	ModbusPortConf(std::string FileName):
+	ModbusPortConf(const std::string& FileName):
 		mAddrConf()
 	{
 		pPointConf.reset(new ModbusPointConf(FileName));

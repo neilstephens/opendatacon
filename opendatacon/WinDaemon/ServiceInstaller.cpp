@@ -44,12 +44,12 @@
 //   in the standard output stream for users to diagnose the problem.
 //
 void InstallService(PWSTR pszServiceName,
-                    PWSTR pszDisplayName,
-                    DWORD dwStartType,
-                    PWSTR pszDependencies,
-                    PWSTR pszAccount,
-                    PWSTR pszPassword,
-                    PWSTR pszArgs)
+	PWSTR pszDisplayName,
+	DWORD dwStartType,
+	PWSTR pszDependencies,
+	PWSTR pszAccount,
+	PWSTR pszPassword,
+	PWSTR pszArgs)
 {
 	wchar_t szPath[MAX_PATH];
 	std::wstring path_args;
@@ -69,7 +69,7 @@ void InstallService(PWSTR pszServiceName,
 
 	// Open the local default service control manager database
 	schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT |
-	                             SC_MANAGER_CREATE_SERVICE);
+		SC_MANAGER_CREATE_SERVICE);
 	if (schSCManager == NULL)
 	{
 		wprintf(L"OpenSCManager failed w/err 0x%08lx\n", GetLastError());
@@ -78,20 +78,20 @@ void InstallService(PWSTR pszServiceName,
 
 	// Install the service into SCM by calling CreateService
 	schService = CreateService(
-	      schSCManager,              // SCManager database
-	      pszServiceName,            // Name of service
-	      pszDisplayName,            // Name to display
-	      SERVICE_QUERY_STATUS,      // Desired access
-	      SERVICE_WIN32_OWN_PROCESS, // Service type
-	      dwStartType,               // Service start type
-	      SERVICE_ERROR_NORMAL,      // Error control type
-	      path_args.c_str(),         // Service's binary
-	      NULL,                      // No load ordering group
-	      NULL,                      // No tag identifier
-	      pszDependencies,           // Dependencies
-	      pszAccount,                // Service running account
-	      pszPassword                // Password of the account
-	      );
+		schSCManager,              // SCManager database
+		pszServiceName,            // Name of service
+		pszDisplayName,            // Name to display
+		SERVICE_QUERY_STATUS,      // Desired access
+		SERVICE_WIN32_OWN_PROCESS, // Service type
+		dwStartType,               // Service start type
+		SERVICE_ERROR_NORMAL,      // Error control type
+		path_args.c_str(),         // Service's binary
+		NULL,                      // No load ordering group
+		NULL,                      // No tag identifier
+		pszDependencies,           // Dependencies
+		pszAccount,                // Service running account
+		pszPassword                // Password of the account
+		);
 	if (schService == NULL)
 	{
 		wprintf(L"CreateService failed w/err 0x%08lx\n", GetLastError());
@@ -143,7 +143,7 @@ void UninstallService(PWSTR pszServiceName)
 
 	// Open the service with delete, stop, and query status permissions
 	schService = OpenService(schSCManager, pszServiceName, SERVICE_STOP |
-	                         SERVICE_QUERY_STATUS | DELETE);
+		SERVICE_QUERY_STATUS | DELETE);
 	if (schService == NULL)
 	{
 		wprintf(L"OpenService failed w/err 0x%08lx\n", GetLastError());

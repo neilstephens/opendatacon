@@ -24,7 +24,7 @@
  *      Author: Alan Murray
  */
 
-#include <opendnp3/LogLevels.h>
+#include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
 
@@ -67,26 +67,24 @@ void ModbusMasterPort::Connect()
 
 	if (mb == NULL)
 	{
-		std::string msg = Name+": Connect error: 'Modbus stack failed'";
-		auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("{}: Connect error: 'Modbus stack failed'", Name);
 		return;
 	}
 
 	if (modbus_connect(mb) == -1)
 	{
-		std::string msg = Name+": Connect error: '" + modbus_strerror(errno) + "'";
-		auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 
 		//try again later - except for manual connections
 		if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
 			pTCPRetryTimer->expires_from_now(std::chrono::seconds(5));
 			pTCPRetryTimer->async_wait(
-			      [this](asio::error_code err_code)
-			      {
-			            if(err_code != asio::error::operation_aborted)
+				[this](asio::error_code err_code)
+				{
+					if(err_code != asio::error::operation_aborted)
 						this->Connect();
 				});
 		}
@@ -94,12 +92,8 @@ void ModbusMasterPort::Connect()
 	}
 
 	stack_enabled = true;
-
-	{
-		std::string msg = Name + ": Connect success!";
-		auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
-	}
+	if(auto log = spdlog::get("ModbusPort"))
+		log->info("{}: Connect success!", Name);
 
 	modbus_set_slave(mb, pConf->mAddrConf.OutstationAddr);
 
@@ -117,9 +111,10 @@ void ModbusMasterPort::Connect()
 	for(auto pg : pConf->pPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
-		auto action = [=](){
-			this->DoPoll(id);
-		};
+		auto action = [=]()
+				  {
+					  this->DoPoll(id);
+				  };
 		PollScheduler->Add(pg.second.pollrate, action);
 	}
 
@@ -150,17 +145,17 @@ void ModbusMasterPort::Disconnect()
 	for(auto range : pConf->pPointConf->BitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 			PublishEvent(BinaryQuality::COMM_LOST, index);
-	
+
 	// Modbus function code 0x02 (read input status)
 	for(auto range : pConf->pPointConf->InputBitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 			PublishEvent(BinaryQuality::COMM_LOST, index);
-	
+
 	// Modbus function code 0x03 (read holding registers)
 	for(auto range : pConf->pPointConf->RegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 			PublishEvent(AnalogQuality::COMM_LOST,index);
-	
+
 	// Modbus function code 0x04 (read input registers)
 	for(auto range : pConf->pPointConf->InputRegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
@@ -169,9 +164,8 @@ void ModbusMasterPort::Disconnect()
 
 void ModbusMasterPort::HandleError(int errnum, const std::string& source)
 {
-	std::string msg = Name + ": " + source + " error: '" + modbus_strerror(errno) + "'";
-	auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
+	if(auto log = spdlog::get("ModbusPort"))
+		log->warn("{}: {} error: '{}'", Name, source, modbus_strerror(errno));
 
 	// If not a modbus error, tear down the connection?
 //    if (errnum < MODBUS_ENOBASE)
@@ -223,7 +217,7 @@ CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& 
 	}
 }
 
-void ModbusMasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void ModbusMasterPort::BuildOrRebuild()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -238,8 +232,8 @@ void ModbusMasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG
 		if (mb == NULL)
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error(msg);
 			throw std::runtime_error(msg);
 		}
 	}
@@ -250,8 +244,8 @@ void ModbusMasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG
 		if (mb == NULL)
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-			pLoggers->Log(log_entry);
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error(msg);
 			throw std::runtime_error(msg);
 		}
 
@@ -267,8 +261,8 @@ void ModbusMasterPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG
 	else
 	{
 		std::string msg = Name + ": No IP address or serial device defined";
-		auto log_entry = openpal::LogEntry("ModbusOutstationPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error(msg);
 		throw std::runtime_error(msg);
 	}
 }
@@ -398,23 +392,20 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 }
 
 //Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-std::future<CommandStatus> ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
-std::future<CommandStatus> ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName){ return EventT(arCommand, index, SenderName); }
+void ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
+void ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
+void ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
+void ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
+void ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
 
-std::future<CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
+void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
-	auto cmd_promise = std::promise<CommandStatus>();
-	auto cmd_future = cmd_promise.get_future();
-
 	if(!enabled)
 	{
-		cmd_promise.set_value(CommandStatus::UNDEFINED);
-		return cmd_future;
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 
 	//something upstream has connected
@@ -427,8 +418,7 @@ std::future<CommandStatus> ModbusMasterPort::ConnectionEvent(ConnectState state,
 		}
 	}
 
-	cmd_promise.set_value(CommandStatus::SUCCESS);
-	return cmd_future;
+	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
 ModbusReadGroup<Binary>* ModbusMasterPort::GetRange(uint16_t index)
@@ -446,9 +436,9 @@ template<>
 CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index)
 {
 	if (
-	      (command.functionCode == ControlCode::NUL) ||
-	      (command.functionCode == ControlCode::UNDEFINED)
-	      )
+		(command.functionCode == ControlCode::NUL) ||
+		(command.functionCode == ControlCode::UNDEFINED)
+		)
 	{
 		return CommandStatus::FORMAT_ERROR;
 	}
@@ -459,9 +449,9 @@ CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& comma
 
 	int rc;
 	if (
-	      (command.functionCode == ControlCode::LATCH_OFF) ||
-	      (command.functionCode == ControlCode::TRIP_PULSE_ON)
-	      )
+		(command.functionCode == ControlCode::LATCH_OFF) ||
+		(command.functionCode == ControlCode::TRIP_PULSE_ON)
+		)
 	{
 		rc = modbus_write_bit(mb, index, false);
 	}
@@ -544,26 +534,15 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputDouble64& command,
 }
 
 template<typename T>
-inline std::future<CommandStatus> ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName)
+inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	std::unique_ptr<std::promise<CommandStatus> > cmd_promise { new std::promise<CommandStatus>() };
-	auto cmd_future = cmd_promise->get_future();
-
 	if(!enabled)
 	{
-		cmd_promise->set_value(CommandStatus::UNDEFINED);
-		return cmd_future;
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 
-	cmd_promise->set_value(WriteObject(arCommand, index));
-	/*
-	auto lambda = capture( std::move(cmd_promise),
-	                      [=]( std::unique_ptr<std::promise<CommandStatus>> & cmd_promise ) {
-	                          cmd_promise->set_value(WriteObject(arCommand, index));
-	                      } );
-	pIOS->post([&](){ lambda(); });
-	*/
-	return cmd_future;
+	(*pStatusCallback)(WriteObject(arCommand, index));
 }
 
 

@@ -101,16 +101,20 @@ int main(int argc, char* argv[])
 		}
 
 		// Construct and build opendatacon object
-		std::cout << "This is opendatacon version " << ODC_VERSION_STRING << std::endl;
-		std::cout << "Loading configuration... "<< std::endl;
-		TheDataConcentrator.reset(new DataConcentrator(Args.ConfigFileArg.getValue()));
+		TheDataConcentrator = std::make_unique<DataConcentrator>(Args.ConfigFileArg.getValue());
 		TheDataConcentrator->BuildOrRebuild();
 
 		// Configure signal handlers
 		auto shutdown_func = [] (int signum)
-		{
-			TheDataConcentrator->Shutdown();
-		};
+					   {
+						   TheDataConcentrator->Shutdown();
+					   };
+		auto ignore_func = [] (int signum)
+					 {
+						 std::cout<<"Signal "<<signum<<" ignored. Not designed to be interrupted or suspended.\n"
+						                               "To terminate, send a quit, kill, abort or break signal, or use a UI shutdown command.\n"
+						                               "To run in the background, run as a daemon or service."<<std::endl;
+					 };
 
 		for (auto SIG : SIG_SHUTDOWN)
 		{
@@ -118,14 +122,21 @@ int main(int argc, char* argv[])
 		}
 		for (auto SIG : SIG_IGNORE)
 		{
-			::signal(SIG,SIG_IGN);
+			::signal(SIG,ignore_func);
 		}
 
 		// Start opendatacon, returns after a clean shutdown
 		TheDataConcentrator->Run();
 
-		std::cout << "opendatacon version " << ODC_VERSION_STRING << " shutdown cleanly." << std::endl;
-
+		std::string msg("opendatacon version '" ODC_VERSION_STRING "' shutdown cleanly.");
+		if(auto log = spdlog::get("opendatacon"))
+		{
+			log->critical(msg);
+			log->flush();
+		}
+		else
+			std::cout << msg << std::endl;
+		spdlog::drop_all();
 		return 0;
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions

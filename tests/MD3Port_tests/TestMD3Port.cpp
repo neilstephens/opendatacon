@@ -29,7 +29,7 @@ int main( int argc, char* argv[] )
 
 	if (pluginlib == nullptr)
 	{
-		std::cout << libname << " Info: dynamic library load failed '" << libfilename << "' :"<< LastSystemError()<< std::endl;
+		std::cout << libname << " Info: dynamic library load failed '" << libfilename << "' :" << LastSystemError() << std::endl;
 		return 1;
 	}
 

@@ -24,12 +24,11 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <fstream>
-#include <iostream>
+#include <spdlog/spdlog.h>
 #include <cstdint>
 #include "JSONPointConf.h"
 
-JSONPointConf::JSONPointConf(std::string FileName, const Json::Value &ConfOverrides):
+JSONPointConf::JSONPointConf(const std::string& FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides),
 	pJOT(nullptr)
 {
@@ -40,7 +39,8 @@ inline bool check_index(const Json::Value& Point)
 {
 	if(!Point.isMember("Index"))
 	{
-		std::cout<<"A point needs an \"Index\" : '"<<Point.toStyledString()<<"'"<<std::endl;
+		if(auto log = spdlog::get("JSONPort"))
+			log->error("A point needs an \"Index\" : '{}'", Point.toStyledString());
 		return false;
 	}
 	return true;
@@ -107,7 +107,8 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		else
 		{
-			std::cout<<"Ignoring unrecognised PointType '"<<PointType<<"' : from '"<<PointConfs[n].toStyledString()<<"'"<<std::endl;
+			if(auto log = spdlog::get("JSONPort"))
+				log->warn("Ignoring unrecognised PointType '{}' : from '{}'", PointType, PointConfs[n].toStyledString());
 		}
 	}
 	return;

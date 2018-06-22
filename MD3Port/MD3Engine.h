@@ -35,6 +35,8 @@
 #include <cassert>
 #include <array>
 #include <sstream>
+#include <iomanip>
+#include <algorithm>
 
 #include "MD3.h"
 
@@ -46,6 +48,7 @@
 #define DCPBIT 0x0010
 #define DIRECTIONBIT 0x80000000
 #define MOREEVENTSBIT 0x0800
+#define NOCOUNTERRESETBIT 0x00000100
 
 const int MD3BlockArraySize = 6;
 typedef  std::array<uint8_t, MD3BlockArraySize> MD3BlockArray;
@@ -53,52 +56,68 @@ typedef  std::array<uint8_t, MD3BlockArraySize> MD3BlockArray;
 uint8_t MD3CRC(const uint32_t data);
 bool MD3CRCCompare(const uint8_t crc1, const uint8_t crc2);
 
+bool iequals(const std::string& a, const std::string& b);
 
 // Every block in MD3 is 5 bytes, plus one zero byte. If we dont have 5 bytes, we dont have a block. The last block is marked as such.
 // We will create a class to load the 6 byte array into, then we can just ask it to return the information in the variety of ways we require,
 // depending on the block content.
 // There are two ways this class is used - one for decoding, one for encoding.
 // Create child classes for each of the functions where the data block has specific layout and meaning.
-class MD3DataBlock
+class MD3BlockData
 {
 public:
-	MD3DataBlock() {};
+	enum blocktype {FormattedBlock, DataBlock};
 
-	// We have received 6 bytes (a block on a stream now we need to decode it)
-	MD3DataBlock(const MD3BlockArray _data)
+	MD3BlockData() {};
+
+	// We have received 6 bytes (a block on a stream now we need to decode it) it may not be valid!
+	MD3BlockData(const MD3BlockArray _data)
 	{
 		data = _data[0] << 24 | _data[1] << 16 | _data[2] << 8 | _data[3];
 		endbyte = _data[4];
-		assert(_data[5] == 0x00);	// Sixth byte should always be zero.
 	}
+	MD3BlockData(std::string hexdata)
+	{
+		assert(hexdata.size() == 12);
 
-	MD3DataBlock(uint16_t firstword, uint16_t secondword, bool lastblock = false)
+		auto res = std::string(hexdata.size() / 2, 0);
+
+		// Take chars in chunks of 2 and convert to a hex equivalent
+		for (uint32_t i = 0; i < (hexdata.size() / 2); i++)
+		{
+			auto hexpair = hexdata.substr(i * 2, 2);
+			res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
+		}
+
+		data = (uint32_t)res[0] << 24 | (uint32_t)res[1] << 16 | (uint32_t)res[2] << 8 | (uint32_t)res[3];
+		endbyte = res[4];
+		assert(res[5] == 0x00);	// Sixth byte should always be zero.
+	}
+	MD3BlockData(uint16_t firstword, uint16_t secondword, bool lastblock = false)
 	{
 		data = (uint32_t)firstword << 16 | (uint32_t)secondword;
-
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-		endbyte |= FOMBIT;	// NOT a formatted block, must be 1
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(DataBlock, lastblock);
 	}
 
-	MD3DataBlock(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, bool lastblock = false)
+	MD3BlockData(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, bool lastblock = false)
 	{
 		data = (((uint32_t)b1 & 0x0FF) << 24) | (((uint32_t)b2 & 0x0FF) << 16) | (((uint32_t)b3 & 0x0FF) << 8) | ((uint32_t)b4 & 0x0FF);
-
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-		endbyte |= FOMBIT;	// NOT a formatted block, must be 1
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(DataBlock, lastblock);
 	}
 
-	MD3DataBlock(uint32_t _data, bool lastblock = false)
+	MD3BlockData(uint32_t _data, bool lastblock = false)
 	{
 		data = _data;
+		SetEndByte(DataBlock, lastblock);
+	}
 
+	void SetEndByte(blocktype blockt, bool lastblock)
+	{
 		endbyte = MD3CRC(data);	// Max 6 bits returned
 
-		endbyte |= FOMBIT;	// NOT a formatted block must be 1
+		if (blockt == DataBlock)
+			endbyte |= FOMBIT;	// NOT a formatted block, must be 1
+
 		endbyte |= lastblock ? EOMBIT : 0x00;
 	}
 
@@ -120,6 +139,7 @@ public:
 		uint8_t calc = MD3CRC(data);
 		return MD3CRCCompare(calc, endbyte);
 	}
+	// Index 0 to 4 as you would expect
 	uint8_t GetByte(int b)
 	{
 		assert((b >= 0) && (b < 4));
@@ -155,10 +175,10 @@ public:
 
 		return oss.str();
 	}
-	std::string ToString()
+	std::string ToPrintString()
 	{
 		std::ostringstream oss;
-
+		oss << std::hex;
 		oss << (data >> 24);
 		oss << ',';
 		oss << ((data >> 16) & 0x0FF);
@@ -172,16 +192,29 @@ public:
 		oss << (0x00);
 		return oss.str();
 	}
+	std::string ToString()
+	{
+		std::ostringstream oss;
+		oss.fill('0');
+		oss << std::hex;
+		oss << std::setw(2) << (data >> 24);
+		oss << std::setw(2) << ((data >> 16) & 0x0FF);
+		oss << std::setw(2) << ((data >> 8) & 0x0FF);
+		oss << std::setw(2) << (data & 0x0FF);
+		oss << std::setw(2) << (uint32_t)(endbyte);
+		oss << "00";
+		return oss.str();
+	}
 
 protected:
 	uint32_t data = 0;
 	uint8_t endbyte = 0;
 };
-class MD3FormattedBlock : public MD3DataBlock
+class MD3BlockFormatted : public MD3BlockData
 {
 public:
-	MD3FormattedBlock() {};
-	MD3FormattedBlock(MD3DataBlock& parent)
+	MD3BlockFormatted() {};
+	MD3BlockFormatted(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -189,7 +222,7 @@ public:
 
 	// Create a formatted block including checksum
 	// Note if the station address is set to 0x7F (MD3_EXTENDED_ADDRESS_MARKER), then the next data block contains the address.
-	MD3FormattedBlock(uint8_t stationaddress, bool mastertostation, MD3_FUNCTION_CODE functioncode, uint8_t moduleaddress, uint8_t channels, bool lastblock = false,
+	MD3BlockFormatted(uint8_t stationaddress, bool mastertostation, MD3_FUNCTION_CODE functioncode, uint8_t moduleaddress, uint8_t channels, bool lastblock = false,
 		bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
 	{
 		// Channels -> 0 on the wire == 1 channel, 15 == 16
@@ -208,10 +241,7 @@ public:
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)functioncode << 16 | (uint32_t)moduleaddress << 8 | flags | channels;
 
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-		// endbyte |= FOMBIT;	// This is a formatted block must be zero
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(FormattedBlock, lastblock);
 	}
 
 	// Apply to formatted blocks only!
@@ -241,6 +271,20 @@ public:
 		return (data & 0x0F)+1;
 	}
 
+	// Set the RSF flag. This comes from a global flag we maintain, and we set just before we send.
+	// Some of the child classes DONT have this flag, so we need to override to stop them from corrupting data.
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		uint32_t flags = 0;
+		flags |= RSF ? RSFBIT : 0x0000;
+		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= DCP ? DCPBIT : 0x0000;
+		data &= ~(RSFBIT|HCPBIT|DCPBIT);	// Clear the bits we are going to set.
+		data |= flags;
+
+		endbyte &= 0xC0;			// Clear the CRC bits
+		endbyte |= MD3CRC(data);	// Max 6 bits returned
+	}
 	bool GetAPL()
 	{
 		return ((data & APLBIT) == APLBIT);
@@ -261,10 +305,10 @@ public:
 
 // The datablocks can take on different formats where the bytes and buts in the block change meaning.
 // Use child classes to separate out this on a function by function basis
-class MD3BlockFn9 : public MD3FormattedBlock
+class MD3BlockFn9 : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn9(MD3DataBlock& parent)
+	MD3BlockFn9(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -280,10 +324,7 @@ public:
 
 		data = direction | mevbit | (uint32_t)stationaddress << 24 | (uint32_t)HRER_LIST_SCAN << 16 | ((uint32_t)sequencenumber & 0x0F) << 12 | maximumevents;
 
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-								// endbyte |= FOMBIT;	// This is a formatted block must be zero
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(FormattedBlock, lastblock);
 	}
 	void SetEventCountandMoreEventsFlag(uint8_t events, bool moreevents )
 	{
@@ -324,11 +365,16 @@ public:
 	{
 		return 0;
 	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
 };
-class MD3BlockFn10 : public MD3FormattedBlock
+class MD3BlockFn10 : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn10(MD3DataBlock& parent)
+	MD3BlockFn10(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -348,10 +394,7 @@ public:
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_CHANGE_OF_STATE << 16 | (uint32_t)moduleaddress << 8 | flags | (modulecount & 0x0F);
 
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-								// endbyte |= FOMBIT;	// This is a formatted block must be zero
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(FormattedBlock, lastblock);
 	}
 
 	uint8_t GetModuleCount()
@@ -369,10 +412,10 @@ public:
 	}
 };
 
-class MD3BlockFn11MtoS : public MD3FormattedBlock
+class MD3BlockFn11MtoS : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn11MtoS(MD3DataBlock& parent)
+	MD3BlockFn11MtoS(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -389,10 +432,7 @@ public:
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_CHANGE_OF_STATE_TIME_TAGGED << 16 | ((uint32_t)taggedeventcount & 0x0F) << 12 | ((uint32_t)digitalsequencenumber & 0x0F) << 4 | modulecount;
 
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-								// endbyte |= FOMBIT;	// This is a formatted block must be zero
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(FormattedBlock, lastblock);
 	}
 	uint8_t GetTaggedEventCount()
 	{
@@ -409,11 +449,16 @@ public:
 		// Can be a zero module count
 		return (data & 0x0F);
 	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
 };
-class MD3BlockFn11StoM : public MD3FormattedBlock
+class MD3BlockFn11StoM : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn11StoM(MD3DataBlock& parent)
+	MD3BlockFn11StoM(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -437,15 +482,20 @@ public:
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_CHANGE_OF_STATE_TIME_TAGGED << 16 | ((uint32_t)taggedeventcount & 0x0F) << 12 | ((uint32_t)digitalsequencenumber & 0x0F) << 8 | flags | modulecount;
 
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-								// endbyte |= FOMBIT;	// This is a formatted block must be zero
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(FormattedBlock, lastblock);
 	}
 	uint8_t GetTaggedEventCount()
 	{
 		// Can be a zero event count - in the spec 1's numbered. (0's numbered is when 0 is equivalent to 1 - 0 is not valid)
 		return (data >> 12) & 0x0F;
+	}
+	void SetTaggedEventCount(uint8_t eventcount)
+	{
+		data &= ~(0x0F << 12);	// Clear the bits we are going to set.
+		data |= (uint32_t)eventcount << 12;
+
+		endbyte &= 0xC0;			// Clear the CRC bits
+		endbyte |= MD3CRC(data);	// Max 6 bits returned
 	}
 	uint8_t GetDigitalSequenceNumber()
 	{
@@ -457,12 +507,29 @@ public:
 		// Can be a zero module count
 		return (data & 0x0F);
 	}
+	void SetModuleCount(uint8_t modulecount)
+	{
+		data &= ~(0x0F);	// Clear the bits we are going to set.
+		data |= modulecount;
+
+		endbyte &= 0xC0;			// Clear the CRC bits
+		endbyte |= MD3CRC(data);	// Max 6 bits returned
+	}
+	static uint16_t FillerPacket()
+	{
+		return 0;
+	}
+	static uint16_t MilliSecondsDiv256OffsetPacket(uint16_t allmsec)
+	{
+		// There is a msec in the data packet, this is to allow us extra offset - should be divisible by 256 for accuracy
+		return  allmsec/256;
+	}
 };
 // The reply to Fn12 is actually a Fn11 packet
-class MD3BlockFn12MtoS : public MD3FormattedBlock
+class MD3BlockFn12MtoS : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn12MtoS( MD3DataBlock& parent)
+	MD3BlockFn12MtoS( MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -478,10 +545,7 @@ public:
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_UNCONDITIONAL << 16 | ((uint32_t)startmoduleaddress) << 8 | ((uint32_t)digitalsequencenumber & 0x0F) << 4 | modulecount;
 
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-								// endbyte |= FOMBIT;	// This is a formatted block must be zero
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(FormattedBlock, lastblock);
 	}
 	uint8_t GetStartingModuleAddress()
 	{
@@ -496,22 +560,17 @@ public:
 		// 1's numbered
 		return (data & 0x0F);
 	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
 };
 
-// Only ever station to master, a couple of constructors to deal with the two use cases.
-// There is no specific definition in the spec.
-// 9d 0e 04 00 64 00
-// 9d 0e 05 00 76 00
-// 9d 0e 07 00 52 00
-// ae 0e 06 00 4c 00
-// 8b 0e 0d 00 5e 00
-//  These all correspond to the second constuctor, where the  bottom 4 bits of the third byte is digital sequence number.
-// It seems like the stations are mixing the old and new codes...
-
-class MD3BlockFn14StoM : public MD3FormattedBlock
+class MD3BlockFn14StoM : public MD3BlockFormatted
 {
 public:
-	MD3BlockFn14StoM(MD3DataBlock& parent)
+	MD3BlockFn14StoM(MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -534,10 +593,7 @@ public:
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_NO_CHANGE_REPLY << 16 | (uint32_t)moduleaddress << 8 | flags | (modulecount & 0x0F);
 
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-								// endbyte |= FOMBIT;	// This is a formatted block must be zero
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(FormattedBlock, lastblock);
 	}
 	MD3BlockFn14StoM(uint8_t stationaddress,  uint8_t digitalsequencenumber, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
 	{
@@ -561,10 +617,7 @@ public:
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_NO_CHANGE_REPLY << 16 | ((uint32_t)taggedeventcount & 0x0F) << 12 | ((uint32_t)digitalsequencenumber & 0x0F) << 8 | flags | modulecount;
 
-		endbyte = MD3CRC(data);	// Max 6 bits returned
-
-								// endbyte |= FOMBIT;	// This is a formatted block must be zero
-		endbyte |= lastblock ? EOMBIT : 0x00;
+		SetEndByte(FormattedBlock, lastblock);
 	}
 	uint8_t GetDigitalSequenceNumber()
 	{
@@ -575,6 +628,372 @@ public:
 	{
 		// Can be a zero module count
 		return (data & 0x0F);
+	}
+};
+
+class MD3BlockFn15StoM : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn15StoM(MD3BlockData& parent)
+	{
+		// This Blockformat is a copy of the orginating block header data, with the function code changed.
+		//
+		// We change the function code, change the direction bit, mark as last block and recalc the checksum.
+		data = parent.GetData();
+
+		bool lastblock = true;	// Only this block will be returned.
+		bool mastertostation = false;
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		data &= ~((uint32_t)0x0FF << 16 | DIRECTIONBIT);			// Clear the bits we are going to set.
+		data |= (uint32_t)CONTROL_REQUEST_OK << 16 | direction;	// Set the function code and direction
+
+		// Regenerate the last byte
+		SetEndByte(FormattedBlock, lastblock);
+	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		assert(false);
+		// No flags in this formatted packet
+	}
+};
+
+// The freeze (and possibly reset) counters command
+class MD3BlockFn16MtoS : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn16MtoS(MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+
+	MD3BlockFn16MtoS(uint8_t StationAddress, bool NoCounterReset)
+	{
+		bool lastblock = true;
+		bool mastertostation = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+		uint32_t nocounterresetbit = NoCounterReset ? NOCOUNTERRESETBIT : 0x0000;
+
+		assert((StationAddress & 0x7F) == StationAddress);	// Max of 7 bits;
+
+		data = direction | nocounterresetbit | (uint32_t)StationAddress << 24 | (uint32_t)FREEZE_AND_RESET << 16 | ((uint32_t)~StationAddress & 0x7F);
+
+		SetEndByte(FormattedBlock, lastblock);
+	}
+
+	bool GetNoCounterReset()
+	{
+		return ((data & NOCOUNTERRESETBIT) == NOCOUNTERRESETBIT);
+	}
+
+	// Check the Station address against its complement
+	bool IsValid()
+	{
+		// Check that the complements and the orginals match
+		if (GetStationAddress() != (~GetByte(3) & 0x7F))	// Is the station address correct?
+			return false;
+
+		return CheckSumPasses();
+	}
+
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
+};
+// POM Control
+class MD3BlockFn17MtoS : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn17MtoS(MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+
+	MD3BlockFn17MtoS(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t OutputSelection)
+	{
+		bool lastblock = false;
+		bool mastertostation = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((StationAddress & 0x7F) == StationAddress);	// Max of 7 bits;
+
+		uint16_t lowword = ((uint16_t)ModuleAddress << 8) | ((uint16_t)OutputSelection & 0x00FF);
+		data = direction | (uint32_t)StationAddress << 24 | (uint32_t)POM_TYPE_CONTROL << 16 | (uint32_t)lowword;
+
+		SetEndByte(FormattedBlock, lastblock);
+	}
+	uint8_t GetOutputSelection()
+	{
+		return data & 0x0FF;
+	}
+	// The second block in the message only contains a different format of the information in the first
+	MD3BlockData GenerateSecondBlock()
+	{
+		uint16_t lowword = 1 << (15 - GetOutputSelection());
+		uint32_t direction = GetData() & DIRECTIONBIT;
+		uint32_t seconddata = direction | ((uint32_t)~GetStationAddress() & 0x07f) << 24 | (((uint32_t)~GetModuleAddress() & 0x0FF) << 16) | (uint32_t)lowword;
+		MD3BlockData sb(seconddata, true);
+		return sb;
+	}
+	// Check the second block against the first (this one) to see if we have a valid POM command
+	bool VerifyAgainstSecondBlock(MD3BlockData &SecondBlock)
+	{
+		// Check that the complements and the orginals match
+		if (GetStationAddress() != ((~SecondBlock.GetData() >> 24) & 0x7F))	// Is the station address correct?
+			return false;
+
+		if ((GetModuleAddress() & 0x0ff) != ((~SecondBlock.GetData() >> 16) & 0x0FF))	// Is the module address correct?
+			return false;
+
+		uint16_t lowword = 1 << (15 - GetOutputSelection());
+		if (lowword != SecondBlock.GetSecondWord())
+			return false;
+
+		return true;
+	}
+
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
+};
+// DOM Control
+class MD3BlockFn19MtoS : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn19MtoS(MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+
+	MD3BlockFn19MtoS(uint8_t StationAddress, uint8_t ModuleAddress)
+	{
+		bool lastblock = false;
+		bool mastertostation = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((StationAddress & 0x7F) == StationAddress);	// Max of 7 bits;
+
+		uint16_t lowword = ((uint16_t)ModuleAddress << 8) | ((uint16_t)~ModuleAddress & 0x00FF);
+		data = direction | (uint32_t)StationAddress << 24 | (uint32_t)DOM_TYPE_CONTROL << 16 | (uint32_t)lowword;
+
+		SetEndByte(FormattedBlock, lastblock);
+	}
+
+	// The second block in the message only contains a different format of the information in the first
+	MD3BlockData GenerateSecondBlock(uint16_t OutputData)
+	{
+		uint32_t checkdata = (OutputData & 0x0FF) + ((OutputData >> 8) & 0x0FF);
+		uint32_t seconddata = ((uint32_t)OutputData << 16) | checkdata << 8 | ((uint32_t)~GetStationAddress() & 0x07f);
+		MD3BlockData sb(seconddata, true);
+		return sb;
+	}
+	// Possibly should have second block class for this function...
+	uint16_t GetOutputFromSecondBlock(MD3BlockData &SecondBlock)
+	{
+		return SecondBlock.GetFirstWord();
+	}
+
+	// Check the second block against the first (this one) to see if we have a valid POM command
+	bool VerifyAgainstSecondBlock(MD3BlockData &SecondBlock)
+	{
+		// Check that the complements and the orginals match
+		if (GetStationAddress() != (~SecondBlock.GetByte(3) & 0x7F))	// Is the station address correct?
+			return false;
+
+		if ((GetModuleAddress() & 0x0ff) != (~GetByte(3) & 0x0FF))	// Is the module address correct?
+			return false;
+
+		uint8_t checkdata = (SecondBlock.GetFirstWord() & 0x0FF) + ((SecondBlock.GetFirstWord() >> 8) & 0x0FF);
+		if (checkdata != SecondBlock.GetByte(2))
+			return false;
+
+		return true;
+	}
+
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
+};
+// AOM Control
+class MD3BlockFn23MtoS : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn23MtoS(MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+
+	MD3BlockFn23MtoS(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channel)
+	{
+		bool lastblock = false;
+		bool mastertostation = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((StationAddress & 0x7F) == StationAddress);	// Max of 7 bits;
+
+		uint16_t lowword = ((uint16_t)ModuleAddress << 8) | ((uint16_t)Channel & 0x00FF);
+		data = direction | (uint32_t)StationAddress << 24 | (uint32_t)AOM_TYPE_CONTROL << 16 | (uint32_t)lowword;
+
+		SetEndByte(FormattedBlock, lastblock);
+	}
+	uint8_t GetChannel()
+	{
+		return (data & 0x0FF);
+	}
+	uint8_t GetModuleAddress()
+	{
+		return (data >> 8) & 0x0FF;
+	}
+	// The second block in the message only contains a different format of the information in the first
+	MD3BlockData GenerateSecondBlock(uint16_t OutputData)
+	{
+		uint16_t hiword = (uint16_t)~GetChannel() << 12 | (OutputData & 0xFFF);
+
+		uint32_t checkdata = (hiword & 0x0FF) + ((hiword >> 8) & 0x0FF);
+
+		uint32_t seconddata = ((uint32_t)hiword << 16) | (checkdata << 8) | ((uint32_t)~GetModuleAddress() & 0x0FF);
+		MD3BlockData sb(seconddata, true);
+		return sb;
+	}
+	// Possibly should have second block class for this function...
+	uint16_t GetOutputFromSecondBlock(MD3BlockData &SecondBlock)
+	{
+		return SecondBlock.GetFirstWord() & 0x0FFF;
+	}
+
+	// Check the second block against the first (this one) to see if we have a valid AOM command
+	bool VerifyAgainstSecondBlock(MD3BlockData &SecondBlock)
+	{
+		// Check that the complements and the orginals match
+		if ((GetChannel() & 0x0f) != (~(SecondBlock.GetByte(0) >> 4) & 0x0F))	// Is the channel correct?
+			return false;
+
+		if ((GetModuleAddress() & 0x0ff) != (~SecondBlock.GetByte(3) & 0x0FF))	// Is the module address correct?
+			return false;
+
+		uint8_t checkdata = (SecondBlock.GetFirstWord() & 0x0FF) + ((SecondBlock.GetFirstWord() >> 8) & 0x0FF);
+		if (checkdata != SecondBlock.GetByte(2))
+			return false;
+
+		return true;
+	}
+
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
+};
+class MD3BlockFn30StoM : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn30StoM(MD3BlockData& parent, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// This Blockformat is a copy of the orginating block header data, with the function code changed.
+		//
+		// We change the function code, change the direction bit, mark as last block and recalc the checksum.
+		data = parent.GetData();
+
+		bool mastertostation = false;
+		bool lastblock = true;	// Only this block will be returned.
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		uint32_t flags = 0;
+		flags |= APL ? APLBIT : 0x0000;
+		flags |= RSF ? RSFBIT : 0x0000;
+		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= DCP ? DCPBIT : 0x0000;
+
+		data &= ~(APLBIT | RSFBIT | HCPBIT | DCPBIT);	// Clear the bits we are going to set.
+		data |= flags;
+
+		data &= ~((uint32_t)0x0FF << 16 | DIRECTIONBIT);			// Clear the bits we are going to set.
+		data |= (uint32_t)CONTROL_OR_SCAN_REQUEST_REJECTED << 16 | direction;	// Set the function code
+
+		// Regenerate the last byte
+		SetEndByte(FormattedBlock, lastblock);
+	}
+};
+
+class MD3BlockFn40 : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn40(MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+	MD3BlockFn40(uint8_t stationaddress, bool mastertostation = true)
+	{
+		bool lastblock = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((stationaddress & 0x7F) == stationaddress);	// Max of 7 bits;
+
+		uint16_t lowword = 0x8000 | (uint16_t)(~stationaddress) << 8 | ((uint16_t)(~SYSTEM_SIGNON_CONTROL) & 0x00FF);
+		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)SYSTEM_SIGNON_CONTROL << 16 | (uint32_t)lowword;
+
+		SetEndByte(FormattedBlock, lastblock);
+	}
+	bool IsValid()
+	{
+		// Check that the complements and the orginals match
+		if (((data >> 24) & 0x7f) != ((~data >> 8) & 0x7F))	// Is the station address correct?
+			return false;
+		if (((data >> 16) & 0x0ff) != ((~data) & 0x0FF))	// Is the function code correct?
+			return false;
+
+		return true;
+	}
+};
+class MD3BlockFn43MtoS : public MD3BlockFormatted
+{
+public:
+	MD3BlockFn43MtoS(MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+	MD3BlockFn43MtoS(uint8_t stationaddress, uint16_t milliseconds)
+	{
+		bool lastblock = false;	// Must always be followed by another data block
+		bool mastertostation = true;
+
+		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+
+		assert((stationaddress & 0x7F) == stationaddress);	// Max of 7 bits;
+		assert(milliseconds < 1000);	// Max 10 bits;
+
+		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)SYSTEM_SET_DATETIME_CONTROL << 16 | ((uint32_t)milliseconds & 0x03FF);
+
+		SetEndByte(FormattedBlock, lastblock);
+	}
+
+	uint16_t GetMilliseconds()
+	{
+		// Function 11 and 12 This is the same part of the packet that is used for the 4 flags in other commands
+		return (data & 0x03FF);
+	}
+	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
 	}
 };
 #endif

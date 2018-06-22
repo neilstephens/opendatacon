@@ -35,7 +35,7 @@ template <class T>
 class ProducerConsumerQueue
 {
 private:
-	const uint32_t Size = 255;	// MD3 maximum event queue size
+	const uint32_t MaxSize = 255; // MD3 maximum event queue size
 	std::queue<T> Queue;
 	std::mutex Mut;
 
@@ -77,7 +77,7 @@ public:
 		std::unique_lock<std::mutex> lck(Mut);
 
 		// Limit the number of elements...
-		if (Queue.size() >= Size)
+		if (Queue.size() >= MaxSize)
 			return false;
 
 		Queue.push(item);
@@ -94,6 +94,11 @@ public:
 	{
 		std::unique_lock<std::mutex> lck(Mut);
 		return (Queue.size >= Size);
+	}
+	int Size()
+	{
+		std::unique_lock<std::mutex> lck(Mut);
+		return Queue.size();
 	}
 };
 #endif

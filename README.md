@@ -70,8 +70,7 @@ opendatacon uses the CMake build system.
 
 ### Build system requirements
 
-*   Modern C++11 compiler (currently developed under msvc, g++ and clang)
-*   for unix environments libstdc > ???
+*   Modern C++14 compiler (currently developed under msvc, g++ and clang)
 
 ### Dependencies
 
@@ -90,12 +89,16 @@ Plugin specific dependencies:
 
 #### Optional components
 
-*   TEST
-*   WEBUI
-*   DNP3PORT
-*   JSONPORT
-*   MODBUSPORT
-*   FULL
+*   TEST - build the optional test suite
+*   WEBUI - build the optional Web user interface plugin
+*   CONSOLEUI - build the optional console user interface plugin
+*   DNP3PORT - build the optional DNP3 protocol ports
+*   JSONPORT - build the optional JSON stream port
+*   MODBUSPORT - build the optional modbus protocol ports
+*   SIMPORT - build the optional simulated input/output port
+*   FULL - build all the optional components
+*   STATIC_LIBSTDC++ - optionally link in libstdc++ statically
+*   PACKAGE_LIBSTDC++ - optionally include libstdc++ shared library in installation package
 
 #### Dependency search locations
 
@@ -107,8 +110,7 @@ Plugin specific dependencies:
 
 #### Cross-compiler options
 
-The variable MY_CONFIG_POSTFIX can be set when running cmake to specify the postfix to append to lib search folders.
-For example, setting "-DMY_CONFIG_POSTFIX=-rpi" causes the build system to search in "lib-rpi" in the home directory of each dependency.
+Cmake cross compiler toolchain files are supported. See the examples in the root of the source tree.
 
 ### Example setup
 
@@ -139,11 +141,15 @@ cmake . "-Bbuild-make" -G "Unix Makefiles" "-DFULL=ON"
 3.  Build
 ```
 cd build-make
-make -j 4
+make
 ```
 4.  Install
 ```
 sudo make install
+```
+5.  Optionally generate an installation package
+```
+make package
 ```
 
 ## Basic components

@@ -64,13 +64,13 @@ void daemon_install(ODCArgs& Args)
 	wss << " -d" << Args.toString().c_str();
 
 	InstallService(
-	      SERVICE_NAME,         // Name of service
-	      SERVICE_DISPLAY_NAME, // Name to display
-	      SERVICE_START_TYPE,   // Service start type
-	      SERVICE_DEPENDENCIES, // Dependencies
-	      SERVICE_ACCOUNT,      // Service running account
-	      SERVICE_PASSWORD,     // Password of the account
-	      (PWSTR)wss.str().c_str());
+		SERVICE_NAME,         // Name of service
+		SERVICE_DISPLAY_NAME, // Name to display
+		SERVICE_START_TYPE,   // Service start type
+		SERVICE_DEPENDENCIES, // Dependencies
+		SERVICE_ACCOUNT,      // Service running account
+		SERVICE_PASSWORD,     // Password of the account
+		(PWSTR)wss.str().c_str());
 }
 
 void daemon_remove()

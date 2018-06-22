@@ -34,69 +34,71 @@ ConsoleUI::ConsoleUI():
 		  "command will run for. The remainer of the arguments should be parameter Name/Value pairs."
 		  "Eg. Loggers ignore \".*\" filter \"[Aa]n{2}oying\\smessage\"");
 	AddCommand("help",[this](std::stringstream& LineStream)
-	{
-	     std::string arg;
-	     std::cout<<std::endl;
-	     if(LineStream>>arg) //asking for help on a specific command
-	     {
-		     if(!mDescriptions.count(arg) && !Responders.count(arg))
-			     std::cout<<"No such command or context: '"<<arg<<"'"<<std::endl;
-		     else if(mDescriptions.count(arg))
-			     std::cout<<std::setw(25)<<std::left<<arg+":"<<mDescriptions[arg]<<std::endl<<std::endl;
-		     else if(Responders.count(arg))
-		     {
-			     std::cout<<std::setw(25)<<std::left<<arg+":"<<
-					    "Access contextual subcommands:"<<std::endl<<std::endl;
-			     /* list sub commands */
-			     auto commands = Responders[arg]->GetCommandList();
-			     for (auto command : commands)
-			     {
-				     auto cmd = command.asString();
-				     auto desc = Responders[arg]->GetCommandDescription(cmd);
-				     std::cout<<std::setw(25)<<std::left<<"\t"+cmd+":"<<desc<<std::endl<<std::endl;
-			     }
-		     }
-	     }
-	     else
-	     {
-		     std::cout<<help_intro<<std::endl<<std::endl;
-		     //print root commands with descriptions
-		     for(auto desc: mDescriptions)
-		     {
-			     std::cout<<std::setw(25)<<std::left<<desc.first+":"<<desc.second<<std::endl<<std::endl;
-		     }
-		     //if there is no context, print Responders
-		     if (this->context.empty())
-		     {
-			     //check if command matches a Responder - if so, arg is our partial sub command
-			     for(auto name_n_responder : Responders)
-			     {
-				     std::cout<<std::setw(25)<<std::left<<name_n_responder.first+":"<<
-						    "Access contextual subcommands."<<std::endl<<std::endl;
-			     }
-		     }
-		     else //we have context - list sub commands
-		     {
-			     /* list commands available to current responder */
-			     auto commands = Responders[this->context]->GetCommandList();
-			     for (auto command : commands)
-			     {
-				     auto cmd = command.asString();
-				     auto desc = Responders[this->context]->GetCommandDescription(cmd);
-				     std::cout<<std::setw(25)<<std::left<<cmd+":"<<desc<<std::endl<<std::endl;
-			     }
-			     std::cout<<std::setw(25)<<std::left<<"exit:"<<
-					    "Leave '"+context+"' context."<<std::endl<<std::endl;
-		     }
-	     }
-	     std::cout<<std::endl;
-	},"Get help on commands. Optional argument of specific command.");
+		{
+			std::string arg;
+			std::cout<<std::endl;
+			if(LineStream>>arg) //asking for help on a specific command
+			{
+			      if(!mDescriptions.count(arg) && !Responders.count(arg))
+					std::cout<<"No such command or context: '"<<arg<<"'"<<std::endl;
+			      else if(mDescriptions.count(arg))
+					std::cout<<std::setw(25)<<std::left<<arg+":"<<mDescriptions[arg]<<std::endl<<std::endl;
+			      else if(Responders.count(arg))
+			      {
+			            std::cout<<std::setw(25)<<std::left<<arg+":"<<
+			            "Access contextual subcommands:"<<std::endl<<std::endl;
+			/* list sub commands */
+			            auto commands = Responders[arg]->GetCommandList();
+			            for (auto command : commands)
+			            {
+			                  auto cmd = command.asString();
+			                  auto desc = Responders[arg]->GetCommandDescription(cmd);
+			                  std::cout<<std::setw(25)<<std::left<<"\t"+cmd+":"<<desc<<std::endl<<std::endl;
+					}
+				}
+			}
+			else
+			{
+			      std::cout<<help_intro<<std::endl<<std::endl;
+			//print root commands with descriptions
+			      for(auto desc: mDescriptions)
+			      {
+			            std::cout<<std::setw(25)<<std::left<<desc.first+":"<<desc.second<<std::endl<<std::endl;
+				}
+			//if there is no context, print Responders
+			      if (this->context.empty())
+			      {
+			//check if command matches a Responder - if so, arg is our partial sub command
+			            for(auto name_n_responder : Responders)
+			            {
+			                  std::cout<<std::setw(25)<<std::left<<name_n_responder.first+":"<<
+			                  "Access contextual subcommands."<<std::endl<<std::endl;
+					}
+				}
+			      else //we have context - list sub commands
+			      {
+			            /* list commands available to current responder */
+			            auto commands = Responders[this->context]->GetCommandList();
+			            for (auto command : commands)
+			            {
+			                  auto cmd = command.asString();
+			                  auto desc = Responders[this->context]->GetCommandDescription(cmd);
+			                  std::cout<<std::setw(25)<<std::left<<cmd+":"<<desc<<std::endl<<std::endl;
+					}
+			            std::cout<<std::setw(25)<<std::left<<"exit:"<<
+			            "Leave '"+context+"' context."<<std::endl<<std::endl;
+				}
+			}
+			std::cout<<std::endl;
+		},"Get help on commands. Optional argument of specific command.");
 }
 
 ConsoleUI::~ConsoleUI(void)
-{}
+{
+	Disable();
+}
 
-void ConsoleUI::AddCommand(const std::string name, std::function<void (std::stringstream&)> callback, const std::string desc)
+void ConsoleUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
 {
 	mCmds[name] = callback;
 	mDescriptions[name] = desc;
@@ -175,6 +177,7 @@ int ConsoleUI::trigger (std::string s)
 	else if(mCmds.count(cmd))
 	{
 		/* regular command */
+
 		mCmds[cmd](LineStream);
 	}
 	else
@@ -276,7 +279,7 @@ int ConsoleUI::hotkeys(char c)
 				buffer.assign(matching_cmds.back().begin(),matching_cmds.back().begin()+common_length);
 				std::string remainder;
 				remainder.assign(matching_cmds.back().begin()+partial_cmd.size(),matching_cmds.back().begin()+common_length);
-				std::cout<<remainder;
+				std::cout<<remainder<< std::flush;
 				line_pos = (int)common_length;
 			}
 			//otherwise we're at the branching point - list possible commands
@@ -285,13 +288,13 @@ int ConsoleUI::hotkeys(char c)
 				std::cout<<std::endl;
 				for(auto cmd : matching_cmds)
 					std::cout<<cmd<<std::endl;
-				std::cout<<_prompt<<partial_cmd;
+				std::cout<<_prompt<<partial_cmd<<std::flush;
 			}
 
-			//if there's just one match, we just auto-completed it. Now print a trailing space.
-			if(matching_cmds.size() == 1)
+			//if there's just one match, and we just auto-completed it, print a trailing space.
+			if(matching_cmds.size() == 1 && partial_cmd.size() <= matching_cmds.back().size())
 			{
-				std::cout<<' ';
+				std::cout<<' '<< std::flush;
 				buffer.push_back(' ');
 				line_pos++;
 			}
@@ -303,7 +306,7 @@ int ConsoleUI::hotkeys(char c)
 }
 
 
-void ConsoleUI::AddResponder(const std::string name, const IUIResponder& pResponder)
+void ConsoleUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
 {
 	Responders[ name ] = &pResponder;
 }
@@ -318,7 +321,7 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 
 	//turn any regex it into a list of targets
 	Json::Value target_list;
-	if(!T_regex_str.empty() && command != "List")//List is a special case - handles it's own regex
+	if(!T_regex_str.empty() && command != "List") //List is a special case - handles it's own regex
 	{
 		params["Target"] = T_regex_str;
 		target_list = pResponder->ExecuteCommand("List", params)["Items"];
@@ -357,9 +360,10 @@ void ConsoleUI::Enable()
 	this->_quit = false;
 	if (!uithread)
 	{
-		uithread = std::unique_ptr<asio::thread>(new asio::thread([this](){
-		                                                                this->run();
-											    }));
+		uithread = std::unique_ptr<asio::thread>(new asio::thread([this]()
+				{
+					this->run();
+				}));
 	}
 }
 
@@ -368,7 +372,7 @@ void ConsoleUI::Disable()
 	this->quit();
 	if (uithread)
 	{
-		//uithread->join();
+		uithread->join();
 		uithread.reset();
 	}
 }

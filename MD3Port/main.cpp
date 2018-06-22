@@ -24,9 +24,25 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
+#include "MD3.h"
+
+#if defined(CATCH_CONFIG_RUNNER)
+#include <catchvs.hpp>		// This version has the hooks to display the tests in the VS Test Explorer
+#endif
 
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
+
+
+// Global TODO List in priority order
+//TODO: 1 Master Time set command, called when ODC triggers
+//TODO: 2 Master Sign on control called on ODC trigger - also send as part of poll?
+//TODO: 3 Master Freeze/reset control in response to ODC trigger.
+//TODO: 4 Master DOM Control
+//TODO: 5 Master POM Control
+//TODO: 6 Master AOM Control
+//TODO: 7 Master OLD Digital Read
+//TODO: 8 Master NEW Digital Read
 
 extern "C" MD3MasterPort* new_MD3MasterPort(std::string Name, std::string File, const Json::Value Overrides)
 {
@@ -51,14 +67,14 @@ extern "C" void delete_MD3OutstationPort(MD3OutstationPort* aMD3OutstationPort_p
 	return;
 }
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-	// Get duplicate symbols if the code below is compiled under VS. Have to work out a better way to manage this.
+// THIS IS SET IN MD3.h
+// Should be turned on for "normal" builds, and off is you want to use Visual Studio Test Integration.
+//
+#if defined(CATCH_CONFIG_RUNNER)
 
-#else
-#define CATCH_CONFIG_RUNNER
-#include <catchvs.hpp>		// This version has the hooks to display the tests in the VS Test Explorer
 extern "C" int run_tests( int argc, char* argv[] )
 {
 	return Catch::Session().run( argc, argv );
 }
+
 #endif

@@ -29,19 +29,6 @@
 
 using namespace std;
 
-bool GetBool(const string& value)
-{
-	if (value == "true")
-	{
-		return true;
-	}
-	else if (value == "false")
-	{
-		return false;
-	}
-	throw new std::runtime_error("Expected true or false after element name");
-}
-
 bool getline_noncomment(istream& is, string& line)
 {
 	//chew up blank lines and comments

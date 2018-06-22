@@ -35,25 +35,22 @@
 class ModbusOutstationPort: public ModbusPort
 {
 public:
-	ModbusOutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	ModbusOutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~ModbusOutstationPort() override;
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+	void BuildOrRebuild() override;
 
-	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	template<typename T> CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
-	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex);
-	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
-
+	template<typename T> void EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
 	void Connect();
 	void Disconnect();

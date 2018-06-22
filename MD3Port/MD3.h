@@ -27,17 +27,52 @@
 #ifndef MD3_H_
 #define MD3_H_
 
+////////////////// IMPORTANT //////////////////////////////
+// If we are compiling for external testing (or production) define this.
+// If we are using VS and its test framework, don't define this.
+// #define CATCH_CONFIG_RUNNER
+//
+////////////////// IMPORTANT //////////////////////////////
+
 #include <cstdint>
+#include <opendnp3/app/MeasurementTypes.h>
+#include <asiopal/UTCTimeSource.h>
+#include <opendatacon/DataPort.h>
+#include <opendatacon/util.h>
+#include <spdlog/spdlog.h>
 
 // Hide some of the code to make Logging cleaner
-#define LOG(logger, filters, location, msg) \
-	pLoggers->Log(openpal::LogEntry(logger, filters, location, std::string(msg).c_str(),-1));
+#define LOGDEBUG(msg) \
+	if (auto log = spdlog::get("MD3Port")) log->debug(msg);
+#define LOGERROR(msg) \
+	if (auto log = spdlog::get("MD3Port")) log->error(msg);
+#define LOGWARN(msg) \
+	if (auto log = spdlog::get("MD3Port")) log->warn(msg);
+#define LOGINFO(msg) \
+	if (auto log = spdlog::get("MD3Port")) log->info(msg);
+
+//#define LOG(logger, filters, location, msg) \
+// //	pLoggers->Log(openpal::LogEntry(logger, filters, location, std::string(msg).c_str(),-1));
+
+
+typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+typedef std::shared_ptr<Timer_t> pTimer_t;
+
+//TODO: SJE Determine by testing if MD3 uses UTC or not. Nothing in the documentation
+typedef opendnp3::DNPTime MD3Time; // msec since epoch, utc, uint48_t - most time functions are uint64_t
+
+static MD3Time MD3Now()
+{
+	// To get the time to pass through ODC events.
+	return (MD3Time)asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+}
+
 
 // Note that in the message block format, these characters are not excluded from appearing - so their appearance and use is message state dependent
 // THESE ARE NOT PRESENT IN THE tcp STREAMS...
-#define MD3_START_OF_MESSAGE_CHAR	0x01		// SOM
-#define MD3_SYNC_CHAR				0x16		// SYN
-#define MD3_END_OF_MESSAGE_CHAR		0x03		// ETX
+#define MD3_START_OF_MESSAGE_CHAR   0x01       // SOM
+#define MD3_SYNC_CHAR                     0x16 // SYN
+#define MD3_END_OF_MESSAGE_CHAR           0x03 // ETX
 
 // Message block format:
 // Possible multiple SOH
@@ -82,10 +117,10 @@ enum MD3_END_OF_MESSAGE_BIT
 	LAST_BLOCK = 1
 };
 
-#define MD3_BROADCAST_ADDRESS			0
-#define MD3_EXTENDED_ADDRESS_MARKER		0x7F
-#define MD3_MAXIMUM_NORMAL_ADDRESS		0x7E
-#define MD3_MAXIMUM_EXTENDED_ADDRESS	0x7FFF
+#define MD3_BROADCAST_ADDRESS             0
+#define MD3_EXTENDED_ADDRESS_MARKER       0x7F
+#define MD3_MAXIMUM_NORMAL_ADDRESS        0x7E
+#define MD3_MAXIMUM_EXTENDED_ADDRESS      0x7FFF
 
 enum MD3_MESSAGE_DIRECTION_BIT
 {
@@ -95,25 +130,25 @@ enum MD3_MESSAGE_DIRECTION_BIT
 
 enum MD3_FUNCTION_CODE
 {
-	ANALOG_UNCONDITIONAL = 5,	// HAS MODULE INFORMATION ATTACHED
-	ANALOG_DELTA_SCAN = 6,		// HAS MODULE INFORMATION ATTACHED
-	DIGITAL_UNCONDITIONAL_OBS = 7,	// OBSOLETE // HAS MODULE INFORMATION ATTACHED
-	DIGITAL_DELTA_SCAN = 8,		// OBSOLETE // HAS MODULE INFORMATION ATTACHED
-	HRER_LIST_SCAN = 9,			// OBSOLETE
-	DIGITAL_CHANGE_OF_STATE = 10,// OBSOLETE // HAS MODULE INFORMATION ATTACHED
+	ANALOG_UNCONDITIONAL = 5,      // HAS MODULE INFORMATION ATTACHED
+	ANALOG_DELTA_SCAN = 6,         // HAS MODULE INFORMATION ATTACHED
+	DIGITAL_UNCONDITIONAL_OBS = 7, // OBSOLETE // HAS MODULE INFORMATION ATTACHED
+	DIGITAL_DELTA_SCAN = 8,        // OBSOLETE // HAS MODULE INFORMATION ATTACHED
+	HRER_LIST_SCAN = 9,            // OBSOLETE
+	DIGITAL_CHANGE_OF_STATE = 10,  // OBSOLETE // HAS MODULE INFORMATION ATTACHED
 	DIGITAL_CHANGE_OF_STATE_TIME_TAGGED = 11,
 	DIGITAL_UNCONDITIONAL = 12,
-	ANALOG_NO_CHANGE_REPLY = 13,	// HAS MODULE INFORMATION ATTACHED
-	DIGITAL_NO_CHANGE_REPLY = 14,	// HAS MODULE INFORMATION ATTACHED
+	ANALOG_NO_CHANGE_REPLY = 13,  // HAS MODULE INFORMATION ATTACHED
+	DIGITAL_NO_CHANGE_REPLY = 14, // HAS MODULE INFORMATION ATTACHED
 	CONTROL_REQUEST_OK = 15,
 	FREEZE_AND_RESET = 16,
 	POM_TYPE_CONTROL = 17,
-	DOM_TYPE_CONTROL = 19,		// NOT USED
+	DOM_TYPE_CONTROL = 19, // NOT USED
 	INPUT_POINT_CONTROL = 20,
 	RAISE_LOWER_TYPE_CONTROL = 21,
 	AOM_TYPE_CONTROL = 23,
-	CONTROL_OR_SCAN_REQUEST_REJECTED = 30,	// HAS MODULE INFORMATION ATTACHED
-	COUNTER_SCAN = 31,						// HAS MODULE INFORMATION ATTACHED
+	CONTROL_OR_SCAN_REQUEST_REJECTED = 30, // HAS MODULE INFORMATION ATTACHED
+	COUNTER_SCAN = 31,                     // HAS MODULE INFORMATION ATTACHED
 	SYSTEM_SIGNON_CONTROL = 40,
 	SYSTEM_SIGNOFF_CONTROL = 41,
 	SYSTEM_RESTART_CONTROL = 42,

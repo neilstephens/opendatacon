@@ -37,9 +37,8 @@ std::unordered_map<std::string, IOHandler*>& IOHandler::GetIOHandlers()
 	return IOHandler::IOHandlers;
 }
 
-IOHandler::IOHandler(std::string aName): Name(aName),
-	pLoggers(new asiopal::LogFanoutHandler()),
-	LOG_LEVEL(openpal::logflags::WARN),
+IOHandler::IOHandler(const std::string& aName): Name(aName),
+	pIOS(nullptr),
 	enabled(false),
 	InitState(InitState_t::ENABLED),
 	EnableDelayms(0)
@@ -52,14 +51,6 @@ void IOHandler::Subscribe(IOHandler* pIOHandler, std::string aName)
 	this->Subscribers[aName] = pIOHandler;
 }
 
-void IOHandler::AddLogSubscriber(openpal::ILogHandler* logger)
-{
-	pLoggers->Subscribe(*logger);
-}
-void IOHandler::SetLogLevel(openpal::LogFilters LOG_LEVEL)
-{
-	this->LOG_LEVEL = LOG_LEVEL;
-}
 void IOHandler::SetIOS(asio::io_service* ios_ptr)
 {
 	pIOS = ios_ptr;
@@ -88,5 +79,51 @@ bool IOHandler::MuxConnectionEvents(ConnectState state, const std::string& Sende
 	}
 	return true;
 }
-	
+
+SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, SharedStatusCallback_t pStatusCallback)
+{
+	if(pIOS == nullptr)
+	{
+		throw std::runtime_error("Uninitialised io_service on enabled IOHandler");
+	}
+	if(cb_number == 1)
+		return pStatusCallback;
+
+	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
+	auto pExecCount = std::make_shared<size_t>(0);
+	auto pCB_sync = std::make_shared<asio::strand>(*pIOS);
+	return std::make_shared<std::function<void (CommandStatus status)>>
+		       (pCB_sync->wrap(
+				 [pCB_sync,
+				  pCombinedStatus,
+				  pExecCount,
+				  cb_number,
+				  pStatusCallback](CommandStatus status)
+				 {
+					 if(*pCombinedStatus == CommandStatus::UNDEFINED)
+						 return;
+
+					 if(++(*pExecCount) == 1)
+					 {
+					       *pCombinedStatus = status;
+					       if(*pCombinedStatus == CommandStatus::UNDEFINED)
+					       {
+					             (*pStatusCallback)(*pCombinedStatus);
+					             return;
+						 }
+					 }
+					 else if(status != *pCombinedStatus)
+					 {
+					       *pCombinedStatus = CommandStatus::UNDEFINED;
+					       (*pStatusCallback)(*pCombinedStatus);
+					       return;
+					 }
+
+					 if(*pExecCount >= cb_number)
+					 {
+					       (*pStatusCallback)(*pCombinedStatus);
+					 }
+				 }));
+}
+
 }
