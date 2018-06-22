@@ -27,7 +27,7 @@
 #include "MD3.h"
 
 #if defined(CATCH_CONFIG_RUNNER)
-#include <catchvs.hpp>		// This version has the hooks to display the tests in the VS Test Explorer
+#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
 #include "MD3OutstationPort.h"
@@ -46,8 +46,7 @@
 
 extern "C" MD3MasterPort* new_MD3MasterPort(std::string Name, std::string File, const Json::Value Overrides)
 {
-	return nullptr;
-//	return new MD3MasterPort(Name,File,Overrides);
+	return new MD3MasterPort(Name,File,Overrides);
 }
 
 extern "C" MD3OutstationPort* new_MD3OutstationPort(std::string Name, std::string File, const Json::Value Overrides)
@@ -57,7 +56,7 @@ extern "C" MD3OutstationPort* new_MD3OutstationPort(std::string Name, std::strin
 
 extern "C" void delete_MD3MasterPort(MD3MasterPort* aMD3MasterPort_ptr)
 {
-	// delete aMD3MasterPort_ptr;
+	delete aMD3MasterPort_ptr;
 	return;
 }
 

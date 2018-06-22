@@ -32,7 +32,6 @@
 #include <spdlog/sinks/wincolor_sink.h>
 #include <spdlog/sinks/windebug_sink.h>
 
-#include <asiopal/UTCTimeSource.h>
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 #include "MD3Engine.h"
@@ -1286,7 +1285,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	commandblock = MD3BlockFn9(0x7C, true, 5, 0, true, true);
 	output << commandblock.ToBinaryString();
 
-	uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	uint64_t currenttime = MD3Now();
 	MD3BlockData datablock((uint32_t)(currenttime / 1000), true );
 	output << datablock.ToBinaryString();
 
@@ -1390,7 +1389,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	REQUIRE(Response == DesiredResult2);
 
 	//---------------------
-	// No sequence number shange, so should get the same data back as above.
+	// No sequence number change, so should get the same data back as above.
 	commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15, true); // Sequence number must increase - but for this test not
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1648,7 +1647,7 @@ TEST_CASE("Station - DOMControlFn19")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	uint64_t currenttime = MD3Now();
 
 	//  Station 0x7C
 	MD3BlockFn19MtoS commandblock(0x7C, 37);
@@ -1760,7 +1759,7 @@ TEST_CASE("Station - SystemsSignOnFn40")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	uint64_t currenttime = MD3Now();
 
 	// System SignOn Command, Station 0 - the slave only responds to a zero address - where it is asked to indetify itself.
 	MD3BlockFn40 commandblock(0);
@@ -1791,7 +1790,7 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	uint64_t currenttime = MD3Now();
 
 	// TimeChange command (Fn 43), Station 0x7C
 	MD3BlockFn43MtoS commandblock(0x7C, currenttime % 1000);

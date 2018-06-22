@@ -36,7 +36,6 @@
 
 #include <cstdint>
 #include <opendnp3/app/MeasurementTypes.h>
-#include <asiopal/UTCTimeSource.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <spdlog/spdlog.h>
@@ -51,20 +50,17 @@
 #define LOGINFO(msg) \
 	if (auto log = spdlog::get("MD3Port")) log->info(msg);
 
-//#define LOG(logger, filters, location, msg) \
-// //	pLoggers->Log(openpal::LogEntry(logger, filters, location, std::string(msg).c_str(),-1));
-
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;
 
 //TODO: SJE Determine by testing if MD3 uses UTC or not. Nothing in the documentation
-typedef opendnp3::DNPTime MD3Time; // msec since epoch, utc, uint48_t - most time functions are uint64_t
+typedef uint64_t MD3Time; // msec since epoch, utc, most time functions are uint64_t
 
 static MD3Time MD3Now()
 {
 	// To get the time to pass through ODC events.
-	return (MD3Time)asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	return (MD3Time)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 

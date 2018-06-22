@@ -404,7 +404,7 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				PublishEvent(Analog(AnalogValues[i], qual, now), intres); // We dont get counter time information through MD3, so add it as soon as possible
+				PublishEvent(Analog(AnalogValues[i], qual, (opendnp3::DNPTime)now), intres); // We dont get counter time information through MD3, so add it as soon as possible
 			}
 		}
 		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
@@ -414,7 +414,7 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				PublishEvent(Counter(AnalogValues[i], qual, now), intres); // We dont get analog time information through MD3, so add it as soon as possible
+				PublishEvent(Counter(AnalogValues[i], qual, (opendnp3::DNPTime)now), intres); // We dont get analog time information through MD3, so add it as soon as possible
 			}
 		}
 		else
@@ -489,7 +489,7 @@ void MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std
 			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled, wordres, now);
-				PublishEvent(Analog(wordres, qual, now), intres); // We dont get counter time information through MD3, so add it as soon as possible
+				PublishEvent(Analog(wordres, qual, (opendnp3::DNPTime)now), intres); // We don't get counter time information through MD3, so add it as soon as possible
 			}
 		}
 		else if (GetCounterValueUsingMD3Index(maddress, idx,wordres))
@@ -501,7 +501,7 @@ void MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std
 			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled,wordres, now);
-				PublishEvent(Counter(wordres, qual, now), intres); // We dont get analog time information through MD3, so add it as soon as possible
+				PublishEvent(Counter(wordres, qual, (opendnp3::DNPTime)now), intres); // We don't get analog time information through MD3, so add it as soon as possible
 			}
 		}
 		else
@@ -509,7 +509,7 @@ void MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std
 			LOGERROR("Fn6 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
 				+ " On Station Address - " + std::to_string(Header.GetStationAddress())
 				+ " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
-			//TODO: SJE Trip an error so we dont have to wait for timeout?
+			//TODO: SJE Trip an error so we don't have to wait for timeout?
 		}
 	}
 }
@@ -689,7 +689,7 @@ void MD3MasterPort::SetAllPointsQualityToCommsLost()
 	}
 }
 
-// When a new device connects to us through ODC (or an exisiting one reconnects), send them everything we currently have.
+// When a new device connects to us through ODC (or an existing one reconnects), send them everything we currently have.
 void MD3MasterPort::SendAllPointEvents()
 {
 	//TODO: SJE Set a quality of RESTART if we have just started up but not yet received information for a point. Not sure if super usefull...
@@ -700,7 +700,7 @@ void MD3MasterPort::SendAllPointEvents()
 		int index = Point.first;
 		uint8_t meas = Point.second->Binary;
 		uint8_t qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
-		PublishEvent(Binary( meas == 1, qual, Point.second->ChangedTime),index);
+		PublishEvent(Binary( meas == 1, qual, (opendnp3::DNPTime)Point.second->ChangedTime),index);
 	}
 
 	// Binary Control/Output - the status of which we show as a binary - on our other end we look for the index in both binary lists
@@ -710,7 +710,7 @@ void MD3MasterPort::SendAllPointEvents()
 		int index = Point.first;
 		uint8_t meas = Point.second->Binary;
 		uint8_t qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
-		PublishEvent(Binary(meas == 1, qual, Point.second->ChangedTime), index);
+		PublishEvent(Binary(meas == 1, qual, (opendnp3::DNPTime)Point.second->ChangedTime), index);
 	}
 	// Analogs
 	for (auto const &Point : MyPointConf()->AnalogODCPointMap)
@@ -719,7 +719,7 @@ void MD3MasterPort::SendAllPointEvents()
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
 		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
-		PublishEvent(Analog(meas, qual, Point.second->ChangedTime), index);
+		PublishEvent(Analog(meas, qual, (opendnp3::DNPTime)Point.second->ChangedTime), index);
 	}
 	// Counters
 	for (auto const &Point : MyPointConf()->CounterODCPointMap)
@@ -728,7 +728,7 @@ void MD3MasterPort::SendAllPointEvents()
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
 		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
-		PublishEvent(Counter(meas, qual, Point.second->ChangedTime), index);
+		PublishEvent(Counter(meas, qual, (opendnp3::DNPTime)Point.second->ChangedTime), index);
 	}
 }
 
@@ -763,7 +763,7 @@ void MD3MasterPort::ConnectionEvent(ConnectState state, const std::string& Sende
 	else // ConnectState::DISCONNECTED
 	{
 		// If we were an on demand connection, we would take down the connection . For MD3 we are using persistent connections only.
-		// We have lost an ODC connection, so events we send dont go anywhere.
+		// We have lost an ODC connection, so events we send don't go anywhere.
 
 	}
 
@@ -793,7 +793,7 @@ inline void MD3MasterPort::EventT(T& arCommand, uint16_t index, const std::strin
 	// We now have to (most likely) send a command out to an outstation and wait for a response
 	// We can launch the command here, create a lamda to be called in the event of timeout or response.
 	// At that time we will call the callback function.
-	// For now we just return so whatever sent the ODC Event can get on with things. It will have setup the callback we will call when the time is right.
+	// For now we just return so whatever sent the ODC Event can get on with things. It will have set up the callback we will call when the time is right.
 	//	cmd_promise->set_value(WriteObject(arCommand, index));
 	/*
 	auto lambda = capture( std::move(cmd_promise),

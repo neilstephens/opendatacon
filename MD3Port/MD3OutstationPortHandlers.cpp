@@ -1347,7 +1347,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3B
 	uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
-	uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	uint64_t currenttime = MD3Now();
 
 	if (abs((int64_t)msecsinceepoch - (int64_t)currenttime) > 30000) // Set window as +-30 seconds
 	{
