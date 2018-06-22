@@ -91,9 +91,9 @@ protected:
 	virtual TCPClientServer ClientOrServer()=0;
 
 private:
-	static asiodnp3::DNP3Manager IOMgr;
-	static DNP3Log2spdlog DNP3LogHandler;
 	static std::atomic_flag log_subscribed;
+	static DNP3Log2spdlog DNP3LogHandler;
+	static asiodnp3::DNP3Manager IOMgr;
 };
 
 #endif /* DNP3PORT_H_ */
