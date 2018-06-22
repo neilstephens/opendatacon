@@ -30,6 +30,7 @@
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/app/ControlRelayOutputBlock.h>
 #include <opendnp3/app/AnalogOutput.h>
+#include <opendatacon/util.h>
 
 namespace odc
 {
@@ -62,48 +63,110 @@ typedef opendnp3::DoubleBitBinaryQuality DoubleBitBinaryQuality;
 typedef opendnp3::AnalogQuality AnalogQuality;
 typedef opendnp3::CounterQuality CounterQuality;
 typedef opendnp3::BinaryOutputStatusQuality BinaryOutputStatusQuality;
+enum class FrozenCounterQuality: uint8_t {};
+enum class AnalogOutputStatusQuality: uint8_t {};
 
-enum class FrozenCounterQuality: uint8_t
+//enumerate all the different type of events that can pass through opendatacon
+//As a starting point, define values to correspond with all the dnp3 measurment and output types,
+// that way it should be easy to migrate from using actual opendnp3 library types
+enum class EventType: uint8_t
 {
-	/// set when the data is "good", meaning that rest of the system can trust the value
-	ONLINE = 0x1,
-	/// the quality all points get before we have established communication (or populated) the point
-	RESTART = 0x2,
-	/// set if communication has been lost with the source of the data (after establishing contact)
-	COMM_LOST = 0x4,
-	/// set if the value is being forced to a "fake" value somewhere in the system
-	REMOTE_FORCED = 0x8,
-	/// set if the value is being forced to a "fake" value on the original device
-	LOCAL_FORCED = 0x10,
-	/// Deprecated flag that indicates value has rolled over
-	ROLLOVER = 0x20,
-	/// indicates an unusual change in value
-	DISCONTINUITY = 0x40,
-	/// reserved bit
-	RESERVED = 0x80
+	//Inputs
+	Binary                    = 1,
+	DoubleBitBinary           = 2,
+	Analog                    = 3,
+	Counter                   = 4,
+	FrozenCounter             = 5,
+	BinaryOutputStatus        = 6,
+	AnalogOutputStatus        = 7,
+
+	//Outputs
+	ControlRelayOutputBlock   = 8,
+	AnalogOutputInt16         = 9,
+	AnalogOutputInt32         = 10,
+	AnalogOutputFloat32       = 11,
+	AnalogOutputDouble64      = 12,
+
+	//Quality (for when the quality changes, but not the value)
+	BinaryQuality             = 13,
+	DoubleBitBinaryQuality    = 14,
+	AnalogQuality             = 15,
+	CounterQuality            = 16,
+	BinaryOutputStatusQuality = 17,
+	FrozenCounterQuality      = 18,
+	AnalogOutputStatusQuality = 19
 };
 
-/**
-Quality field bitmask for AnalogOutputStatus values
-*/
-enum class AnalogOutputStatusQuality: uint8_t
+//Quatilty flags that can be used for any EventType
+//Start with a superset of all the dnp3 type qualities
+enum class QualityFlags: uint16_t
 {
-	/// set when the data is "good", meaning that rest of the system can trust the value
-	ONLINE = 0x1,
-	/// the quality all points get before we have established communication (or populated) the point
-	RESTART = 0x2,
-	/// set if communication has been lost with the source of the data (after establishing contact)
-	COMM_LOST = 0x4,
-	/// set if the value is being forced to a "fake" value somewhere in the system
-	REMOTE_FORCED = 0x8,
-	/// set if the value is being forced to a "fake" value on the original device
-	LOCAL_FORCED = 0x10,
-	/// set if a hardware input etc. is out of range and we are using a place holder value
-	OVERRANGE = 0x20,
-	/// set if calibration or reference voltage has been lost meaning readings are questionable
-	REFERENCE_ERR = 0x40,
-	/// reserved bit
-	RESERVED = 0x80
+	ONLINE            = 1<<0,
+	RESTART           = 1<<1,
+	COMM_LOST         = 1<<2,
+	REMOTE_FORCED     = 1<<3,
+	LOCAL_FORCED      = 1<<4,
+	OVERRANGE         = 1<<5,
+	REFERENCE_ERR     = 1<<6,
+	ROLLOVER          = 1<<7,
+	DISCONTINUITY     = 1<<8,
+	CHATTER_FILTER    = 1<<9,
+	STATE             = 1<<10,
+	STATE1            = 1<<11,
+	STATE2            = 1<<12
+};
+
+enum class eCommandStatus : uint8_t
+{
+	SUCCESS = 0,
+	TIMEOUT = 1,
+	NO_SELECT = 2,
+	FORMAT_ERROR = 3,
+	NOT_SUPPORTED = 4,
+	ALREADY_ACTIVE = 5,
+	HARDWARE_ERROR = 6,
+	LOCAL = 7,
+	TOO_MANY_OPS = 8,
+	NOT_AUTHORIZED = 9,
+	AUTOMATION_INHIBIT = 10,
+	PROCESSING_LIMITED = 11,
+	OUT_OF_RANGE = 12,
+	DOWNSTREAM_LOCAL = 13,
+	ALREADY_COMPLETE = 14,
+	BLOCKED = 15,
+	CANCELLED = 16,
+	BLOCKED_OTHER_MASTER = 17,
+	DOWNSTREAM_FAIL = 18,
+	NON_PARTICIPATING = 126,
+	UNDEFINED = 127
+};
+
+template <typename Payload_t>
+class EventInfo
+{
+public:
+	EventInfo(EventType t, Payload_t&& p):
+		Type(t),
+		Payload(std::move(p))
+	{}
+
+	//Getters
+	const EventType& GetType(){ return Type; }
+	const Payload_t& GetPayload(){ return Payload; }
+	const msSinceEpoch_t& GetTimestamp(){ return Timestamp; }
+	const QualityFlags& GetQuality(){ return Quality; }
+
+	//Setters
+	void SetType(EventType t){ Type = t; }
+	void SetTimestamp(msSinceEpoch_t t){ Timestamp = t; }
+	void SetQuality(QualityFlags q){ Quality = q; }
+	void SetPayload(Payload_t&& p){Payload = std::move(p); }
+
+private:
+	EventType Type;
+	msSinceEpoch_t Timestamp = msSinceEpoch();
+	QualityFlags Quality = (QualityFlags::ONLINE | QualityFlags::RESTART);
+	Payload_t Payload;
 };
 
 }
