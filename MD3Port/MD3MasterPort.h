@@ -46,8 +46,7 @@ public:
 	void Enable() override;
 	void Disable() override;
 
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
-	void BuildOrRebuild();
+	void BuildOrRebuild() override;
 
 	void SocketStateHandler(bool state);
 
@@ -58,13 +57,15 @@ public:
 	uint8_t CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time);
 
 	// Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
-	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
-	template<typename T> std::future<CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
+	void Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+
+	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+
+	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
 	//*** PUBLIC for unit tests only
 	//TODO: Add timeout callback and timeout period, plus command succeeded callback to MasterCommandQueueItem to add extra functionality.
@@ -97,8 +98,8 @@ private:
 	void ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 
 	std::shared_ptr<StrandProtectedQueue<MasterCommandQueueItem>> pMasterCommandQueue;
-	uint8_t CurrentFunctionCode = 0;	// When we send a command, make sure the response we get is one we are waiting for.
-	bool ProcessingMD3Command = false;	//TODO ProcessingMD3Command Will need to be atomic/and/or mutex protected or become part of the commandqueue class when refactored.
+	uint8_t CurrentFunctionCode = 0;   // When we send a command, make sure the response we get is one we are waiting for.
+	bool ProcessingMD3Command = false; //TODO ProcessingMD3Command Will need to be atomic/and/or mutex protected or become part of the commandqueue class when refactored.
 
 	// Check that what we got is one that is expected for the current Function we are processing.
 	bool AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode);

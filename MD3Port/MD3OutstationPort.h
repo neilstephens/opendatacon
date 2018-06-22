@@ -36,7 +36,7 @@
 #include "MD3Engine.h"
 #include "MD3Connection.h"
 
-class MD3OutstationPort : public MD3Port
+class MD3OutstationPort: public MD3Port
 {
 	enum AnalogChangeType { NoChange, DeltaChange, AllChange };
 	enum AnalogCounterModuleType { CounterModule, AnalogModule };
@@ -47,18 +47,27 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
 	void BuildOrRebuild();
 
-	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
+//	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+//	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+//	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+//	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+//	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+//	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+//	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+
+	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+
+	template<typename T> void EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
 	template<typename T> CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 
@@ -84,14 +93,14 @@ public:
 	void SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 
 	// Digital/Binary
-	void DoDigitalScan(MD3BlockFn11MtoS & Header);				// Fn 7
-	void DoDigitalChangeOnly(MD3BlockFormatted & Header);		// Fn 8
-	void DoDigitalHRER(MD3BlockFn9 & Header, std::vector<MD3BlockData>& CompleteMD3Message);	// Fn 9
+	void DoDigitalScan(MD3BlockFn11MtoS & Header);                                           // Fn 7
+	void DoDigitalChangeOnly(MD3BlockFormatted & Header);                                    // Fn 8
+	void DoDigitalHRER(MD3BlockFn9 & Header, std::vector<MD3BlockData>& CompleteMD3Message); // Fn 9
 	void Fn9AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
-	void DoDigitalCOSScan(MD3BlockFn10 & Header);				// Fn 10
-	void DoDigitalUnconditionalObs(MD3BlockFormatted & Header);	// Fn 11
+	void DoDigitalCOSScan(MD3BlockFn10 & Header);               // Fn 10
+	void DoDigitalUnconditionalObs(MD3BlockFormatted & Header); // Fn 11
 	void Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
-	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header);		// Fn 12
+	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header); // Fn 12
 
 	void MarkAllBinaryBlocksAsChanged();
 
@@ -108,19 +117,19 @@ public:
 	void DoAOMControl(MD3BlockFn23MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
 
 	void DoSystemSignOnControl(MD3BlockFn40 & Header);
-	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);	// Fn 43
-	void DoSystemFlagScan(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);	// Fn 52
+	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);     // Fn 43
+	void DoSystemFlagScan(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message); // Fn 52
 
-	void SendControlOK(MD3BlockFormatted & Header);					// Fn 15
-	void SendControlOrScanRejected(MD3BlockFormatted & Header);		// Fn 30
+	void SendControlOK(MD3BlockFormatted & Header);             // Fn 15
+	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
 
 
 private:
 
 	void SocketStateHandler(bool state);
 
-	int LastHRERSequenceNumber = 100;	// Used to remember the last HRER scan we sent, starts with an invalid value
-	int LastDigitalScanSequenceNumber = 0;	// Used to remember the last digital scan we had
+	int LastHRERSequenceNumber = 100;      // Used to remember the last HRER scan we sent, starts with an invalid value
+	int LastDigitalScanSequenceNumber = 0; // Used to remember the last digital scan we had
 	std::vector<MD3BlockData> LastDigitialScanResponseMD3Message;
 	std::vector<MD3BlockData> LastDigitialHRERResponseMD3Message;
 };

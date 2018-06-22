@@ -24,12 +24,12 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#include "MD3Port.h"
-#include <iostream>
-#include "MD3PortConf.h"
-#include <openpal/logging/LogLevels.h>
 
-MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides) :
+#include <iostream>
+#include "MD3Port.h"
+#include "MD3PortConf.h"
+
+MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pConnection(nullptr)
 {
@@ -55,20 +55,20 @@ bool MD3Port::IsServer()
 /*
 const Json::Value MD3Port::GetStatus() const
 {
-	auto ret_val = Json::Value();
+      auto ret_val = Json::Value();
 
-	if (!enabled)
-		ret_val["Result"] = "Port disabled";
-	else if (link_dead)
-		ret_val["Result"] = "Port enabled - link down";
-	else if (status == opendnp3::LinkStatus::RESET)
-		ret_val["Result"] = "Port enabled - link up (reset)";
-	else if (status == opendnp3::LinkStatus::UNRESET)
-		ret_val["Result"] = "Port enabled - link up (unreset)";
-	else
-		ret_val["Result"] = "Port enabled - link status unknown";
+      if (!enabled)
+            ret_val["Result"] = "Port disabled";
+      else if (link_dead)
+            ret_val["Result"] = "Port enabled - link down";
+      else if (status == opendnp3::LinkStatus::RESET)
+            ret_val["Result"] = "Port enabled - link up (reset)";
+      else if (status == opendnp3::LinkStatus::UNRESET)
+            ret_val["Result"] = "Port enabled - link up (unreset)";
+      else
+            ret_val["Result"] = "Port enabled - link status unknown";
 
-	return ret_val;
+      return ret_val;
 }
 */
 
@@ -80,7 +80,7 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot.isObject()) return;
 
 	if (JSONRoot.isMember("IP") && JSONRoot.isMember("SerialDevice"))
-		std::cout << "Warning: MD3 port serial device AND IP address specified - IP overrides" << std::endl;
+		LOGERROR("Warning: MD3 port serial device AND IP address specified - IP overrides");
 
 	if (JSONRoot.isMember("IP"))
 	{
@@ -100,7 +100,7 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 		else if (JSONRoot["TCPClientServer"].asString() == "DEFAULT")
 			static_cast<MD3PortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::DEFAULT;
 		else
-			std::cout << "Warning: Invalid TCP client/server type: " << JSONRoot["TCPClientServer"].asString() << ", should be CLIENT, SERVER, or DEFAULT." << std::endl;
+			LOGERROR("Warning: Invalid TCP client/server type, it should be CLIENT, SERVER, or DEFAULT : "+ JSONRoot["TCPClientServer"].asString());
 	}
 
 	if (JSONRoot.isMember("OutstationAddr"))
@@ -139,7 +139,7 @@ void MD3Port::SendMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
 {
 	if (CompleteMD3Message.size() == 0)
 	{
-		LOG("MD3Port", openpal::logflags::ERR, "", "Tried to send an empty response");
+		LOGERROR("Tried to send an empty message to the TCP Port");
 		return;
 	}
 
@@ -184,7 +184,7 @@ bool MD3Port::GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const
 	{
 		res = MD3PointMapIter->second->Analog;
 		delta = (int)res - (int)MD3PointMapIter->second->LastReadAnalog;
-		MD3PointMapIter->second->LastReadAnalog = res;	// We assume it is sent to the master. May need better way to do this
+		MD3PointMapIter->second->LastReadAnalog = res; // We assume it is sent to the master. May need better way to do this
 		return true;
 	}
 	return false;
@@ -246,7 +246,7 @@ bool MD3Port::GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const 
 	{
 		res = MD3PointMapIter->second->Analog;
 		delta = (int)res - (int)MD3PointMapIter->second->LastReadAnalog;
-		MD3PointMapIter->second->LastReadAnalog = res;	// We assume it is sent to the master. May need better way to do this
+		MD3PointMapIter->second->LastReadAnalog = res; // We assume it is sent to the master. May need better way to do this
 		return true;
 	}
 	return false;
@@ -448,9 +448,9 @@ uint16_t MD3Port::CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t Mod
 	for (int j = 0; j < 16; j++)
 	{
 		uint8_t bitres = 0;
-		bool changed = false;	// We dont care about the returned value
+		bool changed = false; // We dont care about the returned value
 
-		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed))	// Reading this clears the changed bit
+		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed)) // Reading this clears the changed bit
 		{
 			//TODO: Check the bit order here of the binaries
 			wordres |= (uint16_t)bitres << (15 - j);
@@ -466,9 +466,9 @@ uint16_t MD3Port::CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool &M
 	for (int j = 0; j < 16; j++)
 	{
 		uint8_t bitres = 0;
-		bool changed = false;	// We dont care about the returned value
+		bool changed = false; // We dont care about the returned value
 
-		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres))	// Reading this clears the changed bit
+		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres)) // Reading this clears the changed bit
 		{
 			//TODO: Check the bit order here of the binaries
 			wordres |= (uint16_t)bitres << (15 - j);

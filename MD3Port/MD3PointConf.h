@@ -78,7 +78,7 @@ class MD3Point
 public:
 	MD3Point() {};
 
-	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, MD3Time changedtime, uint8_t pollgroup ) :
+	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, MD3Time changedtime, uint8_t pollgroup ):
 		Index(index),
 		ModuleAddress(moduleaddress),
 		Channel(channel),
@@ -88,21 +88,21 @@ public:
 
 	uint32_t Index = 0;
 	uint8_t ModuleAddress = 0;
-	bool ModuleFailed = false;	// Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
+	bool ModuleFailed = false; // Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
 	uint8_t Channel = 0;
 	uint8_t PollGroup = 0;
-	MD3Time ChangedTime = (MD3Time)0;	// msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data. TimeStamp is Uint48_t, MD3 is uint64_t but does not overflow.
+	MD3Time ChangedTime = (MD3Time)0; // msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data. TimeStamp is Uint48_t, MD3 is uint64_t but does not overflow.
 };
 
-class MD3BinaryPoint : public MD3Point
+class MD3BinaryPoint: public MD3Point
 {
 public:
 	MD3BinaryPoint() {};
 
-	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup) :MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
 	{};
 
-	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, MD3Time changedtime) :
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, MD3Time changedtime):
 		MD3Point(index, moduleaddress,  channel, changedtime,0),
 		Binary(binval),
 		Changed(changed)
@@ -110,17 +110,17 @@ public:
 
 	// Only the values below will be changed in two places
 	uint8_t Binary = 0x01;
-	uint16_t ModuleBinarySnapShot = 0;	// Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
+	uint16_t ModuleBinarySnapShot = 0; // Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
 	bool Changed = true;
 };
 
-class MD3AnalogCounterPoint : public MD3Point
+class MD3AnalogCounterPoint: public MD3Point
 {
 
 public:
 	MD3AnalogCounterPoint() {};
 
-	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup) :MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
+	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
 	{};
 
 	// Only the values below will be changed in two places
@@ -139,14 +139,14 @@ enum PollGroupType { BinaryPoints, AnalogPoints };
 class MD3PollGroup
 {
 public:
-	MD3PollGroup() :
+	MD3PollGroup():
 		ID(0),
 		pollrate(0),
 		polltype(BinaryPoints),
 		UnconditionalRequired(true)
 	{ }
 
-	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_) :
+	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_):
 		ID(ID_),
 		pollrate(pollrate_),
 		polltype(polltype_),
@@ -156,9 +156,9 @@ public:
 	uint32_t ID;
 	uint32_t pollrate;
 	PollGroupType polltype;
-	bool UnconditionalRequired;	// Set to true on start up, and if other conditions are met
-	ModuleMapType ModuleAddresses;	// The second value we do not use. Just using the sorted map properties.
-									// As we load points we will build this list
+	bool UnconditionalRequired;    // Set to true on start up, and if other conditions are met
+	ModuleMapType ModuleAddresses; // The second value we do not use. Just using the sorted map properties.
+	// As we load points we will build this list
 };
 
 class MD3PointConf: public ConfigParser
@@ -178,22 +178,22 @@ public:
 
 
 	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
-	std::map<uint16_t , std::shared_ptr<MD3BinaryPoint>> BinaryMD3PointMap;	// ModuleAndChannel, MD3Point
-	std::map<uint32_t , std::shared_ptr<MD3BinaryPoint>> BinaryODCPointMap;	// Index OpenDataCon, MD3Point
+	std::map<uint16_t , std::shared_ptr<MD3BinaryPoint>> BinaryMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t , std::shared_ptr<MD3BinaryPoint>> BinaryODCPointMap; // Index OpenDataCon, MD3Point
 
-	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogMD3PointMap;	// ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogODCPointMap;	// Index OpenDataCon, MD3Point
+	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogODCPointMap; // Index OpenDataCon, MD3Point
 
-	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterMD3PointMap;	// ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterODCPointMap;	// Index OpenDataCon, MD3Point
+	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterODCPointMap; // Index OpenDataCon, MD3Point
 
 	//TODO: Are Binary control and binary points different? Yes and no. I think you use normal Binary commands to read control points, but obviously not all binary points can be set. I think maybe a flag?
-	std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlMD3PointMap;	// ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlODCPointMap;	// Index OpenDataCon, MD3Point
+	std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlODCPointMap; // Index OpenDataCon, MD3Point
 
-	//TODO: Are Analog Control points readable with normall analog/counter commands? Probably. Do we need a flag to mark a point as a control point?
-	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlMD3PointMap;	// ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlODCPointMap;	// Index OpenDataCon, MD3Point
+	//TODO: Are Analog Control points readable with normal analog/counter commands? Probably. Do we need a flag to mark a point as a control point?
+	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlODCPointMap; // Index OpenDataCon, MD3Point
 
 
 	std::map<uint32_t, MD3PollGroup> PollGroups;
