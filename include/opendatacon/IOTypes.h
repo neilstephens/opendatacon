@@ -69,7 +69,7 @@ enum class FrozenCounterQuality: uint8_t {};
 enum class AnalogOutputStatusQuality: uint8_t {};
 
 //enumerate all the different type of events that can pass through opendatacon
-//As a starting point, define values to correspond with all the dnp3 measurment and output types,
+//As a starting point, define values to correspond with the previously used dnp3 measurment and output types, and some extras
 // that way it should be easy to migrate from using actual opendnp3 library types
 enum class EventType: uint8_t
 {
@@ -81,22 +81,52 @@ enum class EventType: uint8_t
 	FrozenCounter             = 5,
 	BinaryOutputStatus        = 6,
 	AnalogOutputStatus        = 7,
+	BinaryCommandEvent        = 8,
+	AnalogCommandEvent        = 9,
+
+	Reserved1                 = 10,
+	Reserved2                 = 11,
+	Reserved3                 = 12,
 
 	//Outputs
-	ControlRelayOutputBlock   = 8,
-	AnalogOutputInt16         = 9,
-	AnalogOutputInt32         = 10,
-	AnalogOutputFloat32       = 11,
-	AnalogOutputDouble64      = 12,
+	ControlRelayOutputBlock   = 13,
+	AnalogOutputInt16         = 14,
+	AnalogOutputInt32         = 15,
+	AnalogOutputFloat32       = 16,
+	AnalogOutputDouble64      = 17,
+
+	Reserved4                 = 18,
+	Reserved5                 = 19,
+	Reserved6                 = 20,
 
 	//Quality (for when the quality changes, but not the value)
-	BinaryQuality             = 13,
-	DoubleBitBinaryQuality    = 14,
-	AnalogQuality             = 15,
-	CounterQuality            = 16,
-	BinaryOutputStatusQuality = 17,
-	FrozenCounterQuality      = 18,
-	AnalogOutputStatusQuality = 19
+	BinaryQuality             = 21,
+	DoubleBitBinaryQuality    = 22,
+	AnalogQuality             = 23,
+	CounterQuality            = 24,
+	BinaryOutputStatusQuality = 25,
+	FrozenCounterQuality      = 26,
+	AnalogOutputStatusQuality = 27,
+
+	Reserved7                 = 28,
+	Reserved8                 = 29,
+	Reserved9                 = 30,
+
+	//File Control
+	FileAuth                  = 31,
+	FileCommand               = 32,
+	FileCommandStatus         = 33,
+	FileTransport             = 34,
+	FileTransportStatus       = 35,
+	FileDescriptor            = 36,
+	FileSpecString            = 37,
+
+	Reserved10                = 38,
+	Reserved11                = 39,
+	Reserved12                = 40,
+
+	//Connection events
+	ConnectState              = 41
 };
 
 //Quatilty flags that can be used for any EventType
