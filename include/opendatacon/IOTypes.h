@@ -164,6 +164,7 @@ public:
 
 private:
 	EventType Type;
+	size_t Index = 0;
 	msSinceEpoch_t Timestamp = msSinceEpoch();
 	QualityFlags Quality = (QualityFlags::ONLINE | QualityFlags::RESTART);
 	Payload_t Payload;
