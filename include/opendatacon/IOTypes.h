@@ -27,10 +27,12 @@
 #ifndef IOTYPES_H_
 #define IOTYPES_H_
 
+#include <chrono>
+
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/app/ControlRelayOutputBlock.h>
 #include <opendnp3/app/AnalogOutput.h>
-#include <opendatacon/util.h>
+#include <opendatacon/EnumClassFlags.h>
 
 namespace odc
 {
@@ -115,6 +117,7 @@ enum class QualityFlags: uint16_t
 	STATE1            = 1<<11,
 	STATE2            = 1<<12
 };
+ENABLE_BITWISE(QualityFlags)
 
 enum class eCommandStatus : uint8_t
 {
@@ -140,6 +143,13 @@ enum class eCommandStatus : uint8_t
 	NON_PARTICIPATING = 126,
 	UNDEFINED = 127
 };
+
+typedef uint64_t msSinceEpoch_t;
+inline msSinceEpoch_t msSinceEpoch()
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds>
+		       (std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
 template <typename Payload_t>
 class EventInfo
