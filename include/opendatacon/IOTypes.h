@@ -28,6 +28,8 @@
 #define IOTYPES_H_
 
 #include <chrono>
+#include <string>
+#include <tuple>
 
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/app/ControlRelayOutputBlock.h>
@@ -73,6 +75,10 @@ enum class AnalogOutputStatusQuality: uint8_t {};
 // that way it should be easy to migrate from using actual opendnp3 library types
 enum class EventType: uint8_t
 {
+	//Used to start iteration
+	//Must be first value
+	BeforeRange               = 0,
+
 	//Inputs
 	Binary                    = 1,
 	DoubleBitBinary           = 2,
@@ -83,72 +89,64 @@ enum class EventType: uint8_t
 	AnalogOutputStatus        = 7,
 	BinaryCommandEvent        = 8,
 	AnalogCommandEvent        = 9,
+	OctetString               = 10,
+	TimeAndInterval           = 11,
+	SecurityStat              = 12,
 
-	Reserved1                 = 10,
-	Reserved2                 = 11,
-	Reserved3                 = 12,
+	Reserved1                 = 13,
+	Reserved2                 = 14,
+	Reserved3                 = 15,
 
 	//Outputs
-	ControlRelayOutputBlock   = 13,
-	AnalogOutputInt16         = 14,
-	AnalogOutputInt32         = 15,
-	AnalogOutputFloat32       = 16,
-	AnalogOutputDouble64      = 17,
+	ControlRelayOutputBlock   = 16,
+	AnalogOutputInt16         = 17,
+	AnalogOutputInt32         = 18,
+	AnalogOutputFloat32       = 19,
+	AnalogOutputDouble64      = 20,
 
-	Reserved4                 = 18,
-	Reserved5                 = 19,
-	Reserved6                 = 20,
+	Reserved4                 = 21,
+	Reserved5                 = 22,
+	Reserved6                 = 23,
 
 	//Quality (for when the quality changes, but not the value)
-	BinaryQuality             = 21,
-	DoubleBitBinaryQuality    = 22,
-	AnalogQuality             = 23,
-	CounterQuality            = 24,
-	BinaryOutputStatusQuality = 25,
-	FrozenCounterQuality      = 26,
-	AnalogOutputStatusQuality = 27,
+	BinaryQuality             = 24,
+	DoubleBitBinaryQuality    = 25,
+	AnalogQuality             = 26,
+	CounterQuality            = 27,
+	BinaryOutputStatusQuality = 28,
+	FrozenCounterQuality      = 29,
+	AnalogOutputStatusQuality = 30,
 
-	Reserved7                 = 28,
-	Reserved8                 = 29,
-	Reserved9                 = 30,
+	Reserved7                 = 31,
+	Reserved8                 = 32,
+	Reserved9                 = 33,
 
 	//File Control
-	FileAuth                  = 31,
-	FileCommand               = 32,
-	FileCommandStatus         = 33,
-	FileTransport             = 34,
-	FileTransportStatus       = 35,
-	FileDescriptor            = 36,
-	FileSpecString            = 37,
+	FileAuth                  = 34,
+	FileCommand               = 35,
+	FileCommandStatus         = 36,
+	FileTransport             = 37,
+	FileTransportStatus       = 38,
+	FileDescriptor            = 39,
+	FileSpecString            = 40,
 
-	Reserved10                = 38,
-	Reserved11                = 39,
-	Reserved12                = 40,
+	Reserved10                = 41,
+	Reserved11                = 42,
+	Reserved12                = 43,
 
 	//Connection events
-	ConnectState              = 41
-};
+	ConnectState              = 44,
 
-//Quatilty flags that can be used for any EventType
-//Start with a superset of all the dnp3 type qualities
-enum class QualityFlags: uint16_t
+	//Used to end iteration
+	//Must be last value
+	AfterRange                = 45
+};
+constexpr EventType operator +( const EventType lhs, const int rhs)
 {
-	ONLINE            = 1<<0,
-	RESTART           = 1<<1,
-	COMM_LOST         = 1<<2,
-	REMOTE_FORCED     = 1<<3,
-	LOCAL_FORCED      = 1<<4,
-	OVERRANGE         = 1<<5,
-	REFERENCE_ERR     = 1<<6,
-	ROLLOVER          = 1<<7,
-	DISCONTINUITY     = 1<<8,
-	CHATTER_FILTER    = 1<<9,
-	STATE             = 1<<10,
-	STATE1            = 1<<11,
-	STATE2            = 1<<12
-};
-ENABLE_BITWISE(QualityFlags)
+	return static_cast<EventType>(static_cast<const uint8_t>(lhs) + rhs);
+}
 
+//TODO: rename once the opendnp3 typedef is gone
 enum class eCommandStatus : uint8_t
 {
 	SUCCESS = 0,
@@ -174,6 +172,26 @@ enum class eCommandStatus : uint8_t
 	UNDEFINED = 127
 };
 
+//Quatilty flags that can be used for any EventType
+//Start with a superset of all the dnp3 type qualities
+enum class QualityFlags: uint16_t
+{
+	ONLINE            = 1<<0,
+	RESTART           = 1<<1,
+	COMM_LOST         = 1<<2,
+	REMOTE_FORCED     = 1<<3,
+	LOCAL_FORCED      = 1<<4,
+	OVERRANGE         = 1<<5,
+	REFERENCE_ERR     = 1<<6,
+	ROLLOVER          = 1<<7,
+	DISCONTINUITY     = 1<<8,
+	CHATTER_FILTER    = 1<<9,
+	STATE             = 1<<10,
+	STATE1            = 1<<11,
+	STATE2            = 1<<12
+};
+ENABLE_BITWISE(QualityFlags)
+
 typedef uint64_t msSinceEpoch_t;
 inline msSinceEpoch_t msSinceEpoch()
 {
@@ -181,33 +199,83 @@ inline msSinceEpoch_t msSinceEpoch()
 		       (std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-template <typename Payload_t>
+//Map EventTypes to payload types
+template<EventType t> struct EventTypePayload { typedef void type; };
+#define EVENTPAYLOAD(E,T)\
+	template<> struct EventTypePayload<E>{ typedef T type; };
+
+typedef std::pair<bool,bool> DBB;
+typedef std::tuple<msSinceEpoch_t,uint32_t,uint8_t> TAI;
+typedef std::pair<uint16_t,uint32_t> SS;
+EVENTPAYLOAD(EventType::Binary                  , bool)
+EVENTPAYLOAD(EventType::DoubleBitBinary         , DBB)
+EVENTPAYLOAD(EventType::Analog                  , double)
+EVENTPAYLOAD(EventType::Counter                 , int64_t)
+EVENTPAYLOAD(EventType::FrozenCounter           , int64_t)
+EVENTPAYLOAD(EventType::BinaryOutputStatus      , bool)
+EVENTPAYLOAD(EventType::AnalogOutputStatus      , double)
+EVENTPAYLOAD(EventType::BinaryCommandEvent      , eCommandStatus)
+EVENTPAYLOAD(EventType::AnalogCommandEvent      , eCommandStatus)
+EVENTPAYLOAD(EventType::OctetString             , std::string)
+EVENTPAYLOAD(EventType::TimeAndInterval         , TAI)
+EVENTPAYLOAD(EventType::SecurityStat            , SS)
+EVENTPAYLOAD(EventType::ControlRelayOutputBlock , bool)
+EVENTPAYLOAD(EventType::AnalogOutputInt16       , int16_t)
+EVENTPAYLOAD(EventType::AnalogOutputInt32       , int32_t)
+EVENTPAYLOAD(EventType::AnalogOutputFloat32     , float)
+EVENTPAYLOAD(EventType::AnalogOutputDouble64    , double)
+//TODO: map the rest
+
+
 class EventInfo
 {
 public:
-	EventInfo(EventType t, Payload_t&& p):
-		Type(t),
-		Payload(std::move(p))
+	EventInfo(EventType tp, const std::string& s):
+		SourcePort(s),
+		Type(tp)
 	{}
 
 	//Getters
-	const EventType& GetType(){ return Type; }
-	const Payload_t& GetPayload(){ return Payload; }
+	const EventType& GetEventType(){ return Type; }
+	const size_t& GetIndex(){ return Index; }
 	const msSinceEpoch_t& GetTimestamp(){ return Timestamp; }
 	const QualityFlags& GetQuality(){ return Quality; }
 
+	template<EventType t>
+	const typename EventTypePayload<t>::type& GetPayload()
+	{
+		if(t != Type)
+			throw std::runtime_error("Wrong payload type requested");
+		return Payload<t>();
+	}
+
 	//Setters
-	void SetType(EventType t){ Type = t; }
-	void SetTimestamp(msSinceEpoch_t t){ Timestamp = t; }
+	//void SetEventType(EventType tp){ Type = tp; }
+	void SetIndex(size_t i){ Index = i; }
+	void SetTimestamp(msSinceEpoch_t tm){ Timestamp = tm; }
 	void SetQuality(QualityFlags q){ Quality = q; }
-	void SetPayload(Payload_t&& p){Payload = std::move(p); }
+
+	template<EventType t>
+	void SetPayload(typename EventTypePayload<t>::type&& p)
+	{
+		if(t != Type)
+			throw std::runtime_error("Wrong payload type specified");
+		Payload<t>() = std::move(p);
+	}
 
 private:
-	EventType Type;
 	size_t Index = 0;
 	msSinceEpoch_t Timestamp = msSinceEpoch();
 	QualityFlags Quality = (QualityFlags::ONLINE | QualityFlags::RESTART);
-	Payload_t Payload;
+	std::string SourcePort;
+	const EventType Type;
+
+	template<EventType t>
+	typename EventTypePayload<t>::type& Payload()
+	{
+		static typename EventTypePayload<t>::type Payload;
+		return Payload;
+	}
 };
 
 }

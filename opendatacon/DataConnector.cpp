@@ -285,6 +285,15 @@ inline void DataConnector::EventT(const T& event_obj, uint16_t index, const std:
 	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
+void DataConnector::Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	if(event->GetEventType() == EventType::Analog)
+	{
+		Event(Analog(event->GetPayload<EventType::Analog>()), event->GetIndex(), SenderName, pStatusCallback);
+	}
+	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+}
+
 void DataConnector::BuildOrRebuild()
 {}
 void DataConnector::Enable()

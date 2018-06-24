@@ -469,3 +469,15 @@ inline void JSONPort::EventT(const T& meas, uint16_t index, const std::string& S
 
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
+
+void JSONPort::Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	if(!enabled)
+	{
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+	}
+	if(event->GetEventType() == EventType::Analog)
+	{
+		Event(Analog(event->GetPayload<EventType::Analog>()), event->GetIndex(), SenderName, pStatusCallback);
+	}
+}

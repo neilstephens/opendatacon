@@ -78,6 +78,9 @@ public:
 	//Connection events:
 	virtual void Event(ConnectState state, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
+	//new Event type to decouple from the opendnp3 types - might eventually replace all above Event()s
+	virtual void Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+
 	virtual void Enable()=0;
 	virtual void Disable()=0;
 
@@ -104,6 +107,15 @@ protected:
 		for(auto IOHandler_pair: Subscribers)
 		{
 			IOHandler_pair.second->Event(meas, index, Name, multi_callback);
+		}
+	}
+
+	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	{
+		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
+		for(auto IOHandler_pair: Subscribers)
+		{
+			IOHandler_pair.second->Event(event, Name, multi_callback);
 		}
 	}
 

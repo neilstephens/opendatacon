@@ -132,10 +132,11 @@ void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned
 	//Send an event out
 	//change value around mean
 	std::normal_distribution<double> distribution(pMean->value, std_dev);
-	PublishEvent(Analog(distribution(RandNumGenerator),
-			pMean->quality,
-			Timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())),
-		index);
+	double val = distribution(RandNumGenerator);
+	PublishEvent(Analog(val, pMean->quality, Timestamp(msSinceEpoch())), index);
+	auto event = std::make_shared<EventInfo>(EventType::Analog, Name);
+	event->SetPayload<EventType::Analog>(std::move(val));
+	PublishEvent(event);
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
@@ -554,6 +555,10 @@ void SimPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const 
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
 void SimPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+}
+void SimPort::Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
