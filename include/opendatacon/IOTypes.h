@@ -176,6 +176,7 @@ enum class eCommandStatus : uint8_t
 //Start with a superset of all the dnp3 type qualities
 enum class QualityFlags: uint16_t
 {
+	NONE              = 0,
 	ONLINE            = 1<<0,
 	RESTART           = 1<<1,
 	COMM_LOST         = 1<<2,
@@ -230,8 +231,13 @@ EVENTPAYLOAD(EventType::AnalogOutputDouble64    , double)
 class EventInfo
 {
 public:
-	EventInfo(EventType tp, const std::string& s):
-		SourcePort(s),
+	EventInfo(EventType tp, size_t ind = 0, const std::string& source = "",
+		QualityFlags qual = (QualityFlags::ONLINE | QualityFlags::RESTART),
+		msSinceEpoch_t time = msSinceEpoch()):
+		Index(ind),
+		Timestamp(time),
+		Quality(qual),
+		SourcePort(source),
 		Type(tp)
 	{}
 
@@ -264,9 +270,9 @@ public:
 	}
 
 private:
-	size_t Index = 0;
-	msSinceEpoch_t Timestamp = msSinceEpoch();
-	QualityFlags Quality = (QualityFlags::ONLINE | QualityFlags::RESTART);
+	size_t Index;
+	msSinceEpoch_t Timestamp;
+	QualityFlags Quality;
 	std::string SourcePort;
 	const EventType Type;
 
