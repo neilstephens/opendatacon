@@ -51,22 +51,37 @@ struct BitwiseEnabled
 		static const bool state = true; \
 	};
 
-//Macro to define bitwise binary-operators for use with enum classes that are a set of flags
-#define DEFINE_ENUM_BITWISE(Op)                                                    \
-	template <typename E>                                                        \
-	constexpr std::enable_if_t<BitwiseEnabled<E>::state, E>                      \
-	operator Op( const E lhs, const E rhs)                                       \
-	{                                                                            \
-		return static_cast<E>(static_cast< std::underlying_type_t<E> >(lhs)Op  \
-		                      static_cast< std::underlying_type_t<E> >(rhs));  \
-	}
-DEFINE_ENUM_BITWISE(|)
-DEFINE_ENUM_BITWISE(&)
-DEFINE_ENUM_BITWISE(^)
-DEFINE_ENUM_BITWISE(|=)
-DEFINE_ENUM_BITWISE(&=)
-DEFINE_ENUM_BITWISE(^=)
-//operator '~' is special because it's unary
+//templates for bitwise binary-operators locked to bitwise enabled enum classes
+template <typename E>
+constexpr std::enable_if_t<BitwiseEnabled<E>::state, E> operator & ( const E lhs, const E rhs)
+{
+	return static_cast<E>(static_cast<std::underlying_type_t<E> >(lhs) & static_cast<std::underlying_type_t<E> >(rhs));
+}
+template <typename E>
+constexpr std::enable_if_t<BitwiseEnabled<E>::state, E> operator | ( const E lhs, const E rhs)
+{
+	return static_cast<E>(static_cast<std::underlying_type_t<E> >(lhs) | static_cast<std::underlying_type_t<E> >(rhs));
+}
+template <typename E>
+constexpr std::enable_if_t<BitwiseEnabled<E>::state, E> operator ^ ( const E lhs, const E rhs)
+{
+	return static_cast<E>(static_cast<std::underlying_type_t<E> >(lhs) ^ static_cast<std::underlying_type_t<E> >(rhs));
+}
+template <typename E>
+constexpr std::enable_if_t<BitwiseEnabled<E>::state, E> operator &= ( E& lhs, const E rhs)
+{
+	return lhs = static_cast<E>(static_cast<std::underlying_type_t<E> >(lhs) & static_cast<std::underlying_type_t<E> >(rhs));
+}
+template <typename E>
+constexpr std::enable_if_t<BitwiseEnabled<E>::state, E> operator |= ( E& lhs, const E rhs)
+{
+	return lhs = static_cast<E>(static_cast<std::underlying_type_t<E> >(lhs) | static_cast<std::underlying_type_t<E> >(rhs));
+}
+template <typename E>
+constexpr std::enable_if_t<BitwiseEnabled<E>::state, E> operator ^= ( E& lhs, const E rhs)
+{
+	return lhs = static_cast<E>(static_cast<std::underlying_type_t<E> >(lhs) ^ static_cast<std::underlying_type_t<E> >(rhs));
+}
 template <typename E>
 constexpr std::enable_if_t<BitwiseEnabled<E>::state, E> operator ~( const E arg)
 {

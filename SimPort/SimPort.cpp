@@ -134,7 +134,7 @@ void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned
 	std::normal_distribution<double> distribution(pMean->value, std_dev);
 	double val = distribution(RandNumGenerator);
 	PublishEvent(Analog(val, pMean->quality, Timestamp(msSinceEpoch())), index);
-	auto event = std::make_shared<EventInfo>(EventType::Analog, Name);
+	auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
 	event->SetPayload<EventType::Analog>(std::move(val));
 	PublishEvent(event);
 

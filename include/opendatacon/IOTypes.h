@@ -211,8 +211,8 @@ typedef std::pair<uint16_t,uint32_t> SS;
 EVENTPAYLOAD(EventType::Binary                  , bool)
 EVENTPAYLOAD(EventType::DoubleBitBinary         , DBB)
 EVENTPAYLOAD(EventType::Analog                  , double)
-EVENTPAYLOAD(EventType::Counter                 , int64_t)
-EVENTPAYLOAD(EventType::FrozenCounter           , int64_t)
+EVENTPAYLOAD(EventType::Counter                 , uint32_t)
+EVENTPAYLOAD(EventType::FrozenCounter           , uint32_t)
 EVENTPAYLOAD(EventType::BinaryOutputStatus      , bool)
 EVENTPAYLOAD(EventType::AnalogOutputStatus      , double)
 EVENTPAYLOAD(EventType::BinaryCommandEvent      , eCommandStatus)
@@ -256,10 +256,10 @@ public:
 	}
 
 	//Setters
-	//void SetEventType(EventType tp){ Type = tp; }
 	void SetIndex(size_t i){ Index = i; }
 	void SetTimestamp(msSinceEpoch_t tm){ Timestamp = tm; }
 	void SetQuality(QualityFlags q){ Quality = q; }
+	void SetSource(const std::string& s){ SourcePort = s; }
 
 	template<EventType t>
 	void SetPayload(typename EventTypePayload<t>::type&& p)
