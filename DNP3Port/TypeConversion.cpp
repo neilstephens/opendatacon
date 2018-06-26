@@ -792,6 +792,7 @@ template<> opendnp3::AnalogOutputStatus FromODC<opendnp3::AnalogOutputStatus>(co
 
 	return dnp3;
 }
+//TODO: throw exceptions if EventInfo::Type doesn't match the dnp3 quality types in these next few functions
 template<> opendnp3::BinaryQuality FromODC<opendnp3::BinaryQuality>(const std::shared_ptr<const EventInfo> event)
 {
 	return FromODC<opendnp3::BinaryQuality>(event->GetQuality());

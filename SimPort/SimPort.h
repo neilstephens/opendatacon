@@ -74,7 +74,7 @@ public:
 	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 
-	void Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 
 private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

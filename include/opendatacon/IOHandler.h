@@ -77,7 +77,7 @@ public:
 	virtual void Event(ConnectState state, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	//new Event type to decouple from the opendnp3 types - might eventually replace all above Event()s
-	virtual void Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;

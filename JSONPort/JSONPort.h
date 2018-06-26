@@ -75,7 +75,7 @@ public:
 	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	void Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
 private:
 	bool isServer;

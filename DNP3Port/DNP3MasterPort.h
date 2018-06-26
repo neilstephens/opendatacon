@@ -44,7 +44,7 @@ public:
 	{}
 	~DNP3MasterPort() override;
 
-	void Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 protected:
 	/// Implement ODC::DataPort

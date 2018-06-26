@@ -558,7 +558,7 @@ void SimPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }

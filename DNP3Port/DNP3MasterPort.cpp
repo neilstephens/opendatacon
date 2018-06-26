@@ -322,7 +322,7 @@ void DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& Send
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
-void DNP3MasterPort::Event(std::shared_ptr<EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	// If the port is disabled, fail the command
 	if(!enabled)
