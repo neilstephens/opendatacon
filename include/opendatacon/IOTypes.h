@@ -296,7 +296,7 @@ public:
 	const typename EventTypePayload<t>::type& GetPayload() const
 	{
 		if(t != Type)
-			throw std::runtime_error("Wrong payload type requested");
+			throw std::runtime_error("Wrong payload type requested for selected odc::EventInfo");
 		return Payload<t>();
 	}
 
@@ -310,7 +310,7 @@ public:
 	void SetPayload(typename EventTypePayload<t>::type&& p)
 	{
 		if(t != Type)
-			throw std::runtime_error("Wrong payload type specified");
+			throw std::runtime_error("Wrong payload type specified for selected odc::EventInfo");
 		Payload<t>() = std::move(p);
 	}
 

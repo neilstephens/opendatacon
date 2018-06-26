@@ -792,25 +792,49 @@ template<> opendnp3::AnalogOutputStatus FromODC<opendnp3::AnalogOutputStatus>(co
 
 	return dnp3;
 }
-//TODO: throw exceptions if EventInfo::Type doesn't match the dnp3 quality types in these next few functions
 template<> opendnp3::BinaryQuality FromODC<opendnp3::BinaryQuality>(const std::shared_ptr<const EventInfo> event)
 {
+	if(event->GetEventType() != EventType::BinaryQuality &&
+	   event->GetEventType() != EventType::Binary)
+	{
+		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+	}
 	return FromODC<opendnp3::BinaryQuality>(event->GetQuality());
 }
 template<> opendnp3::DoubleBitBinaryQuality FromODC<opendnp3::DoubleBitBinaryQuality>(const std::shared_ptr<const EventInfo> event)
 {
+	if(event->GetEventType() != EventType::DoubleBitBinaryQuality &&
+	   event->GetEventType() != EventType::DoubleBitBinary)
+	{
+		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+	}
 	return FromODC<opendnp3::DoubleBitBinaryQuality>(event->GetQuality());
 }
 template<> opendnp3::AnalogQuality FromODC<opendnp3::AnalogQuality>(const std::shared_ptr<const EventInfo> event)
 {
+	if(event->GetEventType() != EventType::AnalogQuality &&
+	   event->GetEventType() != EventType::Analog)
+	{
+		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+	}
 	return FromODC<opendnp3::AnalogQuality>(event->GetQuality());
 }
 template<> opendnp3::CounterQuality FromODC<opendnp3::CounterQuality>(const std::shared_ptr<const EventInfo> event)
 {
+	if(event->GetEventType() != EventType::CounterQuality &&
+	   event->GetEventType() != EventType::Counter)
+	{
+		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+	}
 	return FromODC<opendnp3::CounterQuality>(event->GetQuality());
 }
 template<> opendnp3::BinaryOutputStatusQuality FromODC<opendnp3::BinaryOutputStatusQuality>(const std::shared_ptr<const EventInfo> event)
 {
+	if(event->GetEventType() != EventType::BinaryOutputStatusQuality &&
+	   event->GetEventType() != EventType::BinaryOutputStatus)
+	{
+		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+	}
 	return FromODC<opendnp3::BinaryOutputStatusQuality>(event->GetQuality());
 }
 template<> opendnp3::ControlRelayOutputBlock FromODC<opendnp3::ControlRelayOutputBlock>(const std::shared_ptr<const EventInfo> event)
