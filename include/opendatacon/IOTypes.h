@@ -172,6 +172,26 @@ enum class eCommandStatus : uint8_t
 	UNDEFINED = 127
 };
 
+//TODO: rename once the opendnp3 typedef is gone
+enum class eControlCode : uint8_t
+{
+	NUL = 1,
+	NUL_CANCEL = 2,
+	PULSE_ON = 3,
+	PULSE_ON_CANCEL = 4,
+	PULSE_OFF = 5,
+	PULSE_OFF_CANCEL = 6,
+	LATCH_ON = 7,
+	LATCH_ON_CANCEL = 8,
+	LATCH_OFF = 9,
+	LATCH_OFF_CANCEL = 10,
+	CLOSE_PULSE_ON = 11,
+	CLOSE_PULSE_ON_CANCEL = 12,
+	TRIP_PULSE_ON = 13,
+	TRIP_PULSE_ON_CANCEL = 14,
+	UNDEFINED = 15
+};
+
 //Quatilty flags that can be used for any EventType
 //Start with a superset of all the dnp3 type qualities
 enum class QualityFlags: uint16_t
@@ -193,6 +213,8 @@ enum class QualityFlags: uint16_t
 };
 ENABLE_BITWISE(QualityFlags)
 
+enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
+
 typedef uint64_t msSinceEpoch_t;
 inline msSinceEpoch_t msSinceEpoch()
 {
@@ -205,26 +227,49 @@ template<EventType t> struct EventTypePayload { typedef void type; };
 #define EVENTPAYLOAD(E,T)\
 	template<> struct EventTypePayload<E>{ typedef T type; };
 
+//TODO: rename once the opendnp3 typedef is gone
+struct eControlRelayOutputBlock
+{
+	eControlCode functionCode = eControlCode::LATCH_ON;
+	uint8_t count = 1;
+	uint32_t onTimeMS = 100;
+	uint32_t offTimeMS = 100;
+	eCommandStatus status = eCommandStatus::SUCCESS;
+};
+//TODO: make these structs?
 typedef std::pair<bool,bool> DBB;
 typedef std::tuple<msSinceEpoch_t,uint32_t,uint8_t> TAI;
 typedef std::pair<uint16_t,uint32_t> SS;
-EVENTPAYLOAD(EventType::Binary                  , bool)
-EVENTPAYLOAD(EventType::DoubleBitBinary         , DBB)
-EVENTPAYLOAD(EventType::Analog                  , double)
-EVENTPAYLOAD(EventType::Counter                 , uint32_t)
-EVENTPAYLOAD(EventType::FrozenCounter           , uint32_t)
-EVENTPAYLOAD(EventType::BinaryOutputStatus      , bool)
-EVENTPAYLOAD(EventType::AnalogOutputStatus      , double)
-EVENTPAYLOAD(EventType::BinaryCommandEvent      , eCommandStatus)
-EVENTPAYLOAD(EventType::AnalogCommandEvent      , eCommandStatus)
-EVENTPAYLOAD(EventType::OctetString             , std::string)
-EVENTPAYLOAD(EventType::TimeAndInterval         , TAI)
-EVENTPAYLOAD(EventType::SecurityStat            , SS)
-EVENTPAYLOAD(EventType::ControlRelayOutputBlock , bool)
-EVENTPAYLOAD(EventType::AnalogOutputInt16       , int16_t)
-EVENTPAYLOAD(EventType::AnalogOutputInt32       , int32_t)
-EVENTPAYLOAD(EventType::AnalogOutputFloat32     , float)
-EVENTPAYLOAD(EventType::AnalogOutputDouble64    , double)
+typedef std::pair<int16_t,eCommandStatus> AO16;
+typedef std::pair<int32_t,eCommandStatus> AO32;
+typedef std::pair<float,eCommandStatus> AOF;
+typedef std::pair<double,eCommandStatus> AOD;
+
+EVENTPAYLOAD(EventType::Binary                   , bool)
+EVENTPAYLOAD(EventType::DoubleBitBinary          , DBB)
+EVENTPAYLOAD(EventType::Analog                   , double)
+EVENTPAYLOAD(EventType::Counter                  , uint32_t)
+EVENTPAYLOAD(EventType::FrozenCounter            , uint32_t)
+EVENTPAYLOAD(EventType::BinaryOutputStatus       , bool)
+EVENTPAYLOAD(EventType::AnalogOutputStatus       , double)
+EVENTPAYLOAD(EventType::BinaryCommandEvent       , eCommandStatus)
+EVENTPAYLOAD(EventType::AnalogCommandEvent       , eCommandStatus)
+EVENTPAYLOAD(EventType::OctetString              , std::string)
+EVENTPAYLOAD(EventType::TimeAndInterval          , TAI)
+EVENTPAYLOAD(EventType::SecurityStat             , SS)
+EVENTPAYLOAD(EventType::ControlRelayOutputBlock  , eControlRelayOutputBlock)
+EVENTPAYLOAD(EventType::AnalogOutputInt16        , AO16)
+EVENTPAYLOAD(EventType::AnalogOutputInt32        , AO32)
+EVENTPAYLOAD(EventType::AnalogOutputFloat32      , AOF)
+EVENTPAYLOAD(EventType::AnalogOutputDouble64     , AOD)
+EVENTPAYLOAD(EventType::BinaryQuality            , QualityFlags)
+EVENTPAYLOAD(EventType::DoubleBitBinaryQuality   , QualityFlags)
+EVENTPAYLOAD(EventType::AnalogQuality            , QualityFlags)
+EVENTPAYLOAD(EventType::CounterQuality           , QualityFlags)
+EVENTPAYLOAD(EventType::BinaryOutputStatusQuality, QualityFlags)
+EVENTPAYLOAD(EventType::FrozenCounterQuality     , QualityFlags)
+EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
+EVENTPAYLOAD(EventType::ConnectState             , ConnectState)
 //TODO: map the rest
 
 
@@ -242,13 +287,13 @@ public:
 	{}
 
 	//Getters
-	const EventType& GetEventType(){ return Type; }
-	const size_t& GetIndex(){ return Index; }
-	const msSinceEpoch_t& GetTimestamp(){ return Timestamp; }
-	const QualityFlags& GetQuality(){ return Quality; }
+	const EventType& GetEventType() const { return Type; }
+	const size_t& GetIndex() const { return Index; }
+	const msSinceEpoch_t& GetTimestamp() const { return Timestamp; }
+	const QualityFlags& GetQuality() const { return Quality; }
 
 	template<EventType t>
-	const typename EventTypePayload<t>::type& GetPayload()
+	const typename EventTypePayload<t>::type& GetPayload() const
 	{
 		if(t != Type)
 			throw std::runtime_error("Wrong payload type requested");
@@ -257,7 +302,7 @@ public:
 
 	//Setters
 	void SetIndex(size_t i){ Index = i; }
-	void SetTimestamp(msSinceEpoch_t tm){ Timestamp = tm; }
+	void SetTimestamp(msSinceEpoch_t tm = msSinceEpoch()){ Timestamp = tm; }
 	void SetQuality(QualityFlags q){ Quality = q; }
 	void SetSource(const std::string& s){ SourcePort = s; }
 
@@ -277,7 +322,7 @@ private:
 	const EventType Type;
 
 	template<EventType t>
-	typename EventTypePayload<t>::type& Payload()
+	typename EventTypePayload<t>::type& Payload() const
 	{
 		static typename EventTypePayload<t>::type Payload;
 		return Payload;

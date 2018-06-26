@@ -36,8 +36,6 @@
 namespace odc
 {
 
-enum ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
-
 typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
 
 typedef std::shared_ptr<std::function<void (CommandStatus status)>> SharedStatusCallback_t;
