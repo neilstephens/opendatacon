@@ -439,7 +439,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
 	auto i = event->GetIndex();
-	auto q = event->GetQuality();
+	auto q = ToString(event->GetQuality());
 	auto t = event->GetTimestamp();
 	auto& sp = event->GetSourcePort();
 	auto& s = SenderName;
@@ -464,7 +464,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 		}
 		case EventType::ControlRelayOutputBlock:
 		{
-			auto v = event->GetPayload<EventType::ControlRelayOutputBlock>();
+			auto v = ToString(event->GetPayload<EventType::ControlRelayOutputBlock>());
 			auto& m = pConf->pPointConf->Controls;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : Json::Value::nullSingleton());

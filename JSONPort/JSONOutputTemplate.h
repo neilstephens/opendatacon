@@ -53,7 +53,7 @@ public:
 		sender_ref(find_marker(sender_marker,JV))
 	{}
 	template<typename T>
-	Json::Value Instantiate(uint16_t index, const T& value, odc::QualityFlags qual,
+	Json::Value Instantiate(uint16_t index, const T& value, const std::string& qual,
 		odc::msSinceEpoch_t time, const std::string& PointName = "",
 		const std::string& SourcePort = "", const std::string& Sender = "")
 	{
@@ -61,14 +61,9 @@ public:
 		if(!ind_ref.isNull())
 			find_marker(ind_ref.asString(), instance) = index;
 		if(!val_ref.isNull())
-		{
-			if(std::is_same<T,odc::QualityFlags>::value || std::is_same<T,odc::eControlRelayOutputBlock>::value)
-				find_marker(val_ref.asString(), instance) = odc::ToString(value);
-			else
-				find_marker(val_ref.asString(), instance) = value;
-		}
+			find_marker(val_ref.asString(), instance) = value;
 		if(!qual_ref.isNull())
-			find_marker(qual_ref.asString(), instance) = odc::ToString(qual);
+			find_marker(qual_ref.asString(), instance) = qual;
 		if(!time_ref.isNull())
 			find_marker(time_ref.asString(), instance) = time;
 		if(!name_ref.isNull())
