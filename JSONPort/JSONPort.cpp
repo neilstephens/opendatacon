@@ -429,27 +429,52 @@ inline void JSONPort::EventQ(const T& meas, uint16_t index, const std::string& S
 	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
-template<typename T>
-inline void JSONPort::EventT(const T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
 	{
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 	}
+
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap) -> Json::Value
-			  {
-				  if(PointMap.count(index))
-				  {
-					  Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
-					  return output;
-				  }
-				  return Json::Value::nullSingleton();
-			  };
-	auto output = std::is_same<T,Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
-	              std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
-	              Json::Value::nullSingleton();
+	auto i = event->GetIndex();
+	auto q = event->GetQuality();
+	auto t = event->GetTimestamp();
+	auto& sp = event->GetSourcePort();
+	auto& s = SenderName;
+	Json::Value output;
+	switch(event->GetEventType())
+	{
+		case EventType::Analog:
+		{
+			auto v = event->GetPayload<EventType::Analog>();
+			auto& m = pConf->pPointConf->Analogs;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		case EventType::Binary:
+		{
+			auto v = event->GetPayload<EventType::Analog>();
+			auto& m = pConf->pPointConf->Binaries;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		case EventType::ControlRelayOutputBlock:
+		{
+			auto v = event->GetPayload<EventType::ControlRelayOutputBlock>();
+			auto& m = pConf->pPointConf->Controls;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		default:
+			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+			return;
+	}
+
 	if(output.isNull())
 	{
 		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
@@ -468,16 +493,4 @@ inline void JSONPort::EventT(const T& meas, uint16_t index, const std::string& S
 	pSockMan->Write(oss.str());
 
 	(*pStatusCallback)(CommandStatus::SUCCESS);
-}
-
-void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	if(!enabled)
-	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
-	}
-	if(event->GetEventType() == EventType::Analog)
-	{
-		Event(Analog(event->GetPayload<EventType::Analog>()), event->GetIndex(), SenderName, pStatusCallback);
-	}
 }

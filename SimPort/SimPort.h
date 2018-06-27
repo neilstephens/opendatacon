@@ -80,8 +80,8 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	typedef std::shared_ptr<Timer_t> pTimer_t;
 	std::vector<pTimer_t> Timers;
-	void SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed);
-	void SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed);
+	void SpawnEvent(size_t index, double mean, double std_dev, unsigned int interval, pTimer_t pTimer, rand_t seed);
+	void SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t pTimer, rand_t seed);
 	void PortUp();
 	void PortDown();
 

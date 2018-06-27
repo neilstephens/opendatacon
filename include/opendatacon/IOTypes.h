@@ -213,20 +213,6 @@ enum class QualityFlags: uint16_t
 };
 ENABLE_BITWISE(QualityFlags)
 
-enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
-
-typedef uint64_t msSinceEpoch_t;
-inline msSinceEpoch_t msSinceEpoch()
-{
-	return std::chrono::duration_cast<std::chrono::milliseconds>
-		       (std::chrono::system_clock::now().time_since_epoch()).count();
-}
-
-//Map EventTypes to payload types
-template<EventType t> struct EventTypePayload { typedef void type; };
-#define EVENTPAYLOAD(E,T)\
-	template<> struct EventTypePayload<E>{ typedef T type; };
-
 //TODO: rename once the opendnp3 typedef is gone
 struct eControlRelayOutputBlock
 {
@@ -236,6 +222,35 @@ struct eControlRelayOutputBlock
 	uint32_t offTimeMS = 100;
 	eCommandStatus status = eCommandStatus::SUCCESS;
 };
+
+enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
+
+typedef uint64_t msSinceEpoch_t;
+inline msSinceEpoch_t msSinceEpoch()
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds>
+		       (std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
+inline std::string ToString(const eControlRelayOutputBlock& c)
+{
+	return std::string("FIXME");
+}
+inline std::string ToString(const QualityFlags& q)
+{
+	return std::string("FIXME");
+}
+template<typename T>
+inline std::string ToString(const T& t)
+{
+	return std::string("FIXME");
+}
+
+//Map EventTypes to payload types
+template<EventType t> struct EventTypePayload { typedef void type; };
+#define EVENTPAYLOAD(E,T)\
+	template<> struct EventTypePayload<E>{ typedef T type; };
+
 //TODO: make these structs?
 typedef std::pair<bool,bool> DBB;
 typedef std::tuple<msSinceEpoch_t,uint32_t,uint8_t> TAI;
@@ -291,6 +306,7 @@ public:
 	const size_t& GetIndex() const { return Index; }
 	const msSinceEpoch_t& GetTimestamp() const { return Timestamp; }
 	const QualityFlags& GetQuality() const { return Quality; }
+	const std::string& GetSourcePort() const { return SourcePort; }
 
 	template<EventType t>
 	const typename EventTypePayload<t>::type& GetPayload() const
