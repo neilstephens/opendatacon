@@ -155,8 +155,6 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::Binary& dnp3, const size_t ind,
 		qual &= QualityFlags::REMOTE_FORCED;
 	if(dnp3.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::RESTART))
 		qual &= QualityFlags::RESTART;
-	if(dnp3.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::STATE))
-		qual &= QualityFlags::STATE;
 
 	event->SetPayload<EventType::Binary>(std::move(val));
 	event->SetQuality(qual);
@@ -171,6 +169,18 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::DoubleBitBinary& dnp3, const si
 
 	EventTypePayload<EventType::DoubleBitBinary>::type val;
 
+	switch(dnp3.value)
+	{
+		case opendnp3::DoubleBit::INTERMEDIATE: //00
+			val.first = false; val.second = false; break;
+		case opendnp3::DoubleBit::DETERMINED_OFF: //01
+			val.first = false; val.second = true; break;
+		case opendnp3::DoubleBit::DETERMINED_ON: //10
+			val.first = true; val.second = false; break;
+		case opendnp3::DoubleBit::INDETERMINATE: //11
+			val.first = true; val.second = true; break;
+	}
+
 	QualityFlags qual = QualityFlags::NONE;
 	if(dnp3.quality & static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::CHATTER_FILTER))
 		qual &= QualityFlags::CHATTER_FILTER;
@@ -184,16 +194,6 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::DoubleBitBinary& dnp3, const si
 		qual &= QualityFlags::REMOTE_FORCED;
 	if(dnp3.quality & static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::RESTART))
 		qual &= QualityFlags::RESTART;
-	if(dnp3.quality & static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::STATE1))
-	{
-		qual &= QualityFlags::STATE1;
-		val.first = true;
-	}
-	if(dnp3.quality & static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::STATE2))
-	{
-		qual &= QualityFlags::STATE2;
-		val.second = true;
-	}
 
 	event->SetPayload<EventType::DoubleBitBinary>(std::move(val));
 	event->SetQuality(qual);
@@ -306,8 +306,6 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::BinaryOutputStatus& dnp3, const
 		qual &= QualityFlags::REMOTE_FORCED;
 	if(dnp3.quality & static_cast<uint8_t>(opendnp3::BinaryOutputStatusQuality::RESTART))
 		qual &= QualityFlags::RESTART;
-	if(dnp3.quality & static_cast<uint8_t>(opendnp3::BinaryOutputStatusQuality::STATE))
-		qual &= QualityFlags::STATE;
 
 	event->SetPayload<EventType::BinaryOutputStatus>(std::move(val));
 	event->SetQuality(qual);
@@ -362,8 +360,6 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::BinaryQuality& dnp3, const size
 		qual &= QualityFlags::LOCAL_FORCED;
 	if(static_cast<uint8_t>(dnp3) & static_cast<uint8_t>(opendnp3::BinaryQuality::CHATTER_FILTER))
 		qual &= QualityFlags::CHATTER_FILTER;
-	if(static_cast<uint8_t>(dnp3) & static_cast<uint8_t>(opendnp3::BinaryQuality::STATE))
-		qual &= QualityFlags::STATE;
 
 	event->SetPayload<EventType::BinaryQuality>(std::move(qual));
 	event->SetQuality(qual);
@@ -389,10 +385,6 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::DoubleBitBinaryQuality& dnp3, c
 		qual &= QualityFlags::LOCAL_FORCED;
 	if(static_cast<uint8_t>(dnp3) & static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::CHATTER_FILTER))
 		qual &= QualityFlags::CHATTER_FILTER;
-	if(static_cast<uint8_t>(dnp3) & static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::STATE1))
-		qual &= QualityFlags::STATE1;
-	if(static_cast<uint8_t>(dnp3) & static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::STATE2))
-		qual &= QualityFlags::STATE2;
 
 	event->SetPayload<EventType::DoubleBitBinaryQuality>(std::move(qual));
 	event->SetQuality(qual);
@@ -470,8 +462,6 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::BinaryOutputStatusQuality& dnp3
 		qual &= QualityFlags::REMOTE_FORCED;
 	if(static_cast<uint8_t>(dnp3) & static_cast<uint8_t>(opendnp3::BinaryOutputStatusQuality::LOCAL_FORCED))
 		qual &= QualityFlags::LOCAL_FORCED;
-	if(static_cast<uint8_t>(dnp3) & static_cast<uint8_t>(opendnp3::BinaryOutputStatusQuality::STATE))
-		qual &= QualityFlags::STATE;
 
 	event->SetPayload<EventType::BinaryOutputStatusQuality>(std::move(qual));
 	event->SetQuality(qual);
@@ -600,8 +590,6 @@ template<> opendnp3::BinaryQuality FromODC<opendnp3::BinaryQuality>(const Qualit
 {
 	uint8_t dnp3 = 0;
 
-	if((qual & QualityFlags::STATE) != QualityFlags::NONE)
-		dnp3 &= static_cast<uint8_t>(opendnp3::BinaryQuality::STATE);
 	if((qual & QualityFlags::ONLINE) != QualityFlags::NONE)
 		dnp3 &= static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE);
 	if((qual & QualityFlags::RESTART) != QualityFlags::NONE)
@@ -621,10 +609,6 @@ template<> opendnp3::DoubleBitBinaryQuality FromODC<opendnp3::DoubleBitBinaryQua
 {
 	uint8_t dnp3 = 0;
 
-	if((qual & QualityFlags::STATE1) != QualityFlags::NONE)
-		dnp3 &= static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::STATE1);
-	if((qual & QualityFlags::STATE2) != QualityFlags::NONE)
-		dnp3 &= static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::STATE2);
 	if((qual & QualityFlags::ONLINE) != QualityFlags::NONE)
 		dnp3 &= static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::ONLINE);
 	if((qual & QualityFlags::RESTART) != QualityFlags::NONE)
@@ -696,8 +680,6 @@ template<> opendnp3::BinaryOutputStatusQuality FromODC<opendnp3::BinaryOutputSta
 		dnp3 &= static_cast<uint8_t>(opendnp3::BinaryOutputStatusQuality::REMOTE_FORCED);
 	if((qual & QualityFlags::LOCAL_FORCED) != QualityFlags::NONE)
 		dnp3 &= static_cast<uint8_t>(opendnp3::BinaryOutputStatusQuality::LOCAL_FORCED);
-	if((qual & QualityFlags::STATE) != QualityFlags::NONE)
-		dnp3 &= static_cast<uint8_t>(opendnp3::BinaryOutputStatusQuality::STATE);
 
 	return static_cast<opendnp3::BinaryOutputStatusQuality>(dnp3);
 }

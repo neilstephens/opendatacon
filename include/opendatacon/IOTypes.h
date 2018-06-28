@@ -206,10 +206,7 @@ enum class QualityFlags: uint16_t
 	REFERENCE_ERR     = 1<<6,
 	ROLLOVER          = 1<<7,
 	DISCONTINUITY     = 1<<8,
-	CHATTER_FILTER    = 1<<9,
-	STATE             = 1<<10,
-	STATE1            = 1<<11,
-	STATE2            = 1<<12
+	CHATTER_FILTER    = 1<<9
 };
 ENABLE_BITWISE(QualityFlags)
 
