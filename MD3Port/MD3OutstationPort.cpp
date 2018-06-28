@@ -47,7 +47,7 @@
 MD3OutstationPort::MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	MD3Port(aName, aConfFilename, aConfOverrides)
 {
-	// Dont load conf here, do it in MD3Port
+	// Don't load conf here, do it in MD3Port
 }
 
 MD3OutstationPort::~MD3OutstationPort()
@@ -149,6 +149,8 @@ inline CommandStatus MD3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 	return CommandStatus::NOT_SUPPORTED;
 }
 
+#pragma region PerformEvents
+
 CommandStatus MD3OutstationPort::Perform(const AnalogOutputDouble64& arCommand, uint16_t index, bool waitforresult) { return PerformT(arCommand, index, waitforresult); }
 CommandStatus MD3OutstationPort::Perform(const AnalogOutputInt32& arCommand, uint16_t index, bool waitforresult) { return PerformT(arCommand, index, waitforresult); }
 CommandStatus MD3OutstationPort::Perform(const AnalogOutputInt16& arCommand, uint16_t index, bool waitforresult) { return PerformT(arCommand, index, waitforresult); }
@@ -161,28 +163,23 @@ CommandStatus MD3OutstationPort::Perform(const ControlRelayOutputBlock& arComman
 // Remember there can be multiple responders!
 //
 //TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we don’t get stuck here.
-//TODO: The destructor of a future will wait until it gets a result. So we CANNOT do a time out here, or exit on first failure - we wait anyway....
 template<typename T>
 CommandStatus MD3OutstationPort::PerformT(T& arCommand, uint16_t aIndex, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;
 
-	//TODO: Have some sort of timeout on waiting for a PerformT command in the outstation.
-	//MD3Time ExpireTime = MD3Now() + (MD3Time)MyPointConf()->ODCCommandTimeoutmsec;
-
 	// This function (in IOHandler) goes through the list of subscribed events and calls them.
 	// Our callback will be called only once - either after all have been called, or after one has failed.
-	// THE EVENT MUST TIME OUT AND COME BACK TO US, OTHERWISE WE COULD HANG HERE.
 
+	// The ODC calls will ALWAYS return (at some point) with success or failure. Time outs are done by the ports on the TCP communications that they do.
 	if (!waitforresult)
 	{
 		PublishEvent(arCommand, aIndex); // Could have a callback, but we are not waiting, so don't give it one!
 		return CommandStatus::SUCCESS;
 	}
 
-	//TODO: enquire about the possibility of the opendnp3 API having a callback for the result
-	// that would avoid the below polling loop
+	//TODO: enquire about the possibility of the opendnp3 API having a callback for the result that would avoid the below polling loop
 	std::atomic_bool cb_executed;
 	CommandStatus cb_status;
 	auto StatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([&](CommandStatus status)
@@ -201,14 +198,67 @@ CommandStatus MD3OutstationPort::PerformT(T& arCommand, uint16_t aIndex, bool wa
 	return cb_status;
 }
 
+#pragma endregion PerformEvents
 
-void MD3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
-void MD3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
-void MD3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
-void MD3OutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
-void MD3OutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
-void MD3OutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
-void MD3OutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
+#pragma region QualityEvents
+
+void MD3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventQ(qual, index, SenderName, pStatusCallback); }
+void MD3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventQ(qual, index, SenderName, pStatusCallback); }
+
+template<typename T>
+inline void MD3OutstationPort::EventQ(T& qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	if (!enabled)
+	{
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
+	}
+
+	if (std::is_same<T, const AnalogQuality>::value)
+	{
+		if ((uint8_t)qual != static_cast<uint8_t>(AnalogQuality::ONLINE))
+		{
+			if (!SetAnalogValueUsingODCIndex(index, (uint16_t)0x8000))
+			{
+				LOGERROR("Tried to set the failure value for an invalid analog point index " + std::to_string(index));
+				(*pStatusCallback)(CommandStatus::UNDEFINED);
+				return;
+			}
+		}
+	}
+	else if (std::is_same<T, const CounterQuality>::value)
+	{
+		if ((uint8_t)qual != static_cast<uint8_t>(CounterQuality::ONLINE))
+		{
+			if (!SetCounterValueUsingODCIndex(index, (uint16_t)0x8000))
+			{
+				LOGERROR("Tried to set the failure value for an invalid counter point index " + std::to_string(index));
+				(*pStatusCallback)(CommandStatus::UNDEFINED);
+				return;
+			}
+		}
+	}
+	else // No other quality types make sense at this stage.
+	{
+		LOGERROR("Type is not implemented " + std::to_string(index));
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
+	}
+
+	// As we are taking the events and storing them, we can return now with success or failure. The Master has to wait for responses and will be different.
+	(*pStatusCallback)(CommandStatus::SUCCESS);
+}
+#pragma endregion QualityEvents
+
+#pragma region DataEvents
+
+void MD3OutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
+void MD3OutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
+void MD3OutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
+void MD3OutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
+void MD3OutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
+void MD3OutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
+void MD3OutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { return EventT(meas, index, SenderName, pStatusCallback); }
 
 
 // We received a change in data from an Event (from the opendatacon Connector) now store it so that it can be produced when the Scada master polls us
@@ -291,3 +341,5 @@ void MD3OutstationPort::ConnectionEvent(ConnectState state, const std::string& S
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 #pragma endregion
+
+#pragma endregion OpenDataConInteraction

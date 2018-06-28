@@ -40,6 +40,20 @@
 #include <opendatacon/util.h>
 #include <spdlog/spdlog.h>
 
+
+
+// Global TODO List in priority order
+//TODO: Trigger quality callbacks with ONLINE for when the master has valid data for the first time??
+//TODO: 1 Master Time set command, called when ODC triggers
+//TODO: 2 Master Sign on control called on ODC trigger - also send as part of poll?
+//TODO: 3 Master Freeze/reset control in response to ODC trigger.
+//TODO: 4 Master DOM Control
+//TODO: 5 Master POM Control
+//TODO: 6 Master AOM Control
+//TODO: 7 Master OLD Digital Read
+//TODO: 8 Master NEW Digital Read
+
+
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(msg) \
 	if (auto log = spdlog::get("MD3Port")) log->debug(msg);

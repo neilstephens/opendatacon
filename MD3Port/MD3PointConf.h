@@ -213,6 +213,8 @@ public:
 	bool StandAloneOutstation = false;
 
 	// Time to wait for ODC command to return a result before returning with an error of TIMEOUT. Remember there can be multiple responders!
-	uint32_t ODCCommandTimeoutmsec = 5000;
+	uint32_t MD3CommandTimeoutmsec = 5000;
+	// How many times do we retry a command, before we give up and move onto the next one?
+	uint32_t MD3CommandRetries = 3;
 };
 #endif /* MD3POINTCONF_H_ */

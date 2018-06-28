@@ -61,11 +61,12 @@ const char *conffile1 = R"001(
 	"NewDigitalCommands" : true,
 
 	// This flag will have the OutStation respond without waiting for ODC responses - it will still send the ODC commands, just no feedback. Useful for testing and connecting to the sim port.
-	// Set to false, the OutStation will setup ODC/timeout callbacks/lambdas for ODC responses. If not found will default to false.
+	// Set to false, the OutStation will set up ODC/timeout callbacks/lambdas for ODC responses. If not found will default to false.
 	"StandAloneOutstation" : true,
 
-	// Maximum time to wait for ODC to respond to a command. Remember there can be multiple responders!
-	"ODCCommandTimeoutmsec" : 2000,
+	// Maximum time to wait for MD3 Master responses to a command and number of times to retry a command.
+	"MD3CommandTimeoutmsec" : 4000,
+	"MD3CommandRetries" : 1,
 
 	// The magic points we use to pass through MD3 commands.
 	"TimeSetPoint" : {"Index" : 100000},
@@ -104,6 +105,10 @@ const char *conffile2 = R"002(
 	// The magic Analog point we use to pass through the MD3 time set command.
 	"TimeSetPoint" : {"Index" : 100000},
 	"StandAloneOutstation" : true,
+
+	// Maximum time to wait for MD3 Master responses to a command and number of times to retry a command.
+	"MD3CommandTimeoutmsec" : 4000,
+	"MD3CommandRetries" : 1,
 
 	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0}, {"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0}],
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
@@ -217,17 +222,19 @@ void Wait(asio::io_service &IOS, int seconds)
 #define STANDARD_TEST_SETUP()\
 	TestSetup();\
 	LOGINFO("Test Setup Complete");\
-	asio::io_service IOS(1);
+	asio::io_service IOS(4); // Max 4 threads
 
-#define START_IOS() \
+#define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = std::make_shared<asio::io_service::work>(IOS); /* To keep run - running!*/\
-	std::thread *pThread = StartIOSThread(IOS);
+	const int ThreadCount = threadcount; \
+	std::thread *pThread[threadcount]; \
+	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(IOS);
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	StopIOSThread(IOS, pThread);
+	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
 
 #define TEST_MD3MAPort(overridejson)\
 	auto MD3MAPort = new  MD3MasterPort("TestMaster", conffilename1, Json::nullValue); \
@@ -1833,7 +1840,7 @@ TEST_CASE("Station - Multi-drop TCP Test")
 	// The Stations will be 0x7C, 0x7D
 	STANDARD_TEST_SETUP();
 
-	START_IOS();
+	START_IOS(1);
 
 	// The two MD3Ports will share a connection, only the first to enable will open it.
 	TEST_MD3OSPort(Json::nullValue);
@@ -1932,11 +1939,7 @@ TEST_CASE("Master - Analog")
 	portoverride["Port"] = (Json::UInt64)1001;
 	TEST_MD3OSPort(portoverride);
 
-	START_IOS();
-
-	// We cannot manually publish an event, this happens within the port.
-	// MD3Port->PublishEvent(b, index);		// Looks at list of subscribers and calls the subscribed events with the parameters passed.
-
+	START_IOS(1);
 
 	MD3MAPort->Subscribe(MD3OSPort, "TestLink"); // The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
@@ -1949,9 +1952,12 @@ TEST_CASE("Master - Analog")
 
 	INFO("Analog Unconditional Fn5");
 	{
-		// Now send a request analog unconditional command - asio does not need to run to see this processed.
+		// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
+		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
 		MD3MAPort->QueueMD3Command(sendcommandblock);
+
+		Wait(IOS, 1);
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
 		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c05200f5200");
@@ -1971,11 +1977,12 @@ TEST_CASE("Master - Analog")
 			                                                       "1A0A1B0B9600"
 			                                                       "1C0C1D0D9800"
 			                                                       "1E0E1F0Feb00");
-
 		output << Payload;
 
-		// Send the Analog Unconditional command in as if came from TCP channel
+		// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
 		MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
+
+		Wait(IOS, 1);
 
 		// To check the result, see if the points in the master point list have been changed to the correct values.
 		uint16_t res = 0;
@@ -2004,9 +2011,11 @@ TEST_CASE("Master - Analog")
 		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 		// Same address and channels as above
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
+		Response = "Not Set";
 		MD3MAPort->QueueMD3Command(sendcommandblock);
+		Wait(IOS, 1);
 
-		// We check the command, but it does not go anywhere, we inject the expected response below.
+		// We check the command, but it does not go anywhere, we inject the expected response below. This should stop a resend of the command due to timeout...
 		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c06200f7600");
 		REQUIRE(Response == DesiredResponse);
 
@@ -2031,6 +2040,7 @@ TEST_CASE("Master - Analog")
 
 		// Send the command in as if came from TCP channel
 		MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
+		Wait(IOS, 1);
 
 		// To check the result, see if the points in the master point list have been changed to the correct values.
 		uint16_t res = 0;
@@ -2058,6 +2068,85 @@ TEST_CASE("Master - Analog")
 		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
 		REQUIRE(res == 0x1808); // Unchanged
 	}
+
+	INFO("Analog Delta Fn6 - No Change Response");
+	{
+		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
+		// Same address and channels as above
+		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
+		Response = "Not Set";
+		MD3MAPort->QueueMD3Command(sendcommandblock);
+		Wait(IOS, 1);
+
+		// We check the command, but it does not go anywhere, we inject the expected response below.
+		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c06200f7600");
+		REQUIRE(Response == DesiredResponse);
+
+		// We now inject the expected response to the command above. This should stop a resend of the command due to timeout...
+		MD3BlockFormatted commandblock(0x7C, false, ANALOG_NO_CHANGE_REPLY, 0x20, 16, true); // Channels etc remain the same
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		// Send the command in as if came from TCP channel
+		MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
+		Wait(IOS, 1);
+
+		// To check the result, see if the points in the master point list have not changed?
+		// Should their time stamp be updated?
+		uint16_t res = 0;
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		REQUIRE(res == 0x0FFF); // -1
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res);
+		REQUIRE(res == 0x1102); // +1
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res);
+		REQUIRE(res == 0x168A); // 0x1707 - 125
+
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		REQUIRE(res == 0x1808); // Unchanged
+
+		// Check that the OutStation values have not been updated over ODC.
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		REQUIRE(res == 0x0FFF); // -1
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 1, res);
+		REQUIRE(res == 0x1102); // +1
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 7, res);
+		REQUIRE(res == 0x168A); // 0x1707 - 125
+
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		REQUIRE(res == 0x1808); // Unchanged
+	}
+
+	INFO("Analog Unconditional Fn5 Timeout");
+	{
+		// Now send a request analog unconditional command
+		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
+		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
+		Response = "Not Set";
+		MD3MAPort->QueueMD3Command(sendcommandblock);
+		Wait(IOS, 2);
+
+		// We check the command, but it does not go anywhere, we inject the expected response below.
+		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c05200f5200");
+		REQUIRE(Response == DesiredResponse);
+
+		// Instead of injecting the expected response, we don't send anything, which should result in a timeout.
+		// That timeout should then result in the analog value being set to 0x8000 to indicate it is invalid??
+
+		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
+		// Need to give ASIO time to process them
+		Wait(IOS, 10);
+
+		// To check the result, the quality of the points will be set to comms_lost - and this will result in the values being set to 0x8000 which is MD3 for something has failed.
+		uint16_t res = 0;
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		REQUIRE(res == 0x8000);
+
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		REQUIRE(res == 0x8000);
+	}
+
+	work.reset(); // Indicate all work is finished.
 
 	STOP_IOS();
 	TestTearDown();
@@ -2100,7 +2189,7 @@ TEST_CASE("Master - Binary Scan Test Using TCP")
 	TEST_MD3OSPort(Json::nullValue);
 	TEST_MD3OSPort2(Json::nullValue);
 
-	START_IOS();
+	START_IOS(1);
 
 	MD3OSPort->Enable();
 	MD3OSPort2->Enable();

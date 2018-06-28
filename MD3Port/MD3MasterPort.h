@@ -36,6 +36,23 @@
 #include "MD3Engine.h"
 #include "MD3Port.h"
 
+typedef std::vector<MD3BlockData> MasterCommandQueueItem;
+
+// This class contains the MasterCommandQueue and management variables that all need to be protected using the MasterCommandStrand strand.
+// It has a queue of commands to be processed, as well as variables to manage where we are up to in processing the current command.
+// As everything is only accessed in strand protected code, we don't need to use a thread safe queue.
+class MasterCommandData
+{
+public:
+	unsigned int MaxCommandQueueSize = 20; //TODO: The maximum number of MD3 commands that can be in the master queue? Somewhat arbitrary??
+	std::queue<MasterCommandQueueItem> MasterCommandQueue;
+	std::vector<MD3BlockData> CurrentCommand; // Keep a copy of what has been sent to make retries easier.
+	uint8_t CurrentFunctionCode = 0;          // When we send a command, make sure the response we get is one we are waiting for.
+	bool ProcessingMD3Command = false;
+	std::chrono::milliseconds TimerExpireTime;
+	pTimer_t CurrentCommandTimeoutTimer = nullptr;
+	uint32_t RetriesLeft = 0; // Decrementing counter for retries, if we get to zero move on to the next command.
+};
 
 class MD3MasterPort: public MD3Port
 {
@@ -68,38 +85,31 @@ public:
 	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
 	//*** PUBLIC for unit tests only
-	//TODO: Add timeout callback and timeout period, plus command succeeded callback to MasterCommandQueueItem to add extra functionality.
-	typedef std::vector<MD3BlockData> MasterCommandQueueItem;
 
 	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
-	// The type of the queue will contain a function pointer to the completion function and the timeout function.
-	// There is a fixed timeout function (below) which will queue the next command and call any timeout function pointer
+	// There is a time out lambda in UnprotectedSendNextMasterCommand which will queue the next command if we timeout.
 	// If the ProcessMD3Message callback gets the command it expects, it will send the next command in the queue.
-	// If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
+	// If the callback gets an error it will be ignored which will result in a timeout and the next command (or retry) being sent.
 	// This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
-	void QueueMD3Command(MasterCommandQueueItem &CompleteMD3Message);
-	// Handle the many single block command messages better
-	void QueueMD3Command(MD3BlockFormatted &SingleBlockMD3Message);
+	// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
+	void QueueMD3Command(const MasterCommandQueueItem &CompleteMD3Message);
+	void QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message); // Handle the many single block command messages better
 	void SendNextMasterCommand();
+	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
 	void ClearMD3CommandQueue();
 
 private:
-//	template<class T>
-//	CommandStatus WriteObject(const T& command, uint16_t index);
+
+	std::unique_ptr<asio::strand> MasterCommandStrand;
+	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
 
 	void DoPoll(uint32_t pollgroup);
 	void ProcessMD3Message(std::vector<MD3BlockData>& CompleteMD3Message);
 
-	void HandleError(int errnum, const std::string& source);
-	CommandStatus HandleWriteError(int errnum, const std::string& source);
-
 	std::unique_ptr<ASIOScheduler> PollScheduler;
-	void ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
-	void ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message);
-
-	std::shared_ptr<StrandProtectedQueue<MasterCommandQueueItem>> pMasterCommandQueue;
-	uint8_t CurrentFunctionCode = 0;   // When we send a command, make sure the response we get is one we are waiting for.
-	bool ProcessingMD3Command = false; //TODO ProcessingMD3Command Will need to be atomic/and/or mutex protected or become part of the commandqueue class when refactored.
+	bool ProcessAnalogUnconditionalReturn( MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
+	bool ProcessAnalogDeltaScanReturn( MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
+	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
 
 	// Check that what we got is one that is expected for the current Function we are processing.
 	bool AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode);

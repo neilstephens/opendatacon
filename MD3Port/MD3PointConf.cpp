@@ -155,9 +155,13 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	{
 		StandAloneOutstation = JSONRoot["StandAloneOutstation"].asBool();
 	}
-	if (JSONRoot.isMember("ODCCommandTimeoutmsec"))
+	if (JSONRoot.isMember("MD3CommandTimeoutmsec"))
 	{
-		ODCCommandTimeoutmsec = JSONRoot["ODCCommandTimeoutmsec"].asUInt();
+		MD3CommandTimeoutmsec = JSONRoot["MD3CommandTimeoutmsec"].asUInt();
+	}
+	if (JSONRoot.isMember("MD3CommandRetries"))
+	{
+		MD3CommandRetries = JSONRoot["MD3CommandRetries"].asUInt();
 	}
 }
 
