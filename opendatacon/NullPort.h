@@ -53,8 +53,8 @@ public:
 			{
 				if (err_code != asio::error::operation_aborted)
 				{
-				      PublishEvent(ConnectState::PORT_UP, 0);
-				      PublishEvent(ConnectState::CONNECTED, 0);
+				      PublishEvent(ConnectState::PORT_UP);
+				      PublishEvent(ConnectState::CONNECTED);
 				}
 			});
 		enabled = true;
@@ -66,8 +66,8 @@ public:
 		if(pTimer)
 			pTimer->cancel();
 		pTimer.reset();
-		PublishEvent(ConnectState::PORT_DOWN, 0);
-		PublishEvent(ConnectState::DISCONNECTED, 0);
+		PublishEvent(ConnectState::PORT_DOWN);
+		PublishEvent(ConnectState::DISCONNECTED);
 	}
 	void BuildOrRebuild() override {}
 	void ProcessElements(const Json::Value& JSONRoot) override {}
@@ -98,8 +98,6 @@ public:
 	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-
-	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
 };
 
 #endif /* NULLPORT_H_ */

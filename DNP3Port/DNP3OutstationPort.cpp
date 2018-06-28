@@ -63,7 +63,7 @@ void DNP3OutstationPort::Enable()
 	pOutstation->Enable();
 	enabled = true;
 
-	PublishEvent(ConnectState::PORT_UP, 0);
+	PublishEvent(ConnectState::PORT_UP);
 }
 void DNP3OutstationPort::Disable()
 {
@@ -82,7 +82,7 @@ void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 	if(link_dead && !channel_dead) //must be on link up
 	{
 		link_dead = false;
-		PublishEvent(ConnectState::CONNECTED, 0);
+		PublishEvent(ConnectState::CONNECTED);
 	}
 	//TODO: track a new statistic - reset count
 }
@@ -97,7 +97,7 @@ void DNP3OutstationPort::OnLinkDown()
 	if(!link_dead)
 	{
 		link_dead = true;
-		PublishEvent(ConnectState::DISCONNECTED, 0);
+		PublishEvent(ConnectState::DISCONNECTED);
 	}
 }
 // Called by OpenDNP3 Thread Pool
@@ -107,7 +107,7 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 	if(link_dead)
 	{
 		link_dead = false;
-		PublishEvent(ConnectState::CONNECTED, 0);
+		PublishEvent(ConnectState::CONNECTED);
 	}
 }
 

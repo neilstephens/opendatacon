@@ -64,7 +64,7 @@ public:
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	void Event(ConnectState state, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(ConnectState state, const std::string& SenderName) override;
 
 	virtual const Json::Value GetStatistics() const
 	{

@@ -205,21 +205,31 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
+void DataConnector::Event(ConnectState state, const std::string& SenderName)
+{
+	if(MuxConnectionEvents(state, SenderName))
+	{
+		auto bounds = SenderConnectionsLookup.equal_range(SenderName);
+		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
+		{
+			//guess which one is the sendee
+			IOHandler* pSendee = Connections[aMatch_it->second].second;
+
+			//check if we were right and correct if need be
+			if(pSendee->Name == SenderName)
+				pSendee = Connections[aMatch_it->second].first;
+
+			pSendee->Event(state, Name);
+		}
+	}
+}
+
 void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
 	{
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
-	}
-
-	if(event->GetEventType() == EventType::ConnectState)
-	{
-		if(!MuxConnectionEvents(event->GetPayload<EventType::ConnectState>(), SenderName))
-		{
-			(*pStatusCallback)(CommandStatus::UNDEFINED);
-			return;
-		}
 	}
 
 	auto connection_count = SenderConnectionsLookup.count(SenderName);

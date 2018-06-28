@@ -398,28 +398,28 @@ void ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index,
 void ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
 void ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
 
-void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+//void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+//{
+//	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
-	if(!enabled)
-	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
-		return;
-	}
+//	if(!enabled)
+//	{
+//		(*pStatusCallback)(CommandStatus::UNDEFINED);
+//		return;
+//	}
 
-	//something upstream has connected
-	if(state == ConnectState::CONNECTED)
-	{
-		// Only change stack state if it is an on demand server
-		if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-		{
-			this->Connect();
-		}
-	}
+//	//something upstream has connected
+//	if(state == ConnectState::CONNECTED)
+//	{
+//		// Only change stack state if it is an on demand server
+//		if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+//		{
+//			this->Connect();
+//		}
+//	}
 
-	(*pStatusCallback)(CommandStatus::SUCCESS);
-}
+//	(*pStatusCallback)(CommandStatus::SUCCESS);
+//}
 
 ModbusReadGroup<Binary>* ModbusMasterPort::GetRange(uint16_t index)
 {

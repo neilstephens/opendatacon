@@ -77,11 +77,6 @@ protected:
 	//Implement IOHandler
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override
-	{
-		(*pStatusCallback)(CommandStatus::SUCCESS);
-	}
-
 private:
 	asiodnp3::IOutstation* pOutstation;
 	void LinkStatusListener(opendnp3::LinkStatus status);

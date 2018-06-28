@@ -74,7 +74,7 @@ public:
 	virtual void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	//Connection events:
-	virtual void Event(ConnectState state, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(ConnectState state, const std::string& SenderName) = 0;
 
 	//new Event type to decouple from the opendnp3 types - might eventually replace all above Event()s
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
@@ -108,8 +108,24 @@ protected:
 		}
 	}
 
+	inline void PublishEvent(ConnectState state)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::ConnectState,0,Name);
+		event->SetPayload<EventType::ConnectState>(std::move(state));
+		PublishEvent(event);
+	}
+
 	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
 	{
+		if(event->GetEventType() == EventType::ConnectState)
+		{
+			//call the special connection Event() function separately,
+			//	so it can keep track of upsteam demand
+			for(auto IOHandler_pair: Subscribers)
+			{
+				IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);
+			}
+		}
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(auto IOHandler_pair: Subscribers)
 		{

@@ -112,11 +112,11 @@ void ModbusOutstationPort::StateListener(ChannelState state)
 
 	if(state == ChannelState::OPEN)
 	{
-		PublishEvent(ConnectState::CONNECTED, 0);
+		PublishEvent(ConnectState::CONNECTED);
 	}
 	else
 	{
-		PublishEvent(ConnectState::DISCONNECTED, 0);
+		PublishEvent(ConnectState::DISCONNECTED);
 	}
 }
 void ModbusOutstationPort::BuildOrRebuild()

@@ -42,7 +42,6 @@ public:
 	void Disable() final;
 	void BuildOrRebuild() final;
 	void ProcessElements(const Json::Value& JSONRoot) final;
-	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 
 	//so the compiler won't warn we're hiding the base class overload we still want to use
 	using DataPort::Event;

@@ -152,9 +152,7 @@ void DNP3MasterPort::OnLinkDown()
 		PortDown();
 
 		// Notify subscribers that a disconnect event has occured
-		auto event = std::make_shared<EventInfo>(EventType::ConnectState,0,Name);
-		event->SetPayload<EventType::ConnectState>(ConnectState::DISCONNECTED);
-		PublishEvent(event);
+		PublishEvent(ConnectState::DISCONNECTED);
 
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
@@ -278,56 +276,53 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 		});
 }
 
-void DNP3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	if(!enabled)
-	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
-		return;
-	}
-
-	// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
-	if (stack_enabled && state == ConnectState::PORT_UP)
-	{
-		if(auto log = spdlog::get("DNP3Port"))
-			log->info("{}: Upstream port enabled, performing integrity scan.", Name);
-
-		IntegrityScan.Demand();
-	}
-
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
-	// If an upstream port is connected, attempt a connection (if on demand)
-	if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-	{
-		if(auto log = spdlog::get("DNP3Port"))
-			log->info("{}: upstream port connected, performing on-demand connection.", Name);
-
-		pIOS->post([&]()
-			{
-				EnableStack();
-			});
-	}
-
-	// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
-	if (stack_enabled && state == ConnectState::DISCONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-	{
-		pIOS->post([&]()
-			{
-				DisableStack();
-				PortDown();
-			});
-	}
-
-	(*pStatusCallback)(CommandStatus::SUCCESS);
-}
-
 void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	// If the port is disabled, fail the command
 	if(!enabled)
 	{
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
+	}
+
+	if(event->GetEventType() == EventType::ConnectState)
+	{
+		auto state = event->GetPayload<EventType::ConnectState>();
+
+		// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
+		if (stack_enabled && state == ConnectState::PORT_UP)
+		{
+			if(auto log = spdlog::get("DNP3Port"))
+				log->info("{}: Upstream port enabled, performing integrity scan.", Name);
+
+			IntegrityScan.Demand();
+		}
+
+		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+		// If an upstream port is connected, attempt a connection (if on demand)
+		if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+		{
+			if(auto log = spdlog::get("DNP3Port"))
+				log->info("{}: upstream port connected, performing on-demand connection.", Name);
+
+			pIOS->post([&]()
+				{
+					EnableStack();
+				});
+		}
+
+		// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
+		if (stack_enabled && !InDemand() && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+		{
+			pIOS->post([&]()
+				{
+					DisableStack();
+					PortDown();
+				});
+		}
+
+		(*pStatusCallback)(CommandStatus::SUCCESS);
 		return;
 	}
 

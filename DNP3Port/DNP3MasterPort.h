@@ -57,8 +57,6 @@ protected:
 	void OnLinkDown() override;
 	TCPClientServer ClientOrServer() override;
 
-	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-
 	/// Implement opendnp3::ISOEHandler
 	void Start() override {}
 	void End() override {}

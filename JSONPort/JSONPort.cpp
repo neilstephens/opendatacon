@@ -24,8 +24,10 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <spdlog/spdlog.h>
+#include <memory>
 #include <chrono>
+#include <spdlog/spdlog.h>
+#include <opendatacon/IOTypes.h>
 #include "JSONPort.h"
 
 using namespace odc;
@@ -72,18 +74,22 @@ void JSONPort::Disable()
 void JSONPort::SocketStateHandler(bool state)
 {
 	std::string msg;
+	ConnectState conn_state;
 	if(state)
 	{
-		PublishEvent(ConnectState::CONNECTED, 0);
 		msg = Name+": Connection established.";
+		conn_state = ConnectState::CONNECTED;
 	}
 	else
 	{
-		PublishEvent(ConnectState::DISCONNECTED, 0);
 		msg = Name+": Connection closed.";
+		conn_state = ConnectState::DISCONNECTED;
 	}
 	if(auto log = spdlog::get("JSONPort"))
 		log->info(msg);
+
+	//Send an event out
+	PublishEvent(std::move(conn_state));
 }
 
 void JSONPort::ProcessElements(const Json::Value& JSONRoot)
@@ -408,7 +414,6 @@ void JSONPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const s
 void JSONPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 void JSONPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 void JSONPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 
 void JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 void JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
@@ -456,7 +461,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 		}
 		case EventType::Binary:
 		{
-			auto v = event->GetPayload<EventType::Analog>();
+			auto v = event->GetPayload<EventType::Binary>();
 			auto& m = pConf->pPointConf->Binaries;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : Json::Value::nullSingleton());
@@ -464,7 +469,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 		}
 		case EventType::ControlRelayOutputBlock:
 		{
-			auto v = ToString(event->GetPayload<EventType::ControlRelayOutputBlock>());
+			auto v = std::string(event->GetPayload<EventType::ControlRelayOutputBlock>());
 			auto& m = pConf->pPointConf->Controls;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : Json::Value::nullSingleton());
