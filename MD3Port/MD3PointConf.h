@@ -134,7 +134,7 @@ typedef std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator ODC
 typedef std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator MD3AnalogCounterPointMapIterType;
 typedef std::map<uint8_t, uint16_t> ModuleMapType;
 
-enum PollGroupType { BinaryPoints, AnalogPoints };
+enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand };
 
 class MD3PollGroup
 {

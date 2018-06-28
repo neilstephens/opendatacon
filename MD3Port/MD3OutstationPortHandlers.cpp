@@ -1418,7 +1418,7 @@ void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
 // Function 30 Output
 void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
 {
-	// The Control rejected block seems to return the orginating message first block, but with the function code changed to 30
+	// The Control rejected block seems to return the originating message first block, but with the function code changed to 30
 	std::vector<MD3BlockData> ResponseMD3Message;
 
 	// The MD3BlockFn30StoM does the changes we need for us.

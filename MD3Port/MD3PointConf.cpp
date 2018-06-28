@@ -182,7 +182,7 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		}
 		if (!JSONNode[n].isMember("PointType"))
 		{
-			LOGERROR("Poll group missing PollType (Binary or Analog) : "+ JSONNode[n].toStyledString());
+			LOGERROR("Poll group missing PollType (Binary, Analog or TimeSetCommand) : "+ JSONNode[n].toStyledString());
 			continue;
 		}
 
@@ -206,6 +206,10 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		if (iequals(JSONNode[n]["PointType"].asString(), "Analog"))
 		{
 			polltype = AnalogPoints;
+		}
+		if (iequals(JSONNode[n]["PointType"].asString(), "TimeSetCommand"))
+		{
+			polltype = TimeSetCommand;
 		}
 
 		PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate, polltype));

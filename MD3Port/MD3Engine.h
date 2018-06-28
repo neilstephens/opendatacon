@@ -641,7 +641,7 @@ class MD3BlockFn15StoM: public MD3BlockFormatted
 public:
 	MD3BlockFn15StoM(MD3BlockData& parent)
 	{
-		// This Blockformat is a copy of the orginating block header data, with the function code changed.
+		// This Blockformat is a copy of the originating block header data, with the function code changed.
 		//
 		// We change the function code, change the direction bit, mark as last block and recalc the checksum.
 		data = parent.GetData();

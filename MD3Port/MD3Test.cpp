@@ -74,11 +74,14 @@ const char *conffile1 = R"001(
 	"FreezeResetCountersPoint"  : {"Index" : 100002},
 	"POMControlPoint" : {"Index" : 100003},
 
+	// Master only PollGroups
 	// Cannot mix analog and binary points in a poll group. Group 1 is Binary, Group 2 is Analog in this example
 	// You will get errors if the wrong type of points are assigned to the wrong poll group
 	// We will scan the Analog and Counters to build a vector of poll group MD3 addresses
 	// Same for Binaries.
-	"PollGroups" : [{"PollRate" : 1000, "ID" : 1, "PointType" : "Binary"}, {"PollRate" : 2000, "ID" : 2, "PointType" : "Analog"}],
+	// The TimeSetCommand is used to send time set commands to the OutStation
+
+	"PollGroups" : [{"PollRate" : 1000, "ID" : 1, "PointType" : "Binary"}, {"PollRate" : 2000, "ID" : 2, "PointType" : "Analog"}, {"PollRate" : 60000, "ID" : 3, "PointType" : "TimeSetCommand"}],
 
 	"Binaries" : [{"Index": 100,  "Module" : 33, "Offset" : 0}, {"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0, "PollGroup" : 1}, {"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "PollGroup":1}, {"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0}],
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0, "PollGroup" : 2}],
@@ -2124,7 +2127,7 @@ TEST_CASE("Master - Analog")
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
 		Response = "Not Set";
 		MD3MAPort->QueueMD3Command(sendcommandblock);
-		Wait(IOS, 2);
+		Wait(IOS, 1);
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
 		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c05200f5200");
@@ -2181,7 +2184,78 @@ TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 	TestTearDown();
 }
 
-TEST_CASE("Master - Binary Scan Test Using TCP")
+
+TEST_CASE("Master - Poll Tests")
+{
+	// Checking the operation of the poll commands. We test by calling the Master Poll function directly - would be normally called by timer based callbacks.
+
+	STANDARD_TEST_SETUP();
+
+	TEST_MD3MAPort(Json::nullValue);
+
+	Json::Value portoverride;
+	portoverride["Port"] = (Json::UInt64)1001;
+	TEST_MD3OSPort(portoverride);
+
+	START_IOS(1);
+
+	MD3MAPort->Subscribe(MD3OSPort, "TestLink"); // The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
+	// Usually is a cross subscription, where each subscribes to the other.
+	MD3OSPort->Enable();
+	MD3MAPort->Enable();
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	MD3MAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+
+	INFO("Time Set Poll Command");
+	{
+		// The config file has the timeset poll as group 2.
+		MD3MAPort->DoPoll(3);
+
+		Wait(IOS, 1);
+
+		// We check the command, but it does not go anywhere, we inject the expected response below.
+		// The value for the time will always be different...
+		REQUIRE(Response[0] == 0x7c);
+		REQUIRE(Response[1] == 0x2b);
+		REQUIRE(Response.size() == 12);
+
+		// We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
+		MD3BlockData resp(Response[0], Response[1], Response[2], Response[3], true);
+		MD3BlockFn15StoM commandblock(resp); // Changes a few things in the block...
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
+		output << commandblock.ToBinaryString();
+
+		Response = "Not Set";
+
+		MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
+
+		Wait(IOS, 1);
+
+		// Check there is no resend of the command.
+		REQUIRE(Response == "Not Set");
+	}
+
+	INFO("Analog Poll Test");
+	{
+		//TODO: Analog Poll Test
+	}
+
+	INFO("Binary Poll Test");
+	{
+		//TODO: Binary Poll Test
+	}
+
+	work.reset(); // Indicate all work is finished.
+
+	STOP_IOS();
+	TestTearDown();
+}
+
+
+TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 {
 	// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
 

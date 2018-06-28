@@ -84,8 +84,6 @@ public:
 
 	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
-	//*** PUBLIC for unit tests only
-
 	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
 	// There is a time out lambda in UnprotectedSendNextMasterCommand which will queue the next command if we timeout.
 	// If the ProcessMD3Message callback gets the command it expects, it will send the next command in the queue.
@@ -94,22 +92,26 @@ public:
 	// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
 	void QueueMD3Command(const MasterCommandQueueItem &CompleteMD3Message);
 	void QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message); // Handle the many single block command messages better
-	void SendNextMasterCommand();
-	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
-	void ClearMD3CommandQueue();
+
+	//*** PUBLIC for unit tests only
+	void DoPoll(uint32_t pollgroup);
 
 private:
 
 	std::unique_ptr<asio::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
 
-	void DoPoll(uint32_t pollgroup);
+	void SendNextMasterCommand();
+	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
+	void ClearMD3CommandQueue();
 	void ProcessMD3Message(std::vector<MD3BlockData>& CompleteMD3Message);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 	bool ProcessAnalogUnconditionalReturn( MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
 	bool ProcessAnalogDeltaScanReturn( MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
 	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
+
+	bool ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
 
 	// Check that what we got is one that is expected for the current Function we are processing.
 	bool AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode);
