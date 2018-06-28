@@ -192,6 +192,27 @@ enum class eControlCode : uint8_t
 	UNDEFINED = 15
 };
 
+#define ENUMSTRING(A,E,B) if(A == E::B) return #B;
+inline std::string ToString(const eControlCode cc)
+{
+	ENUMSTRING(cc,eControlCode,NUL                  )
+	ENUMSTRING(cc,eControlCode,NUL_CANCEL           )
+	ENUMSTRING(cc,eControlCode,PULSE_ON             )
+	ENUMSTRING(cc,eControlCode,PULSE_ON_CANCEL      )
+	ENUMSTRING(cc,eControlCode,PULSE_OFF            )
+	ENUMSTRING(cc,eControlCode,PULSE_OFF_CANCEL     )
+	ENUMSTRING(cc,eControlCode,LATCH_ON             )
+	ENUMSTRING(cc,eControlCode,LATCH_ON_CANCEL      )
+	ENUMSTRING(cc,eControlCode,LATCH_OFF            )
+	ENUMSTRING(cc,eControlCode,LATCH_OFF_CANCEL     )
+	ENUMSTRING(cc,eControlCode,CLOSE_PULSE_ON       )
+	ENUMSTRING(cc,eControlCode,CLOSE_PULSE_ON_CANCEL)
+	ENUMSTRING(cc,eControlCode,TRIP_PULSE_ON        )
+	ENUMSTRING(cc,eControlCode,TRIP_PULSE_ON_CANCEL )
+	ENUMSTRING(cc,eControlCode,UNDEFINED            )
+	return "UNKNOWN";
+}
+
 //Quatilty flags that can be used for any EventType
 //Start with a superset of all the dnp3 type qualities
 enum class QualityFlags: uint16_t
@@ -210,6 +231,24 @@ enum class QualityFlags: uint16_t
 };
 ENABLE_BITWISE(QualityFlags)
 
+#define FLAGSTRING(E,X) if((q & E::X) == E::X) s += #X "|";
+inline std::string ToString(const QualityFlags q)
+{
+	std::string s = "|";
+	FLAGSTRING(QualityFlags,ONLINE        )
+	FLAGSTRING(QualityFlags,RESTART       )
+	FLAGSTRING(QualityFlags,COMM_LOST     )
+	FLAGSTRING(QualityFlags,REMOTE_FORCED )
+	FLAGSTRING(QualityFlags,LOCAL_FORCED  )
+	FLAGSTRING(QualityFlags,OVERRANGE     )
+	FLAGSTRING(QualityFlags,REFERENCE_ERR )
+	FLAGSTRING(QualityFlags,ROLLOVER      )
+	FLAGSTRING(QualityFlags,DISCONTINUITY )
+	FLAGSTRING(QualityFlags,CHATTER_FILTER)
+	if(s == "|") return "|NONE|";
+	return s;
+}
+
 //TODO: rename once the opendnp3 typedef is gone
 struct eControlRelayOutputBlock
 {
@@ -218,7 +257,14 @@ struct eControlRelayOutputBlock
 	uint32_t onTimeMS = 100;
 	uint32_t offTimeMS = 100;
 	eCommandStatus status = eCommandStatus::SUCCESS;
+
+	explicit operator std::string() const
+	{
+		return ToString(functionCode)+"|Count "+std::to_string(count)+
+		       "|ON "+std::to_string(onTimeMS)+"ms|OFF "+std::to_string(offTimeMS)+"ms)";
+	}
 };
+
 
 enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 
@@ -227,20 +273,6 @@ inline msSinceEpoch_t msSinceEpoch()
 {
 	return std::chrono::duration_cast<std::chrono::milliseconds>
 		       (std::chrono::system_clock::now().time_since_epoch()).count();
-}
-
-inline std::string ToString(const eControlRelayOutputBlock& c)
-{
-	return std::string("FIXME");
-}
-inline std::string ToString(const QualityFlags& q)
-{
-	return std::string("FIXME");
-}
-template<typename T>
-inline std::string ToString(const T& t)
-{
-	return std::string("FIXME");
 }
 
 //Map EventTypes to payload types
