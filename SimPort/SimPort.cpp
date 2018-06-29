@@ -422,73 +422,6 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
-//Implement Event handlers from IOHandler - All not supported because SimPort is just a source.
-
-// measurement events
-void SimPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-
-void SimPort::Event(const ControlRelayOutputBlock& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-
-// change of quality Events
-void SimPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-// control events
 void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(event->GetEventType() != EventType::ControlRelayOutputBlock)
@@ -511,11 +444,11 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 					{
 						switch(command.functionCode)
 						{
-							case eControlCode::PULSE_ON:
-							case eControlCode::LATCH_ON:
-							case eControlCode::LATCH_OFF:
-							case eControlCode::CLOSE_PULSE_ON:
-							case eControlCode::TRIP_PULSE_ON:
+							case ControlCode::PULSE_ON:
+							case ControlCode::LATCH_ON:
+							case ControlCode::LATCH_OFF:
+							case ControlCode::CLOSE_PULSE_ON:
+							case ControlCode::TRIP_PULSE_ON:
 							{
 								PublishEvent(fb.on_value);
 								pTimer_t pTimer(new Timer_t(*pIOS));
@@ -537,12 +470,12 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 					{
 						switch(command.functionCode)
 						{
-							case eControlCode::LATCH_ON:
-							case eControlCode::CLOSE_PULSE_ON:
+							case ControlCode::LATCH_ON:
+							case ControlCode::CLOSE_PULSE_ON:
 								PublishEvent(fb.on_value);
 								break;
-							case eControlCode::LATCH_OFF:
-							case eControlCode::TRIP_PULSE_ON:
+							case ControlCode::LATCH_OFF:
+							case ControlCode::TRIP_PULSE_ON:
 								PublishEvent(fb.off_value);
 								break;
 							default:
@@ -560,20 +493,3 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	}
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-void SimPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-void SimPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
-

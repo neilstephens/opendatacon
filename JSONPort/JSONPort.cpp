@@ -301,8 +301,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			{
 				auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,point_pair.first,Name,QualityFlags::NONE,timestamp);
 
-				eControlRelayOutputBlock command;
-				command.functionCode = eControlCode::PULSE_ON; //default pulse if nothing else specified
+				ControlRelayOutputBlock command;
+				command.functionCode = ControlCode::PULSE_ON; //default pulse if nothing else specified
 
 				//work out control code to send
 				if(point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
@@ -362,9 +362,9 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							continue;
 						}
 						if(on)
-							command.functionCode = eControlCode::LATCH_ON;
+							command.functionCode = ControlCode::LATCH_ON;
 						else
-							command.functionCode = eControlCode::LATCH_OFF;
+							command.functionCode = ControlCode::LATCH_OFF;
 					}
 					else if(cm == "TRIPCLOSE")
 					{
@@ -380,9 +380,9 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							continue;
 						}
 						if(trip)
-							command.functionCode = eControlCode::TRIP_PULSE_ON;
+							command.functionCode = ControlCode::TRIP_PULSE_ON;
 						else
-							command.functionCode = eControlCode::CLOSE_PULSE_ON;
+							command.functionCode = ControlCode::CLOSE_PULSE_ON;
 					}
 					else if(cm != "PULSE")
 					{
@@ -430,38 +430,6 @@ void JSONPort::ProcessBraced(const std::string& braced)
 		if(auto log = spdlog::get("JSONPort"))
 			log->warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
 	}
-}
-
-//Unsupported types - return as such
-void JSONPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-
-void JSONPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-
-void JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-
-//Supported types - call templates
-void JSONPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventT(meas,index,SenderName, pStatusCallback);}
-void JSONPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventT(meas,index,SenderName, pStatusCallback);}
-void JSONPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ(qual,index,SenderName, pStatusCallback);}
-void JSONPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ(qual,index,SenderName, pStatusCallback);}
-
-//Templates for supported types
-template<typename T>
-inline void JSONPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
 void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)

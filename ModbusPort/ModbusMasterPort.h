@@ -86,18 +86,10 @@ public:
 	void Disconnect();
 	void BuildOrRebuild() override;
 
-	// Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
-
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 private:
-	CommandStatus WriteObject(const eControlRelayOutputBlock& output, uint16_t index);
+	CommandStatus WriteObject(const ControlRelayOutputBlock& output, uint16_t index);
 	CommandStatus WriteObject(const int16_t output, uint16_t index);
 	CommandStatus WriteObject(const int32_t output, uint16_t index);
 	CommandStatus WriteObject(const double output, uint16_t index);

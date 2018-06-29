@@ -138,28 +138,44 @@ void ModbusMasterPort::Disconnect()
 
 	if(mb != nullptr) modbus_close(mb);
 
-	//Update the quality of point
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+
+	//TODO: implement a comms point
+
+	auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,0,Name,QualityFlags::COMM_LOST);
+	event->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
 
 	// Modbus function code 0x01 (read coil status)
 	for(auto range : pConf->pPointConf->BitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
-			PublishEvent(BinaryQuality::COMM_LOST, index);
+		{
+			event->SetIndex(index);
+			PublishEvent(event);
+		}
 
 	// Modbus function code 0x02 (read input status)
 	for(auto range : pConf->pPointConf->InputBitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
-			PublishEvent(BinaryQuality::COMM_LOST, index);
+		{
+			event->SetIndex(index);
+			PublishEvent(event);
+		}
 
 	// Modbus function code 0x03 (read holding registers)
 	for(auto range : pConf->pPointConf->RegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
-			PublishEvent(AnalogQuality::COMM_LOST,index);
+		{
+			event->SetIndex(index);
+			PublishEvent(event);
+		}
 
 	// Modbus function code 0x04 (read input registers)
 	for(auto range : pConf->pPointConf->InputRegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
-			PublishEvent(AnalogQuality::COMM_LOST,index);
+		{
+			event->SetIndex(index);
+			PublishEvent(event);
+		}
 }
 
 void ModbusMasterPort::HandleError(int errnum, const std::string& source)
@@ -360,7 +376,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			for(uint16_t i = 0; i < rc; i++ )
 			{
 				auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16,index,Name,QualityFlags::ONLINE);
-				auto payload = AO16(((uint16_t*)modbus_read_buffer)[i],eCommandStatus::SUCCESS);
+				auto payload = AO16(((uint16_t*)modbus_read_buffer)[i],CommandStatus::SUCCESS);
 				event->SetPayload<EventType::AnalogOutputInt16>(std::move(payload));
 				PublishEvent(event);
 				++index;
@@ -400,36 +416,6 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 	}
 }
 
-//Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-void ModbusMasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
-void ModbusMasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
-void ModbusMasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
-void ModbusMasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
-void ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(arCommand, index, SenderName, pStatusCallback); }
-
-//void ModbusMasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-//{
-//	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-
-//	if(!enabled)
-//	{
-//		(*pStatusCallback)(CommandStatus::UNDEFINED);
-//		return;
-//	}
-
-//	//something upstream has connected
-//	if(state == ConnectState::CONNECTED)
-//	{
-//		// Only change stack state if it is an on demand server
-//		if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-//		{
-//			this->Connect();
-//		}
-//	}
-
-//	(*pStatusCallback)(CommandStatus::SUCCESS);
-//}
-
 template <EventType t>
 ModbusReadGroup *ModbusMasterPort::GetRange(uint16_t index)
 {
@@ -450,11 +436,11 @@ ModbusReadGroup *ModbusMasterPort::GetRange(uint16_t index)
 	return nullptr;
 }
 
-CommandStatus ModbusMasterPort::WriteObject(const eControlRelayOutputBlock& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index)
 {
 	if (
-		(command.functionCode == eControlCode::NUL) ||
-		(command.functionCode == eControlCode::UNDEFINED)
+		(command.functionCode == ControlCode::NUL) ||
+		(command.functionCode == ControlCode::UNDEFINED)
 		)
 	{
 		return CommandStatus::NOT_SUPPORTED;
@@ -466,8 +452,8 @@ CommandStatus ModbusMasterPort::WriteObject(const eControlRelayOutputBlock& comm
 
 	int rc;
 	if (
-		(command.functionCode == eControlCode::LATCH_OFF) ||
-		(command.functionCode == eControlCode::TRIP_PULSE_ON)
+		(command.functionCode == ControlCode::LATCH_OFF) ||
+		(command.functionCode == ControlCode::TRIP_PULSE_ON)
 		)
 	{
 		rc = modbus_write_bit(mb, index, false);
@@ -560,6 +546,8 @@ void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		return;
 	}
 
+	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+
 	switch(event->GetEventType())
 	{
 		case EventType::ControlRelayOutputBlock:
@@ -577,16 +565,34 @@ void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		case EventType::AnalogOutputDouble64:
 			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first,
 				event->GetIndex()));
+		case EventType::ConnectState:
+		{
+			auto state = event->GetPayload<EventType::ConnectState>();
+
+			//something upstream has connected
+			if(state == ConnectState::CONNECTED)
+			{
+				// Only change stack state if it is an on demand server
+				if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
+				{
+					Connect();
+				}
+			}
+			else if (state == ConnectState::DISCONNECTED)
+			{
+				// Only change stack state if it is an on demand server - and we're no longer in-demand
+				if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND && !InDemand())
+				{
+					Disconnect();
+				}
+			}
+			return (*pStatusCallback)(CommandStatus::SUCCESS);
+		}
 		default:
 			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 	}
 }
 
-template<typename T>
-inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-}
 
 
 

@@ -40,8 +40,8 @@
 namespace odc
 {
 
-eCommandStatus ToODC(const opendnp3::CommandStatus dnp3);
-opendnp3::CommandStatus FromODC(const eCommandStatus stat);
+CommandStatus ToODC(const opendnp3::CommandStatus dnp3);
+opendnp3::CommandStatus FromODC(const CommandStatus stat);
 
 std::shared_ptr<EventInfo> ToODC(const opendnp3::Binary& dnp3, const size_t ind = 0, const std::string& source = "");
 std::shared_ptr<EventInfo> ToODC(const opendnp3::DoubleBitBinary& dnp3, const size_t ind = 0, const std::string& source = "");

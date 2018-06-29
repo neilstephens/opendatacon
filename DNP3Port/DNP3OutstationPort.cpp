@@ -257,27 +257,27 @@ const Json::Value DNP3OutstationPort::GetStatistics() const
 }
 
 template<typename T>
-inline CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
+inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {
 	if(!enabled)
-		return CommandStatus::UNDEFINED;
+		return opendnp3::CommandStatus::UNDEFINED;
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(std::is_same<T,opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
 	{
 		for(auto index : pConf->pPointConf->ControlIndicies)
 			if(index == aIndex)
-				return CommandStatus::SUCCESS;
+				return opendnp3::CommandStatus::SUCCESS;
 	}
-	return CommandStatus::NOT_SUPPORTED;
+	return opendnp3::CommandStatus::NOT_SUPPORTED;
 }
 
 // Called by OpenDNP3 Thread Pool
 template<typename T>
-inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
+inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 {
 	if(!enabled)
-		return CommandStatus::UNDEFINED;
+		return opendnp3::CommandStatus::UNDEFINED;
 
 	auto event = ToODC(arCommand, aIndex, Name);
 
@@ -285,7 +285,7 @@ inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 	if (!pConf->pPointConf->WaitForCommandResponses)
 	{
 		PublishEvent(event);
-		return CommandStatus::SUCCESS;
+		return opendnp3::CommandStatus::SUCCESS;
 	}
 
 	//TODO: enquire about the possibility of the opendnp3 API having a callback for the result
@@ -305,7 +305,7 @@ inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 		//	We can maybe do some work while we wait.
 		pIOS->poll_one();
 	}
-	return cb_status;
+	return FromODC(cb_status);
 }
 
 void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -351,7 +351,7 @@ inline void DNP3OutstationPort::EventQ(Q qual, uint16_t index)
 
 				  T updated = existing;
 				  updated.quality = static_cast<uint8_t>(qual) | state;
-				  updated.time = Timestamp(msSinceEpoch());
+				  updated.time = opendnp3::DNPTime(msSinceEpoch());
 				  return updated;
 			  };
 	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);

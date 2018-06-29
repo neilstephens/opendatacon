@@ -31,44 +31,10 @@
 #include <string>
 #include <tuple>
 
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendnp3/app/ControlRelayOutputBlock.h>
-#include <opendnp3/app/AnalogOutput.h>
 #include <opendatacon/EnumClassFlags.h>
 
 namespace odc
 {
-
-typedef opendnp3::CommandStatus CommandStatus;
-typedef opendnp3::ControlCode ControlCode;
-
-/// Timestamp
-typedef     opendnp3::DNPTime Timestamp;
-
-/// Measurement types
-typedef opendnp3::Binary Binary;
-typedef opendnp3::DoubleBitBinary DoubleBitBinary;
-typedef opendnp3::Analog Analog;
-typedef opendnp3::Counter Counter;
-typedef opendnp3::FrozenCounter FrozenCounter;
-typedef opendnp3::BinaryOutputStatus BinaryOutputStatus;
-typedef opendnp3::AnalogOutputStatus AnalogOutputStatus;
-
-/// Output types
-typedef opendnp3::ControlRelayOutputBlock ControlRelayOutputBlock;
-typedef opendnp3::AnalogOutputInt16 AnalogOutputInt16;
-typedef opendnp3::AnalogOutputInt32 AnalogOutputInt32;
-typedef opendnp3::AnalogOutputFloat32 AnalogOutputFloat32;
-typedef opendnp3::AnalogOutputDouble64 AnalogOutputDouble64;
-
-/// Quality types
-typedef opendnp3::BinaryQuality BinaryQuality;
-typedef opendnp3::DoubleBitBinaryQuality DoubleBitBinaryQuality;
-typedef opendnp3::AnalogQuality AnalogQuality;
-typedef opendnp3::CounterQuality CounterQuality;
-typedef opendnp3::BinaryOutputStatusQuality BinaryOutputStatusQuality;
-enum class FrozenCounterQuality: uint8_t {};
-enum class AnalogOutputStatusQuality: uint8_t {};
 
 //enumerate all the different type of events that can pass through opendatacon
 //As a starting point, define values to correspond with the previously used dnp3 measurment and output types, and some extras
@@ -146,8 +112,7 @@ constexpr EventType operator +( const EventType lhs, const int rhs)
 	return static_cast<EventType>(static_cast<const uint8_t>(lhs) + rhs);
 }
 
-//TODO: rename once the opendnp3 typedef is gone
-enum class eCommandStatus : uint8_t
+enum class CommandStatus : uint8_t
 {
 	SUCCESS = 0,
 	TIMEOUT = 1,
@@ -172,8 +137,7 @@ enum class eCommandStatus : uint8_t
 	UNDEFINED = 127
 };
 
-//TODO: rename once the opendnp3 typedef is gone
-enum class eControlCode : uint8_t
+enum class ControlCode : uint8_t
 {
 	NUL = 1,
 	NUL_CANCEL = 2,
@@ -193,23 +157,23 @@ enum class eControlCode : uint8_t
 };
 
 #define ENUMSTRING(A,E,B) if(A == E::B) return #B;
-inline std::string ToString(const eControlCode cc)
+inline std::string ToString(const ControlCode cc)
 {
-	ENUMSTRING(cc,eControlCode,NUL                  )
-	ENUMSTRING(cc,eControlCode,NUL_CANCEL           )
-	ENUMSTRING(cc,eControlCode,PULSE_ON             )
-	ENUMSTRING(cc,eControlCode,PULSE_ON_CANCEL      )
-	ENUMSTRING(cc,eControlCode,PULSE_OFF            )
-	ENUMSTRING(cc,eControlCode,PULSE_OFF_CANCEL     )
-	ENUMSTRING(cc,eControlCode,LATCH_ON             )
-	ENUMSTRING(cc,eControlCode,LATCH_ON_CANCEL      )
-	ENUMSTRING(cc,eControlCode,LATCH_OFF            )
-	ENUMSTRING(cc,eControlCode,LATCH_OFF_CANCEL     )
-	ENUMSTRING(cc,eControlCode,CLOSE_PULSE_ON       )
-	ENUMSTRING(cc,eControlCode,CLOSE_PULSE_ON_CANCEL)
-	ENUMSTRING(cc,eControlCode,TRIP_PULSE_ON        )
-	ENUMSTRING(cc,eControlCode,TRIP_PULSE_ON_CANCEL )
-	ENUMSTRING(cc,eControlCode,UNDEFINED            )
+	ENUMSTRING(cc,ControlCode,NUL                  )
+	ENUMSTRING(cc,ControlCode,NUL_CANCEL           )
+	ENUMSTRING(cc,ControlCode,PULSE_ON             )
+	ENUMSTRING(cc,ControlCode,PULSE_ON_CANCEL      )
+	ENUMSTRING(cc,ControlCode,PULSE_OFF            )
+	ENUMSTRING(cc,ControlCode,PULSE_OFF_CANCEL     )
+	ENUMSTRING(cc,ControlCode,LATCH_ON             )
+	ENUMSTRING(cc,ControlCode,LATCH_ON_CANCEL      )
+	ENUMSTRING(cc,ControlCode,LATCH_OFF            )
+	ENUMSTRING(cc,ControlCode,LATCH_OFF_CANCEL     )
+	ENUMSTRING(cc,ControlCode,CLOSE_PULSE_ON       )
+	ENUMSTRING(cc,ControlCode,CLOSE_PULSE_ON_CANCEL)
+	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON        )
+	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON_CANCEL )
+	ENUMSTRING(cc,ControlCode,UNDEFINED            )
 	return "UNKNOWN";
 }
 
@@ -249,14 +213,13 @@ inline std::string ToString(const QualityFlags q)
 	return s;
 }
 
-//TODO: rename once the opendnp3 typedef is gone
-struct eControlRelayOutputBlock
+struct ControlRelayOutputBlock
 {
-	eControlCode functionCode = eControlCode::LATCH_ON;
+	ControlCode functionCode = ControlCode::LATCH_ON;
 	uint8_t count = 1;
 	uint32_t onTimeMS = 100;
 	uint32_t offTimeMS = 100;
-	eCommandStatus status = eCommandStatus::SUCCESS;
+	CommandStatus status = CommandStatus::SUCCESS;
 
 	explicit operator std::string() const
 	{
@@ -264,7 +227,6 @@ struct eControlRelayOutputBlock
 		       "|ON "+std::to_string(onTimeMS)+"ms|OFF "+std::to_string(offTimeMS)+"ms)";
 	}
 };
-
 
 enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 
@@ -284,10 +246,10 @@ template<EventType t> struct EventTypePayload { typedef void type; };
 typedef std::pair<bool,bool> DBB;
 typedef std::tuple<msSinceEpoch_t,uint32_t,uint8_t> TAI;
 typedef std::pair<uint16_t,uint32_t> SS;
-typedef std::pair<int16_t,eCommandStatus> AO16;
-typedef std::pair<int32_t,eCommandStatus> AO32;
-typedef std::pair<float,eCommandStatus> AOF;
-typedef std::pair<double,eCommandStatus> AOD;
+typedef std::pair<int16_t,CommandStatus> AO16;
+typedef std::pair<int32_t,CommandStatus> AO32;
+typedef std::pair<float,CommandStatus> AOF;
+typedef std::pair<double,CommandStatus> AOD;
 
 EVENTPAYLOAD(EventType::Binary                   , bool)
 EVENTPAYLOAD(EventType::DoubleBitBinary          , DBB)
@@ -296,12 +258,12 @@ EVENTPAYLOAD(EventType::Counter                  , uint32_t)
 EVENTPAYLOAD(EventType::FrozenCounter            , uint32_t)
 EVENTPAYLOAD(EventType::BinaryOutputStatus       , bool)
 EVENTPAYLOAD(EventType::AnalogOutputStatus       , double)
-EVENTPAYLOAD(EventType::BinaryCommandEvent       , eCommandStatus)
-EVENTPAYLOAD(EventType::AnalogCommandEvent       , eCommandStatus)
+EVENTPAYLOAD(EventType::BinaryCommandEvent       , CommandStatus)
+EVENTPAYLOAD(EventType::AnalogCommandEvent       , CommandStatus)
 EVENTPAYLOAD(EventType::OctetString              , std::string)
 EVENTPAYLOAD(EventType::TimeAndInterval          , TAI)
 EVENTPAYLOAD(EventType::SecurityStat             , SS)
-EVENTPAYLOAD(EventType::ControlRelayOutputBlock  , eControlRelayOutputBlock)
+EVENTPAYLOAD(EventType::ControlRelayOutputBlock  , ControlRelayOutputBlock)
 EVENTPAYLOAD(EventType::AnalogOutputInt16        , AO16)
 EVENTPAYLOAD(EventType::AnalogOutputInt32        , AO32)
 EVENTPAYLOAD(EventType::AnalogOutputFloat32      , AOF)

@@ -102,8 +102,6 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	uint8_t GetUnsolClassMask();
 
-	std::pair<Binary,size_t> mCommsPoint;
-
 	ModbusReadGroupCollection BitIndicies;
 	ModbusReadGroupCollection InputBitIndicies;
 	ModbusReadGroupCollection RegIndicies;
