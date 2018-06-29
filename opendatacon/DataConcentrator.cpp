@@ -69,6 +69,10 @@ DataConcentrator::DataConcentrator(std::string FileName):
 			{
 				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;
 			},"Print version information");
+		interface.second->AddCommand("set_loglevel",[this] (std::stringstream& ss)
+			{
+				this->SetLogLevel(ss);
+			},"Set the threshold for logging");
 
 		interface.second->AddResponder("OpenDataCon", *this);
 		interface.second->AddResponder("DataPorts", DataPorts);
@@ -79,6 +83,41 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		port.second->SetIOS(&IOS);
 	for(auto& conn : DataConnectors)
 		conn.second->SetIOS(&IOS);
+}
+
+void DataConcentrator::SetLogLevel(std::stringstream& ss)
+{
+	std::string sinkname;
+	std::string level_str;
+	if(ss>>sinkname && ss>>level_str)
+	{
+		for(auto& sink : LogSinksMap)
+		{
+			if(sink.first == sinkname)
+			{
+				auto new_level = spdlog::level::from_str(level_str);
+				if(new_level == spdlog::level::off && level_str != "off")
+				{
+					std::cout << "Invalid log level. Options are:" << std::endl;
+					for(uint8_t i = 0; i < 7; i++)
+						std::cout << spdlog::level::level_names[i] << std::endl;
+					return;
+				}
+				else
+				{
+					sink.second->set_level(new_level);
+					return;
+				}
+			}
+		}
+	}
+	std::cout << "Usage: set loglevel <sinkname> <level>" << std::endl;
+	std::cout << "Sinks:" << std::endl;
+	for(auto& sink : LogSinksMap)
+		std::cout << sink.first << std::endl;
+	std::cout << std::endl << "Levels:" << std::endl;
+	for(uint8_t i = 0; i < 7; i++)
+		std::cout << spdlog::level::level_names[i] << std::endl;
 }
 
 DataConcentrator::~DataConcentrator()
@@ -114,13 +153,15 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		file->set_level(log_level);
 		console->set_level(console_level);
 
-		LogSinks.push_back(file);
-		LogSinks.push_back(console);
+		LogSinksMap["file"] = file;
+		LogSinksVec.push_back(file);
+		LogSinksMap["console"] = console;
+		LogSinksVec.push_back(console);
 
 		//TODO: document these config options
 		if(JSONRoot.isMember("TCPLog"))
 		{
-			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(LogSinks), end(LogSinks));
+			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(LogSinksVec), end(LogSinksVec));
 
 			auto TCPLogJSON = JSONRoot["TCPLog"];
 			if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
@@ -145,9 +186,10 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		{
 			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostream.get());
 			tcp->set_level(log_level);
-			LogSinks.push_back(tcp);
+			LogSinksMap["tcp"] = tcp;
+			LogSinksVec.push_back(tcp);
 		}
-		auto pMainLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
+		auto pMainLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinksVec), end(LogSinksVec),
 			4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 		pMainLogger->set_level(spdlog::level::trace);
 		spdlog::register_logger(pMainLogger);
@@ -231,7 +273,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Create a logger if we haven't already
 			if(!spdlog::get(libname))
 			{
-				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinks), end(LogSinks),
+				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
 					4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 				pLibLogger->set_level(spdlog::level::trace);
 				spdlog::register_logger(pLibLogger);
@@ -355,7 +397,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Create a logger if we haven't already
 			if(!spdlog::get(libname))
 			{
-				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinks), end(LogSinks),
+				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
 					4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 				pLibLogger->set_level(spdlog::level::trace);
 				spdlog::register_logger(pLibLogger);
@@ -372,7 +414,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		const Json::Value Connectors = JSONRoot["Connectors"];
 
 		//make a logger for use by Connectors
-		auto pConnLogger = std::make_shared<spdlog::async_logger>("Connectors", begin(LogSinks), end(LogSinks),
+		auto pConnLogger = std::make_shared<spdlog::async_logger>("Connectors", begin(LogSinksVec), end(LogSinksVec),
 			4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 		pConnLogger->set_level(spdlog::level::trace);
 		spdlog::register_logger(pConnLogger);

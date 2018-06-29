@@ -69,7 +69,9 @@ private:
 	TCPstringbuf TCPbuf;
 	std::unique_ptr<std::ostream> pTCPostream;
 
-	std::vector<spdlog::sink_ptr> LogSinks;
+	std::map<std::string,spdlog::sink_ptr> LogSinksMap;
+	std::vector<spdlog::sink_ptr> LogSinksVec;
+	void SetLogLevel(std::stringstream& ss);
 };
 
 #endif /* DATACONCENTRATOR_H_ */
