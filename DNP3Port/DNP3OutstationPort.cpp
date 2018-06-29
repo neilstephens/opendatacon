@@ -36,6 +36,7 @@
 #include "ChannelStateSubscriber.h"
 
 #include "OpenDNP3Helpers.h"
+#include "TypeConversion.h"
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides),
@@ -62,7 +63,7 @@ void DNP3OutstationPort::Enable()
 	pOutstation->Enable();
 	enabled = true;
 
-	PublishEvent(ConnectState::PORT_UP, 0);
+	PublishEvent(ConnectState::PORT_UP);
 }
 void DNP3OutstationPort::Disable()
 {
@@ -81,7 +82,7 @@ void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 	if(link_dead && !channel_dead) //must be on link up
 	{
 		link_dead = false;
-		PublishEvent(ConnectState::CONNECTED, 0);
+		PublishEvent(ConnectState::CONNECTED);
 	}
 	//TODO: track a new statistic - reset count
 }
@@ -96,7 +97,7 @@ void DNP3OutstationPort::OnLinkDown()
 	if(!link_dead)
 	{
 		link_dead = true;
-		PublishEvent(ConnectState::DISCONNECTED, 0);
+		PublishEvent(ConnectState::DISCONNECTED);
 	}
 }
 // Called by OpenDNP3 Thread Pool
@@ -106,7 +107,7 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 	if(link_dead)
 	{
 		link_dead = false;
-		PublishEvent(ConnectState::CONNECTED, 0);
+		PublishEvent(ConnectState::CONNECTED);
 	}
 }
 
@@ -256,33 +257,35 @@ const Json::Value DNP3OutstationPort::GetStatistics() const
 }
 
 template<typename T>
-inline CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
+inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {
 	if(!enabled)
-		return CommandStatus::UNDEFINED;
+		return opendnp3::CommandStatus::UNDEFINED;
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(std::is_same<T,opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
 	{
 		for(auto index : pConf->pPointConf->ControlIndicies)
 			if(index == aIndex)
-				return CommandStatus::SUCCESS;
+				return opendnp3::CommandStatus::SUCCESS;
 	}
-	return CommandStatus::NOT_SUPPORTED;
+	return opendnp3::CommandStatus::NOT_SUPPORTED;
 }
 
 // Called by OpenDNP3 Thread Pool
 template<typename T>
-inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
+inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 {
 	if(!enabled)
-		return CommandStatus::UNDEFINED;
+		return opendnp3::CommandStatus::UNDEFINED;
+
+	auto event = ToODC(arCommand, aIndex, Name);
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if (!pConf->pPointConf->WaitForCommandResponses)
 	{
-		PublishEvent(arCommand, aIndex);
-		return CommandStatus::SUCCESS;
+		PublishEvent(event);
+		return opendnp3::CommandStatus::SUCCESS;
 	}
 
 	//TODO: enquire about the possibility of the opendnp3 API having a callback for the result
@@ -295,7 +298,7 @@ inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 			cb_status = status;
 			cb_executed = true;
 		});
-	PublishEvent(arCommand, aIndex, StatusCallback);
+	PublishEvent(event, StatusCallback);
 	while(!cb_executed)
 	{
 		//This loop pegs a core and blocks the outstation strand,
@@ -303,34 +306,53 @@ inline CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16_t aIndex)
 		//	We can maybe do some work while we wait.
 		pIOS->poll_one();
 	}
-	return cb_status;
+	return FromODC(cb_status);
 }
 
-void DNP3OutstationPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ<opendnp3::Binary>(qual,index,SenderName,pStatusCallback);}
-void DNP3OutstationPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ<opendnp3::DoubleBitBinary>(qual,index,SenderName,pStatusCallback);}
-void DNP3OutstationPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ<opendnp3::Analog>(qual,index,SenderName,pStatusCallback);}
-void DNP3OutstationPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ<opendnp3::Counter>(qual,index,SenderName,pStatusCallback);}
-void DNP3OutstationPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ<opendnp3::FrozenCounter>(qual,index,SenderName,pStatusCallback);}
-void DNP3OutstationPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ<opendnp3::BinaryOutputStatus>(qual,index,SenderName,pStatusCallback);}
-void DNP3OutstationPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ<opendnp3::AnalogOutputStatus>(qual,index,SenderName,pStatusCallback);}
-
-template<typename T, typename Q>
-inline void DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
 	{
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
-	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+
+	switch(event->GetEventType())
+	{
+		case EventType::Binary:
+			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
+			break;
+		case EventType::Analog:
+			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
+			break;
+		case EventType::BinaryQuality:
+			EventQ<opendnp3::Binary>(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex());
+			break;
+		case EventType::AnalogQuality:
+			EventQ<opendnp3::Analog>(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex());
+			break;
+		case EventType::ConnectState:
+			break;
+		default:
+			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+			return;
+	}
+	(*pStatusCallback)(CommandStatus::SUCCESS);
+}
+
+template<typename T, typename Q>
+inline void DNP3OutstationPort::EventQ(Q qual, uint16_t index)
+{
 	auto lambda = [=](const T &existing)
 			  {
-				  //TODO: break out specialised templates for Binary types. The state bit for binary quality is 'reserved' for other currently supported types - preserving it will be OK for now
-				  uint8_t state = existing.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::STATE);
+				  uint8_t state = 0;
+
+				  if(std::is_same<Q,opendnp3::BinaryQuality>::value)
+					  state = existing.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::STATE);
 
 				  T updated = existing;
 				  updated.quality = static_cast<uint8_t>(qual) | state;
-				  updated.time = Timestamp(eventTime);
+				  updated.time = opendnp3::DNPTime(msSinceEpoch());
 				  return updated;
 			  };
 	const auto modify = openpal::Function1<const T&, T>::Bind(lambda);
@@ -339,60 +361,24 @@ inline void DNP3OutstationPort::EventQ(Q& qual, uint16_t index, const std::strin
 		// TODO: confirm the timestamp used for the modify
 		tx.Modify(modify, index, opendnp3::EventMode::Force);
 	}
-	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
-void DNP3OutstationPort::Event(const opendnp3::Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void DNP3OutstationPort::Event(const opendnp3::DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void DNP3OutstationPort::Event(const opendnp3::Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void DNP3OutstationPort::Event(const opendnp3::Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void DNP3OutstationPort::Event(const opendnp3::FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void DNP3OutstationPort::Event(const opendnp3::BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void DNP3OutstationPort::Event(const opendnp3::AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-
 template<typename T>
-inline void DNP3OutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 {
-	if(!enabled)
-	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
-		return;
-	}
-	auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	{ //transaction scope
 		asiodnp3::MeasUpdate tx(pOutstation);
-
 		if (
 			(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
 			((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time == 0))
 			)
 		{
-			T newmeas(meas.value, meas.quality, opendnp3::DNPTime(eventTime));
-			tx.Update(newmeas, index);
+			meas.time = opendnp3::DNPTime(msSinceEpoch());
 		}
-		else
-		{
-			tx.Update(meas, index);
-		}
+		tx.Update(meas, index);
 	}
-	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
-void DNP3OutstationPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	if (!enabled)
-	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
-		return;
-	}
-
-	if (state == ConnectState::DISCONNECTED)
-	{
-		//stub
-	}
-
-	(*pStatusCallback)(CommandStatus::SUCCESS);
-}
 

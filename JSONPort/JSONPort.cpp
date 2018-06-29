@@ -24,8 +24,10 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <spdlog/spdlog.h>
+#include <memory>
 #include <chrono>
+#include <spdlog/spdlog.h>
+#include <opendatacon/IOTypes.h>
 #include "JSONPort.h"
 
 using namespace odc;
@@ -72,18 +74,22 @@ void JSONPort::Disable()
 void JSONPort::SocketStateHandler(bool state)
 {
 	std::string msg;
+	ConnectState conn_state;
 	if(state)
 	{
-		PublishEvent(ConnectState::CONNECTED, 0);
 		msg = Name+": Connection established.";
+		conn_state = ConnectState::CONNECTED;
 	}
 	else
 	{
-		PublishEvent(ConnectState::DISCONNECTED, 0);
 		msg = Name+": Connection closed.";
+		conn_state = ConnectState::DISCONNECTED;
 	}
 	if(auto log = spdlog::get("JSONPort"))
 		log->info(msg);
+
+	//Send an event out
+	PublishEvent(std::move(conn_state));
 }
 
 void JSONPort::ProcessElements(const Json::Value& JSONRoot)
@@ -190,7 +196,24 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						  return val;
 					  };
 
-		Json::Value timestamp_val = TraversePath(pConf->pPointConf->TimestampPath);
+		msSinceEpoch_t timestamp = 0;
+		if(!pConf->pPointConf->TimestampPath.isNull())
+		{
+			try
+			{
+				timestamp = TraversePath(pConf->pPointConf->TimestampPath).asUInt64();
+				if(timestamp == 0)
+					throw std::runtime_error("Null timestamp");
+			}
+			catch(std::runtime_error e)
+			{
+				if(auto log = spdlog::get("JSONPort"))
+					log->error("Error decoding timestamp as Uint64: '{}'",e.what());
+			}
+		}
+
+		//vector to store any events we find contained in this Json object
+		std::vector<std::shared_ptr<EventInfo>> events;
 
 		for(auto& point_pair : pConf->pPointConf->Analogs)
 		{
@@ -198,22 +221,33 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			//if the path existed, load up the point
 			if(!val.isNull())
 			{
+				auto event = std::make_shared<EventInfo>(EventType::Analog,point_pair.first,Name,QualityFlags::ONLINE,timestamp);
 				if(val.isNumeric())
-					LoadT(Analog(val.asDouble(),static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
+					event->SetPayload<EventType::Analog>(val.asDouble());
 				else if(val.isString())
 				{
 					double value;
 					try
 					{
 						value = std::stod(val.asString());
+						event->SetPayload<EventType::Analog>(std::move(value));
 					}
 					catch(std::exception&)
 					{
-						LoadT(Analog(0,static_cast<uint8_t>(AnalogQuality::COMM_LOST)),point_pair.first, timestamp_val);
-						continue;
+						if(auto log = spdlog::get("JSONPort"))
+							log->error("Error decoding Analog from string '{}', for index {}",val.asString(),point_pair.first);
+						event->SetPayload<EventType::Analog>(0);
+						event->SetQuality(QualityFlags::OVERRANGE);
 					}
-					LoadT(Analog(value,static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
 				}
+				else
+				{
+					if(auto log = spdlog::get("JSONPort"))
+						log->error("Error decoding Analog for index {}",point_pair.first);
+					event->SetPayload<EventType::Analog>(0);
+					event->SetQuality(QualityFlags::OVERRANGE);
+				}
+				events.push_back(event);
 			}
 		}
 
@@ -223,13 +257,14 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			//if the path existed, load up the point
 			if(!val.isNull())
 			{
-				bool true_val = false; BinaryQuality qual = BinaryQuality::ONLINE;
+				auto event = std::make_shared<EventInfo>(EventType::Binary,point_pair.first,Name,QualityFlags::ONLINE,timestamp);
+				bool true_val = false;
 				if(point_pair.second.isMember("TrueVal"))
 				{
 					true_val = (val == point_pair.second["TrueVal"]);
 					if(point_pair.second.isMember("FalseVal"))
 						if (!true_val && (val != point_pair.second["FalseVal"]))
-							qual = BinaryQuality::COMM_LOST;
+							event->SetQuality(QualityFlags::COMM_LOST);
 				}
 				else if(point_pair.second.isMember("FalseVal"))
 					true_val = !(val == point_pair.second["FalseVal"]);
@@ -239,14 +274,22 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				{
 					true_val = (val.asString() == "true");
 					if(!true_val && (val.asString() != "false"))
-						qual = BinaryQuality::COMM_LOST;
+						event->SetQuality(QualityFlags::COMM_LOST);
 				}
 				else
-					qual = BinaryQuality::COMM_LOST;
+					event->SetQuality(QualityFlags::COMM_LOST);
 
-				LoadT(Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first,timestamp_val);
+				event->SetPayload<EventType::Binary>(std::move(true_val));
+				events.push_back(event);
 			}
 		}
+
+		//Publish any analog and binary events from above
+		for(auto& event : events)
+		{
+			PublishEvent(event);
+		}
+		//We'll publish any controls separately below, because they each have a callback
 
 		for(auto& point_pair : pConf->pPointConf->Controls)
 		{
@@ -256,7 +299,10 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			//if the path existed, get the value and send the control
 			if(!val.isNull())
 			{
-				ControlRelayOutputBlock command(ControlCode::PULSE_ON); //default pulse if nothing else specified
+				auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,point_pair.first,Name,QualityFlags::NONE,timestamp);
+
+				ControlRelayOutputBlock command;
+				command.functionCode = ControlCode::PULSE_ON; //default pulse if nothing else specified
 
 				//work out control code to send
 				if(point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
@@ -269,7 +315,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 									     ret = (val == point_pair.second[truename]);
 									     if(point_pair.second.isMember(falsename))
 										     if (!ret && (val != point_pair.second[falsename]))
-											     throw std::runtime_error("unexpected control value");
+											     throw std::runtime_error("Unexpected control value");
 								     }
 								     else if(point_pair.second.isMember(falsename))
 									     ret = !(val == point_pair.second[falsename]);
@@ -296,7 +342,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 									                 val.asString() != "trip" &&
 									                 val.asString() != "Trip" &&
 									                 val.asString() != "TRIP"))
-										     throw std::runtime_error("unexpected control value");
+										     throw std::runtime_error("Unexpected control value");
 								     }
 								     return ret;
 							     };
@@ -311,7 +357,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						}
 						catch(std::runtime_error e)
 						{
-							//TODO: log warning
+							if(auto log = spdlog::get("JSONPort"))
+								log->error("'{}', for index {}",e.what(),point_pair.first);
 							continue;
 						}
 						if(on)
@@ -328,7 +375,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						}
 						catch(std::runtime_error e)
 						{
-							//TODO: log warning
+							if(auto log = spdlog::get("JSONPort"))
+								log->error("'{}', for index {}",e.what(),point_pair.first);
 							continue;
 						}
 						if(trip)
@@ -338,7 +386,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					}
 					else if(cm != "PULSE")
 					{
-						//TODO: log warning
+						if(auto log = spdlog::get("JSONPort"))
+							log->error("Unrecongnised ControlMode '{}', recieved for index {}",cm,point_pair.first);
 						continue;
 					}
 				}
@@ -371,7 +420,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							pWriter->write(result, &oss); oss<<std::endl;
 							pSockMan->Write(oss.str());
 						});
-				PublishEvent(command,point_pair.first,pStatusCallback);
+				event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(command));
+				PublishEvent(event,pStatusCallback);
 			}
 		}
 	}
@@ -381,75 +431,53 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			log->warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
 	}
 }
-template<typename T>
-inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
-{
-	if(auto log = spdlog::get("JSONPort"))
-		log->debug("Measurement Event '{}'", typeid(meas).name());
 
-	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
-	{
-		meas = T(meas.value, meas.quality, Timestamp(timestamp_val.asUInt64()));
-	}
-
-	PublishEvent(meas, index);
-}
-
-
-//Unsupported types - return as such
-void JSONPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-
-void JSONPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-
-void JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-void JSONPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-
-//Supported types - call templates
-void JSONPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventT(meas,index,SenderName, pStatusCallback);}
-void JSONPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventT(meas,index,SenderName, pStatusCallback);}
-void JSONPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ(qual,index,SenderName, pStatusCallback);}
-void JSONPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){return EventQ(qual,index,SenderName, pStatusCallback);}
-
-//Templates for supported types
-template<typename T>
-inline void JSONPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	(*pStatusCallback)(CommandStatus::UNDEFINED);
-}
-
-template<typename T>
-inline void JSONPort::EventT(const T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
 	{
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 	}
+
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap) -> Json::Value
-			  {
-				  if(PointMap.count(index))
-				  {
-					  Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
-					  return output;
-				  }
-				  return Json::Value::nullSingleton();
-			  };
-	auto output = std::is_same<T,Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
-	              std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
-	              Json::Value::nullSingleton();
+	auto i = event->GetIndex();
+	auto q = ToString(event->GetQuality());
+	auto t = event->GetTimestamp();
+	auto& sp = event->GetSourcePort();
+	auto& s = SenderName;
+	Json::Value output;
+	switch(event->GetEventType())
+	{
+		case EventType::Analog:
+		{
+			auto v = event->GetPayload<EventType::Analog>();
+			auto& m = pConf->pPointConf->Analogs;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		case EventType::Binary:
+		{
+			auto v = event->GetPayload<EventType::Binary>();
+			auto& m = pConf->pPointConf->Binaries;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		case EventType::ControlRelayOutputBlock:
+		{
+			auto v = std::string(event->GetPayload<EventType::ControlRelayOutputBlock>());
+			auto& m = pConf->pPointConf->Controls;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		default:
+			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+			return;
+	}
+
 	if(output.isNull())
 	{
 		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);

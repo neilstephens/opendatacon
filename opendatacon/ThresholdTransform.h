@@ -53,34 +53,25 @@ public:
 		}
 	}
 
-	bool Event(Binary& meas, uint16_t& index) override {return true;}
-	bool Event(DoubleBitBinary& meas, uint16_t& index) override {return true;}
-	bool Event(Counter& meas, uint16_t& index) override {return true;}
-	bool Event(FrozenCounter& meas, uint16_t& index) override {return true;}
-	bool Event(BinaryOutputStatus& meas, uint16_t& index) override {return true;}
-	bool Event(AnalogOutputStatus& meas, uint16_t& index) override {return true;}
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) override {return true;}
-	bool Event(AnalogOutputInt16& arCommand, uint16_t index) override {return true;}
-	bool Event(AnalogOutputInt32& arCommand, uint16_t index) override {return true;}
-	bool Event(AnalogOutputFloat32& arCommand, uint16_t index) override {return true;}
-	bool Event(AnalogOutputDouble64& arCommand, uint16_t index) override {return true;}
-
-	bool Event(Analog& meas, uint16_t& index) override
+	bool Event(std::shared_ptr<EventInfo> event) override
 	{
+		if(event->GetEventType() != EventType::Analog)
+			return true;
+
 		if(!params["points"].isArray())
 			return true;
 
-		if(index == threshold_point_index)
+		if(event->GetIndex() == threshold_point_index)
 		{
-			pass_on = (meas.value >= threshold) || (!already_under);
-			already_under = (meas.value < threshold);
+			pass_on = (event->GetPayload<EventType::Analog>() >= threshold) || (!already_under);
+			already_under = (event->GetPayload<EventType::Analog>() < threshold);
 		}
 
 		if(!pass_on)
 		{
 			for(Json::ArrayIndex n = 0; n < params["points"].size(); ++n)
 			{
-				if(index == params["points"][n].asUInt())
+				if(event->GetIndex() == params["points"][n].asUInt())
 					return false;
 			}
 		}

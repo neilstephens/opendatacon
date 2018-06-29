@@ -53,8 +53,8 @@ public:
 			{
 				if (err_code != asio::error::operation_aborted)
 				{
-				      PublishEvent(ConnectState::PORT_UP, 0);
-				      PublishEvent(ConnectState::CONNECTED, 0);
+				      PublishEvent(ConnectState::PORT_UP);
+				      PublishEvent(ConnectState::CONNECTED);
 				}
 			});
 		enabled = true;
@@ -66,38 +66,13 @@ public:
 		if(pTimer)
 			pTimer->cancel();
 		pTimer.reset();
-		PublishEvent(ConnectState::PORT_DOWN, 0);
-		PublishEvent(ConnectState::DISCONNECTED, 0);
+		PublishEvent(ConnectState::PORT_DOWN);
+		PublishEvent(ConnectState::DISCONNECTED);
 	}
 	void BuildOrRebuild() override {}
 	void ProcessElements(const Json::Value& JSONRoot) override {}
 
-	//so the compiler won't warn we're hiding the base class overload we still want to use
-	using DataPort::Event;
-
-	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-
-	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-
-	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
-
-	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }
 };
 
 #endif /* NULLPORT_H_ */

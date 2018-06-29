@@ -78,24 +78,22 @@ public:
 		}
 	}
 
-	bool Event(Binary& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(Analog& meas, uint16_t& index) override {return CheckPass(meas);}
-	bool Event(DoubleBitBinary& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(Counter& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(FrozenCounter& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(BinaryOutputStatus& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(AnalogOutputStatus& meas, uint16_t& index) override { return CheckPass(meas); }
-
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) override {return true;}
-	bool Event(AnalogOutputInt16& arCommand, uint16_t index) override {return true;}
-	bool Event(AnalogOutputInt32& arCommand, uint16_t index) override {return true;}
-	bool Event(AnalogOutputFloat32& arCommand, uint16_t index) override {return true;}
-	bool Event(AnalogOutputDouble64& arCommand, uint16_t index) override {return true;}
-
 private:
-	template<class T>
-	bool CheckPass(T& meas)
+	bool Event(std::shared_ptr<EventInfo> event) override
 	{
+		switch(event->GetEventType())
+		{
+			case EventType::Binary:
+			case EventType::Analog:
+			case EventType::DoubleBitBinary:
+			case EventType::Counter:
+			case EventType::FrozenCounter:
+			case EventType::BinaryOutputStatus:
+			case EventType::AnalogOutputStatus:
+				break;
+			default:
+				return true;
+		}
 		// check if rollover of update count period
 		auto eventTime = msSinceEpoch();
 

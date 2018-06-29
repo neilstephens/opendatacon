@@ -86,19 +86,14 @@ public:
 	void Disconnect();
 	void BuildOrRebuild() override;
 
-	// Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
-
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 private:
-	template<class T>
-	CommandStatus WriteObject(const T& command, uint16_t index);
+	CommandStatus WriteObject(const ControlRelayOutputBlock& output, uint16_t index);
+	CommandStatus WriteObject(const int16_t output, uint16_t index);
+	CommandStatus WriteObject(const int32_t output, uint16_t index);
+	CommandStatus WriteObject(const double output, uint16_t index);
+	CommandStatus WriteObject(const float output, uint16_t index);
 
 	void DoPoll(uint32_t pollgroup);
 
@@ -106,7 +101,8 @@ private:
 	void HandleError(int errnum, const std::string& source);
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
-	ModbusReadGroup<Binary>* GetRange(uint16_t index);
+	template<EventType t>
+	ModbusReadGroup* GetRange(uint16_t index);
 
 	modbus_t *mb;
 	void* modbus_read_buffer;

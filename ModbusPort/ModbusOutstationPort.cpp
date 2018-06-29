@@ -112,11 +112,11 @@ void ModbusOutstationPort::StateListener(ChannelState state)
 
 	if(state == ChannelState::OPEN)
 	{
-		PublishEvent(ConnectState::CONNECTED, 0);
+		PublishEvent(ConnectState::CONNECTED);
 	}
 	else
 	{
-		PublishEvent(ConnectState::DISCONNECTED, 0);
+		PublishEvent(ConnectState::DISCONNECTED);
 	}
 }
 void ModbusOutstationPort::BuildOrRebuild()
@@ -181,16 +181,7 @@ void ModbusOutstationPort::BuildOrRebuild()
 	}
 }
 
-void ModbusOutstationPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-void ModbusOutstationPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback){ return EventT(meas, index, SenderName, pStatusCallback); }
-
-template<typename T>
-int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
+int find_index (const ModbusReadGroupCollection& aCollection, uint16_t index)
 {
 	for(auto group : aCollection)
 		for(auto group_index = group.start; group_index < group.start + group.count; group_index++)
@@ -199,8 +190,7 @@ int find_index (const ModbusReadGroupCollection<T>& aCollection, uint16_t index)
 	return -1;
 }
 
-template<typename T>
-inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+void ModbusOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
 	{
@@ -209,37 +199,62 @@ inline void ModbusOutstationPort::EventT(T& meas, uint16_t index, const std::str
 	}
 
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto event_type = event->GetEventType();
+	auto index = event->GetIndex();
 
-	if(std::is_same<T,Analog>::value)
+	if(event_type == EventType::Analog)
 	{
+		//TODO: scaling option in config - use 100 for now
+		auto scaled_float = event->GetPayload<EventType::Analog>()*100;
+		if(scaled_float > std::numeric_limits<int16_t>::max() || scaled_float < std::numeric_limits<int16_t>::min())
+		{
+			if(auto log = spdlog::get("ModbusPort"))
+				log->error("Scaled float overrange for 16-bit modbus load to index {}",index);
+			return (*pStatusCallback)(CommandStatus::OUT_OF_RANGE);
+		}
+
 		int map_index = find_index(pConf->pPointConf->InputRegIndicies, index);
 		if(map_index >= 0)
-			*(mb_mapping->tab_input_registers + map_index) = (uint16_t)meas.value;
+			*(mb_mapping->tab_input_registers + index) = static_cast<int16_t>(scaled_float);
 		else
 		{
 			map_index = find_index(pConf->pPointConf->RegIndicies, index);
 			if(map_index >= 0)
-				*(mb_mapping->tab_registers + map_index) = (uint16_t)meas.value;
+				*(mb_mapping->tab_registers + index) = static_cast<int16_t>(scaled_float);
 		}
+
+		if(map_index == 0)
+		{
+			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+			return;
+		}
+
 		(*pStatusCallback)(CommandStatus::SUCCESS);
 		return;
 	}
-	else if(std::is_same<T,Binary>::value)
+	else if(event_type == EventType::Binary)
 	{
 		int map_index = find_index(pConf->pPointConf->InputBitIndicies, index);
 		if(map_index >= 0)
-			*(mb_mapping->tab_input_bits + index) = (uint8_t)meas.value;
+			*(mb_mapping->tab_input_bits + index) = event->GetPayload<EventType::Binary>();
 		else
 		{
 			map_index = find_index(pConf->pPointConf->BitIndicies, index);
 			if(map_index >= 0)
-				*(mb_mapping->tab_bits + index) = (uint8_t)meas.value;
+				*(mb_mapping->tab_bits + index) = event->GetPayload<EventType::Binary>();
 		}
+
+		if(map_index == 0)
+		{
+			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+			return;
+		}
+
 		(*pStatusCallback)(CommandStatus::SUCCESS);
 		return;
 	}
 	//TODO: impl other types
 
-	(*pStatusCallback)(CommandStatus::UNDEFINED);
+	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
 

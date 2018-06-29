@@ -36,8 +36,6 @@
 namespace odc
 {
 
-enum ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
-
 typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
 
 typedef std::shared_ptr<std::function<void (CommandStatus status)>> SharedStatusCallback_t;
@@ -48,35 +46,11 @@ public:
 	IOHandler(const std::string& aName);
 	virtual ~IOHandler(){}
 
-	//Create an overloaded Event function for every type of event
-
-	// measurement events
-	virtual void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-
-	// change of quality events
-	virtual void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-
-	// control events
-	virtual void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-	virtual void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
-
 	//Connection events:
-	virtual void Event(ConnectState state, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
+	virtual void Event(ConnectState state, const std::string& SenderName) = 0;
+
+	//new Event type to decouple from the opendnp3 types - might eventually replace all above Event()s
+	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
@@ -97,13 +71,28 @@ protected:
 	std::map<std::string,bool> connection_demands;
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
 
-	template<class T>
-	inline void PublishEvent(const T& meas, uint16_t index, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	inline void PublishEvent(ConnectState state)
 	{
+		auto event = std::make_shared<EventInfo>(EventType::ConnectState,0,Name);
+		event->SetPayload<EventType::ConnectState>(std::move(state));
+		PublishEvent(event);
+	}
+
+	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	{
+		if(event->GetEventType() == EventType::ConnectState)
+		{
+			//call the special connection Event() function separately,
+			//	so it can keep track of upsteam demand
+			for(auto IOHandler_pair: Subscribers)
+			{
+				IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);
+			}
+		}
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(auto IOHandler_pair: Subscribers)
 		{
-			IOHandler_pair.second->Event(meas, index, Name, multi_callback);
+			IOHandler_pair.second->Event(event, Name, multi_callback);
 		}
 	}
 
