@@ -65,14 +65,14 @@ const char *conffile1 = R"001(
 	"StandAloneOutstation" : true,
 
 	// Maximum time to wait for MD3 Master responses to a command and number of times to retry a command.
-	"MD3CommandTimeoutmsec" : 4000,
+	"MD3CommandTimeoutmsec" : 3000,
 	"MD3CommandRetries" : 1,
 
-	// The magic points we use to pass through MD3 commands.
-	"TimeSetPoint" : {"Index" : 100000},
-	"SystemSignOnPoint" : {"Index" : 100001},
-	"FreezeResetCountersPoint"  : {"Index" : 100002},
-	"POMControlPoint" : {"Index" : 100003},
+	// The magic points we use to pass through MD3 commands. 64000 and up are the default values
+	"TimeSetPoint" : {"Index" : 60000},
+	"SystemSignOnPoint" : {"Index" : 60001},
+	"FreezeResetCountersPoint"  : {"Index" : 60002},
+	"POMControlPoint" : {"Index" : 60003},
 
 	// Master only PollGroups
 	// Cannot mix analog and binary points in a poll group. Group 1 is Binary, Group 2 is Analog in this example
@@ -106,7 +106,7 @@ const char *conffile2 = R"002(
 	"NewDigitalCommands" : true,
 
 	// The magic Analog point we use to pass through the MD3 time set command.
-	"TimeSetPoint" : {"Index" : 100000},
+	"TimeSetPoint" : {"Index" : 60000},
 	"StandAloneOutstation" : true,
 
 	// Maximum time to wait for MD3 Master responses to a command and number of times to retry a command.
@@ -1958,7 +1958,7 @@ TEST_CASE("Master - Analog")
 		// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
 		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
-		MD3MAPort->QueueMD3Command(sendcommandblock);
+		MD3MAPort->QueueMD3Command(sendcommandblock, nullptr);
 
 		Wait(IOS, 1);
 
@@ -2015,7 +2015,7 @@ TEST_CASE("Master - Analog")
 		// Same address and channels as above
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
 		Response = "Not Set";
-		MD3MAPort->QueueMD3Command(sendcommandblock);
+		MD3MAPort->QueueMD3Command(sendcommandblock, nullptr);
 		Wait(IOS, 1);
 
 		// We check the command, but it does not go anywhere, we inject the expected response below. This should stop a resend of the command due to timeout...
@@ -2078,7 +2078,7 @@ TEST_CASE("Master - Analog")
 		// Same address and channels as above
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
 		Response = "Not Set";
-		MD3MAPort->QueueMD3Command(sendcommandblock);
+		MD3MAPort->QueueMD3Command(sendcommandblock, nullptr);
 		Wait(IOS, 1);
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
@@ -2126,7 +2126,7 @@ TEST_CASE("Master - Analog")
 		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
 		Response = "Not Set";
-		MD3MAPort->QueueMD3Command(sendcommandblock);
+		MD3MAPort->QueueMD3Command(sendcommandblock, nullptr);
 		Wait(IOS, 1);
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
@@ -2195,47 +2195,103 @@ TEST_CASE("Master - Poll Tests")
 
 	Json::Value portoverride;
 	portoverride["Port"] = (Json::UInt64)1001;
+	portoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(portoverride);
 
 	START_IOS(1);
 
-	MD3MAPort->Subscribe(MD3OSPort, "TestLink"); // The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
+	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
+	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
 
-	// Hook the output function with a lambda
-	std::string Response = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	// Hook the output functions
+	std::string OSResponse = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
 
-	INFO("Time Set Poll Command");
+	std::string MAResponse = "Not Set";
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+
+	asio::streambuf OSwrite_buffer;
+	std::ostream OSoutput(&OSwrite_buffer);
+
+	asio::streambuf MAwrite_buffer;
+	std::ostream MAoutput(&MAwrite_buffer);
+
+
+/*
+      INFO("Time Set Poll Command");
+      {
+            // The config file has the timeset poll as group 2.
+            MD3MAPort->DoPoll(3);
+
+            Wait(IOS, 1);
+
+            // We check the command, but it does not go anywhere, we inject the expected response below.
+            // The value for the time will always be different...
+            REQUIRE(MAResponse[0] == 0x7c);
+            REQUIRE(MAResponse[1] == 0x2b);
+            REQUIRE(MAResponse.size() == 12);
+
+            // We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
+            MD3BlockData resp(MAResponse[0], MAResponse[1], MAResponse[2], MAResponse[3], true);
+            MD3BlockFn15StoM commandblock(resp); // Changes a few things in the block...
+
+            MAoutput << commandblock.ToBinaryString();
+
+            MAResponse = "Not Set";
+
+            MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
+
+            Wait(IOS, 1);
+
+            // Check there is no resend of the command - we must have got an OK packet.
+            REQUIRE(MAResponse == "Not Set");
+      }
+*/
+	INFO("Time Set TCP to OutStation to Master to TCP");
 	{
-		// The config file has the timeset poll as group 2.
-		MD3MAPort->DoPoll(3);
+		// So we post time change command to the outstation, which should then go to the Master, which should then send a timechange command out on TCP.
+		// If the Outstation is standalone, it will not wait for the ODC response.
+		// "TimeSetPoint" : {"Index" : 100000},
+		uint64_t currenttime = MD3Now(); // 0x1111222233334444;
 
-		Wait(IOS, 1);
+		// TimeChange command (Fn 43), Station 0x7C
+		MD3BlockFn43MtoS commandblock(0x7C, currenttime % 1000);
+		MD3BlockData datablock((uint32_t)(currenttime / 1000), true);
 
-		// We check the command, but it does not go anywhere, we inject the expected response below.
-		// The value for the time will always be different...
-		REQUIRE(Response[0] == 0x7c);
-		REQUIRE(Response[1] == 0x2b);
-		REQUIRE(Response.size() == 12);
+		std::string TimeChangeCommand = commandblock.ToBinaryString() + datablock.ToBinaryString();
 
-		// We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
-		MD3BlockData resp(Response[0], Response[1], Response[2], Response[3], true);
-		MD3BlockFn15StoM commandblock(resp); // Changes a few things in the block...
-		asio::streambuf write_buffer;
-		std::ostream output(&write_buffer);
-		output << commandblock.ToBinaryString();
+		OSoutput << TimeChangeCommand;
 
-		Response = "Not Set";
+		// Send the Command - but this ends up waiting for the ODC call to return, but we need to send in what the call is expecting..
+		// Need another thread dealing with the other port?
 
-		MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
+		// This will execute after InjectSimulatedTCPMessage??
+		IOS.post([&]()
+			{
+				// Now send correct response (simulated TCP) to Master,
+				// We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
+				MD3BlockFn15StoM OKcommandblock(commandblock); // Changes a few things in the block...
+				MAoutput << OKcommandblock.ToBinaryString();
 
-		Wait(IOS, 1);
+				Wait(IOS, 1);                                         // Must be sent after we send the command to the outstation
+				MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // This will also wait for completion?
+			});
 
-		// Check there is no resend of the command.
-		REQUIRE(Response == "Not Set");
+		MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer);
+		Wait(IOS, 4); // Outstation decodes message, sends ODC event, Master gets ODC event, sends out command on TCP.
+
+		// Check the Master port output on TCP - it should be an identical time change command??
+		REQUIRE(MAResponse == TimeChangeCommand);
+
+		// Now check we have an OK packet being sent by the OutStation.
+		REQUIRE(OSResponse[0] == (char)0xFC);
+		REQUIRE(OSResponse[1] == (char)0x0F); // OK Command
+		REQUIRE(OSResponse.size() == 6);
 	}
 
 	INFO("Analog Poll Test");

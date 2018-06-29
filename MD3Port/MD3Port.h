@@ -117,7 +117,7 @@ public:
 
 
 	// Public only for UnitTesting
-	void SendMD3Message(std::vector<MD3BlockData>& CompleteMD3Message);
+	void SendMD3Message(MD3Message_t& CompleteMD3Message);
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the MD3Connection.
 

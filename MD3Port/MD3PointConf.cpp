@@ -91,7 +91,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		TimeSetPoint.first = opendnp3::AnalogOutputDouble64(0); // Default to 0 - we know as unset - will never be used in operation.
 		TimeSetPoint.second = JSONRoot["TimeSetPoint"]["Index"].asUInt();
 	}
-	else
+	else if (TimeSetPoint.second == 0) // Not previously set
 	{
 		TimeSetPoint.first = opendnp3::AnalogOutputDouble64(0); // Default to 0 - we know as unset - will never be used in operation.
 		TimeSetPoint.second = 64000;
@@ -104,7 +104,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		SystemSignOnPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		SystemSignOnPoint.second = JSONRoot["SystemSignOnPoint"]["Index"].asUInt();
 	}
-	else
+	else if(SystemSignOnPoint.second == 0) // Not previously set
 	{
 		SystemSignOnPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		SystemSignOnPoint.second = 64001;
@@ -116,7 +116,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		FreezeResetCountersPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		FreezeResetCountersPoint.second = JSONRoot["FreezeResetCountersPoint"]["Index"].asUInt();
 	}
-	else
+	else if (FreezeResetCountersPoint.second == 0) // Not previously set
 	{
 		FreezeResetCountersPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		FreezeResetCountersPoint.second = 64002;
@@ -128,7 +128,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		POMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		POMControlPoint.second = JSONRoot["POMControlPoint"]["Index"].asUInt();
 	}
-	else
+	else if (POMControlPoint.second == 0)
 	{
 		POMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		POMControlPoint.second = 64003;
@@ -140,7 +140,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		DOMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
 	}
-	else
+	else if (DOMControlPoint.second == 0)
 	{
 		DOMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		DOMControlPoint.second = 64004;

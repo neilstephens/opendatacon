@@ -199,12 +199,12 @@ public:
 	std::map<uint32_t, MD3PollGroup> PollGroups;
 
 	// Time Set Point Configuration - this is a "special" point that is used to pass the time set command through ODC. Default to 100000
-	std::pair<AnalogOutputDouble64, uint32_t> TimeSetPoint;
+	std::pair<AnalogOutputDouble64, uint32_t> TimeSetPoint = std::make_pair(AnalogOutputDouble64(0), (uint32_t)0);
 	// System Sign On Configuration - this is a "special" point that is used to pass the systemsignon command through ODC. Default to 100001
-	std::pair<AnalogOutputInt32, uint32_t> SystemSignOnPoint;
-	std::pair<AnalogOutputInt32, uint32_t> FreezeResetCountersPoint;
-	std::pair<AnalogOutputInt32, uint32_t> POMControlPoint;
-	std::pair<AnalogOutputInt32, uint32_t> DOMControlPoint;
+	std::pair<AnalogOutputInt32, uint32_t> SystemSignOnPoint = std::make_pair(AnalogOutputInt32(0),(uint32_t)0);
+	std::pair<AnalogOutputInt32, uint32_t> FreezeResetCountersPoint = std::make_pair(AnalogOutputInt32(0), (uint32_t)0);
+	std::pair<AnalogOutputInt32, uint32_t> POMControlPoint = std::make_pair(AnalogOutputInt32(0), (uint32_t)0);
+	std::pair<AnalogOutputInt32, uint32_t> DOMControlPoint = std::make_pair(AnalogOutputInt32(0), (uint32_t)0);
 
 	// Use the OLD Digital Commands 7/8 or the NEW ones 9/10/11/12
 	bool NewDigitalCommands = true;

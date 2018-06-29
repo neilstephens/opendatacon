@@ -148,28 +148,43 @@ void MD3MasterPort::BuildOrRebuild()
 // If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
 // This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 // Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
-void MD3MasterPort::QueueMD3Command(const MasterCommandQueueItem &CompleteMD3Message)
+void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, SharedStatusCallback_t pStatusCallback)
 {
 	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post. Note the calling thread must be one of the io_service threads.... this changes our tests!
 		{
 			if (MasterCommandProtectedData.MasterCommandQueue.size() < MasterCommandProtectedData.MaxCommandQueueSize)
 			{
-			      MasterCommandProtectedData.MasterCommandQueue.push(CompleteMD3Message); // async
+			      MasterCommandProtectedData.MasterCommandQueue.push(MasterCommandQueueItem(CompleteMD3Message, pStatusCallback)); // async
 			}
 			else
-				LOGDEBUG("Tried to queue another MD3 Master Command when the command queue is full");
+			{
+			      LOGDEBUG("Tried to queue another MD3 Master Command when the command queue is full");
+			      PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED); // Failed...
+			}
 
 			// Will only send if we can - i.e. not currently processing a command
 			UnprotectedSendNextMasterCommand(false);
 		});
 }
 
-// Handle the many single block command messages better
-void MD3MasterPort::QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message)
+// Just schedule the callback, don't want to do it in a strand protected section.
+void MD3MasterPort::PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c)
 {
-	std::vector<MD3BlockData> CommandMD3Message;
+	if (pStatusCallback != nullptr)
+	{
+		pIOS->post([&, pStatusCallback, c]()
+			{
+				(*pStatusCallback)(c);
+			});
+	}
+}
+
+// Handle the many single block command messages better
+void MD3MasterPort::QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback)
+{
+	MD3Message_t CommandMD3Message;
 	CommandMD3Message.push_back(SingleBlockMD3Message);
-	QueueMD3Command(CommandMD3Message);
+	QueueMD3Command(CommandMD3Message, pStatusCallback);
 }
 // If a command is available in the queue, then send it.
 void MD3MasterPort::SendNextMasterCommand()
@@ -197,7 +212,12 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 			}
 			else
 			{
-				// Have had multiple retries fail, so mark everything as if we have lost comms!
+				// Have had multiple retries fail,
+
+				// Execute the callback with a fail code.
+				PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::UNDEFINED);
+
+				// so mark everything as if we have lost comms!
 				pIOS->post([&]()
 					{
 						SetAllPointsQualityToCommsLost(); // All the connected points need their quality set to comms lost
@@ -217,14 +237,14 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 			MasterCommandProtectedData.CurrentCommand = MasterCommandProtectedData.MasterCommandQueue.front();
 			MasterCommandProtectedData.MasterCommandQueue.pop();
 
-			MasterCommandProtectedData.CurrentFunctionCode = ((MD3BlockFormatted)MasterCommandProtectedData.CurrentCommand[0]).GetFunctionCode();
+			MasterCommandProtectedData.CurrentFunctionCode = ((MD3BlockFormatted)MasterCommandProtectedData.CurrentCommand.first[0]).GetFunctionCode();
 			LOGDEBUG("Sending next command :" + std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
 		}
 
 		// If either of the above situations need us to send a command, do so.
 		if (MasterCommandProtectedData.ProcessingMD3Command == true)
 		{
-			SendMD3Message(MasterCommandProtectedData.CurrentCommand); // This should be the only place this is called for the MD3Master...
+			SendMD3Message(MasterCommandProtectedData.CurrentCommand.first); // This should be the only place this is called for the MD3Master...
 
 			// Start an async timed callback for a timeout - cancelled if we receive a good response.
 			MasterCommandProtectedData.TimerExpireTime = std::chrono::milliseconds(MyPointConf()->MD3CommandTimeoutmsec);
@@ -269,7 +289,7 @@ void MD3MasterPort::ClearMD3CommandQueue()
 {
 	MasterCommandStrand->dispatch([&]()
 		{
-			std::vector<MD3BlockData> NextCommand;
+			MD3Message_t NextCommand;
 			while (!MasterCommandProtectedData.MasterCommandQueue.empty())
 			{
 			      MasterCommandProtectedData.MasterCommandQueue.pop();
@@ -289,7 +309,7 @@ void MD3MasterPort::ClearMD3CommandQueue()
 // but then the actual reply might be in the following message and we would never re-sync.
 // If we timeout on (some) commands, we can ask the OutStation to resend the last command response.
 // We would have to limit how many times we could do this without giving up.
-void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 {
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 
@@ -433,7 +453,10 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 			{
 			      MasterCommandProtectedData.CurrentCommandTimeoutTimer->cancel(); // Have to be careful the handler still might do something?
 			      MasterCommandProtectedData.ProcessingMD3Command = false;         // Only gets reset on success or timeout.
-			      UnprotectedSendNextMasterCommand(false);                         // We already have the strand, so don't need the wrapper here. Pass in that this is not a retry.
+
+			      // Execute the callback with a success code.
+			      PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::SUCCESS); // Does null check
+			      UnprotectedSendNextMasterCommand(false);                                                    // We already have the strand, so don't need the wrapper here. Pass in that this is not a retry.
 			}
 		});
 }
@@ -441,7 +464,7 @@ void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Mess
 // We have received data from an Analog command - could be  the result of Fn 5 or 6
 // Store the decoded data into the point lists. Counter scan comes back in an identical format
 // Return success or failure
-bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message)
+bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
 	uint8_t ModuleAddress = Header.GetModuleAddress();
 	uint8_t Channels = Header.GetChannels();
@@ -523,7 +546,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 // If there was a fault at the OutStation an Unconditional response will be sent instead.
 // If a channel is missing or in fault, the value will be 0, so it can still just be added to the value (even if it is 0x8000 - the fault value).
 // Return success or failure
-bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message)
+bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
 	uint8_t ModuleAddress = Header.GetModuleAddress();
 	uint8_t Channels = Header.GetChannels();
@@ -609,7 +632,7 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 }
 
 // We have received data from an Analog command - could be  the result of Fn 5 or 6
-bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message)
+bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
 	uint8_t ModuleAddress = Header.GetModuleAddress();
 	uint8_t Channels = Header.GetChannels();
@@ -671,7 +694,7 @@ bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, cons
 	return true;
 }
 
-bool MD3MasterPort::ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message)
+bool MD3MasterPort::ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
 	uint8_t ModuleAddress = Header.GetModuleAddress();
 	uint8_t Channels = Header.GetChannels();
@@ -811,7 +834,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 			int channels = 16; // Most we can get in one command
 			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL, ModuleAddress, channels, true);
 
-			QueueMD3Command(commandblock);
+			QueueMD3Command(commandblock,nullptr);
 		}
 		else
 		{
@@ -850,13 +873,18 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 		// Send a time set command to the OutStation, TimeChange command (Fn 43)
 		uint64_t currenttime = MD3Now(); //TODO: Timeset command is UTC or local time?
 
-		MD3BlockFn43MtoS commandblock(MyConf()->mAddrConf.OutstationAddr, currenttime % 1000);
-		MD3BlockData datablock((uint32_t)(currenttime / 1000), true);
-		MasterCommandQueueItem Cmd;
-		Cmd.push_back(commandblock);
-		Cmd.push_back(datablock);
-		QueueMD3Command(Cmd);
+		SendTimeDateChangeCommand(currenttime, nullptr);
 	}
+}
+
+void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttime, SharedStatusCallback_t pStatusCallback)
+{
+	MD3BlockFn43MtoS commandblock(MyConf()->mAddrConf.OutstationAddr, currenttime % 1000);
+	MD3BlockData datablock((uint32_t)(currenttime / 1000), true);
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+	Cmd.push_back(datablock);
+	QueueMD3Command(Cmd, pStatusCallback);
 }
 
 void MD3MasterPort::SetAllPointsQualityToCommsLost()
@@ -953,7 +981,7 @@ void MD3MasterPort::ConnectionEvent(ConnectState state, const std::string& Sende
 {
 	if (!enabled)
 	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
 
@@ -971,15 +999,15 @@ void MD3MasterPort::ConnectionEvent(ConnectState state, const std::string& Sende
 
 	}
 
-	(*pStatusCallback)(CommandStatus::SUCCESS);
+	PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
 }
 
 //Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
-void MD3MasterPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
+void MD3MasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
+void MD3MasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
+void MD3MasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
+void MD3MasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
+void MD3MasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
 
 
 // So we have received an event, which for the Master will result in a write to the Outstation, so the command is a Binary Output or Analog Output
@@ -991,133 +1019,64 @@ inline void MD3MasterPort::EventT(T& arCommand, uint16_t index, const std::strin
 {
 	if (!enabled)
 	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
 
-	// We now have to (most likely) send a command out to an outstation and wait for a response
-	// We can launch the command here, create a lamda to be called in the event of timeout or response.
-	// At that time we will call the callback function.
-	// For now we just return so whatever sent the ODC Event can get on with things. It will have set up the callback we will call when the time is right.
-	//	cmd_promise->set_value(WriteObject(arCommand, index));
-	/*
-	auto lambda = capture( std::move(cmd_promise),
-	[=]( std::unique_ptr<std::promise<CommandStatus>> & cmd_promise ) {
-	cmd_promise->set_value(WriteObject(arCommand, index));
-	} );
-	pIOS->post([&](){ lambda(); });
-	*/
-
-	// For now, do the callback anyway!
-	(*pStatusCallback)(CommandStatus::UNDEFINED);
-
-	return;
-}
-
-/*
-template<>
-CommandStatus MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index)
-{
-      if (
-            (command.functionCode == ControlCode::NUL) ||
-            (command.functionCode == ControlCode::UNDEFINED)
-            )
-      {
-            return CommandStatus::FORMAT_ERROR;
-      }
-
-      // MD3 function code 0x01 (read coil status)
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
-
-      int rc;
-      if (
-            (command.functionCode == ControlCode::LATCH_OFF) ||
-            (command.functionCode == ControlCode::TRIP_PULSE_ON)
-            )
-      {
-//		rc = MD3_write_bit(mb, index, false);
-      }
-      else
-      {
-            //ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
-//		rc = MD3_write_bit(mb, index, true);
-      }
-
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-//	if (rc == -1) return HandleWriteError(errno, "write bit");
-      return CommandStatus::SUCCESS;
+	// We now have to send a command out to an outstation, add the callback function pointer to the command and return.
+	// The callback will be called on timeout or success.
+	WriteObject(arCommand, index, pStatusCallback);
 }
 
 template<>
-CommandStatus MD3MasterPort::WriteObject(const AnalogOutputInt16& command, uint16_t index)
+void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
 {
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
-
-//	int rc = MD3_write_register(mb, index, command.value);
-
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-//	if (rc == -1) return HandleWriteError(errno, "write register");
-      return CommandStatus::SUCCESS;
+	// A DOM or POM point?
+	LOGDEBUG("Master received a DOM/POM ODC Change Command " + std::to_string(index));
+	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
 template<>
-CommandStatus MD3MasterPort::WriteObject(const AnalogOutputInt32& command, uint16_t index)
+void MD3MasterPort::WriteObject(const AnalogOutputInt16& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
 {
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
-
-//	int rc = MD3_write_register(mb, index, command.value);
-
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-//	if (rc == -1) return HandleWriteError(errno, "write register");
-      return CommandStatus::SUCCESS;
+	// AOM Command
+	LOGDEBUG("Master received a AOM ODC Change Command " + std::to_string(index));
+	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
 template<>
-CommandStatus MD3MasterPort::WriteObject(const AnalogOutputFloat32& command, uint16_t index)
+void MD3MasterPort::WriteObject(const AnalogOutputInt32& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
 {
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
-
-//	int rc = MD3_write_register(mb, index, command.value);
-
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-//	if (rc == -1) return HandleWriteError(errno, "write register");
-      return CommandStatus::SUCCESS;
+	// Other Magic point commands
+	LOGDEBUG("Master received a 32 bit magic point Command " + std::to_string(index));
+	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
 template<>
-CommandStatus MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, uint16_t index)
+void MD3MasterPort::WriteObject(const AnalogOutputFloat32& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
 {
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
-
-//	int rc = MD3_write_register(mb, index, command.value);
-
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-//	if (rc == -1) return HandleWriteError(errno, "write register");
-      return CommandStatus::SUCCESS;
+	LOGERROR("On Master AnalogOutputFloat32 Type is not implemented " + std::to_string(index));
+	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
-*/
 
+template<>
+void MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
+{
+	if (index == MyPointConf()->TimeSetPoint.second) // Is this out magic timeset point?
+	{
+		LOGDEBUG("Master received a Time Change command on the magic point through ODC " + std::to_string(index));
+		uint64_t currenttime = static_cast<uint64_t>(command.value);
 
+		SendTimeDateChangeCommand(currenttime, pStatusCallback);
+		return;
+	}
+	else
+	{
+		LOGDEBUG("Master received unknown AnalogOutputDouble64 ODC Event " + std::to_string(index));
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+		return;
+	}
+}
 
 
 

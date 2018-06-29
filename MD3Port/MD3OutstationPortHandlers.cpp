@@ -101,7 +101,7 @@ LOW_RES_EVENTS_LIST_SCAN = 60
 
 */
 
-void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 {
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 	assert(CompleteMD3Message.size() != 0);
@@ -354,7 +354,7 @@ void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterO
 }
 void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE functioncode, std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
 {
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
 	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, functioncode, ModuleAddress, Channels);
@@ -375,7 +375,7 @@ void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE funct
 }
 void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
 {
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
 	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_DELTA_SCAN, ModuleAddress, Channels);
@@ -397,7 +397,7 @@ void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t Station
 }
 void MD3OutstationPort::SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
 {
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
 	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_NO_CHANGE_REPLY, ModuleAddress, Channels, true);
@@ -413,7 +413,7 @@ void MD3OutstationPort::DoDigitalUnconditionalObs(MD3BlockFormatted &Header)
 {
 	// For this function, the channels field is actually the number of consecutive modules to return. We always return 16 channel bits.
 	// If there is an invalid module, we return a different block for that module.
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
 	MD3BlockFormatted FormattedBlock = MD3BlockFormatted(Header.GetStationAddress(), false, DIGITAL_UNCONDITIONAL_OBS, Header.GetModuleAddress(), Header.GetChannels());
@@ -435,7 +435,7 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
 
 	// For this function, the channels field is actually the number of consecutive modules to return. We always return 16 channel bits.
 	// If there is an invalid module, we return a different block for that module.
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	bool NoChange = true;
 	bool SomeChange = false;
@@ -468,7 +468,7 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
 }
 
 // Function 9
-void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have a separate queue of time tagged digital events. This method only processes that queue.
 	//
@@ -483,7 +483,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 	// Because there can be 3 different tyeps of 16 bit words in the response, including filler packets,
 	// we need to build the response as those words first, then convert to MD3Blocks - with a potential filler packet in the last word of the last block.
 
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 
 	if (Header.GetSequenceNumber() == LastHRERSequenceNumber)
@@ -608,7 +608,7 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 
 	// The return data blocks are the same as for Fn 7
 
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	bool NoChange = true;
 	bool SomeChange = false;
@@ -656,7 +656,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	//
 	// If we get another scan message (and nothing else changes) we will send the next block of changes and so on.
 
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
 	{
@@ -800,7 +800,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 // Function 12
 void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 {
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
 	{
@@ -981,7 +981,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 	}
 }
 // Fn 7,8
-void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3BlockData> &ResponseMD3Message)
+void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, MD3Message_t &ResponseMD3Message)
 {
 	std::vector<uint8_t> ModuleList;
 	BuildListOfModuleAddressesWithChanges(NumberOfDataBlocks, StartModuleAddress, forcesend, ModuleList);
@@ -990,7 +990,7 @@ void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int Star
 }
 
 // Fn 7, 8 and 10
-void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3BlockData> & ResponseMD3Message)
+void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, MD3Message_t & ResponseMD3Message)
 {
 	// For each module address, or the max we can send
 	for (int i = 0; (i < (int)ModuleList.size()) && (i < MaxNumberOfDataBlocks); i++)
@@ -1104,7 +1104,7 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 }
 
 // Think that POM stands for PULSE.
-void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// Seems we don’t have any POM control signals greater than 7 in the data I have seen??
@@ -1171,7 +1171,7 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3Bl
 }
 
 // DOM stands for DIGITAL.
-void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
@@ -1236,7 +1236,7 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3Bl
 }
 
 // AOM is ANALOG output control.
-void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
@@ -1306,7 +1306,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
 			// Need to send a response by echoing the Header, but with the StationAddress set to match our address. Direction station to master!
 			MD3BlockFn40 FormattedBlock(MyConf()->mAddrConf.OutstationAddr, false);
 
-			std::vector<MD3BlockData> ResponseMD3Message;
+			MD3Message_t ResponseMD3Message;
 			ResponseMD3Message.push_back(FormattedBlock);
 			SendMD3Message(ResponseMD3Message);
 		}
@@ -1322,7 +1322,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
 	}
 }
 // Function 43
-void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
@@ -1376,7 +1376,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3B
 	}
 }
 // Function 52
-void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, MD3Message_t &CompleteMD3Message)
 {
 	// Normally will be just one block and the reply will be one block, but can be more than one, and is contract dependent.
 	//
@@ -1393,7 +1393,7 @@ void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, std::vector<
 	}
 
 	//TODO: SJE don’t think the flag scan will be passed through ODC, will just mirror what we know about the outstation
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// Change the direction, set the flag data.
 	MD3BlockFormatted RetBlock(Header.GetStationAddress(), false, SYSTEM_FLAG_SCAN, 0,0);
@@ -1408,7 +1408,7 @@ void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, std::vector<
 void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
 {
 	// The Control OK block seems to return the originating message first block, but with the function code changed to 15
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// The MD3BlockFn15StoM does the changes we need for us.
 	MD3BlockFn15StoM FormattedBlock(Header);
@@ -1419,7 +1419,7 @@ void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
 void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
 {
 	// The Control rejected block seems to return the originating message first block, but with the function code changed to 30
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// The MD3BlockFn30StoM does the changes we need for us.
 	MD3BlockFn30StoM FormattedBlock(Header);

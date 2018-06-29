@@ -82,7 +82,7 @@ public:
 
 	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex, bool waitforresult);
 
-	void ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message);
+	void ProcessMD3Message(MD3Message_t &CompleteMD3Message);
 
 	// Analog
 	void DoAnalogUnconditional(MD3BlockFormatted &Header);
@@ -96,9 +96,9 @@ public:
 	void SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 
 	// Digital/Binary
-	void DoDigitalScan(MD3BlockFn11MtoS & Header);                                           // Fn 7
-	void DoDigitalChangeOnly(MD3BlockFormatted & Header);                                    // Fn 8
-	void DoDigitalHRER(MD3BlockFn9 & Header, std::vector<MD3BlockData>& CompleteMD3Message); // Fn 9
+	void DoDigitalScan(MD3BlockFn11MtoS & Header);                              // Fn 7
+	void DoDigitalChangeOnly(MD3BlockFormatted & Header);                       // Fn 8
+	void DoDigitalHRER(MD3BlockFn9 & Header, MD3Message_t& CompleteMD3Message); // Fn 9
 	void Fn9AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalCOSScan(MD3BlockFn10 & Header);               // Fn 10
 	void DoDigitalUnconditionalObs(MD3BlockFormatted & Header); // Fn 11
@@ -110,18 +110,18 @@ public:
 	int CountBinaryBlocksWithChanges();
 	int CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
 	void BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
-	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3BlockData> &ResponseMD3Message);
-	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3BlockData>& ResponseMD3Message);
+	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, MD3Message_t &ResponseMD3Message);
+	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, MD3Message_t& ResponseMD3Message);
 	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
 
 	void DoFreezeResetCounters(MD3BlockFn16MtoS & Header);
-	void DoPOMControl(MD3BlockFn17MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
-	void DoDOMControl(MD3BlockFn19MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
-	void DoAOMControl(MD3BlockFn23MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);
+	void DoPOMControl(MD3BlockFn17MtoS & Header, MD3Message_t& CompleteMD3Message);
+	void DoDOMControl(MD3BlockFn19MtoS & Header, MD3Message_t& CompleteMD3Message);
+	void DoAOMControl(MD3BlockFn23MtoS & Header, MD3Message_t& CompleteMD3Message);
 
 	void DoSystemSignOnControl(MD3BlockFn40 & Header);
-	void DoSetDateTime(MD3BlockFn43MtoS & Header, std::vector<MD3BlockData>& CompleteMD3Message);     // Fn 43
-	void DoSystemFlagScan(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message); // Fn 52
+	void DoSetDateTime(MD3BlockFn43MtoS & Header, MD3Message_t& CompleteMD3Message);     // Fn 43
+	void DoSystemFlagScan(MD3BlockFormatted & Header, MD3Message_t& CompleteMD3Message); // Fn 52
 
 	void SendControlOK(MD3BlockFormatted & Header);             // Fn 15
 	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
@@ -133,8 +133,8 @@ private:
 
 	int LastHRERSequenceNumber = 100;      // Used to remember the last HRER scan we sent, starts with an invalid value
 	int LastDigitalScanSequenceNumber = 0; // Used to remember the last digital scan we had
-	std::vector<MD3BlockData> LastDigitialScanResponseMD3Message;
-	std::vector<MD3BlockData> LastDigitialHRERResponseMD3Message;
+	MD3Message_t LastDigitialScanResponseMD3Message;
+	MD3Message_t LastDigitialHRERResponseMD3Message;
 };
 
 #endif

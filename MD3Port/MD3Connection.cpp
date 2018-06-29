@@ -146,22 +146,20 @@ MD3Connection::~MD3Connection()
 	Close();
 }
 
-// We dont need to know who is doing the writing. Just pass to the socket
+// We don't need to know who is doing the writing. Just pass to the socket
 void MD3Connection::Write(std::string &msg)
 {
 	pSockMan->Write(std::string(msg)); // Strange, it requires the std::string() constructor to be passed otherwise the templating fails.
 }
 
-// We need one read completion handler hooked to each address/port combination. This method is reentrant,
-// We do some basic MD3 block identification and procesing, enough to give us complete blocks and StationAddresses
+// We need one read completion handler hooked to each address/port combination. This method is re-entrant,
+// We do some basic MD3 block identification and processing, enough to give us complete blocks and StationAddresses
 void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 {
-	// We are currently assuming a whole complete packet will turn up in one unit. If not it will be difficult to do the packet decoding and multidrop routing.
+	// We are currently assuming a whole complete packet will turn up in one unit. If not it will be difficult to do the packet decoding and multi-drop routing.
 	// MD3 only has addressing information in the first block of the packet.
-
-	// We should have a multiple of 6 bytes. 5 data bytes and one padding byte for every MD3 block, then possibly mutiple blocks
+	// We should have a multiple of 6 bytes. 5 data bytes and one padding byte for every MD3 block, then possibly multiple blocks
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
-	static std::vector<MD3BlockData> MD3Message;
 
 	while (readbuf.size() >= MD3BlockArraySize)
 	{
@@ -219,7 +217,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 		readbuf.consume(readbuf.size());
 	}
 }
-void MD3Connection::RouteMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3Connection::RouteMD3Message(MD3Message_t &CompleteMD3Message)
 {
 	// Only passing in the variable to make unit testing simpler.
 	// We have a full set of MD3 message blocks from a minimum of 1.

@@ -135,7 +135,7 @@ void MD3Port::InjectSimulatedTCPMessage(buf_t&readbuf)
 }
 
 // The only method that sends to the TCP Socket
-void MD3Port::SendMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3Port::SendMD3Message(MD3Message_t &CompleteMD3Message)
 {
 	if (CompleteMD3Message.size() == 0)
 	{

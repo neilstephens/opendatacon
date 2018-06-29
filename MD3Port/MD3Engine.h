@@ -210,6 +210,9 @@ protected:
 	uint32_t data = 0;
 	uint8_t endbyte = 0;
 };
+
+typedef std::vector<MD3BlockData> MD3Message_t;
+
 class MD3BlockFormatted: public MD3BlockData
 {
 public:

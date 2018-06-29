@@ -36,7 +36,8 @@
 #include "MD3Engine.h"
 #include "MD3Port.h"
 
-typedef std::vector<MD3BlockData> MasterCommandQueueItem;
+// The command, and an ODC callback pointer - may be nullptr. We check for that
+typedef std::pair <MD3Message_t, SharedStatusCallback_t> MasterCommandQueueItem;
 
 // This class contains the MasterCommandQueue and management variables that all need to be protected using the MasterCommandStrand strand.
 // It has a queue of commands to be processed, as well as variables to manage where we are up to in processing the current command.
@@ -46,8 +47,8 @@ class MasterCommandData
 public:
 	unsigned int MaxCommandQueueSize = 20; //TODO: The maximum number of MD3 commands that can be in the master queue? Somewhat arbitrary??
 	std::queue<MasterCommandQueueItem> MasterCommandQueue;
-	std::vector<MD3BlockData> CurrentCommand; // Keep a copy of what has been sent to make retries easier.
-	uint8_t CurrentFunctionCode = 0;          // When we send a command, make sure the response we get is one we are waiting for.
+	MasterCommandQueueItem CurrentCommand; // Keep a copy of what has been sent to make retries easier.
+	uint8_t CurrentFunctionCode = 0;       // When we send a command, make sure the response we get is one we are waiting for.
 	bool ProcessingMD3Command = false;
 	std::chrono::milliseconds TimerExpireTime;
 	pTimer_t CurrentCommandTimeoutTimer = nullptr;
@@ -84,17 +85,22 @@ public:
 
 	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
+	template<class T> void WriteObject(const T& command, uint16_t index, SharedStatusCallback_t pStatusCallback);
+
 	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
 	// There is a time out lambda in UnprotectedSendNextMasterCommand which will queue the next command if we timeout.
 	// If the ProcessMD3Message callback gets the command it expects, it will send the next command in the queue.
 	// If the callback gets an error it will be ignored which will result in a timeout and the next command (or retry) being sent.
 	// This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 	// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
-	void QueueMD3Command(const MasterCommandQueueItem &CompleteMD3Message);
-	void QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message); // Handle the many single block command messages better
+	void QueueMD3Command(const MD3Message_t &CompleteMD3Message, SharedStatusCallback_t pStatusCallback);
+	void PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c);
+	void QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback); // Handle the many single block command messages better
 
 	//*** PUBLIC for unit tests only
 	void DoPoll(uint32_t pollgroup);
+
+	void SendTimeDateChangeCommand(const uint64_t &currenttime, SharedStatusCallback_t pStatusCallback);
 
 private:
 
@@ -104,14 +110,14 @@ private:
 	void SendNextMasterCommand();
 	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
 	void ClearMD3CommandQueue();
-	void ProcessMD3Message(std::vector<MD3BlockData>& CompleteMD3Message);
+	void ProcessMD3Message(MD3Message_t& CompleteMD3Message);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
-	bool ProcessAnalogUnconditionalReturn( MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
-	bool ProcessAnalogDeltaScanReturn( MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
-	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
+	bool ProcessAnalogUnconditionalReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
+	bool ProcessAnalogDeltaScanReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
+	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 
-	bool ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const std::vector<MD3BlockData>& CompleteMD3Message);
+	bool ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 
 	// Check that what we got is one that is expected for the current Function we are processing.
 	bool AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode);
