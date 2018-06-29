@@ -39,34 +39,41 @@ ModbusPointConf::ModbusPointConf(const std::string& FileName):
 	ProcessFile();
 }
 
-template<class T>
-T GetStartVal(const Json::Value& value);
+template<EventType T>
+std::shared_ptr<EventInfo> GetStartVal(const Json::Value& value);
 
 template<>
-Analog GetStartVal<Analog>(const Json::Value& value)
+std::shared_ptr<EventInfo> GetStartVal<EventType::Analog>(const Json::Value& value)
 {
-	Analog startval;
-
-	std::string start_val = value.asString();
-	if(start_val == "X")
-		return Analog(0,static_cast<uint8_t>(AnalogQuality::COMM_LOST));
-	else
-		return Analog(std::stod(start_val),static_cast<uint8_t>(AnalogQuality::ONLINE));
-}
-
-template<>
-Binary GetStartVal<Binary>(const Json::Value& value)
-{
-	Binary startval;
+	auto event = std::make_shared<EventInfo>(EventType::Analog);
 
 	if(value.asString() == "X")
-		return Binary(false,static_cast<uint8_t>(BinaryQuality::COMM_LOST));
+		event->SetQuality(QualityFlags::COMM_LOST);
 	else
-		return Binary(value.asBool(),static_cast<uint8_t>(BinaryQuality::ONLINE));
+	{
+		event->SetQuality(QualityFlags::ONLINE);
+		event->SetPayload<EventType::Analog>(std::stod(value.asString()));
+	}
+	return event;
 }
 
-template<class T>
-void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGroupCollection<T>& ReadGroup)
+template<>
+std::shared_ptr<EventInfo> GetStartVal<EventType::Binary>(const Json::Value& value)
+{
+	auto event = std::make_shared<EventInfo>(EventType::Binary);
+
+	if(value.asString() == "X")
+		event->SetQuality(QualityFlags::COMM_LOST);
+	else
+	{
+		event->SetQuality(QualityFlags::ONLINE);
+		event->SetPayload<EventType::Binary>(value.asBool());
+	}
+	return event;
+}
+
+template<EventType T>
+void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGroupCollection& ReadGroup)
 {
 	for(Json::ArrayIndex n = 0; n < Ranges.size(); ++n)
 	{
@@ -76,7 +83,7 @@ void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGrou
 			pollgroup = Ranges[n]["PollGroup"].asUInt();
 		}
 
-		T startval;
+		std::shared_ptr<const EventInfo> startval;
 		if(Ranges[n].isMember("StartVal"))
 		{
 			startval = GetStartVal<T>(Ranges[n]["StartVal"]);
@@ -114,13 +121,13 @@ void ModbusPointConf::ProcessElements(const Json::Value& JSONRoot)
 	if(!JSONRoot.isObject()) return;
 
 	if(JSONRoot.isMember("BitIndicies"))
-		ProcessReadGroup(JSONRoot["BitIndicies"], BitIndicies);
+		ProcessReadGroup<EventType::Binary>(JSONRoot["BitIndicies"], BitIndicies);
 	if(JSONRoot.isMember("InputBitIndicies"))
-		ProcessReadGroup(JSONRoot["InputBitIndicies"], InputBitIndicies);
+		ProcessReadGroup<EventType::Binary>(JSONRoot["InputBitIndicies"], InputBitIndicies);
 	if(JSONRoot.isMember("RegIndicies"))
-		ProcessReadGroup(JSONRoot["RegIndicies"], RegIndicies);
+		ProcessReadGroup<EventType::Analog>(JSONRoot["RegIndicies"], RegIndicies);
 	if(JSONRoot.isMember("InputRegIndicies"))
-		ProcessReadGroup(JSONRoot["InputRegIndicies"], InputRegIndicies);
+		ProcessReadGroup<EventType::Analog>(JSONRoot["InputRegIndicies"], InputRegIndicies);
 
 	if(JSONRoot.isMember("PollGroups"))
 	{

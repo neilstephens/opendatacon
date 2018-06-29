@@ -297,7 +297,9 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			uint16_t index = range.start;
 			for(uint16_t i = 0; i < rc; i++ )
 			{
-				PublishEvent(BinaryOutputStatus(((uint8_t*)modbus_read_buffer)[i] != false),index);
+				auto event = std::make_shared<EventInfo>(EventType::BinaryOutputStatus,index,Name,QualityFlags::ONLINE);
+				event->SetPayload<EventType::BinaryOutputStatus>(((uint8_t*)modbus_read_buffer)[i] != false);
+				PublishEvent(event);
 				++index;
 			}
 		}
@@ -326,7 +328,9 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			uint16_t index = range.start;
 			for(uint16_t i = 0; i < rc; i++ )
 			{
-				PublishEvent(Binary(((uint8_t*)modbus_read_buffer)[i] != false),index);
+				auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
+				event->SetPayload<EventType::Binary>(((uint8_t*)modbus_read_buffer)[i] != false);
+				PublishEvent(event);
 				++index;
 			}
 		}
@@ -355,7 +359,10 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			uint16_t index = range.start;
 			for(uint16_t i = 0; i < rc; i++ )
 			{
-				PublishEvent(AnalogOutputInt16(((uint16_t*)modbus_read_buffer)[i]),index);
+				auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16,index,Name,QualityFlags::ONLINE);
+				auto payload = AO16(((uint16_t*)modbus_read_buffer)[i],eCommandStatus::SUCCESS);
+				event->SetPayload<EventType::AnalogOutputInt16>(std::move(payload));
+				PublishEvent(event);
 				++index;
 			}
 		}
@@ -384,7 +391,9 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup)
 			uint16_t index = range.start;
 			for(uint16_t i = 0; i < rc; i++ )
 			{
-				PublishEvent(Analog(((uint16_t*)modbus_read_buffer)[i]),index);
+				auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
+				event->SetPayload<EventType::Analog>(((uint16_t*)modbus_read_buffer)[i]);
+				PublishEvent(event);
 				++index;
 			}
 		}
@@ -421,10 +430,19 @@ void ModbusMasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t ind
 //	(*pStatusCallback)(CommandStatus::SUCCESS);
 //}
 
-ModbusReadGroup<Binary>* ModbusMasterPort::GetRange(uint16_t index)
+template <EventType t>
+ModbusReadGroup *ModbusMasterPort::GetRange(uint16_t index)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
-	for(auto& range : pConf->pPointConf->BitIndicies)
+	ModbusReadGroupCollection collection;
+	switch(t)
+	{
+		case EventType::Analog:
+			collection = pConf->pPointConf->RegIndicies; break;
+		case EventType::Binary:
+			collection = pConf->pPointConf->BitIndicies; break;
+	}
+	for(auto& range : collection)
 	{
 		if ((index >= range.start) && (index < range.start + range.count))
 			return &range;
@@ -432,25 +450,24 @@ ModbusReadGroup<Binary>* ModbusMasterPort::GetRange(uint16_t index)
 	return nullptr;
 }
 
-template<>
-CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const eControlRelayOutputBlock& command, uint16_t index)
 {
 	if (
-		(command.functionCode == ControlCode::NUL) ||
-		(command.functionCode == ControlCode::UNDEFINED)
+		(command.functionCode == eControlCode::NUL) ||
+		(command.functionCode == eControlCode::UNDEFINED)
 		)
 	{
-		return CommandStatus::FORMAT_ERROR;
+		return CommandStatus::NOT_SUPPORTED;
 	}
 
 	// Modbus function code 0x01 (read coil status)
-	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
-	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
+	ModbusReadGroup* TargetRange = GetRange<EventType::Binary>(index);
+	if (TargetRange == nullptr) return CommandStatus::NOT_SUPPORTED;
 
 	int rc;
 	if (
-		(command.functionCode == ControlCode::LATCH_OFF) ||
-		(command.functionCode == ControlCode::TRIP_PULSE_ON)
+		(command.functionCode == eControlCode::LATCH_OFF) ||
+		(command.functionCode == eControlCode::TRIP_PULSE_ON)
 		)
 	{
 		rc = modbus_write_bit(mb, index, false);
@@ -469,13 +486,12 @@ CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& comma
 	return CommandStatus::SUCCESS;
 }
 
-template<>
-CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputInt16& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const int16_t output, uint16_t index)
 {
-	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
-	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
+	ModbusReadGroup* TargetRange = GetRange<EventType::Analog>(index);
+	if (TargetRange == nullptr) return CommandStatus::NOT_SUPPORTED;
 
-	int rc = modbus_write_register(mb, index, command.value);
+	int rc = modbus_write_register(mb, index, output);
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
@@ -485,13 +501,19 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputInt16& command, ui
 	return CommandStatus::SUCCESS;
 }
 
-template<>
-CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputInt32& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const int32_t output, uint16_t index)
 {
-	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
-	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
+	ModbusReadGroup* TargetRange = GetRange<EventType::Analog>(index);
+	if (TargetRange == nullptr) return CommandStatus::NOT_SUPPORTED;
 
-	int rc = modbus_write_register(mb, index, command.value);
+	if(output > std::numeric_limits<int16_t>::max() || output < std::numeric_limits<int16_t>::min())
+	{
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("Analog overrange for 16-bit modbus write to index {}",index);
+		return CommandStatus::OUT_OF_RANGE;
+	}
+
+	int rc = modbus_write_register(mb, index, static_cast<int16_t>(output));
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
@@ -501,13 +523,22 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputInt32& command, ui
 	return CommandStatus::SUCCESS;
 }
 
-template<>
-CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputFloat32& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const double output, uint16_t index)
 {
-	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
-	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
+	ModbusReadGroup* TargetRange = GetRange<EventType::Analog>(index);
+	if (TargetRange == nullptr) return CommandStatus::NOT_SUPPORTED;
 
-	int rc = modbus_write_register(mb, index, command.value);
+	//TODO: implement scaling in the config - hard code for now:
+	auto scaled_float = output * 100;
+	if(scaled_float > std::numeric_limits<int16_t>::max() || scaled_float < std::numeric_limits<int16_t>::min())
+	{
+		if(auto log = spdlog::get("ModbusPort"))
+			log->error("Scaled float overrange for 16-bit modbus write to index {}",index);
+		return CommandStatus::OUT_OF_RANGE;
+	}
+
+	uint16_t scaled_output = static_cast<int16_t>(scaled_float);
+	int rc = modbus_write_register(mb, index, scaled_output);
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
@@ -516,25 +547,12 @@ CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputFloat32& command, 
 	if (rc == -1) return HandleWriteError(errno, "write register");
 	return CommandStatus::SUCCESS;
 }
-
-template<>
-CommandStatus ModbusMasterPort::WriteObject(const AnalogOutputDouble64& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(const float output, uint16_t index)
 {
-	ModbusReadGroup<Binary>* TargetRange = GetRange(index);
-	if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
-
-	int rc = modbus_write_register(mb, index, command.value);
-
-	// If the index is part of a non-zero pollgroup, queue a poll task for the group
-	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-	if (rc == -1) return HandleWriteError(errno, "write register");
-	return CommandStatus::SUCCESS;
+	return WriteObject(static_cast<double>(output),index);
 }
 
-template<typename T>
-inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
 	{
@@ -542,7 +560,32 @@ inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::st
 		return;
 	}
 
-	(*pStatusCallback)(WriteObject(arCommand, index));
+	switch(event->GetEventType())
+	{
+		case EventType::ControlRelayOutputBlock:
+			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(),
+				event->GetIndex()));
+		case EventType::AnalogOutputInt16:
+			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first,
+				event->GetIndex()));
+		case EventType::AnalogOutputInt32:
+			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first,
+				event->GetIndex()));
+		case EventType::AnalogOutputFloat32:
+			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first,
+				event->GetIndex()));
+		case EventType::AnalogOutputDouble64:
+			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first,
+				event->GetIndex()));
+		default:
+			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+	}
+}
+
+template<typename T>
+inline void ModbusMasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
 
 
