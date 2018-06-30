@@ -27,7 +27,6 @@
 #include <opendnp3/app/ClassField.h>
 #include <opendnp3/app/MeasurementTypes.h>
 #include "DNP3MasterPort.h"
-#include "ChannelStateSubscriber.h"
 #include <array>
 #include <asiopal/UTCTimeSource.h>
 #include <spdlog/spdlog.h>
@@ -36,10 +35,7 @@
 
 
 DNP3MasterPort::~DNP3MasterPort()
-{
-	//pMaster->Shutdown();
-	ChannelStateSubscriber::Unsubscribe(this);
-}
+{}
 
 void DNP3MasterPort::Enable()
 {
@@ -79,7 +75,7 @@ void DNP3MasterPort::PortUp()
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	// Update the comms state point if configured
-	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
+	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		if(auto log = spdlog::get("DNP3Port"))
 			log->debug("{}: Updating comms state point to good.", Name);
@@ -112,7 +108,7 @@ void DNP3MasterPort::PortDown()
 	}
 
 	// Update the comms state point if configured
-	if (pConf->pPointConf->mCommsPoint.first.quality & static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE))
+	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		if(auto log = spdlog::get("DNP3Port"))
 			log->debug("{}: Setting comms point to failed.", Name);
@@ -201,7 +197,7 @@ void DNP3MasterPort::BuildOrRebuild()
 		return;
 	}
 
-	opendnp3::MasterStackConfig StackConfig;
+	asiodnp3::MasterStackConfig StackConfig;
 
 	// Link layer configuration
 	StackConfig.link.LocalAddr = pConf->mAddrConf.MasterAddr;
@@ -216,15 +212,17 @@ void DNP3MasterPort::BuildOrRebuild()
 
 	// Master station configuration
 	StackConfig.master.responseTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->MasterResponseTimeoutms);
-	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ? opendnp3::TimeSyncMode::SerialTimeSync : opendnp3::TimeSyncMode::None;
+	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ? opendnp3::TimeSyncMode::NonLAN : opendnp3::TimeSyncMode::None;
 	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
 	StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask(); //TODO: report/investigate bug - doesn't recognise response to integrity scan if not ALL_CLASSES
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
-	pMaster = pChannel->AddMaster(Name.c_str(), *this, *this, StackConfig);
-	ChannelStateSubscriber::Subscribe(this,pChannel);
+	auto ISOEHandle = std::static_pointer_cast<opendnp3::ISOEHandler>(shared_from_this());
+	auto MasterApp = std::static_pointer_cast<opendnp3::IMasterApplication>(shared_from_this());
+	pMaster = pChannel->AddMaster(Name.c_str(), ISOEHandle, MasterApp, StackConfig);
+
 	if (pMaster == nullptr)
 	{
 		if(auto log = spdlog::get("DNP3Port"))
@@ -234,15 +232,15 @@ void DNP3MasterPort::BuildOrRebuild()
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems));
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), openpal::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems));
 	else
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField::ALL_CLASSES, openpal::TimeDuration::Minutes(600000000)); //ten million hours
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), openpal::TimeDuration::Minutes(600000000)); //ten million hours
 	if(pConf->pPointConf->EventClass1ScanRatems > 0)
-		pMaster->AddClassScan(opendnp3::ClassField::CLASS_1, openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems));
+		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class1), openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems));
 	if(pConf->pPointConf->EventClass2ScanRatems > 0)
-		pMaster->AddClassScan(opendnp3::ClassField::CLASS_2, openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass2ScanRatems));
+		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class2), openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass2ScanRatems));
 	if(pConf->pPointConf->EventClass3ScanRatems > 0)
-		pMaster->AddClassScan(opendnp3::ClassField::CLASS_3, openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass3ScanRatems));
+		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class3), openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass3ScanRatems));
 }
 
 // Called by OpenDNP3 Thread Pool
@@ -276,6 +274,14 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 		});
 }
 
+void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::DNPTime>& values)
+{
+	values.ForeachItem([](const opendnp3::DNPTime time)
+		{
+			//TODO: master recieved time...
+		});
+}
+
 void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	// If the port is disabled, fail the command
@@ -295,7 +301,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			if(auto log = spdlog::get("DNP3Port"))
 				log->info("{}: Upstream port enabled, performing integrity scan.", Name);
 
-			IntegrityScan.Demand();
+			IntegrityScan->Demand();
 		}
 
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -421,23 +427,34 @@ const Json::Value DNP3MasterPort::GetStatistics() const
 
 	if (pChannel != nullptr)
 	{
-		auto ChanStats = this->pChannel->GetChannelStatistics();
-		event["numCrcError"] = ChanStats.numCrcError;             /// Number of frames discared due to CRC errors
-		event["numLinkFrameTx"] = ChanStats.numLinkFrameTx;       /// Number of frames transmitted
-		event["numLinkFrameRx"] = ChanStats.numLinkFrameRx;       /// Number of frames received
-		event["numBadLinkFrameRx"] = ChanStats.numBadLinkFrameRx; /// Number of frames detected with bad / malformed contents
-		event["numBytesRx"] = ChanStats.numBytesRx;
-		event["numBytesTx"] = ChanStats.numBytesTx;
-		event["numClose"] = ChanStats.numClose;
-		event["numOpen"] = ChanStats.numOpen;
-		event["numOpenFail"] = ChanStats.numOpenFail;
+		auto ChanStats = this->pChannel->GetStatistics();
+		event["parser"]["numHeaderCrcError"] = ChanStats.parser.numHeaderCrcError;
+		event["parser"]["numBodyCrcError"] = ChanStats.parser.numBodyCrcError;
+		event["parser"]["numLinkFrameRx"] = ChanStats.parser.numLinkFrameRx;
+		event["parser"]["numBadLength"] = ChanStats.parser.numBadLength;
+		event["parser"]["numBadFunctionCode"] = ChanStats.parser.numBadFunctionCode;
+		event["parser"]["numBadFCV"] = ChanStats.parser.numBadFCV;
+		event["parser"]["numBadFCB"] = ChanStats.parser.numBadFCB;
+		event["channel"]["numOpen"] = ChanStats.channel.numOpen;
+		event["channel"]["numOpenFail"] = ChanStats.channel.numOpenFail;
+		event["channel"]["numClose"] = ChanStats.channel.numClose;
+		event["channel"]["numBytesRx"] = ChanStats.channel.numBytesRx;
+		event["channel"]["numBytesTx"] = ChanStats.channel.numBytesTx;
+		event["channel"]["numLinkFrameTx"] = ChanStats.channel.numLinkFrameTx;
 	}
 	if (pMaster != nullptr)
 	{
 		auto StackStats = this->pMaster->GetStackStatistics();
-		event["numTransportErrorRx"] = StackStats.numTransportErrorRx;
-		event["numTransportRx"] = StackStats.numTransportRx;
-		event["numTransportTx"] = StackStats.numTransportTx;
+		event["link"]["numBadMasterBit"] = StackStats.link.numBadMasterBit;
+		event["link"]["numUnexpectedFrame"] = StackStats.link.numUnexpectedFrame;
+		event["link"]["numUnknownDestination"] = StackStats.link.numUnknownDestination;
+		event["link"]["numUnknownSource"] = StackStats.link.numUnknownSource;
+		event["transport"]["numTransportBufferOverflow"] = StackStats.transport.rx.numTransportBufferOverflow;
+		event["transport"]["numTransportDiscard"] = StackStats.transport.rx.numTransportDiscard;
+		event["transport"]["numTransportErrorRx"] = StackStats.transport.rx.numTransportErrorRx;
+		event["transport"]["numTransportIgnore"] = StackStats.transport.rx.numTransportIgnore;
+		event["transport"]["numTransportRx"] = StackStats.transport.rx.numTransportRx;
+		event["transport"]["numTransportTx"] = StackStats.transport.tx.numTransportTx;
 	}
 
 	return event;

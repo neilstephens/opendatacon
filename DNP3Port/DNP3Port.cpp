@@ -23,15 +23,16 @@
  *  Created on: 18/07/2014
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+
+
+#include <openpal/logging/LogLevels.h>
+#include <opendnp3/gen/Parity.h>
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
-#include <openpal/logging/LogLevels.h>
+#include "ChannelStateSubscriber.h"
 
-std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::Channels;
-
-std::atomic_flag DNP3Port::log_subscribed = ATOMIC_FLAG_INIT;
-DNP3Log2spdlog DNP3Port::DNP3LogHandler;
-asiodnp3::DNP3Manager DNP3Port::IOMgr(std::thread::hardware_concurrency());
+std::unordered_map<std::string, std::shared_ptr<asiodnp3::IChannel>> DNP3Port::Channels;
+asiodnp3::DNP3Manager DNP3Port::IOMgr(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>());
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -40,8 +41,6 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	link_dead(true),
 	channel_dead(true)
 {
-	if(!log_subscribed.test_and_set(std::memory_order_acquire))
-		IOMgr.AddLogSubscriber(DNP3LogHandler);
 	//the creation of a new DNP3PortConf will get the point details
 	pConf.reset(new DNP3PortConf(ConfFilename, ConfOverrides));
 
@@ -50,9 +49,9 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 }
 
 // Called by OpenDNP3 Thread Pool
-void DNP3Port::StateListener(ChannelState state)
+void DNP3Port::StateListener(opendnp3::ChannelState state)
 {
-	if(state != ChannelState::OPEN)
+	if(state != opendnp3::ChannelState::OPEN)
 	{
 		channel_dead = true;
 		OnLinkDown();
@@ -119,11 +118,11 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		if(JSONRoot.isMember("Parity"))
 		{
 			if(JSONRoot["Parity"].asString() == "EVEN")
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::EVEN;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = opendnp3::Parity::Even;
 			else if(JSONRoot["Parity"].asString() == "ODD")
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::ODD;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = opendnp3::Parity::Odd;
 			else if(JSONRoot["Parity"].asString() == "NONE")
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::NONE;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = opendnp3::Parity::None;
 			else
 			{
 				if(auto log = spdlog::get("DNP3Port"))
@@ -135,13 +134,13 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		if(JSONRoot.isMember("StopBits"))
 		{
 			if(JSONRoot["StopBits"].asFloat() == 0)
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::NONE;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = opendnp3::StopBits::None;
 			else if(JSONRoot["StopBits"].asFloat() == 1)
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::ONE;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = opendnp3::StopBits::One;
 			else if(JSONRoot["StopBits"].asFloat() == 1.5)
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::ONE_POINT_FIVE;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = opendnp3::StopBits::OnePointFive;
 			else if(JSONRoot["StopBits"].asFloat() == 2)
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::TWO;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = opendnp3::StopBits::Two;
 			else
 			{
 				if(auto log = spdlog::get("DNP3Port"))
@@ -197,7 +196,30 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 
 }
 
-asiodnp3::IChannel* DNP3Port::GetChannel()
+class ChannelListener: public asiodnp3::IChannelListener
+{
+public:
+	ChannelListener(const std::string& ChanID_, DNP3Port* pPort_):
+		ChanID(ChanID_),
+		pPort(pPort_)
+	{
+		ChannelStateSubscriber::Subscribe(pPort,ChanID);
+	}
+	~ChannelListener()
+	{
+		ChannelStateSubscriber::Unsubscribe(pPort,ChanID);
+	}
+	//Receive callbacks for state transitions on the channels from opendnp3
+	void OnStateChange(opendnp3::ChannelState state) override
+	{
+		ChannelStateSubscriber::StateListener(ChanID,state);
+	}
+private:
+	std::string ChanID;
+	DNP3Port* pPort;
+};
+
+std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -217,13 +239,14 @@ asiodnp3::IChannel* DNP3Port::GetChannel()
 	//create a new channel if needed
 	if(!Channels.count(ChannelID))
 	{
+		auto listener = std::make_shared<ChannelListener>(ChannelID,this);
 		if(isSerial)
 		{
 			Channels[ChannelID] = IOMgr.AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
-				opendnp3::ChannelRetry(
+				asiopal::ChannelRetry(
 					openpal::TimeDuration::Milliseconds(500),
 					openpal::TimeDuration::Milliseconds(5000)),
-				pConf->mAddrConf.SerialSettings);
+				pConf->mAddrConf.SerialSettings,listener);
 		}
 		else
 		{
@@ -231,21 +254,19 @@ asiodnp3::IChannel* DNP3Port::GetChannel()
 			{
 				case TCPClientServer::SERVER:
 					Channels[ChannelID] = IOMgr.AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
-					opendnp3::ChannelRetry(
-						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMinms),
-						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMaxms)),
+					pConf->pPointConf->ServerAcceptMode,
 					pConf->mAddrConf.IP,
-					pConf->mAddrConf.Port);
+					pConf->mAddrConf.Port,listener);
 					break;
 
 				case TCPClientServer::CLIENT:
 					Channels[ChannelID] = IOMgr.AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
-					opendnp3::ChannelRetry(
+					asiopal::ChannelRetry(
 						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
 						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
 					pConf->mAddrConf.IP,
 					"0.0.0.0",
-					pConf->mAddrConf.Port);
+					pConf->mAddrConf.Port,listener);
 					break;
 
 				default:

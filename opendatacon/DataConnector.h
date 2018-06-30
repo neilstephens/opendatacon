@@ -28,7 +28,6 @@
 #define DATACONNECTOR_H_
 
 #include <opendatacon/IOHandler.h>
-#include <opendatacon/IOManager.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/Transform.h>
 

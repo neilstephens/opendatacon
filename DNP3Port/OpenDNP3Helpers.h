@@ -29,6 +29,7 @@
 #include <string>
 
 #include <opendnp3/app/MeasurementTypes.h>
+#include <opendnp3/app/MeasurementInfo.h>
 #include <openpal/container/ArrayView.h>
 
 /*
@@ -93,12 +94,12 @@ T UpdateQuality(opendnp3::IDatabase& database, uint8_t qual, uint16_t index)
         return meas;
 }*/
 
-opendnp3::Binary::StaticVariation StringToStaticBinaryResponse(const std::string& str);
-opendnp3::Analog::StaticVariation StringToStaticAnalogResponse(const std::string& str);
-opendnp3::Counter::StaticVariation StringToStaticCounterResponse(const std::string& str);
-opendnp3::Binary::EventVariation StringToEventBinaryResponse(const std::string& str);
-opendnp3::Analog::EventVariation StringToEventAnalogResponse(const std::string& str);
-opendnp3::Counter::EventVariation StringToEventCounterResponse(const std::string& str);
+opendnp3::StaticBinaryVariation StringToStaticBinaryResponse(const std::string& str);
+opendnp3::StaticAnalogVariation StringToStaticAnalogResponse(const std::string& str);
+opendnp3::StaticCounterVariation StringToStaticCounterResponse(const std::string& str);
+opendnp3::EventBinaryVariation StringToEventBinaryResponse(const std::string& str);
+opendnp3::EventAnalogVariation StringToEventAnalogResponse(const std::string& str);
+opendnp3::EventCounterVariation StringToEventCounterResponse(const std::string& str);
 
 template <class ValueType, class IndexType>
 class ArrayViewIterator

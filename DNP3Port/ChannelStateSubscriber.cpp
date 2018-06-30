@@ -27,30 +27,22 @@
 #include "ChannelStateSubscriber.h"
 #include <utility>
 
-std::multimap<asiodnp3::IChannel*, DNP3Port*> ChannelStateSubscriber::SubscriberMap;
+std::multimap<std::string, DNP3Port*> ChannelStateSubscriber::SubscriberMap;
 std::mutex ChannelStateSubscriber::MapMutex;
 
-void ChannelStateSubscriber::Subscribe(DNP3Port* pPort, asiodnp3::IChannel* pChan)
+void ChannelStateSubscriber::Subscribe(DNP3Port* pPort, std::string ChanID)
 {
 	std::lock_guard<std::mutex> lock(MapMutex);
-	if(SubscriberMap.count(pChan) == 0)
-	{
-		pChan->AddStateListener([pChan](ChannelState state)
-			{
-				ChannelStateSubscriber::StateListener(pChan,state);
-			});
-	}
-	SubscriberMap.insert({pChan,pPort});
+	SubscriberMap.insert({std::move(ChanID),pPort});
 }
-void ChannelStateSubscriber::Unsubscribe(DNP3Port* pPort, asiodnp3::IChannel* pChan)
+void ChannelStateSubscriber::Unsubscribe(DNP3Port* pPort, std::string ChanID)
 {
 	std::lock_guard<std::mutex> lock(MapMutex);
 	if(SubscriberMap.empty())
 		return;
 
 	auto bounds = std::make_pair(SubscriberMap.begin(),SubscriberMap.end());
-	if(pChan != nullptr)
-		bounds = SubscriberMap.equal_range(pChan);
+	bounds = SubscriberMap.equal_range(ChanID);
 	for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; /*advance inside loop*/)
 	{
 		if((*aMatch_it).second == pPort)
@@ -63,10 +55,10 @@ void ChannelStateSubscriber::Unsubscribe(DNP3Port* pPort, asiodnp3::IChannel* pC
 		}
 	}
 }
-void ChannelStateSubscriber::StateListener(asiodnp3::IChannel* pChan, ChannelState state)
+void ChannelStateSubscriber::StateListener(const std::string& ChanID, opendnp3::ChannelState state)
 {
 	std::lock_guard<std::mutex> lock(MapMutex);
-	auto bounds = SubscriberMap.equal_range(pChan);
+	auto bounds = SubscriberMap.equal_range(ChanID);
 	for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 	{
 		(*aMatch_it).second->StateListener(state);

@@ -34,13 +34,15 @@
 class ChannelStateSubscriber
 {
 public:
-	static void Subscribe(DNP3Port* pPort, asiodnp3::IChannel* pChan);
-	static void Unsubscribe(DNP3Port* pPort, asiodnp3::IChannel* pChan = nullptr);
-	static void StateListener(asiodnp3::IChannel* pChan, ChannelState state);
+	static void Subscribe(DNP3Port* pPort, std::string ChanID);
+	static void Unsubscribe(DNP3Port* pPort, std::string ChanID);
+	static void StateListener(const std::string& ChanID, opendnp3::ChannelState state);
 
 private:
 	ChannelStateSubscriber(){}
-	static std::multimap<asiodnp3::IChannel*, DNP3Port*> SubscriberMap;
+	static std::multimap<std::string, DNP3Port*> SubscriberMap;
+
+	//FIXME: replace with a strand
 	static std::mutex MapMutex;
 };
 

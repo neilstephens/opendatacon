@@ -27,8 +27,11 @@
 #ifndef DNP3PORT_H_
 #define DNP3PORT_H_
 
+#include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendnp3/gen/LinkStatus.h>
+#include <opendnp3/gen/ChannelState.h>
+#include <asiodnp3/DNP3Manager.h>
 #include "DNP3PortConf.h"
 #include "DNP3Log2spdlog.h"
 
@@ -44,7 +47,7 @@ public:
 	void Disable() override =0;
 	void BuildOrRebuild() override =0;
 
-	void StateListener(ChannelState state);
+	void StateListener(opendnp3::ChannelState state);
 
 	//Override DataPort for UI
 	const Json::Value GetStatus() const override;
@@ -54,21 +57,19 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 protected:
-	asiodnp3::IChannel* GetChannel();
+	std::shared_ptr<asiodnp3::IChannel> GetChannel();
 
-	asiodnp3::IChannel* pChannel;
+	std::shared_ptr<asiodnp3::IChannel> pChannel;
 	opendnp3::LinkStatus status;
 	bool link_dead;
 	bool channel_dead;
 
-	static std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
+	static std::unordered_map<std::string, std::shared_ptr<asiodnp3::IChannel>> Channels;
 
 	virtual void OnLinkDown()=0;
 	virtual TCPClientServer ClientOrServer()=0;
 
 private:
-	static std::atomic_flag log_subscribed;
-	static DNP3Log2spdlog DNP3LogHandler;
 	static asiodnp3::DNP3Manager IOMgr;
 };
 

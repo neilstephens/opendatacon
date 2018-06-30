@@ -32,7 +32,8 @@
 
 #include "DNP3Port.h"
 
-class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication
+class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication,
+	public std::enable_shared_from_this<DNP3OutstationPort>
 {
 public:
 	DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
@@ -78,11 +79,11 @@ protected:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 private:
-	asiodnp3::IOutstation* pOutstation;
+	std::shared_ptr<asiodnp3::IOutstation> pOutstation;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
 	template<typename T> void EventT(T meas, uint16_t index);
-	template<typename T, typename Q> void EventQ(Q qual, uint16_t index);
+	template<typename T, typename Q> void EventQ(Q qual, uint16_t index, opendnp3::FlagsType FT);
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);

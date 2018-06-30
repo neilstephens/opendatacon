@@ -29,13 +29,11 @@
 
 #include "DataPortConf.h"
 #include "IOHandler.h"
-#include "IOManager.h"
 #include "ConfigParser.h"
 #include "IUIResponder.h"
 
 namespace odc
 {
-typedef opendnp3::ChannelState ChannelState;
 
 class DataPort: public IOHandler, public ConfigParser
 {

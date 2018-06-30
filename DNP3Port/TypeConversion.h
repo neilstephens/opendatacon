@@ -31,7 +31,7 @@
 #include <opendnp3/app/BinaryCommandEvent.h>
 #include <opendnp3/app/AnalogCommandEvent.h>
 #include <opendnp3/app/OctetString.h>
-#include <opendnp3/app/TimeAndInterval.h>
+#include <opendnp3/app/DNPTime.h>
 #include <opendnp3/app/SecurityStat.h>
 #include <opendatacon/IOTypes.h>
 

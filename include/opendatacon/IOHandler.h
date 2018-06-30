@@ -49,7 +49,7 @@ public:
 	//Connection events:
 	virtual void Event(ConnectState state, const std::string& SenderName) = 0;
 
-	//new Event type to decouple from the opendnp3 types - might eventually replace all above Event()s
+	//Event events
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	virtual void Enable()=0;

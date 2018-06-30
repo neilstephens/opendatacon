@@ -32,7 +32,11 @@
 #include <unordered_map>
 #include <functional>
 #include <opendnp3/app/MeasurementTypes.h>
+#include <opendnp3/app/MeasurementInfo.h>
+#include <opendnp3/app/ClassField.h>
 #include <opendnp3/gen/ControlCode.h>
+#include <opendnp3/gen/PointClass.h>
+#include <opendnp3/gen/ServerAcceptMode.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 
@@ -50,20 +54,21 @@ public:
 	bool LinkUseConfirms;
 
 	/// Common application stack configuration
+	opendnp3::ServerAcceptMode ServerAcceptMode;
+	uint32_t TCPConnectRetryPeriodMinms;
+	uint32_t TCPConnectRetryPeriodMaxms;
 	bool EnableUnsol;
-	uint8_t GetUnsolClassMask();
+	opendnp3::ClassField GetUnsolClassMask();
 	bool UnsolClass1;
 	bool UnsolClass2;
 	bool UnsolClass3;
 
 	// Master Station configuration
-	uint32_t TCPConnectRetryPeriodMinms;
-	uint32_t TCPConnectRetryPeriodMaxms;
 	uint32_t MasterResponseTimeoutms; /// Application layer response timeout
 	bool MasterRespondTimeSync;       /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	bool DoUnsolOnStartup;            /// If true, the master will enable unsol on startup
 	/// Which classes should be requested in a startup integrity scan
-	uint8_t GetStartupIntegrityClassMask();
+	opendnp3::ClassField GetStartupIntegrityClassMask();
 	bool StartupIntegrityClass0;
 	bool StartupIntegrityClass1;
 	bool StartupIntegrityClass2;
@@ -83,8 +88,6 @@ public:
 	bool DoAssignClassOnStartup;
 
 	// Outstation configuration
-	uint32_t TCPListenRetryPeriodMinms;
-	uint32_t TCPListenRetryPeriodMaxms;
 	uint8_t MaxControlsPerRequest;
 	uint32_t MaxTxFragSize;
 	uint32_t SelectTimeoutms;       /// How long the outstation will allow an operate to proceed after a prior select
@@ -93,14 +96,14 @@ public:
 	bool WaitForCommandResponses;   // when responding to a command, wait for downstream command responses, otherwise returns success
 
 	// Default Static Variations
-	opendnp3::Binary::StaticVariation StaticBinaryResponse;
-	opendnp3::Analog::StaticVariation StaticAnalogResponse;
-	opendnp3::Counter::StaticVariation StaticCounterResponse;
+	opendnp3::StaticBinaryVariation StaticBinaryResponse;
+	opendnp3::StaticAnalogVariation StaticAnalogResponse;
+	opendnp3::StaticCounterVariation StaticCounterResponse;
 
 	// Default Event Variations
-	opendnp3::Binary::EventVariation EventBinaryResponse;
-	opendnp3::Analog::EventVariation EventAnalogResponse;
-	opendnp3::Counter::EventVariation EventCounterResponse;
+	opendnp3::EventBinaryVariation EventBinaryResponse;
+	opendnp3::EventAnalogVariation EventAnalogResponse;
+	opendnp3::EventCounterVariation EventCounterResponse;
 
 	// Timestamp override options
 	typedef enum { ALWAYS, ZERO, NEVER } TimestampOverride_t;
@@ -117,13 +120,13 @@ public:
 	std::vector<uint32_t> BinaryIndicies;
 	std::map<size_t, opendnp3::Binary> BinaryStartVals;
 	std::map<size_t, opendnp3::PointClass> BinaryClasses;
-	std::map<size_t, opendnp3::Binary::StaticVariation> StaticBinaryResponses;
-	std::map<size_t, opendnp3::Binary::EventVariation> EventBinaryResponses;
+	std::map<size_t, opendnp3::StaticBinaryVariation> StaticBinaryResponses;
+	std::map<size_t, opendnp3::EventBinaryVariation> EventBinaryResponses;
 
 	std::vector<uint32_t> AnalogIndicies;
 	std::map<size_t, opendnp3::Analog> AnalogStartVals;
-	std::map<size_t, opendnp3::Analog::StaticVariation> StaticAnalogResponses;
-	std::map<size_t, opendnp3::Analog::EventVariation> EventAnalogResponses;
+	std::map<size_t, opendnp3::StaticAnalogVariation> StaticAnalogResponses;
+	std::map<size_t, opendnp3::EventAnalogVariation> EventAnalogResponses;
 	std::map<size_t, opendnp3::PointClass> AnalogClasses;
 	std::map<size_t, double> AnalogDeadbands;
 	std::vector<uint32_t> ControlIndicies;

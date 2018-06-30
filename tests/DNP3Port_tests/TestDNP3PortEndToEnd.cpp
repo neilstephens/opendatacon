@@ -22,8 +22,6 @@
 #include <thread>
 #include <catch.hpp>
 
-#include "DNP3OutstationPort.h"
-#include "DNP3MasterPort.h"
 #include "PortLoader.h"
 
 #define SUITE(name) "DNP3PortEndToEndTestSuite - " name
@@ -57,7 +55,7 @@ TEST_CASE(SUITE("TCP link"))
 	OPUT->Enable();
 	MPUT->Enable();
 
-	//TODO: write a better way to wait for GetStatus and timeout (when decouple gets merged)
+	//TODO: write a better way to wait for GetStatus
 	unsigned int count = 0;
 	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
 	{

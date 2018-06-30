@@ -48,7 +48,6 @@ public:
 	void Disconnect();
 
 private:
-	void StateListener(ChannelState state);
 	modbus_t *mb;
 	modbus_mapping_t *mb_mapping;
 };

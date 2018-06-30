@@ -29,6 +29,8 @@
 
 #include <opendnp3/LogLevels.h>
 #include <opendatacon/DataPort.h>
+#include <asiopal/SerialTypes.h>
+#include <openpal/logging/LogFilters.h>
 #include "DNP3PointConf.h"
 
 enum TCPClientServer {CLIENT,SERVER,DEFAULT};

@@ -21,7 +21,6 @@
  */
 #include <catch.hpp>
 
-#include "DNP3OutstationPort.h"
 #include "PortLoader.h"
 
 #define SUITE(name) "DNP3OutstationPortTestSuite - " name

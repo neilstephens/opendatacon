@@ -102,9 +102,7 @@ void ModbusMasterPort::Connect()
 //    int rc = modbus_report_slave_id(mb, tab_bytes);
 //    if (rc > 1)
 //    {
-//	    std::string msg = Name + "Run Status Indicator: %s" + (tab_bytes[1] ? "ON" : "OFF");
-//	    auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-//	    pLoggers->Log(log_entry);
+//	    //log
 //    }
 
 	PollScheduler->Clear();

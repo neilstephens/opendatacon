@@ -88,6 +88,7 @@ void ModbusOutstationPort::Connect()
 			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 		return;
 	}
+	PublishEvent(ConnectState::CONNECTED);
 }
 
 void ModbusOutstationPort::Disable()
@@ -103,22 +104,9 @@ void ModbusOutstationPort::Disconnect()
 	stack_enabled = false;
 
 	if(mb != nullptr) modbus_close(mb);
+	PublishEvent(ConnectState::DISCONNECTED);
 }
 
-void ModbusOutstationPort::StateListener(ChannelState state)
-{
-	if(!enabled)
-		return;
-
-	if(state == ChannelState::OPEN)
-	{
-		PublishEvent(ConnectState::CONNECTED);
-	}
-	else
-	{
-		PublishEvent(ConnectState::DISCONNECTED);
-	}
-}
 void ModbusOutstationPort::BuildOrRebuild()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());

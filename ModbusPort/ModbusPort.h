@@ -45,7 +45,6 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
-	static std::unordered_map<std::string, asiodnp3::IChannel*> TCPChannels;
 protected:
 	bool stack_enabled;
 };

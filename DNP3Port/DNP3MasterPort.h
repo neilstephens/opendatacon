@@ -29,11 +29,13 @@
 
 #include <unordered_map>
 #include <opendnp3/master/ISOEHandler.h>
+#include <opendnp3/master/IMasterApplication.h>
 #include <opendnp3/app/parsing/ICollection.h>
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
 
-class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
+class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication,
+	public std::enable_shared_from_this<DNP3MasterPort>
 {
 public:
 	DNP3MasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
@@ -73,6 +75,7 @@ protected:
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryCommandEvent> >& meas) override;
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogCommandEvent> >& meas) override;
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::SecurityStat> >& meas) override;
+	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::DNPTime>& values) override;
 
 	/// Implement opendnp3::IMasterApplication
 	void OnReceiveIIN(const opendnp3::IINField& iin) final {}
@@ -94,11 +97,11 @@ protected:
 	void OnKeepAliveSuccess() override;
 
 private:
-	asiodnp3::IMaster* pMaster;
+	std::shared_ptr<asiodnp3::IMaster> pMaster;
 
 	bool stack_enabled;
 	bool assign_class_sent;
-	opendnp3::MasterScan IntegrityScan;
+	std::shared_ptr<asiodnp3::IMasterScan> IntegrityScan;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){}
@@ -109,7 +112,7 @@ private:
 		PortDown(); //initialise as comms down - in case they never come up
 		pMaster->Enable();
 		stack_enabled = true;
-		IntegrityScan.Demand();
+		IntegrityScan->Demand();
 	}
 	inline void DisableStack()
 	{

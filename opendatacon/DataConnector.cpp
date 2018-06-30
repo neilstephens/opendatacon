@@ -33,7 +33,6 @@
 #include "RateLimitTransform.h"
 #include "LogicInvTransform.h"
 #include <opendatacon/Platform.h>
-#include <opendatacon/IOManager.h>
 #include <spdlog/spdlog.h>
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
