@@ -35,7 +35,10 @@
 
 
 DNP3MasterPort::~DNP3MasterPort()
-{}
+{
+	if(pMaster)
+		pMaster->Shutdown();
+}
 
 void DNP3MasterPort::Enable()
 {

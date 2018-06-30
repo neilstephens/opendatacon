@@ -32,7 +32,13 @@
 #include "ChannelStateSubscriber.h"
 
 std::unordered_map<std::string, std::shared_ptr<asiodnp3::IChannel>> DNP3Port::Channels;
-asiodnp3::DNP3Manager DNP3Port::IOMgr(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>());
+//asiodnp3::DNP3Manager DNP3Port::IOMgr(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>());
+
+std::shared_ptr<asiodnp3::DNP3Manager> DNP3Port::IOMgr()
+{
+	static auto mgr = std::make_shared<asiodnp3::DNP3Manager>(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>());
+	return mgr;
+}
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -242,7 +248,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 		auto listener = std::make_shared<ChannelListener>(ChannelID,this);
 		if(isSerial)
 		{
-			Channels[ChannelID] = IOMgr.AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+			Channels[ChannelID] = IOMgr()->AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 				asiopal::ChannelRetry(
 					openpal::TimeDuration::Milliseconds(500),
 					openpal::TimeDuration::Milliseconds(5000)),
@@ -253,14 +259,14 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 			switch (ClientOrServer())
 			{
 				case TCPClientServer::SERVER:
-					Channels[ChannelID] = IOMgr.AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					Channels[ChannelID] = IOMgr()->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 					pConf->pPointConf->ServerAcceptMode,
 					pConf->mAddrConf.IP,
 					pConf->mAddrConf.Port,listener);
 					break;
 
 				case TCPClientServer::CLIENT:
-					Channels[ChannelID] = IOMgr.AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					Channels[ChannelID] = IOMgr()->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 					asiopal::ChannelRetry(
 						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
 						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),

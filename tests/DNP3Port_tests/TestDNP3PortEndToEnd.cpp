@@ -121,12 +121,13 @@ TEST_CASE(SUITE("Serial link"))
 
 	//turn them on
 	asio::io_service ios;
+	auto work = std::make_unique<asio::io_service::work>(ios);
 	OPUT->SetIOS(&ios);
 	MPUT->SetIOS(&ios);
 	OPUT->Enable();
 	MPUT->Enable();
 
-	//TODO: write a better way to wait for GetStatus and timeout (when decouple gets merged)
+	//TODO: write a better way to wait for GetStatus
 	unsigned int count = 0;
 	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
 	{
@@ -149,6 +150,8 @@ TEST_CASE(SUITE("Serial link"))
 
 	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
+
+	work.reset();
 
 	MPUT.reset();
 	OPUT.reset();

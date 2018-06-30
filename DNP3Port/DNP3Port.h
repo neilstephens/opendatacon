@@ -70,7 +70,8 @@ protected:
 	virtual TCPClientServer ClientOrServer()=0;
 
 private:
-	static asiodnp3::DNP3Manager IOMgr;
+	//static asiodnp3::DNP3Manager IOMgr;
+	static std::shared_ptr<asiodnp3::DNP3Manager> IOMgr();
 };
 
 #endif /* DNP3PORT_H_ */

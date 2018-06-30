@@ -171,7 +171,7 @@ void SimPort::SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t
 
 void SimPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
 {
-	pEnableDisableSync.reset(new asio::strand(*pIOS));
+	pEnableDisableSync = std::make_unique<asio::io_service::strand>(*pIOS);
 }
 
 void SimPort::ProcessElements(const Json::Value& JSONRoot)

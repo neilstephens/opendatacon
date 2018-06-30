@@ -95,7 +95,7 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 
 	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
 	auto pExecCount = std::make_shared<size_t>(0);
-	auto pCB_sync = std::make_shared<asio::strand>(*pIOS);
+	auto pCB_sync = std::make_shared<asio::io_service::strand>(*pIOS);
 	return std::make_shared<std::function<void (CommandStatus status)>>
 		       (pCB_sync->wrap(
 				 [pCB_sync,

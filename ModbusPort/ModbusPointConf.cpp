@@ -110,6 +110,7 @@ void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGrou
 		{
 			if(auto log = spdlog::get("ModbusPort"))
 				log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Ranges[n].toStyledString());
+			continue;
 		}
 
 		ReadGroup.emplace_back(start,stop-start+1,pollgroup,startval,offset);

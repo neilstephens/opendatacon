@@ -44,7 +44,10 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 {}
 
 DNP3OutstationPort::~DNP3OutstationPort()
-{}
+{
+	if(pOutstation)
+		pOutstation->Shutdown();
+}
 
 void DNP3OutstationPort::Enable()
 {

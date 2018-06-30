@@ -96,9 +96,9 @@ public:
 		ReadCallback(aReadCallback),
 		StateCallback(aStateCallback),
 		Sock(*pIOS),
-		ReadStrand(asio::strand(*pIOS)),
-		WriteStrand(asio::strand(*pIOS)),
-		SockStrand(asio::strand(*pIOS)),
+		ReadStrand(asio::io_service::strand(*pIOS)),
+		WriteStrand(asio::io_service::strand(*pIOS)),
+		SockStrand(asio::io_service::strand(*pIOS)),
 		RetryTimer(*pIOS),
 		auto_reopen(aauto_reopen),
 		retry_time_ms(aretry_time_ms),
@@ -192,11 +192,11 @@ private:
 	asio::basic_stream_socket<asio::ip::tcp> Sock;
 
 	//Strand to sync access to read buffer
-	asio::strand ReadStrand;
+	asio::io_service::strand ReadStrand;
 	//Strand to sync access to write buffers
-	asio::strand WriteStrand;
+	asio::io_service::strand WriteStrand;
 	//Strand to sync access to socket state
-	asio::strand SockStrand;
+	asio::io_service::strand SockStrand;
 
 	//for timing open-retries
 	asio::basic_waitable_timer<std::chrono::steady_clock> RetryTimer;
