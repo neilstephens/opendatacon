@@ -59,8 +59,6 @@ if(PACKAGE_LIBMICROHTTPD)
 	endif()
 endif()
 
-link_directories("${DNP3_HOME}/lib")
-
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC httpd_target)
 

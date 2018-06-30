@@ -231,7 +231,7 @@ CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& 
 	}
 }
 
-void ModbusMasterPort::BuildOrRebuild()
+void ModbusMasterPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 

@@ -45,7 +45,7 @@ public:
 
 	void Enable() override =0;
 	void Disable() override =0;
-	void BuildOrRebuild() override =0;
+	void BuildOrRebuild(std::shared_ptr<DataPort> shareable_this) override =0;
 
 	void StateListener(opendnp3::ChannelState state);
 

@@ -184,7 +184,7 @@ TCPClientServer DNP3MasterPort::ClientOrServer()
 	return pConf->mAddrConf.ClientServer;
 }
 
-void DNP3MasterPort::BuildOrRebuild()
+void DNP3MasterPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -219,8 +219,8 @@ void DNP3MasterPort::BuildOrRebuild()
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
-	auto ISOEHandle = std::static_pointer_cast<opendnp3::ISOEHandler>(shared_from_this());
-	auto MasterApp = std::static_pointer_cast<opendnp3::IMasterApplication>(shared_from_this());
+	auto ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(shareable_this);
+	auto MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(shareable_this);
 	pMaster = pChannel->AddMaster(Name.c_str(), ISOEHandle, MasterApp, StackConfig);
 
 	if (pMaster == nullptr)

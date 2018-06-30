@@ -25,11 +25,8 @@ include_directories(
 	../include
 	../JSON
 	${SPDLOG_HOME}/include
-	${DNP3_HOME}/include
 	${ASIO_HOME}/include
 )
-
-link_directories(${DNP3_HOME}/lib)
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC)

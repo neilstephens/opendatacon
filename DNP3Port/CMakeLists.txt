@@ -21,7 +21,6 @@ project(DNP3Port)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
-
 # Locate opendnp3
 set(DNP3_HOME_INSTRUCTIONS "Choose the location of opendnp3: where it was installed - there should be lib and include directories within")
 if(DEFINED DNP3_HOME)

@@ -116,7 +116,7 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 	return pConf->mAddrConf.ClientServer;
 }
 
-void DNP3OutstationPort::BuildOrRebuild()
+void DNP3OutstationPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -189,8 +189,8 @@ void DNP3OutstationPort::BuildOrRebuild()
 	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;   /// The number of analog events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents; /// The number of counter events the outstation will buffer before overflowing
 
-	auto pCommandHandle = std::static_pointer_cast<opendnp3::ICommandHandler>(shared_from_this());
-	auto pApplication = std::static_pointer_cast<opendnp3::IOutstationApplication>(shared_from_this());
+	auto pCommandHandle = std::dynamic_pointer_cast<opendnp3::ICommandHandler>(shareable_this);
+	auto pApplication = std::dynamic_pointer_cast<opendnp3::IOutstationApplication>(shareable_this);
 	pOutstation = pChannel->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
 
 	if (pOutstation == nullptr)

@@ -34,7 +34,7 @@ TEST_CASE(SUITE("TCP link"))
 
 	Json::Value Oconf;
 	Oconf["IP"] = "0.0.0.0";
-	DataPort* OPUT = newOutstation("OutstationUnderTest", "", Oconf);
+	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf));
 
 	//make a master port
 	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
@@ -42,11 +42,11 @@ TEST_CASE(SUITE("TCP link"))
 
 	Json::Value Mconf;
 	Mconf["ServerType"] = "PERSISTENT";
-	DataPort* MPUT = newMaster("MasterUnderTest", "", Mconf);
+	auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", Mconf));
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild();
-	MPUT->BuildOrRebuild();
+	OPUT->BuildOrRebuild(OPUT);
+	MPUT->BuildOrRebuild(MPUT);
 
 	//turn them on
 	asio::io_service ios;
@@ -79,8 +79,8 @@ TEST_CASE(SUITE("TCP link"))
 	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
-	delete MPUT;
-	delete OPUT;
+	MPUT.reset();
+	OPUT.reset();
 }
 
 TEST_CASE(SUITE("Serial link"))
@@ -102,7 +102,7 @@ TEST_CASE(SUITE("Serial link"))
 
 	Json::Value Oconf;
 	Oconf["SerialDevice"] = "SerialEndpoint1";
-	DataPort* OPUT = newOutstation("OutstationUnderTest", "", Oconf);
+	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf));
 
 	//make a master port
 	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
@@ -113,11 +113,11 @@ TEST_CASE(SUITE("Serial link"))
 	Mconf["SerialDevice"] = "SerialEndpoint2";
 	Mconf["LinkKeepAlivems"] = 200;
 	Mconf["LinkTimeoutms"] = 100;
-	DataPort* MPUT = newMaster("MasterUnderTest", "", Mconf);
+	auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", Mconf));
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild();
-	MPUT->BuildOrRebuild();
+	OPUT->BuildOrRebuild(OPUT);
+	MPUT->BuildOrRebuild(MPUT);
 
 	//turn them on
 	asio::io_service ios;
@@ -150,6 +150,6 @@ TEST_CASE(SUITE("Serial link"))
 	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
-	delete MPUT;
-	delete OPUT;
+	MPUT.reset();
+	OPUT.reset();
 }

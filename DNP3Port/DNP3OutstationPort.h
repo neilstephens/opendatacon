@@ -32,8 +32,7 @@
 
 #include "DNP3Port.h"
 
-class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication,
-	public std::enable_shared_from_this<DNP3OutstationPort>
+class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication
 {
 public:
 	DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
@@ -43,7 +42,7 @@ protected:
 	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild() override;
+	void BuildOrRebuild(std::shared_ptr<DataPort> shareable_this) override;
 
 	// Implement DNP3Port
 	void OnLinkDown() override;

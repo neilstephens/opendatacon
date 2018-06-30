@@ -34,8 +34,7 @@
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
 
-class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication,
-	public std::enable_shared_from_this<DNP3MasterPort>
+class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
 {
 public:
 	DNP3MasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
@@ -52,7 +51,7 @@ protected:
 	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild() override;
+	void BuildOrRebuild(std::shared_ptr<DataPort> shareable_this) override;
 	const Json::Value GetStatistics() const override;
 
 	// Implement DNP3Port

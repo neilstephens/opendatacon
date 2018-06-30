@@ -37,13 +37,12 @@ include_directories(
 	"../include"
 	"../JSON"
 	"${SPDLOG_HOME}/include"
-	"${DNP3_HOME}/include"
 	"${ASIO_HOME}/include"
 	"${TCLAP_HOME}/include"
 )
 
 add_executable(${PROJECT_NAME} ${SRC_LIST} ${DAEMON_SRC_LIST})
-target_link_libraries(${PROJECT_NAME} ODC JSON ${DL})
+target_link_libraries(${PROJECT_NAME} ODC ${DL})
 
 install(DIRECTORY "../include/opendatacon" DESTINATION ${INSTALLDIR_INCLUDES})
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})

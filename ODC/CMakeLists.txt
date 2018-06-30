@@ -25,7 +25,6 @@ include_directories(
 	"../JSON"
 	"../include"
 	"${SPDLOG_HOME}/include"
-	"${DNP3_HOME}/include"
 	"${ASIO_HOME}/include"
 )
 

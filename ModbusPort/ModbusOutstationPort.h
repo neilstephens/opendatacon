@@ -40,7 +40,7 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild() override;
+	void BuildOrRebuild(std::shared_ptr<DataPort> shareable_this) override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 

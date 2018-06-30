@@ -39,7 +39,7 @@ public:
 
 	void Enable() override =0;
 	void Disable() override =0;
-	void BuildOrRebuild() override =0;
+	void BuildOrRebuild(std::shared_ptr<DataPort> shareable_this) override =0;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 
