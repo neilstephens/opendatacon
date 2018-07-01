@@ -21,8 +21,9 @@
 
 RETVAL=0
 
-prog=ODCdaemon
-exec=/opt/ODC/ODCdaemon.pl
+prog=opendatacon
+exec=/opt/ODC/bin/opendatacon
+opts="-d -p /etc/opendatacon/"
 PIDFILE=/var/run/$prog.pid
 lockfile=/var/lock/subsys/$prog
 
@@ -36,7 +37,7 @@ start() {
 
 	umask 077
 
-        action $"Starting opendatacon daemon: " $exec
+        action $"Starting opendatacon daemon: " $exec $opts
         RETVAL=$?
         echo
         [ $RETVAL -eq 0 ] && touch $lockfile

@@ -39,6 +39,7 @@ install(FILES "NOTICE.txt" DESTINATION ".")
 install(FILES "README.md" DESTINATION ".")
 install(FILES "RELEASE_NOTES" DESTINATION ".")
 install(DIRECTORY "./3rdPartyLicenses" DESTINATION ".")
+install(DIRECTORY "install/init" DESTINATION ".")
 
 #Deploy git workflow hook scripts
 include(git-hooks.cmake)
