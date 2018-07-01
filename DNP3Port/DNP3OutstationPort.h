@@ -42,7 +42,7 @@ protected:
 	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild(std::shared_ptr<DataPort> shareable_this) override;
+	void BuildOrRebuild() override;
 
 	// Implement DNP3Port
 	void OnLinkDown() override;

@@ -169,7 +169,7 @@ void SimPort::SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t
 		});
 }
 
-void SimPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
+void SimPort::BuildOrRebuild()
 {
 	pEnableDisableSync = std::make_unique<asio::io_service::strand>(*pIOS);
 }

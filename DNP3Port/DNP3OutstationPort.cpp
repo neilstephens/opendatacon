@@ -37,6 +37,7 @@
 
 #include "OpenDNP3Helpers.h"
 #include "TypeConversion.h"
+#include "ChannelStateSubscriber.h"
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides),
@@ -45,6 +46,7 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 
 DNP3OutstationPort::~DNP3OutstationPort()
 {
+	ChannelStateSubscriber::Unsubscribe(this);
 	if(pOutstation)
 		pOutstation->Shutdown();
 }
@@ -119,7 +121,7 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 	return pConf->mAddrConf.ClientServer;
 }
 
-void DNP3OutstationPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
+void DNP3OutstationPort::BuildOrRebuild()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -192,8 +194,15 @@ void DNP3OutstationPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this
 	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;   /// The number of analog events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents; /// The number of counter events the outstation will buffer before overflowing
 
-	auto pCommandHandle = std::dynamic_pointer_cast<opendnp3::ICommandHandler>(shareable_this);
-	auto pApplication = std::dynamic_pointer_cast<opendnp3::IOutstationApplication>(shareable_this);
+	//auto pCommandHandle = std::dynamic_pointer_cast<opendnp3::ICommandHandler>(shareable_this);
+	//auto pApplication = std::dynamic_pointer_cast<opendnp3::IOutstationApplication>(shareable_this);
+
+	//FIXME?: hack to create a toothless shared_ptr
+	//	this is needed because the main exe manages our memory
+	auto wont_free = std::shared_ptr<DNP3OutstationPort>(this,[](void*){});
+	auto pCommandHandle = std::dynamic_pointer_cast<opendnp3::ICommandHandler>(wont_free);
+	auto pApplication = std::dynamic_pointer_cast<opendnp3::IOutstationApplication>(wont_free);
+
 	pOutstation = pChannel->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
 
 	if (pOutstation == nullptr)

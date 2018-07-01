@@ -389,7 +389,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			if(new_port_func == nullptr || delete_port_func == nullptr)
 			{
 				log->error("{} : Failed to load port, mapping to NullPort...", Ports[n]["Name"].asString());
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
@@ -470,7 +470,7 @@ void DataConcentrator::BuildOrRebuild()
 	spdlog::get("opendatacon")->info("Initialising DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
-		Name_n_Port.second->BuildOrRebuild(Name_n_Port.second);
+		Name_n_Port.second->BuildOrRebuild();
 	}
 	spdlog::get("opendatacon")->info("Initialising DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)

@@ -107,7 +107,7 @@ void ModbusOutstationPort::Disconnect()
 	PublishEvent(ConnectState::DISCONNECTED);
 }
 
-void ModbusOutstationPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
+void ModbusOutstationPort::BuildOrRebuild()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 

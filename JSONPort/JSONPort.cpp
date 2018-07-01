@@ -111,7 +111,7 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 		static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
 }
 
-void JSONPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
+void JSONPort::BuildOrRebuild()
 {
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 

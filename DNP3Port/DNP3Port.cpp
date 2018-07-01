@@ -211,10 +211,6 @@ public:
 	{
 		ChannelStateSubscriber::Subscribe(pPort,ChanID);
 	}
-	~ChannelListener()
-	{
-		ChannelStateSubscriber::Unsubscribe(pPort,ChanID);
-	}
 	//Receive callbacks for state transitions on the channels from opendnp3
 	void OnStateChange(opendnp3::ChannelState state) override
 	{

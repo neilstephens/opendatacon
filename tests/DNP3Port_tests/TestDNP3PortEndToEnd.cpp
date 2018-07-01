@@ -29,24 +29,30 @@
 TEST_CASE(SUITE("TCP link"))
 {
 	//make an outstation port
-	fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 	REQUIRE(newOutstation);
+	delptr delOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+	REQUIRE(delOutstation);
 
 	Json::Value Oconf;
 	Oconf["IP"] = "0.0.0.0";
-	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf));
+	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
+	REQUIRE(OPUT);
 
 	//make a master port
-	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+	newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 	REQUIRE(newMaster);
+	delptr delMaster = GetPortDestroyer("DNP3Port", "DNP3Master");
+	REQUIRE(delMaster);
 
 	Json::Value Mconf;
 	Mconf["ServerType"] = "PERSISTENT";
-	auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", Mconf));
+	auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild(OPUT);
-	MPUT->BuildOrRebuild(MPUT);
+	OPUT->BuildOrRebuild();
+	MPUT->BuildOrRebuild();
 
 	//turn them on
 	asio::io_service ios;
@@ -97,27 +103,33 @@ TEST_CASE(SUITE("Serial link"))
 	}
 
 	//make an outstation port
-	fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 	REQUIRE(newOutstation);
+	delptr delOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+	REQUIRE(delOutstation);
 
 	Json::Value Oconf;
 	Oconf["SerialDevice"] = "SerialEndpoint1";
-	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf));
+	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
+	REQUIRE(OPUT);
 
 	//make a master port
-	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+	newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 	REQUIRE(newMaster);
+	delptr delMaster = GetPortDestroyer("DNP3Port", "DNP3Master");
+	REQUIRE(delMaster);
 
 	Json::Value Mconf;
 	Mconf["ServerType"] = "PERSISTENT";
 	Mconf["SerialDevice"] = "SerialEndpoint2";
 	Mconf["LinkKeepAlivems"] = 200;
 	Mconf["LinkTimeoutms"] = 100;
-	auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", Mconf));
+	auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild(OPUT);
-	MPUT->BuildOrRebuild(MPUT);
+	OPUT->BuildOrRebuild();
+	MPUT->BuildOrRebuild();
 
 	//turn them on
 	asio::io_service ios;
@@ -152,7 +164,6 @@ TEST_CASE(SUITE("Serial link"))
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
 	work.reset();
-
 	MPUT.reset();
 	OPUT.reset();
 }

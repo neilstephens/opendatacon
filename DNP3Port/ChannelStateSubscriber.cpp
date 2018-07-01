@@ -42,7 +42,8 @@ void ChannelStateSubscriber::Unsubscribe(DNP3Port* pPort, std::string ChanID)
 		return;
 
 	auto bounds = std::make_pair(SubscriberMap.begin(),SubscriberMap.end());
-	bounds = SubscriberMap.equal_range(ChanID);
+	if(ChanID != "")
+		bounds = SubscriberMap.equal_range(ChanID);
 	for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; /*advance inside loop*/)
 	{
 		if((*aMatch_it).second == pPort)

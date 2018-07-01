@@ -28,7 +28,7 @@
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
-		fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+		newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 		REQUIRE(newMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
@@ -41,7 +41,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	}
 	/// Test the destruction of an enabled port
 	{
-		fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+		newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 		REQUIRE(newMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 

@@ -35,7 +35,7 @@ class ChannelStateSubscriber
 {
 public:
 	static void Subscribe(DNP3Port* pPort, std::string ChanID);
-	static void Unsubscribe(DNP3Port* pPort, std::string ChanID);
+	static void Unsubscribe(DNP3Port* pPort, std::string ChanID = "");
 	static void StateListener(const std::string& ChanID, opendnp3::ChannelState state);
 
 private:

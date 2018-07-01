@@ -51,7 +51,7 @@ protected:
 	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild(std::shared_ptr<DataPort> shareable_this) override;
+	void BuildOrRebuild() override;
 	const Json::Value GetStatistics() const override;
 
 	// Implement DNP3Port

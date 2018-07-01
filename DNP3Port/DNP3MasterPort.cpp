@@ -32,10 +32,12 @@
 #include <spdlog/spdlog.h>
 
 #include "TypeConversion.h"
+#include "ChannelStateSubscriber.h"
 
 
 DNP3MasterPort::~DNP3MasterPort()
 {
+	ChannelStateSubscriber::Unsubscribe(this);
 	if(pMaster)
 		pMaster->Shutdown();
 }
@@ -187,7 +189,7 @@ TCPClientServer DNP3MasterPort::ClientOrServer()
 	return pConf->mAddrConf.ClientServer;
 }
 
-void DNP3MasterPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
+void DNP3MasterPort::BuildOrRebuild()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -222,8 +224,12 @@ void DNP3MasterPort::BuildOrRebuild(std::shared_ptr<DataPort> shareable_this)
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
-	auto ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(shareable_this);
-	auto MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(shareable_this);
+	//FIXME?: hack to create a toothless shared_ptr
+	//	this is needed because the main exe manages our memory
+	auto wont_free = std::shared_ptr<DNP3MasterPort>(this,[](void*){});
+	auto ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(wont_free);
+	auto MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(wont_free);
+
 	pMaster = pChannel->AddMaster(Name.c_str(), ISOEHandle, MasterApp, StackConfig);
 
 	if (pMaster == nullptr)
