@@ -22,9 +22,11 @@
 RETVAL=0
 
 prog=opendatacon
-exec=/opt/ODC/bin/opendatacon
-opts="-d -p /etc/opendatacon/"
+bin=/opt/ODC/bin
+exec=$bin/$prog
+working=/etc/$prog
 PIDFILE=/var/run/$prog.pid
+opts="-d -p $working -f $PIDFILE"
 lockfile=/var/lock/subsys/$prog
 
 # Source config
@@ -39,9 +41,8 @@ start() {
 
         action $"Starting opendatacon daemon: " $exec $opts
         RETVAL=$?
-        PID=${pidof $prog}
         echo
-        [ $RETVAL -eq 0 ] && touch $lockfile && echo $PID > $PIDFILE
+        [ $RETVAL -eq 0 ] && touch $lockfile
         return $RETVAL
 }
 stop() {
