@@ -94,12 +94,15 @@ public:
 	MD3Time ChangedTime = (MD3Time)0; // msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data. TimeStamp is Uint48_t, MD3 is uint64_t but does not overflow.
 };
 
+enum BinaryPointType {BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT};
+
 class MD3BinaryPoint: public MD3Point
 {
 public:
 	MD3BinaryPoint() {};
 
-	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup, BinaryPointType pointtype): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup),
+		PointType(pointtype)
 	{};
 
 	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, MD3Time changedtime):
@@ -112,6 +115,7 @@ public:
 	uint8_t Binary = 0x01;
 	uint16_t ModuleBinarySnapShot = 0; // Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
 	bool Changed = true;
+	BinaryPointType PointType = BASICINPUT;
 };
 
 class MD3AnalogCounterPoint: public MD3Point
@@ -173,7 +177,7 @@ public:
 
 	void ProcessPollGroups(const Json::Value & JSONRoot);
 
-	void ProcessBinaryPoints(const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>& ODCPointMap);
+	void ProcessBinaryPoints(const std::string BinaryName, const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>& ODCPointMap);
 	void ProcessAnalogCounterPoints(const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>& ODCPointMap);
 
 

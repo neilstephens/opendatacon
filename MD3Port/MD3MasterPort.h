@@ -85,7 +85,7 @@ public:
 
 	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
-	template<class T> void WriteObject(const T& command, uint16_t index, SharedStatusCallback_t pStatusCallback);
+	template<class T> void WriteObject(const T& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback);
 
 	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
 	// There is a time out lambda in UnprotectedSendNextMasterCommand which will queue the next command if we timeout.
@@ -101,6 +101,8 @@ public:
 	void DoPoll(uint32_t pollgroup);
 
 	void SendTimeDateChangeCommand(const uint64_t &currenttime, SharedStatusCallback_t pStatusCallback);
+	void SendDOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint16_t & outputbits, const SharedStatusCallback_t &pStatusCallback);
+	void SendPOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & outputselection, const SharedStatusCallback_t &pStatusCallback);
 
 private:
 
@@ -116,6 +118,9 @@ private:
 	bool ProcessAnalogUnconditionalReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 	bool ProcessAnalogDeltaScanReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
+
+	bool ProcessDOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
+	bool ProcessPOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 
 	bool ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 

@@ -413,6 +413,18 @@ bool MD3Port::GetBinaryControlODCIndexUsingMD3Index(const uint16_t module, const
 	}
 	return false;
 }
+bool MD3Port::GetBinaryControlMD3IndexUsingODCIndex(const int index, uint8_t &module, uint8_t &channel, BinaryPointType &pointtype)
+{
+	ODCBinaryPointMapIterType ODCPointMapIter = MyPointConf()->BinaryControlODCPointMap.find(index);
+	if (ODCPointMapIter != MyPointConf()->BinaryControlODCPointMap.end())
+	{
+		module = ODCPointMapIter->second->ModuleAddress;
+		channel = ODCPointMapIter->second->Channel;
+		pointtype = ODCPointMapIter->second->PointType;
+		return true;
+	}
+	return false;
+}
 bool MD3Port::GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &index)
 {
 	uint16_t Md3Index = (module << 8) | channel;
@@ -466,7 +478,7 @@ uint16_t MD3Port::CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool &M
 	for (int j = 0; j < 16; j++)
 	{
 		uint8_t bitres = 0;
-		bool changed = false; // We dont care about the returned value
+		bool changed = false; // We don't care about the returned value
 
 		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres)) // Reading this clears the changed bit
 		{
@@ -477,5 +489,6 @@ uint16_t MD3Port::CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool &M
 	}
 	return wordres;
 }
+
 
 #pragma endregion

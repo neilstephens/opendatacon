@@ -66,13 +66,13 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("Binaries"))
 	{
 		const auto Binaries = JSONRoot["Binaries"];
-		ProcessBinaryPoints(Binaries, BinaryMD3PointMap, BinaryODCPointMap);
+		ProcessBinaryPoints("Binary Points", Binaries, BinaryMD3PointMap, BinaryODCPointMap);
 	}
 
 	if (JSONRoot.isMember("BinaryControls"))
 	{
 		const auto BinaryControls = JSONRoot["BinaryControls"];
-		ProcessBinaryPoints(BinaryControls, BinaryControlMD3PointMap, BinaryControlODCPointMap);
+		ProcessBinaryPoints("Binary Controls", BinaryControls, BinaryControlMD3PointMap, BinaryControlODCPointMap);
 	}
 	if (JSONRoot.isMember("Counters"))
 	{
@@ -91,12 +91,6 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		TimeSetPoint.first = opendnp3::AnalogOutputDouble64(0); // Default to 0 - we know as unset - will never be used in operation.
 		TimeSetPoint.second = JSONRoot["TimeSetPoint"]["Index"].asUInt();
 	}
-	else if (TimeSetPoint.second == 0) // Not previously set
-	{
-		TimeSetPoint.first = opendnp3::AnalogOutputDouble64(0); // Default to 0 - we know as unset - will never be used in operation.
-		TimeSetPoint.second = 64000;
-		LOGERROR("TimeSetPoint must be defined and have an Index value - defaulting to 64000");
-	}
 
 	// SystemSignOnPoint Point Configuration
 	if (JSONRoot.isMember("SystemSignOnPoint") && JSONRoot["SystemSignOnPoint"].isMember("Index"))
@@ -104,47 +98,26 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		SystemSignOnPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		SystemSignOnPoint.second = JSONRoot["SystemSignOnPoint"]["Index"].asUInt();
 	}
-	else if(SystemSignOnPoint.second == 0) // Not previously set
-	{
-		SystemSignOnPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
-		SystemSignOnPoint.second = 64001;
-		LOGERROR("SystemSignOnPoint must be defined and have an Index value - defaulting to 64001");
-	}
+
 	// FreezeResetCountersPoint Point Configuration
 	if (JSONRoot.isMember("FreezeResetCountersPoint") && JSONRoot["FreezeResetCountersPoint"].isMember("Index"))
 	{
 		FreezeResetCountersPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		FreezeResetCountersPoint.second = JSONRoot["FreezeResetCountersPoint"]["Index"].asUInt();
 	}
-	else if (FreezeResetCountersPoint.second == 0) // Not previously set
-	{
-		FreezeResetCountersPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
-		FreezeResetCountersPoint.second = 64002;
-		LOGERROR("FreezeResetCountersPoint must be defined and have an Index value - defaulting to 64002");
-	}
+
 	// POMControlPoint Point Configuration
 	if (JSONRoot.isMember("POMControlPoint") && JSONRoot["POMControlPoint"].isMember("Index"))
 	{
 		POMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		POMControlPoint.second = JSONRoot["POMControlPoint"]["Index"].asUInt();
 	}
-	else if (POMControlPoint.second == 0)
-	{
-		POMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
-		POMControlPoint.second = 64003;
-		LOGERROR("POMControlPoint must be defined and have an Index value - defaulting to 64003");
-	}
+
 	// DOMControlPoint Point Configuration
 	if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
 	{
 		DOMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
 		DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
-	}
-	else if (DOMControlPoint.second == 0)
-	{
-		DOMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
-		DOMControlPoint.second = 64004;
-		LOGERROR("DOMControlPoint must be defined and have an Index value - defaulting to 64004");
 	}
 
 	if (JSONRoot.isMember("NewDigitalCommands"))
@@ -217,7 +190,7 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 }
 
 // This method loads both Binary read points, and Binary Control points.
-void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> &MD3PointMap,
+void MD3PointConf::ProcessBinaryPoints(const std::string BinaryName, const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> &MD3PointMap,
 	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> &ODCPointMap)
 {
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
@@ -236,7 +209,7 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 		}
 		else
 		{
-			LOGERROR("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : "+ JSONNode[n].toStyledString());
+			LOGERROR(BinaryName+" A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : "+ JSONNode[n].toStyledString());
 			start = 1;
 			stop = 0;
 			error = true;
@@ -245,12 +218,13 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 		uint32_t module = 0;
 		uint32_t offset = 0;
 		uint32_t pollgroup = 0;
+		BinaryPointType pointtype = BASICINPUT;
 
 		if (JSONNode[n].isMember("Module"))
 			module = JSONNode[n]["Module"].asUInt();
 		else
 		{
-			LOGERROR("A point needs an \"Module\" : "+JSONNode[n].toStyledString());
+			LOGERROR(BinaryName + " A point needs an \"Module\" : "+JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -258,7 +232,30 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 			offset = JSONNode[n]["Offset"].asUInt();
 		else
 		{
-			LOGERROR("A point needs an \"Offset\" : "+ JSONNode[n].toStyledString());
+			LOGERROR(BinaryName + " A point needs an \"Offset\" : "+ JSONNode[n].toStyledString());
+			error = true;
+		}
+
+		if (JSONNode[n].isMember("PointType"))
+		{
+			std::string pointtypestring = JSONNode[n]["PointType"].asString();
+			if (pointtypestring == "BASICINPUT")
+				pointtype = BASICINPUT;
+			else if (pointtypestring == "TIMETAGGEDINPUT")
+				pointtype = TIMETAGGEDINPUT;
+			else if (pointtypestring == "DOMOUTPUT")
+				pointtype = DOMOUTPUT;
+			else if (pointtypestring == "POMOUTPUT")
+				pointtype = POMOUTPUT;
+			else
+			{
+				LOGERROR(BinaryName + " A point needs a valid \"PointType\" : " + JSONNode[n].toStyledString());
+				error = true;
+			}
+		}
+		else
+		{
+			LOGERROR(BinaryName + " A point needs an \"PointType\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -278,15 +275,15 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 
 				if (MD3PointMap.find(md3index) != MD3PointMap.end())
 				{
-					LOGERROR("Duplicate MD3 Index "+ JSONNode[n].toStyledString());
+					LOGERROR(BinaryName + " Duplicate MD3 Index "+ JSONNode[n].toStyledString());
 				}
 				else if (ODCPointMap.find(index) != ODCPointMap.end())
 				{
-					LOGERROR("Duplicate ODC Index : "+JSONNode[n].toStyledString());
+					LOGERROR(BinaryName + " Duplicate ODC Index : "+JSONNode[n].toStyledString());
 				}
 				else
 				{
-					auto pt = std::make_shared<MD3BinaryPoint>(index, moduleaddress, channel, (uint8_t)pollgroup);
+					auto pt = std::make_shared<MD3BinaryPoint>(index, moduleaddress, channel, (uint8_t)pollgroup, pointtype);
 					MD3PointMap[md3index] = pt;
 					ODCPointMap[index] = pt;
 
@@ -295,7 +292,7 @@ void MD3PointConf::ProcessBinaryPoints(const Json::Value& JSONNode, std::map<uin
 					{
 						if (PollGroups.count(pollgroup) == 0)
 						{
-							LOGERROR("Poll Group Must Be Defined for use in a Binary point : "+ JSONNode[n].toStyledString());
+							LOGERROR(BinaryName + " Poll Group Must Be Defined for use in a Binary point : "+ JSONNode[n].toStyledString());
 						}
 						else
 						{

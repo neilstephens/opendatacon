@@ -109,6 +109,8 @@ public:
 	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, MD3Time eventtime);
 
 	bool GetBinaryControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int & index);
+	bool GetBinaryControlMD3IndexUsingODCIndex(const int index, uint8_t & module, uint8_t & channel, BinaryPointType & pointtype);
+
 	bool GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int & index);
 
 	void AddToDigitalEvents(MD3BinaryPoint & pt);

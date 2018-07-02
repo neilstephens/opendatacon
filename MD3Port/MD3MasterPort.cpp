@@ -254,8 +254,6 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 
 			MasterCommandProtectedData.CurrentCommandTimeoutTimer->async_wait([&,endtime](asio::error_code err_code)
 				{
-					LOGDEBUG("MD3 Master Timeout callback called");
-
 					if (err_code != asio::error::operation_aborted)
 					{
 					// We need strand protection for the variables, so this will queue another chunk of work below.
@@ -275,6 +273,10 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 								else
 									LOGDEBUG("MD3 Master Timeout callback called, when we had already moved on to the next command");
 							});
+					}
+					else
+					{
+					      LOGDEBUG("MD3 Master Timeout callback cancelled");
 					}
 				});
 		}
@@ -404,10 +406,10 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 					//	DoFreezeResetCounters(static_cast<MD3BlockFn16MtoS&>(Header));
 					break;
 				case POM_TYPE_CONTROL:
-					//	DoPOMControl(static_cast<MD3BlockFn17MtoS&>(Header), CompleteMD3Message);
+					success = ProcessPOMReturn(Header, CompleteMD3Message);
 					break;
 				case DOM_TYPE_CONTROL:
-					//	DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
+					success = ProcessDOMReturn(Header, CompleteMD3Message);
 					break;
 				case INPUT_POINT_CONTROL:
 					break;
@@ -431,8 +433,7 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 					break;
 
 				case SYSTEM_SET_DATETIME_CONTROL:
-					if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
-						success = ProcessSetDateTimeReturn(Header, CompleteMD3Message);
+					success = ProcessSetDateTimeReturn(Header, CompleteMD3Message);
 					break;
 
 				case FILE_DOWNLOAD:
@@ -692,6 +693,37 @@ bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, cons
 		*/
 	}
 	return true;
+}
+
+bool MD3MasterPort::ProcessDOMReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Master Received an DOM response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+
+	LOGDEBUG("Master Got DOM response ");
+
+	return (Header.GetFunctionCode() == CONTROL_REQUEST_OK);
+}
+bool MD3MasterPort::ProcessPOMReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Master Received an POM response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+
+	LOGDEBUG("Master Got POM response ");
+
+	return (Header.GetFunctionCode() == CONTROL_REQUEST_OK);
 }
 
 bool MD3MasterPort::ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
@@ -1029,15 +1061,82 @@ inline void MD3MasterPort::EventT(T& arCommand, uint16_t index, const std::strin
 }
 
 template<>
-void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-	// A DOM or POM point?
-	LOGDEBUG("Master received a DOM/POM ODC Change Command " + std::to_string(index));
-	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+	//TODO: On start up - we must read the current state of the outputs to initialise the system, so any commands we send subsequently are correct.
+
+	uint8_t ModuleAddress = 0;
+	uint8_t Channel = 0;
+	BinaryPointType PointType;
+	bool exists = GetBinaryControlMD3IndexUsingODCIndex(index, ModuleAddress, Channel, PointType);
+
+	if (!exists)
+	{
+		LOGDEBUG("Master received a DOM/POM ODC Change Command on a point that is not defined " + std::to_string(index));
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+		return;
+	}
+
+	std::string OnOffString = "ON";
+
+	if (PointType == DOMOUTPUT)
+	{
+		// The main issue is that a DOM command writes 16 bits in one go, so we have to remember the output state of the other bits,
+		// so that we only write the change that has been triggered.
+		// We have to gather up the current state of those bits.
+
+		bool ModuleFailed = false;                                                    // Not used - yet
+		uint16_t outputbits = CollectModuleBitsIntoWord(ModuleAddress, ModuleFailed); // Reads from the digital input point list...
+
+		if ((command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
+		{
+			// OFF Command
+			outputbits &= ~(0x0001 << (15-Channel));
+			OnOffString = "OFF";
+		}
+		else
+		{
+			// ON Command  --> ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
+			outputbits |= (0x0001 << (15-Channel));
+			OnOffString = "ON";
+		}
+
+		LOGDEBUG("Master received a DOM ODC Change Command - Index: " + std::to_string(index) +" - "+ OnOffString + "  Module/Channel " + std::to_string(ModuleAddress) + "/" + std::to_string(Channel));
+		SendDOMOutputCommand(MyConf()->mAddrConf.OutstationAddr, ModuleAddress, outputbits, pStatusCallback);
+	}
+	else if(PointType == POMOUTPUT)
+	{
+		// POM Point
+		// The POM output is a single output selection, value 0 to 15 which represents a TRIP 0-7 and CLOSE 8-15 for the up to 8 points in a POM module.
+		// We don't have to remember state here as we are sending only one bit.
+		uint8_t outputselection = 0;
+
+		if ((command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
+		{
+			// OFF Command
+			outputselection = Channel;
+			OnOffString = "OFF";
+		}
+		else
+		{
+			// ON Command  --> ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
+			outputselection = Channel+8;
+			OnOffString = "ON";
+		}
+
+		LOGDEBUG("Master received a POM ODC Change Command - Index: " + std::to_string(index) + " - " + OnOffString + "  Module/Channel " + std::to_string(ModuleAddress) + "/" + std::to_string(Channel));
+		SendPOMOutputCommand(MyConf()->mAddrConf.OutstationAddr, ModuleAddress, outputselection, pStatusCallback);
+	}
+	else
+	{
+		LOGDEBUG("Master received Binary Output ODC Event on a point not defined as DOM or POM " + std::to_string(index));
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+		return;
+	}
 }
 
 template<>
-void MD3MasterPort::WriteObject(const AnalogOutputInt16& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::WriteObject(const AnalogOutputInt16& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	// AOM Command
 	LOGDEBUG("Master received a AOM ODC Change Command " + std::to_string(index));
@@ -1045,7 +1144,7 @@ void MD3MasterPort::WriteObject(const AnalogOutputInt16& command, uint16_t index
 }
 
 template<>
-void MD3MasterPort::WriteObject(const AnalogOutputInt32& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::WriteObject(const AnalogOutputInt32& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	// Other Magic point commands
 	LOGDEBUG("Master received a 32 bit magic point Command " + std::to_string(index));
@@ -1053,16 +1152,16 @@ void MD3MasterPort::WriteObject(const AnalogOutputInt32& command, uint16_t index
 }
 
 template<>
-void MD3MasterPort::WriteObject(const AnalogOutputFloat32& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::WriteObject(const AnalogOutputFloat32& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	LOGERROR("On Master AnalogOutputFloat32 Type is not implemented " + std::to_string(index));
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
 template<>
-void MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, uint16_t index, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-	if (index == MyPointConf()->TimeSetPoint.second) // Is this out magic timeset point?
+	if (index == MyPointConf()->TimeSetPoint.second) // Is this out magic time set point?
 	{
 		LOGDEBUG("Master received a Time Change command on the magic point through ODC " + std::to_string(index));
 		uint64_t currenttime = static_cast<uint64_t>(command.value);
@@ -1076,6 +1175,26 @@ void MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, uint16_t in
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
+}
+
+void MD3MasterPort::SendDOMOutputCommand(const uint8_t &StationAddress, const uint8_t &ModuleAddress, const uint16_t &outputbits, const SharedStatusCallback_t &pStatusCallback)
+{
+	MD3BlockFn19MtoS commandblock(StationAddress, ModuleAddress );
+	MD3BlockData datablock = commandblock.GenerateSecondBlock(outputbits);
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+	Cmd.push_back(datablock);
+	QueueMD3Command(Cmd, pStatusCallback);
+}
+void MD3MasterPort::SendPOMOutputCommand(const uint8_t &StationAddress, const uint8_t &ModuleAddress, const uint8_t &outputselection, const SharedStatusCallback_t &pStatusCallback)
+{
+	MD3BlockFn17MtoS commandblock(StationAddress, ModuleAddress, outputselection);
+	MD3BlockData datablock = commandblock.GenerateSecondBlock();
+
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+	Cmd.push_back(datablock);
+	QueueMD3Command(Cmd, pStatusCallback);
 }
 
 

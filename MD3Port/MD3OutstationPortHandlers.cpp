@@ -1177,6 +1177,7 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
 	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
 	// The output is a 16bit word. Will send a 32 bit block through ODC that contains the output data , station address and module address.
+	// The Perform method waits until it has a result, unless we are in stand alone mode.
 
 	bool failed = false;
 
@@ -1212,20 +1213,30 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 		return;
 	}
 
+	bool success = true;
+
 	// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
 	for (int i = 0; i < 16; i++)
 	{
 		ControlRelayOutputBlock b((output >> (15 - i) & 0x01) == 1);
 		if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, index))
 		{
-			Perform(b, index, waitforresult); // If no subscribers will return quickly.
+			if (CommandStatus::SUCCESS != Perform(b, index, waitforresult)) // If no subscribers will return quickly.
+			{
+				success = false;
+			}
 		}
 	}
 
-	// Pass the command through ODC, just for MD3 on the other side.
-	MyPointConf()->DOMControlPoint.first = AnalogOutputInt32(Header.GetData());
+	// If the index is !=0, then the pass through is active. So success depends on the pass through
+	if (MyPointConf()->POMControlPoint.second != 0)
+	{
+		// Pass the command through ODC, just for MD3 on the other side.
+		MyPointConf()->DOMControlPoint.first = AnalogOutputInt32(Header.GetData());
+		success = Perform(MyPointConf()->DOMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS;
+	}
 
-	if (Perform(MyPointConf()->DOMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS)
+	if (success)
 	{
 		SendControlOK(Header);
 	}
