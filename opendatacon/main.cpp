@@ -50,9 +50,13 @@
 #include "ODCArgs.h"
 #include <opendatacon/Platform.h>
 #include <csignal>
+#include <cstdio>
 
 int main(int argc, char* argv[])
 {
+	int ret_val;
+	std::string pidfile = "";
+
 	// Wrap everything in a try block.  Do this every time,
 	// because exceptions will be thrown for problems.
 	try
@@ -98,6 +102,8 @@ int main(int argc, char* argv[])
 		if (Args.DaemonArg.isSet())
 		{
 			daemonp(Args);
+			if(Args.PIDFileArg.isSet())
+				pidfile = Args.PIDFileArg.getValue();
 		}
 
 		// Construct and build opendatacon object
@@ -130,23 +136,40 @@ int main(int argc, char* argv[])
 
 		std::string msg("opendatacon version '" ODC_VERSION_STRING "' shutdown cleanly.");
 		if(auto log = spdlog::get("opendatacon"))
-		{
 			log->critical(msg);
-			log->flush();
-		}
 		else
 			std::cout << msg << std::endl;
-		spdlog::drop_all();
-		return 0;
+		ret_val = 0;
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
 	{
-		std::cerr << "Command line error: " << e.error() << " for arg " << e.argId() << std::endl;
-		return 1;
+		std::string msg = "Command line error: " + e.error() +" for arg " + e.argId();
+		if(auto log = spdlog::get("opendatacon"))
+			log->critical(msg);
+		else
+			std::cerr << msg << std::endl;
+		ret_val = 1;
 	}
 	catch (std::exception& e) // catch opendatacon runtime exceptions
 	{
-		std::cerr << "Caught exception: " << e.what() << std::endl;
-		return 1;
+		std::string msg = std::string("Caught exception: ") + e.what();
+		if(auto log = spdlog::get("opendatacon"))
+			log->critical(msg);
+		else
+			std::cerr << msg << std::endl;
+		ret_val = 1;
 	}
+
+	if(pidfile != "")
+	{
+		if(std::remove(pidfile.c_str()))
+			if(auto log = spdlog::get("opendatacon"))
+				log->info("PID file removed");
+	}
+
+	if(auto log = spdlog::get("opendatacon"))
+		log->flush();
+
+	spdlog::drop_all();
+	return ret_val;
 }

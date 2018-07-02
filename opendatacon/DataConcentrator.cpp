@@ -58,6 +58,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
 
+	if(Interfaces.empty() && DataPorts.empty() && DataConnectors.empty())
+		throw std::runtime_error("No objects to manage");
+
 	for(auto& interface : Interfaces)
 	{
 		interface.second->AddCommand("shutdown",[this](std::stringstream& ss)
@@ -84,6 +87,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	for(auto& conn : DataConnectors)
 		conn.second->SetIOS(&IOS);
 }
+
+DataConcentrator::~DataConcentrator()
+{}
 
 void DataConcentrator::SetLogLevel(std::stringstream& ss)
 {
@@ -120,12 +126,10 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 		std::cout << spdlog::level::level_names[i] << std::endl;
 }
 
-DataConcentrator::~DataConcentrator()
-{}
-
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
-	if(!JSONRoot.isObject()) return;
+	if(!JSONRoot.isObject())
+		throw std::runtime_error("No valid JSON config object");
 
 	//setup log sinks
 	auto log_size_kb = JSONRoot.isMember("LogFileSizekB") ? JSONRoot["LogFileSizekB"].asUInt() : 5*1024;
@@ -462,17 +466,20 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 }
 void DataConcentrator::BuildOrRebuild()
 {
-	spdlog::get("opendatacon")->info("Initialising Interfaces...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Initialising Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
 		Name_n_UI.second->BuildOrRebuild();
 	}
-	spdlog::get("opendatacon")->info("Initialising DataPorts...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Initialising DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->BuildOrRebuild();
 	}
-	spdlog::get("opendatacon")->info("Initialising DataConnectors...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Initialising DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->BuildOrRebuild();
@@ -480,7 +487,8 @@ void DataConcentrator::BuildOrRebuild()
 }
 void DataConcentrator::Run()
 {
-	spdlog::get("opendatacon")->info("Enabling DataConnectors...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Enabling DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		if(Name_n_Conn.second->InitState == InitState_t::ENABLED)
@@ -501,7 +509,8 @@ void DataConcentrator::Run()
 				});
 		}
 	}
-	spdlog::get("opendatacon")->info("Enabling DataPorts...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Enabling DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
 		if(Name_n_Port.second->InitState == InitState_t::ENABLED)
@@ -522,7 +531,8 @@ void DataConcentrator::Run()
 				});
 		}
 	}
-	spdlog::get("opendatacon")->info("Enabling Interfaces...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Enabling Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
 		IOS.post([&]()
@@ -531,16 +541,20 @@ void DataConcentrator::Run()
 			});
 	}
 
-	spdlog::get("opendatacon")->info("Up and running.");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Up and running.");
 	IOS.run();
 
-	spdlog::get("opendatacon")->info("Destoying Interfaces...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Destoying Interfaces...");
 	Interfaces.clear();
 
-	spdlog::get("opendatacon")->info("Destoying DataConnectors...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Destoying DataConnectors...");
 	DataConnectors.clear();
 
-	spdlog::get("opendatacon")->info("Destoying DataPorts...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Destoying DataPorts...");
 	DataPorts.clear();
 }
 
@@ -550,24 +564,29 @@ void DataConcentrator::Shutdown()
 	//ensure we only act once
 	std::call_once(shutdown_flag, [this]()
 		{
-			spdlog::get("opendatacon")->info("Disabling Interfaces...");
+			if(auto log = spdlog::get("opendatacon"))
+				log->info("Disabling Interfaces...");
 			for(auto& Name_n_UI : Interfaces)
 			{
 			      Name_n_UI.second->Disable();
 			}
-			spdlog::get("opendatacon")->info("Disabling DataConnectors...");
+			if(auto log = spdlog::get("opendatacon"))
+				log->info("Disabling DataConnectors...");
 			for(auto& Name_n_Conn : DataConnectors)
 			{
 			      Name_n_Conn.second->Disable();
 			}
-			spdlog::get("opendatacon")->info("Disabling DataPorts...");
+			if(auto log = spdlog::get("opendatacon"))
+				log->info("Disabling DataPorts...");
 			for(auto& Name_n_Port : DataPorts)
 			{
 			      Name_n_Port.second->Disable();
 			}
-			spdlog::get("opendatacon")->flush();
+			if(auto log = spdlog::get("opendatacon"))
+				log->flush();
 			TCPbuf.DeInit();
-			spdlog::get("opendatacon")->info("Finishing asynchronous tasks...");
+			if(auto log = spdlog::get("opendatacon"))
+				log->info("Finishing asynchronous tasks...");
 			ios_working.reset();
 		});
 }

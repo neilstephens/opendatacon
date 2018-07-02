@@ -32,7 +32,7 @@ void* GetPortFunc(const std::string& libname, const std::string& objname, bool d
 
 	if (pluginlib == nullptr)
 	{
-		std::cout << libname << " Info: dynamic library load failed '" << libfilename << "' :"<< LastSystemError()<< std::endl;
+		std::cerr << libname << " Info: dynamic library load failed '" << libfilename << "' :"<< LastSystemError()<< std::endl;
 		return nullptr;
 	}
 
@@ -47,7 +47,7 @@ void* GetPortFunc(const std::string& libname, const std::string& objname, bool d
 
 	if (port_func == nullptr)
 	{
-		std::cout << libname << " Info: failed to load symbol '" << funcname << "' in library '" << libfilename << "' - " << LastSystemError() << std::endl;
+		std::cerr << libname << " Info: failed to load symbol '" << funcname << "' in library '" << libfilename << "' - " << LastSystemError() << std::endl;
 		return nullptr;
 	}
 	return port_func;
