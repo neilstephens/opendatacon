@@ -50,9 +50,13 @@
 #include "ODCArgs.h"
 #include <opendatacon/Platform.h>
 #include <csignal>
+#include <cstdio>
 
 int main(int argc, char* argv[])
 {
+	int ret_val;
+	std::string pidfile = "";
+
 	// Wrap everything in a try block.  Do this every time,
 	// because exceptions will be thrown for problems.
 	try
@@ -98,25 +102,27 @@ int main(int argc, char* argv[])
 		if (Args.DaemonArg.isSet())
 		{
 			daemonp(Args);
+			if(Args.PIDFileArg.isSet())
+				pidfile = Args.PIDFileArg.getValue();
 		}
 
 		// Construct and build opendatacon object
 		std::cout << "This is opendatacon version " << ODC_VERSION_STRING << std::endl;
 		std::cout << "Loading configuration... "<< std::endl;
-		TheDataConcentrator.reset(new DataConcentrator(Args.ConfigFileArg.getValue()));
+		TheDataConcentrator = std::make_unique<DataConcentrator>(Args.ConfigFileArg.getValue());
 		TheDataConcentrator->BuildOrRebuild();
 
 		// Configure signal handlers
 		auto shutdown_func = [] (int signum)
-		{
-			TheDataConcentrator->Shutdown();
-		};
+					   {
+						   TheDataConcentrator->Shutdown();
+					   };
 		auto ignore_func = [] (int signum)
-		{
-			std::cout<<"Signal "<<signum<<" ignored. Not designed to be interrupted or suspended.\n"
-					"To terminate, send a quit, kill, abort or break signal, or use a UI shutdown command.\n"
-					"To run in the background, run as a daemon or service."<<std::endl;
-		};
+					 {
+						 std::cout<<"Signal "<<signum<<" ignored. Not designed to be interrupted or suspended.\n"
+						                               "To terminate, send a quit, kill, abort or break signal, or use a UI shutdown command.\n"
+						                               "To run in the background, run as a daemon or service."<<std::endl;
+					 };
 
 		for (auto SIG : SIG_SHUTDOWN)
 		{
@@ -130,18 +136,25 @@ int main(int argc, char* argv[])
 		// Start opendatacon, returns after a clean shutdown
 		TheDataConcentrator->Run();
 
-		std::cout << "opendatacon version " << ODC_VERSION_STRING << " shutdown cleanly." << std::endl;
-
-		return 0;
+		std::string msg("opendatacon version '" ODC_VERSION_STRING "' shutdown cleanly.");
+		std::cout << msg << std::endl;
+		ret_val = 0;
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
 	{
-		std::cerr << "Command line error: " << e.error() << " for arg " << e.argId() << std::endl;
-		return 1;
+		std::string msg = "Command line error: " + e.error() +" for arg " + e.argId();
+		std::cerr << msg << std::endl;
+		ret_val = 1;
 	}
 	catch (std::exception& e) // catch opendatacon runtime exceptions
 	{
-		std::cerr << "Caught exception: " << e.what() << std::endl;
-		return 1;
+		std::string msg = std::string("Caught exception: ") + e.what();
+		std::cerr << msg << std::endl;
+		ret_val = 1;
 	}
+
+	if(pidfile != "")
+		std::remove(pidfile.c_str());
+
+	return ret_val;
 }
