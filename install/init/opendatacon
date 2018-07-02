@@ -39,8 +39,9 @@ start() {
 
         action $"Starting opendatacon daemon: " $exec $opts
         RETVAL=$?
+        PID=${pidof $prog}
         echo
-        [ $RETVAL -eq 0 ] && touch $lockfile
+        [ $RETVAL -eq 0 ] && touch $lockfile && echo $PID > $PIDFILE
         return $RETVAL
 }
 stop() {
