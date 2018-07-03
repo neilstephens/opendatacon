@@ -116,7 +116,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// DOMControlPoint Point Configuration
 	if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
 	{
-		DOMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
+		DOMControlPoint.first = opendnp3::AnalogOutputDouble64(0); // Default to 0 - we know as unset - will never be used in operation.
 		DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
 	}
 

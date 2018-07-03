@@ -208,7 +208,7 @@ public:
 	std::pair<AnalogOutputInt32, uint32_t> SystemSignOnPoint = std::make_pair(AnalogOutputInt32(0),(uint32_t)0);
 	std::pair<AnalogOutputInt32, uint32_t> FreezeResetCountersPoint = std::make_pair(AnalogOutputInt32(0), (uint32_t)0);
 	std::pair<AnalogOutputInt32, uint32_t> POMControlPoint = std::make_pair(AnalogOutputInt32(0), (uint32_t)0);
-	std::pair<AnalogOutputInt32, uint32_t> DOMControlPoint = std::make_pair(AnalogOutputInt32(0), (uint32_t)0);
+	std::pair<AnalogOutputDouble64, uint32_t> DOMControlPoint = std::make_pair(AnalogOutputDouble64(0), (uint32_t)0);
 
 	// Use the OLD Digital Commands 7/8 or the NEW ones 9/10/11/12
 	bool NewDigitalCommands = true;

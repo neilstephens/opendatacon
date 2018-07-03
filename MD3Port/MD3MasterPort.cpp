@@ -1147,7 +1147,17 @@ template<>
 void MD3MasterPort::WriteObject(const AnalogOutputInt32& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	// Other Magic point commands
-	LOGDEBUG("Master received a 32 bit magic point Command " + std::to_string(index));
+	if (index == MyPointConf()->POMControlPoint.second) // Is this out magic time set point?
+	{
+		LOGDEBUG("Master received POM Control Point command on the magic point through ODC " + std::to_string(index));
+		uint32_t blockdata = static_cast<uint32_t>(command.value);
+		MD3BlockFn17MtoS Header = MD3BlockFn17MtoS(MD3BlockData(blockdata));
+
+		SendPOMOutputCommand(MyConf()->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputSelection(), pStatusCallback);
+		return;
+	}
+
+	LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event " + std::to_string(index));
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
@@ -1169,12 +1179,22 @@ void MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, const uint1
 		SendTimeDateChangeCommand(currenttime, pStatusCallback);
 		return;
 	}
-	else
+	else if (index == MyPointConf()->DOMControlPoint.second) // Is this out magic time set point?
 	{
-		LOGDEBUG("Master received unknown AnalogOutputDouble64 ODC Event " + std::to_string(index));
-		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+		LOGDEBUG("Master received DOM Control Point command on the magic point through ODC " + std::to_string(index));
+		uint64_t blockdata = static_cast<uint64_t>(command.value);
+		uint32_t firstblock = (blockdata >> 32);
+		uint32_t secondblock = (blockdata & 0xFFFFFFFF);
+
+		MD3BlockFn19MtoS Header = MD3BlockFn19MtoS(MD3BlockData(firstblock));
+		MD3BlockData BlockData(secondblock);
+
+		SendDOMOutputCommand(MyConf()->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputFromSecondBlock(BlockData), pStatusCallback);
 		return;
 	}
+
+	LOGDEBUG("Master received unknown AnalogOutputDouble64 ODC Event " + std::to_string(index));
+	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
 void MD3MasterPort::SendDOMOutputCommand(const uint8_t &StationAddress, const uint8_t &ModuleAddress, const uint16_t &outputbits, const SharedStatusCallback_t &pStatusCallback)

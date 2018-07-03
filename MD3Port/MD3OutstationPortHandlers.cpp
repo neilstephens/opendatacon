@@ -1242,8 +1242,8 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 	if (MyPointConf()->DOMControlPoint.second != 0)
 	{
 		// Pass the command through ODC, just for MD3 on the other side.
-		MyPointConf()->DOMControlPoint.first = AnalogOutputInt32(Header.GetData());
-		success = Perform(MyPointConf()->DOMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS;
+		MyPointConf()->DOMControlPoint.first = AnalogOutputDouble64((double)(((int64_t)Header.GetData()<< 32 | CompleteMD3Message[1].GetData())));
+		success = Perform(MyPointConf()->DOMControlPoint.first, MyPointConf()->DOMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS;
 	}
 
 	if (success)
