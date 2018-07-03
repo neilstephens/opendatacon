@@ -785,13 +785,13 @@ bool MD3MasterPort::AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode,
 			nonrespondcode = true;
 			break;
 		case FREEZE_AND_RESET:
-			result = (FunctionCode == CONTROL_REQUEST_OK) || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
+			result = (FunctionCode == CONTROL_REQUEST_OK); // || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
 			break;
 		case POM_TYPE_CONTROL:
-			result = (FunctionCode == CONTROL_REQUEST_OK) || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
+			result = (FunctionCode == CONTROL_REQUEST_OK); // || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
 			break;
 		case DOM_TYPE_CONTROL:
-			result = (FunctionCode == CONTROL_REQUEST_OK) || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
+			result = (FunctionCode == CONTROL_REQUEST_OK); // || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
 			break;
 		case INPUT_POINT_CONTROL:
 			nonrespondcode = true;
@@ -800,7 +800,7 @@ bool MD3MasterPort::AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode,
 			nonrespondcode = true;
 			break;
 		case AOM_TYPE_CONTROL:
-			result = (FunctionCode == CONTROL_REQUEST_OK) || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
+			result = (FunctionCode == CONTROL_REQUEST_OK); // || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
 			break;
 		case CONTROL_OR_SCAN_REQUEST_REJECTED:
 			// Master Only
@@ -819,7 +819,7 @@ bool MD3MasterPort::AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode,
 			nonrespondcode = true;
 			break;
 		case SYSTEM_SET_DATETIME_CONTROL:
-			result = (FunctionCode == CONTROL_REQUEST_OK) || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
+			result = (FunctionCode == CONTROL_REQUEST_OK); // Only Success.. || (FunctionCode == CONTROL_OR_SCAN_REQUEST_REJECTED);
 			break;
 		case FILE_DOWNLOAD:
 			nonrespondcode = true;

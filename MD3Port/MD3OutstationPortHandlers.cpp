@@ -1127,9 +1127,8 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 	}
 
 	// Check that the control point is defined, otherwise return a fail.
-	// Check the first point only. There are 8 bits sent in this message.
 	int index = 0;
-	failed = GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), 0, index) ? failed : true;
+	failed = GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, index) ? failed : true;
 
 	if (Header.GetStationAddress() == 0)
 	{
@@ -1148,19 +1147,30 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 	MyPointConf()->POMControlPoint.first = AnalogOutputInt32(Header.GetData());
 
 	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+	bool success = true;
 
-	// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
-	for (int i = 0; i < 8; i++)
+	// POM is only a single bit, so easy to do... TRIP 0-7 and CLOSE 8-15 for the up to 8 points in a POM module.
+	bool point_on = (Header.GetOutputSelection() > 7);
+	ControlRelayOutputBlock b(point_on);
+
+	// Module contains 0 to 7 channels..
+	if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, index))
 	{
-		ControlRelayOutputBlock b((Header.GetOutputSelection() >> (7 - i) & 0x01) == 1);
-		if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, index))
+		if (CommandStatus::SUCCESS != Perform(b, index, waitforresult)) // If no subscribers will return quickly.
 		{
-			Perform(b, index, waitforresult); // If no subscribers will return quickly.
+			success = false;
 		}
 	}
 
-	// Pass the command through ODC, just for MD3 on the other side.
-	if (Perform(MyPointConf()->POMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS)
+	// If the index is !=0, then the pass through is active. So success depends on the pass through
+	if (MyPointConf()->POMControlPoint.second != 0)
+	{
+		// Pass the command through ODC, just for MD3 on the other side.
+		MyPointConf()->POMControlPoint.first = AnalogOutputInt32(Header.GetData());
+		success = Perform(MyPointConf()->POMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS;
+	}
+
+	if (success)
 	{
 		SendControlOK(Header);
 	}
@@ -1229,7 +1239,7 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 	}
 
 	// If the index is !=0, then the pass through is active. So success depends on the pass through
-	if (MyPointConf()->POMControlPoint.second != 0)
+	if (MyPointConf()->DOMControlPoint.second != 0)
 	{
 		// Pass the command through ODC, just for MD3 on the other side.
 		MyPointConf()->DOMControlPoint.first = AnalogOutputInt32(Header.GetData());

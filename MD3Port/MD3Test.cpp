@@ -68,7 +68,7 @@ const char *conffile1 = R"001(
 	"MD3CommandTimeoutmsec" : 3000,
 	"MD3CommandRetries" : 1,
 
-	// The magic points we use to pass through MD3 commands. 0 is the default values. If set to 0, they are inactive.
+	// The magic points we use to pass through MD3 commands. 0 is the default value. If set to 0, they are inactive.
 	// If we set StandAloneOutStation above, and use the pass through's here, we can maintain MD3 type packets through ODC.
 	// It is not however then possible to do a MD3 to DNP3 connection that will work.
 	"TimeSetPoint" : {"Index" : 0},
@@ -2331,17 +2331,54 @@ TEST_CASE("Master - DOM and POM Tests")
 
             REQUIRE(res == CommandStatus::SUCCESS);
       }
-*/
-	INFO("DOM OutStation->ODC->Master Command Test");
+
+      INFO("DOM OutStation->ODC->Master Command Test");
+      {
+            // We want to send a DOM Command to the OutStation, have it convert that to (up to) 16   Events.
+            // The Master will then ask for a response to those events (all 16!!), which we have to give it, as simulated TCP.
+            // Each should be responded to with an OK packet, and its callback executed.
+
+            IOS.post([&]()
+                  {
+                        MD3BlockFn19MtoS commandblock(0x7C, 33);                         // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
+                        MD3BlockData datablock = commandblock.GenerateSecondBlock(0x80); // Bit 0 ON?
+
+                        OSoutput << commandblock.ToBinaryString();
+                        OSoutput << datablock.ToBinaryString();
+
+                        MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
+                  });
+
+            Wait(IOS, 1);
+
+            // So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
+            REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1321de0300" "80008003c300")); // Should be 1 DOM command.
+
+            // Now send the OK packet back in.
+            // We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
+            MD3BlockData resp(MAResponse[0], MAResponse[1], MAResponse[2], MAResponse[3], true);
+            MD3BlockFn15StoM rcommandblock(resp); // Changes a few things in the block...
+            MAoutput << rcommandblock.ToBinaryString();
+
+            OSResponse = "Not Set";
+
+            MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
+
+            Wait(IOS, 4);
+
+            REQUIRE(OSResponse == BuildHexStringFromASCIIHexString("fc0f21de6000")); // OK Command
+      }
+      */
+
+	INFO("POM OutStation->ODC->Master Command Test");
 	{
-		// We want to send a DOM Command to the OutStation, have it convert that to (up to) 16   Events.
-		// The Master will then ask for a response to those events (all 16!!), which we have to give it, as simulated TCP.
-		// Each should be responded to with an OK packet, and its callback executed.
+		// We want to send a POM Command to the OutStation, it is a single bit and event, so easy compared to DOM
+		// It should responded with an OK packet, and its callback executed.
 
 		IOS.post([&]()
 			{
-				MD3BlockFn19MtoS commandblock(0x7C, 33);                         // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
-				MD3BlockData datablock = commandblock.GenerateSecondBlock(0x80); // Bit 0 ON?
+				MD3BlockFn17MtoS commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
+				MD3BlockData datablock = commandblock.GenerateSecondBlock();
 
 				OSoutput << commandblock.ToBinaryString();
 				OSoutput << datablock.ToBinaryString();
@@ -2352,7 +2389,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		Wait(IOS, 1);
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
-		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1321de0300" "80008003c300")); // Should be 1 DOM command.
+		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1126080e00" "03d90080cb00")); // Should be 1 POM command.
 
 		// Now send the OK packet back in.
 		// We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
@@ -2364,11 +2401,10 @@ TEST_CASE("Master - DOM and POM Tests")
 
 		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
 
-		Wait(IOS, 4);
+		Wait(IOS, 5);
 
 		REQUIRE(OSResponse == BuildHexStringFromASCIIHexString("fc0f21de6000")); // OK Command
 	}
-
 	work.reset(); // Indicate all work is finished.
 
 	STOP_IOS();
