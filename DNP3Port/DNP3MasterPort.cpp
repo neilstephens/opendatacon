@@ -38,8 +38,10 @@
 DNP3MasterPort::~DNP3MasterPort()
 {
 	ChannelStateSubscriber::Unsubscribe(this);
+	if(pChannel)
+		pChannel.reset();
 	if(pMaster)
-		pMaster->Shutdown();
+		pMaster.reset();
 }
 
 void DNP3MasterPort::Enable()
