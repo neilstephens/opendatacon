@@ -53,7 +53,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	//fire up some worker threads
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		std::thread([&](){IOS.run();}).detach();
+		threads.emplace_back([&](){IOS.run();});
 
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
@@ -543,7 +543,11 @@ void DataConcentrator::Run()
 
 	if(auto log = spdlog::get("opendatacon"))
 		log->info("Up and running.");
+
 	IOS.run();
+	for(auto& thread : threads)
+		thread.join();
+	threads.clear();
 
 	if(auto log = spdlog::get("opendatacon"))
 		log->info("Destoying Interfaces...");

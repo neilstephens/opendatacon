@@ -72,6 +72,8 @@ private:
 	std::map<std::string,spdlog::sink_ptr> LogSinksMap;
 	std::vector<spdlog::sink_ptr> LogSinksVec;
 	void SetLogLevel(std::stringstream& ss);
+
+	std::vector<std::thread> threads;
 };
 
 #endif /* DATACONCENTRATOR_H_ */
