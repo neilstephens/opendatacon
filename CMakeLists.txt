@@ -39,6 +39,7 @@ install(FILES "NOTICE.txt" DESTINATION ".")
 install(FILES "README.md" DESTINATION ".")
 install(FILES "RELEASE_NOTES" DESTINATION ".")
 install(DIRECTORY "./3rdPartyLicenses" DESTINATION ".")
+install(DIRECTORY "install/init" DESTINATION ".")
 
 #Generate version info now, and set to generate on every build
 include(version.cmake)
