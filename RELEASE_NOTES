@@ -1,4 +1,7 @@
-opendatacon version 0.5.0
+opendatacon version 0.5.1
+
+0.5.1
+	- Hotfix to make daemon mode work as expected
 
 0.5.0
 	- Binary packaging includes all required notices, licences, readmes and release notes
