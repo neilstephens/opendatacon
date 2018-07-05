@@ -39,6 +39,9 @@ using namespace odc;
 
 class DNP3Port: public DataPort
 {
+private:
+	static std::shared_ptr<asiodnp3::DNP3Manager> IOMgr();
+
 public:
 	DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~DNP3Port() override {}
@@ -64,14 +67,9 @@ protected:
 	bool link_dead;
 	bool channel_dead;
 
-	static std::unordered_map<std::string, std::shared_ptr<asiodnp3::IChannel>> Channels;
-
 	virtual void OnLinkDown()=0;
 	virtual TCPClientServer ClientOrServer()=0;
 
-private:
-	//static asiodnp3::DNP3Manager IOMgr;
-	static std::shared_ptr<asiodnp3::DNP3Manager> IOMgr();
 };
 
 #endif /* DNP3PORT_H_ */

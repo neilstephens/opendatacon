@@ -31,9 +31,6 @@
 #include "DNP3PortConf.h"
 #include "ChannelStateSubscriber.h"
 
-std::unordered_map<std::string, std::shared_ptr<asiodnp3::IChannel>> DNP3Port::Channels;
-//asiodnp3::DNP3Manager DNP3Port::IOMgr(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>());
-
 std::shared_ptr<asiodnp3::DNP3Manager> DNP3Port::IOMgr()
 {
 	static auto mgr = std::make_shared<asiodnp3::DNP3Manager>(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>());
@@ -223,6 +220,8 @@ private:
 
 std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 {
+	static std::unordered_map<std::string, std::shared_ptr<asiodnp3::IChannel>> Channels;
+
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	std::string ChannelID;
