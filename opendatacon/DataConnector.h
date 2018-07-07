@@ -62,7 +62,7 @@ protected:
 
 	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*> > Connections;
 	std::multimap<std::string,std::string> SenderConnectionsLookup;
-	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform, void (*)(Transform*)> > > ConnectionTransforms;
+	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform, std::function<void(Transform*)>> > > ConnectionTransforms;
 };
 
 #endif /* DATACONNECTOR_H_ */

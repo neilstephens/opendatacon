@@ -144,7 +144,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall --no-gnu-unique -std=c++14 -pedantic")
 	option(STATIC_LIBSTDC++ "Link libstdc++ statically" OFF)
 	if(STATIC_LIBSTDC++)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")

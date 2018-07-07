@@ -283,8 +283,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				spdlog::register_logger(pLibLogger);
 			}
 
+			auto plugin_cleanup = [=](IUI* plugin)
+						    {
+							    delete_plugin_func(plugin);
+							    UnLoadModule(pluginlib);
+						    };
+
 			//call the creation function and wrap the returned pointer to a new plugin
-			Interfaces.emplace(PluginName, std::unique_ptr<IUI,void (*)(IUI*)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), delete_plugin_func));
+			Interfaces.emplace(PluginName, std::unique_ptr<IUI,decltype(plugin_cleanup)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), plugin_cleanup));
 		}
 	}
 
@@ -407,8 +413,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				spdlog::register_logger(pLibLogger);
 			}
 
+			auto port_cleanup = [=](DataPort* port)
+						  {
+							  delete_port_func(port);
+							  UnLoadModule(portlib);
+						  };
+
 			//call the creation function and wrap the returned pointer to a new port
-			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,decltype(port_cleanup)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 		}
 	}

@@ -192,8 +192,14 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 //					spdlog::register_logger(pLibLogger);
 //				}
 
+				auto tx_cleanup = [=](Transform* tx)
+							{
+								delete_tx_func(tx);
+								UnLoadModule(txlib);
+							};
+
 				//call the creation function and wrap the returned pointer
-				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new_tx_func(Transforms[n]["Params"].asString()),delete_tx_func));
+				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new_tx_func(Transforms[n]["Params"].asString()),tx_cleanup));
 			}
 			catch (std::exception& e)
 			{

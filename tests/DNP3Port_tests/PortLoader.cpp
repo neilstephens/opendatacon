@@ -22,6 +22,8 @@
 
 #include "PortLoader.h"
 
+//TODO: refactor this to be able to unload the library too
+
 void* GetPortFunc(const std::string& libname, const std::string& objname, bool destroy)
 {
 	//Looks for a specific library (for libs that implement more than one class)
