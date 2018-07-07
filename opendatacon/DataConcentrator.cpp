@@ -38,6 +38,8 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS)),
+	shutting_down(false),
+	shut_down(false),
 	pTCPostream(nullptr)
 {
 	// Enable loading of libraries
@@ -572,6 +574,7 @@ void DataConcentrator::Run()
 	if(auto log = spdlog::get("opendatacon"))
 		log->info("Destoying DataPorts...");
 	DataPorts.clear();
+	shut_down = true;
 }
 
 void DataConcentrator::Shutdown()
@@ -580,6 +583,7 @@ void DataConcentrator::Shutdown()
 	//ensure we only act once
 	std::call_once(shutdown_flag, [this]()
 		{
+			shutting_down = true;
 			if(auto log = spdlog::get("opendatacon"))
 				log->info("Disabling Interfaces...");
 			for(auto& Name_n_UI : Interfaces)
@@ -605,4 +609,13 @@ void DataConcentrator::Shutdown()
 				log->info("Finishing asynchronous tasks...");
 			ios_working.reset();
 		});
+}
+
+bool DataConcentrator::isShuttingDown()
+{
+	return shutting_down;
+}
+bool DataConcentrator::isShutDown()
+{
+	return shut_down;
 }

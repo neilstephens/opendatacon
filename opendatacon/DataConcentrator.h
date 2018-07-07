@@ -55,6 +55,8 @@ public:
 	void BuildOrRebuild();
 	void Run();
 	void Shutdown();
+	bool isShuttingDown();
+	bool isShutDown();
 
 private:
 	DataPortCollection DataPorts;
@@ -64,6 +66,8 @@ private:
 	asio::io_service IOS;
 	std::unique_ptr<asio::io_service::work> ios_working;
 	std::once_flag shutdown_flag;
+	std::atomic_bool shutting_down;
+	std::atomic_bool shut_down;
 
 	//ostream for spdlog logging sink
 	TCPstringbuf TCPbuf;

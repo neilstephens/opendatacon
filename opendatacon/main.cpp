@@ -61,8 +61,6 @@ int main(int argc, char* argv[])
 	// because exceptions will be thrown for problems.
 	try
 	{
-		static std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
-
 		// Turn command line arguments into easy to query struct
 		ODCArgs Args(argc, argv);
 
@@ -107,7 +105,9 @@ int main(int argc, char* argv[])
 		}
 
 		// Construct and build opendatacon object
-		TheDataConcentrator = std::make_unique<DataConcentrator>(Args.ConfigFileArg.getValue());
+		//	static shared ptr to use in signal handler
+		static auto TheDataConcentrator = std::make_shared<DataConcentrator>(Args.ConfigFileArg.getValue());
+
 		TheDataConcentrator->BuildOrRebuild();
 
 		// Configure signal handlers
@@ -132,14 +132,34 @@ int main(int argc, char* argv[])
 		}
 
 		// Start opendatacon, returns after a clean shutdown
-		TheDataConcentrator->Run();
+		auto run_thread = std::thread([=](){TheDataConcentrator->Run();});
 
-		std::string msg("opendatacon version '" ODC_VERSION_STRING "' shutdown cleanly.");
+		while(!TheDataConcentrator->isShuttingDown())
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		//Shutting down - give some time for clean shutdown
+		uint i=0;
+		while(!TheDataConcentrator->isShutDown() && i++ < 20)
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		std::string msg("opendatacon version '" ODC_VERSION_STRING);
+		if(TheDataConcentrator->isShutDown())
+		{
+			run_thread.join();
+			msg += "' shutdown cleanly.";
+			ret_val = 0;
+		}
+		else
+		{
+			run_thread.detach();
+			msg += "' shutdown timed out.";
+			ret_val = 1;
+		}
+
 		if(auto log = spdlog::get("opendatacon"))
 			log->critical(msg);
 		else
 			std::cout << msg << std::endl;
-		ret_val = 0;
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
 	{
