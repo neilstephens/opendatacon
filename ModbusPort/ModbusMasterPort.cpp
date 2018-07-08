@@ -35,8 +35,6 @@
 ModbusMasterPort::~ModbusMasterPort()
 {
 	Disable();
-	if (mb != nullptr)
-		modbus_free(mb);
 	if (modbus_read_buffer != nullptr)
 		free(modbus_read_buffer);
 }
@@ -54,11 +52,14 @@ void ModbusMasterPort::Enable()
 	// Only change stack state if it is a persistent server
 	if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
 	{
-		this->Connect();
+		MBSync->Execute([this](modbus_t* mb)
+			{
+				Connect(mb);
+			});
 	}
 }
 
-void ModbusMasterPort::Connect()
+void ModbusMasterPort::Connect(modbus_t* mb)
 {
 	if(!enabled) return;
 	if (stack_enabled) return;
@@ -85,7 +86,10 @@ void ModbusMasterPort::Connect()
 				[this](asio::error_code err_code)
 				{
 					if(err_code != asio::error::operation_aborted)
-						this->Connect();
+						MBSync->Execute([this](modbus_t* mb)
+							{
+								Connect(mb);
+							});
 				});
 		}
 		return;
@@ -111,7 +115,10 @@ void ModbusMasterPort::Connect()
 		auto id = pg.second.ID;
 		auto action = [=]()
 				  {
-					  this->DoPoll(id);
+					  MBSync->Execute([=](modbus_t* mb)
+						  {
+							  DoPoll(id,mb);
+						  });
 				  };
 		PollScheduler->Add(pg.second.pollrate, action);
 	}
@@ -134,7 +141,11 @@ void ModbusMasterPort::Disconnect()
 	pTCPRetryTimer->cancel();
 	PollScheduler->Stop();
 
-	if(mb != nullptr) modbus_close(mb);
+	if(!MBSync->isNull())
+		MBSync->Execute([this](modbus_t* mb)
+			{
+				modbus_close(mb);
+			});
 
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
@@ -242,8 +253,10 @@ void ModbusMasterPort::BuildOrRebuild()
 		log_id = "mast_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
 
 		//TODO: collect these on a collection of modbus tcp connections
-		mb = modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
-		if (mb == NULL)
+		MBSync = std::make_unique<ModbusExecutor>(
+			modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str()), *pIOS);
+
+		if (MBSync->isNull())
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
 			if(auto log = spdlog::get("ModbusPort"))
@@ -254,8 +267,10 @@ void ModbusMasterPort::BuildOrRebuild()
 	else if(pConf->mAddrConf.SerialDevice != "")
 	{
 		log_id = "mast_" + pConf->mAddrConf.SerialDevice;
-		mb = modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
-		if (mb == NULL)
+		MBSync = std::make_unique<ModbusExecutor>(
+			modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits), *pIOS);
+
+		if (MBSync->isNull())
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
 			if(auto log = spdlog::get("ModbusPort"))
@@ -281,7 +296,7 @@ void ModbusMasterPort::BuildOrRebuild()
 	}
 }
 
-void ModbusMasterPort::DoPoll(uint32_t pollgroup)
+void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 {
 	if(!enabled) return;
 
@@ -434,7 +449,7 @@ ModbusReadGroup *ModbusMasterPort::GetRange(uint16_t index)
 	return nullptr;
 }
 
-CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(modbus_t *mb, const ControlRelayOutputBlock& command, uint16_t index)
 {
 	if (
 		(command.functionCode == ControlCode::NUL) ||
@@ -464,13 +479,16 @@ CommandStatus ModbusMasterPort::WriteObject(const ControlRelayOutputBlock& comma
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		MBSync->Execute([=](modbus_t* mb)
+			{
+				DoPoll(TargetRange->pollgroup,mb);
+			});
 
 	if (rc == -1) return HandleWriteError(errno, "write bit");
 	return CommandStatus::SUCCESS;
 }
 
-CommandStatus ModbusMasterPort::WriteObject(const int16_t output, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(modbus_t* mb, const int16_t output, uint16_t index)
 {
 	ModbusReadGroup* TargetRange = GetRange<EventType::Analog>(index);
 	if (TargetRange == nullptr) return CommandStatus::NOT_SUPPORTED;
@@ -479,13 +497,16 @@ CommandStatus ModbusMasterPort::WriteObject(const int16_t output, uint16_t index
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		MBSync->Execute([=](modbus_t* mb)
+			{
+				DoPoll(TargetRange->pollgroup,mb);
+			});
 
 	if (rc == -1) return HandleWriteError(errno, "write register");
 	return CommandStatus::SUCCESS;
 }
 
-CommandStatus ModbusMasterPort::WriteObject(const int32_t output, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(modbus_t* mb, const int32_t output, uint16_t index)
 {
 	ModbusReadGroup* TargetRange = GetRange<EventType::Analog>(index);
 	if (TargetRange == nullptr) return CommandStatus::NOT_SUPPORTED;
@@ -501,13 +522,16 @@ CommandStatus ModbusMasterPort::WriteObject(const int32_t output, uint16_t index
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		MBSync->Execute([=](modbus_t* mb)
+			{
+				DoPoll(TargetRange->pollgroup,mb);
+			});
 
 	if (rc == -1) return HandleWriteError(errno, "write register");
 	return CommandStatus::SUCCESS;
 }
 
-CommandStatus ModbusMasterPort::WriteObject(const double output, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(modbus_t* mb, const double output, uint16_t index)
 {
 	ModbusReadGroup* TargetRange = GetRange<EventType::Analog>(index);
 	if (TargetRange == nullptr) return CommandStatus::NOT_SUPPORTED;
@@ -526,14 +550,17 @@ CommandStatus ModbusMasterPort::WriteObject(const double output, uint16_t index)
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		MBSync->Execute([=](modbus_t* mb)
+			{
+				DoPoll(TargetRange->pollgroup,mb);
+			});
 
 	if (rc == -1) return HandleWriteError(errno, "write register");
 	return CommandStatus::SUCCESS;
 }
-CommandStatus ModbusMasterPort::WriteObject(const float output, uint16_t index)
+CommandStatus ModbusMasterPort::WriteObject(modbus_t *mb, const float output, uint16_t index)
 {
-	return WriteObject(static_cast<double>(output),index);
+	return WriteObject(mb, static_cast<double>(output),index);
 }
 
 void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -546,23 +573,26 @@ void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::
 
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
+	auto write = [=](auto payload)
+			 {
+				 MBSync->Execute([=](modbus_t* mb)
+					 {
+						 (*pStatusCallback)(WriteObject(mb, payload, event->GetIndex()));
+					 });
+			 };
+
 	switch(event->GetEventType())
 	{
 		case EventType::ControlRelayOutputBlock:
-			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(),
-				event->GetIndex()));
+			return write(event->GetPayload<EventType::ControlRelayOutputBlock>());
 		case EventType::AnalogOutputInt16:
-			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first,
-				event->GetIndex()));
+			return write(event->GetPayload<EventType::AnalogOutputInt16>().first);
 		case EventType::AnalogOutputInt32:
-			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first,
-				event->GetIndex()));
+			return write(event->GetPayload<EventType::AnalogOutputInt32>().first);
 		case EventType::AnalogOutputFloat32:
-			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first,
-				event->GetIndex()));
+			return write(event->GetPayload<EventType::AnalogOutputFloat32>().first);
 		case EventType::AnalogOutputDouble64:
-			return (*pStatusCallback)(WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first,
-				event->GetIndex()));
+			return write(event->GetPayload<EventType::AnalogOutputDouble64>().first);
 		case EventType::ConnectState:
 		{
 			auto state = event->GetPayload<EventType::ConnectState>();
@@ -573,7 +603,10 @@ void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::
 				// Only change stack state if it is an on demand server
 				if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 				{
-					Connect();
+					MBSync->Execute([=](modbus_t* mb)
+						{
+							Connect(mb);
+						});
 				}
 			}
 			else if (state == ConnectState::DISCONNECTED)

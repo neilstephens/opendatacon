@@ -38,8 +38,6 @@ ModbusOutstationPort::ModbusOutstationPort(const std::string& aName, const std::
 ModbusOutstationPort::~ModbusOutstationPort()
 {
 	Disable();
-	if (mb != nullptr)
-		modbus_free(mb);
 	if (mb_mapping != nullptr)
 		modbus_mapping_free(mb_mapping);
 }
@@ -66,29 +64,32 @@ void ModbusOutstationPort::Connect()
 
 	stack_enabled = true;
 
-	if (mb == NULL)
+	if (MBSync->isNull())
 	{
 		if(auto log = spdlog::get("ModbusPort"))
 			log->error("{}: Connect error: 'Modbus stack failed'", Name);
 		return;
 	}
 
-	int s = modbus_tcp_pi_listen(mb, 1);
-	if (s == -1)
-	{
-		if(auto log = spdlog::get("ModbusPort"))
-			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
-		return;
-	}
+	MBSync->Execute([this](modbus_t* mb)
+		{
+			int s = modbus_tcp_pi_listen(mb, 1);
+			if (s == -1)
+			{
+			      if(auto log = spdlog::get("ModbusPort"))
+					log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
+			      return;
+			}
 
-	int r = modbus_tcp_pi_accept(mb, &s);
-	if (r == -1)
-	{
-		if(auto log = spdlog::get("ModbusPort"))
-			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
-		return;
-	}
-	PublishEvent(ConnectState::CONNECTED);
+			int r = modbus_tcp_pi_accept(mb, &s);
+			if (r == -1)
+			{
+			      if(auto log = spdlog::get("ModbusPort"))
+					log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
+			      return;
+			}
+			PublishEvent(ConnectState::CONNECTED);
+		});
 }
 
 void ModbusOutstationPort::Disable()
@@ -103,8 +104,13 @@ void ModbusOutstationPort::Disconnect()
 	if (!stack_enabled) return;
 	stack_enabled = false;
 
-	if(mb != nullptr) modbus_close(mb);
-	PublishEvent(ConnectState::DISCONNECTED);
+	if(MBSync->isNull())
+		return;
+	MBSync->Execute([this](modbus_t* mb)
+		{
+			modbus_close(mb);
+			PublishEvent(ConnectState::DISCONNECTED);
+		});
 }
 
 void ModbusOutstationPort::BuildOrRebuild()
@@ -118,8 +124,9 @@ void ModbusOutstationPort::BuildOrRebuild()
 		log_id = "outst_" + pConf->mAddrConf.IP + ":" + std::to_string(pConf->mAddrConf.Port);
 
 		//TODO: collect these on a collection of modbus tcp connections
-		mb = modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str());
-		if (mb == NULL)
+		MBSync = std::make_unique<ModbusExecutor>(
+			modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str()),*pIOS);
+		if (MBSync->isNull())
 		{
 			if(auto log = spdlog::get("ModbusPort"))
 				log->error("{}: Stack error: 'Modbus stack creation failed'", Name);
@@ -130,21 +137,25 @@ void ModbusOutstationPort::BuildOrRebuild()
 	else if(pConf->mAddrConf.SerialDevice != "")
 	{
 		log_id = "outst_" + pConf->mAddrConf.SerialDevice;
-		mb = modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits);
-		if (mb == NULL)
+		MBSync = std::make_unique<ModbusExecutor>(
+			modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits), *pIOS);
+		if (MBSync->isNull())
 		{
 			if(auto log = spdlog::get("ModbusPort"))
 				log->error("{}: Stack error: 'Modbus stack creation failed'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
-		if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
-		{
-			if(auto log = spdlog::get("ModbusPort"))
-				log->error("{}: Stack error: 'Failed to set Modbus serial mode to RS232'", Name);
-			//TODO: should this throw an exception instead of return?
-			return;
-		}
+		MBSync->Execute([this](modbus_t* mb)
+			{
+				if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
+				{
+				      if(auto log = spdlog::get("ModbusPort"))
+						log->error("{}: Stack error: 'Failed to set Modbus serial mode to RS232'", Name);
+				//TODO: should this throw an exception instead of return?
+				      return;
+				}
+			});
 	}
 	else
 	{

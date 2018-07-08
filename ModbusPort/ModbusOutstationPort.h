@@ -29,7 +29,6 @@
 
 #include <unordered_map>
 
-#include <modbus/modbus.h>
 #include "ModbusPort.h"
 
 class ModbusOutstationPort: public ModbusPort
@@ -48,7 +47,6 @@ public:
 	void Disconnect();
 
 private:
-	modbus_t *mb;
 	modbus_mapping_t *mb_mapping;
 };
 

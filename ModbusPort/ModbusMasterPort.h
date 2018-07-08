@@ -29,7 +29,6 @@
 
 #include <queue>
 
-#include <modbus/modbus.h>
 #include "ModbusPort.h"
 #include <opendatacon/ASIOScheduler.h>
 
@@ -72,7 +71,6 @@ class ModbusMasterPort: public ModbusPort
 public:
 	ModbusMasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		ModbusPort(aName, aConfFilename, aConfOverrides),
-		mb(nullptr),
 		modbus_read_buffer(nullptr),
 		modbus_read_buffer_size(0)
 	{}
@@ -82,20 +80,20 @@ public:
 	// Implement ModbusPort
 	void Enable() override;
 	void Disable() override;
-	void Connect();
+	void Connect(modbus_t *mb);
 	void Disconnect();
 	void BuildOrRebuild() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 private:
-	CommandStatus WriteObject(const ControlRelayOutputBlock& output, uint16_t index);
-	CommandStatus WriteObject(const int16_t output, uint16_t index);
-	CommandStatus WriteObject(const int32_t output, uint16_t index);
-	CommandStatus WriteObject(const double output, uint16_t index);
-	CommandStatus WriteObject(const float output, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const ControlRelayOutputBlock& output, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const int16_t output, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const int32_t output, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const double output, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const float output, uint16_t index);
 
-	void DoPoll(uint32_t pollgroup);
+	void DoPoll(uint32_t pollgroup, modbus_t *mb);
 
 private:
 	void HandleError(int errnum, const std::string& source);
@@ -104,7 +102,6 @@ private:
 	template<EventType t>
 	ModbusReadGroup* GetRange(uint16_t index);
 
-	modbus_t *mb;
 	void* modbus_read_buffer;
 	size_t modbus_read_buffer_size;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

@@ -27,10 +27,37 @@
 #ifndef ModbusPORT_H_
 #define ModbusPORT_H_
 
+#include <modbus/modbus.h>
 #include <opendatacon/DataPort.h>
 #include "ModbusPortConf.h"
 
 using namespace odc;
+
+//class to synchronise access to libmodbus object (libmodbus is not re-entrant)
+class ModbusExecutor
+{
+public:
+	ModbusExecutor(modbus_t* mb_,asio::io_service& ios):
+		mb(mb_),
+		sync(ios)
+	{}
+	~ModbusExecutor()
+	{
+		if (mb != nullptr)
+			modbus_free(mb);
+	}
+	void Execute(std::function<void(modbus_t*)>&& f)
+	{
+		sync.dispatch([this,f = std::move(f)](){f(mb);});
+	}
+	bool isNull()
+	{
+		return (mb == nullptr);
+	}
+private:
+	modbus_t* mb;
+	asio::io_service::strand sync;
+};
 
 class ModbusPort: public DataPort
 {
@@ -46,6 +73,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 protected:
+	std::unique_ptr<ModbusExecutor> MBSync;
 	std::atomic_bool stack_enabled;
 };
 
