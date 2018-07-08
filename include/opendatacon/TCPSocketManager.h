@@ -118,7 +118,7 @@ public:
 					return;
 				if(isServer)
 				{
-				      pAcceptor.reset(new asio::ip::tcp::acceptor(*pIOS, *EndpointIterator));
+				      pAcceptor = std::make_unique<asio::ip::tcp::acceptor>(*pIOS, *EndpointIterator);
 				      pAcceptor->async_accept(Sock,[this](asio::error_code err_code)
 						{
 							ConnectCompletionHandler(err_code);

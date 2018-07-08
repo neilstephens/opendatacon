@@ -45,7 +45,7 @@ public:
 		evt_buffer_size(1000),
 		style_output(false)
 	{
-		pPointConf.reset(new JSONPointConf(FileName, ConfOverrides));
+		pPointConf = std::make_unique<JSONPointConf>(FileName, ConfOverrides);
 	}
 
 	std::unique_ptr<JSONPointConf> pPointConf;

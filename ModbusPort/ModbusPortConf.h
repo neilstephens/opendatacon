@@ -78,7 +78,7 @@ public:
 	ModbusPortConf(const std::string& FileName):
 		mAddrConf()
 	{
-		pPointConf.reset(new ModbusPointConf(FileName));
+		pPointConf = std::make_unique<ModbusPointConf>(FileName);
 	}
 
 	std::unique_ptr<ModbusPointConf> pPointConf;

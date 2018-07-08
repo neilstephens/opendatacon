@@ -67,7 +67,7 @@ public:
 	DNP3PortConf(const std::string& FileName, const Json::Value& ConfOverrides):
 		LOG_LEVEL(opendnp3::levels::NORMAL)
 	{
-		pPointConf.reset(new DNP3PointConf(FileName, ConfOverrides));
+		pPointConf = std::make_unique<DNP3PointConf>(FileName, ConfOverrides);
 	}
 
 	std::unique_ptr<DNP3PointConf> pPointConf;
