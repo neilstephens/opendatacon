@@ -33,15 +33,8 @@ else()
 	set(TCLAP_HOME "/usr" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS})
 endif()
 
-include_directories(
-	"../include"
-	"../JSON"
-	"${SPDLOG_HOME}/include"
-	"${ASIO_HOME}/include"
-	"${TCLAP_HOME}/include"
-)
-
 add_executable(${PROJECT_NAME} ${SRC_LIST} ${DAEMON_SRC_LIST})
+target_include_directories(${PROJECT_NAME} PRIVATE "${TCLAP_HOME}/include")
 target_link_libraries(${PROJECT_NAME} ODC ${DL})
 
 install(DIRECTORY "../include/opendatacon" DESTINATION ${INSTALLDIR_INCLUDES})

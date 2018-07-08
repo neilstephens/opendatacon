@@ -62,16 +62,8 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 	endif()
 endforeach()
 
-
-include_directories(
-	../include
-	../JSON
-	${SPDLOG_HOME}/include
-	${DNP3_HOME}/include
-	${ASIO_HOME}/include
-)
-
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_HOME}/include")
 target_link_libraries(${PROJECT_NAME} ODC ${asiodnp3_libs} ${asiopal_libs} ${opendnp3_libs} ${openpal_libs})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
