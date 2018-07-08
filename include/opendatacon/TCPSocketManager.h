@@ -25,7 +25,6 @@
  */
 
 //TODO: probably move the code into a cpp in ODC library
-//TODO: write buffer limit
 
 //Helper class for managing access to a TCP socket, either as server or client
 //Usage:
@@ -87,6 +86,8 @@ public:
 		const std::string& aPort,                         //Port to connect to if client, or listen on if server
 		const std::function<void(buf_t&)>& aReadCallback, //Handler for data read off socket
 		const std::function<void(bool)>& aStateCallback,  //Handler for communicating the connection state of the socket
+		const size_t abuffer_limit                        //
+		      = std::numeric_limits<size_t>::max(),       //maximum number of writes to buffer
 		bool aauto_reopen = false,                        //Keeps the socket open (retry on error), unless you explicitly Close() it
 		uint16_t aretry_time_ms = 0):                     //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
 		isConnected(false),
@@ -100,6 +101,7 @@ public:
 		WriteStrand(asio::io_service::strand(*pIOS)),
 		SockStrand(asio::io_service::strand(*pIOS)),
 		RetryTimer(*pIOS),
+		buffer_limit(abuffer_limit),
 		auto_reopen(aauto_reopen),
 		retry_time_ms(aretry_time_ms),
 		ramp_time_ms(0),
@@ -157,6 +159,8 @@ public:
 				      WriteStrand.post([this,buf]()
 						{
 							writebufs.push_back(buf);
+							if(writebufs.size() > buffer_limit)
+								writebufs.erase(writebufs.begin());
 						});
 				      return;
 				}
@@ -166,6 +170,8 @@ public:
 							if(err_code)
 							{
 							      writebufs.push_back(buf);
+							      if(writebufs.size() > buffer_limit)
+									writebufs.erase(writebufs.begin());
 							      AutoClose();
 							      AutoOpen();
 							      return;
@@ -200,6 +206,8 @@ private:
 
 	//for timing open-retries
 	asio::basic_waitable_timer<std::chrono::steady_clock> RetryTimer;
+
+	size_t buffer_limit;
 
 	//Auto open funtionality - see constructor for description
 	bool auto_reopen;
