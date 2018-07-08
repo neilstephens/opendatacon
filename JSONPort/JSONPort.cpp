@@ -115,13 +115,13 @@ void JSONPort::Build()
 {
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	//TODO: use event buffer size once socket manager supports it
-	pSockMan.reset(new TCPSocketManager<std::string>
-			(pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
-			std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
-			std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
-			true,
-			pConf->retry_time_ms));
+	pSockMan = std::make_unique<TCPSocketManager<std::string>>
+		           (pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
+		           std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
+		           std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
+		           1000,
+		           true,
+		           pConf->retry_time_ms);
 }
 
 void JSONPort::ReadCompletionHandler(buf_t& readbuf)
