@@ -46,7 +46,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 protected:
-	bool stack_enabled;
+	std::atomic_bool stack_enabled;
 };
 
 #endif /* ModbusPORT_H_ */

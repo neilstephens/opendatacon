@@ -196,9 +196,6 @@ void DNP3OutstationPort::BuildOrRebuild()
 	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;   /// The number of analog events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents; /// The number of counter events the outstation will buffer before overflowing
 
-	//auto pCommandHandle = std::dynamic_pointer_cast<opendnp3::ICommandHandler>(shareable_this);
-	//auto pApplication = std::dynamic_pointer_cast<opendnp3::IOutstationApplication>(shareable_this);
-
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory
 	auto wont_free = std::shared_ptr<DNP3OutstationPort>(this,[](void*){});

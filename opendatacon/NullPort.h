@@ -38,12 +38,11 @@ class NullPort: public DataPort
 {
 private:
 	std::unique_ptr<Timer_t> pTimer;
-	bool enabled;
+
 public:
 	NullPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		DataPort(aName, aConfFilename, aConfOverrides),
-		pTimer(nullptr),
-		enabled(false)
+		pTimer(nullptr)
 	{}
 	void Enable() override
 	{

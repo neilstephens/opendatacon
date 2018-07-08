@@ -58,15 +58,18 @@ public:
 	void Subscribe(IOHandler* pIOHandler, std::string aName);
 	void SetIOS(asio::io_service* ios_ptr);
 
-	std::string Name;
-	asio::io_service* pIOS;
-	bool enabled;
+	inline const std::string& GetName(){return Name;}
+	inline const bool Enabled(){return enabled;}
 	InitState_t InitState;
 	uint16_t EnableDelayms;
 
 	static std::unordered_map<std::string, IOHandler*>& GetIOHandlers();
 
 protected:
+	std::string Name;
+	asio::io_service* pIOS;
+	std::atomic_bool enabled;
+
 	bool InDemand();
 	std::map<std::string,bool> connection_demands;
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);

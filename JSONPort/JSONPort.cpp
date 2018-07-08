@@ -147,7 +147,8 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 			{
 				braced.clear(); //discard because it must be outside matched braces
 				count_close_braces = count_open_braces = 0;
-				//TODO: log warning/info about malformed JSON being discarded
+				if(auto log = spdlog::get("JSONPort"))
+					log->warn("Malformed JSON recieved: unmatched closing brace.");
 			}
 		}
 		braced.push_back(ch);

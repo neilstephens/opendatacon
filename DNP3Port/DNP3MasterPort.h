@@ -98,7 +98,7 @@ protected:
 private:
 	std::shared_ptr<asiodnp3::IMaster> pMaster;
 
-	bool stack_enabled;
+	std::atomic_bool stack_enabled;
 	bool assign_class_sent;
 	std::shared_ptr<asiodnp3::IMasterScan> IntegrityScan;
 	void LinkStatusListener(opendnp3::LinkStatus status);

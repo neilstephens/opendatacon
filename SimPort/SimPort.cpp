@@ -40,8 +40,7 @@ inline unsigned int random_interval(const unsigned int& average_interval, rand_t
 
 //Implement DataPort interface
 SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
-	DataPort(Name, File, Overrides),
-	enabled(false)
+	DataPort(Name, File, Overrides)
 {
 	pConf.reset(new SimPortConf());
 	ProcessFile();

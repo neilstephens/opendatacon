@@ -221,7 +221,7 @@ void DataConnector::Event(ConnectState state, const std::string& SenderName)
 			IOHandler* pSendee = Connections[aMatch_it->second].second;
 
 			//check if we were right and correct if need be
-			if(pSendee->Name == SenderName)
+			if(pSendee->GetName() == SenderName)
 				pSendee = Connections[aMatch_it->second].first;
 
 			pSendee->Event(state, Name);
@@ -262,7 +262,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 			IOHandler* pSendee = Connections[aMatch_it->second].second;
 
 			//check if we were right and correct if need be
-			if(pSendee->Name == SenderName)
+			if(pSendee->GetName() == SenderName)
 				pSendee = Connections[aMatch_it->second].first;
 
 			pSendee->Event(new_event_obj, this->Name, multi_callback);

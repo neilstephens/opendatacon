@@ -55,7 +55,6 @@ private:
 	void PortDown();
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
-	bool enabled;
 	std::mt19937 RandNumGenerator;
 };
 
