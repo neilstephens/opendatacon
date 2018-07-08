@@ -36,11 +36,12 @@ std::unordered_map<std::string, IOHandler*>& IOHandler::GetIOHandlers()
 	return IOHandler::IOHandlers;
 }
 
-IOHandler::IOHandler(const std::string& aName): Name(aName),
-	pIOS(nullptr),
-	enabled(false),
+IOHandler::IOHandler(const std::string& aName):
 	InitState(InitState_t::ENABLED),
-	EnableDelayms(0)
+	EnableDelayms(0),
+	Name(aName),
+	pIOS(nullptr),
+	enabled(false)
 {
 	IOHandlers[Name]=this;
 }

@@ -36,7 +36,7 @@
 namespace odc
 {
 
-typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
+enum class  InitState_t { ENABLED, DISABLED, DELAYED };
 
 typedef std::shared_ptr<std::function<void (CommandStatus status)>> SharedStatusCallback_t;
 

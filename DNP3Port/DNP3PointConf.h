@@ -106,7 +106,7 @@ public:
 	opendnp3::EventCounterVariation EventCounterResponse;
 
 	// Timestamp override options
-	typedef enum { ALWAYS, ZERO, NEVER } TimestampOverride_t;
+	enum class TimestampOverride_t { ALWAYS, ZERO, NEVER };
 	TimestampOverride_t TimestampOverride;
 
 	// Event buffer limits

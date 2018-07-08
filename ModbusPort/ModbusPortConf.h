@@ -30,12 +30,12 @@
 #include <opendatacon/DataPort.h>
 #include "ModbusPointConf.h"
 
-typedef enum
+enum class server_type_t
 {
 	PERSISTENT,
 	ONDEMAND,
 	MANUAL
-} server_type_t;
+};
 
 enum class SerialParity: char
 {
@@ -68,7 +68,7 @@ struct ModbusAddrConf
 		IP(""),
 		Port(502),
 		OutstationAddr(1),
-		ServerType(ONDEMAND)
+		ServerType(server_type_t::ONDEMAND)
 	{}
 };
 

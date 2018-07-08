@@ -82,7 +82,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
 	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
 	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
-	TimestampOverride(ZERO),
+	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
 	MaxBinaryEvents(1000),
 	MaxAnalogEvents(1000),

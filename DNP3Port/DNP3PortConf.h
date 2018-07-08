@@ -33,8 +33,8 @@
 #include <openpal/logging/LogFilters.h>
 #include "DNP3PointConf.h"
 
-enum TCPClientServer {CLIENT,SERVER,DEFAULT};
-enum server_type_t {ONDEMAND,PERSISTENT,MANUAL};
+enum class TCPClientServer {CLIENT,SERVER,DEFAULT};
+enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 struct DNP3AddrConf
 {
 	//Serial
