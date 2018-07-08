@@ -123,7 +123,7 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 	return pConf->mAddrConf.ClientServer;
 }
 
-void DNP3OutstationPort::BuildOrRebuild()
+void DNP3OutstationPort::Build()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -221,9 +221,10 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 	if (pOutstation == nullptr)
 		return IUIResponder::GenerateResult("Bad port");
 
-	//FIXME: how on earth do I get the current values with the new opendnp3 API?
-//	auto configView = pOutstation->GetConfigView();
+	//FIXME: The new opendnp3 API doesn't expose internal state
 
+//	auto configView = pOutstation->GetConfigView();
+//
 //	for (auto point : configView.analogs)
 //	{
 //		analogValues[std::to_string(point.vIndex)] = point.value.value;

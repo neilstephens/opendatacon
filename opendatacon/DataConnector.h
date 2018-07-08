@@ -55,7 +55,7 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild();
+	void Build();
 
 protected:
 	void ProcessElements(const Json::Value& JSONRoot) override;

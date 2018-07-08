@@ -51,7 +51,7 @@ protected:
 	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild() override;
+	void Build() override;
 	const Json::Value GetStatistics() const override;
 
 	// Implement DNP3Port

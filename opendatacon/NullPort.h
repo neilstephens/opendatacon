@@ -68,7 +68,7 @@ public:
 		PublishEvent(ConnectState::PORT_DOWN);
 		PublishEvent(ConnectState::DISCONNECTED);
 	}
-	void BuildOrRebuild() override {}
+	void Build() override {}
 	void ProcessElements(const Json::Value& JSONRoot) override {}
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(enabled ? CommandStatus::SUCCESS : CommandStatus::BLOCKED); }

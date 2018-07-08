@@ -51,8 +51,8 @@ TEST_CASE(SUITE("TCP link"))
 	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild();
-	MPUT->BuildOrRebuild();
+	OPUT->Build();
+	MPUT->Build();
 
 	//turn them on
 	asio::io_service ios;
@@ -128,8 +128,8 @@ TEST_CASE(SUITE("Serial link"))
 	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild();
-	MPUT->BuildOrRebuild();
+	OPUT->Build();
+	MPUT->Build();
 
 	//turn them on
 	asio::io_service ios;

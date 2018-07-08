@@ -215,7 +215,7 @@ int WebUI::http_ahc(void *cls,
 	}
 }
 
-void WebUI::BuildOrRebuild()
+void WebUI::Build()
 {}
 
 void WebUI::Enable()

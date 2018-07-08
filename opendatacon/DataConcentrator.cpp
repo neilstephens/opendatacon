@@ -478,25 +478,25 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 }
-void DataConcentrator::BuildOrRebuild()
+void DataConcentrator::Build()
 {
 	if(auto log = spdlog::get("opendatacon"))
 		log->info("Initialising Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
-		Name_n_UI.second->BuildOrRebuild();
+		Name_n_UI.second->Build();
 	}
 	if(auto log = spdlog::get("opendatacon"))
 		log->info("Initialising DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
-		Name_n_Port.second->BuildOrRebuild();
+		Name_n_Port.second->Build();
 	}
 	if(auto log = spdlog::get("opendatacon"))
 		log->info("Initialising DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
-		Name_n_Conn.second->BuildOrRebuild();
+		Name_n_Conn.second->Build();
 	}
 }
 void DataConcentrator::Run()

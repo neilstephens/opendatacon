@@ -354,7 +354,7 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 	}
 }
 
-void ConsoleUI::BuildOrRebuild()
+void ConsoleUI::Build()
 {}
 
 void ConsoleUI::Enable()

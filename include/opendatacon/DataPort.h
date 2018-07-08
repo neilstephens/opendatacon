@@ -47,7 +47,7 @@ public:
 
 	void Enable() override =0;
 	void Disable() override =0;
-	virtual void BuildOrRebuild()=0;
+	virtual void Build()=0;
 	void ProcessElements(const Json::Value& JSONRoot) override =0;
 
 	void Event(ConnectState state, const std::string& SenderName) final

@@ -25,23 +25,16 @@
  */
 
 /*TODO:
- *    -fix logging:
- *          -cmd to change log level on the fly (part of config cmds: see below)
  *    -add config change commands
- *          -implement BuildOrRebuild properly for changed configs
  *          -cmd to apply config item from command line
  *          -cmd to load config from file
  *          -save config to file
- *    -add maintenance commands:
- *          -enable/disable/restart ports/connectors/connections
- *    -remove the need for two threadpools?
- *          -Mod to DNP3Manager to use existing io_service?
  *    -add a network interface to the console
  *	-more dataports to implement:
  *		-C37.118
  *		-NMEA 2k / CANv2
  *		-NMEA 0183
- *		-XMLoHTML (inc. Gridlab-D)
+ *		-Gridlab-D
  *		-JSONoHTML
  */
 
@@ -108,7 +101,7 @@ int main(int argc, char* argv[])
 		//	static shared ptr to use in signal handler
 		static auto TheDataConcentrator = std::make_shared<DataConcentrator>(Args.ConfigFileArg.getValue());
 
-		TheDataConcentrator->BuildOrRebuild();
+		TheDataConcentrator->Build();
 
 		// Configure signal handlers
 		auto shutdown_func = [] (int signum)

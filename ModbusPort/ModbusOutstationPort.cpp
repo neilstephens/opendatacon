@@ -113,7 +113,7 @@ void ModbusOutstationPort::Disconnect()
 		});
 }
 
-void ModbusOutstationPort::BuildOrRebuild()
+void ModbusOutstationPort::Build()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 

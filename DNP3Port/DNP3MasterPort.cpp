@@ -193,7 +193,7 @@ TCPClientServer DNP3MasterPort::ClientOrServer()
 	return pConf->mAddrConf.ClientServer;
 }
 
-void DNP3MasterPort::BuildOrRebuild()
+void DNP3MasterPort::Build()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 

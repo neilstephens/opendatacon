@@ -276,7 +276,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
-void DataConnector::BuildOrRebuild()
+void DataConnector::Build()
 {}
 void DataConnector::Enable()
 {

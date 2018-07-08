@@ -42,7 +42,7 @@ protected:
 	/// Implement ODC::DataPort
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild() override;
+	void Build() override;
 
 	// Implement DNP3Port
 	void OnLinkDown() override;

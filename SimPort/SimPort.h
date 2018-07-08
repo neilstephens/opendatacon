@@ -40,7 +40,7 @@ public:
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
 	void Enable() final;
 	void Disable() final;
-	void BuildOrRebuild() final;
+	void Build() final;
 	void ProcessElements(const Json::Value& JSONRoot) final;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;

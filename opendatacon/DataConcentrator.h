@@ -52,7 +52,7 @@ public:
 	~DataConcentrator() override;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
-	void BuildOrRebuild();
+	void Build();
 	void Run();
 	void Shutdown();
 	bool isShuttingDown();

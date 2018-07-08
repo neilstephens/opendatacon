@@ -39,7 +39,7 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild() override;
+	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 

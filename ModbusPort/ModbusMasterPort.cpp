@@ -242,7 +242,7 @@ CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& 
 	}
 }
 
-void ModbusMasterPort::BuildOrRebuild()
+void ModbusMasterPort::Build()
 {
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
