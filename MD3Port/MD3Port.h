@@ -86,16 +86,16 @@ public:
 
 	// Methods to access the outstation point table
 	//TODO: Point container access extract to separate class maybe..
-	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res);
-	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta);
+	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, bool &hasbeenset);
+	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool &hasbeenset);
 	bool SetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
 	bool GetCounterODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int & res);
 	bool SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas);
 
-	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res);
-	bool GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta);
+	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, bool & hasbeenset);
+	bool GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool & hasbeenset);
 	bool SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
-	bool GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t &res);
+	bool GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t & res, bool & hasbeenset);
 	bool SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas);
 
 	bool GetAnalogODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res);
@@ -122,7 +122,6 @@ public:
 	void SendMD3Message(MD3Message_t& CompleteMD3Message);
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the MD3Connection.
-
 
 protected:
 

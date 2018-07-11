@@ -48,6 +48,10 @@ MD3OutstationPort::MD3OutstationPort(std::string aName, std::string aConfFilenam
 	MD3Port(aName, aConfFilename, aConfOverrides)
 {
 	// Don't load conf here, do it in MD3Port
+	std::string over = "None";
+	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
+
+	LOGDEBUG("MD3Outstation Constructor - " + aName + " - " + aConfFilename + " Overrides - " + over);
 }
 
 MD3OutstationPort::~MD3OutstationPort()

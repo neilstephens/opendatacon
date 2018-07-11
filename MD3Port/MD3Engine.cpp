@@ -26,6 +26,7 @@
 
 
 #include "MD3.h"
+#include "MD3Engine.h"
 
 static const uint8_t fcstab[256] =
 {
@@ -69,7 +70,19 @@ bool iequals(const std::string& a, const std::string& b)
 {
 	return std::equal(a.begin(), a.end(),
 		b.begin(), b.end(),
-		[](char a, char b) {
-		return tolower(a) == tolower(b);
-	});
+		[](char a, char b)
+		{
+			return tolower(a) == tolower(b);
+		});
+}
+
+std::string MD3MessageAsString(const MD3Message_t& CompleteMD3Message)
+{
+	std::string res = "";
+	// Output a human readable string containing the MD3 Data Blocks.
+	for (auto block : CompleteMD3Message)
+	{
+		res += block.ToString() + " ";
+	}
+	return res;
 }

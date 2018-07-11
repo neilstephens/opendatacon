@@ -84,15 +84,17 @@ const char *conffile1 = R"001(
 	// Same for Binaries.
 	// The TimeSetCommand is used to send time set commands to the OutStation
 
-	"PollGroups" : [{"PollRate" : 1000, "ID" : 1, "PointType" : "Binary"},
-					{"PollRate" : 2000, "ID" : 2, "PointType" : "Analog"},
-					{"PollRate" : 60000, "ID" : 3, "PointType" : "TimeSetCommand"}],
+	"PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary"},
+					{"PollRate" : 20000, "ID" : 2, "PointType" : "Analog", "ForceUnconditional" : false },
+					{"PollRate" : 60000, "ID" : 3, "PointType" : "TimeSetCommand"},
+					{"PollRate" : 60000, "ID" : 4, "PointType" : "Binary"}],
 
+	// We expect the binary modules to be consecutive - MD3 Addressing - (or consecutive groups for scanning), the scanning is then simpler
 	"Binaries" : [{"Index": 80,  "Module" : 33, "Offset" : 0, "PointType" : "BASICINPUT"},
 				{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 34, "Offset" : 0, "PollGroup" : 1, "PointType" : "TIMETAGGEDINPUT"},
 				{"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "PollGroup":1, "PointType" : "TIMETAGGEDINPUT"},
-				{"Range" : {"Start" : 100, "Stop" : 115}, "Module" : 37, "Offset" : 0, "PointType" : "BASICINPUT"},
-				{"Range" : {"Start" : 116, "Stop" : 123}, "Module" : 38, "Offset" : 0, "PointType" : "BASICINPUT"},
+				{"Range" : {"Start" : 100, "Stop" : 115}, "Module" : 37, "Offset" : 0, "PollGroup":4,"PointType" : "BASICINPUT"},
+				{"Range" : {"Start" : 116, "Stop" : 123}, "Module" : 38, "Offset" : 0, "PollGroup":4,"PointType" : "BASICINPUT"},
 				{"Range" : {"Start" : 32, "Stop" : 47}, "Module" : 63, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"}],
 
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0, "PollGroup" : 2}],
@@ -151,7 +153,7 @@ std::vector<spdlog::sink_ptr> LogSinks;
 void WriteConfFilesToCurrentWorkingDirectory()
 {
 	std::ofstream ofs(conffilename1);
-	if (!ofs) REQUIRE("Could not open conffile2 for writing");
+	if (!ofs) REQUIRE("Could not open conffile1 for writing");
 
 	ofs << conffile1;
 	ofs.close();
@@ -274,7 +276,7 @@ void Wait(asio::io_service &IOS, int seconds)
 	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
 
 #define TEST_MD3MAPort(overridejson)\
-	auto MD3MAPort = new  MD3MasterPort("TestMaster", conffilename1, Json::nullValue); \
+	auto MD3MAPort = new  MD3MasterPort("TestMaster", conffilename1, overridejson); \
 	MD3MAPort->SetIOS(&IOS);      \
 	MD3MAPort->BuildOrRebuild();
 
@@ -676,7 +678,7 @@ TEST_CASE("MD3Block - Fn9")
 }
 TEST_CASE("MD3Block - Fn11")
 {
-	MD3BlockFn11MtoS b11(0x32, 15, 3, 14, true);
+	MD3BlockFn11MtoS b11(0x32, 15, 3, 14);
 	REQUIRE(b11.GetStationAddress() == 0x32);
 	REQUIRE(b11.IsMasterToStationMessage() == true);
 	REQUIRE(b11.GetFunctionCode() == 11);
@@ -686,7 +688,7 @@ TEST_CASE("MD3Block - Fn11")
 	REQUIRE(b11.IsEndOfMessageBlock() == true);
 	REQUIRE(b11.CheckSumPasses());
 
-	MD3BlockFn11StoM b11a(0x32, 14, 4, 13, true);
+	MD3BlockFn11StoM b11a(0x32, 14, 4, 13);
 	REQUIRE(b11a.GetStationAddress() == 0x32);
 	REQUIRE(b11a.IsMasterToStationMessage() == false);
 	REQUIRE(b11a.GetFunctionCode() == 11);
@@ -698,12 +700,12 @@ TEST_CASE("MD3Block - Fn11")
 	REQUIRE(b11a.GetModuleCount() == 13);
 	b11a.SetModuleCount(5);
 	REQUIRE(b11a.GetModuleCount() == 5);
-	REQUIRE(b11a.IsEndOfMessageBlock() == true);
+	REQUIRE(b11a.IsEndOfMessageBlock() == false);
 	REQUIRE(b11a.CheckSumPasses());
 }
 TEST_CASE("MD3Block - Fn12")
 {
-	MD3BlockFn12MtoS b12(0x32, 70, 7, 15, true);
+	MD3BlockFn12MtoS b12(0x32, 70, 7, 15);
 	REQUIRE(b12.GetStationAddress() == 0x32);
 	REQUIRE(b12.IsMasterToStationMessage() == true);
 	REQUIRE(b12.GetFunctionCode() == 12);
@@ -750,6 +752,21 @@ TEST_CASE("MD3Block - Fn17")
 	REQUIRE(SecondBlock.IsEndOfMessageBlock());
 	REQUIRE(!SecondBlock.IsFormattedBlock());
 	REQUIRE(SecondBlock.CheckSumPasses());
+
+	// So have verified against packet captures below.
+	// From packet capture 2711a500 0300 585a8000 d500
+	// Try and generate a packet that matches...bit 0 on.
+	MD3BlockFn17MtoS b17a(0x27, 0xA5, 0); // Bit0
+	REQUIRE(b17a.GetData() == 0x2711a500);
+	MD3BlockData SecondBlocka = b17a.GenerateSecondBlock();
+	REQUIRE(SecondBlocka.GetData() == 0x585a8000);
+
+	// Second packet
+	// 01119607 2c00 7e690100 f900
+	MD3BlockFn17MtoS b17b(0x01, 0x96, 7); // Bit0
+	REQUIRE(b17b.GetData() == 0x01119607);
+	MD3BlockData SecondBlockb = b17b.GenerateSecondBlock();
+	REQUIRE(SecondBlockb.GetData() == 0x7e690100);
 }
 TEST_CASE("MD3Block - Fn19")
 {
@@ -1374,14 +1391,16 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 	MD3OSPort->Event(b, 80, "TestHarness", pStatusCallback); // 0x21, bit 1
 
 	// Send the command but start from module 0x22, we did not get all the blocks last time. Test the wrap around
-	commandblock = MD3BlockFn10(0x7C, true, 0x22, 3, true);
+	commandblock = MD3BlockFn10(0x7C, true, 0x25, 5, true);
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0a22032900" // Return function 10, ModuleCount =2 so 2 blocks to follow.
-		                                                              "7c23ffff8000"
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0a25050d00"
+		                                                              "7c25ffff9300"
+		                                                              "7c26ff00b000"
 		                                                              "7c3fffffbc00"
-		                                                              "7c210000cc00");
+		                                                              "7c2100008c00"
+		                                                              "7c23ffffc000");
 
 	REQUIRE(Response == DesiredResult2);
 
@@ -1403,9 +1422,9 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	MD3OSPort->Enable();
 
-	// Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on startup to send all data, 15 modules returned
+	// Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on start up to send all data, 15 modules returned
 
-	MD3BlockData commandblock = MD3BlockFn11MtoS(0x7C, 15, 1, 15, true);
+	MD3BlockData commandblock = MD3BlockFn11MtoS(0x7C, 15, 1, 15);
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
 	output << commandblock.ToBinaryString();
@@ -1418,13 +1437,13 @@ TEST_CASE("Station - DigitalCOSFn11")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Will get all data changing this time around
-	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01043700" "210080008100" "2200ffff8300" "2300ffffa200" "3f00ffffca00");
+	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01060100" "210080008100" "2200ffff8300" "2300ffffa200" "2500ffff8900" "2600ff00b600" "3f00ffffca00");
 
 	REQUIRE(Response == DesiredResult1);
 
 	//---------------------
 	// No data changes so should get a no change Fn14 block
-	commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15, true); // Sequence number must increase
+	commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15); // Sequence number must increase
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1434,7 +1453,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	//---------------------
 	// No sequence number change, so should get the same data back as above.
-	commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15, true); // Sequence number must increase - but for this test not
+	commandblock = MD3BlockFn11MtoS(0x7C, 15, 2, 15); // Sequence number must increase - but for this test not
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1442,7 +1461,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	//---------------------
 	// Now change data in one block only
-	commandblock = MD3BlockFn11MtoS(0x7C, 15, 3, 15, true); // Sequence number must increase
+	commandblock = MD3BlockFn11MtoS(0x7C, 15, 3, 15); // Sequence number must increase
 	output << commandblock.ToBinaryString();
 
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
@@ -1484,7 +1503,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	MD3OSPort->AddToDigitalEvents(pt2);
 	MD3OSPort->AddToDigitalEvents(pt3);
 
-	commandblock = MD3BlockFn11MtoS(0x7C, 15, 4, 0, true); // Sequence number must increase
+	commandblock = MD3BlockFn11MtoS(0x7C, 15, 4, 0); // Sequence number must increase
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1494,7 +1513,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	//-----------------------------------------
 	// Get the single event left in the queue
-	commandblock = MD3BlockFn11MtoS(0x7C, 15, 5, 0, true); // Sequence number must increase
+	commandblock = MD3BlockFn11MtoS(0x7C, 15, 5, 0); // Sequence number must increase
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1513,7 +1532,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 
 	// Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 15 modules returned
 
-	MD3BlockData commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 1, 3, true);
+	MD3BlockData commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 1, 3);
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
 	output << commandblock.ToBinaryString();
@@ -1555,7 +1574,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 	REQUIRE(Response == DesiredResult1);
 
 	//--------------------------------
-	commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 2, 3, true); // Have to change the sequence number
+	commandblock = MD3BlockFn12MtoS(0x7C, 0x21, 2, 3); // Have to change the sequence number
 	output << commandblock.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1765,7 +1784,7 @@ TEST_CASE("Station - AOMControlFn23")
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f27017b00");
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f27016900");
 
 	REQUIRE(Response == DesiredResult); // OK Command
 
@@ -1777,7 +1796,7 @@ TEST_CASE("Station - AOMControlFn23")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e27017d00");
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e27016f00");
 
 	REQUIRE(Response == DesiredResult2); // Control/Scan Rejected Command
 
@@ -2022,23 +2041,24 @@ TEST_CASE("Master - Analog")
 
 		// To check the result, see if the points in the master point list have been changed to the correct values.
 		uint16_t res = 0;
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		bool hasbeenset;
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res,hasbeenset);
 		REQUIRE(res == 0x1000);
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1101);
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x1707);
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808);
 
 		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 		// Need to give ASIO time to process them?
 		Wait(IOS, 1);
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x1000);
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808);
 	}
 
@@ -2080,28 +2100,29 @@ TEST_CASE("Master - Analog")
 
 		// To check the result, see if the points in the master point list have been changed to the correct values.
 		uint16_t res = 0;
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		bool hasbeenset;
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x0FFF); // -1
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1102); // +1
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x168A); // 0x1707 - 125
 
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808); // Unchanged
 
 		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 		// Need to give ASIO time to process them?
 		Wait(IOS, 1);
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x0FFF); // -1
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 1, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1102); // +1
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 7, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x168A); // 0x1707 - 125
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808); // Unchanged
 	}
 
@@ -2131,25 +2152,26 @@ TEST_CASE("Master - Analog")
 		// To check the result, see if the points in the master point list have not changed?
 		// Should their time stamp be updated?
 		uint16_t res = 0;
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		bool hasbeenset;
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x0FFF); // -1
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1102); // +1
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x168A); // 0x1707 - 125
 
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808); // Unchanged
 
 		// Check that the OutStation values have not been updated over ODC.
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x0FFF); // -1
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 1, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1102); // +1
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 7, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x168A); // 0x1707 - 125
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res);
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808); // Unchanged
 	}
 
@@ -2175,10 +2197,11 @@ TEST_CASE("Master - Analog")
 
 		// To check the result, the quality of the points will be set to comms_lost - and this will result in the values being set to 0x8000 which is MD3 for something has failed.
 		uint16_t res = 0;
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		bool hasbeenset;
+		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x8000);
 
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res);
+		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x8000);
 	}
 
@@ -2468,7 +2491,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
 			});
 
-		Wait(IOS, 1);
+		Wait(IOS, 2);
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
 		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1321de0300" "80008003c300")); // Should passed through DOM command - match what was sent.
@@ -2481,7 +2504,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 
 		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
 
-		Wait(IOS, 4);
+		Wait(IOS, 3);
 
 		REQUIRE(OSResponse == BuildHexStringFromASCIIHexString("fc0f21de6000")); // OK Command
 	}
@@ -2506,7 +2529,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
 			});
 
-		Wait(IOS, 1);
+		Wait(IOS, 3);
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
 		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1126080e00" "03d90080cb00")); // Should be 1 POM command.
@@ -2520,7 +2543,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
 
 		// The response should then flow through ODC, back to the OutStation who should then send the OK out on TCP.
-		Wait(IOS, 5);
+		Wait(IOS, 3);
 
 		REQUIRE(OSResponse == BuildHexStringFromASCIIHexString("fc0f26006000")); // OK Command
 	}
@@ -2624,12 +2647,14 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 				MD3BlockFn15StoM OKcommandblock(commandblock); // Changes a few things in the block...
 				MAoutput << OKcommandblock.ToBinaryString();
 
-				Wait(IOS, 1);                                         // Must be sent after we send the command to the outstation
+				Wait(IOS, 1); // Must be sent after we send the command to the outstation
+				LOGDEBUG("Test - Injecting MA message as TCP Input");
 				MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // This will also wait for completion?
 			});
 
-		MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer);
-		Wait(IOS, 4); // Outstation decodes message, sends ODC event, Master gets ODC event, sends out command on TCP.
+		LOGDEBUG("Test - Injecting OS message as TCP Input");
+		MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This must be sent first
+		Wait(IOS, 4);                                         // Outstation decodes message, sends ODC event, Master gets ODC event, sends out command on TCP.
 
 		// Check the Master port output on TCP - it should be an identical time change command??
 		REQUIRE(MAResponse == TimeChangeCommand);
@@ -2646,6 +2671,89 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 	TestTearDown();
 }
 
+TEST_CASE("Master - Digital Poll Tests (Old and New)")
+{
+	STANDARD_TEST_SETUP();
+
+	Json::Value MAportoverride;
+
+	TEST_MD3MAPort(MAportoverride);
+
+	Json::Value OSportoverride;
+	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["StandAloneOutstation"] = false;
+	TEST_MD3OSPort(OSportoverride);
+
+	START_IOS(1);
+
+	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
+	// Usually is a cross subscription, where each subscribes to the other.
+	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+
+	MD3OSPort->Enable();
+	MD3MAPort->Enable();
+
+	MD3MAPort->EnablePolling(false); // Dont want the timer triggering this. We will call manually.
+
+	// Hook the output functions
+	std::string OSResponse = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+
+	std::string MAResponse = "Not Set";
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+
+	asio::streambuf OSwrite_buffer;
+	std::ostream OSoutput(&OSwrite_buffer);
+
+	asio::streambuf MAwrite_buffer;
+	std::ostream MAoutput(&MAwrite_buffer);
+
+
+	INFO("New Digital Poll Command");
+	{
+		// Poll group 1, we want to send out the poll command from the master,
+		// inject a response and then look at the Masters point table to check that the data got to where it should.
+		// We could also check the linked OutStation to make sure its point table was updated as well.
+
+		MD3MAPort->DoPoll(1); // Will send an unconditional the first time? From the logging on the RTU the response is packet 11 either way
+
+		Wait(IOS, 1);
+
+		// TODO: Check the result but allow the sequence number to change!
+
+		// We check the command, but it does not go anywhere, we inject the expected response below.
+		//REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c0c22124f00"));
+
+		// Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 2 modules returned - that is what the RTU we are testing has
+		MD3BlockData commandblock = MD3BlockFn12MtoS(0x7C, 0x22, 1, 2); // Check out methods give the same result
+		//REQUIRE(MAResponse == commandblock.ToBinaryString());
+
+		// We now inject the expected response to the command above, a DCOS block
+		// Want to test this response from an actual RTU. We asked for 15 modules, so it tried to give us that. Should only ask for what we want.
+
+		MD3BlockData b[] = {"fc0b016f3f00","100000009a00","00001101a100","00001210bd00","00001310af00","000014108a00","000015109800","00001610ae00","00001710bc00","00001810bf00","00001910ad00","00001a109b00","00001b108900","00001c10ac00","00001d10be00","00001e10c800" };
+
+		// MD3BlockData b[] = {("fc0b01043700","210080008100","2200ffff8300","2300ffffa200","3f00ffffca00")};
+
+		for (auto bl :b)
+			MAoutput << bl.ToBinaryString();
+
+		MAResponse = "Not Set";
+
+		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
+
+		Wait(IOS, 4);
+
+		// Check there is no resend of the command - the response must have been ok.
+		REQUIRE(MAResponse == "Not Set");
+	}
+
+	work.reset(); // Indicate all work is finished.
+
+	STOP_IOS();
+	TestTearDown();
+}
 
 TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 {
@@ -2725,3 +2833,94 @@ TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 }
 #pragma endregion
 }
+
+namespace RTUConnectedTests
+{
+const char *md3masterconffile = R"011(
+{
+	"IP" : "172.21.136.80",
+	"Port" : 5001,
+	"OutstationAddr" : 32,
+	"TCPClientServer" : "CLIENT",
+	"LinkNumRetry": 4,
+
+	//-------Point conf--------#
+	// We have two modes for the digital/binary commands. Can be one or the other - not both!
+	"NewDigitalCommands" : true,
+
+	// Maximum time to wait for MD3 Master responses to a command and number of times to retry a command.
+	"MD3CommandTimeoutmsec" : 3000,
+	"MD3CommandRetries" : 1,
+
+	"PollGroups" : [{"PollRate" : 50000, "ID" : 1, "PointType" : "Binary"},
+					{"PollRate" : 10000, "ID" : 2, "PointType" : "Analog"},
+					{"PollRate" : 120000, "ID" :4, "PointType" : "TimeSetCommand"}],
+
+	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 16, "Offset" : 0, "PollGroup" : 1, "PointType" : "TIMETAGGEDINPUT"},
+				{"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 17, "Offset" : 0,  "PointType" : "TIMETAGGEDINPUT"}],
+
+	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0, "PollGroup" : 2}],
+
+	"BinaryControls" : [{"Range" : {"Start" : 100, "Stop" : 115}, "Module" : 192, "Offset" : 0, "PointType" : "POMOUTPUT"}]
+
+})011";
+
+TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
+{
+	// So we have an actual RTU connected to the network we are on, given the parameters in the config file below.
+	STANDARD_TEST_SETUP();
+
+	std::ofstream ofs("md3masterconffile.conf");
+	if (!ofs) REQUIRE("Could not open md3masterconffile for writing");
+
+	ofs << md3masterconffile;
+	ofs.close();
+
+	auto MD3MAPort = new  MD3MasterPort("MD3LiveTestMaster", "md3masterconffile.conf", Json::nullValue);
+	MD3MAPort->SetIOS(&IOS);
+	MD3MAPort->BuildOrRebuild();
+
+	START_IOS(1);
+
+	MD3MAPort->Enable();
+	MD3MAPort->EnablePolling(false);
+
+	// Got an AnalogUnconditional Response - test this.
+	// a005207f2600 00000000bf00 00000000bf00 00000000bf00 00000000bf00 80008000ae00 80008000ae00 80008000ae00 80008000ee00
+	// 4 VALID, VALUE ZERO, 4 NOT CONFIGURED VALUE 0x8000 THE ERROR VALUE
+	// Read the current digital state. Response a00b0171300 010008000d400
+	//	MD3MAPort->DoPoll(1);
+
+	// Delta Scan up to 15 events, 2 modules. Seq # 10
+	MD3BlockData commandblock = MD3BlockFn11MtoS(0x7C, 15, 10, 2); // This resulted in a time out - sequence number related - need to send 0 on start up??
+	MD3MAPort->QueueMD3Command(commandblock, nullptr);
+
+	// Read the current analog state.
+//		MD3MAPort->DoPoll(2);
+
+	Wait(IOS, 5);
+
+	// Send a POM command by injecting an ODC event
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on POM command result : " + std::to_string((int)command_stat));
+			res = command_stat;
+		});
+
+	ControlRelayOutputBlock command(ControlCode::PULSE_ON); // Turn on...
+	uint16_t index = 100;
+
+	// Send an ODC DigitalOutput command to the Master.
+//		MD3MAPort->Event(command, index, "TestHarness", pStatusCallback);
+
+	Wait(IOS, 5);
+
+	work.reset(); // Indicate all work is finished.
+
+	STOP_IOS();
+	TestTearDown();
+}
+
+}
+

@@ -127,9 +127,10 @@ public:
 	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
 	{};
 
-	// Only the values below will be changed in two places
+	//TODO: The values below will be changed in only two places - will refactor to provide protection.
 	uint16_t Analog = 0x8000;
 	uint16_t LastReadAnalog = 0x8000;
+	bool HasBeenSet = false;
 };
 
 typedef std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>::iterator ODCBinaryPointMapIterType;
@@ -147,20 +148,20 @@ public:
 		ID(0),
 		pollrate(0),
 		polltype(BinaryPoints),
-		UnconditionalRequired(true)
+		ForceUnconditional(false)
 	{ }
 
-	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_):
+	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_,bool forceunconditional):
 		ID(ID_),
 		pollrate(pollrate_),
 		polltype(polltype_),
-		UnconditionalRequired(true)
+		ForceUnconditional(forceunconditional)
 	{ }
 
 	uint32_t ID;
 	uint32_t pollrate;
 	PollGroupType polltype;
-	bool UnconditionalRequired;    // Set to true on start up, and if other conditions are met
+	bool ForceUnconditional;       // Set to true on start up, and if other conditions are met
 	ModuleMapType ModuleAddresses; // The second value we do not use. Just using the sorted map properties.
 	// As we load points we will build this list
 };

@@ -282,10 +282,11 @@ void MD3OutstationPort::ReadAnalogOrCounterRange(int ModuleAddress, int Channels
 	// So if we find an entry in the analog list, we dont have to worry about overflow, as there are 16 channels, and the most we can ask for is 16.
 	//
 	uint16_t wordres = 0;
+	bool hasbeenset;
 	int deltares = 0;
 
 	// Is it a counter module? Fails if not at this address
-	if (GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres))
+	if (GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres, hasbeenset))
 	{
 		// We have a counter module, can get up to 8 values from it
 		int chancnt = Channels >= 8 ? 8 : Channels;
@@ -295,7 +296,7 @@ void MD3OutstationPort::ReadAnalogOrCounterRange(int ModuleAddress, int Channels
 		{
 			// Now we have to get the remaining channels (up to 8) from the next module, if it exists.
 			// Check if it is a counter, otherwise assume analog. Will return correct error codes if not there
-			if (GetCounterValueUsingMD3Index(ModuleAddress+1, 0, wordres))
+			if (GetCounterValueUsingMD3Index(ModuleAddress+1, 0, wordres,hasbeenset))
 			{
 				GetAnalogModuleValues(CounterModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
 			}
@@ -318,21 +319,21 @@ void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterO
 	{
 		uint16_t wordres = 0;
 		int deltares = 0;
+		bool hasbeenset;
 		bool foundentry = false;
 
 		if (IsCounterOrAnalog == CounterModule)
 		{
-			foundentry = GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+			foundentry = GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares,hasbeenset);
 		}
 		else
 		{
-			foundentry= GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+			foundentry= GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares,hasbeenset);
 		}
 
 		if (!foundentry)
 		{
-			// Point does not exist - need to send analog unconditional as response.
-			ResponseType = AllChange;
+			// Point does not exist - If we do an unconditional we send 0x8000, if a delta we send 0 (so the 0x8000 will not change when 0 gets added to it!!)
 			AnalogValues.push_back(0x8000); // Magic value
 			AnalogDeltaValues.push_back(0);
 		}
@@ -1355,6 +1356,8 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &Co
 	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
 	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
 	// Non-zero will be a fail.
+
+	LOGDEBUG("OS - DoSetdateTime");
 
 	if ((CompleteMD3Message.size() != 2) && (Header.GetStationAddress() != 0))
 	{

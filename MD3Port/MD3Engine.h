@@ -58,6 +58,15 @@ bool MD3CRCCompare(const uint8_t crc1, const uint8_t crc2);
 
 bool iequals(const std::string& a, const std::string& b);
 
+template <class T>
+
+std::string to_hexstring(T val)
+{
+	std::stringstream sstream;
+	sstream << std::hex << val;
+	return sstream.str();
+}
+
 // Every block in MD3 is 5 bytes, plus one zero byte. If we dont have 5 bytes, we dont have a block. The last block is marked as such.
 // We will create a class to load the 6 byte array into, then we can just ask it to return the information in the variety of ways we require,
 // depending on the block content.
@@ -89,7 +98,7 @@ public:
 			res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
 		}
 
-		data = (uint32_t)res[0] << 24 | (uint32_t)res[1] << 16 | (uint32_t)res[2] << 8 | (uint32_t)res[3];
+		data = (((uint32_t)res[0] & 0x0FF) << 24) | (((uint32_t)res[1] & 0x0FF) << 16) | (((uint32_t)res[2] & 0x0FF) << 8) | ((uint32_t)res[3] & 0x0FF);
 		endbyte = res[4];
 		assert(res[5] == 0x00); // Sixth byte should always be zero.
 	}
@@ -175,23 +184,6 @@ public:
 
 		return oss.str();
 	}
-	std::string ToPrintString() const
-	{
-		std::ostringstream oss;
-		oss << std::hex;
-		oss << (data >> 24);
-		oss << ',';
-		oss << ((data >> 16) & 0x0FF);
-		oss << ',';
-		oss << ((data >> 8) & 0x0FF);
-		oss << ',';
-		oss << (data & 0x0FF);
-		oss << ',';
-		oss << (endbyte);
-		oss << ',';
-		oss << (0x00);
-		return oss.str();
-	}
 	std::string ToString() const
 	{
 		std::ostringstream oss;
@@ -212,6 +204,7 @@ protected:
 };
 
 typedef std::vector<MD3BlockData> MD3Message_t;
+std::string MD3MessageAsString(const MD3Message_t& CompleteMD3Message);
 
 class MD3BlockFormatted: public MD3BlockData
 {
@@ -428,9 +421,10 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn11MtoS(uint8_t stationaddress, uint8_t taggedeventcount, uint8_t digitalsequencenumber, uint8_t modulecount, bool lastblock = false)
+	MD3BlockFn11MtoS(uint8_t stationaddress, uint8_t taggedeventcount, uint8_t digitalsequencenumber, uint8_t modulecount)
 	{
 		bool mastertostation = true;
+		bool lastblock = true;
 		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
 		assert((stationaddress & 0x7F) == stationaddress);               // Max of 7 bits;
@@ -542,9 +536,10 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn12MtoS(uint8_t stationaddress, uint8_t startmoduleaddress, uint8_t digitalsequencenumber, uint8_t modulecount, bool lastblock = false)
+	MD3BlockFn12MtoS(uint8_t stationaddress, uint8_t startmoduleaddress, uint8_t digitalsequencenumber, uint8_t modulecount)
 	{
 		bool mastertostation = true;
+		bool lastblock = true;
 		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
 		assert((stationaddress & 0x7F) == stationaddress);               // Max of 7 bits;

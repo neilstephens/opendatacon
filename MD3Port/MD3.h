@@ -52,6 +52,7 @@
 //TODO: Master AOM Control
 //TODO: Master OLD Digital Read
 //TODO: Master NEW Digital Read
+//TODO: All command messages to have their own type, constructor to make understanding parameters simpler. Most already do.
 
 
 // Hide some of the code to make Logging cleaner

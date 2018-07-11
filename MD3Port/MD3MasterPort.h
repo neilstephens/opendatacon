@@ -100,6 +100,8 @@ public:
 	//*** PUBLIC for unit tests only
 	void DoPoll(uint32_t pollgroup);
 
+	void EnablePolling(bool on); // Enabled by default
+
 	void SendTimeDateChangeCommand(const uint64_t &currenttime, SharedStatusCallback_t pStatusCallback);
 	void SendDOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint16_t & outputbits, const SharedStatusCallback_t &pStatusCallback);
 	void SendPOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & outputselection, const SharedStatusCallback_t &pStatusCallback);
@@ -118,6 +120,9 @@ private:
 	bool ProcessAnalogUnconditionalReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 	bool ProcessAnalogDeltaScanReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
+
+	bool ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
+	bool ProcessDigitalUnconditionalNew(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 
 	bool ProcessDOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessPOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);

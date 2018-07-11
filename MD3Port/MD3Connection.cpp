@@ -187,7 +187,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 			}
 			else if (MD3Message.size() == 0)
 			{
-				LOGDEBUG("Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToPrintString());
+				LOGDEBUG("Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToString());
 			}
 			else
 			{
@@ -205,7 +205,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 		}
 		else
 		{
-			LOGERROR("Checksum failure on received MD3 block - " + md3block.ToPrintString());
+			LOGERROR("Checksum failure on received MD3 block - " + md3block.ToString());
 		}
 	}
 
