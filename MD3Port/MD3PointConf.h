@@ -151,18 +151,20 @@ public:
 		ForceUnconditional(false)
 	{ }
 
-	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_,bool forceunconditional):
+	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_,bool forceunconditional, bool timetaggeddigital):
 		ID(ID_),
 		pollrate(pollrate_),
 		polltype(polltype_),
-		ForceUnconditional(forceunconditional)
+		ForceUnconditional(forceunconditional),
+		TimeTaggedDigital(timetaggeddigital)
 	{ }
 
 	uint32_t ID;
 	uint32_t pollrate;
 	PollGroupType polltype;
 	bool ForceUnconditional;       // Set to true on start up, and if other conditions are met
-	ModuleMapType ModuleAddresses; // The second value we do not use. Just using the sorted map properties.
+	bool TimeTaggedDigital;        // Set to true if this poll group contains timetagged digital points.
+	ModuleMapType ModuleAddresses; // The second value is for channel count
 	// As we load points we will build this list
 };
 

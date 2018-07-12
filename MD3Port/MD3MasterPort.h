@@ -110,6 +110,7 @@ private:
 
 	std::unique_ptr<asio::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
+	int DigitalCommandSequenceNumber = 0;         // Used only by the digital commands to manage resends/retries. 0 for power on. Will vary from 1 to 15 normally.
 
 	void SendNextMasterCommand();
 	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
@@ -121,8 +122,8 @@ private:
 	bool ProcessAnalogDeltaScanReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 
+	// Handles new COS and Unconditional Scan
 	bool ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
-	bool ProcessDigitalUnconditionalNew(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 
 	bool ProcessDOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessPOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);

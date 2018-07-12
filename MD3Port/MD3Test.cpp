@@ -84,10 +84,10 @@ const char *conffile1 = R"001(
 	// Same for Binaries.
 	// The TimeSetCommand is used to send time set commands to the OutStation
 
-	"PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary"},
+	"PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary", "TimeTaggedDigital" : true },
 					{"PollRate" : 20000, "ID" : 2, "PointType" : "Analog", "ForceUnconditional" : false },
 					{"PollRate" : 60000, "ID" : 3, "PointType" : "TimeSetCommand"},
-					{"PollRate" : 60000, "ID" : 4, "PointType" : "Binary"}],
+					{"PollRate" : 60000, "ID" : 4, "PointType" : "Binary",  "TimeTaggedDigital" : false }],
 
 	// We expect the binary modules to be consecutive - MD3 Addressing - (or consecutive groups for scanning), the scanning is then simpler
 	"Binaries" : [{"Index": 80,  "Module" : 33, "Offset" : 0, "PointType" : "BASICINPUT"},
@@ -840,6 +840,17 @@ TEST_CASE("MD3Block - Fn43 Fn15 Fn30")
 	REQUIRE(b43.IsFormattedBlock() == true);
 	REQUIRE(b43.CheckSumPasses());
 
+	// Test against capture timedate command.
+	// 402b01632f00 5ad6b5b4d900
+	MD3BlockFn43MtoS b43_t1(MD3BlockData("402b01632f00"));
+	REQUIRE(b43_t1.CheckSumPasses());
+	MD3BlockData b43_b2("5ad6b5b4d900");
+	REQUIRE(b43_b2.CheckSumPasses());
+
+	MD3Time timebase = (uint64_t)b43_b2.GetData() * 1000 + b43_t1.GetMilliseconds(); //MD3Time msec since Epoch.
+	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+	// 5e2b007a1300 5ad6ba8ce700
+
 	MD3BlockFn15StoM b15(b43);
 	REQUIRE(b15.GetStationAddress() == 0x38);
 	REQUIRE(b15.IsMasterToStationMessage() == false);
@@ -1471,7 +1482,6 @@ TEST_CASE("Station - DigitalCOSFn11")
 		});
 
 	// Write to the first module 0-16 index, but not the second. Should get only the first module results sent.
-	//TODO: Fn11 Test - Pass the digital change time in the Event as part of the binary object
 	for (int i = 0; i < 4; i++)
 	{
 		const odc::Binary b((i % 2) == 0);
@@ -1484,7 +1494,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	// The second block is time, adn will change each run.
+	// The second block is time, and will change each run.
 	// The other blocks will have the msec part of the field change.
 	//TODO: Fn11 Test - Will have to cast to MD3Blocks and check the parts that we can check...
 	//	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0b03013f00" "5aebf9259c00" "800a801aa900" "80010000fc00");
@@ -1888,7 +1898,6 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 
 	TestTearDown();
 }
-
 TEST_CASE("Station - Multi-drop TCP Test")
 {
 	// Here we test the ability to support multiple Stations on the one Port/IP Combination.
@@ -1976,7 +1985,6 @@ namespace MasterTests
 {
 
 #pragma region Master Tests
-
 TEST_CASE("Master - Analog")
 {
 	// Tests the decoding of return data in the format of Fn 5
@@ -1984,7 +1992,6 @@ TEST_CASE("Master - Analog")
 	// Need the Master to send the correct command first, so that what we send back is expected.
 	// We need to create an OutStation port, and subscribe it to the Master Events, so that we can then see if the events are triggered.
 	// We can determine this by checking the values stored in the point table.
-	//TODO: SJE It would probably be ideal to have a TestOutStationPort and TestMasterPort that allow us to hook all events with lambdas from the test code. It would only have an ODC and Point table interface.
 
 	STANDARD_TEST_SETUP();
 
@@ -2210,7 +2217,6 @@ TEST_CASE("Master - Analog")
 	STOP_IOS();
 	TestTearDown();
 }
-
 TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 {
 	// When ODC signals that it has regained communication up the line (or is a new connection), we will resend all data through ODC.
@@ -2243,7 +2249,6 @@ TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 	STOP_IOS();
 	TestTearDown();
 }
-
 TEST_CASE("Master - DOM and POM Tests")
 {
 	STANDARD_TEST_SETUP();
@@ -2436,7 +2441,6 @@ TEST_CASE("Master - DOM and POM Tests")
 	STOP_IOS();
 	TestTearDown();
 }
-
 TEST_CASE("Master - DOM and POM Pass Through Tests")
 {
 	STANDARD_TEST_SETUP();
@@ -2553,7 +2557,6 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 	STOP_IOS();
 	TestTearDown();
 }
-
 TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 {
 	STANDARD_TEST_SETUP();
@@ -2670,7 +2673,6 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 	STOP_IOS();
 	TestTearDown();
 }
-
 TEST_CASE("Master - Digital Poll Tests (Old and New)")
 {
 	STANDARD_TEST_SETUP();
@@ -2694,7 +2696,7 @@ TEST_CASE("Master - Digital Poll Tests (Old and New)")
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
 
-	MD3MAPort->EnablePolling(false); // Dont want the timer triggering this. We will call manually.
+	MD3MAPort->EnablePolling(false); // Don't want the timer triggering this. We will call manually.
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
@@ -2716,25 +2718,33 @@ TEST_CASE("Master - Digital Poll Tests (Old and New)")
 		// inject a response and then look at the Masters point table to check that the data got to where it should.
 		// We could also check the linked OutStation to make sure its point table was updated as well.
 
-		MD3MAPort->DoPoll(1); // Will send an unconditional the first time? From the logging on the RTU the response is packet 11 either way
+		MD3MAPort->DoPoll(1); // Will send an unconditional the first time only  if forced. From the logging on the RTU the response is packet 11 either way
 
 		Wait(IOS, 1);
 
-		// TODO: Check the result but allow the sequence number to change!
-
 		// We check the command, but it does not go anywhere, we inject the expected response below.
-		//REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c0c22124f00"));
-
 		// Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 2 modules returned - that is what the RTU we are testing has
-		MD3BlockData commandblock = MD3BlockFn12MtoS(0x7C, 0x22, 1, 2); // Check out methods give the same result
-		//REQUIRE(MAResponse == commandblock.ToBinaryString());
+		MD3BlockData commandblock = MD3BlockFn11MtoS(0x7C, 15, 1, 2); // Check out methods give the same result
+
+		REQUIRE(MAResponse[0] == commandblock.GetByte(0));
+		REQUIRE(MAResponse[1] == commandblock.GetByte(1));
+		REQUIRE(MAResponse[2] == (char)commandblock.GetByte(2));
+		REQUIRE((MAResponse[3] & 0x0f) == (commandblock.GetByte(3) & 0x0f)); // Not comparing the sequence count.
 
 		// We now inject the expected response to the command above, a DCOS block
 		// Want to test this response from an actual RTU. We asked for 15 modules, so it tried to give us that. Should only ask for what we want.
 
-		MD3BlockData b[] = {"fc0b016f3f00","100000009a00","00001101a100","00001210bd00","00001310af00","000014108a00","000015109800","00001610ae00","00001710bc00","00001810bf00","00001910ad00","00001a109b00","00001b108900","00001c10ac00","00001d10be00","00001e10c800" };
+		//MD3BlockData b[] = {"fc0b016f3f00","100000009a00","00001101a100","00001210bd00","00001310af00","000014108a00","000015109800","00001610ae00","00001710bc00","00001810bf00","00001910ad00","00001a109b00","00001b108900","00001c10ac00","00001d10be00","00001e10c800" };
 
-		// MD3BlockData b[] = {("fc0b01043700","210080008100","2200ffff8300","2300ffffa200","3f00ffffca00")};
+		// We have two modules in this poll group, 34 and 35, ODC points 0 to 31.
+		// Will send 3 time tagged events, and data for both modules
+		// 34 set to 8000, 35 to FF00
+		// Timedate is msec, but need seconds
+		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
+		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
+		MD3Time changedtime = (MD3Time)0x0000016338b6d4fb;
+		MD3BlockData b[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData((uint32_t)(changedtime/1000)),
+			              MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000001,true)};
 
 		for (auto bl :b)
 			MAoutput << bl.ToBinaryString();
@@ -2747,6 +2757,9 @@ TEST_CASE("Master - Digital Poll Tests (Old and New)")
 
 		// Check there is no resend of the command - the response must have been ok.
 		REQUIRE(MAResponse == "Not Set");
+
+		// We can look at the current master point table values to see if they match what we sent
+
 	}
 
 	work.reset(); // Indicate all work is finished.
@@ -2754,7 +2767,6 @@ TEST_CASE("Master - Digital Poll Tests (Old and New)")
 	STOP_IOS();
 	TestTearDown();
 }
-
 TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 {
 	// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
@@ -2834,8 +2846,11 @@ TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 #pragma endregion
 }
 
+
 namespace RTUConnectedTests
 {
+// Wire shark filter for this OutStation "md3 and ip.addr== 172.21.136.80"
+
 const char *md3masterconffile = R"011(
 {
 	"IP" : "172.21.136.80",
@@ -2852,7 +2867,7 @@ const char *md3masterconffile = R"011(
 	"MD3CommandTimeoutmsec" : 3000,
 	"MD3CommandRetries" : 1,
 
-	"PollGroups" : [{"PollRate" : 50000, "ID" : 1, "PointType" : "Binary"},
+	"PollGroups" : [{"PollRate" : 50000, "ID" : 1, "PointType" : "Binary", "TimeTaggedDigital" : false },
 					{"PollRate" : 10000, "ID" : 2, "PointType" : "Analog"},
 					{"PollRate" : 120000, "ID" :4, "PointType" : "TimeSetCommand"}],
 

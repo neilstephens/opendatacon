@@ -210,8 +210,14 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 			ForceUnconditional = JSONNode[n]["ForceUnconditional"].asBool();
 		}
 
-		LOGDEBUG("Conf processed - PollGroup - " + std::to_string(PollGroupID) + " Rate " + std::to_string(pollrate) + " Type " + std::to_string(polltype) + " Force Unconditional Command " + std::to_string(ForceUnconditional));
-		PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate, polltype, ForceUnconditional));
+		bool TimeTaggedDigital = false;
+		if (JSONNode[n].isMember("TimeTaggedDigital"))
+		{
+			TimeTaggedDigital = JSONNode[n]["TimeTaggedDigital"].asBool();
+		}
+
+		LOGDEBUG("Conf processed - PollGroup - " + std::to_string(PollGroupID) + " Rate " + std::to_string(pollrate) + " Type " + std::to_string(polltype) + " TimeTaggedDigital " + std::to_string(TimeTaggedDigital) + " Force Unconditional Command " + std::to_string(ForceUnconditional));
+		PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate, polltype, ForceUnconditional, TimeTaggedDigital));
 	}
 	LOGDEBUG("Conf processing - PollGroups - Finished");
 }

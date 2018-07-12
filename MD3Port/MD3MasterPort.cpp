@@ -88,6 +88,7 @@ void MD3MasterPort::SocketStateHandler(bool state)
 		PollScheduler->Start();
 		PublishEvent(ConnectState::CONNECTED, 0);
 		msg = Name + ": Connection established.";
+		DigitalCommandSequenceNumber = 0; // Outstation when it sees this will send all digital values as if on power up.
 		//TODO: Need to trigger a full scan to get all values....or does out poll function work it out for us...
 	}
 	else
@@ -95,6 +96,7 @@ void MD3MasterPort::SocketStateHandler(bool state)
 		PollScheduler->Stop();
 
 		SetAllPointsQualityToCommsLost(); // All the connected points need their quality set to comms lost.
+		//TODO: Set all analog points to notset - should this be merged with quality? so that we can determine when we need to send an unconditional command.
 
 		ClearMD3CommandQueue(); // Remove all waiting commands and callbacks
 
@@ -763,14 +765,13 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 
 	if (EventCnt > 0) // Process Events (if any)
 	{
+		MD3Time timebase = 0; // Moving time value for events received
+
 		// Process Time/Date Data
 		if (MessageIndex < (int)CompleteMD3Message.size())
 		{
-			//TODO: Check word order in timedate data?
-			time_t timebase = (time_t)(CompleteMD3Message[MessageIndex].GetData()) * 1000; //MD3Time msec since Epoch.
-			std::string LocalTime = std::asctime(std::localtime(&timebase));
-			std::string GMTime = std::asctime(std::gmtime(&timebase));
-			LOGDEBUG("TimeDate Packet GMT : " + GMTime + "  Local : " + LocalTime);
+			timebase = (uint64_t)CompleteMD3Message[MessageIndex].GetData() * 1000; //MD3Time msec since Epoch.
+			LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
 		}
 		else
 		{
@@ -779,35 +780,67 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 		}
 		MessageIndex++;
 
-		//TODO: Now we have to convert the remaining data blocks into an array of words and process them. This is due to the time offset blocks which are only 16 bits long. We can also get a 32 bit flag block.
+		// Now we have to convert the remaining data blocks into an array of words and process them. This is due to the time offset blocks which are only 16 bits long.
+		std::vector<uint16_t> ResponseWords;
 		for (int i = 0; i < EventCnt; i++)
 		{
 			if (MessageIndex < (int)CompleteMD3Message.size())
 			{
-				// The data blocks are the same for time tagged and "normal". Module Address (byte), msec offset(byte) and 16 bits of data.
-				uint8_t ModuleAddress = CompleteMD3Message[MessageIndex].GetByte(0);
-				uint8_t msecOffset = CompleteMD3Message[MessageIndex].GetByte(1);
-				uint16_t ModuleData = CompleteMD3Message[MessageIndex].GetSecondWord();
+				ResponseWords.push_back(CompleteMD3Message[MessageIndex].GetFirstWord());
+				ResponseWords.push_back(CompleteMD3Message[MessageIndex].GetSecondWord());
+				MessageIndex++;
+			}
+		}
 
-				if (ModuleAddress == 0)
+		// Now process the response words.
+		for (int i = 0; i < (int)ResponseWords.size(); i++)
+		{
+			// If we are processing a data block and the high byte will be non-zero.
+			// If it is zero it could be either:
+			// A time offset word or
+			// If the whole word is zero, then it must be the first word of a Status block.
+
+			if (ResponseWords[i] == 0)
+			{
+				// We have received a STATUS block, which has a following word.
+				i++;
+				if (i >= (int)ResponseWords.size())
 				{
-					// This is a time offset block.
-					uint8_t msecOffset = CompleteMD3Message[MessageIndex].GetByte(4);
-					LOGDEBUG("TimeOffset : " + std::to_string(msecOffset));
+					// Index error
+					LOGERROR("Tried to access past the end of the response words looking for the second part of a status block " + MD3MessageAsString(CompleteMD3Message));
+					return false;
 				}
-				else
-				{
-					//TODO: We need to maintain a "memory" of the modules bits, so that we can trigger ODC events only on the changes..
-					//TODO: Spit out binary 0101 string...
-					LOGDEBUG("Module : " + std::to_string(ModuleAddress) + " Offset : " + std::to_string(msecOffset) + " Data : " + to_hexstring(ModuleData));
-				}
+				//TODO: Handle status block returned in Fn11 processing.
+				LOGDEBUG("Fn11 Status Block detected - not handled yet!!!");
+			}
+			else if ((ResponseWords[i] & 0xFF00) == 0)
+			{
+				// We have received a TIME BLOCK (offset) which is a single word.
+				int msecoffset = (ResponseWords[i] & 0x00ff) * 256;
+				timebase += msecoffset;
+				LOGDEBUG("TimeOffset : " + std::to_string(msecoffset) +" msec");
 			}
 			else
 			{
-				LOGERROR("Tried to read a block past the end of the message processing time tagged data : " + std::to_string(MessageIndex) + " Modules : " + std::to_string(CompleteMD3Message.size()));
-				return false;
+				// We have received a DATA BLOCK which has a following word.
+				// The data blocks are the same for time tagged and "normal". Module Address (byte), msec offset(byte) and 16 bits of data.
+				uint8_t ModuleAddress = (ResponseWords[i] >> 8) & 0x007f;
+				uint8_t msecoffset = ResponseWords[i] & 0x00ff;
+				timebase += msecoffset; // Update the current tagged time
+				i++;
+
+				if (i >= (int)ResponseWords.size())
+				{
+					// Index error
+					LOGERROR("Tried to access past the end of the response words looking for the second part of a data block " + MD3MessageAsString(CompleteMD3Message));
+					return false;
+				}
+				uint16_t ModuleData = ResponseWords[i];
+
+				//TODO: We need to maintain a "memory" of the modules bits, so that we can trigger ODC events only on the changes..
+				LOGDEBUG("Module : " + std::to_string(ModuleAddress) + " Offset : " + std::to_string(msecoffset) + " Data : " + to_hexstring(ModuleData));
+				LOGERROR("Fn11 TimeTagged Data detected - not handled yet!!");
 			}
-			MessageIndex++;
 		}
 	}
 	return true;
@@ -1019,32 +1052,49 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 	{
 		if (MyPointConf()->NewDigitalCommands) // Old are 7,8,9,10 - New are 11 and 12
 		{
+			// If sequence number is zero - it means we have just started up, or communications re-established. So we dont have a full copy
+			// of the binary data (timetagged or otherwise). The outStation will use the zero sequnce number to send everything to initialise us. We
+			// don't have to send an unconditional.
+
+			ModuleMapType::iterator FirstModule = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
+
+			// Request Digital Unconditional
+			int ModuleAddress = FirstModule->first;
+			// We expect the digital modules to be consecutive, or of there is a gap this will still work.
+			int Modules = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.size(); // Most modules we can get in one command - NOT channels!
+
+			// Also need to check if we already have all the values that this command would ask for..if not send unconditional.
 			if (MyPointConf()->PollGroups[pollgroup].ForceUnconditional)
 			{
 				// Use Unconditional Request Fn 12
 				//TODO:  Handle for than one DIM in a poll group...
 				LOGDEBUG("Poll Issued a Digital Unconditional (new) Command");
-				ModuleMapType::iterator FirstModule = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
 
-				// Request Digital Unconditional
-				int ModuleAddress = FirstModule->first;
-				// We expect the digital modules to be consecutive, or of there is a gap this will still work.
-				int Modules = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.size(); // Most modules we can get in one command - NOT channels!
+				MD3BlockFormatted commandblock = MD3BlockFn12MtoS(MyConf()->mAddrConf.OutstationAddr, ModuleAddress, DigitalCommandSequenceNumber, Modules);
 
-				//TODO: Need a random value on startup? Or 0
-				int sequencecount = 2; // This need to be maintained globally and is mod 16, but not 0.
-
-				MD3BlockFormatted commandblock = MD3BlockFn12MtoS(MyConf()->mAddrConf.OutstationAddr, ModuleAddress, sequencecount, Modules);
+				DigitalCommandSequenceNumber = (++DigitalCommandSequenceNumber > 15) ? 1 : DigitalCommandSequenceNumber; //TODO: Thread safety?
 
 				QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
 			}
 			else
 			{
 				// Use a delta command Fn 11
-				LOGDEBUG("Poll Issued a Digital Delta (new) Command");
+				LOGDEBUG("Poll Issued a Digital Delta COS (new) Command");
+
+				uint8_t TaggedEventCount = 0; // Assuming no timetagged points initially.
+
+				// If we have timetagged points in the system, then we need to ask for them to be returned.
+				if (MyPointConf()->PollGroups[pollgroup].TimeTaggedDigital == true)
+					TaggedEventCount = 15; // The most we can ask for
+
+				MD3BlockFormatted commandblock = MD3BlockFn11MtoS(MyConf()->mAddrConf.OutstationAddr, TaggedEventCount, DigitalCommandSequenceNumber, Modules);
+
+				DigitalCommandSequenceNumber = (++DigitalCommandSequenceNumber > 15) ? 1 : DigitalCommandSequenceNumber; //TODO: Thread safety?
+
+				QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
 			}
 		}
-		else
+		else // Old digital commands
 		{
 			if (MyPointConf()->PollGroups[pollgroup].ForceUnconditional)
 			{
@@ -1289,13 +1339,13 @@ void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const ui
 		if ((command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
 		{
 			// OFF Command
-			outputselection = Channel;
+			outputselection = Channel+8;
 			OnOffString = "OFF";
 		}
 		else
 		{
 			// ON Command  --> ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
-			outputselection = Channel+8;
+			outputselection = Channel;
 			OnOffString = "ON";
 		}
 

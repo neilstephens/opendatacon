@@ -692,7 +692,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 		int TaggedEventCount = 0;
 		int ModuleCount = Limit(ChangedBlocks, Header.GetModuleCount());
 
-		// Setup the response block
+		// Set up the response block
 		MD3BlockFn11StoM FormattedBlock(Header.GetStationAddress(), TaggedEventCount, Header.GetDigitalSequenceNumber(), ModuleCount);
 		ResponseMD3Message.push_back(FormattedBlock);
 
@@ -710,7 +710,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 		if (AreThereTaggedEvents)
 		{
-			// Add timetagged data
+			// Add time tagged data
 			std::vector<uint16_t> ResponseWords;
 
 			Fn11AddTimeTaggedDataToResponseWords(Header.GetTaggedEventCount(), TaggedEventCount, ResponseWords);
@@ -718,7 +718,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 			// Convert data to 32 bit blocks and pad if necessary.
 			if ((ResponseWords.size() % 2) != 0)
 			{
-				// Add a filler packet if necessary
+				// Add a filler packet if necessary to the end of the message. High byte zero, low byte does not matter.
 				ResponseWords.push_back(MD3BlockFn11StoM::FillerPacket());
 			}
 

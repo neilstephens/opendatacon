@@ -59,13 +59,15 @@ bool MD3CRCCompare(const uint8_t crc1, const uint8_t crc2);
 bool iequals(const std::string& a, const std::string& b);
 
 template <class T>
-
 std::string to_hexstring(T val)
 {
 	std::stringstream sstream;
 	sstream << std::hex << val;
 	return sstream.str();
 }
+
+// Create an ASCII string version of the time from the MD3 time - which is msec since epoch.
+std::string to_timestringfromMD3time(MD3Time _time);
 
 // Every block in MD3 is 5 bytes, plus one zero byte. If we dont have 5 bytes, we dont have a block. The last block is marked as such.
 // We will create a class to load the 6 byte array into, then we can just ask it to return the information in the variety of ways we require,
@@ -152,7 +154,8 @@ public:
 	uint8_t GetByte(int b) const
 	{
 		assert((b >= 0) && (b < 4));
-		return ((data >> (8 * (3 - b))) & 0x0FF);
+		uint8_t res = ((data >> (8 * (3 - b))) & 0x0FF);
+		return res;
 	}
 	uint16_t GetFirstWord() const
 	{
@@ -465,10 +468,11 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn11StoM(uint8_t stationaddress, uint8_t taggedeventcount, uint8_t digitalsequencenumber, uint8_t modulecount, bool lastblock = false,
+	MD3BlockFn11StoM(uint8_t stationaddress, uint8_t taggedeventcount, uint8_t digitalsequencenumber, uint8_t modulecount,
 		bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
 	{
 		bool mastertostation = false;
+		bool lastblock = false; // There will always be following data, otherwise we send an Digital No Change response
 		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
 		assert((stationaddress & 0x7F) == stationaddress);               // Max of 7 bits;
@@ -519,7 +523,9 @@ public:
 	}
 	static uint16_t FillerPacket()
 	{
-		return 0;
+		// A time offset packet that adds some time (256msec), but will be at the end and have no effect on anything.
+		// We cannot send 0 as that is the start marker of a STATUS BLOCK.
+		return 0x0001;
 	}
 	static uint16_t MilliSecondsDiv256OffsetPacket(uint16_t allmsec)
 	{
