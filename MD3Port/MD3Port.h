@@ -101,6 +101,8 @@ public:
 	bool GetAnalogODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res);
 	bool GetBinaryODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res);
 
+	bool GetBinaryQualityUsingMD3Index(const uint16_t module, const uint8_t channel, bool & hasbeenset); //TODO: Clean up quality on master for bits
+
 	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed);
 	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t & res);
 	bool GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed);

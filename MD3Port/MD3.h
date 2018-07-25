@@ -69,12 +69,11 @@
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;
 
-//TODO: SJE Determine by testing if MD3 uses UTC or not. Nothing in the documentation
 typedef uint64_t MD3Time; // msec since epoch, utc, most time functions are uint64_t
 
 static MD3Time MD3Now()
 {
-	// To get the time to pass through ODC events.
+	// To get the time to pass through ODC events. MD3 Uses UTC time in commands - as you would expect.
 	return (MD3Time)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
@@ -164,6 +163,7 @@ enum MD3_FUNCTION_CODE
 	SYSTEM_SIGNOFF_CONTROL = 41,
 	SYSTEM_RESTART_CONTROL = 42,
 	SYSTEM_SET_DATETIME_CONTROL = 43,
+	SYSTEM_SET_DATETIME_CONTROL_NEW = 44,
 	FILE_DOWNLOAD = 50,
 	FILE_UPLOAD = 51,
 	SYSTEM_FLAG_SCAN = 52,

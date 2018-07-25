@@ -100,6 +100,9 @@ public:
 	//*** PUBLIC for unit tests only
 	void DoPoll(uint32_t pollgroup);
 
+	void ResetDigitalCommandSequenceNumber();
+	int GetAndIncrementDigitalCommandSequenceNumber(); // Thread protected
+
 	void EnablePolling(bool on); // Enabled by default
 
 	void SendTimeDateChangeCommand(const uint64_t &currenttime, SharedStatusCallback_t pStatusCallback);
@@ -110,7 +113,9 @@ private:
 
 	std::unique_ptr<asio::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
-	int DigitalCommandSequenceNumber = 0;         // Used only by the digital commands to manage resends/retries. 0 for power on. Will vary from 1 to 15 normally.
+
+	std::mutex DigitalCommandSequenceNumberMutex;
+	int DigitalCommandSequenceNumber = 0; // Used only by the digital commands to manage resends/retries. 0 for power on - connect/reconnect. Will vary from 1 to 15 normally.
 
 	void SendNextMasterCommand();
 	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
@@ -122,13 +127,16 @@ private:
 	bool ProcessAnalogDeltaScanReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 
+	bool ProcessDigitalNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
+
 	// Handles new COS and Unconditional Scan
 	bool ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 
 	bool ProcessDOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessPOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
-
 	bool ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
+	bool ProcessSystemSignOnReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
+	bool ProcessFreezeResetReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 
 	// Check that what we got is one that is expected for the current Function we are processing.
 	bool AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode);

@@ -143,6 +143,8 @@ void MD3Port::SendMD3Message(MD3Message_t &CompleteMD3Message)
 		return;
 	}
 
+	LOGDEBUG("Sending Message - " + MD3MessageAsString(CompleteMD3Message));
+
 	// Turn the blocks into a binary string.
 	std::string MD3Message;
 	for (auto blk : CompleteMD3Message)
@@ -324,7 +326,21 @@ bool MD3Port::GetBinaryODCIndexUsingMD3Index(const uint16_t module, const uint8_
 	}
 	return false;
 }
+bool MD3Port::GetBinaryQualityUsingMD3Index(const uint16_t module, const uint8_t channel, bool &hasbeenset)
+{
+	uint16_t Md3Index = (module << 8) | channel;
+
+	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
+	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
+	{
+		hasbeenset = MD3PointMapIter->second->HasBeenSet;
+		return true;
+	}
+	return false;
+}
+
 // Gets and Clears changed flag
+//TODO: On the outstation we use the changed flag to determine if we should send the vaule in a delta scan. On the Master we need a flag to know if the value is valid - we have received a value from the outstation. Do we use field for both??
 bool MD3Port::GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed)
 {
 	uint16_t Md3Index = (module << 8) | channel;
@@ -381,6 +397,7 @@ bool MD3Port::SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t c
 		MD3PointMapIter->second->Binary = meas;
 		MD3PointMapIter->second->Changed = true;
 		MD3PointMapIter->second->ChangedTime = MD3Now();
+		MD3PointMapIter->second->HasBeenSet = true;
 		return true;
 	}
 	return false;
@@ -407,6 +424,7 @@ bool MD3Port::SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t me
 	{
 		ODCPointMapIter->second->Binary = meas;
 		ODCPointMapIter->second->Changed = true;
+		ODCPointMapIter->second->HasBeenSet = true;
 
 		// We now need to add the change to the separate digital/binary event list
 		ODCPointMapIter->second->ChangedTime = eventtime;

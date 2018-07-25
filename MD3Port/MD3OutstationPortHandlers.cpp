@@ -43,8 +43,6 @@
 #include "MD3OutstationPort.h"
 
 
-//TODO: Check out http://www.pantheios.org/ logging library..
-
 /*func, count, name Analysis of traffic results
 
 11 , 138125            Digital COS Time Tagged - Done
@@ -115,9 +113,11 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 	{
 		LOGERROR("Received a Station to Master message at the outstation - ignoring - " + std::to_string(Header.GetFunctionCode()) +
 			" On Station Address - " + std::to_string(Header.GetStationAddress()));
-		//TODO: SJE Trip an error so we dont have to wait for timeout?
+		//	Let timeout deal with the error
 		return;
 	}
+
+	bool NotImplemented = false;
 
 	// All are included to allow better error reporting.
 	switch (Header.GetFunctionCode())
@@ -152,12 +152,15 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			DoDigitalUnconditional(static_cast<MD3BlockFn12MtoS&>(Header));
 			break;
 		case ANALOG_NO_CHANGE_REPLY:
+			NotImplemented = true;
 			// Master Only
 			break;
 		case DIGITAL_NO_CHANGE_REPLY:
+			NotImplemented = true;
 			// Master Only
 			break;
 		case CONTROL_REQUEST_OK:
+			NotImplemented = true;
 			// Master Only
 			break;
 		case FREEZE_AND_RESET:
@@ -172,14 +175,17 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
 			break;
 		case INPUT_POINT_CONTROL:
+			NotImplemented = true;
 			break;
 		case RAISE_LOWER_TYPE_CONTROL:
+			NotImplemented = true;
 			break;
 		case AOM_TYPE_CONTROL:
 			ExpectedMessageSize = 2;
 			DoAOMControl(static_cast<MD3BlockFn23MtoS&>(Header), CompleteMD3Message);
 			break;
 		case CONTROL_OR_SCAN_REQUEST_REJECTED:
+			NotImplemented = true;
 			// Master Only
 			break;
 		case COUNTER_SCAN:
@@ -189,26 +195,38 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			DoSystemSignOnControl(static_cast<MD3BlockFn40&>(Header));
 			break;
 		case SYSTEM_SIGNOFF_CONTROL:
+			NotImplemented = true;
 			break;
 		case SYSTEM_RESTART_CONTROL:
+			NotImplemented = true;
 			break;
 		case SYSTEM_SET_DATETIME_CONTROL:
 			ExpectedMessageSize = 2;
 			DoSetDateTime(static_cast<MD3BlockFn43MtoS&>(Header), CompleteMD3Message);
 			break;
+		case SYSTEM_SET_DATETIME_CONTROL_NEW:
+			NotImplemented = true;
+			break;
 		case FILE_DOWNLOAD:
+			NotImplemented = true;
 			break;
 		case FILE_UPLOAD:
+			NotImplemented = true;
 			break;
 		case SYSTEM_FLAG_SCAN:
 			ExpectedMessageSize = CompleteMD3Message.size(); // Variable size
 			DoSystemFlagScan(Header, CompleteMD3Message);
 			break;
 		case LOW_RES_EVENTS_LIST_SCAN:
+			NotImplemented = true;
 			break;
 		default:
 			LOGERROR("Unknown Command Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			break;
+	}
+	if (NotImplemented == true)
+	{
+		LOGERROR("Command Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 	}
 
 	if (ExpectedMessageSize != CompleteMD3Message.size())
@@ -661,7 +679,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
 	{
-		// The last time we sent this, it did not get there, so we have to just resend that stored set of blocks. Dont do anything else.
+		// The last time we sent this, it did not get there, so we have to just resend that stored set of blocks. Don't do anything else.
 		// If we go back and reread the Binary bits, the change information will already have been lost, as we assume it was sent when we read it last time.
 		// It would get very tricky to only commit change written information only when a new sequence number turns up.
 		// The downside is that the stored message could be a no change message, but data may have changed since we last sent it.
@@ -672,7 +690,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 	if (Header.GetDigitalSequenceNumber() == 0)
 	{
-		// Special case, mark every module with data changed, then send the first group.
+		// Special case used on start up, mark every module with data changed, then send the first group.
 		// There may be more to send, the master will get those with another command, with a normal sequence number.
 		MarkAllBinaryBlocksAsChanged();
 	}
@@ -682,7 +700,6 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 	if ((ChangedBlocks == 0) && !AreThereTaggedEvents)
 	{
-		//TODO: Digital No Change - check assumption that the second word needs to mirror that sent in the function 11 command (tagged event count, digital sequence # and ModuleCount
 		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetDigitalSequenceNumber());
 		ResponseMD3Message.push_back(FormattedBlock);
 	}
@@ -699,7 +716,6 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 		// Add non-time tagged data. We can return a data block or a status block for each module.
 		// If the module is active (not faulted) return the data, otherwise return the status block..
 		// We always just start with the first module and move up through changed blocks until we reach the ChangedBlocks count
-		//TODO: For remotes with latching digital changes - we can reply with two data blocks, the first being the latched change, the second being the current data - not sure how this works...
 
 		std::vector<uint8_t> ModuleList;
 		BuildListOfModuleAddressesWithChanges(0, ModuleList);
@@ -744,7 +760,6 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	SendMD3Message(ResponseMD3Message);
 
 	// Store this set of packets in case we have to resend
-	//TODO: Is the sequence number function dependent - i.e. do we maintain one for each digital function or is it common across all digital functions.
 	LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
 	LastDigitialScanResponseMD3Message = ResponseMD3Message;
 }
@@ -818,7 +833,7 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 	std::vector<uint8_t> ModuleList;
 	BuildListOfModuleAddressesWithChanges(Header.GetModuleCount(),Header.GetModuleAddress(), true, ModuleList);
 
-	// Setup the response block - module count to be updated
+	// Set up the response block - module count to be updated
 	MD3BlockFn11StoM FormattedBlock(Header.GetStationAddress(), 0, Header.GetDigitalSequenceNumber(), Header.GetModuleCount());
 	ResponseMD3Message.push_back(FormattedBlock);
 
@@ -836,14 +851,13 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 	SendMD3Message(ResponseMD3Message);
 
 	// Store this set of packets in case we have to resend
-	//TODO: Is the sequence number function dependent - i.e. do we maintain one for each digital function or is it common across all digital functions.
 	LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
 	LastDigitialScanResponseMD3Message = ResponseMD3Message;
 }
 
-// This will be called when we get a zero sequence number for Fn 11 or 12. It is sent on Master startup to ensure that all data is sent in following
+// This will be called when we get a zero sequence number for Fn 11 or 12. It is sent on Master start-up to ensure that all data is sent in following
 // change only commands - if there are sufficient modules
-//TODO: Have to think about how zero sequence number is passed through ODC to our master talking to the real slave
+
 void MD3OutstationPort::MarkAllBinaryBlocksAsChanged()
 {
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
@@ -1055,13 +1069,6 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
 	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
 
-	// Two possible responses, they depend on the future result - of type CommandStatus.
-	// SUCCESS = 0 /// command was accepted, initiated, or queue
-	// TIMEOUT = 1 /// command timed out before completing
-	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
-	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
-	// Non-zero will be a fail.
-
 	bool failed = false;
 
 	if (!Header.IsValid())
@@ -1099,7 +1106,7 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 		{
 			// This is an all station (0 address) freeze reset function.
 			// No response, don't wait for a result
-			Perform(MyPointConf()->SystemSignOnPoint.first, Index, false);
+			Perform(MyPointConf()->FreezeResetCountersPoint.first, Index, false);
 		}
 	}
 }
@@ -1142,10 +1149,6 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 		SendControlOrScanRejected(Header);
 		return;
 	}
-
-	// Pass the actual packet to the master across ODC The second packet is just a check packet. No different information
-	// Should we be passing ODC OutputBinary points instead? Then the master has to work out how to turn that back into a command in MD3...
-	MyPointConf()->POMControlPoint.first = AnalogOutputInt32(Header.GetData());
 
 	bool waitforresult = !MyPointConf()->StandAloneOutstation;
 	bool success = true;
@@ -1335,7 +1338,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
 		else
 		{
 			//TODO: Check if SIGNON can send back a rejected message
-			SendControlOrScanRejected(Header);
+			//SendControlOrScanRejected(Header);
 		}
 	}
 	else

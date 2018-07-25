@@ -62,9 +62,9 @@ MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_s
 			true,
 			retry_time_ms));
 
-	std::string ChannelID = EndPoint + ":" + Port;
+	ChannelID = EndPoint + ":" + Port;
 
-	LOGINFO("Opened an MD3Connection object "+ChannelID);
+	LOGDEBUG("Opened an MD3Connection object " + ChannelID + " As a " + (isServer ? "Server" : "Client"));
 }
 
 void MD3Connection::AddOutstation(uint8_t StationAddress, // For message routing, OutStation identification
@@ -114,7 +114,6 @@ void MD3Connection::AddConnection(std::string ChannelID, std::shared_ptr<MD3Conn
 
 void MD3Connection::Open()
 {
-	std::string ChannelID = EndPoint + ":" + Port;
 	if (enabled) return;
 	try
 	{
@@ -123,6 +122,7 @@ void MD3Connection::Open()
 
 		pSockMan->Open();
 		enabled = true;
+		LOGDEBUG("Connection Opened: " + ChannelID);
 	}
 	catch (std::exception& e)
 	{
@@ -139,6 +139,8 @@ void MD3Connection::Close()
 	if (pSockMan.get() == nullptr)
 		return;
 	pSockMan->Close();
+
+	LOGDEBUG("Connection Closed: " + ChannelID);
 }
 
 MD3Connection::~MD3Connection()
@@ -229,24 +231,27 @@ void MD3Connection::RouteMD3Message(MD3Message_t &CompleteMD3Message)
 	{
 		// If zero, route to all outstations!
 		// Most zero station address functions do not send a response - the SystemSignOnMessage is an exception.
-
+		LOGDEBUG("Received a zero station address routing to all outstations - " + MD3MessageAsString(CompleteMD3Message));
 		for (auto it = ReadCallbackMap.begin(); it != ReadCallbackMap.end(); ++it)
 			it->second(CompleteMD3Message);
 	}
 	else if (ReadCallbackMap.count(StationAddress) != 0)
 	{
 		// We have found a matching outstation, do read callback
+		LOGDEBUG("Routing Message to station - " +std::to_string(StationAddress)+" Message - " + MD3MessageAsString(CompleteMD3Message));
 		ReadCallbackMap.at(StationAddress)(CompleteMD3Message);
 	}
 	else
 	{
 		// NO match
-		LOGERROR("Received non-matching outstation address - " + std::to_string(StationAddress));
+		LOGDEBUG("Received non-matching outstation address - " + std::to_string(StationAddress) + " Message - " + MD3MessageAsString(CompleteMD3Message));
 	}
 }
 
 void MD3Connection::SocketStateHandler(bool state)
 {
+	LOGDEBUG("Connection changed state " + ChannelID + " As a " + (isServer ? "Open" : "Close"));
+
 	// Call all the OutStation State Callbacks
 	for (auto it = StateCallbackMap.begin(); it != StateCallbackMap.end(); ++it)
 		it->second(state);

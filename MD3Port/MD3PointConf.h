@@ -92,6 +92,7 @@ public:
 	uint8_t Channel = 0;
 	uint8_t PollGroup = 0;
 	MD3Time ChangedTime = (MD3Time)0; // msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data. TimeStamp is Uint48_t, MD3 is uint64_t but does not overflow.
+	bool HasBeenSet = false;          // Could we use changed time of zero instead?
 };
 
 enum BinaryPointType {BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT};
@@ -130,7 +131,6 @@ public:
 	//TODO: The values below will be changed in only two places - will refactor to provide protection.
 	uint16_t Analog = 0x8000;
 	uint16_t LastReadAnalog = 0x8000;
-	bool HasBeenSet = false;
 };
 
 typedef std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>::iterator ODCBinaryPointMapIterType;
@@ -162,8 +162,8 @@ public:
 	uint32_t ID;
 	uint32_t pollrate;
 	PollGroupType polltype;
-	bool ForceUnconditional;       // Set to true on start up, and if other conditions are met
-	bool TimeTaggedDigital;        // Set to true if this poll group contains timetagged digital points.
+	bool ForceUnconditional;       // Used to prevent use of delta or COS commands.
+	bool TimeTaggedDigital;        // Set to true if this poll group contains time tagged digital points.
 	ModuleMapType ModuleAddresses; // The second value is for channel count
 	// As we load points we will build this list
 };
@@ -205,9 +205,10 @@ public:
 
 	std::map<uint32_t, MD3PollGroup> PollGroups;
 
-	// Time Set Point Configuration - this is a "special" point that is used to pass the time set command through ODC. Default to 100000
+	// Time Set Point Configuration - this is a "special" point that is used to pass the time set command through ODC.
 	std::pair<AnalogOutputDouble64, uint32_t> TimeSetPoint = std::make_pair(AnalogOutputDouble64(0), (uint32_t)0);
-	// System Sign On Configuration - this is a "special" point that is used to pass the systemsignon command through ODC. Default to 100001
+
+	// System Sign On Configuration - this is a "special" point that is used to pass the systemsignon command through ODC.
 	std::pair<AnalogOutputInt32, uint32_t> SystemSignOnPoint = std::make_pair(AnalogOutputInt32(0),(uint32_t)0);
 	std::pair<AnalogOutputInt32, uint32_t> FreezeResetCountersPoint = std::make_pair(AnalogOutputInt32(0), (uint32_t)0);
 	std::pair<AnalogOutputInt32, uint32_t> POMControlPoint = std::make_pair(AnalogOutputInt32(0), (uint32_t)0);

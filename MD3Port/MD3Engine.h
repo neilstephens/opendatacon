@@ -65,11 +65,17 @@ std::string to_hexstring(T val)
 	sstream << std::hex << val;
 	return sstream.str();
 }
-
+template <class T>
+std::string to_binstring(T val)
+{
+	std::stringstream sstream;
+	sstream << std::setbase(2) << val;
+	return sstream.str();
+}
 // Create an ASCII string version of the time from the MD3 time - which is msec since epoch.
 std::string to_timestringfromMD3time(MD3Time _time);
 
-// Every block in MD3 is 5 bytes, plus one zero byte. If we dont have 5 bytes, we dont have a block. The last block is marked as such.
+// Every block in MD3 is 5 bytes, plus one zero byte. If we don't have 5 bytes, we don't have a block. The last block is marked as such.
 // We will create a class to load the 6 byte array into, then we can just ask it to return the information in the variety of ways we require,
 // depending on the block content.
 // There are two ways this class is used - one for decoding, one for encoding.
@@ -255,7 +261,7 @@ public:
 	}
 	uint8_t GetStationAddress() const
 	{
-		// TODO: SJE Extended Addressing - Address 0x7F indicates an extended address.
+		//NOTE: Extended Addressing - Address 0x7F indicates an extended address - not supported - flagged elsewhere
 		return (data >> 24) & 0x7F;
 	}
 	uint8_t GetModuleAddress() const
@@ -523,9 +529,8 @@ public:
 	}
 	static uint16_t FillerPacket()
 	{
-		// A time offset packet that adds some time (256msec), but will be at the end and have no effect on anything.
-		// We cannot send 0 as that is the start marker of a STATUS BLOCK.
-		return 0x0001;
+		// Will be at the end and have no effect on anything. The RTU's have this as zero
+		return 0x0000;
 	}
 	static uint16_t MilliSecondsDiv256OffsetPacket(uint16_t allmsec)
 	{
