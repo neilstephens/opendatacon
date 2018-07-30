@@ -42,12 +42,12 @@ class MD3OutstationPort: public MD3Port
 	enum AnalogCounterModuleType { CounterModule, AnalogModule };
 
 public:
-	MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	MD3OutstationPort(const std::string & aName, const std::string & aConfFilename, const Json::Value & aConfOverrides);
 	~MD3OutstationPort() override;
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild();
+	void BuildOrRebuild() override;
 
 	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
@@ -119,8 +119,9 @@ public:
 	void DoDOMControl(MD3BlockFn19MtoS & Header, MD3Message_t& CompleteMD3Message);
 	void DoAOMControl(MD3BlockFn23MtoS & Header, MD3Message_t& CompleteMD3Message);
 
-	void DoSystemSignOnControl(MD3BlockFn40 & Header);
-	void DoSetDateTime(MD3BlockFn43MtoS & Header, MD3Message_t& CompleteMD3Message);     // Fn 43
+	void DoSystemSignOnControl(MD3BlockFn40MtoS & Header);
+	void DoSetDateTime(MD3BlockFn43MtoS & Header, MD3Message_t& CompleteMD3Message); // Fn 43
+	void DoSetDateTimeNew(MD3BlockFn44MtoS & Header, MD3Message_t & CompleteMD3Message);
 	void DoSystemFlagScan(MD3BlockFormatted & Header, MD3Message_t& CompleteMD3Message); // Fn 52
 
 	void SendControlOK(MD3BlockFormatted & Header);             // Fn 15

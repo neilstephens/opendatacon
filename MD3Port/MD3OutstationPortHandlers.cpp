@@ -92,6 +92,7 @@ SYSTEM_SIGNON_CONTROL = 40,
 SYSTEM_SIGNOFF_CONTROL = 41,
 SYSTEM_RESTART_CONTROL = 42,
 SYSTEM_SET_DATETIME_CONTROL = 43,
+SYSTEM_SET_DATETIME_CONTROL_NEW = 44,
 FILE_DOWNLOAD = 50,
 FILE_UPLOAD = 51,
 SYSTEM_FLAG_SCAN = 52,
@@ -106,7 +107,7 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 
 	int ExpectedMessageSize = 1; // Only set in switch statement if not 1
 
-	MD3BlockFormatted Header = CompleteMD3Message[0];
+	MD3BlockFormatted Header = MD3BlockFormatted(CompleteMD3Message[0]);
 	// Now based on the Command Function, take action. Some of these are responses from - not commands to an OutStation.
 
 	if (Header.IsMasterToStationMessage() != true)
@@ -192,7 +193,7 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			DoCounterScan(Header);
 			break;
 		case SYSTEM_SIGNON_CONTROL:
-			DoSystemSignOnControl(static_cast<MD3BlockFn40&>(Header));
+			DoSystemSignOnControl(static_cast<MD3BlockFn40MtoS&>(Header));
 			break;
 		case SYSTEM_SIGNOFF_CONTROL:
 			NotImplemented = true;
@@ -205,7 +206,8 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			DoSetDateTime(static_cast<MD3BlockFn43MtoS&>(Header), CompleteMD3Message);
 			break;
 		case SYSTEM_SET_DATETIME_CONTROL_NEW:
-			NotImplemented = true;
+			ExpectedMessageSize = 3;
+			DoSetDateTimeNew(static_cast<MD3BlockFn44MtoS&>(Header), CompleteMD3Message);
 			break;
 		case FILE_DOWNLOAD:
 			NotImplemented = true;
@@ -301,7 +303,6 @@ void MD3OutstationPort::ReadAnalogOrCounterRange(int ModuleAddress, int Channels
 	//
 	uint16_t wordres = 0;
 	bool hasbeenset;
-	int deltares = 0;
 
 	// Is it a counter module? Fails if not at this address
 	if (GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres, hasbeenset))
@@ -449,15 +450,13 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
 	// Have three possible replies, Digital Unconditional #7,  Delta Scan #8 and Digital No Change #14
 	// So the data is deemed to have changed if a bit has changed, or the status has changed.
 	// We detect changes on a module basis, and send the data in the same format as the Digital Unconditional.
-	// So the Delta Scan can be all the same data as the uncondtional.
+	// So the Delta Scan can be all the same data as the unconditional.
 	// If no changes, send the single #14 function block. Keep the module and channel values matching the orginal message.
 
 	// For this function, the channels field is actually the number of consecutive modules to return. We always return 16 channel bits.
 	// If there is an invalid module, we return a different block for that module.
 	MD3Message_t ResponseMD3Message;
 
-	bool NoChange = true;
-	bool SomeChange = false;
 	int NumberOfDataBlocks = Header.GetChannels(); // Actually the number of modules - 0 numbered, does not make sense to ask for none...
 
 	int ChangedBlocks = CountBinaryBlocksWithChangesGivenRange(NumberOfDataBlocks, Header.GetModuleAddress());
@@ -898,9 +897,6 @@ int MD3OutstationPort::CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBl
 
 	for (int i = 0; i < NumberOfDataBlocks; i++)
 	{
-		// Have to collect all the bits into a uint16_t
-		uint16_t wordres = 0;
-		bool missingdata = false;
 		bool datachanged = false;
 
 		for (int j = 0; j < 16; j++)
@@ -910,8 +906,6 @@ int MD3OutstationPort::CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBl
 
 			if (!GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed)) // Does not change the changed bit
 			{
-				// Data is missing, need to send the error block for this module address.
-				missingdata = true;
 				changed = true;
 			}
 			if (changed)
@@ -961,7 +955,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 		auto MDPt = *(MapPt.second);
 		auto Address = (MapPt.first);
 		uint8_t ModuleAddress = (Address >> 8);
-		uint8_t Channel = (Address & 0x0FF);
+		//uint8_t Channel = (Address & 0x0FF);
 
 		if (ModuleAddress == StartModuleAddress)
 			WeAreScanning = true;
@@ -1312,7 +1306,7 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &Com
 
 // Function 40 - SYSTEM_SIGNON_CONTROL
 // The response is what we have received with the direction bit changed. If the address is zero, we send our address.
-void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
+void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40MtoS &Header)
 {
 	// This is used to turn on radios (typically) before a real command is sent.
 	// If address is zero, the master is asking us to identify ourselves.
@@ -1328,8 +1322,8 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
 		// This does a PublishCommand and waits for the result - or times out.
 		if (Perform(MyPointConf()->SystemSignOnPoint.first, Index, waitforresult) == odc::CommandStatus::SUCCESS)
 		{
-			// Need to send a response by echoing the Header, but with the StationAddress set to match our address. Direction station to master!
-			MD3BlockFn40 FormattedBlock(MyConf()->mAddrConf.OutstationAddr, false);
+			// Need to send a response, but with the StationAddress set to match our address.
+			MD3BlockFn40StoM FormattedBlock(MyConf()->mAddrConf.OutstationAddr);
 
 			MD3Message_t ResponseMD3Message;
 			ResponseMD3Message.push_back(FormattedBlock);
@@ -1391,6 +1385,66 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &Co
 
 		// This does a PublishCommand and waits for the result - or times out.
 		if (Perform(MyPointConf()->TimeSetPoint.first, Index, waitforresult) == odc::CommandStatus::SUCCESS)
+		{
+			if (Header.GetStationAddress() != 0)
+				SendControlOK(Header);
+		}
+		else
+		{
+			if (Header.GetStationAddress() != 0)
+				SendControlOrScanRejected(Header);
+		}
+	}
+}
+// Function 44
+void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t &CompleteMD3Message)
+{
+	// We have two blocks incoming, not just one.
+	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+	// We have to pass the command to  ODC, then set-up a lambda to handle the sending of the response - when we get it.
+
+	// Two possible responses, they depend on the future result - of type CommandStatus.
+	// SUCCESS = 0 /// command was accepted, initiated, or queue
+	// TIMEOUT = 1 /// command timed out before completing
+	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
+	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
+	// Non-zero will be a fail.
+
+	LOGDEBUG("OS - DoSetdateTimeNew");
+
+	if ((CompleteMD3Message.size() != 3) && (Header.GetStationAddress() != 0))
+	{
+		SendControlOrScanRejected(Header); // If we did not get three blocks, then send back a command rejected message.
+		return;
+	}
+
+	MD3BlockData &timedateblock = CompleteMD3Message[1];
+
+	// If date time is within a window of now, accept. Otherwise send command rejected.
+	uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
+
+	MD3BlockData &utcoffsetblock = CompleteMD3Message[2];
+
+	int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
+
+	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
+	uint64_t currenttime = MD3Now();
+
+	if (abs((int64_t)msecsinceepoch - (int64_t)currenttime) > 30000) // Set window as +-30 seconds
+	{
+		if (Header.GetStationAddress() != 0)
+			SendControlOrScanRejected(Header);
+	}
+	else
+	{
+		uint32_t Index = MyPointConf()->TimeSetPointNew.second;
+		MyPointConf()->TimeSetPointNew.first = AnalogOutputDouble64((double)msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
+
+		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
+		bool waitforresult = !MyPointConf()->StandAloneOutstation;
+
+		// This does a PublishCommand and waits for the result - or times out.
+		if (Perform(MyPointConf()->TimeSetPointNew.first, Index, waitforresult) == odc::CommandStatus::SUCCESS)
 		{
 			if (Header.GetStationAddress() != 0)
 				SendControlOK(Header);

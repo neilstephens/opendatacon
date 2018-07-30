@@ -46,7 +46,7 @@ class MD3Connection;
 class MD3Port: public DataPort
 {
 public:
-	MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	MD3Port(const std::string& aName, const std::string & aConfFilename, const Json::Value &aConfOverrides);
 
 	void ProcessElements(const Json::Value& JSONRoot) final;
 
@@ -106,7 +106,7 @@ public:
 	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed);
 	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t & res);
 	bool GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed);
-	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas);
+	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas, bool & valuechanged);
 	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
 	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, MD3Time eventtime);
 
@@ -121,7 +121,7 @@ public:
 
 
 	// Public only for UnitTesting
-	void SendMD3Message(MD3Message_t& CompleteMD3Message);
+	void SendMD3Message(const MD3Message_t& CompleteMD3Message);
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the MD3Connection.
 

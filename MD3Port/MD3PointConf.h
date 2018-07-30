@@ -139,7 +139,7 @@ typedef std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator ODC
 typedef std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator MD3AnalogCounterPointMapIterType;
 typedef std::map<uint8_t, uint16_t> ModuleMapType;
 
-enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand };
+enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
 
 class MD3PollGroup
 {
@@ -174,13 +174,13 @@ private:
 
 
 public:
-	MD3PointConf(std::string FileName, const Json::Value& ConfOverrides);
+	MD3PointConf(const std::string& FileName, const Json::Value& ConfOverrides);
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 	void ProcessPollGroups(const Json::Value & JSONRoot);
 
-	void ProcessBinaryPoints(const std::string BinaryName, const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>& ODCPointMap);
+	void ProcessBinaryPoints(const std::string & BinaryName, const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>& ODCPointMap);
 	void ProcessAnalogCounterPoints(const Json::Value & JSONNode, std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>& MD3PointMap, std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>& ODCPointMap);
 
 
@@ -207,6 +207,8 @@ public:
 
 	// Time Set Point Configuration - this is a "special" point that is used to pass the time set command through ODC.
 	std::pair<AnalogOutputDouble64, uint32_t> TimeSetPoint = std::make_pair(AnalogOutputDouble64(0), (uint32_t)0);
+	// Same as above but for Fn44 - don't pass UTC offset through. Get that from the machine running ODC
+	std::pair<AnalogOutputDouble64, uint32_t> TimeSetPointNew = std::make_pair(AnalogOutputDouble64(0), (uint32_t)0);
 
 	// System Sign On Configuration - this is a "special" point that is used to pass the systemsignon command through ODC.
 	std::pair<AnalogOutputInt32, uint32_t> SystemSignOnPoint = std::make_pair(AnalogOutputInt32(0),(uint32_t)0);

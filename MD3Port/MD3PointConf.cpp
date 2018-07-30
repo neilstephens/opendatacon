@@ -37,7 +37,7 @@
 
 using namespace odc;
 
-MD3PointConf::MD3PointConf(std::string FileName, const Json::Value& ConfOverrides):
+MD3PointConf::MD3PointConf(const std::string & FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides)
 {
 	LOGDEBUG("Conf processing file - "+FileName);
@@ -174,7 +174,7 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		}
 		if (!JSONNode[n].isMember("PointType"))
 		{
-			LOGERROR("Poll group missing PollType (Binary, Analog or TimeSetCommand) : "+ JSONNode[n].toStyledString());
+			LOGERROR("Poll group missing PollType (Binary, Analog or TimeSetCommand, NewTimeSetCommand, SystemFlagScan) : "+ JSONNode[n].toStyledString());
 			continue;
 		}
 
@@ -203,6 +203,14 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		{
 			polltype = TimeSetCommand;
 		}
+		if (iequals(JSONNode[n]["PointType"].asString(), "NewTimeSetCommand"))
+		{
+			polltype = NewTimeSetCommand;
+		}
+		if (iequals(JSONNode[n]["PointType"].asString(), "SystemFlagScan"))
+		{
+			polltype = SystemFlagScan;
+		}
 
 		bool ForceUnconditional = false;
 		if (JSONNode[n].isMember("ForceUnconditional"))
@@ -223,7 +231,7 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 }
 
 // This method loads both Binary read points, and Binary Control points.
-void MD3PointConf::ProcessBinaryPoints(const std::string BinaryName, const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> &MD3PointMap,
+void MD3PointConf::ProcessBinaryPoints(const std::string & BinaryName, const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> &MD3PointMap,
 	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> &ODCPointMap)
 {
 	LOGDEBUG("Conf processing - Binary");

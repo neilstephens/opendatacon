@@ -94,8 +94,10 @@ public:
 	// This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 	// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
 	void QueueMD3Command(const MD3Message_t &CompleteMD3Message, SharedStatusCallback_t pStatusCallback);
+	void QueueMD3Command(const MD3BlockData & SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback); // Handle the many single block command messages better
+	void QueueMD3Command(const MD3BlockFormatted & SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback);
 	void PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c);
-	void QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback); // Handle the many single block command messages better
+
 
 	//*** PUBLIC for unit tests only
 	void DoPoll(uint32_t pollgroup);
@@ -106,6 +108,8 @@ public:
 	void EnablePolling(bool on); // Enabled by default
 
 	void SendTimeDateChangeCommand(const uint64_t &currenttime, SharedStatusCallback_t pStatusCallback);
+	void SendNewTimeDateChangeCommand(const uint64_t & currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback);
+	void SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCallback);
 	void SendDOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint16_t & outputbits, const SharedStatusCallback_t &pStatusCallback);
 	void SendPOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & outputselection, const SharedStatusCallback_t &pStatusCallback);
 
@@ -128,18 +132,19 @@ private:
 	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 
 	bool ProcessDigitalNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
+	bool ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message); // Handles new COS and Unconditional Scan
 
-	// Handles new COS and Unconditional Scan
-	bool ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
+	void GenerateODCEventsFromMD3ModuleWord(const uint16_t &ModuleData, const uint8_t &ModuleAddress, const MD3Time &eventtime);
 
 	bool ProcessDOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessPOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
+	bool ProcessAOMReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
+	bool ProcessSetDateTimeNewReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessSystemSignOnReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessFreezeResetReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
+	bool ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 
-	// Check that what we got is one that is expected for the current Function we are processing.
-	bool AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode);
 };
 
 #endif /* MD3MASTERPORT_H_ */

@@ -40,11 +40,11 @@
 #include "MD3Engine.h"
 #include "MD3OutstationPort.h"
 
+//TODO: Add SystemPoweredUp flag to OutStation
+//TODO: Add SystemTimeIncorrect flag to Outstation - but do we really need it, our outstation has access to NTP??
+//TODO: Add RSF Flag to messages and reset on flag scan
 
-//TODO: Check out http://www.pantheios.org/ logging library..
-
-
-MD3OutstationPort::MD3OutstationPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+MD3OutstationPort::MD3OutstationPort(const std::string & aName, const std::string &aConfFilename, const Json::Value & aConfOverrides):
 	MD3Port(aName, aConfFilename, aConfOverrides)
 {
 	// Don't load conf here, do it in MD3Port

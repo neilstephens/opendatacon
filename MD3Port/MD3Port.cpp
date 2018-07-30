@@ -29,7 +29,7 @@
 #include "MD3Port.h"
 #include "MD3PortConf.h"
 
-MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pConnection(nullptr)
 {
@@ -135,7 +135,7 @@ void MD3Port::InjectSimulatedTCPMessage(buf_t&readbuf)
 }
 
 // The only method that sends to the TCP Socket
-void MD3Port::SendMD3Message(MD3Message_t &CompleteMD3Message)
+void MD3Port::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 {
 	if (CompleteMD3Message.size() == 0)
 	{
@@ -387,16 +387,20 @@ bool MD3Port::GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t
 	return false;
 }
 
-bool MD3Port::SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas)
+bool MD3Port::SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas, bool &valuechanged)
 {
 	uint16_t Md3Index = (module << 8) | channel;
 
 	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
 	{
-		MD3PointMapIter->second->Binary = meas;
-		MD3PointMapIter->second->Changed = true;
-		MD3PointMapIter->second->ChangedTime = MD3Now();
+		if (MD3PointMapIter->second->Binary != meas)
+		{
+			MD3PointMapIter->second->Binary = meas;
+			valuechanged = true;
+			MD3PointMapIter->second->Changed = true;
+			MD3PointMapIter->second->ChangedTime = MD3Now();
+		}
 		MD3PointMapIter->second->HasBeenSet = true;
 		return true;
 	}

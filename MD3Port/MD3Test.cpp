@@ -37,6 +37,7 @@
 #include "MD3Engine.h"
 #include "StrandProtectedQueue.h"
 #include "ProducerConsumerQueue.h"
+#include "MD3Test.h"
 
 #define SUITE(name) "MD3Tests - " name
 
@@ -72,6 +73,7 @@ const char *conffile1 = R"001(
 	// If we set StandAloneOutStation above, and use the pass through's here, we can maintain MD3 type packets through ODC.
 	// It is not however then possible to do a MD3 to DNP3 connection that will work.
 	"TimeSetPoint" : {"Index" : 0},
+	"TimeSetPointNew" : {"Index" : 0},
 	"SystemSignOnPoint" : {"Index" : 0},
 	"FreezeResetCountersPoint"  : {"Index" : 0},
 	"POMControlPoint" : {"Index" : 0},
@@ -86,7 +88,9 @@ const char *conffile1 = R"001(
 	"PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary", "TimeTaggedDigital" : true },
 					{"PollRate" : 20000, "ID" : 2, "PointType" : "Analog", "ForceUnconditional" : false },
 					{"PollRate" : 60000, "ID" : 3, "PointType" : "TimeSetCommand"},
-					{"PollRate" : 60000, "ID" : 4, "PointType" : "Binary",  "TimeTaggedDigital" : false }],
+					{"PollRate" : 60000, "ID" : 4, "PointType" : "Binary",  "TimeTaggedDigital" : false },
+					{"PollRate" : 180000, "ID" : 5, "PointType" : "SystemFlagScan"},
+					{"PollRate" : 60000, "ID" : 6, "PointType" : "NewTimeSetCommand"}],
 
 	// We expect the binary modules to be consecutive - MD3 Addressing - (or consecutive groups for scanning), the scanning is then simpler
 	"Binaries" : [{"Index": 80,  "Module" : 33, "Offset" : 0, "PointType" : "BASICINPUT"},
@@ -164,7 +168,14 @@ void WriteConfFilesToCurrentWorkingDirectory()
 	ofs.close();
 }
 
-void TestSetup()
+void TestSetup(bool writeconffiles = true)
+{
+	SetupLoggers();
+
+	if (writeconffiles)
+		WriteConfFilesToCurrentWorkingDirectory();
+}
+void SetupLoggers()
 {
 	// So create the log sink first - can be more than one and add to a vector.
 	#ifdef WIN32
@@ -199,8 +210,6 @@ void TestSetup()
 		log->info(msg);
 	else
 		std::cout << "Error opendatacon Logger not operational";
-
-	WriteConfFilesToCurrentWorkingDirectory();
 }
 void TestTearDown()
 {
@@ -745,6 +754,7 @@ TEST_CASE("MD3Block - Fn17")
 	REQUIRE(!b17.IsEndOfMessageBlock());
 	REQUIRE(b17.IsFormattedBlock());
 	REQUIRE(b17.CheckSumPasses());
+	REQUIRE(b17.IsMasterToStationMessage() == true);
 
 	MD3BlockData SecondBlock = b17.GenerateSecondBlock();
 	REQUIRE(b17.VerifyAgainstSecondBlock(SecondBlock));
@@ -775,6 +785,7 @@ TEST_CASE("MD3Block - Fn19")
 	REQUIRE(!b19.IsEndOfMessageBlock());
 	REQUIRE(b19.IsFormattedBlock());
 	REQUIRE(b19.CheckSumPasses());
+	REQUIRE(b19.IsMasterToStationMessage() == true);
 
 	MD3BlockData Block2 = b19.GenerateSecondBlock(0x55);
 	REQUIRE(b19.VerifyAgainstSecondBlock(Block2));
@@ -792,6 +803,7 @@ TEST_CASE("MD3Block - Fn16")
 	REQUIRE(b16.CheckSumPasses());
 	REQUIRE(b16.IsValid());
 	REQUIRE(b16.GetNoCounterReset() == true);
+	REQUIRE(b16.IsMasterToStationMessage() == true);
 
 	MD3BlockFn16MtoS b16b(0x73, false);
 	REQUIRE(b16b.GetStationAddress() == 0x73);
@@ -810,6 +822,7 @@ TEST_CASE("MD3Block - Fn23")
 	REQUIRE(!b23.IsEndOfMessageBlock());
 	REQUIRE(b23.IsFormattedBlock());
 	REQUIRE(b23.CheckSumPasses());
+	REQUIRE(b23.IsMasterToStationMessage() == true);
 
 	MD3BlockData SecondBlock23 = b23.GenerateSecondBlock(0x55);
 	REQUIRE(b23.VerifyAgainstSecondBlock(SecondBlock23));
@@ -820,16 +833,28 @@ TEST_CASE("MD3Block - Fn23")
 }
 TEST_CASE("MD3Block - Fn40")
 {
-	MD3BlockFn40 b40(0x3F);
+	MD3BlockFn40MtoS b40(0x3F);
 	REQUIRE(b40.IsValid());
 	REQUIRE(b40.GetData() == 0x3f28c0d7);
 	REQUIRE(b40.GetStationAddress() == 0x3F);
 	REQUIRE(b40.IsEndOfMessageBlock());
 	REQUIRE(b40.IsFormattedBlock());
 	REQUIRE(b40.CheckSumPasses());
+	REQUIRE(b40.IsMasterToStationMessage() == true);
+
+	MD3BlockFn40StoM b40s(0x3F);
+	REQUIRE(b40s.IsValid());
+	REQUIRE(b40s.GetData() == 0xBf28c0d7);
+	REQUIRE(b40s.GetStationAddress() == 0x3F);
+	REQUIRE(b40s.IsEndOfMessageBlock());
+	REQUIRE(b40s.IsFormattedBlock());
+	REQUIRE(b40s.CheckSumPasses());
+	REQUIRE(b40s.IsMasterToStationMessage() == false);
 }
 TEST_CASE("MD3Block - Fn43")
 {
+	// Actual captured test data 5e2b007a1300 5ad6ba8ce700
+	TestSetup(false);
 	MD3BlockFn43MtoS b43(0x38, 999);
 	REQUIRE(b43.GetMilliseconds() == 999);
 	REQUIRE(b43.GetStationAddress() == 0x38);
@@ -848,7 +873,44 @@ TEST_CASE("MD3Block - Fn43")
 
 	MD3Time timebase = (uint64_t)b43_b2.GetData() * 1000 + b43_t1.GetMilliseconds(); //MD3Time msec since Epoch.
 	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
-	// 5e2b007a1300 5ad6ba8ce700
+
+	TestTearDown();
+}
+TEST_CASE("MD3Block - Fn44")
+{
+	// Fn44 Example 262c02521d00 5ad6b75fbc00 02580000c200
+	// The second block looks like the Fn43 second block which is seconds since epoch.
+	// The first block could be essentially the same as Fn43
+	// The 3rd block we have a clue is some kind of UTC offset. 0x258 is 600 - 600 minutes, or +10 hours - Our offset from UTC
+	// Arrival Time : Apr 18, 2018 13 : 11 : 27.532344000 AUS Eastern Standard Time
+	// Epoch Time : 1524021087.532344000 seconds
+	TestSetup(false);
+
+	MD3Time timebase = (uint64_t)(0x5ad6b75f) * 1000 + (0x252 & 0x03FF); //MD3Time msec since Epoch.
+	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+
+	MD3BlockFn44MtoS b44(0x38, 999);
+	REQUIRE(b44.GetMilliseconds() == 999);
+	REQUIRE(b44.GetStationAddress() == 0x38);
+	REQUIRE(b44.IsMasterToStationMessage() == true);
+	REQUIRE(b44.GetFunctionCode() == 44);
+	REQUIRE(b44.IsEndOfMessageBlock() == false);
+	REQUIRE(b44.IsFormattedBlock() == true);
+	REQUIRE(b44.CheckSumPasses());
+
+	// Test against capture timedate command.
+	// 402b01632f00 5ad6b5b4d900
+	MD3BlockFn44MtoS b44_t1(MD3BlockData("262c02521d00"));
+	REQUIRE(b44_t1.CheckSumPasses());
+	MD3BlockData b44_b2("5ad6b75fbc00");
+	REQUIRE(b44_b2.CheckSumPasses());
+	MD3BlockData b44_b3("02580000c200");
+	REQUIRE(b44_b3.CheckSumPasses());
+
+	int UTCOffset = b44_b3.GetFirstWord();
+	timebase = (uint64_t)b44_b2.GetData() * 1000 + b44_t1.GetMilliseconds(); //MD3Time msec since Epoch.
+	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase)+ " UTC Offset Minutes "+std::to_string(UTCOffset));
+	TestTearDown();
 }
 TEST_CASE("MD3Block - Fn15 OK Packet")
 {
@@ -873,7 +935,32 @@ TEST_CASE("MD3Block - Fn30 Fail Packet")
 	REQUIRE(b30.IsFormattedBlock() == true);
 	REQUIRE(b30.CheckSumPasses());
 }
+TEST_CASE("MD3Block - Fn52")
+{
+	// New style no change response constructor - contains a digital sequence number (6)
+	MD3BlockFn52MtoS b52mtos(0x25);
+	REQUIRE(b52mtos.IsMasterToStationMessage() == true);
+	REQUIRE(b52mtos.GetStationAddress() == 0x25);
+	REQUIRE(b52mtos.GetFunctionCode() == 52);
+	REQUIRE(b52mtos.IsEndOfMessageBlock() == true);
+	REQUIRE(b52mtos.CheckSumPasses());
 
+	MD3BlockFn52StoM b52stom(b52mtos);
+
+	REQUIRE((b52stom.GetData() & 0x00008000) != 0x00008000);
+	REQUIRE((b52stom.GetData() & 0x00004000) != 0x00004000);
+	b52stom.SetSystemFlags(true, true);
+	REQUIRE((b52stom.GetData() & 0x00008000) == 0x00008000);
+	REQUIRE((b52stom.GetData() & 0x00004000) == 0x00004000);
+
+	REQUIRE(b52stom.IsMasterToStationMessage() == false);
+	REQUIRE(b52stom.GetStationAddress() == 0x25);
+	REQUIRE(b52stom.GetFunctionCode() == 52);
+	REQUIRE(b52stom.GetSystemPoweredUpFlag() == true);
+	REQUIRE(b52stom.GetSystemTimeIncorrectFlag() == true);
+	REQUIRE(b52stom.IsEndOfMessageBlock() == true);
+	REQUIRE(b52stom.CheckSumPasses());
+}
 #pragma endregion
 }
 
@@ -1840,7 +1927,7 @@ TEST_CASE("Station - SystemsSignOnFn40")
 	uint64_t currenttime = MD3Now();
 
 	// System SignOn Command, Station 0 - the slave responds with the address set correctly (i.e. if originally 0, change to match the station address - where it is asked to identify itself.
-	MD3BlockFn40 commandblock(0);
+	MD3BlockFn40MtoS commandblock(0);
 
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
@@ -1894,6 +1981,55 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	// Now do again with a bodgy time.
 	output << commandblock.ToBinaryString();
 	MD3BlockData datablock2(1000, true); // Nonsensical time
+	output << datablock2.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == (char)0xFC);
+	REQUIRE(Response[1] == (char)30); // Control/Scan Rejected Command
+
+	TestTearDown();
+}
+TEST_CASE("Station - ChangeTimeDateFn44")
+{
+	// This test was written for where the outstation is simply sinking the timedate change command
+	// Will have to change if passed to ODC and events handled here
+	// One of the few multiblock commands
+	STANDARD_TEST_SETUP();
+	TEST_MD3OSPort(Json::nullValue);
+
+	MD3OSPort->Enable();
+	uint64_t currenttime = MD3Now();
+
+	// TimeChange command (Fn 44), Station 0x7C
+	MD3BlockFn44MtoS commandblock(0x7C, currenttime % 1000);
+
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+	output << commandblock.ToBinaryString();
+
+	MD3BlockData datablock((uint32_t)(currenttime / 1000));
+	output << datablock.ToBinaryString();
+
+	int UTCOffsetMinutes = -600;
+	MD3BlockData datablock2((uint32_t)(UTCOffsetMinutes<<16), true);
+	output << datablock2.ToBinaryString();
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+
+	// Send the Command
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == (char)0xFC);
+	REQUIRE(Response[1] == (char)0x0F); // OK Command
+
+	// Now do again with a bodgy time.
+	output << commandblock.ToBinaryString();
+	datablock2 = MD3BlockData(1000, true); // Nonsensical time
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1983,6 +2119,11 @@ TEST_CASE("Station - Multi-drop TCP Test")
 	REQUIRE(Response.IsEmpty());
 
 	TestTearDown();
+}
+TEST_CASE("Station - System Flag Scan Test")
+{
+	//TODO: Station - System Flag Scan Poll Test
+	REQUIRE(false);
 }
 #pragma endregion
 }
@@ -2349,7 +2490,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		Wait(IOS, 2);
 
 		// Need to check that the hooked tcp output function got the data we expected.
-		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1126080e00" "03d90080cb00")); // POM Command
+		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1126003b00" "03d98000cc00")); // POM Command
 
 		// Now send the OK packet back in.
 		// We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
@@ -2426,7 +2567,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		Wait(IOS, 1);
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
-		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1126080e00" "03d90080cb00")); // Should be 1 POM command.
+		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1126003b00" "03d98000cc00")); // Should be 1 POM command.
 
 		// Now send the OK packet back in.
 		// We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
@@ -2542,7 +2683,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 		Wait(IOS, 3);
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
-		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1126080e00" "03d90080cb00")); // Should be 1 POM command.
+		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1126003b00" "03d98000cc00")); // Should be 1 POM command.
 
 		// Now send the OK packet back in.
 		// We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
@@ -2679,7 +2820,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 	STOP_IOS();
 	TestTearDown();
 }
-TEST_CASE("Master - SystemSignOn and FreezeReseetCounter Through Tests")
+TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 {
 	STANDARD_TEST_SETUP();
 
@@ -2710,7 +2851,10 @@ TEST_CASE("Master - SystemSignOn and FreezeReseetCounter Through Tests")
 	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message)
+		{
+			MAResponse = MD3Message;
+		});
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -2718,10 +2862,12 @@ TEST_CASE("Master - SystemSignOn and FreezeReseetCounter Through Tests")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
+	// We send a command to the outstation (as if from a master) it goes through ODC, and the Master then spits out a command. We respond to this and
+	// the response should find its way back and be spat out by the outstation...
 	INFO("System Sign On OutStation->ODC->Master Pass Through Command Test");
 	{
 		// We want to send a System Sign On Command to the OutStation, but pass it through ODC unchanged. Use a "magic" analog port to do this.
-		MD3BlockFn40 commandblock(0x7C);
+		MD3BlockFn40MtoS commandblock(0x7C);
 
 		IOS.post([&]()
 			{
@@ -2737,64 +2883,61 @@ TEST_CASE("Master - SystemSignOn and FreezeReseetCounter Through Tests")
 		// But first we have to check and then respond to the masters output.
 		REQUIRE(MAResponse == commandblock.ToBinaryString()); // Should passed through System Sign On command - match what was sent.
 
-		// Now send the OK packet back in.
-		// We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
-		MD3BlockData resp(MAResponse[0], MAResponse[1], MAResponse[2], MAResponse[3], true);
-		MAoutput << resp.ToBinaryString();
+		// We now inject the expected response to the command above, the same command but S to M
+		MD3BlockFn40StoM rcommandblock(MAResponse[0] & 0x7F); // Just return the station address
+		MAoutput << rcommandblock.ToBinaryString();
 
 		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
 
 		Wait(IOS, 3);
 
-		REQUIRE(OSResponse == resp.ToBinaryString()); // Returned command
+		REQUIRE(OSResponse == rcommandblock.ToBinaryString()); // Returned command
 	}
 
-/*
-      INFO("Freeze Reset OutStation->ODC->Master Pass Through Command Test");
-      {
-            // We want to send a POM Command to the OutStation.
-            // It should respond with an OK packet, and its callback executed.
 
-            OSResponse = "Not Set";
-            MAResponse = "Not Set";
+	INFO("Freeze Reset OutStation->ODC->Master Pass Through Command Test");
+	{
+		// We want to send a FreezeReset Command to the OutStation.
+		// It should respond with an OK packet, and its callback executed.
 
-            IOS.post([&]()
-            {
-                  MD3BlockFn17MtoS commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
-                  MD3BlockData datablock = commandblock.GenerateSecondBlock();
+		OSResponse = "Not Set";
+		MAResponse = "Not Set";
 
-                  OSoutput << commandblock.ToBinaryString();
-                  OSoutput << datablock.ToBinaryString();
+		MD3BlockFn16MtoS commandblock(0x7C, true); // TRUE == Don't reset counters
 
-                  MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
-            });
+		IOS.post([&]()
+			{
+				OSoutput << commandblock.ToBinaryString();
 
-            Wait(IOS, 3);
+				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
+			});
 
-            // So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
-            REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1126080e00" "03d90080cb00")); // Should be 1 POM command.
+		Wait(IOS, 3);
 
-                                                                                                                                                // Now send the OK packet back in.
-                                                                                                                                                // We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
-            MD3BlockData resp(MAResponse[0], MAResponse[1], MAResponse[2], MAResponse[3], true);
-            MD3BlockFn15StoM rcommandblock(resp); // Changes a few things in the block...
-            MAoutput << rcommandblock.ToBinaryString();
+		// So the command we started above, will result in sending the same command out of the master.. It will eventually result in an OK packet back from the slave.
+		REQUIRE(MAResponse == commandblock.ToBinaryString() );
 
-            MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
+		// Now send the OK packet back in.
+		// We now inject the expected response to the command above, a control OK message, using the received data of the first block as the basis
+		MD3BlockData resp(MAResponse[0], MAResponse[1], MAResponse[2], MAResponse[3], true);
+		MD3BlockFn15StoM rcommandblock(resp); // Changes a few things in the block...turn into OK packet
+		MAoutput << rcommandblock.ToBinaryString();
 
-            // The response should then flow through ODC, back to the OutStation who should then send the OK out on TCP.
-            Wait(IOS, 3);
+		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
 
-            REQUIRE(OSResponse == BuildHexStringFromASCIIHexString("fc0f26006000")); // OK Command
-      }
-      */
+		// The response should then flow through ODC, back to the OutStation who should then send the OK out on TCP.
+		Wait(IOS, 3);
+
+		REQUIRE(OSResponse == BuildHexStringFromASCIIHexString("fc0f01034600")); // OK Command
+	}
+
 
 	work.reset(); // Indicate all work is finished.
 
 	STOP_IOS();
 	TestTearDown();
 }
-TEST_CASE("Master - Digital Poll Tests (Old and New)")
+TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 {
 	STANDARD_TEST_SETUP();
 
@@ -2861,18 +3004,18 @@ TEST_CASE("Master - Digital Poll Tests (Old and New)")
 		// inject a response and then look at the Masters point table to check that the data got to where it should.
 		// We could also check the linked OutStation to make sure its point table was updated as well.
 
-		MD3MAPort->DoPoll(1); // Will send an unconditional the first time only  if forced. From the logging on the RTU the response is packet 11 either way
+		MD3MAPort->DoPoll(1); // Will send an unconditional the first time on startup, or if forced. From the logging on the RTU the response is packet 11 either way
 
 		Wait(IOS, 1);
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
 		// Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 2 modules returned - that is what the RTU we are testing has
-		MD3BlockData commandblock = MD3BlockFn11MtoS(0x7C, 15, 1, 2); // Check out methods give the same result
+		MD3BlockData commandblock = MD3BlockFn12MtoS(0x7C, 0x22, 1, 2); // Check out methods give the same result
 
 		REQUIRE(MAResponse[0] == commandblock.GetByte(0));
 		REQUIRE(MAResponse[1] == commandblock.GetByte(1));
 		REQUIRE(MAResponse[2] == (char)commandblock.GetByte(2));
-		REQUIRE((MAResponse[3] & 0x0f) == (commandblock.GetByte(3) & 0x0f)); // Not comparing the sequence count.
+		REQUIRE((MAResponse[3] & 0x0f) == (commandblock.GetByte(3) & 0x0f)); // Not comparing the sequence count, only the module count
 
 		// We now inject the expected response to the command above, a DCOS block
 		// Want to test this response from an actual RTU. We asked for 15 modules, so it tried to give us that. Should only ask for what we want.
@@ -2905,10 +3048,17 @@ TEST_CASE("Master - Digital Poll Tests (Old and New)")
 
 	}
 
+	//TODO: Check to see if the digital events are being triggered.. Register a handler and store the calls in a queue, then check these?
+
 	work.reset(); // Indicate all work is finished.
 
 	STOP_IOS();
 	TestTearDown();
+}
+TEST_CASE("Master - System Flag Scan Poll Test")
+{
+	//TODO: Master - System Flag Scan Poll Test
+	REQUIRE(false);
 }
 TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 {
@@ -3013,7 +3163,8 @@ const char *md3masterconffile = R"011(
 
 	"PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary", "TimeTaggedDigital" : true },
 					{"PollRate" : 60000, "ID" : 2, "PointType" : "Analog"},
-					{"PollRate" : 120000, "ID" :4, "PointType" : "TimeSetCommand"}],
+					{"PollRate" : 120000, "ID" :4, "PointType" : "TimeSetCommand"},
+					{"PollRate" : 180000, "ID" :5, "PointType" : "SystemFlagScan"}],
 
 	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 16, "Offset" : 0, "PollGroup" : 1, "PointType" : "TIMETAGGEDINPUT"},
 				{"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 17, "Offset" : 0,  "PointType" : "TIMETAGGEDINPUT"}],
