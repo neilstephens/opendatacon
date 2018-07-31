@@ -30,7 +30,11 @@ option(USE_TCLAP_SUBMODULE "Use git submodule to download tclap header library" 
 
 set(TCLAP_HOME_INSTRUCTIONS "Choose the location of tclap header library: where it was installed - there should be an include directory within")
 if(USE_TCLAP_SUBMODULE)
-	set(TCLAP_HOME "${CMAKE_CURRENT_SOURCE_DIR}/../submodules/tclap" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS} FORCE)
+	set(TCLAP_HOME "${CMAKE_SOURCE_DIR}/submodules/tclap" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS} FORCE)
+	if(NOT EXISTS "${TCLAP_HOME}/.git")
+		execute_process(COMMAND git submodule update --init -- submodules/tclap
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	endif()
 else()
 	if(DEFINED TCLAP_HOME)
 		set(TCLAP_HOME ${TCLAP_HOME} CACHE PATH ${TCLAP_HOME_INSTRUCTIONS})
