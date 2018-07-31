@@ -61,6 +61,9 @@ const char *conffile1 = R"001(
 	// We have two modes for the digital/binary commands. Can be one or the other - not both!
 	"NewDigitalCommands" : true,
 
+	// If a binary event time stamp is outside 30 minutes of current time, replace the timestamp
+	"OverrideOldTimeStamps" : false,
+
 	// This flag will have the OutStation respond without waiting for ODC responses - it will still send the ODC commands, just no feedback. Useful for testing and connecting to the sim port.
 	// Set to false, the OutStation will set up ODC/timeout callbacks/lambdas for ODC responses. If not found will default to false.
 	"StandAloneOutstation" : true,
@@ -1526,6 +1529,8 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	MD3OSPort->Enable();
 
+	MD3Time changedtime = (MD3Time)0x0000016338b6d4fb; // A value around June 2018
+
 	// Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on start up to send all data, 15 modules returned
 
 	MD3BlockData commandblock = MD3BlockFn11MtoS(0x7C, 15, 1, 15);
@@ -1577,7 +1582,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	// Write to the first module 0-16 index, but not the second. Should get only the first module results sent.
 	for (int i = 0; i < 4; i++)
 	{
-		const odc::Binary b((i % 2) == 0);
+		const odc::Binary b((i % 2) == 0, (uint8_t)BinaryQuality::ONLINE, (opendnp3::DNPTime)changedtime);
 		MD3OSPort->Event(b, i, "TestHarness", pStatusCallback);
 
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
@@ -1589,15 +1594,58 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	// The second block is time, and will change each run.
 	// The other blocks will have the msec part of the field change.
-	//TODO: Fn11 Test - Will have to cast to MD3Blocks and check the parts that we can check...
-	//	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0b03013f00" "5aebf9259c00" "800a801aa900" "80010000fc00");
 
-	//	REQUIRE(Response.size() == 0x30);
+	REQUIRE(Response.size() == 0x2a);
+	std::string BlockString = Response.substr(0, 6);
+	MD3BlockFn11StoM RBlock1 = MD3BlockFn11StoM(MD3BlockData(BlockString));
+
+	REQUIRE(RBlock1.GetStationAddress() == 0x7C);
+	REQUIRE(RBlock1.GetModuleCount() == 1);
+	REQUIRE(RBlock1.GetTaggedEventCount() == 4);
+
+	// Now the module that changed
+	BlockString = Response.substr(6, 6);
+	MD3BlockData RBlock = MD3BlockData(BlockString);
+	REQUIRE(RBlock.GetByte(0) == 0x22);        // Module address
+	REQUIRE(RBlock.GetByte(1) == 0x00);        //  msec offset - always 0 for ModuleBlock
+	REQUIRE(RBlock.GetSecondWord() == 0xafff); // 16 bits of data
+
+	// Now a time block
+	BlockString = Response.substr(12, 6);
+	RBlock = MD3BlockData(BlockString);
+
+	MD3Time timebase = (uint64_t)RBlock.GetData() * 1000; //MD3Time msec since Epoch.
+	LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+	REQUIRE(timebase == 0x0000016338b6d400);
+
+	// Then 4 COS blocks.
+	BlockString = Response.substr(18, 6);
+	RBlock = MD3BlockData(BlockString);
+	REQUIRE(RBlock.GetByte(0) == 0x22);        // Module address
+	REQUIRE(RBlock.GetByte(1) == 0xfb);        //  msec offset
+	REQUIRE(RBlock.GetSecondWord() == 0xffff); // 16 bits of data
+
+	BlockString = Response.substr(24, 6);
+	RBlock = MD3BlockData(BlockString);
+	REQUIRE(RBlock.GetByte(0) == 0x22);        // Module address
+	REQUIRE(RBlock.GetByte(1) == 0x00);        //  msec offset
+	REQUIRE(RBlock.GetSecondWord() == 0xbfff); // 16 bits of data
+
+	BlockString = Response.substr(30, 6);
+	RBlock = MD3BlockData(BlockString);
+	REQUIRE(RBlock.GetByte(0) == 0x22);        // Module address
+	REQUIRE(RBlock.GetByte(1) == 0x00);        //  msec offset
+	REQUIRE(RBlock.GetSecondWord() == 0xbfff); // 16 bits of data
+
+	BlockString = Response.substr(36, 6);
+	RBlock = MD3BlockData(BlockString);
+	REQUIRE(RBlock.GetByte(0) == 0x22);        // Module address
+	REQUIRE(RBlock.GetByte(1) == 0x00);        //  msec offset
+	REQUIRE(RBlock.GetSecondWord() == 0xafff); // 16 bits of data
 
 	//-----------------------------------------
 	// Need to test the code path where the delta between two records is > 255 milliseconds. Also when it is more than 0xFFFF
 	// Cheat and write directly to the DCOS queue
-	MD3Time changedtime = (MD3Time)0x0000016338b6d4fb; // A value around June 2018
 
 	MD3BinaryPoint pt1(1, 34, 1, 1, true,  changedtime);
 	MD3BinaryPoint pt2(2, 34, 2, 0, true, (MD3Time)(changedtime + 256));
@@ -1610,7 +1658,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult4 = BuildHexStringFromASCIIHexString("fc0b04000100" "5aefcc809300" "22fbafff9a00" "00012200a900" "afff0000e600");
+	const std::string DesiredResult4 = BuildHexStringFromASCIIHexString("fc0b24002f00" "5aefcc809300" "22fbafff9a00" "00012200a900" "afff0000e600");
 
 	REQUIRE(Response == DesiredResult4);
 
@@ -1620,7 +1668,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult5 = BuildHexStringFromASCIIHexString("fc0b05001300" "5aefcd03a500" "00012243ad00" "afff0000e600");
+	const std::string DesiredResult5 = BuildHexStringFromASCIIHexString("fc0b15000400" "5aefcd03a500" "00012243ad00" "afff0000e600");
 
 	REQUIRE(Response == DesiredResult5);
 
@@ -2937,6 +2985,97 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 	STOP_IOS();
 	TestTearDown();
 }
+
+TEST_CASE("Master - Digital Fn11 Command Test")
+{
+	STANDARD_TEST_SETUP();
+
+	Json::Value MAportoverride;
+
+	TEST_MD3MAPort(MAportoverride);
+
+	Json::Value OSportoverride;
+	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["StandAloneOutstation"] = false;
+	TEST_MD3OSPort(OSportoverride);
+
+	START_IOS(1);
+
+	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
+	// Usually is a cross subscription, where each subscribes to the other.
+	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+
+	MD3OSPort->Enable();
+	MD3MAPort->Enable();
+
+	MD3MAPort->EnablePolling(false); // Don't want the timer triggering this. We will call manually.
+
+	// Hook the output functions
+	std::string OSResponse = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+
+	std::string MAResponse = "Not Set";
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+
+	asio::streambuf OSwrite_buffer;
+	std::ostream OSoutput(&OSwrite_buffer);
+
+	asio::streambuf MAwrite_buffer;
+	std::ostream MAoutput(&MAwrite_buffer);
+
+	INFO("Test actual returned data for DCOS 11");
+	{
+		// We have two modules in this poll group, 34 and 35, ODC points 0 to 31.
+		// Will send 3 time tagged events, and data for both modules
+		// 34 set to 8000, 35 to FF00
+		// Timedate is msec, but need seconds
+		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
+		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
+		MD3Time changedtime = (MD3Time)0x0000016338b6d4fb;
+		MD3BlockData b[] = { MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData((uint32_t)(changedtime / 1000)),
+			               MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true) };
+
+
+		for (auto bl : b)
+			MAoutput << bl.ToBinaryString();
+
+		MAResponse = "Not Set";
+
+		// Send the command
+		auto cmdblock = MD3BlockFn11MtoS(0x7C, 15, 1, 2); // Up to 15 events, sequence #1, Two modules.
+		MD3MAPort->QueueMD3Command(cmdblock, nullptr);    // No callback, does not originate from ODC
+		Wait(IOS, 2);
+
+		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
+
+		Wait(IOS, 3);
+
+		// Check the module values made it into the point table
+		bool ModuleFailed = false;
+		uint16_t wordres = MD3OSPort->CollectModuleBitsIntoWord(0x22, ModuleFailed);
+		REQUIRE(wordres == 0xfe00); //0x8000 Would be this value if no timetagged data was present
+
+		wordres = MD3OSPort->CollectModuleBitsIntoWord(0x23, ModuleFailed);
+		REQUIRE(wordres == 0x0100); //0xff00 Would be this value if no timetagged data was present
+
+		// Get the list of time tagged events, and check...
+		std::vector<MD3BinaryPoint> PointList = MD3OSPort->DumpTimeTaggedPointList();
+		REQUIRE(PointList.size() == 0x5f);
+		REQUIRE(PointList[50].Index == 0);
+		REQUIRE(PointList[50].ModuleBinarySnapShot == 0xffff);
+		//		  REQUIRE(PointList[50].ChangedTime == 0x00000164ee106081);
+
+		REQUIRE(PointList[80].Index == 0x1e);
+		REQUIRE(PointList[80].Binary == 0);
+		REQUIRE(PointList[80].ModuleBinarySnapShot == 0xff01);
+		//		  REQUIRE(PointList[80].ChangedTime == 0x00000164ee1e751c);
+	}
+	work.reset(); // Indicate all work is finished.
+
+	STOP_IOS();
+	TestTearDown();
+}
 TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 {
 	STANDARD_TEST_SETUP();
@@ -2974,29 +3113,6 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
-	/*
-	INFO("Test actual returned data for DCOS 11");
-	{
-	      // HCF and RSF flags set- need to study this...
-	      // a00b22611900 10008fff9000 5b567bee8600 100000009a00 000210b4a600 64240000e100
-	      MD3BlockData b[] = { MD3BlockFn11StoM(0x7C, 2, 2, 1),MD3BlockData(0x10008fff),MD3BlockData(0x5b567bee), MD3BlockData(0x10000000),
-	            MD3BlockData(0x000210b4), MD3BlockData(0x64240000,true)};
-
-	      for (auto bl : b)
-	            MAoutput << bl.ToBinaryString();
-
-	      MAResponse = "Not Set";
-
-	      auto cmdblock = MD3BlockFn11MtoS(0x7C, 15, 1, 1);
-	      MD3MAPort->QueueMD3Command(cmdblock, nullptr); // No callback, does not originate from ODC
-	      Wait(IOS, 2);
-
-	      MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
-
-	      Wait(IOS, 1);
-
-	      //TODO: Check that the digital time tagged point table has been added too
-	}*/
 
 	INFO("New Digital Poll Command");
 	{
@@ -3030,7 +3146,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
 		MD3Time changedtime = (MD3Time)0x0000016338b6d4fb;
 		MD3BlockData b[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData((uint32_t)(changedtime/1000)),
-			              MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000001,true)};
+			              MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true)};
 
 		for (auto bl :b)
 			MAoutput << bl.ToBinaryString();
@@ -3044,11 +3160,18 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// Check there is no resend of the command - the response must have been ok.
 		REQUIRE(MAResponse == "Not Set");
 
-		// We can look at the current master point table values to see if they match what we sent
+		// Get the list of time tagged events, and check...
+		std::vector<MD3BinaryPoint> PointList = MD3OSPort->DumpTimeTaggedPointList();
+		REQUIRE(PointList.size() == 0x5f);
+		REQUIRE(PointList[50].Index == 0);
+		REQUIRE(PointList[50].ModuleBinarySnapShot == 0xffff);
+		//		  REQUIRE(PointList[50].ChangedTime == 0x00000164ee106081);
 
+		REQUIRE(PointList[80].Index == 0x1e);
+		REQUIRE(PointList[80].Binary == 0);
+		REQUIRE(PointList[80].ModuleBinarySnapShot == 0xff01);
+		//		  REQUIRE(PointList[80].ChangedTime == 0x00000164ee1e751c);
 	}
-
-	//TODO: Check to see if the digital events are being triggered.. Register a handler and store the calls in a queue, then check these?
 
 	work.reset(); // Indicate all work is finished.
 

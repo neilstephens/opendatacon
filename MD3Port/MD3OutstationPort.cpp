@@ -107,7 +107,6 @@ void MD3OutstationPort::SocketStateHandler(bool state)
 
 void MD3OutstationPort::BuildOrRebuild()
 {
-	//TODO: Do we re-read the conf file - so we can do a live reload? - How do we kill all the sockets and connections properly?
 	std::string ChannelID = MyConf()->mAddrConf.ChannelID();
 
 	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<MD3BinaryPoint>(*pIOS, 256));
@@ -298,18 +297,24 @@ inline void MD3OutstationPort::EventT(T& meas, uint16_t index, const std::string
 	else if (std::is_same<T, const Binary>::value)
 	{
 		// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
-		MD3Time eventtime = MD3Now();
+		MD3Time eventtime = meas.time; // msec since epoch.
 
-		//TODO: if we are passed a time, check if within range and if OK use it.
+		// Check that the passed time is within 30 minutes of the actual time, if not use the current time
+		if(MyPointConf()->OverrideOldTimeStamps)
+			if (abs((int64_t)(meas.time / 1000) - (int64_t)(eventtime / 1000)) < 60*30)
+			{
+				eventtime = MD3Now(); // msec since epoch.
+				LOGDEBUG("Binary time tag value is too far from current time (>30min) changing to current time. Point index " + std::to_string(index));
+			}
 
-		if (!SetBinaryValueUsingODCIndex(index, (uint8_t)meas.value, eventtime)) //TODO: Use meas.time
+		if (!SetBinaryValueUsingODCIndex(index, (uint8_t)meas.value, eventtime))
 		{
 			LOGERROR("Tried to set the value for an invalid binary point index " + std::to_string(index));
 			(*pStatusCallback)(CommandStatus::UNDEFINED);
 			return;
 		}
 	}
-	else //TODO: MD3OutstationPort impl other types
+	else // MD3 Only has analog and binary. Apparently they did support floats in a more recent software version.
 	{
 		LOGERROR("Type is not implemented " + std::to_string(index));
 		(*pStatusCallback)(CommandStatus::UNDEFINED);

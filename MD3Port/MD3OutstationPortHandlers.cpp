@@ -699,6 +699,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 	if ((ChangedBlocks == 0) && !AreThereTaggedEvents)
 	{
+		// No change block
 		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetDigitalSequenceNumber());
 		ResponseMD3Message.push_back(FormattedBlock);
 	}
@@ -721,14 +722,14 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 		BuildScanReturnBlocksFromList(ModuleList, Header.GetModuleCount(), Header.GetStationAddress(), true, ResponseMD3Message);
 
-		FormattedBlock.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1); // The number of blocks taking away the header...
+		ModuleCount = (uint8_t)ResponseMD3Message.size() - 1; // The number of module block is the size at this point, less the start block.
 
 		if (AreThereTaggedEvents)
 		{
 			// Add time tagged data
 			std::vector<uint16_t> ResponseWords;
 
-			Fn11AddTimeTaggedDataToResponseWords(Header.GetTaggedEventCount(), TaggedEventCount, ResponseWords);
+			Fn11AddTimeTaggedDataToResponseWords(Header.GetTaggedEventCount(), TaggedEventCount, ResponseWords); // TaggedEvent count is a ref, zero on entry and exit with number of tagged events added
 
 			// Convert data to 32 bit blocks and pad if necessary.
 			if ((ResponseWords.size() % 2) != 0)
@@ -747,11 +748,13 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 			}
 		}
 
-		FormattedBlock.SetTaggedEventCount(TaggedEventCount); // Update to the number we are sending
-
-		// Mark the last block
+		// Mark the last block and set the module count and tagged event count
 		if (ResponseMD3Message.size() != 0)
 		{
+			MD3BlockFn11StoM &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
+			firstblockref.SetModuleCount(ModuleCount);           // The number of blocks taking away the header...
+			firstblockref.SetTaggedEventCount(TaggedEventCount); // Update to the number we are sending
+
 			MD3BlockData &lastblock = ResponseMD3Message.back();
 			lastblock.MarkAsEndOfMessageBlock();
 		}
@@ -762,7 +765,19 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
 	LastDigitialScanResponseMD3Message = ResponseMD3Message;
 }
+// Dumps the points out in a list, only used for UnitTests
+std::vector<MD3BinaryPoint> MD3OutstationPort::DumpTimeTaggedPointList()
+{
+	MD3BinaryPoint CurrentPoint;
+	std::vector<MD3BinaryPoint> PointList(50);
 
+	while (pBinaryModuleTimeTaggedEventQueue->sync_front(CurrentPoint))
+	{
+		PointList.emplace_back(CurrentPoint);
+		pBinaryModuleTimeTaggedEventQueue->sync_pop();
+	}
+	return PointList;
+}
 void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int &EventCount, std::vector<uint16_t> &ResponseWords)
 {
 	MD3BinaryPoint CurrentPoint;

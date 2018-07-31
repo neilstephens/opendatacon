@@ -394,14 +394,16 @@ bool MD3Port::SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t c
 	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
 	{
-		if (MD3PointMapIter->second->Binary != meas)
+		// If it has been changed, or has never been set...
+		if ((MD3PointMapIter->second->Binary != meas) || (MD3PointMapIter->second->HasBeenSet == false))
 		{
 			MD3PointMapIter->second->Binary = meas;
 			valuechanged = true;
 			MD3PointMapIter->second->Changed = true;
 			MD3PointMapIter->second->ChangedTime = MD3Now();
+			MD3PointMapIter->second->HasBeenSet = true;
 		}
-		MD3PointMapIter->second->HasBeenSet = true;
+
 		return true;
 	}
 	return false;
@@ -438,20 +440,26 @@ bool MD3Port::SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t me
 	}
 	return false;
 }
+//TODO: The digital event list is only maintained on the OutStation, only execute this in that case. Have an empty virtual method? Then real one in OutStationPort?
 void MD3Port::AddToDigitalEvents(MD3BinaryPoint & pt)
 {
-	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
-	pBinaryTimeTaggedEventQueue->async_push(pt);
+	if (MyConf()->pPointConf->NewDigitalCommands)
+	{
+		// Have to collect all the bits in the module to which this point belongs into a uint16_t,
+		// just to support COS Fn 11 where the whole 16 bits are returned for a possibly single bit change.
+		// Do not effect the change flags which are needed for normal scanning
+		bool ModuleFailed = false;
+		uint16_t wordres = CollectModuleBitsIntoWord(pt.ModuleAddress, ModuleFailed);
 
-	// Have to collect all the bits in the module to which this point belongs into a uint16_t,
-	// just to support COS Fn 11 where the whole 16 bits are returned for a possibly single bit change.
-	// Do not effect the change flags which are needed for normal scanning
-	bool ModuleFailed = false;
-	uint16_t wordres = CollectModuleBitsIntoWord(pt.ModuleAddress, ModuleFailed);
-
-	// Save it in the snapshot that is used for the Fn11 COS time tagged events.
-	pt.ModuleBinarySnapShot = wordres;
-	pBinaryModuleTimeTaggedEventQueue->async_push(pt);
+		// Save it in the snapshot that is used for the Fn11 COS time tagged events.
+		pt.ModuleBinarySnapShot = wordres;
+		pBinaryModuleTimeTaggedEventQueue->async_push(pt);
+	}
+	else
+	{
+		// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
+		pBinaryTimeTaggedEventQueue->async_push(pt);
+	}
 }
 uint16_t MD3Port::CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool &ModuleFailed)
 {

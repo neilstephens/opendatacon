@@ -100,8 +100,10 @@ public:
 	void DoDigitalChangeOnly(MD3BlockFormatted & Header);                       // Fn 8
 	void DoDigitalHRER(MD3BlockFn9 & Header, MD3Message_t& CompleteMD3Message); // Fn 9
 	void Fn9AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
-	void DoDigitalCOSScan(MD3BlockFn10 & Header);               // Fn 10
-	void DoDigitalUnconditionalObs(MD3BlockFormatted & Header); // Fn 11
+	void DoDigitalCOSScan(MD3BlockFn10 & Header); // Fn 10
+	void DoDigitalUnconditionalObs(MD3BlockFormatted & Header);
+
+	// Fn 11
 	void Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header); // Fn 12
 
@@ -127,6 +129,7 @@ public:
 	void SendControlOK(MD3BlockFormatted & Header);             // Fn 15
 	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
 
+	std::vector<MD3BinaryPoint> DumpTimeTaggedPointList();
 
 private:
 

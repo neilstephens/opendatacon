@@ -219,6 +219,9 @@ public:
 	// Use the OLD Digital Commands 7/8 or the NEW ones 9/10/11/12
 	bool NewDigitalCommands = true;
 
+	// Checks if the point time is within 30 minutes of current time from a Binary event. If it is outside this window, sets the event time to the current time.
+	bool OverrideOldTimeStamps = false;
+
 	// If true, the outstation will send responses on the TCP connection without waiting for ODC responses.
 	bool StandAloneOutstation = false;
 

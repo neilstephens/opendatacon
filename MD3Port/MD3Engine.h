@@ -101,20 +101,32 @@ public:
 	}
 	explicit MD3BlockData(std::string hexdata)
 	{
-		assert(hexdata.size() == 12);
-
-		auto res = std::string(hexdata.size() / 2, 0);
-
-		// Take chars in chunks of 2 and convert to a hex equivalent
-		for (uint32_t i = 0; i < (hexdata.size() / 2); i++)
+		if (hexdata.size() == 12)
 		{
-			auto hexpair = hexdata.substr(i * 2, 2);
-			res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
-		}
+			auto res = std::string(hexdata.size() / 2, 0);
 
-		data = (((uint32_t)res[0] & 0x0FF) << 24) | (((uint32_t)res[1] & 0x0FF) << 16) | (((uint32_t)res[2] & 0x0FF) << 8) | ((uint32_t)res[3] & 0x0FF);
-		endbyte = res[4];
-		assert(res[5] == 0x00); // Sixth byte should always be zero.
+			// Take chars in chunks of 2 and convert to a hex equivalent
+			for (uint32_t i = 0; i < (hexdata.size() / 2); i++)
+			{
+				auto hexpair = hexdata.substr(i * 2, 2);
+				res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
+			}
+
+			data = (((uint32_t)res[0] & 0x0FF) << 24) | (((uint32_t)res[1] & 0x0FF) << 16) | (((uint32_t)res[2] & 0x0FF) << 8) | ((uint32_t)res[3] & 0x0FF);
+			endbyte = res[4];
+			assert(res[5] == 0x00); // Sixth byte should always be zero.
+		}
+		else if (hexdata.size() == 6)
+		{
+			data = (((uint32_t)hexdata[0] & 0x0FF) << 24) | (((uint32_t)hexdata[1] & 0x0FF) << 16) | (((uint32_t)hexdata[2] & 0x0FF) << 8) | ((uint32_t)hexdata[3] & 0x0FF);
+			endbyte = hexdata[4];
+			assert(hexdata[5] == 0x00); // Sixth byte should always be zero.
+		}
+		else
+		{
+			// Not a valid length of string passed in..
+			LOGERROR("Illegal length passed into MD3BlockData constructor - must be 12 or 6");
+		}
 	}
 	MD3BlockData(uint16_t firstword, uint16_t secondword, bool lastblock = false)
 	{

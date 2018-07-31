@@ -558,24 +558,24 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 		if (SetAnalogValueUsingMD3Index(maddress, idx, AnalogValues[i]))
 		{
 			// We have succeeded in setting the value
-			LOGDEBUG("Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value " + to_hexstring(AnalogValues[i]));
+			LOGDEBUG("Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
 			int intres;
 			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				LOGDEBUG("Published Event - Analog - Index " + std::to_string(intres) + " Value " + to_hexstring(AnalogValues[i]));
+				LOGDEBUG("Published Event - Analog - Index " + std::to_string(intres) + " Value 0x" + to_hexstring(AnalogValues[i]));
 				PublishEvent(Analog(AnalogValues[i], qual, (opendnp3::DNPTime)now), intres); // We don’t get counter time information through MD3, so add it as soon as possible
 			}
 		}
 		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
 		{
 			// We have succeeded in setting the value
-			LOGDEBUG("Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value " + to_hexstring(AnalogValues[i]));
+			LOGDEBUG("Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
 			int intres;
 			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				LOGDEBUG("Published Event - Counter - Index " + std::to_string(intres) + " Value " + to_hexstring(AnalogValues[i]));
+				LOGDEBUG("Published Event - Counter - Index " + std::to_string(intres) + " Value 0x" + to_hexstring(AnalogValues[i]));
 				PublishEvent(Counter(AnalogValues[i], qual, (opendnp3::DNPTime)now), intres); // We don’t get analog time information through MD3, so add it as soon as possible
 			}
 		}
@@ -651,13 +651,13 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 			wordres += AnalogDeltaValues[i];                     // Add the signed delta.
 			SetAnalogValueUsingMD3Index(maddress, idx, wordres); //TODO Do all SetMethods need to have a time field as well? With a magic number (Say 10 which is in the past) as default which means no change?
 
-			LOGDEBUG("Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value " + to_hexstring(wordres));
+			LOGDEBUG("Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
 
 			int intres;
 			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled, wordres, now);
-				LOGDEBUG("Published Event - Analog Index " + std::to_string(intres) + " Value " + to_hexstring(wordres));
+				LOGDEBUG("Published Event - Analog Index " + std::to_string(intres) + " Value 0x" + to_hexstring(wordres));
 				PublishEvent(Analog(wordres, qual, (opendnp3::DNPTime)now), intres); // We don't get counter time information through MD3, so add it as soon as possible
 			}
 		}
@@ -666,13 +666,13 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 			wordres += AnalogDeltaValues[i]; // Add the signed delta.
 			SetCounterValueUsingMD3Index(maddress, idx, wordres);
 
-			LOGDEBUG("Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value " + to_hexstring(wordres));
+			LOGDEBUG("Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
 
 			int intres;
 			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled,wordres, now);
-				LOGDEBUG("Published Event - Counter Index " + std::to_string(intres) + " Value " + to_hexstring(wordres));
+				LOGDEBUG("Published Event - Counter Index " + std::to_string(intres) + " Value 0x" + to_hexstring(wordres));
 				PublishEvent(Counter(wordres, qual, (opendnp3::DNPTime)now), intres); // We don't get analog time information through MD3, so add it as soon as possible
 			}
 		}
@@ -793,7 +793,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 		{
 			// The data blocks are the same for time tagged and "normal". Module Address (byte), msec offset(byte) and 16 bits of data.
 			uint8_t ModuleAddress = CompleteMD3Message[MessageIndex].GetByte(0);
-			uint8_t msecOffset = CompleteMD3Message[MessageIndex].GetByte(1);
+			uint8_t msecOffset = CompleteMD3Message[MessageIndex].GetByte(1); // Will always be 0 for Module blocks
 			uint16_t ModuleData = CompleteMD3Message[MessageIndex].GetSecondWord();
 
 			if (ModuleAddress == 0 && msecOffset == 0)
@@ -801,11 +801,11 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 				// This is a status block.
 				ModuleAddress = CompleteMD3Message[MessageIndex].GetByte(2);
 				uint8_t ModuleFailStatus = CompleteMD3Message[MessageIndex].GetByte(3);
-				LOGDEBUG("Received a Status Block - Module Address : " + std::to_string(ModuleAddress) + " Fail Status : " + to_hexstring(ModuleFailStatus));
+				LOGDEBUG("Received a Fn 11 Status Block - Module Address : " + std::to_string(ModuleAddress) + " Fail Status : 0x" + to_hexstring(ModuleFailStatus));
 			}
 			else
 			{
-				LOGDEBUG("Received a Data Block - Module : " + std::to_string(ModuleAddress) + " Data : " + to_hexstring(ModuleData) + " Data : " + to_binstring(ModuleData));
+				LOGDEBUG("Received a Fn 11 Data Block - Module : " + std::to_string(ModuleAddress) + " Data : 0x" + to_hexstring(ModuleData) + " Data : " + to_binstring(ModuleData));
 				MD3Time eventtime = MD3Now();
 
 				GenerateODCEventsFromMD3ModuleWord(ModuleData, ModuleAddress, eventtime);
@@ -827,7 +827,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 		if (MessageIndex < (int)CompleteMD3Message.size())
 		{
 			timebase = (uint64_t)CompleteMD3Message[MessageIndex].GetData() * 1000; //MD3Time msec since Epoch.
-			LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+			LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
 		}
 		else
 		{
@@ -871,7 +871,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 				// We have received a TIME BLOCK (offset) which is a single word.
 				int msecoffset = (ResponseWords[i] & 0x00ff) * 256;
 				timebase += msecoffset;
-				LOGDEBUG("TimeOffset : " + std::to_string(msecoffset) +" msec");
+				LOGDEBUG("Fn11 TimeOffset : " + std::to_string(msecoffset) +" msec");
 			}
 			else
 			{
@@ -890,7 +890,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 				}
 				uint16_t ModuleData = ResponseWords[i];
 
-				LOGDEBUG("Module : " + std::to_string(ModuleAddress) + " Offset : " + std::to_string(msecoffset) + " Data : " + to_hexstring(ModuleData));
+				LOGDEBUG("Fn11 TimeTagged Block - Module : " + std::to_string(ModuleAddress) + " msec offset : " + std::to_string(msecoffset) + " Data : 0x" + to_hexstring(ModuleData));
 				GenerateODCEventsFromMD3ModuleWord(ModuleData, ModuleAddress,timebase);
 			}
 		}
@@ -899,12 +899,15 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 }
 void MD3MasterPort::GenerateODCEventsFromMD3ModuleWord(const uint16_t &ModuleData, const uint8_t &ModuleAddress, const MD3Time &eventtime)
 {
+	LOGDEBUG("Master Generate Events,  Module : "+std::to_string(ModuleAddress)+" Data : 0x" + to_hexstring(ModuleData));
+
 	for (uint8_t idx = 0; idx < 16; idx++)
 	{
 		// When we set the value it tells us if we really did set the value, or it was already at that value.
 		// Only fire the ODC event if the value changed.
 		bool valuechanged = false;
 		uint8_t bitvalue = (ModuleData >> (15 - idx)) & 0x0001;
+
 		bool res = SetBinaryValueUsingMD3Index(ModuleAddress, idx, bitvalue, valuechanged);
 
 		if (res && valuechanged)
@@ -913,7 +916,7 @@ void MD3MasterPort::GenerateODCEventsFromMD3ModuleWord(const uint16_t &ModuleDat
 			if (GetBinaryODCIndexUsingMD3Index(ModuleAddress, idx, intres))
 			{
 				uint8_t qual = CalculateBinaryQuality(enabled, eventtime);
-				LOGDEBUG("Published Event - Binary Index " + std::to_string(intres) + " Value " + to_hexstring(bitvalue));
+				LOGDEBUG("Published Event - Binary Index " + std::to_string(intres) + " Value " + std::to_string(bitvalue));
 				PublishEvent(Binary(bitvalue == 1, qual, (opendnp3::DNPTime)eventtime), intres);
 			}
 			else

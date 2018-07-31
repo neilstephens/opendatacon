@@ -84,8 +84,10 @@ public:
 	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 
+	// Public only for UnitTesting
+
 	// Methods to access the outstation point table
-	//TODO: Point container access extract to separate class maybe..
+	//TODO: Point container access extract to separate class..
 	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, bool &hasbeenset);
 	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool &hasbeenset);
 	bool SetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
@@ -119,8 +121,6 @@ public:
 	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);
 	uint16_t CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool & ModuleFailed);
 
-
-	// Public only for UnitTesting
 	void SendMD3Message(const MD3Message_t& CompleteMD3Message);
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the MD3Connection.
@@ -142,8 +142,9 @@ protected:
 	// We have a separate OutStation or Master for each OutStation, but they could be sharing a TCP connection, then routing the traffic based on MD3 Station Address.
 	std::shared_ptr<MD3Connection> pConnection;
 
-	std::shared_ptr<StrandProtectedQueue<MD3BinaryPoint>> pBinaryTimeTaggedEventQueue;       // Separate queue for time tagged binary events. Used for COS request functions
-	std::shared_ptr<StrandProtectedQueue<MD3BinaryPoint>> pBinaryModuleTimeTaggedEventQueue; // This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
+	// Only used in outstation
+	std::shared_ptr<StrandProtectedQueue<MD3BinaryPoint>> pBinaryTimeTaggedEventQueue;       // Separate queue for time tagged binary events. Used for OLD Binary functions
+	std::shared_ptr<StrandProtectedQueue<MD3BinaryPoint>> pBinaryModuleTimeTaggedEventQueue; // Used for new Binary. This queue needs to snapshot all 16 bits in the module at the time any one bit  is set. Really wierd
 };
 
 #endif /* MD3PORT_H_ */
