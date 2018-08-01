@@ -22,12 +22,55 @@ cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 # Locate opendnp3
+option(USE_DNP3_SUBMODULE "Use git submodule to download and build opendnp3 libraries" ON)
 set(DNP3_HOME_INSTRUCTIONS "Choose the location of opendnp3: where it was installed - there should be lib and include directories within")
-if(DEFINED DNP3_HOME)
-	set(DNP3_HOME ${DNP3_HOME} CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
+if(USE_DNP3_SUBMODULE)
+	set(DNP3_SOURCE "${CMAKE_SOURCE_DIR}/submodules/dnp3")
+	mark_as_advanced(FORCE DNP3_SOURCE)
+	set(DNP3_HOME "${DNP3_SOURCE}/build/install" CACHE PATH ${DNP3_HOME_INSTRUCTIONS} FORCE)
+	set(
+		DNP3_CMAKE_OPTS
+			-DCMAKE_INSTALL_PREFIX=${DNP3_HOME}/
+			-DASIO_HOME=${ASIO_HOME}/include
+			-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+			\"-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}\"
+		CACHE STRING "cmake options to use when building DNP3 submodule"
+	)
+	if(NOT EXISTS "${DNP3_SOURCE}/.git")
+		execute_process(COMMAND git submodule update --init -- submodules/dnp3
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	endif()
+	if(NOT EXISTS "${DNP3_SOURCE}/build")
+		file(MAKE_DIRECTORY "${DNP3_SOURCE}/build")
+	endif()
+	execute_process(
+		COMMAND ${CMAKE_COMMAND} ${DNP3_CMAKE_OPTS} ${DNP3_SOURCE}
+		WORKING_DIRECTORY "${DNP3_SOURCE}/build"
+		RESULT_VARIABLE EXEC_RESULT
+	)
+	if(EXEC_RESULT)
+		message( FATAL_ERROR "Failed to run cmake for DNP3 submodule, exiting")
+	endif()
+	execute_process(
+		COMMAND ${CMAKE_COMMAND} --build ${DNP3_SOURCE}/build --target install
+		WORKING_DIRECTORY "${DNP3_SOURCE}/build"
+		RESULT_VARIABLE EXEC_RESULT
+	)
+	if(EXEC_RESULT)
+		message( FATAL_ERROR "Failed to build DNP3 submodule, exiting")
+	endif()
+	add_custom_target( build_dnp3
+		WORKING_DIRECTORY "${DNP3_SOURCE}/build"
+		COMMAND ${CMAKE_COMMAND} --build ${DNP3_SOURCE}/build --target install
+	)
 else()
-	set(DNP3_HOME "/usr/local" CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
+	if(DEFINED DNP3_HOME)
+		set(DNP3_HOME ${DNP3_HOME} CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
+	else()
+		set(DNP3_HOME "/usr/local" CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
+	endif()
 endif()
+
 foreach( component openpal opendnp3 asiopal asiodnp3 )
 	# Look for regular libraries
 	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
@@ -63,6 +106,9 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 endforeach()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+if(TARGET build_dnp3)
+	add_dependencies(${PROJECT_NAME} build_dnp3)
+endif()
 target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_HOME}/include")
 target_link_libraries(${PROJECT_NAME} ODC ${asiodnp3_libs} ${asiopal_libs} ${opendnp3_libs} ${openpal_libs})
 
