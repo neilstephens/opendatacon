@@ -31,11 +31,11 @@
 #include <opendatacon/DataPortConf.h>
 #include "JSONPointConf.h"
 
-typedef struct
+struct JSONAddrConf
 {
-	std::string IP;
-	uint16_t Port;
-}JSONAddrConf;
+	std::string IP = "127.0.0.1";
+	uint16_t Port = 2598;
+};
 
 class JSONPortConf: public DataPortConf
 {
@@ -45,7 +45,7 @@ public:
 		evt_buffer_size(1000),
 		style_output(false)
 	{
-		pPointConf.reset(new JSONPointConf(FileName, ConfOverrides));
+		pPointConf = std::make_unique<JSONPointConf>(FileName, ConfOverrides);
 	}
 
 	std::unique_ptr<JSONPointConf> pPointConf;

@@ -28,15 +28,6 @@ else()
 	set(MODBUS_HOME "/usr" CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
 endif()
 
-include_directories(
-	../include
-	../JSON
-	${SPDLOG_HOME}/include
-	${DNP3_HOME}/include
-	${ASIO_HOME}/include
-	${MODBUS_HOME}/include
-)
-
 #find modbus library
 find_library(MODBUS_LIB NAMES modbus libmodbus
 	PATHS ${MODBUS_HOME}/lib NO_DEFAULT_PATH
@@ -62,6 +53,7 @@ if(PACKAGE_LIBMODBUS)
 endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_include_directories(${PROJECT_NAME} PRIVATE "${MODBUS_HOME}/include")
 target_link_libraries(${PROJECT_NAME} ODC modbus_target)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})

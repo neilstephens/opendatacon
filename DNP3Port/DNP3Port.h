@@ -27,8 +27,11 @@
 #ifndef DNP3PORT_H_
 #define DNP3PORT_H_
 
+#include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendnp3/gen/LinkStatus.h>
+#include <opendnp3/gen/ChannelState.h>
+#include <asiodnp3/DNP3Manager.h>
 #include "DNP3PortConf.h"
 #include "DNP3Log2spdlog.h"
 
@@ -36,64 +39,37 @@ using namespace odc;
 
 class DNP3Port: public DataPort
 {
+private:
+	static std::shared_ptr<asiodnp3::DNP3Manager> IOMgr();
+
 public:
 	DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~DNP3Port() override {}
 
 	void Enable() override =0;
 	void Disable() override =0;
-	void BuildOrRebuild() override =0;
+	void Build() override =0;
 
-	void StateListener(ChannelState state);
+	void StateListener(opendnp3::ChannelState state);
 
 	//Override DataPort for UI
 	const Json::Value GetStatus() const override;
 
-	//so the compiler won't warn we're hiding the base class overload we still want to use
-	using DataPort::Event;
-
-	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-
-	void Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-
-	/// Quality change events
-	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
-	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 protected:
-	asiodnp3::IChannel* GetChannel();
+	std::shared_ptr<asiodnp3::IChannel> GetChannel();
 
-	asiodnp3::IChannel* pChannel;
+	std::shared_ptr<asiodnp3::IChannel> pChannel;
 	opendnp3::LinkStatus status;
 	bool link_dead;
 	bool channel_dead;
 
-	static std::unordered_map<std::string, asiodnp3::IChannel*> Channels;
-
 	virtual void OnLinkDown()=0;
 	virtual TCPClientServer ClientOrServer()=0;
 
-private:
-	static std::atomic_flag log_subscribed;
-	static DNP3Log2spdlog DNP3LogHandler;
-	static asiodnp3::DNP3Manager IOMgr;
 };
 
 #endif /* DNP3PORT_H_ */

@@ -40,13 +40,14 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	LinkKeepAlivems(10000),
 	LinkUseConfirms(false),
 	// Common application stack configuration
+	ServerAcceptMode(opendnp3::ServerAcceptMode::CloseNew),
+	TCPConnectRetryPeriodMinms(500),
+	TCPConnectRetryPeriodMaxms(30000),
 	EnableUnsol(true),
 	UnsolClass1(false),
 	UnsolClass2(false),
 	UnsolClass3(false),
 	// Master Station configuration
-	TCPConnectRetryPeriodMinms(500),
-	TCPConnectRetryPeriodMaxms(30000),
 	MasterResponseTimeoutms(5000), /// Application layer response timeout
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	DoUnsolOnStartup(true),
@@ -67,8 +68,6 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	OverrideControlCode(opendnp3::ControlCode::UNDEFINED),
 	DoAssignClassOnStartup(false),
 	// Outstation configuration
-	TCPListenRetryPeriodMinms(0),
-	TCPListenRetryPeriodMaxms(5000),
 	MaxControlsPerRequest(16),
 	MaxTxFragSize(2048),
 	SelectTimeoutms(10000),
@@ -76,14 +75,14 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	UnsolConfirmTimeoutms(5000),
 	WaitForCommandResponses(false),
 	// Default Static Variations
-	StaticBinaryResponse(opendnp3::Binary::StaticVariation::Group1Var1),
-	StaticAnalogResponse(opendnp3::Analog::StaticVariation::Group30Var5),
-	StaticCounterResponse(opendnp3::Counter::StaticVariation::Group20Var1),
+	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var1),
+	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
+	StaticCounterResponse(opendnp3::StaticCounterVariation::Group20Var1),
 	// Default Event Variations
-	EventBinaryResponse(opendnp3::Binary::EventVariation::Group2Var1),
-	EventAnalogResponse(opendnp3::Analog::EventVariation::Group32Var5),
-	EventCounterResponse(opendnp3::Counter::EventVariation::Group22Var1),
-	TimestampOverride(ZERO),
+	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
+	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
+	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
+	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
 	MaxBinaryEvents(1000),
 	MaxAnalogEvents(1000),
@@ -92,23 +91,15 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	ProcessFile();
 }
 
-uint8_t DNP3PointConf::GetUnsolClassMask()
+opendnp3::ClassField DNP3PointConf::GetUnsolClassMask()
 {
-	uint8_t class_mask = 0;
-	class_mask += (UnsolClass1 ? opendnp3::ClassField::CLASS_1 : 0);
-	class_mask += (UnsolClass2 ? opendnp3::ClassField::CLASS_2 : 0);
-	class_mask += (UnsolClass3 ? opendnp3::ClassField::CLASS_3 : 0);
-	return class_mask;
+	return opendnp3::ClassField(true,UnsolClass1,UnsolClass2,UnsolClass3);
 }
 
-uint8_t DNP3PointConf::GetStartupIntegrityClassMask()
+opendnp3::ClassField DNP3PointConf::GetStartupIntegrityClassMask()
 {
-	uint8_t class_mask = 0;
-	class_mask += (StartupIntegrityClass0 ? opendnp3::ClassField::CLASS_0 : 0);
-	class_mask += (StartupIntegrityClass1 ? opendnp3::ClassField::CLASS_1 : 0);
-	class_mask += (StartupIntegrityClass2 ? opendnp3::ClassField::CLASS_2 : 0);
-	class_mask += (StartupIntegrityClass3 ? opendnp3::ClassField::CLASS_3 : 0);
-	return class_mask;
+	return opendnp3::ClassField(StartupIntegrityClass0,StartupIntegrityClass1,
+		StartupIntegrityClass2,StartupIntegrityClass3);
 }
 
 opendnp3::PointClass GetClass(Json::Value JPoint)
@@ -160,6 +151,20 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			log->error("Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '{}'", JSONRoot["UseConfirms"].toStyledString());
 
 	// Common application configuration
+	if (JSONRoot.isMember("ServerAcceptMode"))
+	{
+		if(JSONRoot["TCPConnectRetryPeriodMinms"].asString() == "CloseNew")
+			ServerAcceptMode = opendnp3::ServerAcceptMode::CloseNew;
+		else if(JSONRoot["TCPConnectRetryPeriodMinms"].asString() == "CloseExisting")
+			ServerAcceptMode = opendnp3::ServerAcceptMode::CloseExisting;
+		else
+		if(auto log = spdlog::get("DNP3Port"))
+			log->error("Invalid ServerAcceptMode : '{}'", JSONRoot["ServerAcceptMode"].asString());
+	}
+	if (JSONRoot.isMember("TCPConnectRetryPeriodMinms"))
+		TCPConnectRetryPeriodMinms = JSONRoot["TCPConnectRetryPeriodMinms"].asUInt();
+	if (JSONRoot.isMember("TCPConnectRetryPeriodMaxms"))
+		TCPConnectRetryPeriodMaxms = JSONRoot["TCPConnectRetryPeriodMaxms"].asUInt();
 	if (JSONRoot.isMember("EnableUnsol"))
 		EnableUnsol = JSONRoot["EnableUnsol"].asBool();
 	if (JSONRoot.isMember("UnsolClass1"))
@@ -170,10 +175,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolClass3 = JSONRoot["UnsolClass3"].asBool();
 
 	// Master Station configuration
-	if (JSONRoot.isMember("TCPConnectRetryPeriodMinms"))
-		TCPConnectRetryPeriodMinms = JSONRoot["TCPConnectRetryPeriodMinms"].asUInt();
-	if (JSONRoot.isMember("TCPConnectRetryPeriodMaxms"))
-		TCPConnectRetryPeriodMaxms = JSONRoot["TCPConnectRetryPeriodMaxms"].asUInt();
 	if (JSONRoot.isMember("MasterResponseTimeoutms"))
 		MasterResponseTimeoutms = JSONRoot["MasterResponseTimeoutms"].asUInt();
 	if (JSONRoot.isMember("MasterRespondTimeSync"))
@@ -241,10 +242,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	// Outstation configuration
-	if (JSONRoot.isMember("TCPListenRetryPeriodMinms"))
-		TCPListenRetryPeriodMinms = JSONRoot["TCPListenRetryPeriodMinms"].asUInt();
-	if (JSONRoot.isMember("TCPListenRetryPeriodMaxms"))
-		TCPListenRetryPeriodMaxms = JSONRoot["TCPListenRetryPeriodMaxms"].asUInt();
 	if (JSONRoot.isMember("MaxControlsPerRequest"))
 		MaxControlsPerRequest = JSONRoot["MaxControlsPerRequest"].asUInt();
 	if (JSONRoot.isMember("MaxTxFragSize"))

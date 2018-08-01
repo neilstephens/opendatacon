@@ -52,9 +52,11 @@ public:
 	~DataConcentrator() override;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
-	void BuildOrRebuild();
+	void Build();
 	void Run();
 	void Shutdown();
+	bool isShuttingDown();
+	bool isShutDown();
 
 private:
 	DataPortCollection DataPorts;
@@ -64,12 +66,18 @@ private:
 	asio::io_service IOS;
 	std::unique_ptr<asio::io_service::work> ios_working;
 	std::once_flag shutdown_flag;
+	std::atomic_bool shutting_down;
+	std::atomic_bool shut_down;
 
 	//ostream for spdlog logging sink
 	TCPstringbuf TCPbuf;
 	std::unique_ptr<std::ostream> pTCPostream;
 
-	std::vector<spdlog::sink_ptr> LogSinks;
+	std::map<std::string,spdlog::sink_ptr> LogSinksMap;
+	std::vector<spdlog::sink_ptr> LogSinksVec;
+	void SetLogLevel(std::stringstream& ss);
+
+	std::vector<std::thread> threads;
 };
 
 #endif /* DATACONCENTRATOR_H_ */

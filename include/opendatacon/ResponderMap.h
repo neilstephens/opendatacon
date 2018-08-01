@@ -34,7 +34,7 @@
 #include "IUIResponder.h"
 
 template <class T>
-class ResponderMap: public std::unordered_map<std::string, std::unique_ptr<T,void (*)(T*)> >, public IUIResponder
+class ResponderMap: public std::unordered_map<std::string, std::unique_ptr<T,std::function<void(T*)>> >, public IUIResponder
 {
 public:
 	ResponderMap()

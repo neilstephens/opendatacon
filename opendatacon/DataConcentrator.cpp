@@ -39,6 +39,8 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS)),
+	shutting_down(false),
+	shut_down(false),
 	pTCPostream(nullptr)
 {
 	// Enable loading of libraries
@@ -54,10 +56,13 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	//fire up some worker threads
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		std::thread([&](){IOS.run();}).detach();
+		threads.emplace_back([&](){IOS.run();});
 
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
+
+	if(Interfaces.empty() && DataPorts.empty() && DataConnectors.empty())
+		throw std::runtime_error("No objects to manage");
 
 	for(auto& interface : Interfaces)
 	{
@@ -70,6 +75,10 @@ DataConcentrator::DataConcentrator(std::string FileName):
 			{
 				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;
 			},"Print version information");
+		interface.second->AddCommand("set_loglevel",[this] (std::stringstream& ss)
+			{
+				this->SetLogLevel(ss);
+			},"Set the threshold for logging");
 
 		interface.second->AddResponder("OpenDataCon", *this);
 		interface.second->AddResponder("DataPorts", DataPorts);
@@ -85,9 +94,45 @@ DataConcentrator::DataConcentrator(std::string FileName):
 DataConcentrator::~DataConcentrator()
 {}
 
+void DataConcentrator::SetLogLevel(std::stringstream& ss)
+{
+	std::string sinkname;
+	std::string level_str;
+	if(ss>>sinkname && ss>>level_str)
+	{
+		for(auto& sink : LogSinksMap)
+		{
+			if(sink.first == sinkname)
+			{
+				auto new_level = spdlog::level::from_str(level_str);
+				if(new_level == spdlog::level::off && level_str != "off")
+				{
+					std::cout << "Invalid log level. Options are:" << std::endl;
+					for(uint8_t i = 0; i < 7; i++)
+						std::cout << spdlog::level::level_names[i] << std::endl;
+					return;
+				}
+				else
+				{
+					sink.second->set_level(new_level);
+					return;
+				}
+			}
+		}
+	}
+	std::cout << "Usage: set loglevel <sinkname> <level>" << std::endl;
+	std::cout << "Sinks:" << std::endl;
+	for(auto& sink : LogSinksMap)
+		std::cout << sink.first << std::endl;
+	std::cout << std::endl << "Levels:" << std::endl;
+	for(uint8_t i = 0; i < 7; i++)
+		std::cout << spdlog::level::level_names[i] << std::endl;
+}
+
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
-	if(!JSONRoot.isObject()) return;
+	if(!JSONRoot.isObject())
+		throw std::runtime_error("No valid JSON config object");
 
 	//setup log sinks
 	auto log_size_kb = JSONRoot.isMember("LogFileSizekB") ? JSONRoot["LogFileSizekB"].asUInt() : 5*1024;
@@ -115,13 +160,15 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		file->set_level(log_level);
 		console->set_level(console_level);
 
-		LogSinks.push_back(file);
-		LogSinks.push_back(console);
+		LogSinksMap["file"] = file;
+		LogSinksVec.push_back(file);
+		LogSinksMap["console"] = console;
+		LogSinksVec.push_back(console);
 
 		//TODO: document these config options
 		if(JSONRoot.isMember("TCPLog"))
 		{
-			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(LogSinks), end(LogSinks));
+			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(LogSinksVec), end(LogSinksVec));
 
 			auto TCPLogJSON = JSONRoot["TCPLog"];
 			if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
@@ -146,9 +193,10 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		{
 			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostream.get());
 			tcp->set_level(log_level);
-			LogSinks.push_back(tcp);
+			LogSinksMap["tcp"] = tcp;
+			LogSinksVec.push_back(tcp);
 		}
-		auto pMainLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
+		auto pMainLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinksVec), end(LogSinksVec),
 			4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 		pMainLogger->set_level(spdlog::level::trace);
 		spdlog::register_logger(pMainLogger);
@@ -232,14 +280,20 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Create a logger if we haven't already
 			if(!spdlog::get(libname))
 			{
-				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinks), end(LogSinks),
+				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
 					4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 				pLibLogger->set_level(spdlog::level::trace);
 				spdlog::register_logger(pLibLogger);
 			}
 
+			auto plugin_cleanup = [=](IUI* plugin)
+						    {
+							    delete_plugin_func(plugin);
+							    UnLoadModule(pluginlib);
+						    };
+
 			//call the creation function and wrap the returned pointer to a new plugin
-			Interfaces.emplace(PluginName, std::unique_ptr<IUI,void (*)(IUI*)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), delete_plugin_func));
+			Interfaces.emplace(PluginName, std::unique_ptr<IUI,decltype(plugin_cleanup)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), plugin_cleanup));
 		}
 	}
 
@@ -356,14 +410,20 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Create a logger if we haven't already
 			if(!spdlog::get(libname))
 			{
-				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinks), end(LogSinks),
+				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
 					4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 				pLibLogger->set_level(spdlog::level::trace);
 				spdlog::register_logger(pLibLogger);
 			}
 
+			auto port_cleanup = [=](DataPort* port)
+						  {
+							  delete_port_func(port);
+							  UnLoadModule(portlib);
+						  };
+
 			//call the creation function and wrap the returned pointer to a new port
-			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,decltype(port_cleanup)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 		}
 	}
@@ -373,7 +433,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		const Json::Value Connectors = JSONRoot["Connectors"];
 
 		//make a logger for use by Connectors
-		auto pConnLogger = std::make_shared<spdlog::async_logger>("Connectors", begin(LogSinks), end(LogSinks),
+		auto pConnLogger = std::make_shared<spdlog::async_logger>("Connectors", begin(LogSinksVec), end(LogSinksVec),
 			4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 		pConnLogger->set_level(spdlog::level::trace);
 		spdlog::register_logger(pConnLogger);
@@ -419,27 +479,31 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 }
-void DataConcentrator::BuildOrRebuild()
+void DataConcentrator::Build()
 {
-	spdlog::get("opendatacon")->info("Initialising Interfaces...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Initialising Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
-		Name_n_UI.second->BuildOrRebuild();
+		Name_n_UI.second->Build();
 	}
-	spdlog::get("opendatacon")->info("Initialising DataPorts...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Initialising DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
-		Name_n_Port.second->BuildOrRebuild();
+		Name_n_Port.second->Build();
 	}
-	spdlog::get("opendatacon")->info("Initialising DataConnectors...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Initialising DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
-		Name_n_Conn.second->BuildOrRebuild();
+		Name_n_Conn.second->Build();
 	}
 }
 void DataConcentrator::Run()
 {
-	spdlog::get("opendatacon")->info("Enabling DataConnectors...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Enabling DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		if(Name_n_Conn.second->InitState == InitState_t::ENABLED)
@@ -460,7 +524,8 @@ void DataConcentrator::Run()
 				});
 		}
 	}
-	spdlog::get("opendatacon")->info("Enabling DataPorts...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Enabling DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
 		if(Name_n_Port.second->InitState == InitState_t::ENABLED)
@@ -481,7 +546,8 @@ void DataConcentrator::Run()
 				});
 		}
 	}
-	spdlog::get("opendatacon")->info("Enabling Interfaces...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Enabling Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
 		IOS.post([&]()
@@ -490,17 +556,26 @@ void DataConcentrator::Run()
 			});
 	}
 
-	spdlog::get("opendatacon")->info("Up and running.");
-	IOS.run();
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Up and running.");
 
-	spdlog::get("opendatacon")->info("Destoying Interfaces...");
+	IOS.run();
+	for(auto& thread : threads)
+		thread.join();
+	threads.clear();
+
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Destoying Interfaces...");
 	Interfaces.clear();
 
-	spdlog::get("opendatacon")->info("Destoying DataConnectors...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Destoying DataConnectors...");
 	DataConnectors.clear();
 
-	spdlog::get("opendatacon")->info("Destoying DataPorts...");
+	if(auto log = spdlog::get("opendatacon"))
+		log->info("Destoying DataPorts...");
 	DataPorts.clear();
+	shut_down = true;
 }
 
 void DataConcentrator::Shutdown()
@@ -509,24 +584,39 @@ void DataConcentrator::Shutdown()
 	//ensure we only act once
 	std::call_once(shutdown_flag, [this]()
 		{
-			spdlog::get("opendatacon")->info("Disabling Interfaces...");
+			shutting_down = true;
+			if(auto log = spdlog::get("opendatacon"))
+				log->info("Disabling Interfaces...");
 			for(auto& Name_n_UI : Interfaces)
 			{
 			      Name_n_UI.second->Disable();
 			}
-			spdlog::get("opendatacon")->info("Disabling DataConnectors...");
+			if(auto log = spdlog::get("opendatacon"))
+				log->info("Disabling DataConnectors...");
 			for(auto& Name_n_Conn : DataConnectors)
 			{
 			      Name_n_Conn.second->Disable();
 			}
-			spdlog::get("opendatacon")->info("Disabling DataPorts...");
+			if(auto log = spdlog::get("opendatacon"))
+				log->info("Disabling DataPorts...");
 			for(auto& Name_n_Port : DataPorts)
 			{
 			      Name_n_Port.second->Disable();
 			}
-			spdlog::get("opendatacon")->flush();
+			if(auto log = spdlog::get("opendatacon"))
+				log->flush();
 			TCPbuf.DeInit();
-			spdlog::get("opendatacon")->info("Finishing asynchronous tasks...");
+			if(auto log = spdlog::get("opendatacon"))
+				log->info("Finishing asynchronous tasks...");
 			ios_working.reset();
 		});
+}
+
+bool DataConcentrator::isShuttingDown()
+{
+	return shutting_down;
+}
+bool DataConcentrator::isShutDown()
+{
+	return shut_down;
 }

@@ -33,10 +33,9 @@ public:
 	PublicPublishNullPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		NullPort(aName, aConfFilename, aConfOverrides)
 	{}
-	template<typename T>
-	void PublicPublishEvent(const T& meas, uint16_t index, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	void PublicPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}))
 	{
-		PublishEvent(meas,index,pStatusCallback);
+		PublishEvent(event,pStatusCallback);
 	}
 };
 
@@ -113,13 +112,18 @@ TEST_CASE(SUITE("StatusCallback"))
 			executed = true;
 		});
 
+	auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock);
+	event->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
+
 	for(unsigned char mask = 0x00; mask <= 0x7F; mask++)
 	{
 		for(int i = 0; i < 7; i++)
 			(mask>>i & 0x01) ? Sinks[i]->Enable() : Sinks[i]->Disable();
 
 		executed = false;
-		Source.PublicPublishEvent(ControlRelayOutputBlock(true),1,StatusCallback);
+		event->SetIndex(mask);
+
+		Source.PublicPublishEvent(event,StatusCallback);
 		while(!executed)
 		{
 			ios.run_one();

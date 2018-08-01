@@ -29,8 +29,11 @@
 
 using namespace odc;
 
-typedef DataPort* (*fptr)(std::string Name, std::string File, const Json::Value Overrides);
+typedef DataPort* (*newptr)(std::string Name, std::string File, const Json::Value Overrides);
+typedef void (*delptr)(DataPort*);
 
-fptr GetPortCreator(std::string libname, std::string objname);
+void* GetPortFunc(const std::string& libname, const std::string& objname, bool destroy = false);
+newptr GetPortCreator(const std::string& libname, const std::string& objname);
+delptr GetPortDestroyer(const std::string& libname, const std::string& objname);
 
 #endif

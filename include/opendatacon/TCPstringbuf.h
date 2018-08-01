@@ -42,7 +42,7 @@ public:
 	{
 		pIOS = apIOS;
 		pSockMan = std::make_unique<TCPSocketManager<std::string>>(apIOS,aisServer,aEndPoint,aPort,
-			[](buf_t& readbuf){},[](bool state){},true);
+			[](buf_t& readbuf){},[](bool state){},1000,true);
 		pSockMan->Open();
 	}
 	void DeInit()

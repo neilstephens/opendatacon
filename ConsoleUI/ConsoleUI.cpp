@@ -354,7 +354,7 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 	}
 }
 
-void ConsoleUI::BuildOrRebuild()
+void ConsoleUI::Build()
 {}
 
 void ConsoleUI::Enable()
@@ -363,9 +363,9 @@ void ConsoleUI::Enable()
 	if (!uithread)
 	{
 		uithread = std::unique_ptr<asio::thread>(new asio::thread([this]()
-				{
-					this->run();
-				}));
+			{
+				this->run();
+			}));
 	}
 }
 

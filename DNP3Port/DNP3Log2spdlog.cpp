@@ -33,17 +33,13 @@ DNP3Log2spdlog::DNP3Log2spdlog()
 
 void DNP3Log2spdlog::Log( const openpal::LogEntry& arEntry )
 {
-//FIXME: Clash with windows #define
-#define GetMessage GetMessage
-
-	auto DNP3LevelName = opendnp3::LogFlagToString(arEntry.GetFilters().GetBitfield());
-	spdlog::level::level_enum spdlevel = FilterToLevel(arEntry.GetFilters());
+	auto DNP3LevelName = opendnp3::LogFlagToString(arEntry.filters.GetBitfield());
+	spdlog::level::level_enum spdlevel = FilterToLevel(arEntry.filters);
 	if(auto log = spdlog::get("DNP3Port"))
-		log->log(spdlevel, "{} - {} - {} - {}",
+		log->log(spdlevel, "{} - {} - {}",
 			DNP3LevelName,
-			arEntry.GetAlias(),
-			arEntry.GetMessage(),
-			arEntry.GetErrorCode());
+			arEntry.loggerid,
+			arEntry.message);
 }
 
 spdlog::level::level_enum DNP3Log2spdlog::FilterToLevel(const openpal::LogFilters& filters)

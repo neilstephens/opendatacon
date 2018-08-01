@@ -28,13 +28,6 @@ else()
 	set(MICROHTTPD_HOME "/usr" CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
 endif()
 
-include_directories(
-	../include
-	../JSON
-	${SPDLOG_HOME}/include
-	${MICROHTTPD_HOME}/include
-)
-
 #import the microhttpd lib
 find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
 	PATHS ${MICROHTTPD_HOME}/lib
@@ -59,10 +52,9 @@ if(PACKAGE_LIBMICROHTTPD)
 	endif()
 endif()
 
-link_directories("${DNP3_HOME}/lib")
-
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC httpd_target asiopal)
+target_include_directories(${PROJECT_NAME} PRIVATE "${MICROHTTPD_HOME}/include")
+target_link_libraries(${PROJECT_NAME} ODC httpd_target)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
