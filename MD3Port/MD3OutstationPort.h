@@ -47,40 +47,21 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild() override;
+	void Build() override;
 
-	void Event(const Binary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const Analog& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const Counter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-//	void Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-//	void Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	// These are the only quality callbacks we handle, as by setting a value of 0x8000 we can communicate that information up the line.
-	// The binary points have no way of sending that information to the MD3Master.
-	void Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const CounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-//	void Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-//	void Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-//	void Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+//	template<typename T> void EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+//	template<typename T> void EventQ(T& qual, uint16_t index, const std::string & SenderName, SharedStatusCallback_t pStatusCallback);
 
-	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	template<typename T>
+	CommandStatus PerformT(T& command, uint16_t index, bool waitforresult);
 
-	template<typename T> void EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
-	template<typename T> void EventQ(T& qual, uint16_t index, const std::string & SenderName, SharedStatusCallback_t pStatusCallback);
+	CommandStatus Perform(const double & command, uint16_t index, bool waitforresult);
+	CommandStatus Perform(const int32_t & command, uint16_t index, bool waitforresult);
+	CommandStatus Perform(const int16_t & command, uint16_t index, bool waitforresult);
+	CommandStatus Perform(const ControlRelayOutputBlock & command, uint16_t index, bool waitforresult);
 
-	template<typename T> CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
-
-	CommandStatus Perform(const AnalogOutputDouble64 & arCommand, uint16_t index, bool waitforresult);
-	CommandStatus Perform(const AnalogOutputInt32 & arCommand, uint16_t index, bool waitforresult);
-	CommandStatus Perform(const AnalogOutputInt16 & arCommand, uint16_t index, bool waitforresult);
-
-	CommandStatus Perform(const ControlRelayOutputBlock & arCommand, uint16_t index, bool waitforresult);
-
-	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex, bool waitforresult);
 
 	void ProcessMD3Message(MD3Message_t &CompleteMD3Message);
 

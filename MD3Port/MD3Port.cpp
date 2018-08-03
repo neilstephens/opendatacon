@@ -85,7 +85,6 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("IP"))
 	{
 		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
-		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.deviceName = "";
 	}
 
 	if (JSONRoot.isMember("Port"))

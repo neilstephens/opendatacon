@@ -95,7 +95,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// TimeSet Point Configuration
 	if (JSONRoot.isMember("TimeSetPoint") && JSONRoot["TimeSetPoint"].isMember("Index"))
 	{
-		TimeSetPoint.first = opendnp3::AnalogOutputDouble64(0); // Default to 0 - we know as unset - will never be used in operation.
+		TimeSetPoint.first = double(0); // Default to 0 - we know as unset - will never be used in operation.
 		TimeSetPoint.second = JSONRoot["TimeSetPoint"]["Index"].asUInt();
 		LOGDEBUG("Conf processed - TimeSetPoint - " + std::to_string(TimeSetPoint.second));
 	}
@@ -103,7 +103,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// SystemSignOnPoint Point Configuration
 	if (JSONRoot.isMember("SystemSignOnPoint") && JSONRoot["SystemSignOnPoint"].isMember("Index"))
 	{
-		SystemSignOnPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
+		SystemSignOnPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
 		SystemSignOnPoint.second = JSONRoot["SystemSignOnPoint"]["Index"].asUInt();
 		LOGDEBUG("Conf processed - SystemSignOnPoint - " + std::to_string(SystemSignOnPoint.second));
 	}
@@ -111,7 +111,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// FreezeResetCountersPoint Point Configuration
 	if (JSONRoot.isMember("FreezeResetCountersPoint") && JSONRoot["FreezeResetCountersPoint"].isMember("Index"))
 	{
-		FreezeResetCountersPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
+		FreezeResetCountersPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
 		FreezeResetCountersPoint.second = JSONRoot["FreezeResetCountersPoint"]["Index"].asUInt();
 		LOGDEBUG("Conf processed - FreezeResetCountersPoint - " + std::to_string(FreezeResetCountersPoint.second));
 	}
@@ -119,7 +119,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// POMControlPoint Point Configuration
 	if (JSONRoot.isMember("POMControlPoint") && JSONRoot["POMControlPoint"].isMember("Index"))
 	{
-		POMControlPoint.first = opendnp3::AnalogOutputInt32(0); // Default to 0 - we know as unset - will never be used in operation.
+		POMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
 		POMControlPoint.second = JSONRoot["POMControlPoint"]["Index"].asUInt();
 		LOGDEBUG("Conf processed - POMControlPoint - " + std::to_string(POMControlPoint.second));
 	}
@@ -127,7 +127,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// DOMControlPoint Point Configuration
 	if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
 	{
-		DOMControlPoint.first = opendnp3::AnalogOutputDouble64(0); // Default to 0 - we know as unset - will never be used in operation.
+		DOMControlPoint.first = double(0); // Default to 0 - we know as unset - will never be used in operation.
 		DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
 		LOGDEBUG("Conf processed - DOMControlPoint - " + std::to_string(DOMControlPoint.second));
 	}

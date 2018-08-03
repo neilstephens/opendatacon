@@ -1087,7 +1087,7 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 	}
 
 	uint32_t Index = MyPointConf()->FreezeResetCountersPoint.second;
-	MyPointConf()->FreezeResetCountersPoint.first = AnalogOutputInt32(Header.GetData()); // Pass the actual packet to the master across ODC
+	MyPointConf()->FreezeResetCountersPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
 
 	bool waitforresult = !MyPointConf()->StandAloneOutstation;
 
@@ -1164,7 +1164,9 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 
 	// POM is only a single bit, so easy to do... TRIP 0-7 and CLOSE 8-15 for the up to 8 points in a POM module.
 	bool point_on = (Header.GetOutputSelection() > 7);
-	ControlRelayOutputBlock b(point_on);
+
+	ControlRelayOutputBlock b;
+	b.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
 
 	// Module contains 0 to 7 channels..
 	if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, index))
@@ -1179,7 +1181,7 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 	if (MyPointConf()->POMControlPoint.second != 0)
 	{
 		// Pass the command through ODC, just for MD3 on the other side.
-		MyPointConf()->POMControlPoint.first = AnalogOutputInt32(Header.GetData());
+		MyPointConf()->POMControlPoint.first = (int32_t)Header.GetData();
 		success = Perform(MyPointConf()->POMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS;
 	}
 
@@ -1241,7 +1243,9 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 	// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
 	for (int i = 0; i < 16; i++)
 	{
-		ControlRelayOutputBlock b((output >> (15 - i) & 0x01) == 1);
+		ControlRelayOutputBlock b;
+		b.functionCode = ((output >> (15 - i) & 0x01) == 1) ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+
 		if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, index))
 		{
 			if (CommandStatus::SUCCESS != Perform(b, index, waitforresult)) // If no subscribers will return quickly.
@@ -1255,7 +1259,7 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 	if (MyPointConf()->DOMControlPoint.second != 0)
 	{
 		// Pass the command through ODC, just for MD3 on the other side.
-		MyPointConf()->DOMControlPoint.first = AnalogOutputDouble64((double)(((int64_t)Header.GetData()<< 32 | CompleteMD3Message[1].GetData())));
+		MyPointConf()->DOMControlPoint.first = (double)(((int64_t)Header.GetData()<< 32 | CompleteMD3Message[1].GetData()));
 		success = Perform(MyPointConf()->DOMControlPoint.first, MyPointConf()->DOMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS;
 	}
 
@@ -1301,7 +1305,7 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &Com
 	int index = 0;
 	failed = GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), index) ? failed : true;
 
-	AnalogOutputInt16 output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
+	int16_t output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
 
 	bool waitforresult = !MyPointConf()->StandAloneOutstation;
 
@@ -1329,7 +1333,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40MtoS &Header)
 	if (Header.IsValid())
 	{
 		uint32_t Index = MyPointConf()->SystemSignOnPoint.second;
-		MyPointConf()->SystemSignOnPoint.first = AnalogOutputInt32(Header.GetData()); // Pass the actual packet to the master across ODC
+		MyPointConf()->SystemSignOnPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
 
 		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
 		bool waitforresult = !MyPointConf()->StandAloneOutstation;
@@ -1393,7 +1397,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &Co
 	else
 	{
 		uint32_t Index = MyPointConf()->TimeSetPoint.second;
-		MyPointConf()->TimeSetPoint.first = AnalogOutputDouble64((double)msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
+		MyPointConf()->TimeSetPoint.first = (double)msecsinceepoch; // Fit the 64 bit int into the 64 bit float.
 
 		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
 		bool waitforresult = !MyPointConf()->StandAloneOutstation;
@@ -1453,7 +1457,7 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t 
 	else
 	{
 		uint32_t Index = MyPointConf()->TimeSetPointNew.second;
-		MyPointConf()->TimeSetPointNew.first = AnalogOutputDouble64((double)msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
+		MyPointConf()->TimeSetPointNew.first = (double)msecsinceepoch; // Fit the 64 bit int into the 64 bit float.
 
 		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
 		bool waitforresult = !MyPointConf()->StandAloneOutstation;

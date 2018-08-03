@@ -421,7 +421,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 			for(uint16_t i = 0; i < rc; i++ )
 			{
 				auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
-				event->SetPayload<EventType::Analog>(((uint16_t*)modbus_read_buffer)[i]);
+				event->SetPayload<EventType::Analog>(std::move(((uint16_t*)modbus_read_buffer)[i]));
 				PublishEvent(event);
 				++index;
 			}

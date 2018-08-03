@@ -16,6 +16,9 @@
 * WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
 \***************************************************************************/
 
+// This is a fix for a VS bug
+#define NOMINMAX
+
 #pragma region Includes
 #include <stdio.h>
 #include <windows.h>

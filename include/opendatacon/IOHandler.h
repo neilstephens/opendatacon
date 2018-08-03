@@ -30,6 +30,7 @@
 #include <functional>
 #include <unordered_map>
 #include <map>
+#include <atomic>
 #include <opendatacon/asio.h>
 #include <opendatacon/IOTypes.h>
 

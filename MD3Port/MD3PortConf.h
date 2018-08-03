@@ -46,9 +46,6 @@ enum class SerialParity: char
 
 struct MD3AddrConf
 {
-	//Serial
-	asiopal::SerialSettings SerialSettings;
-
 	//IP
 	std::string IP;
 	uint16_t Port;
@@ -58,9 +55,8 @@ struct MD3AddrConf
 	uint8_t OutstationAddr;
 	bool NewDigitalCommands;
 
-	// Default address values can minimally set SerialDevice or IP.
-	MD3AddrConf() :
-		SerialSettings(),
+	// Default address values can minimally set IP.
+	MD3AddrConf():
 		IP("127.0.0.1"),
 		Port(20000),
 		ClientServer(TCPClientServer::DEFAULT),
@@ -87,9 +83,9 @@ public:
 	unsigned LinkNumRetry = 0;
 	unsigned LinkTimeoutms = 0;
 
-	bool RemoteStatusFlag = true;	// Will be true on start up. This sets the RSF flag in all reply headers. Cleared by Fn 52
+	bool RemoteStatusFlag = true; // Will be true on start up. This sets the RSF flag in all reply headers. Cleared by Fn 52
 
-	uint16_t OutstationFlagRegister = SYSTEMPOWERUPFLAGBIT;	// Only one true on start up, will be filled from the real device through ODC
+	uint16_t OutstationFlagRegister = SYSTEMPOWERUPFLAGBIT; // Only one true on start up, will be filled from the real device through ODC
 };
 
 #endif

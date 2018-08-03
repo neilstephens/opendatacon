@@ -86,7 +86,7 @@ void MD3MasterPort::SocketStateHandler(bool state)
 	if (state)
 	{
 		PollScheduler->Start();
-		PublishEvent(ConnectState::CONNECTED, 0);
+		PublishEvent(std::move(ConnectState::CONNECTED));
 		msg = Name + ": Connection established.";
 		ResetDigitalCommandSequenceNumber(); // Outstation when it sees this will send all digital values as if on power up.
 	}
@@ -98,14 +98,14 @@ void MD3MasterPort::SocketStateHandler(bool state)
 
 		ClearMD3CommandQueue(); // Remove all waiting commands and callbacks
 
-		PublishEvent(ConnectState::DISCONNECTED, 0);
+		PublishEvent(std::move(ConnectState::DISCONNECTED));
 		msg = Name + ": Connection closed.";
 	}
 	LOGINFO(msg);
 }
 
 // Will be change to Build only. No live reload
-void MD3MasterPort::BuildOrRebuild()
+void MD3MasterPort::Build()
 {
 	std::string ChannelID = MyConf()->mAddrConf.ChannelID();
 
@@ -564,7 +564,10 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
 				LOGDEBUG("Published Event - Analog - Index " + std::to_string(intres) + " Value 0x" + to_hexstring(AnalogValues[i]));
-				PublishEvent(Analog(AnalogValues[i], qual, (opendnp3::DNPTime)now), intres); // We don’t get counter time information through MD3, so add it as soon as possible
+
+				auto event = std::make_shared<EventInfo>(EventType::Analog, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+				event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
+				PublishEvent(event);
 			}
 		}
 		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
@@ -576,7 +579,9 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
 				LOGDEBUG("Published Event - Counter - Index " + std::to_string(intres) + " Value 0x" + to_hexstring(AnalogValues[i]));
-				PublishEvent(Counter(AnalogValues[i], qual, (opendnp3::DNPTime)now), intres); // We don’t get analog time information through MD3, so add it as soon as possible
+				auto event = std::make_shared<EventInfo>(EventType::Counter, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+				event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
+				PublishEvent(event);
 			}
 		}
 		else
@@ -658,7 +663,8 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled, wordres, now);
 				LOGDEBUG("Published Event - Analog Index " + std::to_string(intres) + " Value 0x" + to_hexstring(wordres));
-				PublishEvent(Analog(wordres, qual, (opendnp3::DNPTime)now), intres); // We don't get counter time information through MD3, so add it as soon as possible
+				auto event = std::make_shared<EventInfo>(EventType::Counter, intres, Name, qual, (opendnp3::DNPTime)now); // We don't get time info from MD3, so add it as soon as possible
+				event->SetPayload<EventType::Counter>(std::move(wordres));
 			}
 		}
 		else if (GetCounterValueUsingMD3Index(maddress, idx,wordres,hasbeenset))
@@ -673,7 +679,9 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 			{
 				uint8_t qual = CalculateAnalogQuality(enabled,wordres, now);
 				LOGDEBUG("Published Event - Counter Index " + std::to_string(intres) + " Value 0x" + to_hexstring(wordres));
-				PublishEvent(Counter(wordres, qual, (opendnp3::DNPTime)now), intres); // We don't get analog time information through MD3, so add it as soon as possible
+				auto event = std::make_shared<EventInfo>(EventType::Counter, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+				event->SetPayload<EventType::Counter>(std::move(wordres));
+				PublishEvent(event);
 			}
 		}
 		else
@@ -726,7 +734,9 @@ bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, cons
 		      if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
 		      {
 		            uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i], now);
-		            PublishEvent(Analog(AnalogValues[i], qual, (opendnp3::DNPTime)now), intres); // We don’t get counter time information through MD3, so add it as soon as possible
+		                  auto event = std::make_shared<EventInfo>(EventType::Analog, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+		                  event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
+		                  PublishEvent(event);
 		      }
 		}
 		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
@@ -736,7 +746,9 @@ bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, cons
 		      if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
 		      {
 		            uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i], now);
-		            PublishEvent(Counter(AnalogValues[i], qual, (opendnp3::DNPTime)now), intres); // We don’t get analog time information through MD3, so add it as soon as possible
+		                  auto event = std::make_shared<EventInfo>(EventType::Counter, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+		                  event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
+		                  PublishEvent(event);
 		      }
 		}
 		else
@@ -917,7 +929,9 @@ void MD3MasterPort::GenerateODCEventsFromMD3ModuleWord(const uint16_t &ModuleDat
 			{
 				uint8_t qual = CalculateBinaryQuality(enabled, eventtime);
 				LOGDEBUG("Published Event - Binary Index " + std::to_string(intres) + " Value " + std::to_string(bitvalue));
-				PublishEvent(Binary(bitvalue == 1, qual, (opendnp3::DNPTime)eventtime), intres);
+				auto event = std::make_shared<EventInfo>(EventType::Binary, intres, Name, qual, (msSinceEpoch_t)eventtime);
+				event->SetPayload<EventType::Binary>(bitvalue == 1);
+				PublishEvent(event);
 			}
 			else
 			{
@@ -1100,7 +1114,6 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 		if (UnconditionalCommandRequired || MyPointConf()->PollGroups[pollgroup].ForceUnconditional)
 		{
 			// Use Unconditional Request Fn 5
-
 			LOGDEBUG("Poll Issued a Analog Unconditional Command");
 
 			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL, ModuleAddress, Channels, true);
@@ -1272,13 +1285,21 @@ void MD3MasterPort::SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCall
 void MD3MasterPort::SetAllPointsQualityToCommsLost()
 {
 	LOGDEBUG("MD3 Master setting quality to comms lost");
+
+	auto eventbinary = std::make_shared<EventInfo>(EventType::BinaryQuality, 0, Name, QualityFlags::COMM_LOST);
+	eventbinary->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
+
 	// Loop through all Binary points.
 	for (auto const &Point : MyPointConf()->BinaryODCPointMap)
 	{
 		int index = Point.first;
-		PublishEvent(BinaryQuality::COMM_LOST, index);
+		eventbinary->SetIndex(index);
+		PublishEvent(eventbinary);
 	}
 	// Analogs
+
+	auto eventanalog = std::make_shared<EventInfo>(EventType::AnalogQuality, 0, Name, QualityFlags::COMM_LOST);
+	eventanalog->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
 	//TODO: Set all analog points to notset - should this be merged with quality? so that we can determine when we need to send an unconditional command.
 	for (auto const &Point : MyPointConf()->AnalogODCPointMap)
 	{
@@ -1286,22 +1307,31 @@ void MD3MasterPort::SetAllPointsQualityToCommsLost()
 		if (!SetAnalogValueUsingODCIndex(index, (uint16_t)0x8000))
 			LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(index));
 
-		PublishEvent(AnalogQuality::COMM_LOST, index);
+		eventanalog->SetIndex(index);
+		PublishEvent(eventanalog);
 	}
 	// Counters
+	auto eventcounter = std::make_shared<EventInfo>(EventType::CounterQuality, 0, Name, QualityFlags::COMM_LOST);
+	eventcounter->SetPayload<EventType::CounterQuality>(QualityFlags::COMM_LOST);
 	for (auto const &Point : MyPointConf()->CounterODCPointMap)
 	{
 		int index = Point.first;
 		if (!SetCounterValueUsingODCIndex(index, (uint16_t)0x8000))
 			LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(index));
-		PublishEvent(CounterQuality::COMM_LOST, index);
+
+		eventcounter->SetIndex(index);
+		PublishEvent(eventcounter);
 	}
-	// Binary Control/Output
+	/* Not applicable...// Binary Control/Output
+	auto event = std::make_shared<EventInfo>(EventType::BinaryOutputStatusQuality, 0, Name, QualityFlags::COMM_LOST);
+	event->SetPayload<EventType::BinaryOutputStatusQuality>(QualityFlags::COMM_LOST);
 	for (auto const &Point : MyPointConf()->BinaryControlODCPointMap)
 	{
-		int index = Point.first;
-		PublishEvent(BinaryOutputStatusQuality::COMM_LOST, index);
-	}
+	      int index = Point.first;
+
+	      event->SetIndex(index);
+	      PublishEvent(event);
+	}*/
 }
 
 // When a new device connects to us through ODC (or an existing one reconnects), send them everything we currently have.
@@ -1310,23 +1340,19 @@ void MD3MasterPort::SendAllPointEvents()
 	//TODO: SJE Set a quality of RESTART if we have just started up but not yet received information for a point. Not sure if super usefull...
 
 	// Quality of ONLINE means the data is GOOD.
+
+
 	for (auto const &Point : MyPointConf()->BinaryODCPointMap)
 	{
 		int index = Point.first;
 		uint8_t meas = Point.second->Binary;
 		uint8_t qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
-		PublishEvent(Binary( meas == 1, qual, (opendnp3::DNPTime)Point.second->ChangedTime),index);
+
+		auto event = std::make_shared<EventInfo>(EventType::Binary, index, Name, qual, (msSinceEpoch_t)Point.second->ChangedTime);
+		event->SetPayload<EventType::Binary>(meas == 1);
+		PublishEvent(event);
 	}
 
-	// Binary Control/Output - the status of which we show as a binary - on our other end we look for the index in both binary lists
-	//TODO: SJE Check that we need to report BinaryOutput status, or if it is just assumed?
-	for (auto const &Point : MyPointConf()->BinaryControlODCPointMap)
-	{
-		int index = Point.first;
-		uint8_t meas = Point.second->Binary;
-		uint8_t qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
-		PublishEvent(Binary(meas == 1, qual, (opendnp3::DNPTime)Point.second->ChangedTime), index);
-	}
 	// Analogs
 	for (auto const &Point : MyPointConf()->AnalogODCPointMap)
 	{
@@ -1334,7 +1360,10 @@ void MD3MasterPort::SendAllPointEvents()
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
 		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
-		PublishEvent(Analog(meas, qual, (opendnp3::DNPTime)Point.second->ChangedTime), index);
+
+		auto event = std::make_shared<EventInfo>(EventType::Analog, index, Name, qual, (msSinceEpoch_t)Point.second->ChangedTime);
+		event->SetPayload<EventType::Analog>(std::move(meas));
+		PublishEvent(event);
 	}
 	// Counters
 	for (auto const &Point : MyPointConf()->CounterODCPointMap)
@@ -1343,75 +1372,72 @@ void MD3MasterPort::SendAllPointEvents()
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
 		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
-		PublishEvent(Counter(meas, qual, (opendnp3::DNPTime)Point.second->ChangedTime), index);
+
+		auto event = std::make_shared<EventInfo>(EventType::Counter, index, Name, qual, (msSinceEpoch_t)Point.second->ChangedTime);
+		event->SetPayload<EventType::Counter>(std::move(meas));
+		PublishEvent(event);
 	}
 }
 
 // Binary quality only depends on our link status and if we have received data
 uint8_t MD3MasterPort::CalculateBinaryQuality(bool enabled, MD3Time time)
 {
-	return (uint8_t)(enabled ? ((time == 0) ? BinaryQuality::RESTART : BinaryQuality::ONLINE) : BinaryQuality::COMM_LOST);
+	return (uint8_t)(enabled ? ((time == 0) ? QualityFlags::RESTART : QualityFlags::ONLINE) : QualityFlags::COMM_LOST);
 }
 // Use the measurement value and if we are enabled to determine what the quality value should be.
 uint8_t MD3MasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time)
 {
-	return (uint8_t)(enabled ? (time == 0 ? AnalogQuality::RESTART : ((meas == 0x8000) ? AnalogQuality::LOCAL_FORCED : AnalogQuality::ONLINE)) : AnalogQuality::COMM_LOST);
+	return (uint8_t)(enabled ? (time == 0 ? QualityFlags::RESTART : ((meas == 0x8000) ? QualityFlags::LOCAL_FORCED : QualityFlags::ONLINE)) : QualityFlags::COMM_LOST);
 }
-
-// This will be fired by (typically) an MD3OutStation port on the "other" side of the ODC Event bus.
-// We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
-void MD3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	if (!enabled)
-	{
-		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-		return;
-	}
-
-	//something upstream has connected
-	if(state == ConnectState::CONNECTED)
-	{
-		LOGDEBUG("Upstream (other side of ODC) port enabled - Triggering sending of current data ");
-		// We don’t know the state of the upstream data, so send event information for all points.
-		SendAllPointEvents();
-	}
-	else // ConnectState::DISCONNECTED
-	{
-		// If we were an on demand connection, we would take down the connection . For MD3 we are using persistent connections only.
-		// We have lost an ODC connection, so events we send don't go anywhere.
-
-	}
-
-	PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
-}
-
-//Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
-void MD3MasterPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
 
 
 // So we have received an event, which for the Master will result in a write to the Outstation, so the command is a Binary Output or Analog Output
-// see all 5 possible definitions above.
-// We will have to translate from the float values to the uint16_t that MD3 actually handles, and then it is only a 12 bit number.
 // Also we have the pass through commands with special port values defined.
-template<typename T>
-inline void MD3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
 	{
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
+	switch (event->GetEventType())
+	{
+		case EventType::ControlRelayOutputBlock:
+			return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), event->GetIndex(), pStatusCallback);
+		case EventType::AnalogOutputInt16:
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, event->GetIndex(), pStatusCallback);
+		case EventType::AnalogOutputInt32:
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, event->GetIndex(), pStatusCallback);
+		case EventType::AnalogOutputFloat32:
+			return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, event->GetIndex(), pStatusCallback);
+		case EventType::AnalogOutputDouble64:
+			return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, event->GetIndex(), pStatusCallback);
+		case EventType::ConnectState:
+		{
+			auto state = event->GetPayload<EventType::ConnectState>();
+			// This will be fired by (typically) an MD3OutStation port on the "other" side of the ODC Event bus. i.e. something upstream has connected
+			// We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
 
-	// We now have to send a command out to an outstation, add the callback function pointer to the command and return.
-	// The callback will be called on timeout or success.
-	WriteObject(arCommand, index, pStatusCallback);
+			if (state == ConnectState::CONNECTED)
+			{
+				LOGDEBUG("Upstream (other side of ODC) port enabled - Triggering sending of current data ");
+				// We don’t know the state of the upstream data, so send event information for all points.
+				SendAllPointEvents();
+			}
+			else if (state == ConnectState::DISCONNECTED)
+			{
+				// If we were an on demand connection, we would take down the connection . For MD3 we are using persistent connections only.
+				// We have lost an ODC connection, so events we send don't go anywhere.
+			}
+
+			return (*pStatusCallback)(CommandStatus::SUCCESS);
+		}
+		default:
+			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+	}
 }
 
-template<>
+
 void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	uint8_t ModuleAddress = 0;
@@ -1484,40 +1510,41 @@ void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const ui
 	}
 }
 
-template<>
-void MD3MasterPort::WriteObject(const AnalogOutputInt16& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+void MD3MasterPort::WriteObject(const int16_t & command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	// AOM Command
 	LOGDEBUG("Master received a AOM ODC Change Command " + std::to_string(index));
+
+//TODO: Finish AOM command	SendDOMOutputCommand(MyConf()->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputFromSecondBlock(BlockData), pStatusCallback);
+
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
-template<>
-void MD3MasterPort::WriteObject(const AnalogOutputInt32& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+
+void MD3MasterPort::WriteObject(const int32_t & command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	// Other Magic point commands
-	uint32_t blockdata = static_cast<uint32_t>(command.value);
 
 	if (index == MyPointConf()->POMControlPoint.second) // Is this out magic time set point?
 	{
 		LOGDEBUG("Master received POM Control Point command on the magic point through ODC " + std::to_string(index));
 
-		MD3BlockFn17MtoS Header = MD3BlockFn17MtoS(MD3BlockData(blockdata));
+		MD3BlockFn17MtoS Header = MD3BlockFn17MtoS(MD3BlockData(command));
 		SendPOMOutputCommand(MyConf()->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputSelection(), pStatusCallback);
 	}
 	else if (index == MyPointConf()->SystemSignOnPoint.second)
 	{
 		// Normally a Fn40
 		LOGDEBUG("Master received System Sign On command on the magic point through ODC " + std::to_string(index));
-		MD3BlockFormatted command(blockdata, true);
-		QueueMD3Command(command, pStatusCallback); // Single block send
+		MD3BlockFormatted MD3command(command, true);
+		QueueMD3Command(MD3command, pStatusCallback); // Single block send
 	}
 	else if (index == MyPointConf()->FreezeResetCountersPoint.second)
 	{
 		// Normally a Fn16
 		LOGDEBUG("Master received Freeze/Reset Counters command on the magic point through ODC " + std::to_string(index));
-		MD3BlockFormatted command(blockdata,true); // The packet rx'd by the outstation and passed to us through ODC is sent out unchanged by the master...
-		QueueMD3Command(command, pStatusCallback); // Single block send
+		MD3BlockFormatted MD3command(command,true);   // The packet rx'd by the outstation and passed to us through ODC is sent out unchanged by the master...
+		QueueMD3Command(MD3command, pStatusCallback); // Single block send
 	}
 	else
 	{
@@ -1526,34 +1553,32 @@ void MD3MasterPort::WriteObject(const AnalogOutputInt32& command, const uint16_t
 	}
 }
 
-template<>
-void MD3MasterPort::WriteObject(const AnalogOutputFloat32& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+void MD3MasterPort::WriteObject(const float& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-	LOGERROR("On Master AnalogOutputFloat32 Type is not implemented " + std::to_string(index));
+	LOGERROR("On Master float Type is not implemented " + std::to_string(index));
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
-template<>
-void MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+void MD3MasterPort::WriteObject(const double& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	if (index == MyPointConf()->TimeSetPoint.second) // Is this out magic time set point?
 	{
 		LOGDEBUG("Master received a Time Change command on the magic point through ODC " + std::to_string(index));
-		uint64_t currenttime = static_cast<uint64_t>(command.value);
+		uint64_t currenttime = static_cast<uint64_t>(command);
 
 		SendTimeDateChangeCommand(currenttime, pStatusCallback);
 	}
 	else if(index == MyPointConf()->TimeSetPointNew.second) // Is this out magic time set point?
 	{
 		LOGDEBUG("Master received a New Time Change command on the magic point through ODC " + std::to_string(index));
-		uint64_t currenttime = static_cast<uint64_t>(command.value);
+		uint64_t currenttime = static_cast<uint64_t>(command);
 		int utcoffsetminutes = tz_offset();
 		SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, pStatusCallback);
 	}
 	else if (index == MyPointConf()->DOMControlPoint.second) // Is this out magic time set point?
 	{
 		LOGDEBUG("Master received DOM Control Point command on the magic point through ODC " + std::to_string(index));
-		uint64_t blockdata = static_cast<uint64_t>(command.value);
+		uint64_t blockdata = static_cast<uint64_t>(command);
 		uint32_t firstblock = (blockdata >> 32);
 		uint32_t secondblock = (blockdata & 0xFFFFFFFF);
 
@@ -1564,7 +1589,7 @@ void MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, const uint1
 	}
 	else
 	{
-		LOGDEBUG("Master received unknown AnalogOutputDouble64 ODC Event " + std::to_string(index));
+		LOGDEBUG("Master received unknown double ODC Event " + std::to_string(index));
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 	}
 }
@@ -1582,6 +1607,16 @@ void MD3MasterPort::SendPOMOutputCommand(const uint8_t &StationAddress, const ui
 {
 	MD3BlockFn17MtoS commandblock(StationAddress, ModuleAddress, outputselection);
 	MD3BlockData datablock = commandblock.GenerateSecondBlock();
+
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+	Cmd.push_back(datablock);
+	QueueMD3Command(Cmd, pStatusCallback);
+}
+void MD3MasterPort::SendAOMOutputCommand(const uint8_t &StationAddress, const uint8_t &ModuleAddress, const uint8_t &Channel, const uint16_t &value, const SharedStatusCallback_t &pStatusCallback)
+{
+	MD3BlockFn23MtoS commandblock(StationAddress, ModuleAddress, Channel);
+	MD3BlockData datablock = commandblock.GenerateSecondBlock(value);
 
 	MD3Message_t Cmd;
 	Cmd.push_back(commandblock);

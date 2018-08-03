@@ -85,7 +85,7 @@ void DataConcentratorService::OnStart(DWORD dwArgc, LPWSTR *lpszArgv)
 	try
 	{
 		TheDataConcentrator.reset(new DataConcentrator(Args.ConfigFileArg.getValue()));
-		TheDataConcentrator->BuildOrRebuild();
+		TheDataConcentrator->Build();
 		// Queue the main service function for execution in a worker thread.
 		std::thread([&](){ServiceWorkerThread(); }).detach();
 	}

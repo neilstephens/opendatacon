@@ -64,7 +64,7 @@ public:
 	void Enable() override;
 	void Disable() override;
 
-	void BuildOrRebuild() override;
+	void Build() override;
 
 	void SocketStateHandler(bool state);
 
@@ -74,18 +74,12 @@ public:
 	uint8_t CalculateBinaryQuality(bool enabled, MD3Time time);
 	uint8_t CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time);
 
-	// Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
-	void Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-
-	void ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-
-	template<typename T> void EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
-
-	template<class T> void WriteObject(const T& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback);
+	void Event(std::shared_ptr<const EventInfo> event, const std::string & SenderName, SharedStatusCallback_t pStatusCallback);
+	void WriteObject(const ControlRelayOutputBlock & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
+	void WriteObject(const int16_t & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
+	void WriteObject(const int32_t & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
+	void WriteObject(const float & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
+	void WriteObject(const double & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
 
 	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
 	// There is a time out lambda in UnprotectedSendNextMasterCommand which will queue the next command if we timeout.
@@ -110,8 +104,10 @@ public:
 	void SendTimeDateChangeCommand(const uint64_t &currenttime, SharedStatusCallback_t pStatusCallback);
 	void SendNewTimeDateChangeCommand(const uint64_t & currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback);
 	void SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCallback);
+
 	void SendDOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint16_t & outputbits, const SharedStatusCallback_t &pStatusCallback);
 	void SendPOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & outputselection, const SharedStatusCallback_t &pStatusCallback);
+	void SendAOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & Channel, const uint16_t & value, const SharedStatusCallback_t & pStatusCallback);
 
 private:
 
@@ -144,7 +140,6 @@ private:
 	bool ProcessSystemSignOnReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessFreezeResetReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
-
 };
 
 #endif /* MD3MASTERPORT_H_ */
