@@ -63,17 +63,17 @@ public:
 	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, bool &hasbeenset);
 	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool &hasbeenset);
 	bool SetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
-	bool GetCounterODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int & res);
-	bool SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas);
+	bool GetCounterODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t & res);
+	bool SetCounterValueUsingODCIndex(const size_t index, const uint16_t meas);
 
 	bool GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, bool & hasbeenset);
 	bool GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool & hasbeenset);
 	bool SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);
-	bool GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t & res, bool & hasbeenset);
-	bool SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas);
+	bool GetAnalogValueUsingODCIndex(const size_t index, uint16_t & res, bool & hasbeenset);
+	bool SetAnalogValueUsingODCIndex(const size_t index, const uint16_t meas);
 
-	bool GetAnalogODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res);
-	bool GetBinaryODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res);
+	bool GetAnalogODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t &res);
+	bool GetBinaryODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t &res);
 
 	bool GetBinaryQualityUsingMD3Index(const uint16_t module, const uint8_t channel, bool & hasbeenset); //TODO: Clean up quality on master for bits
 
@@ -81,13 +81,13 @@ public:
 	bool GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t & res);
 	bool GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed);
 	bool SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas, bool & valuechanged);
-	bool GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed);
-	bool SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, MD3Time eventtime);
+	bool GetBinaryValueUsingODCIndex(const size_t index, uint8_t &res, bool &changed);
+	bool SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, MD3Time eventtime);
 
-	bool GetBinaryControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int & index);
-	bool GetBinaryControlMD3IndexUsingODCIndex(const int index, uint8_t & module, uint8_t & channel, BinaryPointType & pointtype);
+	bool GetBinaryControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t & index);
+	bool GetBinaryControlMD3IndexUsingODCIndex(const size_t index, uint8_t & module, uint8_t & channel, BinaryPointType & pointtype);
 
-	bool GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int & index);
+	bool GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t & index);
 
 	void AddToDigitalEvents(MD3BinaryPoint & pt);
 	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);

@@ -59,6 +59,7 @@ MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_s
 			(pIOS, isServer, EndPoint, Port,
 			std::bind(&MD3Connection::ReadCompletionHandler, this, std::placeholders::_1),
 			std::bind(&MD3Connection::SocketStateHandler, this, std::placeholders::_1),
+			std::numeric_limits<size_t>::max(),
 			true,
 			retry_time_ms));
 

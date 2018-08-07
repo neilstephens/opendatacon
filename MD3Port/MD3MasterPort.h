@@ -71,9 +71,6 @@ public:
 	void SetAllPointsQualityToCommsLost();
 	void SendAllPointEvents();
 
-	uint8_t CalculateBinaryQuality(bool enabled, MD3Time time);
-	uint8_t CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time);
-
 	void Event(std::shared_ptr<const EventInfo> event, const std::string & SenderName, SharedStatusCallback_t pStatusCallback);
 	void WriteObject(const ControlRelayOutputBlock & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
 	void WriteObject(const int16_t & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
@@ -140,6 +137,9 @@ private:
 	bool ProcessSystemSignOnReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessFreezeResetReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
 	bool ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);
+
+	QualityFlags  CalculateBinaryQuality(bool enabled, MD3Time time);
+	QualityFlags  CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time);
 };
 
 #endif /* MD3MASTERPORT_H_ */

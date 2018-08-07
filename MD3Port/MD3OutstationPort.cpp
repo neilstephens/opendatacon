@@ -138,15 +138,11 @@ void MD3OutstationPort::Build()
 // Remember there can be multiple responders!
 //
 //TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we don’t get stuck here.
-template<typename T>
-CommandStatus MD3OutstationPort::PerformT(T& command, uint16_t aIndex, bool waitforresult)
+
+CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;
-
-	// This function (in IOHandler) goes through the list of subscribed events and calls them.
-	// Our callback will be called only once - either after all have been called, or after one has failed.
-	auto event = ToODC(arCommand, aIndex, Name);
 
 	// The ODC calls will ALWAYS return (at some point) with success or failure. Time outs are done by the ports on the TCP communications that they do.
 	if (!waitforresult)
@@ -192,13 +188,13 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	}
 
 	auto event_type = event->GetEventType();
-	auto index = event->GetIndex();
+	size_t index = event->GetIndex();
 
 	switch (event->GetEventType())
 	{
 		case EventType::Analog:
 		{
-			uint16_t analogmeas = event->GetPayload<EventType::Analog>();
+			uint16_t analogmeas = (uint16_t)event->GetPayload<EventType::Analog>();
 
 			if (!SetAnalogValueUsingODCIndex(index, analogmeas))
 			{

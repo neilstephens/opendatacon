@@ -559,13 +559,13 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 		{
 			// We have succeeded in setting the value
 			LOGDEBUG("Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
-			int intres;
-			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
+			size_t ODCIndex;
+			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
-				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				LOGDEBUG("Published Event - Analog - Index " + std::to_string(intres) + " Value 0x" + to_hexstring(AnalogValues[i]));
+				QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
+				LOGDEBUG("Published Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
 
-				auto event = std::make_shared<EventInfo>(EventType::Analog, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
 				event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
 				PublishEvent(event);
 			}
@@ -574,12 +574,12 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 		{
 			// We have succeeded in setting the value
 			LOGDEBUG("Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
-			int intres;
-			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
+			size_t ODCIndex;
+			if (GetCounterODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
-				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				LOGDEBUG("Published Event - Counter - Index " + std::to_string(intres) + " Value 0x" + to_hexstring(AnalogValues[i]));
-				auto event = std::make_shared<EventInfo>(EventType::Counter, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+				QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
+				LOGDEBUG("Published Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
+				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
 				event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
 				PublishEvent(event);
 			}
@@ -658,12 +658,12 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 
 			LOGDEBUG("Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
 
-			int intres;
-			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
+			size_t ODCIndex;
+			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
-				uint8_t qual = CalculateAnalogQuality(enabled, wordres, now);
-				LOGDEBUG("Published Event - Analog Index " + std::to_string(intres) + " Value 0x" + to_hexstring(wordres));
-				auto event = std::make_shared<EventInfo>(EventType::Counter, intres, Name, qual, (opendnp3::DNPTime)now); // We don't get time info from MD3, so add it as soon as possible
+				QualityFlags qual = CalculateAnalogQuality(enabled, wordres, now);
+				LOGDEBUG("Published Event - Analog Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(wordres));
+				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, (opendnp3::DNPTime)now); // We don't get time info from MD3, so add it as soon as possible
 				event->SetPayload<EventType::Counter>(std::move(wordres));
 			}
 		}
@@ -674,12 +674,12 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 
 			LOGDEBUG("Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
 
-			int intres;
-			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
+			size_t ODCIndex;
+			if (GetCounterODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
-				uint8_t qual = CalculateAnalogQuality(enabled,wordres, now);
-				LOGDEBUG("Published Event - Counter Index " + std::to_string(intres) + " Value 0x" + to_hexstring(wordres));
-				auto event = std::make_shared<EventInfo>(EventType::Counter, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+				QualityFlags qual = CalculateAnalogQuality(enabled,wordres, now);
+				LOGDEBUG("Published Event - Counter Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(wordres));
+				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
 				event->SetPayload<EventType::Counter>(std::move(wordres));
 				PublishEvent(event);
 			}
@@ -733,7 +733,7 @@ bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, cons
 		      int intres;
 		      if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
 		      {
-		            uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i], now);
+		            QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i], now);
 		                  auto event = std::make_shared<EventInfo>(EventType::Analog, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
 		                  event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
 		                  PublishEvent(event);
@@ -745,7 +745,7 @@ bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, cons
 		      int intres;
 		      if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
 		      {
-		            uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i], now);
+		            QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i], now);
 		                  auto event = std::make_shared<EventInfo>(EventType::Counter, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
 		                  event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
 		                  PublishEvent(event);
@@ -924,12 +924,12 @@ void MD3MasterPort::GenerateODCEventsFromMD3ModuleWord(const uint16_t &ModuleDat
 
 		if (res && valuechanged)
 		{
-			int intres = 0;
-			if (GetBinaryODCIndexUsingMD3Index(ModuleAddress, idx, intres))
+			size_t ODCIndex = 0;
+			if (GetBinaryODCIndexUsingMD3Index(ModuleAddress, idx, ODCIndex))
 			{
-				uint8_t qual = CalculateBinaryQuality(enabled, eventtime);
-				LOGDEBUG("Published Event - Binary Index " + std::to_string(intres) + " Value " + std::to_string(bitvalue));
-				auto event = std::make_shared<EventInfo>(EventType::Binary, intres, Name, qual, (msSinceEpoch_t)eventtime);
+				QualityFlags qual = CalculateBinaryQuality(enabled, eventtime);
+				LOGDEBUG("Published Event - Binary Index " + std::to_string(ODCIndex) + " Value " + std::to_string(bitvalue));
+				auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, (msSinceEpoch_t)eventtime);
 				event->SetPayload<EventType::Binary>(bitvalue == 1);
 				PublishEvent(event);
 			}
@@ -1340,13 +1340,11 @@ void MD3MasterPort::SendAllPointEvents()
 	//TODO: SJE Set a quality of RESTART if we have just started up but not yet received information for a point. Not sure if super usefull...
 
 	// Quality of ONLINE means the data is GOOD.
-
-
 	for (auto const &Point : MyPointConf()->BinaryODCPointMap)
 	{
 		int index = Point.first;
 		uint8_t meas = Point.second->Binary;
-		uint8_t qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
+		QualityFlags qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
 
 		auto event = std::make_shared<EventInfo>(EventType::Binary, index, Name, qual, (msSinceEpoch_t)Point.second->ChangedTime);
 		event->SetPayload<EventType::Binary>(meas == 1);
@@ -1359,7 +1357,7 @@ void MD3MasterPort::SendAllPointEvents()
 		int index = Point.first;
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
+		QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
 
 		auto event = std::make_shared<EventInfo>(EventType::Analog, index, Name, qual, (msSinceEpoch_t)Point.second->ChangedTime);
 		event->SetPayload<EventType::Analog>(std::move(meas));
@@ -1371,7 +1369,7 @@ void MD3MasterPort::SendAllPointEvents()
 		int index = Point.first;
 		uint16_t meas = Point.second->Analog;
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
+		QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
 
 		auto event = std::make_shared<EventInfo>(EventType::Counter, index, Name, qual, (msSinceEpoch_t)Point.second->ChangedTime);
 		event->SetPayload<EventType::Counter>(std::move(meas));
@@ -1380,14 +1378,14 @@ void MD3MasterPort::SendAllPointEvents()
 }
 
 // Binary quality only depends on our link status and if we have received data
-uint8_t MD3MasterPort::CalculateBinaryQuality(bool enabled, MD3Time time)
+QualityFlags MD3MasterPort::CalculateBinaryQuality(bool enabled, MD3Time time)
 {
-	return (uint8_t)(enabled ? ((time == 0) ? QualityFlags::RESTART : QualityFlags::ONLINE) : QualityFlags::COMM_LOST);
+	return (enabled ? ((time == 0) ? QualityFlags::RESTART : QualityFlags::ONLINE) : QualityFlags::COMM_LOST);
 }
 // Use the measurement value and if we are enabled to determine what the quality value should be.
-uint8_t MD3MasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time)
+QualityFlags MD3MasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time)
 {
-	return (uint8_t)(enabled ? (time == 0 ? QualityFlags::RESTART : ((meas == 0x8000) ? QualityFlags::LOCAL_FORCED : QualityFlags::ONLINE)) : QualityFlags::COMM_LOST);
+	return (enabled ? (time == 0 ? QualityFlags::RESTART : ((meas == 0x8000) ? QualityFlags::LOCAL_FORCED : QualityFlags::ONLINE)) : QualityFlags::COMM_LOST);
 }
 
 
@@ -1403,15 +1401,15 @@ void MD3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::str
 	switch (event->GetEventType())
 	{
 		case EventType::ControlRelayOutputBlock:
-			return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), (uint16_t)event->GetIndex(), pStatusCallback);
 		case EventType::AnalogOutputInt16:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, (uint16_t)event->GetIndex(), pStatusCallback);
 		case EventType::AnalogOutputInt32:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, (uint16_t)event->GetIndex(), pStatusCallback);
 		case EventType::AnalogOutputFloat32:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, (uint16_t)event->GetIndex(), pStatusCallback);
 		case EventType::AnalogOutputDouble64:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, (uint16_t)event->GetIndex(), pStatusCallback);
 		case EventType::ConnectState:
 		{
 			auto state = event->GetPayload<EventType::ConnectState>();

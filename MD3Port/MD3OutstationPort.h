@@ -54,13 +54,12 @@ public:
 //	template<typename T> void EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 //	template<typename T> void EventQ(T& qual, uint16_t index, const std::string & SenderName, SharedStatusCallback_t pStatusCallback);
 
-	template<typename T>
-	CommandStatus PerformT(T& command, uint16_t index, bool waitforresult);
+	CommandStatus Perform(std::shared_ptr<EventInfo> event, bool waitforresult);
 
-	CommandStatus Perform(const double & command, uint16_t index, bool waitforresult);
-	CommandStatus Perform(const int32_t & command, uint16_t index, bool waitforresult);
-	CommandStatus Perform(const int16_t & command, uint16_t index, bool waitforresult);
-	CommandStatus Perform(const ControlRelayOutputBlock & command, uint16_t index, bool waitforresult);
+//	CommandStatus Perform(const double & command, size_t index, bool waitforresult);
+	//CommandStatus Perform(const int32_t & command, size_t index, bool waitforresult);
+	//CommandStatus Perform(const int16_t & command, size_t index, bool waitforresult);
+	//CommandStatus Perform(const ControlRelayOutputBlock & command, size_t index, bool waitforresult);
 
 
 	void ProcessMD3Message(MD3Message_t &CompleteMD3Message);

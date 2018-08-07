@@ -987,16 +987,24 @@ TEST_CASE("Station - BinaryEvent")
 
 	// TEST EVENTS WITH DIRECT CALL
 	// Test on a valid binary point
-	const odc::Binary b((bool)true);
-	const int index = 1;
-	MD3OSPort->Event(b, index, "TestHarness", pStatusCallback);
+	const int ODCIndex = 1;
+
+	EventTypePayload<EventType::Binary>::type val;
+	val = true;
+	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+	event->SetPayload<EventType::Binary>(std::move(val));
+
+	MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 	REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set. 1 is defined
 
 	res = CommandStatus::NOT_AUTHORIZED;
+
 	// Test on an undefined binary point. 40 NOT defined in the config text at the top of this file.
-	const int index2 = 200;
-	MD3OSPort->Event(b, index2, "TestHarness", pStatusCallback);
+	auto event2 = std::make_shared<EventInfo>(EventType::Binary, ODCIndex+200);
+	event2->SetPayload<EventType::Binary>(std::move(val));
+
+	MD3OSPort->Event(event2, "TestHarness", pStatusCallback);
 	REQUIRE((res == CommandStatus::UNDEFINED)); // The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
 	// Wait for some period to do something?? Check that the port is open and we can connect to it?
 
@@ -1025,10 +1033,12 @@ TEST_CASE("Station - AnalogUnconditionalF5")
 
 	// Call the Event functions to set the MD3 table data to what we are expecting to get back.
 	// Write to the analog registers that we are going to request the values for.
-	for (int i = 0; i < 16; i++)
+	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
-		const odc::Analog a(4096 + i + i * 0x100);
-		MD3OSPort->Event(a, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 	}
@@ -1064,7 +1074,7 @@ TEST_CASE("Station - CounterScanFn30")
 	TEST_MD3OSPort(Json::nullValue);
 	MD3OSPort->Enable();
 
-	// Do the same test as analog unconditional, we should give teh same response from the Counter Scan.
+	// Do the same test as analog unconditional, we should give the same response from the Counter Scan.
 	MD3BlockFormatted commandblock(0x7C, true, COUNTER_SCAN, 0x20, 16, true);
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
@@ -1078,10 +1088,12 @@ TEST_CASE("Station - CounterScanFn30")
 
 	// Call the Event functions to set the MD3 table data to what we are expecting to get back.
 	// Write to the analog registers that we are going to request the values for.
-	for (int i = 0; i < 16; i++)
+	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
-		const odc::Analog a(4096 + i + i * 0x100);
-		MD3OSPort->Event(a, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 	}
@@ -1111,10 +1123,12 @@ TEST_CASE("Station - CounterScanFn30")
 	output << commandblock2.ToBinaryString();
 
 	// Set the counter values to match what the analogs were set to.
-	for (int i = 0; i < 16; i++)
+	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
-		const odc::Counter c(4096 + i + i * 0x100);
-		MD3OSPort->Event(c, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
+		event->SetPayload<EventType::Counter>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 	}
@@ -1156,10 +1170,12 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 
 	// Call the Event functions to set the MD3 table data to what we are expecting to get back.
 	// Write to the analog registers that we are going to request the values for.
-	for (int i = 0; i < 16; i++)
+	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
-		const odc::Analog a(4096 + i + i * 0x100);
-		MD3OSPort->Event(a, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 	}
@@ -1192,10 +1208,12 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	//------------------------------
 
 	// Make changes to 5 channels
-	for (int i = 0; i < 5; i++)
+	for (int ODCIndex = 0; ODCIndex < 5; ODCIndex++)
 	{
-		const odc::Analog a(4096 + i + i * 0x100 + ((i % 2)==0 ? 50 : -50)); // +/- 50 either side of original value
-		MD3OSPort->Event(a, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100 + ((ODCIndex % 2) == 0 ? 50 : -50)));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 	}
@@ -1239,10 +1257,13 @@ TEST_CASE("Station - DigitalUnconditionalFn7")
 		});
 
 	// Write to the analog registers that we are going to request the values for.
-	for (int i = 0; i < 16; i++)
+
+	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
-		const odc::Binary b((i%2) == 0);
-		MD3OSPort->Event(b, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+		event->SetPayload<EventType::Binary>(std::move((ODCIndex%2)==0));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 	}
@@ -1301,10 +1322,12 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 		});
 
 	// Write to the first module, but not the second. Should get only the first module results sent.
-	for (int i = 0; i < 16; i++)
+	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
-		const odc::Binary b((i % 2) == 0);
-		MD3OSPort->Event(b, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 	}
@@ -1366,10 +1389,12 @@ TEST_CASE("Station - DigitalHRERFn9")
 		});
 
 	// Write to the first module all 16 bits
-	for (int i = 0; i < 16; i++)
+	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
-		const odc::Binary b((i % 2) == 0);
-		MD3OSPort->Event(b, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -1494,8 +1519,11 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 		{
 			res = command_stat;
 		});
-	const odc::Binary b(false);
-	MD3OSPort->Event(b, 80, "TestHarness", pStatusCallback); // 0x21, bit 1
+
+	auto event = std::make_shared<EventInfo>(EventType::Binary, 80);
+	event->SetPayload<EventType::Binary>(std::move(false));
+
+	MD3OSPort->Event(event, "TestHarness", pStatusCallback); // 0x21, bit 1
 
 	// Send the command but start from module 0x22, we did not get all the blocks last time. Test the wrap around
 	commandblock = MD3BlockFn10(0x7C, true, 0x25, 5, true);
@@ -1579,11 +1607,12 @@ TEST_CASE("Station - DigitalCOSFn11")
 			res = command_stat;
 		});
 
-	// Write to the first module 0-16 index, but not the second. Should get only the first module results sent.
-	for (int i = 0; i < 4; i++)
+	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
 	{
-		const odc::Binary b((i % 2) == 0, (uint8_t)BinaryQuality::ONLINE, (opendnp3::DNPTime)changedtime);
-		MD3OSPort->Event(b, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "TestHarness", QualityFlags::ONLINE, (msSinceEpoch_t)changedtime);
+		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 	}
@@ -1709,10 +1738,12 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 	// Change the data at 0x22 to 0xaaaa
 	//
 	// Write to the first module, but not the second. Should get only the first module results sent.
-	for (int i = 0; i < 16; i++)
+	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
 	{
-		const odc::Binary b((i % 2) == 0);
-		MD3OSPort->Event(b, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 	}
@@ -2130,7 +2161,9 @@ TEST_CASE("Station - Multi-drop TCP Test")
 			(&IOS, false, "127.0.0.1", "1000",
 			ResponseCallback,
 			SocketStateHandler,
-			true, 250));
+			std::numeric_limits<size_t>::max(),
+			true,
+			250));
 	pSockMan->Open();
 
 	Wait(IOS, 3);
@@ -2431,7 +2464,10 @@ TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 		});
 
 	// This will result in sending all current data through ODC events.
-	MD3MAPort->ConnectionEvent(odc::CONNECTED,"TestHarness", pStatusCallback);
+	auto event = std::make_shared<EventInfo>(EventType::ConnectState);
+	event->SetPayload<EventType::ConnectState>(std::move(ConnectState::CONNECTED));
+
+	MD3MAPort->Event(event,"TestHarness", pStatusCallback);
 
 	Wait(IOS, 2);
 
@@ -2492,11 +2528,17 @@ TEST_CASE("Master - DOM and POM Tests")
 				res = command_stat;
 			});
 
-		ControlRelayOutputBlock command(ControlCode::LATCH_ON ); // Turn on...
-		uint16_t index = 100;
+		bool point_on = true;
+		uint16_t ODCIndex = 100;
+
+		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+		val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+
+		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
 		// Send an ODC DigitalOutput command to the Master.
-		MD3MAPort->Event(command,index, "TestHarness", pStatusCallback);
+		MD3MAPort->Event(event, "TestHarness", pStatusCallback);
 
 		Wait(IOS, 2);
 
@@ -2529,11 +2571,17 @@ TEST_CASE("Master - DOM and POM Tests")
 				res = command_stat;
 			});
 
-		ControlRelayOutputBlock command(ControlCode::LATCH_ON); // Turn on...
-		uint16_t index = 116;
+		bool point_on = true;
+		uint16_t ODCIndex = 116;
+
+		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+		val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+
+		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
 		// Send an ODC DigitalOutput command to the Master.
-		MD3MAPort->Event(command, index, "TestHarness", pStatusCallback);
+		MD3MAPort->Event(event, "TestHarness", pStatusCallback);
 
 		Wait(IOS, 2);
 
@@ -3223,7 +3271,9 @@ TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 			(&IOS, false, "127.0.0.1", "1000",
 			ResponseCallback,
 			SocketStateHandler,
-			true, 500));
+			std::numeric_limits<size_t>::max(),
+			true,
+			500));
 	pSockMan->Open();
 
 	Wait(IOS, 3);
@@ -3346,11 +3396,17 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 			res = command_stat;
 		});
 
-	ControlRelayOutputBlock command(ControlCode::PULSE_ON); // Turn on...
-	uint16_t index = 100;
+	bool point_on = true;
+	uint16_t ODCIndex = 100;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+	val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+
+	auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
 	// Send an ODC DigitalOutput command to the Master.
-//		MD3MAPort->Event(command, index, "TestHarness", pStatusCallback);
+//	MD3MAPort->Event(event, "TestHarness", pStatusCallback);
 
 	Wait(IOS, 5);
 
@@ -3386,10 +3442,12 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 			res = command_stat;
 		});
 
-	for (int i = 0; i < 16; i++)
+	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
-		const odc::Analog a(4096 + i + i * 0x100);
-		MD3OSPort->Event(a, i, "TestHarness", pStatusCallback);
+		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+
+		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 	}
 
 	MD3OSPort->Enable();
