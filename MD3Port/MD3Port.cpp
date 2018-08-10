@@ -141,9 +141,6 @@ void MD3Port::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 		LOGERROR("Tried to send an empty message to the TCP Port");
 		return;
 	}
-
-	LOGDEBUG("Sending Message - " + MD3MessageAsString(CompleteMD3Message));
-
 	// Turn the blocks into a binary string.
 	std::string MD3Message;
 	for (auto blk : CompleteMD3Message)

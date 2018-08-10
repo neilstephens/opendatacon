@@ -1357,7 +1357,9 @@ TEST_CASE("Station - DigitalHRERFn9")
 {
 	// Tests time tagged change response Fn 9
 	STANDARD_TEST_SETUP();
-	TEST_MD3OSPort(Json::nullValue);
+	Json::Value portoverride;
+	portoverride["NewDigitalCommands"] = (Json::UInt)0;
+	TEST_MD3OSPort(portoverride);
 	MD3OSPort->Enable();
 
 	// Request HRER List (Fn 9), Station 0x7C,  sequence # 0, max 10 events, mev = 1
@@ -1373,11 +1375,10 @@ TEST_CASE("Station - DigitalHRERFn9")
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	// List should be empty...
-	const std::string DesiredResult1 = { (char)0xfc,0x09,0x00,0x00,0x6a,0x00 }; // Empty HRER response?
+	// List should be empty...so get an emtpy HRER response
 
-	REQUIRE(Response[0] == DesiredResult1[0]);
-	REQUIRE(Response[1] == DesiredResult1[1]);
+	REQUIRE(Response[0] == (char)0xfc);    // 0x7C plus 0x80 for direction
+	REQUIRE(Response[1] == 0x09);          // Fn 9
 	REQUIRE((Response[2] & 0xF0) == 0x10); // Top 4 bits are the sequence number - will be 1
 	REQUIRE((Response[2] & 0x08) == 0);    // Bit 3 is the MEV flag
 	REQUIRE(Response[3] == 0);
@@ -1388,7 +1389,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 			res = command_stat;
 		});
 
-	// Write to the first module all 16 bits
+	// Write to the first module all 16 bits, there should now be 16 "events" in the Old format event queue
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
@@ -1400,6 +1401,8 @@ TEST_CASE("Station - DigitalHRERFn9")
 
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 	}
+
+	Response = "Not Set";
 
 	// The command remains the same each time, but is consumed in the InjectCommand
 	commandblock = MD3BlockFn9(0x7C, true, 2, 10, true, true);
@@ -1493,7 +1496,9 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 {
 	// Tests change response Fn 10
 	STANDARD_TEST_SETUP();
-	TEST_MD3OSPort(Json::nullValue);
+	Json::Value portoverride;
+	portoverride["NewDigitalCommands"] = (Json::UInt)0;
+	TEST_MD3OSPort(portoverride);
 
 	MD3OSPort->Enable();
 
@@ -1738,7 +1743,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 	// Change the data at 0x22 to 0xaaaa
 	//
 	// Write to the first module, but not the second. Should get only the first module results sent.
-	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
+	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
 		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
@@ -2485,13 +2490,11 @@ TEST_CASE("Master - DOM and POM Tests")
 	STANDARD_TEST_SETUP();
 
 	Json::Value MAportoverride;
-	//MAportoverride["DOMControlPoint"]["Index"] = 60000; // Set up the magic port to match
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
 	OSportoverride["Port"] = (Json::UInt64)1001;
 	OSportoverride["StandAloneOutstation"] = false;
-	//OSportoverride["DOMControlPoint"]["Index"] = 60000;
 	TEST_MD3OSPort(OSportoverride);
 
 	START_IOS(1);
@@ -2611,8 +2614,8 @@ TEST_CASE("Master - DOM and POM Tests")
 
 		IOS.post([&]()
 			{
-				MD3BlockFn19MtoS commandblock(0x7C, 33);                         // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
-				MD3BlockData datablock = commandblock.GenerateSecondBlock(0x80); // Bit 0 ON?
+				MD3BlockFn19MtoS commandblock(0x7C, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
+				MD3BlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON? Top byte ON, bottom byte OFF
 
 				OSoutput << commandblock.ToBinaryString();
 				OSoutput << datablock.ToBinaryString();
@@ -2715,7 +2718,10 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message)
+		{
+			MAResponse = MD3Message;
+		});
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -2729,8 +2735,8 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 
 		IOS.post([&]()
 			{
-				MD3BlockFn19MtoS commandblock(0x7C, 33);                         // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
-				MD3BlockData datablock = commandblock.GenerateSecondBlock(0x80); // Bit 0 ON?
+				MD3BlockFn19MtoS commandblock(0x7C, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
+				MD3BlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON?
 
 				OSoutput << commandblock.ToBinaryString();
 				OSoutput << datablock.ToBinaryString();
@@ -2738,7 +2744,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
 			});
 
-		Wait(IOS, 2);
+		Wait(IOS, 1);
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
 		REQUIRE(MAResponse == BuildHexStringFromASCIIHexString("7c1321de0300" "80008003c300")); // Should passed through DOM command - match what was sent.
@@ -2759,17 +2765,19 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 
 	INFO("POM OutStation->ODC->Master Pass Through Command Test");
 	{
+		LOGDEBUG("POM OutStation->ODC->Master Pass Through Command Test");
+
 		// We want to send a POM Command to the OutStation.
 		// It should respond with an OK packet, and its callback executed.
 
 		OSResponse = "Not Set";
 		MAResponse = "Not Set";
 
+		MD3BlockFn17MtoS commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
+		MD3BlockData datablock = commandblock.GenerateSecondBlock();
+
 		IOS.post([&]()
 			{
-				MD3BlockFn17MtoS commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
-				MD3BlockData datablock = commandblock.GenerateSecondBlock();
-
 				OSoutput << commandblock.ToBinaryString();
 				OSoutput << datablock.ToBinaryString();
 
@@ -3033,7 +3041,6 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 	STOP_IOS();
 	TestTearDown();
 }
-
 TEST_CASE("Master - Digital Fn11 Command Test")
 {
 	STANDARD_TEST_SETUP();

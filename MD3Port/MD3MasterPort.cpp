@@ -143,6 +143,18 @@ void MD3MasterPort::Build()
 	//	PollScheduler->Start(); // This is started and stopped in the socket state handler
 }
 
+void MD3MasterPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
+{
+	if (CompleteMD3Message.size() == 0)
+	{
+		LOGERROR("MA - Tried to send an empty message to the TCP Port");
+		return;
+	}
+	LOGDEBUG("MA - Sending Message - " + MD3MessageAsString(CompleteMD3Message));
+
+	// Done this way just to get context into log messages.
+	MD3Port::SendMD3Message(CompleteMD3Message);
+}
 
 #pragma region MasterCommandQueue
 
@@ -517,7 +529,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 
 	if (NumberOfDataBlocks != CompleteMD3Message.size() - 1)
 	{
-		LOGERROR("Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		LOGERROR("MA - Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 		return false;
 	}
 
@@ -558,12 +570,12 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 		if (SetAnalogValueUsingMD3Index(maddress, idx, AnalogValues[i]))
 		{
 			// We have succeeded in setting the value
-			LOGDEBUG("Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
+			LOGDEBUG("MA - Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
 			size_t ODCIndex;
 			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
 				QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				LOGDEBUG("Published Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
+				LOGDEBUG("MA - Published Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
 
 				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
 				event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
@@ -573,12 +585,12 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
 		{
 			// We have succeeded in setting the value
-			LOGDEBUG("Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
+			LOGDEBUG("MA - Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
 			size_t ODCIndex;
 			if (GetCounterODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
 				QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				LOGDEBUG("Published Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
+				LOGDEBUG("MA - Published Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
 				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
 				event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
 				PublishEvent(event);
@@ -586,7 +598,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 		}
 		else
 		{
-			LOGERROR("Fn5 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
+			LOGERROR("MA - Fn5 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
 				+ " On Station Address - " + std::to_string(Header.GetStationAddress())
 				+ " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
 			return false;
@@ -609,7 +621,7 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 
 	if (NumberOfDataBlocks != CompleteMD3Message.size() - 1)
 	{
-		LOGERROR("Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+		LOGERROR("MA - Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) +
 			" On Station Address - " + std::to_string(Header.GetStationAddress()));
 		return false;
 	}
@@ -656,15 +668,16 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 			wordres += AnalogDeltaValues[i];                     // Add the signed delta.
 			SetAnalogValueUsingMD3Index(maddress, idx, wordres); //TODO Do all SetMethods need to have a time field as well? With a magic number (Say 10 which is in the past) as default which means no change?
 
-			LOGDEBUG("Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
+			LOGDEBUG("MA - Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
 
 			size_t ODCIndex;
 			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
 				QualityFlags qual = CalculateAnalogQuality(enabled, wordres, now);
-				LOGDEBUG("Published Event - Analog Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(wordres));
-				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, (opendnp3::DNPTime)now); // We don't get time info from MD3, so add it as soon as possible
-				event->SetPayload<EventType::Counter>(std::move(wordres));
+				LOGDEBUG("MA - Published Event - Analog Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(wordres));
+				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, (opendnp3::DNPTime)now); // We don't get time info from MD3, so add it as soon as possible
+				event->SetPayload<EventType::Analog>(std::move(wordres));
+				PublishEvent(event);
 			}
 		}
 		else if (GetCounterValueUsingMD3Index(maddress, idx,wordres,hasbeenset))
@@ -672,13 +685,13 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 			wordres += AnalogDeltaValues[i]; // Add the signed delta.
 			SetCounterValueUsingMD3Index(maddress, idx, wordres);
 
-			LOGDEBUG("Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
+			LOGDEBUG("MA - Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
 
 			size_t ODCIndex;
 			if (GetCounterODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
 				QualityFlags qual = CalculateAnalogQuality(enabled,wordres, now);
-				LOGDEBUG("Published Event - Counter Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(wordres));
+				LOGDEBUG("MA - Published Event - Counter Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(wordres));
 				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
 				event->SetPayload<EventType::Counter>(std::move(wordres));
 				PublishEvent(event);
@@ -1544,6 +1557,15 @@ void MD3MasterPort::WriteObject(const int32_t & command, const uint16_t &index, 
 		MD3BlockFormatted MD3command(command,true);   // The packet rx'd by the outstation and passed to us through ODC is sent out unchanged by the master...
 		QueueMD3Command(MD3command, pStatusCallback); // Single block send
 	}
+	else if (index == MyPointConf()->DOMControlPoint.second) // Is this out magic time set point?
+	{
+		LOGDEBUG("Master received DOM Control Point command on the magic point through ODC " + std::to_string(index));
+		uint32_t PacketData = static_cast<uint32_t>(command);
+		MD3BlockFn19MtoS Header = MD3BlockFn19MtoS((PacketData >> 24) & 0x7F, (PacketData >> 16) & 0xFF);
+		MD3BlockData BlockData = Header.GenerateSecondBlock(PacketData & 0xFFFF);
+
+		SendDOMOutputCommand(MyConf()->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputFromSecondBlock(BlockData), pStatusCallback);
+	}
 	else
 	{
 		LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event " + std::to_string(index));
@@ -1572,18 +1594,6 @@ void MD3MasterPort::WriteObject(const double& command, const uint16_t &index, co
 		uint64_t currenttime = static_cast<uint64_t>(command);
 		int utcoffsetminutes = tz_offset();
 		SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, pStatusCallback);
-	}
-	else if (index == MyPointConf()->DOMControlPoint.second) // Is this out magic time set point?
-	{
-		LOGDEBUG("Master received DOM Control Point command on the magic point through ODC " + std::to_string(index));
-		uint64_t blockdata = static_cast<uint64_t>(command);
-		uint32_t firstblock = (blockdata >> 32);
-		uint32_t secondblock = (blockdata & 0xFFFFFFFF);
-
-		MD3BlockFn19MtoS Header = MD3BlockFn19MtoS(MD3BlockData(firstblock));
-		MD3BlockData BlockData(secondblock);
-
-		SendDOMOutputCommand(MyConf()->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputFromSecondBlock(BlockData), pStatusCallback);
 	}
 	else
 	{

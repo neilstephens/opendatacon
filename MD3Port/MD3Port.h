@@ -93,7 +93,7 @@ public:
 	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);
 	uint16_t CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool & ModuleFailed);
 
-	void SendMD3Message(const MD3Message_t& CompleteMD3Message);
+	virtual void SendMD3Message(const MD3Message_t& CompleteMD3Message);
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the MD3Connection.
 

@@ -48,6 +48,7 @@ public:
 	void Enable() override;
 	void Disable() override;
 	void Build() override;
+	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 

@@ -63,8 +63,8 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-
 	void Build() override;
+	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 
 	void SocketStateHandler(bool state);
 

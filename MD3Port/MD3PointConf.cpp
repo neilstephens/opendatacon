@@ -127,7 +127,7 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// DOMControlPoint Point Configuration
 	if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
 	{
-		DOMControlPoint.first = double(0); // Default to 0 - we know as unset - will never be used in operation.
+		DOMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
 		DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
 		LOGDEBUG("Conf processed - DOMControlPoint - " + std::to_string(DOMControlPoint.second));
 	}

@@ -127,6 +127,17 @@ void MD3OutstationPort::Build()
 		std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1) );
 }
 
+void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
+{
+	if (CompleteMD3Message.size() == 0)
+	{
+		LOGERROR("OS - Tried to send an empty message to the TCP Port");
+		return;
+	}
+	LOGDEBUG("OS - Sending Message - " + MD3MessageAsString(CompleteMD3Message));
+	// Done this way just to get context into log messages.
+	MD3Port::SendMD3Message(CompleteMD3Message);
+}
 
 #pragma region OpenDataConInteraction
 
@@ -188,7 +199,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	}
 
 	auto event_type = event->GetEventType();
-	size_t index = event->GetIndex();
+	size_t ODCIndex = event->GetIndex();
 
 	switch (event->GetEventType())
 	{
@@ -196,9 +207,10 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			uint16_t analogmeas = (uint16_t)event->GetPayload<EventType::Analog>();
 
-			if (!SetAnalogValueUsingODCIndex(index, analogmeas))
+			LOGDEBUG("OS - Received Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(analogmeas));
+			if (!SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
 			{
-				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(index));
+				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(ODCIndex));
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
@@ -207,9 +219,10 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			uint16_t countermeas = event->GetPayload<EventType::Counter>();
 
-			if (!SetCounterValueUsingODCIndex(index, countermeas))
+			LOGDEBUG("OS - Received Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(countermeas));
+			if (!SetCounterValueUsingODCIndex(ODCIndex, countermeas))
 			{
-				LOGERROR("Tried to set the value for an invalid counter point index " + std::to_string(index));
+				LOGERROR("Tried to set the value for an invalid counter point index " + std::to_string(ODCIndex));
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
@@ -221,19 +234,21 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			MD3Time eventtime = event->GetTimestamp();
 			uint8_t meas = event->GetPayload<EventType::Binary>();
 
+			LOGDEBUG("OS - Received Event - Binary - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(meas));
+
 			// Check that the passed time is within 30 minutes of the actual time, if not use the current time
 			if (MyPointConf()->OverrideOldTimeStamps)
 			{
 				if (abs((int64_t)(now / 1000) - (int64_t)(eventtime / 1000)) < 60 * 30)
 				{
 					eventtime = now; // msec since epoch.
-					LOGDEBUG("Binary time tag value is too far from current time (>30min) changing to current time. Point index " + std::to_string(index));
+					LOGDEBUG("Binary time tag value is too far from current time (>30min) changing to current time. Point index " + std::to_string(ODCIndex));
 				}
 			}
 
-			if (!SetBinaryValueUsingODCIndex(index, meas, eventtime))
+			if (!SetBinaryValueUsingODCIndex(ODCIndex, meas, eventtime))
 			{
-				LOGERROR("Tried to set the value for an invalid binary point index " + std::to_string(index));
+				LOGERROR("Tried to set the value for an invalid binary point index " + std::to_string(ODCIndex));
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
@@ -263,9 +278,9 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!SetAnalogValueUsingODCIndex(index, (uint16_t)0x8000))
+				if (!SetAnalogValueUsingODCIndex(ODCIndex, (uint16_t)0x8000))
 				{
-					LOGERROR("Tried to set the failure value for an invalid analog point index " + std::to_string(index));
+					LOGERROR("Tried to set the failure value for an invalid analog point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
 				}
 			}
@@ -275,9 +290,9 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!SetCounterValueUsingODCIndex(index, (uint16_t)0x8000))
+				if (!SetCounterValueUsingODCIndex(ODCIndex, (uint16_t)0x8000))
 				{
-					LOGERROR("Tried to set the failure value for an invalid counter point index " + std::to_string(index));
+					LOGERROR("Tried to set the failure value for an invalid counter point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
 				}
 			}
