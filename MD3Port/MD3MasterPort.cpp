@@ -41,6 +41,8 @@ MD3MasterPort::MD3MasterPort(std::string aName, std::string aConfFilename, const
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
 
+	IsOutStation = false;
+
 	LOGDEBUG("MD3Master Constructor - " + aName + " - " + aConfFilename + " Overrides - " + over);
 }
 

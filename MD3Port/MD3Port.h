@@ -102,6 +102,8 @@ protected:
 	TCPClientServer ClientOrServer();
 	bool  IsServer();
 
+	bool IsOutStation = true;
+
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
 	std::function<void(std::string)> SendTCPDataFn = nullptr; // nullptr normally. Set to hook function for testing
 

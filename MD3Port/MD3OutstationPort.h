@@ -36,6 +36,56 @@
 #include "MD3Engine.h"
 #include "MD3Connection.h"
 
+
+class OutstationSystemFlags
+{
+	// MD3 can support 16 bits of status flags, which are reported by Fn52, system flag scan. The first 8 are reserved for MegaData use, only 3 are documented.
+	// The last 8 are contract dependent, we don't know if any are used.
+	// A change in any will set the RSF bit in ANY scan/control replies. So we maintain a separate RSF bit in the structure, which will be reset on a flag scan.
+
+	//TODO: Make sure the RSF bit gets set appropriately in the reply blocks, from a global flag. Reset it in DoSystemFlagScan
+public:
+	bool GetRemoteStatusChangeFlag() { return RSF; };
+
+	// This is calculated by checking the digital bit changed flag, using a method registered with us
+	bool GetDigitalChangedFlag()
+	{
+		if (DCPCalc != nullptr)
+			return DCPCalc();
+
+		LOGERROR("GetDigitalChangedFlag called without a handler being registered");
+		return false;
+	};
+
+	// This is calculated by checking the timetagged data queues, using a method registered with us
+	bool GetTimeTaggedDataAvailableFlag()
+	{
+		if (HRPCalc != nullptr)
+			return HRPCalc();
+
+		LOGERROR("GetTimeTaggedDataAvailableFlag called without a handler being registered");
+		return false;
+	};
+
+	bool GetSystemPoweredUpFlag() { return SPU; };
+	bool GetSystemTimeIncorrectFlag() { return STI; };
+
+	void FlagScanPacketSent() { SPU = false; RSF = false; };
+	void TimePacketReceived() { STI = false; };
+
+	void SetDigitalChangedFlagCalculationMethod(std::function<bool(void)> Calc) { DCPCalc = Calc; };
+	void SetTimeTaggedDataAvailableFlagCalculationMethod(std::function<bool(void)> Calc) { HRPCalc = Calc; };
+
+private:
+	bool RSF = true;                             // All true on start up...
+	std::function<bool(void)> HRPCalc = nullptr; // HRER/TimeTagged Events Pending
+	std::function<bool(void)> DCPCalc = nullptr; // Digital bit has changed and is waiting to be sent
+
+	bool SPU = true; // Bit 16 of Block data, bit 0 of 16 bit flag data
+	bool STI = true; // Bit 17 of Block data, bit 1 of 16 bit flag data
+};
+
+
 class MD3OutstationPort: public MD3Port
 {
 	enum AnalogChangeType { NoChange, DeltaChange, AllChange };
@@ -48,21 +98,11 @@ public:
 	void Enable() override;
 	void Disable() override;
 	void Build() override;
-	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-
-//	template<typename T> void EventT(T& meas, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
-//	template<typename T> void EventQ(T& qual, uint16_t index, const std::string & SenderName, SharedStatusCallback_t pStatusCallback);
-
 	CommandStatus Perform(std::shared_ptr<EventInfo> event, bool waitforresult);
 
-//	CommandStatus Perform(const double & command, size_t index, bool waitforresult);
-	//CommandStatus Perform(const int32_t & command, size_t index, bool waitforresult);
-	//CommandStatus Perform(const int16_t & command, size_t index, bool waitforresult);
-	//CommandStatus Perform(const ControlRelayOutputBlock & command, size_t index, bool waitforresult);
-
-
+	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 	void ProcessMD3Message(MD3Message_t &CompleteMD3Message);
 
 	// Analog
@@ -81,10 +121,8 @@ public:
 	void DoDigitalChangeOnly(MD3BlockFormatted & Header);                       // Fn 8
 	void DoDigitalHRER(MD3BlockFn9 & Header, MD3Message_t& CompleteMD3Message); // Fn 9
 	void Fn9AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
-	void DoDigitalCOSScan(MD3BlockFn10 & Header); // Fn 10
-	void DoDigitalUnconditionalObs(MD3BlockFormatted & Header);
-
-	// Fn 11
+	void DoDigitalCOSScan(MD3BlockFn10 & Header);               // Fn 10
+	void DoDigitalUnconditionalObs(MD3BlockFormatted & Header); // Fn 11
 	void Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header); // Fn 12
 
@@ -105,7 +143,7 @@ public:
 	void DoSystemSignOnControl(MD3BlockFn40MtoS & Header);
 	void DoSetDateTime(MD3BlockFn43MtoS & Header, MD3Message_t& CompleteMD3Message); // Fn 43
 	void DoSetDateTimeNew(MD3BlockFn44MtoS & Header, MD3Message_t & CompleteMD3Message);
-	void DoSystemFlagScan(MD3BlockFormatted & Header, MD3Message_t& CompleteMD3Message); // Fn 52
+	void DoSystemFlagScan(MD3BlockFn52MtoS & Header, MD3Message_t & CompleteMD3Message); // Fn 52
 
 	void SendControlOK(MD3BlockFormatted & Header);             // Fn 15
 	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
@@ -113,6 +151,11 @@ public:
 	std::vector<MD3BinaryPoint> DumpTimeTaggedPointList();
 
 private:
+
+	bool DigitalChangedFlagCalculationMethod(void);
+	bool TimeTaggedDataAvailableFlagCalculationMethod(void);
+
+	OutstationSystemFlags SystemFlags;
 
 	void SocketStateHandler(bool state);
 

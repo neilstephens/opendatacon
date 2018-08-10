@@ -44,7 +44,7 @@
 #define FOMBIT 0x80
 #define APLBIT 0x0080
 #define RSFBIT 0x0040
-#define HCPBIT 0x0020
+#define HRPBIT 0x0020
 #define DCPBIT 0x0010
 #define DIRECTIONBIT 0x80000000
 #define MOREEVENTSBIT 0x0800
@@ -251,7 +251,7 @@ public:
 	// Create a formatted block including checksum
 	// Note if the station address is set to 0x7F (MD3_EXTENDED_ADDRESS_MARKER), then the next data block contains the address.
 	MD3BlockFormatted(uint8_t stationaddress, bool mastertostation, MD3_FUNCTION_CODE functioncode, uint8_t moduleaddress, uint8_t channels, bool lastblock = false,
-		bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
+		bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		// Channels -> 0 on the wire == 1 channel, 15 == 16
 		channels--;
@@ -264,7 +264,7 @@ public:
 		uint32_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
-		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)functioncode << 16 | (uint32_t)moduleaddress << 8 | flags | channels;
@@ -301,13 +301,13 @@ public:
 
 	// Set the RSF flag. This comes from a global flag we maintain, and we set just before we send.
 	// Some of the child classes DONT have this flag, so we need to override to stop them from corrupting data.
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	void SetFlags(bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		uint32_t flags = 0;
 		flags |= RSF ? RSFBIT : 0x0000;
-		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
-		data &= ~(RSFBIT|HCPBIT|DCPBIT); // Clear the bits we are going to set.
+		data &= ~(RSFBIT|HRPBIT|DCPBIT); // Clear the bits we are going to set.
 		data |= flags;
 
 		endbyte &= 0xC0;         // Clear the CRC bits
@@ -321,9 +321,9 @@ public:
 	{
 		return ((data & RSFBIT) == RSFBIT);
 	}
-	bool GetHCP() const
+	bool GetHRP() const
 	{
-		return ((data & HCPBIT) == HCPBIT);
+		return ((data & HRPBIT) == HRPBIT);
 	}
 	bool GetDCP() const
 	{
@@ -393,7 +393,7 @@ public:
 	{
 		return 0;
 	}
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	void SetFlags(bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		// No flags in this formatted packet
 		assert(false);
@@ -407,7 +407,7 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn10(uint8_t stationaddress, bool mastertostation, uint8_t moduleaddress, uint8_t modulecount, bool lastblock, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
+	MD3BlockFn10(uint8_t stationaddress, bool mastertostation, uint8_t moduleaddress, uint8_t modulecount, bool lastblock, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
@@ -417,7 +417,7 @@ public:
 		uint32_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
-		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_CHANGE_OF_STATE << 16 | (uint32_t)moduleaddress << 8 | flags | (modulecount & 0x0F);
@@ -478,7 +478,7 @@ public:
 		// Can be a zero module count
 		return (data & 0x0F);
 	}
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	void SetFlags(bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		// No flags in this formatted packet
 		assert(false);
@@ -493,7 +493,7 @@ public:
 		endbyte = parent.GetEndByte();
 	}
 	MD3BlockFn11StoM(uint8_t stationaddress, uint8_t taggedeventcount, uint8_t digitalsequencenumber, uint8_t modulecount,
-		bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
+		bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		bool mastertostation = false;
 		bool lastblock = false; // There will always be following data, otherwise we send an Digital No Change response
@@ -507,7 +507,7 @@ public:
 		uint32_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
-		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_CHANGE_OF_STATE_TIME_TAGGED << 16 | ((uint32_t)taggedeventcount & 0x0F) << 12 | ((uint32_t)digitalsequencenumber & 0x0F) << 8 | flags | modulecount;
@@ -592,7 +592,7 @@ public:
 		// 1's numbered
 		return (data & 0x0F);
 	}
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	void SetFlags(bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		// No flags in this formatted packet
 		assert(false);
@@ -607,7 +607,7 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn14StoM(uint8_t stationaddress, uint8_t moduleaddress, uint8_t modulecount, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
+	MD3BlockFn14StoM(uint8_t stationaddress, uint8_t moduleaddress, uint8_t modulecount, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		bool lastblock = true;
 		bool mastertostation = false;
@@ -620,14 +620,14 @@ public:
 		uint32_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
-		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_NO_CHANGE_REPLY << 16 | (uint32_t)moduleaddress << 8 | flags | (modulecount & 0x0F);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
-	MD3BlockFn14StoM(uint8_t stationaddress,  uint8_t digitalsequencenumber, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
+	MD3BlockFn14StoM(uint8_t stationaddress,  uint8_t digitalsequencenumber, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		bool lastblock = true;
 		bool mastertostation = false;
@@ -644,7 +644,7 @@ public:
 		uint32_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
-		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
 		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_NO_CHANGE_REPLY << 16 | ((uint32_t)taggedeventcount & 0x0F) << 12 | ((uint32_t)digitalsequencenumber & 0x0F) << 8 | flags | modulecount;
@@ -682,7 +682,7 @@ public:
 		// Regenerate the last byte
 		SetEndByte(FormattedBlock, lastblock);
 	}
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	void SetFlags(bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		assert(false);
 		// No flags in this formatted packet
@@ -727,12 +727,6 @@ public:
 			return false;
 
 		return CheckSumPasses();
-	}
-
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
-	{
-		// No flags in this formatted packet
-		assert(false);
 	}
 };
 // POM Control
@@ -787,12 +781,6 @@ public:
 			return false;
 
 		return true;
-	}
-
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
-	{
-		// No flags in this formatted packet
-		assert(false);
 	}
 };
 // DOM Control
@@ -849,12 +837,6 @@ public:
 			return false;
 
 		return true;
-	}
-
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
-	{
-		// No flags in this formatted packet
-		assert(false);
 	}
 };
 // AOM Control
@@ -922,19 +904,13 @@ public:
 
 		return true;
 	}
-
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
-	{
-		// No flags in this formatted packet
-		assert(false);
-	}
 };
 class MD3BlockFn30StoM: public MD3BlockFormatted
 {
 public:
-	MD3BlockFn30StoM(MD3BlockData& parent, bool APL = false, bool RSF = false, bool HCP = false, bool DCP = false)
+	MD3BlockFn30StoM(MD3BlockData& parent, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
-		// This Blockformat is a copy of the orginating block header data, with the function code changed.
+		// This Blockformat is a copy of the originating block header data, with the function code changed.
 		//
 		// We change the function code, change the direction bit, mark as last block and recalc the checksum.
 		data = parent.GetData();
@@ -947,10 +923,10 @@ public:
 		uint32_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
-		flags |= HCP ? HCPBIT : 0x0000;
+		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
-		data &= ~(APLBIT | RSFBIT | HCPBIT | DCPBIT); // Clear the bits we are going to set.
+		data &= ~(APLBIT | RSFBIT | HRPBIT | DCPBIT); // Clear the bits we are going to set.
 		data |= flags;
 
 		data &= ~((uint32_t)0x0FF << 16 | DIRECTIONBIT);                      // Clear the bits we are going to set.
@@ -1026,6 +1002,11 @@ public:
 
 		return true;
 	}
+	void SetFlags(bool RSF = false, bool HRP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
+	}
 };
 class MD3BlockFn43MtoS: public MD3BlockFormatted
 {
@@ -1054,7 +1035,7 @@ public:
 	{
 		return (data & 0x03FF);
 	}
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
+	void SetFlags(bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		// No flags in this formatted packet
 		assert(false);
@@ -1086,11 +1067,6 @@ public:
 	uint16_t GetMilliseconds() const
 	{
 		return (data & 0x03FF);
-	}
-	void SetFlags(bool RSF = false, bool HCP = false, bool DCP = false)
-	{
-		// No flags in this formatted packet
-		assert(false);
 	}
 };
 class MD3BlockFn52MtoS: public MD3BlockFormatted
@@ -1153,6 +1129,11 @@ public:
 	bool GetSystemTimeIncorrectFlag()
 	{
 		return (data & STIBIT) == STIBIT;
+	}
+	void SetFlags(bool RSF = false, bool HRP = false, bool DCP = false)
+	{
+		// No flags in this formatted packet
+		assert(false);
 	}
 };
 #endif

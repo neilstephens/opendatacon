@@ -51,6 +51,9 @@ MD3OutstationPort::MD3OutstationPort(const std::string & aName, const std::strin
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
 
+	SystemFlags.SetDigitalChangedFlagCalculationMethod(std::bind(&MD3OutstationPort::DigitalChangedFlagCalculationMethod, this));
+	SystemFlags.SetTimeTaggedDataAvailableFlagCalculationMethod(std::bind(&MD3OutstationPort::TimeTaggedDataAvailableFlagCalculationMethod, this));
+
 	LOGDEBUG("MD3Outstation Constructor - " + aName + " - " + aConfFilename + " Overrides - " + over);
 }
 
@@ -251,6 +254,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 				LOGERROR("Tried to set the value for an invalid binary point index " + std::to_string(ODCIndex));
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
+
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
 		}
 		case EventType::ConnectState:

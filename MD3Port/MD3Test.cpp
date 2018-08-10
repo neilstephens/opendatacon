@@ -400,7 +400,7 @@ TEST_CASE("MD3Block - ClassConstructor1")
 	bool lastblock = true;
 	bool APL = false;
 	bool RSF = false;
-	bool HCP = false;
+	bool HRP = false;
 	bool DCP = false;
 
 	MD3BlockArray msg = { 0x7C,0x05,0x20,0x0F,0x52, 0x00 }; // From a packet capture
@@ -417,7 +417,7 @@ TEST_CASE("MD3Block - ClassConstructor1")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
@@ -435,10 +435,10 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	bool lastblock = true;
 	bool APL = false;
 	bool RSF = false;
-	bool HCP = false;
+	bool HRP = false;
 	bool DCP = false;
 
-	MD3BlockFormatted b(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	MD3BlockFormatted b(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -449,12 +449,12 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
 	mastertostation = true;
-	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -465,12 +465,12 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
 	lastblock = false;
-	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -481,12 +481,12 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
 	channels = 1;
-	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -497,12 +497,12 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
 	moduleaddress = 0xFF;
-	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -513,12 +513,12 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
 	stationaddress = 0x7F;
-	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -529,14 +529,14 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
 	stationaddress = 0x01;
 	moduleaddress = 0x01;
 	APL = true;
-	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -547,12 +547,12 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
 	RSF = true;
-	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -563,12 +563,12 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
-	HCP = true;
-	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	HRP = true;
+	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -579,12 +579,12 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 
 	DCP = true;
-	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HCP, DCP);
+	b = MD3BlockFormatted(stationaddress, mastertostation, functioncode, moduleaddress, channels, lastblock, APL, RSF, HRP, DCP);
 
 	REQUIRE(b.GetStationAddress() == stationaddress);
 	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
@@ -595,7 +595,7 @@ TEST_CASE("MD3Block - ClassConstructor2")
 	REQUIRE(b.IsFormattedBlock());
 	REQUIRE(b.GetAPL() == APL);
 	REQUIRE(b.GetRSF() == RSF);
-	REQUIRE(b.GetHCP() == HCP);
+	REQUIRE(b.GetHRP() == HRP);
 	REQUIRE(b.GetDCP() == DCP);
 	REQUIRE(b.CheckSumPasses());
 }
@@ -1694,7 +1694,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	const std::string DesiredResult4 = BuildHexStringFromASCIIHexString("fc0b24002f00" "5aefcc809300" "22fbafff9a00" "00012200a900" "afff0000e600");
 
-	REQUIRE(Response == DesiredResult4);
+	REQUIRE(Response == DesiredResult4); // The RSF, HRP and DCP flag value will now be valid in all tests - need to check the comparison data!
 
 	//-----------------------------------------
 	// Get the single event left in the queue
@@ -2208,8 +2208,93 @@ TEST_CASE("Station - Multi-drop TCP Test")
 }
 TEST_CASE("Station - System Flag Scan Test")
 {
-	//TODO: Station - System Flag Scan Poll Test
-	REQUIRE(false);
+	// Station - System Flag Scan Poll Test
+	// There are only two flags that matter - we don't know if there are any contract depended ones...
+	// System powered Up and System Time Incorrect.
+	// The first remains set until a flag scan, the second until a time set command.
+	// If we receive a system powered up status from a connected Master - through ODC, then we should set the SPU flag.
+	// For this test, makes sure both are set on start up, then do what is necessary to clear them and then check that this has happened.
+
+	STANDARD_TEST_SETUP();
+	TEST_MD3OSPort(Json::nullValue);
+
+	MD3OSPort->Enable();
+	uint64_t currenttime = MD3Now();
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+
+	// Do a "Normal" analog scan command, and make sure that the RSF bit in the response is set - for each packet that carries that bit???
+	MD3BlockFormatted analogcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
+	output << analogcommandblock.ToBinaryString();
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	MD3BlockFormatted respana = MD3BlockFormatted(MD3BlockData(Response.substr(0,6)));
+
+	REQUIRE(respana.CheckSumPasses() == true);
+	REQUIRE(respana.GetRSF() == true);
+	REQUIRE(respana.GetDCP() == true);  // Changed digitals available
+	REQUIRE(respana.GetHRP() == false); // Time tagged digitals available
+
+	Response = "Not Set";
+
+	// FlagScan command (Fn 52), Station 0x7C
+	MD3BlockFn52MtoS commandblock(0x7C);
+
+	// Send the Command
+	output << commandblock.ToBinaryString();
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	MD3BlockFn52StoM resp = MD3BlockFn52StoM(MD3BlockData(Response));
+
+	REQUIRE(resp.CheckSumPasses() == true);
+	REQUIRE(resp.GetSystemPoweredUpFlag() == true);
+	REQUIRE(resp.GetSystemTimeIncorrectFlag() == true);
+
+	Response = "Not Set";
+
+	// Now read again, the PUF should be false.
+	// Send the Command (again)
+	output << commandblock.ToBinaryString();
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	MD3BlockFn52StoM resp2 = MD3BlockFn52StoM(MD3BlockData(Response));
+
+	REQUIRE(resp2.CheckSumPasses() == true);
+	REQUIRE(resp2.GetSystemPoweredUpFlag() == false);
+	REQUIRE(resp2.GetSystemTimeIncorrectFlag() == true);
+
+	Response = "Not Set";
+
+	// Now send a time command, so the STI flag is cleared.
+	MD3BlockFn43MtoS timecommandblock(0x7C, currenttime % 1000);
+	output << timecommandblock.ToBinaryString();
+	MD3BlockData datablock((uint32_t)(currenttime / 1000), true);
+	output << datablock.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	REQUIRE(Response[0] == (char)0xFC);
+	REQUIRE(Response[1] == (char)0x0F); // OK Command
+
+	Response = "Not Set";
+
+	// Now scan again and check the STI flag has been cleared.
+	// Send the Command (again)
+	output << commandblock.ToBinaryString();
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	MD3BlockFn52StoM resp3 = MD3BlockFn52StoM(MD3BlockData(Response));
+
+	REQUIRE(resp3.CheckSumPasses() == true);
+	REQUIRE(resp3.GetSystemPoweredUpFlag() == false);
+	REQUIRE(resp3.GetSystemTimeIncorrectFlag() == false);
+
+	TestTearDown();
 }
 #pragma endregion
 }

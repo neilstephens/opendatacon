@@ -217,7 +217,7 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			break;
 		case SYSTEM_FLAG_SCAN:
 			ExpectedMessageSize = CompleteMD3Message.size(); // Variable size
-			DoSystemFlagScan(Header, CompleteMD3Message);
+			DoSystemFlagScan(static_cast<MD3BlockFn52MtoS&>(Header), CompleteMD3Message);
 			break;
 		case LOW_RES_EVENTS_LIST_SCAN:
 			NotImplemented = true;
@@ -238,6 +238,56 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			" Function - " + std::to_string(Header.GetFunctionCode()));
 	}
 }
+
+#pragma region Worker Methods
+// Dumps the points out in a list, only used for UnitTests
+std::vector<MD3BinaryPoint> MD3OutstationPort::DumpTimeTaggedPointList()
+{
+	MD3BinaryPoint CurrentPoint;
+	std::vector<MD3BinaryPoint> PointList(50);
+
+	if (MyConf()->pPointConf->NewDigitalCommands)
+	{
+		while (pBinaryModuleTimeTaggedEventQueue->sync_front(CurrentPoint))
+		{
+			PointList.emplace_back(CurrentPoint);
+			pBinaryModuleTimeTaggedEventQueue->sync_pop();
+		}
+	}
+	else
+	{
+		while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint))
+		{
+			PointList.emplace_back(CurrentPoint);
+			pBinaryTimeTaggedEventQueue->sync_pop();
+		}
+	}
+	return PointList;
+}
+// This method is passed to the SystemFlags variable to do the necessary calculation
+// Access through SystemFlags.GetDigitalChangedFlag()
+bool MD3OutstationPort::DigitalChangedFlagCalculationMethod(void)
+{
+	// Return true if there is unsent digital changes
+	return (CountBinaryBlocksWithChanges() > 0);
+}
+// This method is passed to the SystemFlags variable to do the necessary calculation
+// Access through SystemFlags.GetTimeTaggedDataAvailableFlag()
+bool MD3OutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
+{
+	if (MyConf()->pPointConf->NewDigitalCommands)
+	{
+		return !pBinaryModuleTimeTaggedEventQueue->sync_empty();
+	}
+	else
+	{
+		return !pBinaryTimeTaggedEventQueue->sync_empty();
+	}
+	return false;
+}
+
+#pragma endregion
+
 #pragma region ANALOG and COUNTER
 // Function 5
 void MD3OutstationPort::DoAnalogUnconditional(MD3BlockFormatted &Header)
@@ -380,7 +430,10 @@ void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE funct
 	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, functioncode, ModuleAddress, Channels);
+
+	MD3BlockFormatted FormattedBlock = MD3BlockFormatted(StationAddress, false, functioncode, ModuleAddress, Channels);
+	FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 	ResponseMD3Message.push_back(FormattedBlock);
 
 	assert(Channels == Analogs.size());
@@ -401,7 +454,9 @@ void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t Station
 	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_DELTA_SCAN, ModuleAddress, Channels);
+	MD3BlockFormatted FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_DELTA_SCAN, ModuleAddress, Channels);
+	FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 	ResponseMD3Message.push_back(FormattedBlock);
 
 	assert(Channels == Deltas.size());
@@ -423,7 +478,9 @@ void MD3OutstationPort::SendAnalogNoChange(uint8_t StationAddress, uint8_t Modul
 	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_NO_CHANGE_REPLY, ModuleAddress, Channels, true);
+	MD3BlockFormatted FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_NO_CHANGE_REPLY, ModuleAddress, Channels, true);
+	FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 	ResponseMD3Message.push_back(FormattedBlock);
 	SendMD3Message(ResponseMD3Message);
 }
@@ -470,7 +527,9 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
 
 	if (ChangedBlocks == 0) // No change
 	{
-		MD3BlockData FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+		FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		ResponseMD3Message.push_back(FormattedBlock);
 
 		SendMD3Message(ResponseMD3Message);
@@ -647,7 +706,9 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 
 	if (ChangedBlocks == false) // No change
 	{
-		MD3BlockData FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), (uint8_t)0);
+		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), (uint8_t)0);
+		FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		ResponseMD3Message.push_back(FormattedBlock);
 
 		SendMD3Message(ResponseMD3Message);
@@ -715,6 +776,8 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 		// No change block
 		LOGDEBUG("OS - DoDigitalUnconditional - Nothing to send");
 		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetDigitalSequenceNumber());
+		FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		ResponseMD3Message.push_back(FormattedBlock);
 	}
 	else
@@ -768,6 +831,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 			MD3BlockFn11StoM &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
 			firstblockref.SetModuleCount(ModuleCount);           // The number of blocks taking away the header...
 			firstblockref.SetTaggedEventCount(TaggedEventCount); // Update to the number we are sending
+			firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
 
 			MD3BlockData &lastblock = ResponseMD3Message.back();
 			lastblock.MarkAsEndOfMessageBlock();
@@ -780,19 +844,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
 	LastDigitialScanResponseMD3Message = ResponseMD3Message;
 }
-// Dumps the points out in a list, only used for UnitTests
-std::vector<MD3BinaryPoint> MD3OutstationPort::DumpTimeTaggedPointList()
-{
-	MD3BinaryPoint CurrentPoint;
-	std::vector<MD3BinaryPoint> PointList(50);
 
-	while (pBinaryModuleTimeTaggedEventQueue->sync_front(CurrentPoint))
-	{
-		PointList.emplace_back(CurrentPoint);
-		pBinaryModuleTimeTaggedEventQueue->sync_pop();
-	}
-	return PointList;
-}
 void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int &EventCount, std::vector<uint16_t> &ResponseWords)
 {
 	MD3BinaryPoint CurrentPoint;
@@ -870,11 +922,13 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 
 	BuildScanReturnBlocksFromList(ModuleList, Header.GetModuleCount(), Header.GetStationAddress(), true, ResponseMD3Message);
 
-	FormattedBlock.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1); // The number of blocks taking away the header...
-
 	// Mark the last block
 	if (ResponseMD3Message.size() != 0)
 	{
+		MD3BlockFn11StoM &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
+		firstblockref.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1); // The number of blocks taking away the header...
+		firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		MD3BlockData &lastblock = ResponseMD3Message.back();
 		lastblock.MarkAsEndOfMessageBlock();
 	}
@@ -888,7 +942,6 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 
 // This will be called when we get a zero sequence number for Fn 11 or 12. It is sent on Master start-up to ensure that all data is sent in following
 // change only commands - if there are sufficient modules
-
 void MD3OutstationPort::MarkAllBinaryBlocksAsChanged()
 {
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
@@ -1030,7 +1083,7 @@ void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int Star
 	BuildScanReturnBlocksFromList(ModuleList, NumberOfDataBlocks, StationAddress,false, ResponseMD3Message);
 }
 
-// Fn 7, 8 and 10
+// Fn 7, 8 and 10, 11 and 12 NOT Fn 9
 void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, MD3Message_t & ResponseMD3Message)
 {
 	// For each module address, or the max we can send
@@ -1080,6 +1133,10 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 	// Format Fn 11 and 12 may not be the end of packet
 	if ((ResponseMD3Message.size() != 0) && !FormatForFn11and12)
 	{
+		// The header for Fn7, Fn 8 and Fn 10 need this. NOT Fn9, Fn11 and Fn12
+		MD3BlockFormatted &firstblockref = static_cast<MD3BlockFormatted&>(ResponseMD3Message.front());
+		firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		MD3BlockData &lastblock = ResponseMD3Message.back();
 		lastblock.MarkAsEndOfMessageBlock();
 	}
@@ -1485,6 +1542,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &Co
 			if (Header.GetStationAddress() != 0)
 				SendControlOrScanRejected(Header);
 		}
+		SystemFlags.TimePacketReceived();
 	}
 }
 // Function 44
@@ -1552,12 +1610,12 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t 
 				SendControlOrScanRejected(Header);
 		}
 	}
+	SystemFlags.TimePacketReceived();
 }
 // Function 52
-void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, MD3Message_t &CompleteMD3Message)
+void MD3OutstationPort::DoSystemFlagScan(MD3BlockFn52MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// Normally will be just one block and the reply will be one block, but can be more than one, and is contract dependent.
-	//
 	// As far as we can tell AusGrid does not have any extra packets
 	//
 	// The second 16 bits of the response are the flag bits. A change in any will set the RSF bit in ANY scan/control replies.
@@ -1571,16 +1629,18 @@ void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, MD3Message_t
 		return;
 	}
 
-	//TODO: SJE don’t think the flag scan will be passed through ODC, will just mirror what we know about the outstation
+	// The flag scan will NOT be passed through ODC, will just mirror what we know about the outstation
 	MD3Message_t ResponseMD3Message;
 
-	// Change the direction, set the flag data.
-	MD3BlockFormatted RetBlock(Header.GetStationAddress(), false, SYSTEM_FLAG_SCAN, 0,0);
-	// Need to set the second word values to the flag values.
+	// Create the response packet
+	MD3BlockFn52StoM RetBlock(Header);
+
+	RetBlock.SetSystemFlags(SystemFlags.GetSystemPoweredUpFlag(), SystemFlags.GetSystemTimeIncorrectFlag());
 
 	ResponseMD3Message.push_back(RetBlock);
-	// Set the flags????
 	SendMD3Message(ResponseMD3Message);
+
+	SystemFlags.FlagScanPacketSent();
 }
 
 // Function 15 Output
@@ -1589,7 +1649,7 @@ void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
 	// The Control OK block seems to return the originating message first block, but with the function code changed to 15
 	MD3Message_t ResponseMD3Message;
 
-	// The MD3BlockFn15StoM does the changes we need for us.
+	// The MD3BlockFn15StoM does the changes we need for us. The control blocks do not have space for the System flags to be returned...
 	MD3BlockFn15StoM FormattedBlock(Header);
 	ResponseMD3Message.push_back(FormattedBlock);
 	SendMD3Message(ResponseMD3Message);
@@ -1602,6 +1662,8 @@ void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
 
 	// The MD3BlockFn30StoM does the changes we need for us.
 	MD3BlockFn30StoM FormattedBlock(Header);
+	FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 	ResponseMD3Message.push_back(FormattedBlock);
 	SendMD3Message(ResponseMD3Message);
 }
