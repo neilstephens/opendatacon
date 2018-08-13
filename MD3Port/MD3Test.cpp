@@ -1050,7 +1050,7 @@ TEST_CASE("Station - AnalogUnconditionalF5")
 	// Send the Analog Unconditional command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc05200f0d00" // Echoed block
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc05205f1500" // Echoed block
 		                                                             "100011018400" // Channel 0 and 1
 		                                                             "12021303b700" // Channel 2 and 3 etc
 		                                                             "14041505b900"
@@ -1105,7 +1105,7 @@ TEST_CASE("Station - CounterScanFn30")
 	// Send the Analog Unconditional command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc1f200f2200" // Echoed block
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc1f205f3a00" // Echoed block
 		                                                             "100011018400" // Channel 0 and 1
 		                                                             "12021303b700" // Channel 2 and 3 etc
 		                                                             "14041505b900"
@@ -1138,7 +1138,7 @@ TEST_CASE("Station - CounterScanFn30")
 	// Send the Analog Unconditional command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1f3d0f1200" // Echoed block
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1f3d5f0a00" // Echoed block
 		                                                              "100011018400" // Channel 0 and 1
 		                                                              "12021303b700" // Channel 2 and 3 etc
 		                                                              "14041505b900"
@@ -1193,15 +1193,15 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	// Send the command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult1 = { (char)0xfc,0x05,0x20,0x0f,0x0d,0x00, // Echoed block
-		                               0x10,0x00,0x11,0x01,(char)0x84,0x00, // Channel 0 and 1
-		                               0x12,0x02,0x13,0x03,(char)0xb7,0x00, // Channel 2 and 3 etc
-		                               0x14,0x04,0x15,0x05,(char)0xb9,0x00,
-		                               0x16,0x06,0x17,0x07,(char)0x8a,0x00,
-		                               0x18,0x08,0x19,0x09,(char)0xa5,0x00,
-		                               0x1A,0x0A,0x1B,0x0B,(char)0x96,0x00,
-		                               0x1C,0x0C,0x1D,0x0D,(char)0x98,0x00,
-		                               0x1E,0x0E,0x1F,0x0F,(char)0xeb,0x00 };
+	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc05205f1500" // Echoed block
+		                                                              "100011018400" // Channel 0 and 1
+		                                                              "12021303b700" // Channel 2 and 3 etc
+		                                                              "14041505b900"
+		                                                              "160617078a00"
+		                                                              "18081909a500"
+		                                                              "1A0A1B0B9600"
+		                                                              "1C0C1D0D9800"
+		                                                              "1E0E1F0Feb00");
 
 	// We should get an identical response to an analog unconditional here
 	REQUIRE(Response == DesiredResult1);
@@ -1221,11 +1221,11 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = { (char)0xfc,0x06,0x20,0x0f,0x29,0x00,
-		                               0x32,(char)0xce,0x32,(char)0xce,(char)0x8b,0x00,
-		                               0x32,0x00,0x00,0x00,(char)0x92,0x00,
-		                               0x00,0x00,0x00,0x00,(char)0xbf,0x00,
-		                               0x00,0x00,0x00,0x00,(char)0xff,0x00 };
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc06205f3100"
+		                                                              "32ce32ce8b00"
+		                                                              "320000009200"
+		                                                              "00000000bf00"
+		                                                              "00000000ff00");
 
 	// Now a delta scan
 	REQUIRE(Response == DesiredResult2);
@@ -1234,7 +1234,7 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult3 = { (char)0xfc,0x0d,0x20,0x0f,0x40,0x00 };
+	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0d205f5800");
 
 	// Now no changes so should get analog no change response.
 	REQUIRE(Response == DesiredResult3);
@@ -1283,7 +1283,7 @@ TEST_CASE("Station - DigitalUnconditionalFn7")
 	// Address 21, only 1 bit, set by default - check bit order
 	// Address 22, set to alternating on/off above
 	// Address 23, all on by default
-	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0721023e00" "7c2180008200" "7c22aaaab900" "7c23ffffc000");
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0721721f00" "7c2180008200" "7c22aaaab900" "7c23ffffc000");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -1311,7 +1311,7 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0722012500" "7c22ffff9c00" "7c23ffffc000"); // All on
+	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0722513d00" "7c22ffff9c00" "7c23ffffc000"); // All on
 
 	REQUIRE(Response == DesiredResult1);
 
@@ -1336,7 +1336,7 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0822003c00"   // Return function 8, Channels == 0, so 1 block to follow.
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0822701d00"   // Return function 8, Channels == 0, so 1 block to follow.
 		                                                              "7c22aaaaf900"); // Values set above
 
 	REQUIRE(Response == DesiredResult2);
@@ -1347,7 +1347,7 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e22025900"); // Digital No Change response
+	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e22727800"); // Digital No Change response
 
 	REQUIRE(Response == DesiredResult3);
 
@@ -1453,8 +1453,8 @@ TEST_CASE("Station - DigitalHRERFn9")
 	// Cheat and write directly to the HRER queue
 	MD3Time changedtime = MD3Now();
 
-	MD3BinaryPoint pt1(1, 34, 1, 1, true, changedtime);
-	MD3BinaryPoint pt2(2, 34, 2, 0, true, (MD3Time)(changedtime+32000));
+	MD3BinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true, changedtime);
+	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, (MD3Time)(changedtime + 32000));
 	MD3OSPort->AddToDigitalEvents(pt1);
 	MD3OSPort->AddToDigitalEvents(pt2);
 
@@ -1462,7 +1462,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	REQUIRE(Response[2] == 0x58); // Seq 5, MEV == 1	 The long delay will require another request from the master
+	REQUIRE(Response[2] == 0x58); // Seq 5, MEV == 1	 The long period between events will require another request from the master
 	REQUIRE(Response[3] == 1);
 
 	REQUIRE(Response.size() == 18); // DecodeFnResponse(Response)
@@ -1487,7 +1487,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e58004900"); // Should get a command rejected response
+	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e58505100"); // Should get a command rejected response
 	REQUIRE(Response == DesiredResult3);
 
 	TestTearDown();
@@ -1515,7 +1515,7 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0A00023800" "7c2180008200" "7c22ffffdc00");
+	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0A00522000" "7c2180008200" "7c22ffffdc00");
 
 	REQUIRE(Response == DesiredResult1);
 
@@ -1535,7 +1535,7 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0a25050d00"
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0a25452400"
 		                                                              "7c25ffff9300"
 		                                                              "7c26ff00b000"
 		                                                              "7c3fffffbc00"
@@ -1549,7 +1549,7 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e00006500"); // Digital No Change response
+	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc0e00404c00"); // Digital No Change response
 
 	REQUIRE(Response == DesiredResult3);
 
@@ -1579,7 +1579,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Will get all data changing this time around
-	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01060100" "210080008100" "2200ffff8300" "2300ffffa200" "2500ffff8900" "2600ff00b600" "3f00ffffca00");
+	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01462800" "210080008100" "2200ffff8300" "2300ffffa200" "2500ffff8900" "2600ff00b600" "3f00ffffca00");
 
 	REQUIRE(Response == DesiredResult1);
 
@@ -1589,7 +1589,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0e02004100"); // Digital No Change response for Fn 11 - different for 7,8,10
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0e02406800"); // Digital No Change response for Fn 11 - different for 7,8,10
 
 	REQUIRE(Response == DesiredResult2);
 
@@ -1681,9 +1681,9 @@ TEST_CASE("Station - DigitalCOSFn11")
 	// Need to test the code path where the delta between two records is > 255 milliseconds. Also when it is more than 0xFFFF
 	// Cheat and write directly to the DCOS queue
 
-	MD3BinaryPoint pt1(1, 34, 1, 1, true,  changedtime);
-	MD3BinaryPoint pt2(2, 34, 2, 0, true, (MD3Time)(changedtime + 256));
-	MD3BinaryPoint pt3(3, 34, 3, 1, true, (MD3Time)(changedtime + 0x20000)); // Time gap too big, will require another Master request
+	MD3BinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true,  changedtime);
+	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, (MD3Time)(changedtime + 256));
+	MD3BinaryPoint pt3(3, 34, 3, 0, TIMETAGGEDINPUT, 1, true, (MD3Time)(changedtime + 0x20000)); // Time gap too big, will require another Master request
 	MD3OSPort->AddToDigitalEvents(pt1);
 	MD3OSPort->AddToDigitalEvents(pt2);
 	MD3OSPort->AddToDigitalEvents(pt3);
@@ -1692,7 +1692,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult4 = BuildHexStringFromASCIIHexString("fc0b24002f00" "5aefcc809300" "22fbafff9a00" "00012200a900" "afff0000e600");
+	const std::string DesiredResult4 = BuildHexStringFromASCIIHexString("fc0b24603f00" "5aefcc809300" "22fbafff9a00" "00012200a900" "afff0000e600");
 
 	REQUIRE(Response == DesiredResult4); // The RSF, HRP and DCP flag value will now be valid in all tests - need to check the comparison data!
 
@@ -1702,7 +1702,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	output << commandblock.ToBinaryString();
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult5 = BuildHexStringFromASCIIHexString("fc0b15000400" "5aefcd03a500" "00012243ad00" "afff0000e600");
+	const std::string DesiredResult5 = BuildHexStringFromASCIIHexString("fc0b15402d00" "5aefcd03a500" "00012243ad00" "afff0000e600");
 
 	REQUIRE(Response == DesiredResult5);
 
@@ -1729,7 +1729,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01032d00" "210080008100" "2200ffff8300" "2300ffffe200");
+	const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("fc0b01533500" "210080008100" "2200ffff8300" "2300ffffe200");
 
 	REQUIRE(Response == DesiredResult1);
 
@@ -1766,7 +1766,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0b02031b00" "210080008100" "2200aaaaa600" "2300ffffe200");
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0b02733a00" "210080008100" "2200aaaaa600" "2300ffffe200");
 
 	REQUIRE(Response == DesiredResult2);
 
@@ -1856,7 +1856,7 @@ TEST_CASE("Station - POMControlFn17")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e25014b00");
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e25515300");
 
 	REQUIRE(Response == DesiredResult2); // Control/Scan Rejected Command
 
@@ -1869,7 +1869,7 @@ TEST_CASE("Station - POMControlFn17")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24015900");
+	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24514100");
 
 	REQUIRE(Response == DesiredResult3); // Control/Scan Rejected Command
 
@@ -1927,7 +1927,7 @@ TEST_CASE("Station - DOMControlFn19")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e250a5300");
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e255a4b00");
 
 	REQUIRE(Response == DesiredResult2); // Control/Scan Rejected Command
 
@@ -1940,7 +1940,7 @@ TEST_CASE("Station - DOMControlFn19")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e240b5a00");
+	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e245b4200");
 
 	REQUIRE(Response == DesiredResult3); // Control/Scan Rejected Command
 
@@ -1983,7 +1983,7 @@ TEST_CASE("Station - AOMControlFn23")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e27016f00");
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e27517700");
 
 	REQUIRE(Response == DesiredResult2); // Control/Scan Rejected Command
 
@@ -1996,7 +1996,7 @@ TEST_CASE("Station - AOMControlFn23")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24015900");
+	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e24514100");
 
 	REQUIRE(Response == DesiredResult3); // Control/Scan Rejected Command
 
@@ -3320,8 +3320,84 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 }
 TEST_CASE("Master - System Flag Scan Poll Test")
 {
-	//TODO: Master - System Flag Scan Poll Test
-	REQUIRE(false);
+	STANDARD_TEST_SETUP();
+
+	Json::Value MAportoverride;
+
+	TEST_MD3MAPort(MAportoverride);
+
+	Json::Value OSportoverride;
+	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["StandAloneOutstation"] = false;
+	TEST_MD3OSPort(OSportoverride);
+
+	START_IOS(1);
+
+	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
+	// Usually is a cross subscription, where each subscribes to the other.
+	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+
+	MD3OSPort->Enable();
+	MD3MAPort->Enable();
+
+	MD3MAPort->EnablePolling(false); // Don't want the timer triggering this. We will call manually.
+
+	// Hook the output functions
+	std::string OSResponse = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+
+	std::string MAResponse = "Not Set";
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+
+	asio::streambuf OSwrite_buffer;
+	std::ostream OSoutput(&OSwrite_buffer);
+
+	asio::streambuf MAwrite_buffer;
+	std::ostream MAoutput(&MAwrite_buffer);
+
+	INFO("Flag Scan Poll Command");
+	{
+		// Poll group 5, we want to send out the poll command from the master, then check the response.
+
+		MD3MAPort->DoPoll(5); // Expect the RTU to be in startup mode with flags set
+
+		Wait(IOS, 1);
+
+		// We check the command, but it does not go anywhere, we inject the expected response below.
+		const std::string DesiredResult1 = BuildHexStringFromASCIIHexString("7c3400006100");
+
+		REQUIRE(MAResponse == DesiredResult1);
+
+		MAResponse = "Not Set";
+
+
+		MD3BlockFn52StoM commandblock = MD3BlockFn52StoM(MD3BlockFormatted(0x7C, true, SYSTEM_FLAG_SCAN, 0x22, 1, true)); // Check out methods give the same result
+		bool SPU = true;                                                                                                  // System power on flag - should trigger unconditional scans
+		bool STI = true;                                                                                                  // System time invalid - should trigger a time command
+		commandblock.SetSystemFlags(SPU, STI);
+
+		MAoutput << commandblock.ToBinaryString();
+		MAResponse = "Not Set";
+
+		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
+
+		Wait(IOS, 4);
+
+		// There are a lot of things to check  here depending on what functionality is enabled.
+		// A time response, all digital scans, all analog scans...
+
+		// We should get a time set command back first (little dependent on scheduling?
+		REQUIRE(MAResponse[0] == 0x7c);
+		REQUIRE(MAResponse[1] == 0x2b);
+		REQUIRE(MAResponse.size() == 12);
+
+		// Catching the rest is difficult!
+	}
+	work.reset(); // Indicate all work is finished.
+
+	STOP_IOS();
+	TestTearDown();
 }
 TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 {
@@ -3442,6 +3518,8 @@ const char *md3masterconffile = R"011(
 
 TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 {
+	// This is not a REAL TEST, just for testing against a unit. Will always pass..
+
 	// So we have an actual RTU connected to the network we are on, given the parameters in the config file above.
 	STANDARD_TEST_SETUP();
 
@@ -3473,12 +3551,12 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 
 	// Read the current analog state.
 //	MD3MAPort->DoPoll(2);
-	Wait(IOS, 5);
+	Wait(IOS, 2);
 
 	// Do a time set command
 	MD3MAPort->DoPoll(4);
 
-	Wait(IOS, 50);
+	Wait(IOS, 2);
 
 	// Send a POM command by injecting an ODC event
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
@@ -3500,7 +3578,7 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	// Send an ODC DigitalOutput command to the Master.
 //	MD3MAPort->Event(event, "TestHarness", pStatusCallback);
 
-	Wait(IOS, 5);
+	Wait(IOS, 2);
 
 	work.reset(); // Indicate all work is finished.
 
@@ -3510,6 +3588,8 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 
 TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 {
+	// This is not a REAL TEST, just for testing against a unit. Will always pass..
+
 	// So we are pretending to be a standalone RTU given the parameters in the config file above.
 	STANDARD_TEST_SETUP();
 
@@ -3545,7 +3625,7 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 	MD3OSPort->Enable();
 
 
-	Wait(IOS, 120); // We just run for a period and see if we get connected and scanned.
+	Wait(IOS, 2); // We just run for a period and see if we get connected and scanned.
 
 
 	work.reset(); // Indicate all work is finished.

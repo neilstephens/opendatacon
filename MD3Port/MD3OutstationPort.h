@@ -43,7 +43,6 @@ class OutstationSystemFlags
 	// The last 8 are contract dependent, we don't know if any are used.
 	// A change in any will set the RSF bit in ANY scan/control replies. So we maintain a separate RSF bit in the structure, which will be reset on a flag scan.
 
-	//TODO: Make sure the RSF bit gets set appropriately in the reply blocks, from a global flag. Reset it in DoSystemFlagScan
 public:
 	bool GetRemoteStatusChangeFlag() { return RSF; };
 

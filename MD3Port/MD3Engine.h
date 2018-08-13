@@ -300,7 +300,6 @@ public:
 	}
 
 	// Set the RSF flag. This comes from a global flag we maintain, and we set just before we send.
-	// Some of the child classes DONT have this flag, so we need to override to stop them from corrupting data.
 	void SetFlags(bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		uint32_t flags = 0;

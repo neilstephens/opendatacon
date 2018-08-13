@@ -1075,20 +1075,49 @@ bool MD3MasterPort::ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3M
 	// If any bit in the 16 bit status word changes (in the RTU), then the RSF flag bit (present in some messages) will be set.
 	// Executing a FlagScan will reset this bit in the RTU, so will then be 0 in those messages.
 
-	//uint8_t ContractFlags = Header.GetByte(3);
-	//uint8_t MegaDataFlags = Header.GetByte(2);
-
 	// Use the block access method to get at the bits.
 	MD3BlockFn52StoM Header52(Header);
 
 	bool SystemPoweredUpFlag = Header52.GetSystemPoweredUpFlag();
 	bool SystemTimeIncorrectFlag = Header52.GetSystemTimeIncorrectFlag();
 
-	//TODO: Trigger a full scan if we detect system powered up flag
-	//TODO: Trigger a time send if we detect an incorrect system time flag
+	LOGDEBUG("Got Flag Scan response, " + std::to_string(CompleteMD3Message.size()) + " blocks, System Powered Up Flag : " + std::to_string(SystemPoweredUpFlag) + ", System TimeIncorrect Flag : " + std::to_string(SystemTimeIncorrectFlag));
 
-	LOGDEBUG("Got Flag Scan response, " + std::to_string(CompleteMD3Message.size()) + " blocks, System Powered Up Flag : "+std::to_string(SystemPoweredUpFlag) + ", System TimeIncorrect Flag : " + std::to_string(SystemTimeIncorrectFlag));
+	if (SystemTimeIncorrectFlag)
+	{
+		// Find if there is a poll group time set command, if so, do that poll (send the time)
+		for (auto pg : MyPointConf()->PollGroups)
+		{
+			if (pg.second.polltype == TimeSetCommand)
+			{
+				this->DoPoll(pg.second.ID);
+			}
+			;
+		}
+	}
 
+	if (SystemPoweredUpFlag)
+	{
+		// Launch all digital polls/scans
+		for (auto pg : MyPointConf()->PollGroups)
+		{
+			if (pg.second.polltype == BinaryPoints)
+			{
+				this->DoPoll(pg.second.ID);
+			}
+			;
+		}
+
+		// Launch all analog polls/scans
+		for (auto pg : MyPointConf()->PollGroups)
+		{
+			if (pg.second.polltype == AnalogPoints)
+			{
+				this->DoPoll(pg.second.ID);
+			}
+			;
+		}
+	}
 	return (Header.GetFunctionCode() == SYSTEM_FLAG_SCAN);
 }
 
@@ -1101,152 +1130,164 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 	if (!enabled) return;
 	LOGDEBUG("DoPoll : " + std::to_string(pollgroup));
 
-	if (MyPointConf()->PollGroups[pollgroup].polltype == AnalogPoints)
+	switch (MyPointConf()->PollGroups[pollgroup].polltype)
 	{
-		ModuleMapType::iterator mait = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
-
-		// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
-		int ModuleAddress = mait->first;
-		int Channels = mait->second;
-
-		if (MyPointConf()->PollGroups[pollgroup].ModuleAddresses.size() > 1)
+		case AnalogPoints:
 		{
-			LOGERROR("Analog Poll group "+std::to_string(pollgroup)+" is configured for more than one MD3 address. Please create another poll group.");
-		}
+			ModuleMapType::iterator mait = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
 
-		// We need to do an analog unconditional on start up, until all the points have a valid value - even 0x8000 for does not exist.
-		//TODO: To do this we check the hasbeenset flag, which will be false on start up, and also set to false on comms lost event - kind of like a quality.
-		bool UnconditionalCommandRequired = false;
-		for (int idx = 0; idx < Channels; idx++)
-		{
-			uint16_t wordres;
-			bool hasbeenset;
-			bool res = GetAnalogValueUsingMD3Index(ModuleAddress, idx, wordres, hasbeenset);
-			if (res && !hasbeenset)
-				UnconditionalCommandRequired = true;
-		}
+			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
+			int ModuleAddress = mait->first;
+			int Channels = mait->second;
 
-		if (UnconditionalCommandRequired || MyPointConf()->PollGroups[pollgroup].ForceUnconditional)
-		{
-			// Use Unconditional Request Fn 5
-			LOGDEBUG("Poll Issued a Analog Unconditional Command");
-
-			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL, ModuleAddress, Channels, true);
-			QueueMD3Command(commandblock,nullptr);
-		}
-		else
-		{
-			LOGDEBUG("Poll Issued a Analog Delta Command");
-			// Use a delta command Fn 6
-			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_DELTA_SCAN, ModuleAddress, Channels, true);
-			QueueMD3Command(commandblock, nullptr);
-		}
-	}
-
-	if (MyPointConf()->PollGroups[pollgroup].polltype == BinaryPoints)
-	{
-		if (MyPointConf()->NewDigitalCommands) // Old are 7,8,9,10 - New are 11 and 12
-		{
-			// If sequence number is zero - it means we have just started up, or communications re-established. So we dont have a full copy
-			// of the binary data (timetagged or otherwise). The outStation will use the zero sequnce number to send everything to initialise us. We
-			// don't have to send an unconditional.
-
-			ModuleMapType::iterator FirstModule = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
-
-			// Request Digital Unconditional
-			int ModuleAddress = FirstModule->first;
-			// We expect the digital modules to be consecutive, or of there is a gap this will still work.
-			int Modules = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.size(); // Most modules we can get in one command - NOT channels!
-
-			bool UnconditionalCommandRequired = false;
-			for (int m = 0; m < Modules; m++)
+			if (MyPointConf()->PollGroups[pollgroup].ModuleAddresses.size() > 1)
 			{
-				for (int idx = 0; idx < 16; idx++)
-				{
-					bool hasbeenset;
-					bool res = GetBinaryQualityUsingMD3Index(ModuleAddress + m, idx, hasbeenset);
-					if (res && !hasbeenset)
-						UnconditionalCommandRequired = true;
-				}
+				LOGERROR("Analog Poll group " + std::to_string(pollgroup) + " is configured for more than one MD3 address. Please create another poll group.");
 			}
-			MD3BlockFormatted commandblock;
 
-			// Also need to check if we already have all the values that this command would ask for..if not send unconditional.
+			// We need to do an analog unconditional on start up, until all the points have a valid value - even 0x8000 for does not exist.
+			//TODO: To do this we check the hasbeenset flag, which will be false on start up, and also set to false on comms lost event - kind of like a quality.
+			bool UnconditionalCommandRequired = false;
+			for (int idx = 0; idx < Channels; idx++)
+			{
+				uint16_t wordres;
+				bool hasbeenset;
+				bool res = GetAnalogValueUsingMD3Index(ModuleAddress, idx, wordres, hasbeenset);
+				if (res && !hasbeenset)
+					UnconditionalCommandRequired = true;
+			}
+
 			if (UnconditionalCommandRequired || MyPointConf()->PollGroups[pollgroup].ForceUnconditional)
 			{
-				// Use Unconditional Request Fn 12
-				//TODO:  Handle for than one DIM in a poll group...
-				LOGDEBUG("Poll Issued a Digital Unconditional (new) Command");
+				// Use Unconditional Request Fn 5
+				LOGDEBUG("Poll Issued a Analog Unconditional Command");
 
-				commandblock = MD3BlockFn12MtoS(MyConf()->mAddrConf.OutstationAddr, ModuleAddress, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
+				MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL, ModuleAddress, Channels, true);
+				QueueMD3Command(commandblock, nullptr);
 			}
 			else
 			{
-				// Use a delta command Fn 11
-				LOGDEBUG("Poll Issued a Digital Delta COS (new) Command");
-
-				uint8_t TaggedEventCount = 0; // Assuming no timetagged points initially.
-
-				// If we have timetagged points in the system, then we need to ask for them to be returned.
-				if (MyPointConf()->PollGroups[pollgroup].TimeTaggedDigital == true)
-					TaggedEventCount = 15; // The most we can ask for
-
-				commandblock = MD3BlockFn11MtoS(MyConf()->mAddrConf.OutstationAddr, TaggedEventCount, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
+				LOGDEBUG("Poll Issued a Analog Delta Command");
+				// Use a delta command Fn 6
+				MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_DELTA_SCAN, ModuleAddress, Channels, true);
+				QueueMD3Command(commandblock, nullptr);
 			}
-
-			QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
 		}
-		else // Old digital commands
+		break;
+
+		case BinaryPoints:
 		{
-			if (MyPointConf()->PollGroups[pollgroup].ForceUnconditional)
+			if (MyPointConf()->NewDigitalCommands) // Old are 7,8,9,10 - New are 11 and 12
 			{
-				// Use Unconditional Request Fn 7
-				//TODO:  Handle for than one DIM in a poll group...
-				LOGDEBUG("Poll Issued a Digital Unconditional (old) Command");
-				ModuleMapType::iterator mait = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
+				// If sequence number is zero - it means we have just started up, or communications re-established. So we dont have a full copy
+				// of the binary data (timetagged or otherwise). The outStation will use the zero sequnce number to send everything to initialise us. We
+				// don't have to send an unconditional.
+
+				ModuleMapType::iterator FirstModule = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
 
 				// Request Digital Unconditional
-				int ModuleAddress = mait->first;
-				int channels = 16; // Most we can get in one command
-				MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, DIGITAL_UNCONDITIONAL_OBS, ModuleAddress, channels, true);
+				int ModuleAddress = FirstModule->first;
+				// We expect the digital modules to be consecutive, or of there is a gap this will still work.
+				int Modules = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.size(); // Most modules we can get in one command - NOT channels!
+
+				bool UnconditionalCommandRequired = false;
+				for (int m = 0; m < Modules; m++)
+				{
+					for (int idx = 0; idx < 16; idx++)
+					{
+						bool hasbeenset;
+						bool res = GetBinaryQualityUsingMD3Index(ModuleAddress + m, idx, hasbeenset);
+						if (res && !hasbeenset)
+							UnconditionalCommandRequired = true;
+					}
+				}
+				MD3BlockFormatted commandblock;
+
+				// Also need to check if we already have all the values that this command would ask for..if not send unconditional.
+				if (UnconditionalCommandRequired || MyPointConf()->PollGroups[pollgroup].ForceUnconditional)
+				{
+					// Use Unconditional Request Fn 12
+					//TODO:  Handle for than one DIM in a poll group...
+					LOGDEBUG("Poll Issued a Digital Unconditional (new) Command");
+
+					commandblock = MD3BlockFn12MtoS(MyConf()->mAddrConf.OutstationAddr, ModuleAddress, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
+				}
+				else
+				{
+					// Use a delta command Fn 11
+					LOGDEBUG("Poll Issued a Digital Delta COS (new) Command");
+
+					uint8_t TaggedEventCount = 0; // Assuming no timetagged points initially.
+
+					// If we have timetagged points in the system, then we need to ask for them to be returned.
+					if (MyPointConf()->PollGroups[pollgroup].TimeTaggedDigital == true)
+						TaggedEventCount = 15; // The most we can ask for
+
+					commandblock = MD3BlockFn11MtoS(MyConf()->mAddrConf.OutstationAddr, TaggedEventCount, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
+				}
 
 				QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
 			}
-			else
+			else // Old digital commands
 			{
-				// Use a delta command Fn 8
-				LOGDEBUG("Poll Issued a Digital Delta (old) Command");
+				if (MyPointConf()->PollGroups[pollgroup].ForceUnconditional)
+				{
+					// Use Unconditional Request Fn 7
+					//TODO:  Handle for than one DIM in a poll group...
+					LOGDEBUG("Poll Issued a Digital Unconditional (old) Command");
+					ModuleMapType::iterator mait = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
+
+					// Request Digital Unconditional
+					int ModuleAddress = mait->first;
+					int channels = 16; // Most we can get in one command
+					MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, DIGITAL_UNCONDITIONAL_OBS, ModuleAddress, channels, true);
+
+					QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
+				}
+				else
+				{
+					// Use a delta command Fn 8
+					LOGDEBUG("Poll Issued a Digital Delta (old) Command");
+				}
 			}
 		}
-	}
+		break;
 
-	if (MyPointConf()->PollGroups[pollgroup].polltype == TimeSetCommand)
-	{
-		// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
-		uint64_t currenttime = MD3Now();
+		case  TimeSetCommand:
+		{
+			// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
+			uint64_t currenttime = MD3Now();
 
-		LOGDEBUG("Poll Issued a TimeDate Command");
-		SendTimeDateChangeCommand(currenttime, nullptr);
-	}
+			LOGDEBUG("Poll Issued a TimeDate Command");
+			SendTimeDateChangeCommand(currenttime, nullptr);
+		}
+		break;
 
-	if (MyPointConf()->PollGroups[pollgroup].polltype == NewTimeSetCommand)
-	{
-		// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
-		uint64_t currenttime = MD3Now();
+		case NewTimeSetCommand:
+		{
+			// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
+			uint64_t currenttime = MD3Now();
 
-		LOGDEBUG("Poll Issued a NewTimeDate Command");
-		int utcoffsetminutes = tz_offset();
+			LOGDEBUG("Poll Issued a NewTimeDate Command");
+			int utcoffsetminutes = tz_offset();
 
-		SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, nullptr);
-	}
+			SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, nullptr);
+		}
+		break;
 
-	if (MyPointConf()->PollGroups[pollgroup].polltype == SystemFlagScan)
-	{
-		// Send a flag scan command to the OutStation, (Fn 52)
-		LOGDEBUG("Poll Issued a System Flag Scan Command");
-		SendSystemFlagScanCommand(nullptr);
+		case SystemFlagScan:
+		{
+			// Send a flag scan command to the OutStation, (Fn 52)
+			LOGDEBUG("Poll Issued a System Flag Scan Command");
+			SendSystemFlagScanCommand(nullptr);
+		}
+		break;
+
+		default:
+			LOGDEBUG("Poll will an unknown polltype : " + std::to_string(MyPointConf()->PollGroups[pollgroup].polltype));
 	}
 }
+
 void MD3MasterPort::ResetDigitalCommandSequenceNumber()
 {
 	std::unique_lock<std::mutex> lck(DigitalCommandSequenceNumberMutex);

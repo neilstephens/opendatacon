@@ -106,8 +106,9 @@ public:
 		PointType(pointtype)
 	{};
 
-	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t binval, bool changed, MD3Time changedtime):
-		MD3Point(index, moduleaddress,  channel, changedtime,0),
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup, BinaryPointType pointtype, uint8_t binval, bool changed, MD3Time changedtime):
+		MD3Point(index, moduleaddress,  channel, changedtime, pollgroup),
+		PointType(pointtype),
 		Binary(binval),
 		Changed(changed)
 	{};
