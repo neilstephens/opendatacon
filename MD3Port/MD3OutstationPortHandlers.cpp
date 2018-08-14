@@ -39,7 +39,7 @@
 #include <opendnp3/LogLevels.h>
 
 #include "MD3.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3OutstationPort.h"
 
 
@@ -650,18 +650,18 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 	{
 		if (EventCount == 0)
 		{
-			// First packet is the time/date block and a millseconds packet
-			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.ChangedTime / 1000);
-			uint16_t FirstEventMSec = (uint16_t)(CurrentPoint.ChangedTime % 1000);
+			// First packet is the time/date block and a milliseconds packet
+			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.GetChangedTime() / 1000);
+			uint16_t FirstEventMSec = (uint16_t)(CurrentPoint.GetChangedTime() % 1000);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
 			ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket(FirstEventMSec));
-			LastPointmsec = CurrentPoint.ChangedTime;
+			LastPointmsec = CurrentPoint.GetChangedTime();
 		}
 		else
 		{
 			// Do we need a Milliseconds packet? If so, is the gap more than 31 seconds? If so, finish this response off, so master can issue a new HRER request.
-			uint64_t delta = CurrentPoint.ChangedTime - LastPointmsec;
+			uint64_t delta = CurrentPoint.GetChangedTime() - LastPointmsec;
 			if (delta > 31999)
 			{
 				//Delta > 31.999 seconds, We can't send this point, finish the packet so the master can ask for a new HRER response.
@@ -670,13 +670,13 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 			else if (delta != 0)
 			{
 				ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket((uint16_t)delta));
-				LastPointmsec = CurrentPoint.ChangedTime; // The last point time moves with time added by the msec packets
+				LastPointmsec = CurrentPoint.GetChangedTime(); // The last point time moves with time added by the msec packets
 			}
 		}
 
 		if (CanSend)
 		{
-			ResponseWords.push_back(MD3BlockFn9::HREREventPacket(CurrentPoint.Binary, CurrentPoint.Channel, CurrentPoint.ModuleAddress));
+			ResponseWords.push_back(MD3BlockFn9::HREREventPacket(CurrentPoint.GetBinary(), CurrentPoint.GetChannel(), CurrentPoint.GetModuleAddress()));
 
 			pBinaryTimeTaggedEventQueue->sync_pop();
 			EventCount++;
@@ -859,13 +859,13 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 		if (EventCount == 0)
 		{
 			// First packet is the time/date block
-			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.ChangedTime / 1000);
+			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.GetChangedTime() / 1000);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
-			LastPointmsec = CurrentPoint.ChangedTime - CurrentPoint.ChangedTime % 1000; // The first one is seconds only. Later events have actual msec
+			LastPointmsec = CurrentPoint.GetChangedTime() - CurrentPoint.GetChangedTime() % 1000; // The first one is seconds only. Later events have actual msec
 		}
 
-		uint64_t msecoffset = CurrentPoint.ChangedTime - LastPointmsec;
+		uint64_t msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
 
 		if (msecoffset > 255) // Do we need a Milliseconds extension packet? A TimeBlock
 		{
@@ -881,15 +881,15 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 			assert(msecoffsetdiv256 < 256);
 			ResponseWords.push_back((uint16_t)msecoffsetdiv256);
 			LastPointmsec += msecoffsetdiv256*256; // The last point time moves with time added by the msec packet
-			msecoffset = CurrentPoint.ChangedTime - LastPointmsec;
+			msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
 		}
 
 		// Push the block onto the response word list
 		assert(msecoffset < 256);
-		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleAddress << 8 | (uint16_t)msecoffset);
-		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleBinarySnapShot);
+		ResponseWords.push_back((uint16_t)CurrentPoint.GetModuleAddress() << 8 | (uint16_t)msecoffset);
+		ResponseWords.push_back((uint16_t)CurrentPoint.GetModuleBinarySnapShot());
 
-		LastPointmsec = CurrentPoint.ChangedTime; // Update the last changed time to match what we have just sent.
+		LastPointmsec = CurrentPoint.GetChangedTime(); // Update the last changed time to match what we have just sent.
 		pBinaryModuleTimeTaggedEventQueue->sync_pop();
 		EventCount++;
 	}
@@ -947,7 +947,7 @@ void MD3OutstationPort::MarkAllBinaryBlocksAsChanged()
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
 	for (auto md3pt : MyPointConf()->BinaryMD3PointMap)
 	{
-		(*md3pt.second).Changed = true;
+		(*md3pt.second).SetChangedFlag();
 	}
 }
 
@@ -963,12 +963,12 @@ int MD3OutstationPort::CountBinaryBlocksWithChanges()
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
 	for (auto md3pt : MyPointConf()->BinaryMD3PointMap)
 	{
-		if ((*md3pt.second).Changed)
+		if ((*md3pt.second).GetChangedFlag())
 		{
 			// Multiple bits can be changed in the block, but only the first one is required to trigger a send of the block.
-			if (lastblock != (*md3pt.second).ModuleAddress)
+			if (lastblock != (*md3pt.second).GetModuleAddress())
 			{
-				lastblock = (*md3pt.second).ModuleAddress;
+				lastblock = (*md3pt.second).GetModuleAddress();
 				changedblocks++;
 			}
 		}
@@ -1037,7 +1037,6 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 
 	for (auto MapPt : MyPointConf()->BinaryMD3PointMap)
 	{
-		auto MDPt = *(MapPt.second);
 		auto Address = (MapPt.first);
 		uint8_t ModuleAddress = (Address >> 8);
 		//uint8_t Channel = (Address & 0x0FF);
@@ -1045,7 +1044,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 		if (ModuleAddress == StartModuleAddress)
 			WeAreScanning = true;
 
-		if (WeAreScanning && MDPt.Changed && (LastModuleAddress != ModuleAddress))
+		if (WeAreScanning && MapPt.second->GetChangedFlag() && (LastModuleAddress != ModuleAddress))
 		{
 			// We should save the module address so we have a list of modules that have changed
 			ModuleList.push_back(ModuleAddress);
@@ -1057,7 +1056,6 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 		// We have to then start again from zero, if we did not start from there.
 		for (auto MapPt : MyPointConf()->BinaryMD3PointMap)
 		{
-			auto MDPt = *(MapPt.second);
 			auto Address = (MapPt.first);
 			uint8_t ModuleAddress = (Address >> 8);
 			uint8_t Channel = (Address & 0x0FF);
@@ -1065,7 +1063,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 			if (ModuleAddress == StartModuleAddress)
 				WeAreScanning = false; // Stop when we reach the start again
 
-			if (WeAreScanning && MDPt.Changed && (LastModuleAddress != ModuleAddress))
+			if (WeAreScanning && MapPt.second->GetChangedFlag() && (LastModuleAddress != ModuleAddress))
 			{
 				// We should save the module address so we have a list of modules that have changed
 				ModuleList.push_back(ModuleAddress);

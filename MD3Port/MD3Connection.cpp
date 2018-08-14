@@ -32,7 +32,7 @@
 #include <opendnp3/LogLevels.h>
 
 #include "MD3.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3Connection.h"
 
 using namespace odc;

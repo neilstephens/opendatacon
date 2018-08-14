@@ -33,7 +33,7 @@
 #include <opendatacon/ASIOScheduler.h>
 
 #include "MD3.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3Port.h"
 
 // The command, and an ODC callback pointer - may be nullptr. We check for that

@@ -33,7 +33,7 @@
 #include <functional>
 #include <unordered_map>
 #include "MD3.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3Port.h"
 
 /*

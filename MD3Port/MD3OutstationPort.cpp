@@ -37,7 +37,7 @@
 //#include <opendnp3/outstation/IOutstationApplication.h>
 
 #include "MD3.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3OutstationPort.h"
 
 //TODO: Add SystemPoweredUp flag to OutStation

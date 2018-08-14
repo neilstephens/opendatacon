@@ -30,7 +30,7 @@
 #include <opendnp3/app/MeasurementTypes.h>
 
 #include "MD3.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3MasterPort.h"
 
 
@@ -1399,10 +1399,10 @@ void MD3MasterPort::SendAllPointEvents()
 	for (auto const &Point : MyPointConf()->BinaryODCPointMap)
 	{
 		int index = Point.first;
-		uint8_t meas = Point.second->Binary;
-		QualityFlags qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
+		uint8_t meas = Point.second->GetBinary();
+		QualityFlags qual = CalculateBinaryQuality(enabled, Point.second->GetChangedTime());
 
-		auto event = std::make_shared<EventInfo>(EventType::Binary, index, Name, qual, (msSinceEpoch_t)Point.second->ChangedTime);
+		auto event = std::make_shared<EventInfo>(EventType::Binary, index, Name, qual, (msSinceEpoch_t)Point.second->GetChangedTime());
 		event->SetPayload<EventType::Binary>(meas == 1);
 		PublishEvent(event);
 	}
@@ -1411,11 +1411,11 @@ void MD3MasterPort::SendAllPointEvents()
 	for (auto const &Point : MyPointConf()->AnalogODCPointMap)
 	{
 		int index = Point.first;
-		uint16_t meas = Point.second->Analog;
+		uint16_t meas = Point.second->GetAnalog();
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
+		QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.second->GetChangedTime());
 
-		auto event = std::make_shared<EventInfo>(EventType::Analog, index, Name, qual, (msSinceEpoch_t)Point.second->ChangedTime);
+		auto event = std::make_shared<EventInfo>(EventType::Analog, index, Name, qual, (msSinceEpoch_t)Point.second->GetChangedTime());
 		event->SetPayload<EventType::Analog>(std::move(meas));
 		PublishEvent(event);
 	}
@@ -1423,11 +1423,11 @@ void MD3MasterPort::SendAllPointEvents()
 	for (auto const &Point : MyPointConf()->CounterODCPointMap)
 	{
 		int index = Point.first;
-		uint16_t meas = Point.second->Analog;
+		uint16_t meas = Point.second->GetAnalog();
 		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
+		QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.second->GetChangedTime());
 
-		auto event = std::make_shared<EventInfo>(EventType::Counter, index, Name, qual, (msSinceEpoch_t)Point.second->ChangedTime);
+		auto event = std::make_shared<EventInfo>(EventType::Counter, index, Name, qual, (msSinceEpoch_t)Point.second->GetChangedTime());
 		event->SetPayload<EventType::Counter>(std::move(meas));
 		PublishEvent(event);
 	}

@@ -34,7 +34,7 @@
 
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "StrandProtectedQueue.h"
 #include "ProducerConsumerQueue.h"
 #include "MD3Test.h"
@@ -3202,13 +3202,13 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 		// Get the list of time tagged events, and check...
 		std::vector<MD3BinaryPoint> PointList = MD3OSPort->DumpTimeTaggedPointList();
 		REQUIRE(PointList.size() == 0x5f);
-		REQUIRE(PointList[50].Index == 0);
-		REQUIRE(PointList[50].ModuleBinarySnapShot == 0xffff);
+		REQUIRE(PointList[50].GetIndex() == 0);
+		REQUIRE(PointList[50].GetModuleBinarySnapShot() == 0xffff);
 		//		  REQUIRE(PointList[50].ChangedTime == 0x00000164ee106081);
 
-		REQUIRE(PointList[80].Index == 0x1e);
-		REQUIRE(PointList[80].Binary == 0);
-		REQUIRE(PointList[80].ModuleBinarySnapShot == 0xff01);
+		REQUIRE(PointList[80].GetIndex() == 0x1e);
+		REQUIRE(PointList[80].GetBinary() == 0);
+		REQUIRE(PointList[80].GetModuleBinarySnapShot() == 0xff01);
 		//		  REQUIRE(PointList[80].ChangedTime == 0x00000164ee1e751c);
 	}
 	work.reset(); // Indicate all work is finished.
@@ -3303,13 +3303,13 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// Get the list of time tagged events, and check...
 		std::vector<MD3BinaryPoint> PointList = MD3OSPort->DumpTimeTaggedPointList();
 		REQUIRE(PointList.size() == 0x5f);
-		REQUIRE(PointList[50].Index == 0);
-		REQUIRE(PointList[50].ModuleBinarySnapShot == 0xffff);
+		REQUIRE(PointList[50].GetIndex() == 0);
+		REQUIRE(PointList[50].GetModuleBinarySnapShot() == 0xffff);
 		//		  REQUIRE(PointList[50].ChangedTime == 0x00000164ee106081);
 
-		REQUIRE(PointList[80].Index == 0x1e);
-		REQUIRE(PointList[80].Binary == 0);
-		REQUIRE(PointList[80].ModuleBinarySnapShot == 0xff01);
+		REQUIRE(PointList[80].GetIndex() == 0x1e);
+		REQUIRE(PointList[80].GetBinary() == 0);
+		REQUIRE(PointList[80].GetModuleBinarySnapShot() == 0xff01);
 		//		  REQUIRE(PointList[80].ChangedTime == 0x00000164ee1e751c);
 	}
 

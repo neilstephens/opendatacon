@@ -35,7 +35,7 @@
 
 #include "MD3.h"
 #include "MD3PortConf.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3Connection.h"
 #include "StrandProtectedQueue.h"
 
@@ -89,7 +89,7 @@ public:
 
 	bool GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t & index);
 
-	void AddToDigitalEvents(MD3BinaryPoint & pt);
+	void AddToDigitalEvents(MD3BinaryPoint & inpt);
 	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool & ModuleFailed);
 	uint16_t CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool & ModuleFailed);
 
