@@ -35,6 +35,7 @@
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3Port.h"
+#include "MD3PointTableAccess.h"
 
 // The command, and an ODC callback pointer - may be nullptr. We check for that
 typedef std::pair <MD3Message_t, SharedStatusCallback_t> MasterCommandQueueItem;
@@ -106,7 +107,11 @@ public:
 	void SendPOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & outputselection, const SharedStatusCallback_t &pStatusCallback);
 	void SendAOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & Channel, const uint16_t & value, const SharedStatusCallback_t & pStatusCallback);
 
+	std::shared_ptr<MD3PointTableAccess> GetPTA() { return PTA; } // For testing only
+
 private:
+
+	std::shared_ptr<MD3PointTableAccess> PTA; // Tools for all point table access
 
 	std::unique_ptr<asio::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.

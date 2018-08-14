@@ -1455,8 +1455,8 @@ TEST_CASE("Station - DigitalHRERFn9")
 
 	MD3BinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true, changedtime);
 	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, (MD3Time)(changedtime + 32000));
-	MD3OSPort->AddToDigitalEvents(pt1);
-	MD3OSPort->AddToDigitalEvents(pt2);
+	MD3OSPort->GetPTA()->AddToDigitalEvents(pt1);
+	MD3OSPort->GetPTA()->AddToDigitalEvents(pt2);
 
 	commandblock = MD3BlockFn9(0x7C, true,5, 10, true, true);
 	output << commandblock.ToBinaryString();
@@ -1684,9 +1684,9 @@ TEST_CASE("Station - DigitalCOSFn11")
 	MD3BinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true,  changedtime);
 	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, (MD3Time)(changedtime + 256));
 	MD3BinaryPoint pt3(3, 34, 3, 0, TIMETAGGEDINPUT, 1, true, (MD3Time)(changedtime + 0x20000)); // Time gap too big, will require another Master request
-	MD3OSPort->AddToDigitalEvents(pt1);
-	MD3OSPort->AddToDigitalEvents(pt2);
-	MD3OSPort->AddToDigitalEvents(pt3);
+	MD3OSPort->GetPTA()->AddToDigitalEvents(pt1);
+	MD3OSPort->GetPTA()->AddToDigitalEvents(pt2);
+	MD3OSPort->GetPTA()->AddToDigitalEvents(pt3);
 
 	commandblock = MD3BlockFn11MtoS(0x7C, 15, 4, 0); // Sequence number must increase
 	output << commandblock.ToBinaryString();
@@ -2367,23 +2367,23 @@ TEST_CASE("Master - Analog")
 		// To check the result, see if the points in the master point list have been changed to the correct values.
 		uint16_t res = 0;
 		bool hasbeenset;
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res,hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 0, res,hasbeenset);
 		REQUIRE(res == 0x1000);
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1101);
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x1707);
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808);
 
 		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 		// Need to give ASIO time to process them?
 		Wait(IOS, 1);
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x1000);
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808);
 	}
 
@@ -2426,28 +2426,28 @@ TEST_CASE("Master - Analog")
 		// To check the result, see if the points in the master point list have been changed to the correct values.
 		uint16_t res = 0;
 		bool hasbeenset;
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x0FFF); // -1
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1102); // +1
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x168A); // 0x1707 - 125
 
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808); // Unchanged
 
 		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 		// Need to give ASIO time to process them?
 		Wait(IOS, 1);
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x0FFF); // -1
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1102); // +1
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x168A); // 0x1707 - 125
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808); // Unchanged
 	}
 
@@ -2478,25 +2478,25 @@ TEST_CASE("Master - Analog")
 		// Should their time stamp be updated?
 		uint16_t res = 0;
 		bool hasbeenset;
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x0FFF); // -1
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1102); // +1
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x168A); // 0x1707 - 125
 
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808); // Unchanged
 
 		// Check that the OutStation values have not been updated over ODC.
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x0FFF); // -1
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 1, res, hasbeenset);
 		REQUIRE(res == 0x1102); // +1
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
 		REQUIRE(res == 0x168A); // 0x1707 - 125
 
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
 		REQUIRE(res == 0x1808); // Unchanged
 	}
 
@@ -2523,10 +2523,10 @@ TEST_CASE("Master - Analog")
 		// To check the result, the quality of the points will be set to comms_lost - and this will result in the values being set to 0x8000 which is MD3 for something has failed.
 		uint16_t res = 0;
 		bool hasbeenset;
-		MD3OSPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
+		MD3OSPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x8000);
 
-		MD3MAPort->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
+		MD3MAPort->GetPTA()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x8000);
 	}
 
@@ -3193,14 +3193,14 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 
 		// Check the module values made it into the point table
 		bool ModuleFailed = false;
-		uint16_t wordres = MD3OSPort->CollectModuleBitsIntoWord(0x22, ModuleFailed);
+		uint16_t wordres = MD3OSPort->GetPTA()->CollectModuleBitsIntoWord(0x22, ModuleFailed);
 		REQUIRE(wordres == 0xfe00); //0x8000 Would be this value if no timetagged data was present
 
-		wordres = MD3OSPort->CollectModuleBitsIntoWord(0x23, ModuleFailed);
+		wordres = MD3OSPort->GetPTA()->CollectModuleBitsIntoWord(0x23, ModuleFailed);
 		REQUIRE(wordres == 0x0100); //0xff00 Would be this value if no timetagged data was present
 
 		// Get the list of time tagged events, and check...
-		std::vector<MD3BinaryPoint> PointList = MD3OSPort->DumpTimeTaggedPointList();
+		std::vector<MD3BinaryPoint> PointList = MD3OSPort->GetPTA()->DumpTimeTaggedPointList();
 		REQUIRE(PointList.size() == 0x5f);
 		REQUIRE(PointList[50].GetIndex() == 0);
 		REQUIRE(PointList[50].GetModuleBinarySnapShot() == 0xffff);
@@ -3301,7 +3301,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		REQUIRE(MAResponse == "Not Set");
 
 		// Get the list of time tagged events, and check...
-		std::vector<MD3BinaryPoint> PointList = MD3OSPort->DumpTimeTaggedPointList();
+		std::vector<MD3BinaryPoint> PointList = MD3OSPort->GetPTA()->DumpTimeTaggedPointList();
 		REQUIRE(PointList.size() == 0x5f);
 		REQUIRE(PointList[50].GetIndex() == 0);
 		REQUIRE(PointList[50].GetModuleBinarySnapShot() == 0xffff);

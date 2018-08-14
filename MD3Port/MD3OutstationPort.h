@@ -35,6 +35,7 @@
 #include "MD3Port.h"
 #include "MD3Utility.h"
 #include "MD3Connection.h"
+#include "MD3PointTableAccess.h"
 
 
 class OutstationSystemFlags
@@ -147,7 +148,7 @@ public:
 	void SendControlOK(MD3BlockFormatted & Header);             // Fn 15
 	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
 
-	std::vector<MD3BinaryPoint> DumpTimeTaggedPointList();
+	std::shared_ptr<MD3PointTableAccess> GetPTA() { return PTA; } // Testing only.
 
 private:
 
@@ -155,6 +156,8 @@ private:
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);
 
 	OutstationSystemFlags SystemFlags;
+
+	std::shared_ptr<MD3PointTableAccess> PTA; // Tools for all point table access
 
 	void SocketStateHandler(bool state);
 

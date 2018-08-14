@@ -240,30 +240,7 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 }
 
 #pragma region Worker Methods
-// Dumps the points out in a list, only used for UnitTests
-std::vector<MD3BinaryPoint> MD3OutstationPort::DumpTimeTaggedPointList()
-{
-	MD3BinaryPoint CurrentPoint;
-	std::vector<MD3BinaryPoint> PointList(50);
 
-	if (MyConf()->pPointConf->NewDigitalCommands)
-	{
-		while (pBinaryModuleTimeTaggedEventQueue->sync_front(CurrentPoint))
-		{
-			PointList.emplace_back(CurrentPoint);
-			pBinaryModuleTimeTaggedEventQueue->sync_pop();
-		}
-	}
-	else
-	{
-		while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint))
-		{
-			PointList.emplace_back(CurrentPoint);
-			pBinaryTimeTaggedEventQueue->sync_pop();
-		}
-	}
-	return PointList;
-}
 // This method is passed to the SystemFlags variable to do the necessary calculation
 // Access through SystemFlags.GetDigitalChangedFlag()
 bool MD3OutstationPort::DigitalChangedFlagCalculationMethod(void)
@@ -275,15 +252,7 @@ bool MD3OutstationPort::DigitalChangedFlagCalculationMethod(void)
 // Access through SystemFlags.GetTimeTaggedDataAvailableFlag()
 bool MD3OutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
 {
-	if (MyConf()->pPointConf->NewDigitalCommands)
-	{
-		return !pBinaryModuleTimeTaggedEventQueue->sync_empty();
-	}
-	else
-	{
-		return !pBinaryTimeTaggedEventQueue->sync_empty();
-	}
-	return false;
+	return PTA->TimeTaggedDataAvailable();
 }
 
 #pragma endregion
@@ -358,7 +327,7 @@ void MD3OutstationPort::ReadAnalogOrCounterRange(int ModuleAddress, int Channels
 	bool hasbeenset;
 
 	// Is it a counter module? Fails if not at this address
-	if (GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres, hasbeenset))
+	if (PTA->GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres, hasbeenset))
 	{
 		// We have a counter module, can get up to 8 values from it
 		int chancnt = Channels >= 8 ? 8 : Channels;
@@ -368,7 +337,7 @@ void MD3OutstationPort::ReadAnalogOrCounterRange(int ModuleAddress, int Channels
 		{
 			// Now we have to get the remaining channels (up to 8) from the next module, if it exists.
 			// Check if it is a counter, otherwise assume analog. Will return correct error codes if not there
-			if (GetCounterValueUsingMD3Index(ModuleAddress+1, 0, wordres,hasbeenset))
+			if (PTA->GetCounterValueUsingMD3Index(ModuleAddress+1, 0, wordres,hasbeenset))
 			{
 				GetAnalogModuleValues(CounterModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
 			}
@@ -396,11 +365,11 @@ void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterO
 
 		if (IsCounterOrAnalog == CounterModule)
 		{
-			foundentry = GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares,hasbeenset);
+			foundentry = PTA->GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares,hasbeenset);
 		}
 		else
 		{
-			foundentry= GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares,hasbeenset);
+			foundentry= PTA->GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares,hasbeenset);
 		}
 
 		if (!foundentry)
@@ -631,7 +600,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, MD3Message_t &Complet
 	lastblock.MarkAsEndOfMessageBlock();
 
 	MD3BlockFn9 &firstblock = static_cast<MD3BlockFn9&>(ResponseMD3Message[0]);
-	bool MoreEventsFlag = !pBinaryTimeTaggedEventQueue->sync_empty();
+	bool MoreEventsFlag = PTA->TimeTaggedDataAvailable();
 	firstblock.SetEventCountandMoreEventsFlag(EventCount, MoreEventsFlag); // If not empty, set more events (MEV) flag
 
 	LOGDEBUG("OS - Sending "+std::to_string(EventCount)+" Events, More Events Flag - "+std::to_string(MoreEventsFlag)+" Sequence Number - " + std::to_string(LastHRERSequenceNumber));
@@ -646,7 +615,7 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 	uint64_t LastPointmsec = 0;
 	bool CanSend = true;
 
-	while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint) && (EventCount < MaxEventCount) && CanSend)
+	while ((EventCount < MaxEventCount) && CanSend && PTA->PeekNextTaggedEventPoint(CurrentPoint)) // Don't pop until we are happy...
 	{
 		if (EventCount == 0)
 		{
@@ -678,7 +647,7 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 		{
 			ResponseWords.push_back(MD3BlockFn9::HREREventPacket(CurrentPoint.GetBinary(), CurrentPoint.GetChannel(), CurrentPoint.GetModuleAddress()));
 
-			pBinaryTimeTaggedEventQueue->sync_pop();
+			PTA->PopNextTaggedEventPoint();
 			EventCount++;
 		}
 	}
@@ -769,7 +738,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	}
 
 	int ChangedBlocks = CountBinaryBlocksWithChanges();
-	bool AreThereTaggedEvents = !pBinaryModuleTimeTaggedEventQueue->sync_empty();
+	bool AreThereTaggedEvents = PTA->TimeTaggedDataAvailable();
 
 	if ((ChangedBlocks == 0) && !AreThereTaggedEvents)
 	{
@@ -850,7 +819,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 	MD3BinaryPoint CurrentPoint;
 	uint64_t LastPointmsec = 0;
 
-	while (pBinaryModuleTimeTaggedEventQueue->sync_front(CurrentPoint) && (EventCount < MaxEventCount))
+	while ((EventCount < MaxEventCount) && PTA->PeekNextTaggedEventPoint(CurrentPoint))
 	{
 		// The time date is seconds, the data block contains a msec entry.
 		// The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
@@ -880,7 +849,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 			}
 			assert(msecoffsetdiv256 < 256);
 			ResponseWords.push_back((uint16_t)msecoffsetdiv256);
-			LastPointmsec += msecoffsetdiv256*256; // The last point time moves with time added by the msec packet
+			LastPointmsec += msecoffsetdiv256 * 256; // The last point time moves with time added by the msec packet
 			msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
 		}
 
@@ -890,7 +859,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 		ResponseWords.push_back((uint16_t)CurrentPoint.GetModuleBinarySnapShot());
 
 		LastPointmsec = CurrentPoint.GetChangedTime(); // Update the last changed time to match what we have just sent.
-		pBinaryModuleTimeTaggedEventQueue->sync_pop();
+		PTA->PopNextTaggedEventPoint();
 		EventCount++;
 	}
 }
@@ -945,7 +914,7 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 void MD3OutstationPort::MarkAllBinaryBlocksAsChanged()
 {
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
-	for (auto md3pt : MyPointConf()->BinaryMD3PointMap)
+	for (auto md3pt : MyPointConf->BinaryMD3PointMap)
 	{
 		(*md3pt.second).SetChangedFlag();
 	}
@@ -961,7 +930,7 @@ int MD3OutstationPort::CountBinaryBlocksWithChanges()
 	int lastblock = -1; // Non valid value
 
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
-	for (auto md3pt : MyPointConf()->BinaryMD3PointMap)
+	for (auto md3pt : MyPointConf->BinaryMD3PointMap)
 	{
 		if ((*md3pt.second).GetChangedFlag())
 		{
@@ -989,7 +958,7 @@ int MD3OutstationPort::CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBl
 			uint8_t bitres = 0;
 			bool changed = false;
 
-			if (!GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed)) // Does not change the changed bit
+			if (!PTA->GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed)) // Does not change the changed bit
 			{
 				changed = true;
 			}
@@ -1015,7 +984,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int NumberOfDataBl
 			uint8_t bitres = 0;
 			bool changed = false;
 
-			if (!GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed))
+			if (!PTA->GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed))
 			{
 				// Data is missing, need to send the error block for this module address.
 				changed = true;
@@ -1035,7 +1004,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 	uint8_t LastModuleAddress = 0;
 	bool WeAreScanning = (StartModuleAddress == 0); // If the startmoduleaddress is zero, we store changes from the start.
 
-	for (auto MapPt : MyPointConf()->BinaryMD3PointMap)
+	for (auto MapPt : MyPointConf->BinaryMD3PointMap)
 	{
 		auto Address = (MapPt.first);
 		uint8_t ModuleAddress = (Address >> 8);
@@ -1054,7 +1023,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 	if (StartModuleAddress != 0)
 	{
 		// We have to then start again from zero, if we did not start from there.
-		for (auto MapPt : MyPointConf()->BinaryMD3PointMap)
+		for (auto MapPt : MyPointConf->BinaryMD3PointMap)
 		{
 			auto Address = (MapPt.first);
 			uint8_t ModuleAddress = (Address >> 8);
@@ -1092,7 +1061,7 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 		// Have to collect all the bits into a uint16_t
 		bool ModuleFailed = false;
 
-		uint16_t wordres = CollectModuleBitsIntoWordandResetChangeFlags(ModuleAddress, ModuleFailed);
+		uint16_t wordres = PTA->CollectModuleBitsIntoWordandResetChangeFlags(ModuleAddress, ModuleFailed);
 
 		if (ModuleFailed)
 		{
@@ -1159,16 +1128,16 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 		failed = true;
 	}
 
-	uint32_t ODCIndex = MyPointConf()->FreezeResetCountersPoint.second;
-	MyPointConf()->FreezeResetCountersPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
+	uint32_t ODCIndex = MyPointConf->FreezeResetCountersPoint.second;
+	MyPointConf->FreezeResetCountersPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
 
 	EventTypePayload<EventType::AnalogOutputInt32>::type val;
-	val.first = MyPointConf()->FreezeResetCountersPoint.first;
+	val.first = MyPointConf->FreezeResetCountersPoint.first;
 
 	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
 	event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
 
-	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 	if (Header.GetStationAddress() != 0)
 	{
@@ -1225,7 +1194,7 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 
 	// Check that the control point is defined, otherwise return a fail.
 	size_t ODCIndex = 0;
-	failed = GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, ODCIndex) ? failed : true;
+	failed = PTA->GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, ODCIndex) ? failed : true;
 
 	if (Header.GetStationAddress() == 0)
 	{
@@ -1239,16 +1208,16 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 		return;
 	}
 
-	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
 	bool success = true;
 
 	// POM is only a single bit, so easy to do... if the bit position is > 7, i.e.TRIP/OPEN/OFF 8-15 and PULSE_CLOSE/PULSE/LATCH_ON 0-7 for the up to 8 points in a POM module.
 	bool point_on = (Header.GetOutputSelection() < 8);
 
-	if (MyPointConf()->POMControlPoint.second == 0) // If NO pass through, then do normal operation
+	if (MyPointConf->POMControlPoint.second == 0) // If NO pass through, then do normal operation
 	{
 		// Module contains 0 to 7 channels..
-		if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, ODCIndex))
+		if (PTA->GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, ODCIndex))
 		{
 			EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 			val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
@@ -1261,15 +1230,15 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 	}
 
 	// If the index is !=0, then the pass through is active. So success depends on the pass through
-	if (MyPointConf()->POMControlPoint.second != 0)
+	if (MyPointConf->POMControlPoint.second != 0)
 	{
 		// Pass the command through ODC, just for MD3 on the other side.
-		MyPointConf()->POMControlPoint.first = (int32_t)Header.GetData();
+		MyPointConf->POMControlPoint.first = (int32_t)Header.GetData();
 
-		ODCIndex = MyPointConf()->POMControlPoint.second;
+		ODCIndex = MyPointConf->POMControlPoint.second;
 
 		EventTypePayload<EventType::AnalogOutputInt32>::type val;
-		val.first = MyPointConf()->POMControlPoint.first;
+		val.first = MyPointConf->POMControlPoint.first;
 
 		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
 		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
@@ -1314,10 +1283,10 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 
 	// Check that the first one exists, not all 16 may exist.
 	size_t ODCIndex = 0;
-	failed = GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), 0, ODCIndex) ? failed : true;
+	failed = PTA->GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), 0, ODCIndex) ? failed : true;
 
 	uint16_t output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
-	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 	if (Header.GetStationAddress() == 0)
 	{
@@ -1333,12 +1302,12 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 
 	bool success = true;
 
-	if (MyPointConf()->DOMControlPoint.second == 0) // NO pass through, normal operation
+	if (MyPointConf->DOMControlPoint.second == 0) // NO pass through, normal operation
 	{
 		// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
 		for (int i = 0; i < 16; i++)
 		{
-			if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, ODCIndex))
+			if (PTA->GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, ODCIndex))
 			{
 				EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 				val.functionCode = ((output >> (15 - i) & 0x01) == 1) ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
@@ -1355,15 +1324,15 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 	}
 
 	// If the index is !=0, then the pass through is active. So success depends on the pass through
-	if (MyPointConf()->DOMControlPoint.second != 0)
+	if (MyPointConf->DOMControlPoint.second != 0)
 	{
 		// Pass the command through ODC, just for MD3 on the other side. Have to compress to fit into 32 bits
 		uint32_t PacketData = (uint32_t)Header.GetStationAddress() << 24 | (uint32_t)Header.GetModuleAddress() << 16 | (uint32_t)CompleteMD3Message[1].GetFirstWord();
-		MyPointConf()->DOMControlPoint.first = (int32_t)PacketData;
-		ODCIndex = MyPointConf()->DOMControlPoint.second;
+		MyPointConf->DOMControlPoint.first = (int32_t)PacketData;
+		ODCIndex = MyPointConf->DOMControlPoint.second;
 
 		EventTypePayload<EventType::AnalogOutputInt32>::type val;
-		val.first = MyPointConf()->DOMControlPoint.first;
+		val.first = MyPointConf->DOMControlPoint.first;
 
 		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
 		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
@@ -1413,10 +1382,10 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &Com
 
 	// Check that the control point is defined, otherwise return a fail.
 	size_t ODCIndex = 0;
-	failed = GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), ODCIndex) ? failed : true;
+	failed = PTA->GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), ODCIndex) ? failed : true;
 
 	int16_t output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
-	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 	EventTypePayload<EventType::AnalogOutputInt16>::type val;
 	val.first = output;
@@ -1447,23 +1416,23 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40MtoS &Header)
 	LOGDEBUG("OS - DoSystemSignOnControl");
 	if (Header.IsValid())
 	{
-		uint32_t ODCIndex = MyPointConf()->SystemSignOnPoint.second;
-		MyPointConf()->SystemSignOnPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
+		uint32_t ODCIndex = MyPointConf->SystemSignOnPoint.second;
+		MyPointConf->SystemSignOnPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
 
 		EventTypePayload<EventType::AnalogOutputInt32>::type val;
-		val.first = MyPointConf()->SystemSignOnPoint.first;
+		val.first = MyPointConf->SystemSignOnPoint.first;
 
 		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
 		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
 
 		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-		bool waitforresult = !MyPointConf()->StandAloneOutstation;
+		bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 		// This does a PublishCommand and waits for the result - or times out.
 		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
 		{
 			// Need to send a response, but with the StationAddress set to match our address.
-			MD3BlockFn40StoM FormattedBlock(MyConf()->mAddrConf.OutstationAddr);
+			MD3BlockFn40StoM FormattedBlock(MyConf->mAddrConf.OutstationAddr);
 
 			MD3Message_t ResponseMD3Message;
 			ResponseMD3Message.push_back(FormattedBlock);
@@ -1517,17 +1486,17 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &Co
 	}
 	else
 	{
-		uint32_t ODCIndex = MyPointConf()->TimeSetPoint.second;
-		MyPointConf()->TimeSetPoint.first = (double)msecsinceepoch; // Fit the 64 bit int into the 64 bit float.
+		uint32_t ODCIndex = MyPointConf->TimeSetPoint.second;
+		MyPointConf->TimeSetPoint.first = (double)msecsinceepoch; // Fit the 64 bit int into the 64 bit float.
 
 		EventTypePayload<EventType::AnalogOutputDouble64>::type val;
-		val.first = MyPointConf()->TimeSetPoint.first;
+		val.first = MyPointConf->TimeSetPoint.first;
 
 		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
 		event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
 
 		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-		bool waitforresult = !MyPointConf()->StandAloneOutstation;
+		bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 		// This does a PublishCommand and waits for the result - or times out.
 		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
@@ -1584,17 +1553,17 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t 
 	}
 	else
 	{
-		uint32_t ODCIndex = MyPointConf()->TimeSetPointNew.second;
-		MyPointConf()->TimeSetPointNew.first = (double)msecsinceepoch; // Fit the 64 bit int into the 64 bit float.
+		uint32_t ODCIndex = MyPointConf->TimeSetPointNew.second;
+		MyPointConf->TimeSetPointNew.first = (double)msecsinceepoch; // Fit the 64 bit int into the 64 bit float.
 
 		EventTypePayload<EventType::AnalogOutputDouble64>::type val;
-		val.first = MyPointConf()->TimeSetPointNew.first;
+		val.first = MyPointConf->TimeSetPointNew.first;
 
 		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
 		event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
 
 		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-		bool waitforresult = !MyPointConf()->StandAloneOutstation;
+		bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 		// This does a PublishCommand and waits for the result - or times out.
 		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
