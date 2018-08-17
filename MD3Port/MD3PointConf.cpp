@@ -63,34 +63,35 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	{
 		const auto Analogs = JSONRoot["Analogs"];
 		LOGDEBUG("Conf processed - Analog Points");
-		ProcessAnalogCounterPoints(Analogs, AnalogMD3PointMap, AnalogODCPointMap);
+		ProcessAnalogCounterPoints(Analog, Analogs);
+	}
+	if (JSONRoot.isMember("Counters"))
+	{
+		const auto Counters = JSONRoot["Counters"];
+		LOGDEBUG("Conf processed - Counter Points");
+		ProcessAnalogCounterPoints(Counter, Counters);
+	}
+	if (JSONRoot.isMember("AnalogControls"))
+	{
+		const auto AnalogControls = JSONRoot["AnalogControls"];
+		LOGDEBUG("Conf processed - AnalogControls");
+		ProcessAnalogCounterPoints(AnalogControl, AnalogControls);
 	}
 
 	if (JSONRoot.isMember("Binaries"))
 	{
 		const auto Binaries = JSONRoot["Binaries"];
 		LOGDEBUG("Conf processed - Binary Points");
-		ProcessBinaryPoints("Binary Points", Binaries, BinaryMD3PointMap, BinaryODCPointMap);
+		ProcessBinaryPoints(Binary, Binaries);
 	}
 
 	if (JSONRoot.isMember("BinaryControls"))
 	{
 		const auto BinaryControls = JSONRoot["BinaryControls"];
 		LOGDEBUG("Conf processed -Binary Controls");
-		ProcessBinaryPoints("Binary Controls", BinaryControls, BinaryControlMD3PointMap, BinaryControlODCPointMap);
+		ProcessBinaryPoints(BinaryControl, BinaryControls);
 	}
-	if (JSONRoot.isMember("Counters"))
-	{
-		const auto Counters = JSONRoot["Counters"];
-		LOGDEBUG("Conf processed - Counter Points");
-		ProcessAnalogCounterPoints(Counters, CounterMD3PointMap, CounterODCPointMap);
-	}
-	if (JSONRoot.isMember("AnalogControls"))
-	{
-		const auto AnalogControls = JSONRoot["AnalogControls"];
-		LOGDEBUG("Conf processed - AnalogControls");
-		ProcessAnalogCounterPoints(AnalogControls, AnalogControlMD3PointMap, AnalogControlODCPointMap);
-	}
+
 
 	// TimeSet Point Configuration
 	if (JSONRoot.isMember("TimeSetPoint") && JSONRoot["TimeSetPoint"].isMember("Index"))
@@ -236,10 +237,16 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 }
 
 // This method loads both Binary read points, and Binary Control points.
-void MD3PointConf::ProcessBinaryPoints(const std::string & BinaryName, const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> &MD3PointMap,
-	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> &ODCPointMap)
+void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNode)
 {
 	LOGDEBUG("Conf processing - Binary");
+
+	std::string BinaryName;
+	if (ptype == Binary)
+		BinaryName = "Binary";
+	if (ptype == BinaryControl)
+		BinaryName = "BinaryControl";
+
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
 		bool error = false;
@@ -318,24 +325,21 @@ void MD3PointConf::ProcessBinaryPoints(const std::string & BinaryName, const Jso
 				uint8_t moduleaddress = module + ((uint16_t)index - (uint16_t)start + offset) / 16;
 				uint8_t channel = (uint8_t)((offset + ((uint16_t)index- (uint16_t)start)) % 16);
 
-				uint16_t md3index = ((uint16_t)moduleaddress << 8) | channel;
+				bool res = false;
 
-				if (MD3PointMap.find(md3index) != MD3PointMap.end())
+				if (ptype == Binary)
 				{
-					LOGERROR(BinaryName + " Duplicate MD3 Index "+ JSONNode[n].toStyledString());
+					res = PointTable.AddBinaryPointToPointTable(index, moduleaddress, channel, pointtype, pollgroup);
 				}
-				else if (ODCPointMap.find(index) != ODCPointMap.end())
+				else if (ptype == BinaryControl)
 				{
-					LOGERROR(BinaryName + " Duplicate ODC Index : "+JSONNode[n].toStyledString());
+					res = PointTable.AddBinaryControlPointToPointTable(index, moduleaddress, channel, pointtype, pollgroup);
 				}
 				else
+					LOGERROR("Illegal point type passed to ProcessBinaryPoints");
+
+				if (res)
 				{
-					auto pt = std::make_shared<MD3BinaryPoint>(index, moduleaddress, channel, (uint8_t)pollgroup, pointtype);
-					MD3PointMap[md3index] = pt;
-					ODCPointMap[index] = pt;
-
-					LOGDEBUG("Conf processed - BinaryPoint Added - " + std::to_string(index) + " MD3 " + std::to_string(moduleaddress) + "-" + std::to_string(channel) + "-" + std::to_string(pollgroup) + "-" + std::to_string(pointtype));
-
 					// If the point is part of a scan group, add the module address. Don't duplicate the address.
 					if (pollgroup != 0)
 					{
@@ -359,10 +363,9 @@ void MD3PointConf::ProcessBinaryPoints(const std::string & BinaryName, const Jso
 }
 
 // This method loads both Analog and Counter/Timers. They look functionally similar in MD3
-void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> &MD3PointMap,
-	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> &ODCPointMap)
+void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value& JSONNode)
 {
-	LOGDEBUG("Conf processing - Analog");
+	LOGDEBUG("Conf processing - Analog/Counter");
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
 		bool error = false;
@@ -416,29 +419,31 @@ void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::
 			{
 				uint8_t moduleaddress = module + ((uint16_t)index - (uint16_t)start + offset) / 16;
 				uint8_t channel = (uint8_t)((offset + ((uint16_t)index - (uint16_t)start)) % 16);
+				bool res = false;
 
-				uint16_t md3index = ((uint16_t)moduleaddress << 8) | channel;
-
-				if (MD3PointMap.find(md3index) != MD3PointMap.end())
+				if (ptype == Analog)
 				{
-					LOGERROR("Duplicate MD3 Index "+ JSONNode[n].toStyledString());
+					res = PointTable.AddAnalogPointToPointTable(index, moduleaddress, channel, pollgroup);
 				}
-				else if (ODCPointMap.find(index) != ODCPointMap.end())
+				else if (ptype == Counter)
 				{
-					LOGERROR("Duplicate ODC Index : "+ JSONNode[n].toStyledString());
+					res = PointTable.AddCounterPointToPointTable(index, moduleaddress, channel, pollgroup);
+				}
+				else if (ptype == AnalogControl)
+				{
+					res = PointTable.AddAnalogControlPointToPointTable(index, moduleaddress, channel, pollgroup);
 				}
 				else
-				{
-					auto pt = std::make_shared<MD3AnalogCounterPoint>(index, moduleaddress, channel, pollgroup);
-					MD3PointMap[md3index] = pt;
-					ODCPointMap[index] = pt;
+					LOGERROR("Illegal point type passed to ProcessAnalogCounterPoints");
 
+				if (res)
+				{
 					// If the point is part of a scan group, add the module address. Don't duplicate the address.
 					if (pollgroup != 0)
 					{
 						if (PollGroups.count(pollgroup) == 0)
 						{
-							LOGERROR("Poll Group Must Be Defined for use in an Analog point : "+ JSONNode[n].toStyledString());
+							LOGERROR("Poll Group Must Be Defined for use in an Analog/Counter point : " + JSONNode[n].toStyledString());
 						}
 						else
 						{
@@ -458,6 +463,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(const Json::Value& JSONNode, std::
 			}
 		}
 	}
-	LOGDEBUG("Conf processing - Analog - Finished");
+	LOGDEBUG("Conf processing - Analog/Counter - Finished");
 }
+
 #endif

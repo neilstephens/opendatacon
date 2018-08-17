@@ -107,11 +107,9 @@ public:
 	void SendPOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & outputselection, const SharedStatusCallback_t &pStatusCallback);
 	void SendAOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & Channel, const uint16_t & value, const SharedStatusCallback_t & pStatusCallback);
 
-	std::shared_ptr<MD3PointTableAccess> GetPTA() { return PTA; } // For testing only
-
+	// Testing use only
+	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); };
 private:
-
-	std::shared_ptr<MD3PointTableAccess> PTA; // Tools for all point table access
 
 	std::unique_ptr<asio::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.

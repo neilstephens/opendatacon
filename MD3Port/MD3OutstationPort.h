@@ -117,7 +117,8 @@ public:
 	void SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 
 	// Digital/Binary
-	void DoDigitalScan(MD3BlockFn11MtoS & Header);                              // Fn 7
+	void DoDigitalScan(MD3BlockFn11MtoS & Header); // Fn 7
+	void MarkAllBinaryPointsAsChanged();
 	void DoDigitalChangeOnly(MD3BlockFormatted & Header);                       // Fn 8
 	void DoDigitalHRER(MD3BlockFn9 & Header, MD3Message_t& CompleteMD3Message); // Fn 9
 	void Fn9AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
@@ -148,16 +149,14 @@ public:
 	void SendControlOK(MD3BlockFormatted & Header);             // Fn 15
 	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
 
-	std::shared_ptr<MD3PointTableAccess> GetPTA() { return PTA; } // Testing only.
-
+	// Testing use only
+	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); };
 private:
 
 	bool DigitalChangedFlagCalculationMethod(void);
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);
 
 	OutstationSystemFlags SystemFlags;
-
-	std::shared_ptr<MD3PointTableAccess> PTA; // Tools for all point table access
 
 	void SocketStateHandler(bool state);
 

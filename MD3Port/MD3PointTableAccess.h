@@ -33,7 +33,8 @@
 
 
 #include "MD3.h"
-#include "MD3PortConf.h"
+#include "MD3PointConf.h"
+//#include "MD3PortConf.h"
 #include "MD3Utility.h"
 #include "StrandProtectedQueue.h"
 
@@ -43,7 +44,15 @@ using namespace odc;
 class MD3PointTableAccess
 {
 public:
-	MD3PointTableAccess(const bool isoutstation, std::shared_ptr<MD3PointConf> MPC, asio::io_service & IOS);
+	MD3PointTableAccess();
+	void Build(const bool isoutstation, const bool newdigitalcommands, asio::io_service & IOS);
+
+	bool AddCounterPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, uint32_t & pollgroup);
+	bool AddAnalogPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, uint32_t & pollgroup);
+	bool AddAnalogControlPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, uint32_t & pollgroup);
+
+	bool AddBinaryPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, BinaryPointType & pointtype, uint32_t & pollgroup);
+	bool AddBinaryControlPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, BinaryPointType & pointtype, uint32_t & pollgroup);
 
 	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, bool &hasbeenset);
 	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool &hasbeenset);
@@ -76,6 +85,10 @@ public:
 
 	bool GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t & index);
 
+	void ForEachBinaryPoint(std::function<void(MD3BinaryPoint &pt)>);
+	void ForEachAnalogPoint(std::function<void(MD3AnalogCounterPoint&pt)> fn);
+	void ForEachCounterPoint(std::function<void(MD3AnalogCounterPoint&pt)> fn);
+
 	std::vector<MD3BinaryPoint> DumpTimeTaggedPointList();
 
 	bool TimeTaggedDataAvailable();
@@ -88,10 +101,26 @@ public:
 
 protected:
 
-	bool IsOutStation = true;
-	bool NewDigitalCommands = true;
+	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
+	std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> BinaryMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> BinaryODCPointMap; // Index OpenDataCon, MD3Point
 
-	std::shared_ptr<MD3PointConf> MyPointConf;
+	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogODCPointMap; // Index OpenDataCon, MD3Point
+
+	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterODCPointMap; // Index OpenDataCon, MD3Point
+
+	// Binary Control Points are not readable
+	std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlODCPointMap; // Index OpenDataCon, MD3Point
+
+	// Analog Control Points are not readable
+	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlMD3PointMap; // ModuleAndChannel, MD3Point
+	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlODCPointMap; // Index OpenDataCon, MD3Point
+
+	bool IsOutstation = true;
+	bool NewDigitalCommands = true;
 
 	// Only used in outstation
 	std::shared_ptr<StrandProtectedQueue<MD3BinaryPoint>> pBinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events.

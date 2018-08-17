@@ -30,6 +30,7 @@
 #include <opendatacon/DataPort.h>
 #include <opendatacon/TCPSocketManager.h>
 #include "MD3PointConf.h"
+#include "MD3PointTableAccess.h"
 
 // Megadata System Flag register definition bits
 #define SYSTEMPOWERUPFLAGBIT 15
