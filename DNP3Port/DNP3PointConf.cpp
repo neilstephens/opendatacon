@@ -51,6 +51,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	MasterResponseTimeoutms(5000), /// Application layer response timeout
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	DoUnsolOnStartup(true),
+	SetQualityOnLinkStatus(true),
 	/// Which classes should be requested in a startup integrity scan
 	StartupIntegrityClass0(true),
 	StartupIntegrityClass1(true),
@@ -181,6 +182,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		MasterRespondTimeSync = JSONRoot["MasterRespondTimeSync"].asBool();
 	if (JSONRoot.isMember("DoUnsolOnStartup"))
 		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
+	if (JSONRoot.isMember("SetQualityOnLinkStatus"))
+		SetQualityOnLinkStatus = JSONRoot["SetQualityOnLinkStatus"].asBool();
 
 	/// Which classes should be requested in a startup integrity scan
 	if (JSONRoot.isMember("StartupIntegrityClass0"))
