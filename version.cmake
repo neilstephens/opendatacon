@@ -22,7 +22,7 @@ message("Updating version info")
 find_package(Git)
 if(GIT_FOUND)
 	execute_process(
-		COMMAND git describe --long --match "[0-9]*\\.[0-9]*\\.[0-9]" --dirty
+		COMMAND git describe --long --match "[0-9]*\\.[0-9]*\\.[0-9]*" --dirty
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		OUTPUT_VARIABLE GIT_DESCRIBE
 		OUTPUT_STRIP_TRAILING_WHITESPACE
