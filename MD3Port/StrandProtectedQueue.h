@@ -48,35 +48,35 @@ public:
 		internal_queue_strand(_io_service)
 	{}
 /*	StrandProtectedQueue()
-		: io_service(nullptr),
-		size(256),
-		internal_queue_strand(nullptr)
-	{}
+            : io_service(nullptr),
+            size(256),
+            internal_queue_strand(nullptr)
+      {}
 */
 
 	// Return front of queue value
 	bool sync_front(T &retval)
 	{
 		std::promise<T> promise;
-		auto future = promise.get_future();	// You can only call get_future ONCE!!!! Otherwise throws an assert exception!
+		auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 		bool success = false;
 
 		// Dispatch will execute now - if we can, otherwise results in a post
 		internal_queue_strand.dispatch([&]()
-		{
-			// This is only called from within the internal_queue_strand, so we are safe.
-			if (!fifo.empty())
 			{
-				success = true;
-				T val = fifo.front();
-				promise.set_value(val);
-			}
-			else
-			{
-				T val;
-				promise.set_value(val);	// success is false,so this value should never be used
-			}
-		});
+				// This is only called from within the internal_queue_strand, so we are safe.
+				if (!fifo.empty())
+				{
+				      success = true;
+				      T val = fifo.front();
+				      promise.set_value(val);
+				}
+				else
+				{
+				      T val;
+				      promise.set_value(val); // success is false,so this value should never be used
+				}
+			});
 
 		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
 		while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
@@ -98,22 +98,22 @@ public:
 	bool sync_pop()
 	{
 		std::promise<bool> promise;
-		auto future = promise.get_future();	// You can only call get_future ONCE!!!! Otherwise throws an assert exception!
+		auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
 		// Dispatch will execute now - if we can, otherwise results in a post
 		internal_queue_strand.dispatch([&]()
-		{
-			// This is only called from within the internal_queue_strand, so we are safe.
-			if (!fifo.empty())
 			{
-				fifo.pop();
-				promise.set_value(true);
-			}
-			else
-			{
-				promise.set_value(false);
-			}
-		});
+				// This is only called from within the internal_queue_strand, so we are safe.
+				if (!fifo.empty())
+				{
+				      fifo.pop();
+				      promise.set_value(true);
+				}
+				else
+				{
+				      promise.set_value(false);
+				}
+			});
 
 		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
 		while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
@@ -132,13 +132,13 @@ public:
 	bool sync_empty()
 	{
 		std::promise<bool> promise;
-		auto future = promise.get_future();	// You can only call get_future ONCE!!!! Otherwise throws an assert exception!
+		auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
-		internal_queue_strand.dispatch([&]()	// Dispatch will execute now - if we can, otherwise results in a post
-		{
-			// This is only called from within the internal_queue_strand, so we are safe.
-			promise.set_value(fifo.empty());
-		});
+		internal_queue_strand.dispatch([&]() // Dispatch will execute now - if we can, otherwise results in a post
+			{
+				// This is only called from within the internal_queue_strand, so we are safe.
+				promise.set_value(fifo.empty());
+			});
 
 		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
 		while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
@@ -161,16 +161,16 @@ public:
 
 		// Dispatch will execute now - if we can, otherwise results in a post
 		internal_queue_strand.dispatch([&]()
-		{
-			// This is only called from within the internal_queue_strand, so we are safe.
-			// Only push if we have space
-			if (fifo.size() < size)
 			{
-				fifo.push(_value);
-			}
+				// This is only called from within the internal_queue_strand, so we are safe.
+				// Only push if we have space
+				if (fifo.size() < size)
+				{
+				      fifo.push(_value);
+				}
 
-			voidpromise.set_value();
-		});
+				voidpromise.set_value();
+			});
 
 		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
 		while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
@@ -188,14 +188,14 @@ public:
 	{
 		// Dispatch will execute now - if we can, otherwise results in a post. Need to copy the _value into the Lambda as it will go out of scope when async_push exits
 		internal_queue_strand.dispatch([&,_value]()
-		{
-			// This is only called from within the internal_queue_strand, so we are safe.
-			// Only push if we have space
-			if (fifo.size() < size)
 			{
-				fifo.push(_value);
-			}
-		});
+				// This is only called from within the internal_queue_strand, so we are safe.
+				// Only push if we have space
+				if (fifo.size() < size)
+				{
+				      fifo.push(_value);
+				}
+			});
 	}
 
 private:

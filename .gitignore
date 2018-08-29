@@ -8,3 +8,4 @@ Gemfile.lock
 CMakeLists.txt.user
 .vscode*
 
+.idea/
