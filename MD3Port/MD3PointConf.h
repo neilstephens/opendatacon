@@ -113,4 +113,4 @@ public:
 	// How many times do we retry a command, before we give up and move onto the next one?
 	uint32_t MD3CommandRetries = 3;
 };
-#endif /* MD3POINTCONF_H_ */
+#endif

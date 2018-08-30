@@ -47,9 +47,9 @@ MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_s
 	const MD3Port *OutStationPortInstance,           // Messy, just used so we can access pLogger
 	bool aauto_reopen,                               //Keeps the socket open (retry on error), unless you explicitly Close() it
 	uint16_t aretry_time_ms):
+	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort),
-	pIOS(apIOS),
 	isServer(aisServer),
 	pParentPort(OutStationPortInstance),
 	auto_reopen(aauto_reopen),

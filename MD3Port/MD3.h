@@ -68,7 +68,7 @@ typedef uint64_t MD3Time; // msec since epoch, utc, most time functions are uint
 static MD3Time MD3Now()
 {
 	// To get the time to pass through ODC events. MD3 Uses UTC time in commands - as you would expect.
-	return (MD3Time)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	return static_cast<MD3Time>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 }
 
 
@@ -186,19 +186,21 @@ class MD3Point // Abstract Class
 	CHATTER_FILTER    = 1<<9*/
 
 public:
-	MD3Point() {};
+	MD3Point() {}
 
 	// We need these as we DO NOT want to copy the mutex!
 	MD3Point(const MD3Point &src):
 		Index(src.Index),
 		ModuleAddress(src.ModuleAddress),
+		ModuleFailed(src.ModuleFailed),
 		Channel(src.Channel),
 		PollGroup(src.PollGroup),
 		ChangedTime(src.ChangedTime),
-		ModuleFailed(src.ModuleFailed),
 		HasBeenSet(src.HasBeenSet)
-	{};
-	MD3Point& MD3Point::operator=(const MD3Point& src)
+	{}
+	virtual ~MD3Point() = 0; // Make the base class pure virtual
+
+	MD3Point& operator=(const MD3Point& src)
 	{
 		Index = src.Index;
 		ModuleAddress = src.ModuleAddress;
@@ -216,19 +218,18 @@ public:
 		Channel(channel),
 		PollGroup(pollgroup),
 		ChangedTime(changedtime)
-	{};
+	{}
 
 	// These first 4 never change, so no protection
-	virtual uint32_t GetIndex() = 0; // Make the base class pure virtual
-
-	uint8_t GetModuleAddress() { return ModuleAddress; };
-	uint8_t GetChannel() { return Channel; };
-	uint8_t GetPollGroup() { return PollGroup; };
+	uint32_t GetIndex() { return Index; }
+	uint8_t GetModuleAddress() { return ModuleAddress; }
+	uint8_t GetChannel() { return Channel; }
+	uint8_t GetPollGroup() { return PollGroup; }
 
 	//TODO: Do we need to get them all at the same time - so one does not get changed in the middle??
-	bool GetModuleFailed() { std::unique_lock<std::mutex> lck(PointMutex); return ModuleFailed; };
-	MD3Time GetChangedTime() { std::unique_lock<std::mutex> lck(PointMutex); return ChangedTime; };
-	bool GetHasBeenSet() { std::unique_lock<std::mutex> lck(PointMutex); return HasBeenSet; };
+	bool GetModuleFailed() { std::unique_lock<std::mutex> lck(PointMutex); return ModuleFailed; }
+	MD3Time GetChangedTime() { std::unique_lock<std::mutex> lck(PointMutex); return ChangedTime; }
+	bool GetHasBeenSet() { std::unique_lock<std::mutex> lck(PointMutex); return HasBeenSet; }
 	//	void SetChangedTime(const MD3Time &ct) { std::unique_lock<std::mutex> lck(PointMutex); ChangedTime = ct; }; // Not needed...
 
 protected:
@@ -238,61 +239,49 @@ protected:
 	bool ModuleFailed = false; // Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
 	uint8_t Channel = 0;
 	uint8_t PollGroup = 0;
-	MD3Time ChangedTime = (MD3Time)0; // msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data. TimeStamp is Uint48_t, MD3 is uint64_t but does not overflow.
-	bool HasBeenSet = false;          // To determine if we have been set since startup
+	MD3Time ChangedTime = static_cast<MD3Time>(0); // msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data. TimeStamp is Uint48_t, MD3 is uint64_t but does not overflow.
+	bool HasBeenSet = false;                       // To determine if we have been set since startup
 };
 
 
 class MD3BinaryPoint: public MD3Point
 {
 public:
-	MD3BinaryPoint() {};
+	MD3BinaryPoint() {}
 	MD3BinaryPoint(const MD3BinaryPoint &src): MD3Point(src),
 		Binary(src.Binary),
 		ModuleBinarySnapShot(src.ModuleBinarySnapShot),
 		Changed(src.Changed),
 		PointType(src.PointType)
-	{};
-	// Needed for the templated Queue
-	MD3BinaryPoint& MD3BinaryPoint::operator=(const MD3BinaryPoint& src)
-	{
-		Index = src.Index;
-		ModuleAddress = src.ModuleAddress;
-		Channel = src.Channel;
-		PollGroup = src.PollGroup;
-		ChangedTime = src.ChangedTime;
-		ModuleFailed = src.ModuleFailed;
-		HasBeenSet = src.HasBeenSet;
-		Binary = src.Binary;
-		ModuleBinarySnapShot = src.ModuleBinarySnapShot;
-		Changed = src.Changed;
-		PointType = src.PointType;
-		return *this;
-	}
+	{}
 	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup, BinaryPointType pointtype): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup),
 		PointType(pointtype)
-	{};
+	{}
 
 	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup, BinaryPointType pointtype, uint8_t binval, bool changed, MD3Time changedtime):
 		MD3Point(index, moduleaddress, channel, changedtime, pollgroup),
-		PointType(pointtype),
 		Binary(binval),
-		Changed(changed)
-	{};
+		Changed(changed),
+		PointType(pointtype)
+	{}
 
-	const BinaryPointType GetPointType() { return PointType; };
-	uint32_t GetIndex() { return Index; };
+	~MD3BinaryPoint();
 
-	uint8_t GetBinary() { std::unique_lock<std::mutex> lck(PointMutex); return Binary; };
-	uint16_t GetModuleBinarySnapShot() { std::unique_lock<std::mutex> lck(PointMutex); return ModuleBinarySnapShot; };
+	// Needed for the templated Queue
+	MD3BinaryPoint& operator=(const MD3BinaryPoint& src);
 
-	bool GetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); return Changed; };
-	void SetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); Changed = true; };
-	bool GetAndResetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); bool res = Changed; Changed = false; return res; };
+	BinaryPointType GetPointType() const { return PointType; }
 
-	void SetBinary(const uint8_t &b, const MD3Time &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; ChangedTime = ctime; Changed = (Binary != b); Binary = b; };
-	void SetChanged(const bool &c) { std::unique_lock<std::mutex> lck(PointMutex); Changed = c; };
-	void SetModuleBinarySnapShot(const uint16_t &bm) { std::unique_lock<std::mutex> lck(PointMutex); ModuleBinarySnapShot = bm; };
+	uint8_t GetBinary() { std::unique_lock<std::mutex> lck(PointMutex); return Binary; }
+	uint16_t GetModuleBinarySnapShot() { std::unique_lock<std::mutex> lck(PointMutex); return ModuleBinarySnapShot; }
+
+	bool GetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); return Changed; }
+	void SetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); Changed = true; }
+	bool GetAndResetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); bool res = Changed; Changed = false; return res; }
+
+	void SetBinary(const uint8_t &b, const MD3Time &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; ChangedTime = ctime; Changed = (Binary != b); Binary = b; }
+	void SetChanged(const bool &c) { std::unique_lock<std::mutex> lck(PointMutex); Changed = c; }
+	void SetModuleBinarySnapShot(const uint16_t &bm) { std::unique_lock<std::mutex> lck(PointMutex); ModuleBinarySnapShot = bm; }
 
 protected:
 	// Only the values below will be changed in two places
@@ -305,17 +294,17 @@ protected:
 class MD3AnalogCounterPoint: public MD3Point
 {
 public:
-	MD3AnalogCounterPoint() {};
+	MD3AnalogCounterPoint() {}
 
 	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
-	{};
+	{}
+	~MD3AnalogCounterPoint() {}
 
-	uint32_t GetIndex() { return Index; };
-	uint16_t GetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); return Analog; };
-	uint16_t GetAnalogAndDelta(int &delta) { std::unique_lock<std::mutex> lck(PointMutex); delta = (int)Analog - (int)LastReadAnalog; LastReadAnalog = Analog; return Analog; };
+	uint16_t GetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); return Analog; }
+	uint16_t GetAnalogAndDelta(int &delta) { std::unique_lock<std::mutex> lck(PointMutex); delta = (int)Analog - (int)LastReadAnalog; LastReadAnalog = Analog; return Analog; }
 
-	void SetAnalog(const uint16_t & a, const MD3Time &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; Analog = a; ChangedTime = ctime; };
-	void SetLastReadAnalog(const uint16_t & a) { std::unique_lock<std::mutex> lck(PointMutex); LastReadAnalog = a; };
+	void SetAnalog(const uint16_t & a, const MD3Time &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; Analog = a; ChangedTime = ctime; }
+	void SetLastReadAnalog(const uint16_t & a) { std::unique_lock<std::mutex> lck(PointMutex); LastReadAnalog = a; }
 
 protected:
 	uint16_t Analog = 0x8000;

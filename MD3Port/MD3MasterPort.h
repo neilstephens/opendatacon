@@ -145,4 +145,4 @@ private:
 	QualityFlags  CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time);
 };
 
-#endif /* MD3MASTERPORT_H_ */
+#endif

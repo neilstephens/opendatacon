@@ -119,5 +119,5 @@ private:
 	static std::unordered_map<std::string, std::shared_ptr<MD3Connection>> ConnectionMap;
 };
 
-#endif // MD3CONNECTION
+#endif
 

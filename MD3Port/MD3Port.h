@@ -82,4 +82,4 @@ protected:
 	std::shared_ptr<MD3Connection> pConnection;
 };
 
-#endif /* MD3PORT_H_ */
+#endif

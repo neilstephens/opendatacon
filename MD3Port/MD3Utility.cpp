@@ -28,6 +28,29 @@
 #include "MD3.h"
 #include "MD3Utility.h"
 
+// Maybe need an MD3.cpp file to be clear?
+
+MD3BinaryPoint::~MD3BinaryPoint() {}
+
+MD3BinaryPoint& MD3BinaryPoint::operator=(const MD3BinaryPoint& src)
+{
+	if (this != &src) // Prevent self assignment
+	{
+		Index = src.Index;
+		ModuleAddress = src.ModuleAddress;
+		Channel = src.Channel;
+		PollGroup = src.PollGroup;
+		ChangedTime = src.ChangedTime;
+		ModuleFailed = src.ModuleFailed;
+		HasBeenSet = src.HasBeenSet;
+		Binary = src.Binary;
+		ModuleBinarySnapShot = src.ModuleBinarySnapShot;
+		Changed = src.Changed;
+		PointType = src.PointType;
+	}
+	return *this;
+}
+
 static const uint8_t fcstab[256] =
 {
 	0x00, 0x6c, 0xd8, 0xb4, 0xdc, 0xb0, 0x04, 0x68, 0xd4, 0xb8, 0x0c, 0x60, 0x08, 0x64, 0xd0, 0xbc,
@@ -106,7 +129,6 @@ int tz_offset()
 	std::ostringstream os;
 	os << std::put_time(&tm, "%z");
 	std::string s = os.str();
-	// s is in ISO 8601 format: "±HHMM"
 	int h = std::stoi(s.substr(0, 3), nullptr, 10);
 	int m = std::stoi(s[0] + s.substr(3), nullptr, 10);
 

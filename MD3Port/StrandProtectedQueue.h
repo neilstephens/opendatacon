@@ -205,4 +205,4 @@ private:
 	asio::strand internal_queue_strand;
 };
 
-#endif ASIOSPC_H_
+#endif
