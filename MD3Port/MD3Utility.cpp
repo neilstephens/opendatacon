@@ -32,6 +32,7 @@
 
 MD3BinaryPoint::~MD3BinaryPoint() {}
 
+// This not in header file due to odd gcc error
 MD3BinaryPoint& MD3BinaryPoint::operator=(const MD3BinaryPoint& src)
 {
 	if (this != &src) // Prevent self assignment
@@ -50,6 +51,8 @@ MD3BinaryPoint& MD3BinaryPoint::operator=(const MD3BinaryPoint& src)
 	}
 	return *this;
 }
+
+MD3AnalogCounterPoint::~MD3AnalogCounterPoint() {}
 
 static const uint8_t fcstab[256] =
 {

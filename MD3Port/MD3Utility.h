@@ -99,7 +99,7 @@ public:
 		data = _data[0] << 24 | _data[1] << 16 | _data[2] << 8 | _data[3];
 		endbyte = _data[4];
 	}
-	explicit MD3BlockData(std::string hexdata)
+	explicit MD3BlockData(const std::string &hexdata)
 	{
 		if (hexdata.size() == 12)
 		{
@@ -335,7 +335,7 @@ public:
 class MD3BlockFn9: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn9(MD3BlockData& parent)
+	explicit MD3BlockFn9(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -401,7 +401,7 @@ public:
 class MD3BlockFn10: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn10(MD3BlockData& parent)
+	explicit MD3BlockFn10(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -442,7 +442,7 @@ public:
 class MD3BlockFn11MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn11MtoS(MD3BlockData& parent)
+	explicit MD3BlockFn11MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -486,7 +486,7 @@ public:
 class MD3BlockFn11StoM: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn11StoM(MD3BlockData& parent)
+	explicit MD3BlockFn11StoM(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -559,7 +559,7 @@ public:
 class MD3BlockFn12MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn12MtoS( MD3BlockData& parent)
+	explicit MD3BlockFn12MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -601,7 +601,7 @@ public:
 class MD3BlockFn14StoM: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn14StoM(MD3BlockData& parent)
+	explicit MD3BlockFn14StoM(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -665,7 +665,7 @@ public:
 class MD3BlockFn15StoM: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn15StoM(MD3BlockData& parent)
+	explicit MD3BlockFn15StoM(const MD3BlockData& parent)
 	{
 		// This Block is a copy of the originating block header data, with the function code changed.
 		// We change the function code, change the direction bit, mark as last block and recalc the checksum.
@@ -692,7 +692,7 @@ public:
 class MD3BlockFn16MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn16MtoS(MD3BlockData& parent)
+	explicit MD3BlockFn16MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -732,7 +732,7 @@ public:
 class MD3BlockFn17MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn17MtoS(MD3BlockData& parent)
+	explicit MD3BlockFn17MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -786,7 +786,7 @@ public:
 class MD3BlockFn19MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn19MtoS(MD3BlockData& parent)
+	explicit MD3BlockFn19MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -842,7 +842,7 @@ public:
 class MD3BlockFn23MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn23MtoS(MD3BlockData& parent)
+	explicit MD3BlockFn23MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -939,7 +939,7 @@ public:
 class MD3BlockFn40MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn40MtoS(MD3BlockData& parent)
+	explicit MD3BlockFn40MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -972,7 +972,7 @@ public:
 class MD3BlockFn40StoM: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn40StoM(MD3BlockData& parent)
+	explicit MD3BlockFn40StoM(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -1010,7 +1010,7 @@ public:
 class MD3BlockFn43MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn43MtoS(MD3BlockData& parent)
+	explicit MD3BlockFn43MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -1043,7 +1043,7 @@ public:
 class MD3BlockFn44MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn44MtoS(MD3BlockData& parent)
+	explicit MD3BlockFn44MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -1071,7 +1071,7 @@ public:
 class MD3BlockFn52MtoS: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn52MtoS(MD3BlockData& parent)
+	explicit MD3BlockFn52MtoS(const MD3BlockData& parent)
 	{
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
@@ -1094,7 +1094,7 @@ public:
 class MD3BlockFn52StoM: public MD3BlockFormatted
 {
 public:
-	explicit MD3BlockFn52StoM(MD3BlockData& parent)
+	explicit MD3BlockFn52StoM(const MD3BlockData& parent)
 	{
 		// This Block is a copy of the originating block header data, with the function code changed.
 		// We change the function code, change the direction bit, mark as last block and recalc the checksum.

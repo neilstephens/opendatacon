@@ -298,7 +298,7 @@ public:
 
 	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
 	{}
-	~MD3AnalogCounterPoint() {}
+	~MD3AnalogCounterPoint();
 
 	uint16_t GetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); return Analog; }
 	uint16_t GetAnalogAndDelta(int &delta) { std::unique_lock<std::mutex> lck(PointMutex); delta = (int)Analog - (int)LastReadAnalog; LastReadAnalog = Analog; return Analog; }

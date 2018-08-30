@@ -118,14 +118,15 @@ void MD3OutstationPort::Build()
 	if (pConnection == nullptr)
 	{
 		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-				std::to_string(MyConf->mAddrConf.Port), this, true, MyConf->TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
+			std::to_string(MyConf->mAddrConf.Port), this, true, MyConf->TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}
 
-	pConnection->AddOutstation(MyConf->mAddrConf.OutstationAddr,
-		std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1),
-		std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1) );
+	std::function<void(MD3Message_t &MD3Message)> aReadCallback = std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1);
+	std::function<void(bool)> aStateCallback = std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1);
+
+	pConnection->AddOutstation(MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback );
 }
 
 void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)

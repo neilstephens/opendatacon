@@ -125,7 +125,7 @@ void MD3MasterPort::Build()
 	if (pConnection == nullptr)
 	{
 		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-				std::to_string(MyConf->mAddrConf.Port), this, true, MyConf->TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
+			std::to_string(MyConf->mAddrConf.Port), this, true, MyConf->TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}
@@ -622,7 +622,7 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 	uint8_t ModuleAddress = Header.GetModuleAddress();
 	uint8_t Channels = Header.GetChannels();
 
-	uint NumberOfDataBlocks = Channels / 4 + Channels % 4; // 2 --> 1, 5 -->2
+	uint8_t NumberOfDataBlocks = Channels / 4 + Channels % 4; // 2 --> 1, 5 -->2
 
 	if (NumberOfDataBlocks != CompleteMD3Message.size() - 1)
 	{
@@ -636,9 +636,9 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 	// Unload the analog delta values from the blocks - 4 per block.
 	std::vector<int8_t> AnalogDeltaValues;
 	int ChanCount = 0;
-	for (uint i = 0; i < NumberOfDataBlocks; i++)
+	for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
 	{
-		for (uint j = 0; j < 4; j++)
+		for (uint8_t j = 0; j < 4; j++)
 		{
 			AnalogDeltaValues.push_back(CompleteMD3Message[i + 1].GetByte(j)); // Test unsigned/signed conversion here...
 			ChanCount++;
@@ -665,8 +665,8 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 		// Code to adjust the ModuleAddress and index if the first module is a counter module (8 channels)
 		// 16 channels will cover two counters or one counter and 1/2 an analog, or one analog (16 channels).
 		// We assume that Analog and Counter modules cannot have the same module address - which we think is a safe assumption.
-		uint idx = FirstModuleIsCounterModule ? i % 8 : i;
-		uint maddress = (FirstModuleIsCounterModule && i > 8) ? ModuleAddress + 1 : ModuleAddress;
+		uint8_t idx = FirstModuleIsCounterModule ? i % 8 : i;
+		uint16_t maddress = (FirstModuleIsCounterModule && i > 8) ? ModuleAddress + 1 : ModuleAddress;
 
 		if (MyPointConf->PointTable.GetAnalogValueUsingMD3Index(maddress, idx, wordres,hasbeenset))
 		{

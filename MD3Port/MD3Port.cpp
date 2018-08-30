@@ -117,18 +117,18 @@ void MD3Port::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 		return;
 	}
 	// Turn the blocks into a binary string.
-	std::string MD3Message;
+	std::string MD3MessageString;
 	for (auto blk : CompleteMD3Message)
 	{
-		MD3Message += blk.ToBinaryString();
+		MD3MessageString += blk.ToBinaryString();
 	}
 
 	// This is a pointer to a function, so that we can hook it for testing. Otherwise calls the pSockMan Write templated function
 	// Small overhead to allow for testing - Is there a better way? - could not hook the pSockMan->Write function and/or another passed in function due to differences between a method and a lambda
 	if (SendTCPDataFn != nullptr)
-		SendTCPDataFn(MD3Message);
+		SendTCPDataFn(MD3MessageString);
 	else
 	{
-		pConnection->Write(std::string(MD3Message));
+		pConnection->Write(MD3MessageString);
 	}
 }
