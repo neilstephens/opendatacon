@@ -1,5 +1,20 @@
 opendatacon version 0.5.1
 
+1.0.0
+	- Fixed long-standing defect where command status delays would block calling strand
+		(changed to callbacks for event feedback instead of using futures)
+	- Code formatting enforced by git hooks and cmake
+	- Logging overhaul with spdlog 
+	- New commands to set log level from console
+	- Decoupled everything except DNP3Port from depending on opendnp3
+		(involved major overhaul to internal event data types)
+	- Upgraded DNP3Port to use the latest version of opendnp3
+	- PID file support, fixed daemon mode, and updated RHEL init script
+	- more robust dynamic loading/unloading of modules
+	- Fixed non thread-safe access to libmodbus in ModbusPort
+	- Build system can now handle dependencies with git submodules
+	- Many other small enhancements, including incorporating feedback from a 3rd party code review
+	
 0.5.1
 	- Hotfix to make daemon mode work as expected
 
