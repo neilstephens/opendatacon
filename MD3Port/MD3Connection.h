@@ -33,7 +33,7 @@
 #include <functional>
 #include <unordered_map>
 #include "MD3.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3Port.h"
 
 /*
@@ -53,23 +53,23 @@ class MD3Connection
 {
 public:
 	MD3Connection
-	(asio::io_service* apIOS,					//pointer to an asio io_service
-		bool aisServer,							//Whether to act as a server or client
-		const std::string& aEndPoint,				//IP addr or hostname (to connect to if client, or bind to if server)
-		const std::string& aPort,					//Port to connect to if client, or listen on if server
-	    const MD3Port *OutStationPortInstance,	// Messy, just used so we can access pLogger
-		bool aauto_reopen = false,					//Keeps the socket open (retry on error), unless you explicitly Close() it
+		(asio::io_service* apIOS,              //pointer to an asio io_service
+		bool aisServer,                        //Whether to act as a server or client
+		const std::string& aEndPoint,          //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,              //Port to connect to if client, or listen on if server
+		const MD3Port *OutStationPortInstance, // Messy, just used so we can access pLogger
+		bool aauto_reopen = false,             //Keeps the socket open (retry on error), unless you explicitly Close() it
 		uint16_t aretry_time_ms = 0);
 
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
-	void AddOutstation(uint8_t StationAddress,	// For message routing, OutStation identification
-		const std::function<void(std::vector<MD3BlockData> MD3Message)> aReadCallback,
+	void AddOutstation(uint8_t StationAddress, // For message routing, OutStation identification
+		const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
 		const std::function<void(bool)> aStateCallback);
 
 	void RemoveOutstation(uint8_t StationAddress);
 
 	void AddMaster(uint8_t TargetStationAddress,
-		const std::function<void(std::vector<MD3BlockData>MD3Message)> aReadCallback,
+		const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
 		const std::function<void(bool)> aStateCallback);
 
 	void RemoveMaster(uint8_t TargetStationAddress);
@@ -92,23 +92,25 @@ public:
 	// We do some basic MD3 block identifiaction and procesing, enough to give us complete blocks and StationAddresses
 	void ReadCompletionHandler(buf_t& readbuf);
 
-	void RouteMD3Message(std::vector<MD3BlockData> &CompleteMD3Message);
+	void RouteMD3Message(MD3Message_t &CompleteMD3Message);
 
 	void SocketStateHandler(bool state);
 
 private:
 	asio::io_service* pIOS;
 	std::string EndPoint;
-	std::string Port;	
+	std::string Port;
+	std::string ChannelID;
 
 	bool isServer;
 	bool enabled = false;
 	const MD3Port* pParentPort = nullptr;
 	bool auto_reopen;
 	uint16_t retry_time_ms;
+	MD3Message_t MD3Message;
 
 	// Need maps for these two...
-	std::unordered_map<uint8_t, std::function<void(std::vector<MD3BlockData> MD3Message)>> ReadCallbackMap;
+	std::unordered_map<uint8_t, std::function<void(MD3Message_t &MD3Message)>> ReadCallbackMap;
 	std::unordered_map<uint8_t, std::function<void(bool)>> StateCallbackMap;
 
 	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
@@ -117,5 +119,5 @@ private:
 	static std::unordered_map<std::string, std::shared_ptr<MD3Connection>> ConnectionMap;
 };
 
-#endif // MD3CONNECTION
+#endif
 

@@ -27,9 +27,9 @@
 #ifndef SIMPORTCONF_H
 #define SIMPORTCONF_H
 
+#include <memory>
 #include <opendatacon/DataPortConf.h>
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendnp3/app/ControlRelayOutputBlock.h>
+#include <opendatacon/IOTypes.h>
 
 //DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
 //We can generalise, and come up with a simpler superset:
@@ -37,16 +37,14 @@
 //	-arbitrary on/off values for each output
 //	-each output either pulsed or latched
 
-typedef enum { PULSE, LATCH } FeedbackMode;
+enum class FeedbackMode { PULSE, LATCH };
 struct BinaryFeedback
 {
-	size_t binary_index;
-	Binary on_value;
-	Binary off_value;
+	std::shared_ptr<EventInfo> on_value;
+	std::shared_ptr<EventInfo> off_value;
 	FeedbackMode mode;
 
-	BinaryFeedback(size_t index, Binary on = Binary(true), Binary off = Binary(false), FeedbackMode amode = LATCH):
-		binary_index(index),
+	BinaryFeedback(std::shared_ptr<EventInfo> on, std::shared_ptr<EventInfo> off, FeedbackMode amode):
 		on_value(on),
 		off_value(off),
 		mode(amode)
@@ -61,10 +59,10 @@ public:
 	{}
 
 	std::vector<uint32_t> BinaryIndicies;
-	std::map<size_t, Binary> BinaryStartVals;
+	std::map<size_t, bool> BinaryStartVals;
 	std::map<size_t, unsigned int> BinaryUpdateIntervalms;
 	std::vector<uint32_t> AnalogIndicies;
-	std::map<size_t, Analog> AnalogStartVals;
+	std::map<size_t, double> AnalogStartVals;
 	std::map<size_t, unsigned int> AnalogUpdateIntervalms;
 	std::map<size_t, double> AnalogStdDevs;
 	std::vector<uint32_t> ControlIndicies;

@@ -18,18 +18,21 @@
  *	limitations under the License.
  */
 
-#include "../DaemonInterface.h"
-#include <opendatacon/Platform.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string>
 #include <stdexcept>
 #include <stdlib.h>
+
+#include <fstream>
+
+#include <opendatacon/Platform.h>
+#include "../DaemonInterface.h"
 #include "../ODCArgs.h"
 
 void daemonp(ODCArgs& Args)
 {
-	if(daemon(0,0))
+	if(daemon(1,0))
 	{
 		const size_t strmax = 80;
 		char buf[strmax];
@@ -44,6 +47,18 @@ void daemonp(ODCArgs& Args)
 			msg = std::string("Unable to daemonise: UNKNOWN ERROR");
 		}
 		throw std::runtime_error(msg);
+	}
+	if(Args.PIDFileArg.isSet())
+	{
+		std::ofstream pidfile;
+		pidfile.open(Args.PIDFileArg.getValue());
+		if(pidfile.is_open())
+		{
+			pidfile << getpid() << std::endl;
+			pidfile.close();
+		}
+		else
+			throw std::runtime_error("Failed to write pidfile.");
 	}
 }
 void daemon_install(ODCArgs& Args){}

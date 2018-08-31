@@ -32,8 +32,6 @@
 #include <unordered_map>
 #include <functional>
 #include <opendatacon/IOTypes.h>
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendnp3/gen/ControlCode.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 
@@ -59,11 +57,10 @@ public:
 	uint32_t pollrate;
 };
 
-template<class T>
 class ModbusReadGroup
 {
 public:
-	ModbusReadGroup(uint32_t start_, uint32_t count_, uint32_t pollgroup_, const T& startval_, uint32_t offset):
+	ModbusReadGroup(uint32_t start_, uint32_t count_, uint32_t pollgroup_, std::shared_ptr<const EventInfo> startval_, uint32_t offset):
 		start(start_),
 		count(count_),
 		pollgroup(pollgroup_),
@@ -79,12 +76,11 @@ public:
 	uint32_t start;
 	uint32_t count;
 	uint32_t pollgroup;
-	T startval;
+	std::shared_ptr<const EventInfo> startval;
 	uint32_t index_offset;
 };
 
-template<class T>
-class ModbusReadGroupCollection: public std::vector<ModbusReadGroup<T> >
+class ModbusReadGroupCollection: public std::vector<ModbusReadGroup>
 {
 public:
 	size_t Total()
@@ -106,18 +102,16 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	uint8_t GetUnsolClassMask();
 
-	std::pair<Binary,size_t> mCommsPoint;
-
-	ModbusReadGroupCollection<Binary> BitIndicies;
-	ModbusReadGroupCollection<Binary> InputBitIndicies;
-	ModbusReadGroupCollection<Analog> RegIndicies;
-	ModbusReadGroupCollection<Analog> InputRegIndicies;
+	ModbusReadGroupCollection BitIndicies;
+	ModbusReadGroupCollection InputBitIndicies;
+	ModbusReadGroupCollection RegIndicies;
+	ModbusReadGroupCollection InputRegIndicies;
 
 	std::map<uint32_t, ModbusPollGroup> PollGroups;
 
 private:
-	template<class T>
-	void ProcessReadGroup(const Json::Value& Ranges,ModbusReadGroupCollection<T>& ReadGroup);
+	template<EventType T>
+	void ProcessReadGroup(const Json::Value& Ranges,ModbusReadGroupCollection& ReadGroup);
 };
 
 #endif /* ModbusPOINTCONF_H_ */

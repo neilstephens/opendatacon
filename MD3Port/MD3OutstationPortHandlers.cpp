@@ -39,11 +39,9 @@
 #include <opendnp3/LogLevels.h>
 
 #include "MD3.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3OutstationPort.h"
 
-
-//TODO: Check out http://www.pantheios.org/ logging library..
 
 /*func, count, name Analysis of traffic results
 
@@ -94,6 +92,7 @@ SYSTEM_SIGNON_CONTROL = 40,
 SYSTEM_SIGNOFF_CONTROL = 41,
 SYSTEM_RESTART_CONTROL = 42,
 SYSTEM_SET_DATETIME_CONTROL = 43,
+SYSTEM_SET_DATETIME_CONTROL_NEW = 44,
 FILE_DOWNLOAD = 50,
 FILE_UPLOAD = 51,
 SYSTEM_FLAG_SCAN = 52,
@@ -101,23 +100,25 @@ LOW_RES_EVENTS_LIST_SCAN = 60
 
 */
 
-void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 {
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 	assert(CompleteMD3Message.size() != 0);
 
 	int ExpectedMessageSize = 1; // Only set in switch statement if not 1
 
-	MD3BlockFormatted Header = CompleteMD3Message[0];
+	MD3BlockFormatted Header = MD3BlockFormatted(CompleteMD3Message[0]);
 	// Now based on the Command Function, take action. Some of these are responses from - not commands to an OutStation.
 
 	if (Header.IsMasterToStationMessage() != true)
 	{
 		LOGERROR("Received a Station to Master message at the outstation - ignoring - " + std::to_string(Header.GetFunctionCode()) +
 			" On Station Address - " + std::to_string(Header.GetStationAddress()));
-		//TODO: SJE Trip an error so we dont have to wait for timeout?
+		//	Let timeout deal with the error
 		return;
 	}
+
+	bool NotImplemented = false;
 
 	// All are included to allow better error reporting.
 	switch (Header.GetFunctionCode())
@@ -152,12 +153,15 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 			DoDigitalUnconditional(static_cast<MD3BlockFn12MtoS&>(Header));
 			break;
 		case ANALOG_NO_CHANGE_REPLY:
+			NotImplemented = true;
 			// Master Only
 			break;
 		case DIGITAL_NO_CHANGE_REPLY:
+			NotImplemented = true;
 			// Master Only
 			break;
 		case CONTROL_REQUEST_OK:
+			NotImplemented = true;
 			// Master Only
 			break;
 		case FREEZE_AND_RESET:
@@ -172,43 +176,59 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 			DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
 			break;
 		case INPUT_POINT_CONTROL:
+			NotImplemented = true;
 			break;
 		case RAISE_LOWER_TYPE_CONTROL:
+			NotImplemented = true;
 			break;
 		case AOM_TYPE_CONTROL:
 			ExpectedMessageSize = 2;
 			DoAOMControl(static_cast<MD3BlockFn23MtoS&>(Header), CompleteMD3Message);
 			break;
 		case CONTROL_OR_SCAN_REQUEST_REJECTED:
+			NotImplemented = true;
 			// Master Only
 			break;
 		case COUNTER_SCAN:
 			DoCounterScan(Header);
 			break;
 		case SYSTEM_SIGNON_CONTROL:
-			DoSystemSignOnControl(static_cast<MD3BlockFn40&>(Header));
+			DoSystemSignOnControl(static_cast<MD3BlockFn40MtoS&>(Header));
 			break;
 		case SYSTEM_SIGNOFF_CONTROL:
+			NotImplemented = true;
 			break;
 		case SYSTEM_RESTART_CONTROL:
+			NotImplemented = true;
 			break;
 		case SYSTEM_SET_DATETIME_CONTROL:
 			ExpectedMessageSize = 2;
 			DoSetDateTime(static_cast<MD3BlockFn43MtoS&>(Header), CompleteMD3Message);
 			break;
+		case SYSTEM_SET_DATETIME_CONTROL_NEW:
+			ExpectedMessageSize = 3;
+			DoSetDateTimeNew(static_cast<MD3BlockFn44MtoS&>(Header), CompleteMD3Message);
+			break;
 		case FILE_DOWNLOAD:
+			NotImplemented = true;
 			break;
 		case FILE_UPLOAD:
+			NotImplemented = true;
 			break;
 		case SYSTEM_FLAG_SCAN:
 			ExpectedMessageSize = CompleteMD3Message.size(); // Variable size
-			DoSystemFlagScan(Header, CompleteMD3Message);
+			DoSystemFlagScan(static_cast<MD3BlockFn52MtoS&>(Header), CompleteMD3Message);
 			break;
 		case LOW_RES_EVENTS_LIST_SCAN:
+			NotImplemented = true;
 			break;
 		default:
 			LOGERROR("Unknown Command Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			break;
+	}
+	if (NotImplemented == true)
+	{
+		LOGERROR("Command Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 	}
 
 	if (ExpectedMessageSize != CompleteMD3Message.size())
@@ -218,10 +238,30 @@ void MD3OutstationPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3
 			" Function - " + std::to_string(Header.GetFunctionCode()));
 	}
 }
+
+#pragma region Worker Methods
+
+// This method is passed to the SystemFlags variable to do the necessary calculation
+// Access through SystemFlags.GetDigitalChangedFlag()
+bool MD3OutstationPort::DigitalChangedFlagCalculationMethod(void)
+{
+	// Return true if there is unsent digital changes
+	return (CountBinaryBlocksWithChanges() > 0);
+}
+// This method is passed to the SystemFlags variable to do the necessary calculation
+// Access through SystemFlags.GetTimeTaggedDataAvailableFlag()
+bool MD3OutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
+{
+	return MyPointConf->PointTable.TimeTaggedDataAvailable();
+}
+
+#pragma endregion
+
 #pragma region ANALOG and COUNTER
 // Function 5
 void MD3OutstationPort::DoAnalogUnconditional(MD3BlockFormatted &Header)
 {
+	LOGDEBUG("OS - DoAnalogUnconditional - Fn5");
 	// This has only one response
 	std::vector<uint16_t> AnalogValues;
 	std::vector<int> AnalogDeltaValues;
@@ -233,13 +273,14 @@ void MD3OutstationPort::DoAnalogUnconditional(MD3BlockFormatted &Header)
 	SendAnalogOrCounterUnconditional(ANALOG_UNCONDITIONAL,AnalogValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
 }
 
-// Function 31 - Esentially the same as Analog Unconditional. Either can be used to return either analog or counter, or both.
+// Function 31 - Essentially the same as Analog Unconditional. Either can be used to return either analog or counter, or both.
 // The only difference is that an analog module seems to have 16 channels, the counter module only 8.
 // The expectation is that if you ask for more than 8 from a counter module, it will roll over to the next module (counter or analog).
 // As an analog module has 16, the most that can be requested the overflow never happens.
 // In order to make this work, we need to know if the module we are dealing with is a counter or analog module.
 void MD3OutstationPort::DoCounterScan(MD3BlockFormatted &Header)
 {
+	LOGDEBUG("OS - DoCounterScan - Fn31");
 	// This has only one response
 	std::vector<uint16_t> AnalogValues;
 	std::vector<int> AnalogDeltaValues;
@@ -254,6 +295,7 @@ void MD3OutstationPort::DoCounterScan(MD3BlockFormatted &Header)
 // Function 6
 void MD3OutstationPort::DoAnalogDeltaScan( MD3BlockFormatted &Header )
 {
+	LOGDEBUG("OS - DoAnalogDeltaScan - Fn6");
 	// First work out what our response will be, loading the data to be sent into two vectors.
 	std::vector<uint16_t> AnalogValues;
 	std::vector<int> AnalogDeltaValues;
@@ -282,10 +324,10 @@ void MD3OutstationPort::ReadAnalogOrCounterRange(int ModuleAddress, int Channels
 	// So if we find an entry in the analog list, we dont have to worry about overflow, as there are 16 channels, and the most we can ask for is 16.
 	//
 	uint16_t wordres = 0;
-	int deltares = 0;
+	bool hasbeenset;
 
 	// Is it a counter module? Fails if not at this address
-	if (GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres))
+	if (MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres, hasbeenset))
 	{
 		// We have a counter module, can get up to 8 values from it
 		int chancnt = Channels >= 8 ? 8 : Channels;
@@ -295,7 +337,7 @@ void MD3OutstationPort::ReadAnalogOrCounterRange(int ModuleAddress, int Channels
 		{
 			// Now we have to get the remaining channels (up to 8) from the next module, if it exists.
 			// Check if it is a counter, otherwise assume analog. Will return correct error codes if not there
-			if (GetCounterValueUsingMD3Index(ModuleAddress+1, 0, wordres))
+			if (MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress+1, 0, wordres,hasbeenset))
 			{
 				GetAnalogModuleValues(CounterModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
 			}
@@ -318,21 +360,21 @@ void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterO
 	{
 		uint16_t wordres = 0;
 		int deltares = 0;
+		bool hasbeenset;
 		bool foundentry = false;
 
 		if (IsCounterOrAnalog == CounterModule)
 		{
-			foundentry = GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+			foundentry = MyPointConf->PointTable.GetCounterValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares,hasbeenset);
 		}
 		else
 		{
-			foundentry= GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares);
+			foundentry= MyPointConf->PointTable.GetAnalogValueAndChangeUsingMD3Index(ModuleAddress, i, wordres, deltares,hasbeenset);
 		}
 
 		if (!foundentry)
 		{
-			// Point does not exist - need to send analog unconditional as response.
-			ResponseType = AllChange;
+			// Point does not exist - If we do an unconditional we send 0x8000, if a delta we send 0 (so the 0x8000 will not change when 0 gets added to it!!)
 			AnalogValues.push_back(0x8000); // Magic value
 			AnalogDeltaValues.push_back(0);
 		}
@@ -354,10 +396,13 @@ void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterO
 }
 void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE functioncode, std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
 {
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, functioncode, ModuleAddress, Channels);
+
+	MD3BlockFormatted FormattedBlock = MD3BlockFormatted(StationAddress, false, functioncode, ModuleAddress, Channels);
+	FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 	ResponseMD3Message.push_back(FormattedBlock);
 
 	assert(Channels == Analogs.size());
@@ -375,10 +420,12 @@ void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE funct
 }
 void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
 {
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_DELTA_SCAN, ModuleAddress, Channels);
+	MD3BlockFormatted FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_DELTA_SCAN, ModuleAddress, Channels);
+	FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 	ResponseMD3Message.push_back(FormattedBlock);
 
 	assert(Channels == Deltas.size());
@@ -397,10 +444,12 @@ void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t Station
 }
 void MD3OutstationPort::SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels)
 {
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	MD3BlockData FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_NO_CHANGE_REPLY, ModuleAddress, Channels, true);
+	MD3BlockFormatted FormattedBlock = MD3BlockFormatted(StationAddress, false, ANALOG_NO_CHANGE_REPLY, ModuleAddress, Channels, true);
+	FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 	ResponseMD3Message.push_back(FormattedBlock);
 	SendMD3Message(ResponseMD3Message);
 }
@@ -413,7 +462,9 @@ void MD3OutstationPort::DoDigitalUnconditionalObs(MD3BlockFormatted &Header)
 {
 	// For this function, the channels field is actually the number of consecutive modules to return. We always return 16 channel bits.
 	// If there is an invalid module, we return a different block for that module.
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
+
+	LOGDEBUG("OS - DoDigitalUnconditionalObs - Fn7");
 
 	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
 	MD3BlockFormatted FormattedBlock = MD3BlockFormatted(Header.GetStationAddress(), false, DIGITAL_UNCONDITIONAL_OBS, Header.GetModuleAddress(), Header.GetChannels());
@@ -430,22 +481,24 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
 	// Have three possible replies, Digital Unconditional #7,  Delta Scan #8 and Digital No Change #14
 	// So the data is deemed to have changed if a bit has changed, or the status has changed.
 	// We detect changes on a module basis, and send the data in the same format as the Digital Unconditional.
-	// So the Delta Scan can be all the same data as the uncondtional.
+	// So the Delta Scan can be all the same data as the unconditional.
 	// If no changes, send the single #14 function block. Keep the module and channel values matching the orginal message.
+
+	LOGDEBUG("OS - DoDigitalChangeOnly - Fn8");
 
 	// For this function, the channels field is actually the number of consecutive modules to return. We always return 16 channel bits.
 	// If there is an invalid module, we return a different block for that module.
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
-	bool NoChange = true;
-	bool SomeChange = false;
 	int NumberOfDataBlocks = Header.GetChannels(); // Actually the number of modules - 0 numbered, does not make sense to ask for none...
 
 	int ChangedBlocks = CountBinaryBlocksWithChangesGivenRange(NumberOfDataBlocks, Header.GetModuleAddress());
 
 	if (ChangedBlocks == 0) // No change
 	{
-		MD3BlockData FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+		FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		ResponseMD3Message.push_back(FormattedBlock);
 
 		SendMD3Message(ResponseMD3Message);
@@ -468,7 +521,7 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
 }
 
 // Function 9
-void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have a separate queue of time tagged digital events. This method only processes that queue.
 	//
@@ -482,8 +535,8 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 	//
 	// Because there can be 3 different tyeps of 16 bit words in the response, including filler packets,
 	// we need to build the response as those words first, then convert to MD3Blocks - with a potential filler packet in the last word of the last block.
-
-	std::vector<MD3BlockData> ResponseMD3Message;
+	LOGDEBUG("OS - DoDigitalHRER - Fn9");
+	MD3Message_t ResponseMD3Message;
 
 
 	if (Header.GetSequenceNumber() == LastHRERSequenceNumber)
@@ -492,7 +545,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 		// If we go back and reread the Binary bits, the change information will already have been lost, as we assume it was sent when we read it last time.
 		// It would get very tricky to only commit change written information only when a new sequence number turns up.
 		// The downside is that the stored message could be a no change message, but data may have changed since we last sent it.
-
+		LOGDEBUG("OS - Resend Last Response");
 		SendMD3Message(LastDigitialHRERResponseMD3Message);
 		return;
 	}
@@ -547,7 +600,10 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, std::vector<MD3BlockD
 	lastblock.MarkAsEndOfMessageBlock();
 
 	MD3BlockFn9 &firstblock = static_cast<MD3BlockFn9&>(ResponseMD3Message[0]);
-	firstblock.SetEventCountandMoreEventsFlag(EventCount, !pBinaryTimeTaggedEventQueue->sync_empty()); // If not empty, set more events (MEV) flag
+	bool MoreEventsFlag = MyPointConf->PointTable.TimeTaggedDataAvailable();
+	firstblock.SetEventCountandMoreEventsFlag(EventCount, MoreEventsFlag); // If not empty, set more events (MEV) flag
+
+	LOGDEBUG("OS - Sending "+std::to_string(EventCount)+" Events, More Events Flag - "+std::to_string(MoreEventsFlag)+" Sequence Number - " + std::to_string(LastHRERSequenceNumber));
 
 	LastDigitialHRERResponseMD3Message = ResponseMD3Message; // Copy so we can resend if necessary
 	SendMD3Message(ResponseMD3Message);
@@ -559,22 +615,22 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 	uint64_t LastPointmsec = 0;
 	bool CanSend = true;
 
-	while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint) && (EventCount < MaxEventCount) && CanSend)
+	while ((EventCount < MaxEventCount) && CanSend && MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint)) // Don't pop until we are happy...
 	{
 		if (EventCount == 0)
 		{
-			// First packet is the time/date block and a millseconds packet
-			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.ChangedTime / 1000);
-			uint16_t FirstEventMSec = (uint16_t)(CurrentPoint.ChangedTime % 1000);
+			// First packet is the time/date block and a milliseconds packet
+			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.GetChangedTime() / 1000);
+			uint16_t FirstEventMSec = (uint16_t)(CurrentPoint.GetChangedTime() % 1000);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
 			ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket(FirstEventMSec));
-			LastPointmsec = CurrentPoint.ChangedTime;
+			LastPointmsec = CurrentPoint.GetChangedTime();
 		}
 		else
 		{
 			// Do we need a Milliseconds packet? If so, is the gap more than 31 seconds? If so, finish this response off, so master can issue a new HRER request.
-			uint64_t delta = CurrentPoint.ChangedTime - LastPointmsec;
+			uint64_t delta = CurrentPoint.GetChangedTime() - LastPointmsec;
 			if (delta > 31999)
 			{
 				//Delta > 31.999 seconds, We can't send this point, finish the packet so the master can ask for a new HRER response.
@@ -583,15 +639,15 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 			else if (delta != 0)
 			{
 				ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket((uint16_t)delta));
-				LastPointmsec = CurrentPoint.ChangedTime; // The last point time moves with time added by the msec packets
+				LastPointmsec = CurrentPoint.GetChangedTime(); // The last point time moves with time added by the msec packets
 			}
 		}
 
 		if (CanSend)
 		{
-			ResponseWords.push_back(MD3BlockFn9::HREREventPacket(CurrentPoint.Binary, CurrentPoint.Channel, CurrentPoint.ModuleAddress));
+			ResponseWords.push_back(MD3BlockFn9::HREREventPacket(CurrentPoint.GetBinary(), CurrentPoint.GetChannel(), CurrentPoint.GetModuleAddress()));
 
-			pBinaryTimeTaggedEventQueue->sync_pop();
+			MyPointConf->PointTable.PopNextTaggedEventPoint();
 			EventCount++;
 		}
 	}
@@ -607,8 +663,9 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 	// The module count is the number of blocks we can return
 
 	// The return data blocks are the same as for Fn 7
+	LOGDEBUG("OS - DoDigitalCOSScan - Fn10");
 
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
 	bool NoChange = true;
 	bool SomeChange = false;
@@ -618,7 +675,9 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 
 	if (ChangedBlocks == false) // No change
 	{
-		MD3BlockData FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), (uint8_t)0);
+		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), (uint8_t)0);
+		FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		ResponseMD3Message.push_back(FormattedBlock);
 
 		SendMD3Message(ResponseMD3Message);
@@ -656,11 +715,13 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	//
 	// If we get another scan message (and nothing else changes) we will send the next block of changes and so on.
 
-	std::vector<MD3BlockData> ResponseMD3Message;
+	LOGDEBUG("OS - DoDigitalScan - Fn11");
+
+	MD3Message_t ResponseMD3Message;
 
 	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
 	{
-		// The last time we sent this, it did not get there, so we have to just resend that stored set of blocks. Dont do anything else.
+		// The last time we sent this, it did not get there, so we have to just resend that stored set of blocks. Don't do anything else.
 		// If we go back and reread the Binary bits, the change information will already have been lost, as we assume it was sent when we read it last time.
 		// It would get very tricky to only commit change written information only when a new sequence number turns up.
 		// The downside is that the stored message could be a no change message, but data may have changed since we last sent it.
@@ -671,18 +732,21 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 	if (Header.GetDigitalSequenceNumber() == 0)
 	{
-		// Special case, mark every module with data changed, then send the first group.
-		// There may be more to send, the master will get those with another command, with a normal sequence number.
-		MarkAllBinaryBlocksAsChanged();
+		// This will be called when we get a zero sequence number for Fn 11 or 12. It is sent on Master start-up to ensure that all data is sent in following
+		// change only commands - if there are sufficient modules
+		MarkAllBinaryPointsAsChanged();
 	}
 
 	int ChangedBlocks = CountBinaryBlocksWithChanges();
-	bool AreThereTaggedEvents = !pBinaryModuleTimeTaggedEventQueue->sync_empty();
+	bool AreThereTaggedEvents = MyPointConf->PointTable.TimeTaggedDataAvailable();
 
 	if ((ChangedBlocks == 0) && !AreThereTaggedEvents)
 	{
-		//TODO: Digital No Change - check assumption that the second word needs to mirror that sent in the function 11 command (tagged event count, digital sequence # and ModuleCount
+		// No change block
+		LOGDEBUG("OS - DoDigitalUnconditional - Nothing to send");
 		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetDigitalSequenceNumber());
+		FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		ResponseMD3Message.push_back(FormattedBlock);
 	}
 	else
@@ -691,33 +755,32 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 		int TaggedEventCount = 0;
 		int ModuleCount = Limit(ChangedBlocks, Header.GetModuleCount());
 
-		// Setup the response block
+		// Set up the response block
 		MD3BlockFn11StoM FormattedBlock(Header.GetStationAddress(), TaggedEventCount, Header.GetDigitalSequenceNumber(), ModuleCount);
 		ResponseMD3Message.push_back(FormattedBlock);
 
 		// Add non-time tagged data. We can return a data block or a status block for each module.
 		// If the module is active (not faulted) return the data, otherwise return the status block..
 		// We always just start with the first module and move up through changed blocks until we reach the ChangedBlocks count
-		//TODO: For remotes with latching digital changes - we can reply with two data blocks, the first being the latched change, the second being the current data - not sure how this works...
 
 		std::vector<uint8_t> ModuleList;
 		BuildListOfModuleAddressesWithChanges(0, ModuleList);
 
 		BuildScanReturnBlocksFromList(ModuleList, Header.GetModuleCount(), Header.GetStationAddress(), true, ResponseMD3Message);
 
-		FormattedBlock.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1); // The number of blocks taking away the header...
+		ModuleCount = (uint8_t)ResponseMD3Message.size() - 1; // The number of module block is the size at this point, less the start block.
 
 		if (AreThereTaggedEvents)
 		{
-			// Add timetagged data
+			// Add time tagged data
 			std::vector<uint16_t> ResponseWords;
 
-			Fn11AddTimeTaggedDataToResponseWords(Header.GetTaggedEventCount(), TaggedEventCount, ResponseWords);
+			Fn11AddTimeTaggedDataToResponseWords(Header.GetTaggedEventCount(), TaggedEventCount, ResponseWords); // TaggedEvent count is a ref, zero on entry and exit with number of tagged events added
 
 			// Convert data to 32 bit blocks and pad if necessary.
 			if ((ResponseWords.size() % 2) != 0)
 			{
-				// Add a filler packet if necessary
+				// Add a filler packet if necessary to the end of the message. High byte zero, low byte does not matter.
 				ResponseWords.push_back(MD3BlockFn11StoM::FillerPacket());
 			}
 
@@ -731,21 +794,32 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 			}
 		}
 
-		FormattedBlock.SetTaggedEventCount(TaggedEventCount); // Update to the number we are sending
-
-		// Mark the last block
+		// Mark the last block and set the module count and tagged event count
 		if (ResponseMD3Message.size() != 0)
 		{
+			MD3BlockFn11StoM &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
+			firstblockref.SetModuleCount(ModuleCount);           // The number of blocks taking away the header...
+			firstblockref.SetTaggedEventCount(TaggedEventCount); // Update to the number we are sending
+			firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 			MD3BlockData &lastblock = ResponseMD3Message.back();
 			lastblock.MarkAsEndOfMessageBlock();
 		}
+		LOGDEBUG("OS - DoDigitalUnconditional - Sending "+std::to_string(ModuleCount)+" Module Data Words and "+std::to_string(TaggedEventCount)+" Tagged Events");
 	}
 	SendMD3Message(ResponseMD3Message);
 
 	// Store this set of packets in case we have to resend
-	//TODO: Is the sequence number function dependent - i.e. do we maintain one for each digital function or is it common across all digital functions.
 	LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
 	LastDigitialScanResponseMD3Message = ResponseMD3Message;
+}
+
+void MD3OutstationPort::MarkAllBinaryPointsAsChanged()
+{
+	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &pt)
+		{
+			pt.SetChangedFlag();
+		});
 }
 
 void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int &EventCount, std::vector<uint16_t> &ResponseWords)
@@ -753,7 +827,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 	MD3BinaryPoint CurrentPoint;
 	uint64_t LastPointmsec = 0;
 
-	while (pBinaryModuleTimeTaggedEventQueue->sync_front(CurrentPoint) && (EventCount < MaxEventCount))
+	while ((EventCount < MaxEventCount) && MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint))
 	{
 		// The time date is seconds, the data block contains a msec entry.
 		// The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
@@ -762,13 +836,13 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 		if (EventCount == 0)
 		{
 			// First packet is the time/date block
-			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.ChangedTime / 1000);
+			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.GetChangedTime() / 1000);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
-			LastPointmsec = CurrentPoint.ChangedTime - CurrentPoint.ChangedTime % 1000; // The first one is seconds only. Later events have actual msec
+			LastPointmsec = CurrentPoint.GetChangedTime() - CurrentPoint.GetChangedTime() % 1000; // The first one is seconds only. Later events have actual msec
 		}
 
-		uint64_t msecoffset = CurrentPoint.ChangedTime - LastPointmsec;
+		uint64_t msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
 
 		if (msecoffset > 255) // Do we need a Milliseconds extension packet? A TimeBlock
 		{
@@ -783,24 +857,26 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 			}
 			assert(msecoffsetdiv256 < 256);
 			ResponseWords.push_back((uint16_t)msecoffsetdiv256);
-			LastPointmsec += msecoffsetdiv256*256; // The last point time moves with time added by the msec packet
-			msecoffset = CurrentPoint.ChangedTime - LastPointmsec;
+			LastPointmsec += msecoffsetdiv256 * 256; // The last point time moves with time added by the msec packet
+			msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
 		}
 
 		// Push the block onto the response word list
 		assert(msecoffset < 256);
-		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleAddress << 8 | (uint16_t)msecoffset);
-		ResponseWords.push_back((uint16_t)CurrentPoint.ModuleBinarySnapShot);
+		ResponseWords.push_back((uint16_t)CurrentPoint.GetModuleAddress() << 8 | (uint16_t)msecoffset);
+		ResponseWords.push_back((uint16_t)CurrentPoint.GetModuleBinarySnapShot());
 
-		LastPointmsec = CurrentPoint.ChangedTime; // Update the last changed time to match what we have just sent.
-		pBinaryModuleTimeTaggedEventQueue->sync_pop();
+		LastPointmsec = CurrentPoint.GetChangedTime(); // Update the last changed time to match what we have just sent.
+		MyPointConf->PointTable.PopNextTaggedEventPoint();
 		EventCount++;
 	}
 }
 // Function 12
 void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 {
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
+
+	LOGDEBUG("OS - DoDigitalUnconditional - Fn12");
 
 	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
 	{
@@ -817,17 +893,19 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 	std::vector<uint8_t> ModuleList;
 	BuildListOfModuleAddressesWithChanges(Header.GetModuleCount(),Header.GetModuleAddress(), true, ModuleList);
 
-	// Setup the response block - module count to be updated
+	// Set up the response block - module count to be updated
 	MD3BlockFn11StoM FormattedBlock(Header.GetStationAddress(), 0, Header.GetDigitalSequenceNumber(), Header.GetModuleCount());
 	ResponseMD3Message.push_back(FormattedBlock);
 
 	BuildScanReturnBlocksFromList(ModuleList, Header.GetModuleCount(), Header.GetStationAddress(), true, ResponseMD3Message);
 
-	FormattedBlock.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1); // The number of blocks taking away the header...
-
 	// Mark the last block
 	if (ResponseMD3Message.size() != 0)
 	{
+		MD3BlockFn11StoM &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
+		firstblockref.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1); // The number of blocks taking away the header...
+		firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		MD3BlockData &lastblock = ResponseMD3Message.back();
 		lastblock.MarkAsEndOfMessageBlock();
 	}
@@ -835,23 +913,9 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 	SendMD3Message(ResponseMD3Message);
 
 	// Store this set of packets in case we have to resend
-	//TODO: Is the sequence number function dependent - i.e. do we maintain one for each digital function or is it common across all digital functions.
 	LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
 	LastDigitialScanResponseMD3Message = ResponseMD3Message;
 }
-
-// This will be called when we get a zero sequence number for Fn 11 or 12. It is sent on Master startup to ensure that all data is sent in following
-// change only commands - if there are sufficient modules
-//TODO: Have to think about how zero sequence number is passed through ODC to our master talking to the real slave
-void MD3OutstationPort::MarkAllBinaryBlocksAsChanged()
-{
-	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
-	for (auto md3pt : MyPointConf()->BinaryMD3PointMap)
-	{
-		(*md3pt.second).Changed = true;
-	}
-}
-
 
 // Scan all binary/digital blocks for changes - used to determine what response we need to send
 // We return the total number of changed blocks we assume every block supports time tagging
@@ -862,18 +926,19 @@ int MD3OutstationPort::CountBinaryBlocksWithChanges()
 	int lastblock = -1; // Non valid value
 
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
-	for (auto md3pt : MyPointConf()->BinaryMD3PointMap)
-	{
-		if ((*md3pt.second).Changed)
+	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &pt)
 		{
-			// Multiple bits can be changed in the block, but only the first one is required to trigger a send of the block.
-			if (lastblock != (*md3pt.second).ModuleAddress)
+			if (pt.GetChangedFlag())
 			{
-				lastblock = (*md3pt.second).ModuleAddress;
-				changedblocks++;
+			// Multiple bits can be changed in the block, but only the first one is required to trigger a send of the block.
+			      if (lastblock != pt.GetModuleAddress())
+			      {
+			            lastblock = pt.GetModuleAddress();
+			            changedblocks++;
+				}
 			}
-		}
-	}
+		});
+
 	return changedblocks;
 }
 // This is used to determine which response we should send NoChange, DeltaChange or AllChange
@@ -883,9 +948,6 @@ int MD3OutstationPort::CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBl
 
 	for (int i = 0; i < NumberOfDataBlocks; i++)
 	{
-		// Have to collect all the bits into a uint16_t
-		uint16_t wordres = 0;
-		bool missingdata = false;
 		bool datachanged = false;
 
 		for (int j = 0; j < 16; j++)
@@ -893,10 +955,8 @@ int MD3OutstationPort::CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBl
 			uint8_t bitres = 0;
 			bool changed = false;
 
-			if (!GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed)) // Does not change the changed bit
+			if (!MyPointConf->PointTable.GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed)) // Does not change the changed bit
 			{
-				// Data is missing, need to send the error block for this module address.
-				missingdata = true;
 				changed = true;
 			}
 			if (changed)
@@ -921,7 +981,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int NumberOfDataBl
 			uint8_t bitres = 0;
 			bool changed = false;
 
-			if (!GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed))
+			if (!MyPointConf->PointTable.GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed))
 			{
 				// Data is missing, need to send the error block for this module address.
 				changed = true;
@@ -941,47 +1001,42 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int StartModuleAdd
 	uint8_t LastModuleAddress = 0;
 	bool WeAreScanning = (StartModuleAddress == 0); // If the startmoduleaddress is zero, we store changes from the start.
 
-	for (auto MapPt : MyPointConf()->BinaryMD3PointMap)
-	{
-		auto MDPt = *(MapPt.second);
-		auto Address = (MapPt.first);
-		uint8_t ModuleAddress = (Address >> 8);
-		uint8_t Channel = (Address & 0x0FF);
-
-		if (ModuleAddress == StartModuleAddress)
-			WeAreScanning = true;
-
-		if (WeAreScanning && MDPt.Changed && (LastModuleAddress != ModuleAddress))
+	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &Point)
 		{
+			uint8_t ModuleAddress = Point.GetModuleAddress();
+
+			if (ModuleAddress == StartModuleAddress)
+				WeAreScanning = true;
+
+			if (WeAreScanning && Point.GetChangedFlag() && (LastModuleAddress != ModuleAddress))
+			{
 			// We should save the module address so we have a list of modules that have changed
-			ModuleList.push_back(ModuleAddress);
-			LastModuleAddress = ModuleAddress;
-		}
-	}
+			      ModuleList.push_back(ModuleAddress);
+			      LastModuleAddress = ModuleAddress;
+			}
+		});
+
 	if (StartModuleAddress != 0)
 	{
 		// We have to then start again from zero, if we did not start from there.
-		for (auto MapPt : MyPointConf()->BinaryMD3PointMap)
-		{
-			auto MDPt = *(MapPt.second);
-			auto Address = (MapPt.first);
-			uint8_t ModuleAddress = (Address >> 8);
-			uint8_t Channel = (Address & 0x0FF);
-
-			if (ModuleAddress == StartModuleAddress)
-				WeAreScanning = false; // Stop when we reach the start again
-
-			if (WeAreScanning && MDPt.Changed && (LastModuleAddress != ModuleAddress))
+		MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &Point)
 			{
+				uint8_t ModuleAddress = Point.GetModuleAddress();
+
+				if (ModuleAddress == StartModuleAddress)
+					WeAreScanning = false; // Stop when we reach the start again
+
+				if (WeAreScanning && Point.GetChangedFlag() && (LastModuleAddress != ModuleAddress))
+				{
 				// We should save the module address so we have a list of modules that have changed
-				ModuleList.push_back(ModuleAddress);
-				LastModuleAddress = ModuleAddress;
-			}
-		}
+				      ModuleList.push_back(ModuleAddress);
+				      LastModuleAddress = ModuleAddress;
+				}
+			});
 	}
 }
 // Fn 7,8
-void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, std::vector<MD3BlockData> &ResponseMD3Message)
+void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, MD3Message_t &ResponseMD3Message)
 {
 	std::vector<uint8_t> ModuleList;
 	BuildListOfModuleAddressesWithChanges(NumberOfDataBlocks, StartModuleAddress, forcesend, ModuleList);
@@ -989,8 +1044,8 @@ void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int Star
 	BuildScanReturnBlocksFromList(ModuleList, NumberOfDataBlocks, StationAddress,false, ResponseMD3Message);
 }
 
-// Fn 7, 8 and 10
-void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, std::vector<MD3BlockData> & ResponseMD3Message)
+// Fn 7, 8 and 10, 11 and 12 NOT Fn 9
+void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, MD3Message_t & ResponseMD3Message)
 {
 	// For each module address, or the max we can send
 	for (int i = 0; (i < (int)ModuleList.size()) && (i < MaxNumberOfDataBlocks); i++)
@@ -1000,7 +1055,7 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 		// Have to collect all the bits into a uint16_t
 		bool ModuleFailed = false;
 
-		uint16_t wordres = CollectModuleBitsIntoWordandResetChangeFlags(ModuleAddress, ModuleFailed);
+		uint16_t wordres = MyPointConf->PointTable.CollectModuleBitsIntoWordandResetChangeFlags(ModuleAddress, ModuleFailed);
 
 		if (ModuleFailed)
 		{
@@ -1039,6 +1094,10 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 	// Format Fn 11 and 12 may not be the end of packet
 	if ((ResponseMD3Message.size() != 0) && !FormatForFn11and12)
 	{
+		// The header for Fn7, Fn 8 and Fn 10 need this. NOT Fn9, Fn11 and Fn12
+		MD3BlockFormatted &firstblockref = static_cast<MD3BlockFormatted&>(ResponseMD3Message.front());
+		firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 		MD3BlockData &lastblock = ResponseMD3Message.back();
 		lastblock.MarkAsEndOfMessageBlock();
 	}
@@ -1053,13 +1112,7 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 {
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
 	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
-
-	// Two possible responses, they depend on the future result - of type CommandStatus.
-	// SUCCESS = 0 /// command was accepted, initiated, or queue
-	// TIMEOUT = 1 /// command timed out before completing
-	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
-	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
-	// Non-zero will be a fail.
+	// Don't have an equivalent ODC command?
 
 	bool failed = false;
 
@@ -1069,10 +1122,16 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 		failed = true;
 	}
 
-	uint32_t Index = MyPointConf()->FreezeResetCountersPoint.second;
-	MyPointConf()->FreezeResetCountersPoint.first = AnalogOutputInt32(Header.GetData()); // Pass the actual packet to the master across ODC
+	uint32_t ODCIndex = MyPointConf->FreezeResetCountersPoint.second;
+	MyPointConf->FreezeResetCountersPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
 
-	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+	EventTypePayload<EventType::AnalogOutputInt32>::type val;
+	val.first = MyPointConf->FreezeResetCountersPoint.first;
+
+	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
+	event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
+
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 	if (Header.GetStationAddress() != 0)
 	{
@@ -1082,8 +1141,7 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 			return;
 		}
 
-		// This does a PublishCommand and waits for the result - or times out.
-		if (Perform(MyPointConf()->FreezeResetCountersPoint.first, Index, waitforresult) == odc::CommandStatus::SUCCESS)
+		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
 		{
 			SendControlOK(Header);
 		}
@@ -1098,18 +1156,20 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 		{
 			// This is an all station (0 address) freeze reset function.
 			// No response, don't wait for a result
-			Perform(MyPointConf()->SystemSignOnPoint.first, Index, false);
+			Perform(event, false);
 		}
 	}
 }
 
 // Think that POM stands for PULSE.
-void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// Seems we don’t have any POM control signals greater than 7 in the data I have seen??
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
 	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
+
+	LOGDEBUG("OS - DoPOMControl");
 
 	bool failed = false;
 
@@ -1127,9 +1187,8 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3Bl
 	}
 
 	// Check that the control point is defined, otherwise return a fail.
-	// Check the first point only. There are 8 bits sent in this message.
-	int index = 0;
-	failed = GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), 0, index) ? failed : true;
+	size_t ODCIndex = 0;
+	failed = MyPointConf->PointTable.GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, ODCIndex) ? failed : true;
 
 	if (Header.GetStationAddress() == 0)
 	{
@@ -1143,24 +1202,45 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3Bl
 		return;
 	}
 
-	// Pass the actual packet to the master across ODC The second packet is just a check packet. No different information
-	// Should we be passing ODC OutputBinary points instead? Then the master has to work out how to turn that back into a command in MD3...
-	MyPointConf()->POMControlPoint.first = AnalogOutputInt32(Header.GetData());
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
+	bool success = true;
 
-	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+	// POM is only a single bit, so easy to do... if the bit position is > 7, i.e.TRIP/OPEN/OFF 8-15 and PULSE_CLOSE/PULSE/LATCH_ON 0-7 for the up to 8 points in a POM module.
+	bool point_on = (Header.GetOutputSelection() < 8);
 
-	// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
-	for (int i = 0; i < 8; i++)
+	if (MyPointConf->POMControlPoint.second == 0) // If NO pass through, then do normal operation
 	{
-		ControlRelayOutputBlock b((Header.GetOutputSelection() >> (7 - i) & 0x01) == 1);
-		if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, index))
+		// Module contains 0 to 7 channels..
+		if (MyPointConf->PointTable.GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, ODCIndex))
 		{
-			Perform(b, index, waitforresult); // If no subscribers will return quickly.
+			EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+			val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+
+			auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
+			event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+			success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
 		}
 	}
 
-	// Pass the command through ODC, just for MD3 on the other side.
-	if (Perform(MyPointConf()->POMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS)
+	// If the index is !=0, then the pass through is active. So success depends on the pass through
+	if (MyPointConf->POMControlPoint.second != 0)
+	{
+		// Pass the command through ODC, just for MD3 on the other side.
+		MyPointConf->POMControlPoint.first = (int32_t)Header.GetData();
+
+		ODCIndex = MyPointConf->POMControlPoint.second;
+
+		EventTypePayload<EventType::AnalogOutputInt32>::type val;
+		val.first = MyPointConf->POMControlPoint.first;
+
+		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
+		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
+
+		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS);
+	}
+
+	if (success)
 	{
 		SendControlOK(Header);
 	}
@@ -1171,13 +1251,15 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, std::vector<MD3Bl
 }
 
 // DOM stands for DIGITAL.
-void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
 	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
 	// The output is a 16bit word. Will send a 32 bit block through ODC that contains the output data , station address and module address.
+	// The Perform method waits until it has a result, unless we are in stand alone mode.
 
+	LOGDEBUG("OS - DoDOMControl");
 	bool failed = false;
 
 	// Check all the things we can
@@ -1194,11 +1276,11 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3Bl
 	}
 
 	// Check that the first one exists, not all 16 may exist.
-	int index = 0;
-	failed = GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), 0, index) ? failed : true;
+	size_t ODCIndex = 0;
+	failed = MyPointConf->PointTable.GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), 0, ODCIndex) ? failed : true;
 
 	uint16_t output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
-	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 	if (Header.GetStationAddress() == 0)
 	{
@@ -1212,20 +1294,47 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3Bl
 		return;
 	}
 
-	// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
-	for (int i = 0; i < 16; i++)
+	bool success = true;
+
+	if (MyPointConf->DOMControlPoint.second == 0) // NO pass through, normal operation
 	{
-		ControlRelayOutputBlock b((output >> (15 - i) & 0x01) == 1);
-		if (GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, index))
+		// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
+		for (int i = 0; i < 16; i++)
 		{
-			Perform(b, index, waitforresult); // If no subscribers will return quickly.
+			if (MyPointConf->PointTable.GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, ODCIndex))
+			{
+				EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+				val.functionCode = ((output >> (15 - i) & 0x01) == 1) ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+
+				auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
+				event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+				if (CommandStatus::SUCCESS != Perform(event, waitforresult)) // If no subscribers will return quickly.
+				{
+					success = false;
+				}
+			}
 		}
 	}
 
-	// Pass the command through ODC, just for MD3 on the other side.
-	MyPointConf()->DOMControlPoint.first = AnalogOutputInt32(Header.GetData());
+	// If the index is !=0, then the pass through is active. So success depends on the pass through
+	if (MyPointConf->DOMControlPoint.second != 0)
+	{
+		// Pass the command through ODC, just for MD3 on the other side. Have to compress to fit into 32 bits
+		uint32_t PacketData = (uint32_t)Header.GetStationAddress() << 24 | (uint32_t)Header.GetModuleAddress() << 16 | (uint32_t)CompleteMD3Message[1].GetFirstWord();
+		MyPointConf->DOMControlPoint.first = (int32_t)PacketData;
+		ODCIndex = MyPointConf->DOMControlPoint.second;
 
-	if (Perform(MyPointConf()->DOMControlPoint.first, MyPointConf()->POMControlPoint.second, waitforresult) == odc::CommandStatus::SUCCESS)
+		EventTypePayload<EventType::AnalogOutputInt32>::type val;
+		val.first = MyPointConf->DOMControlPoint.first;
+
+		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
+		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
+
+		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS);
+	}
+
+	if (success)
 	{
 		SendControlOK(Header);
 	}
@@ -1236,11 +1345,13 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, std::vector<MD3Bl
 }
 
 // AOM is ANALOG output control.
-void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
 	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
+
+	LOGDEBUG("OS - DoAOMControl");
 
 	bool failed = false;
 
@@ -1264,14 +1375,19 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, std::vector<MD3Bl
 	}
 
 	// Check that the control point is defined, otherwise return a fail.
-	int index = 0;
-	failed = GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), index) ? failed : true;
+	size_t ODCIndex = 0;
+	failed = MyPointConf->PointTable.GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), ODCIndex) ? failed : true;
 
-	AnalogOutputInt16 output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
+	int16_t output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
-	bool waitforresult = !MyPointConf()->StandAloneOutstation;
+	EventTypePayload<EventType::AnalogOutputInt16>::type val;
+	val.first = output;
 
-	if (!failed && (Perform(output, index, waitforresult) == odc::CommandStatus::SUCCESS))
+	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
+	event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
+
+	if (!failed && (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS))
 	{
 		SendControlOK(Header);
 	}
@@ -1287,33 +1403,39 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, std::vector<MD3Bl
 
 // Function 40 - SYSTEM_SIGNON_CONTROL
 // The response is what we have received with the direction bit changed. If the address is zero, we send our address.
-void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
+void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40MtoS &Header)
 {
 	// This is used to turn on radios (typically) before a real command is sent.
 	// If address is zero, the master is asking us to identify ourselves.
-
+	LOGDEBUG("OS - DoSystemSignOnControl");
 	if (Header.IsValid())
 	{
-		uint32_t Index = MyPointConf()->SystemSignOnPoint.second;
-		MyPointConf()->SystemSignOnPoint.first = AnalogOutputInt32(Header.GetData()); // Pass the actual packet to the master across ODC
+		uint32_t ODCIndex = MyPointConf->SystemSignOnPoint.second;
+		MyPointConf->SystemSignOnPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
+
+		EventTypePayload<EventType::AnalogOutputInt32>::type val;
+		val.first = MyPointConf->SystemSignOnPoint.first;
+
+		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
+		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
 
 		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-		bool waitforresult = !MyPointConf()->StandAloneOutstation;
+		bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 		// This does a PublishCommand and waits for the result - or times out.
-		if (Perform(MyPointConf()->SystemSignOnPoint.first, Index, waitforresult) == odc::CommandStatus::SUCCESS)
+		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
 		{
-			// Need to send a response by echoing the Header, but with the StationAddress set to match our address. Direction station to master!
-			MD3BlockFn40 FormattedBlock(MyConf()->mAddrConf.OutstationAddr, false);
+			// Need to send a response, but with the StationAddress set to match our address.
+			MD3BlockFn40StoM FormattedBlock(MyConf->mAddrConf.OutstationAddr);
 
-			std::vector<MD3BlockData> ResponseMD3Message;
+			MD3Message_t ResponseMD3Message;
 			ResponseMD3Message.push_back(FormattedBlock);
 			SendMD3Message(ResponseMD3Message);
 		}
 		else
 		{
 			//TODO: Check if SIGNON can send back a rejected message
-			SendControlOrScanRejected(Header);
+			//SendControlOrScanRejected(Header);
 		}
 	}
 	else
@@ -1322,7 +1444,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40 &Header)
 	}
 }
 // Function 43
-void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
@@ -1334,6 +1456,8 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3B
 	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
 	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
 	// Non-zero will be a fail.
+
+	LOGDEBUG("OS - DoSetdateTime");
 
 	if ((CompleteMD3Message.size() != 2) && (Header.GetStationAddress() != 0))
 	{
@@ -1347,7 +1471,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3B
 	uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
-	uint64_t currenttime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	uint64_t currenttime = MD3Now();
 
 	if (abs((int64_t)msecsinceepoch - (int64_t)currenttime) > 30000) // Set window as +-30 seconds
 	{
@@ -1356,14 +1480,87 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3B
 	}
 	else
 	{
-		uint32_t Index = MyPointConf()->TimeSetPoint.second;
-		MyPointConf()->TimeSetPoint.first = AnalogOutputDouble64((double)msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
+		uint32_t ODCIndex = MyPointConf->TimeSetPoint.second;
+		MyPointConf->TimeSetPoint.first = (double)msecsinceepoch; // Fit the 64 bit int into the 64 bit float.
+
+		EventTypePayload<EventType::AnalogOutputDouble64>::type val;
+		val.first = MyPointConf->TimeSetPoint.first;
+
+		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
+		event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
 
 		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-		bool waitforresult = !MyPointConf()->StandAloneOutstation;
+		bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 		// This does a PublishCommand and waits for the result - or times out.
-		if (Perform(MyPointConf()->TimeSetPoint.first, Index, waitforresult) == odc::CommandStatus::SUCCESS)
+		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
+		{
+			if (Header.GetStationAddress() != 0)
+				SendControlOK(Header);
+		}
+		else
+		{
+			if (Header.GetStationAddress() != 0)
+				SendControlOrScanRejected(Header);
+		}
+		SystemFlags.TimePacketReceived();
+	}
+}
+// Function 44
+void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t &CompleteMD3Message)
+{
+	// We have two blocks incoming, not just one.
+	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+	// We have to pass the command to  ODC, then set-up a lambda to handle the sending of the response - when we get it.
+
+	// Two possible responses, they depend on the future result - of type CommandStatus.
+	// SUCCESS = 0 /// command was accepted, initiated, or queue
+	// TIMEOUT = 1 /// command timed out before completing
+	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
+	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
+	// Non-zero will be a fail.
+
+	LOGDEBUG("OS - DoSetdateTimeNew");
+
+	if ((CompleteMD3Message.size() != 3) && (Header.GetStationAddress() != 0))
+	{
+		SendControlOrScanRejected(Header); // If we did not get three blocks, then send back a command rejected message.
+		return;
+	}
+
+	MD3BlockData &timedateblock = CompleteMD3Message[1];
+
+	// If date time is within a window of now, accept. Otherwise send command rejected.
+	uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
+
+	MD3BlockData &utcoffsetblock = CompleteMD3Message[2];
+
+	int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
+
+	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
+	uint64_t currenttime = MD3Now();
+
+	if (abs((int64_t)msecsinceepoch - (int64_t)currenttime) > 30000) // Set window as +-30 seconds
+	{
+		if (Header.GetStationAddress() != 0)
+			SendControlOrScanRejected(Header);
+	}
+	else
+	{
+		uint32_t ODCIndex = MyPointConf->TimeSetPointNew.second;
+		MyPointConf->TimeSetPointNew.first = (double)msecsinceepoch; // Fit the 64 bit int into the 64 bit float.
+
+		EventTypePayload<EventType::AnalogOutputDouble64>::type val;
+		val.first = MyPointConf->TimeSetPointNew.first;
+
+		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
+		event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
+
+		// If StandAloneOutstation, don’t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
+		bool waitforresult = !MyPointConf->StandAloneOutstation;
+
+		// This does a PublishCommand and waits for the result - or times out.
+		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
 		{
 			if (Header.GetStationAddress() != 0)
 				SendControlOK(Header);
@@ -1374,16 +1571,17 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, std::vector<MD3B
 				SendControlOrScanRejected(Header);
 		}
 	}
+	SystemFlags.TimePacketReceived();
 }
 // Function 52
-void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3OutstationPort::DoSystemFlagScan(MD3BlockFn52MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
 	// Normally will be just one block and the reply will be one block, but can be more than one, and is contract dependent.
-	//
 	// As far as we can tell AusGrid does not have any extra packets
 	//
 	// The second 16 bits of the response are the flag bits. A change in any will set the RSF bit in ANY scan/control replies.
 	//TODO: Make sure the RSF bit gets set appropriately in the reply blocks, from a global flag. Reset it in DoSystemFlagScan
+	LOGDEBUG("OS - DoSystemFlagScan");
 
 	if (CompleteMD3Message.size() != 1)
 	{
@@ -1392,25 +1590,27 @@ void MD3OutstationPort::DoSystemFlagScan(MD3BlockFormatted &Header, std::vector<
 		return;
 	}
 
-	//TODO: SJE don’t think the flag scan will be passed through ODC, will just mirror what we know about the outstation
-	std::vector<MD3BlockData> ResponseMD3Message;
+	// The flag scan will NOT be passed through ODC, will just mirror what we know about the outstation
+	MD3Message_t ResponseMD3Message;
 
-	// Change the direction, set the flag data.
-	MD3BlockFormatted RetBlock(Header.GetStationAddress(), false, SYSTEM_FLAG_SCAN, 0,0);
-	// Need to set the second word values to the flag values.
+	// Create the response packet
+	MD3BlockFn52StoM RetBlock(Header);
+
+	RetBlock.SetSystemFlags(SystemFlags.GetSystemPoweredUpFlag(), SystemFlags.GetSystemTimeIncorrectFlag());
 
 	ResponseMD3Message.push_back(RetBlock);
-	// Set the flags????
 	SendMD3Message(ResponseMD3Message);
+
+	SystemFlags.FlagScanPacketSent();
 }
 
 // Function 15 Output
 void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
 {
 	// The Control OK block seems to return the originating message first block, but with the function code changed to 15
-	std::vector<MD3BlockData> ResponseMD3Message;
+	MD3Message_t ResponseMD3Message;
 
-	// The MD3BlockFn15StoM does the changes we need for us.
+	// The MD3BlockFn15StoM does the changes we need for us. The control blocks do not have space for the System flags to be returned...
 	MD3BlockFn15StoM FormattedBlock(Header);
 	ResponseMD3Message.push_back(FormattedBlock);
 	SendMD3Message(ResponseMD3Message);
@@ -1418,11 +1618,13 @@ void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
 // Function 30 Output
 void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
 {
-	// The Control rejected block seems to return the orginating message first block, but with the function code changed to 30
-	std::vector<MD3BlockData> ResponseMD3Message;
+	// The Control rejected block seems to return the originating message first block, but with the function code changed to 30
+	MD3Message_t ResponseMD3Message;
 
 	// The MD3BlockFn30StoM does the changes we need for us.
 	MD3BlockFn30StoM FormattedBlock(Header);
+	FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+
 	ResponseMD3Message.push_back(FormattedBlock);
 	SendMD3Message(ResponseMD3Message);
 }

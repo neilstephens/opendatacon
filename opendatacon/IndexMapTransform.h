@@ -52,24 +52,25 @@ public:
 		load_map("ControlMap",ControlMap);
 	}
 
-	bool Event(Binary& meas, uint16_t& index) override {return EventT(meas,index,BinaryMap);}
-	bool Event(DoubleBitBinary& meas, uint16_t& index) override {return EventT(meas,index,BinaryMap);}
-	bool Event(Analog& meas, uint16_t& index) override {return EventT(meas,index,AnalogMap);}
-	bool Event(Counter& meas, uint16_t& index) override {return EventT(meas,index,AnalogMap);}
-	bool Event(FrozenCounter& meas, uint16_t& index) override {return EventT(meas,index,AnalogMap);}
-	bool Event(BinaryOutputStatus& meas, uint16_t& index) override {return EventT(meas,index,ControlMap);}
-	bool Event(AnalogOutputStatus& meas, uint16_t& index) override {return EventT(meas,index,ControlMap);}
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) override {return EventT(arCommand,index,ControlMap);}
-	bool Event(AnalogOutputInt16& arCommand, uint16_t index) override {return EventT(arCommand,index,ControlMap);}
-	bool Event(AnalogOutputInt32& arCommand, uint16_t index) override {return EventT(arCommand,index,ControlMap);}
-	bool Event(AnalogOutputFloat32& arCommand, uint16_t index) override {return EventT(arCommand,index,ControlMap);}
-	bool Event(AnalogOutputDouble64& arCommand, uint16_t index) override {return EventT(arCommand,index,ControlMap);}
-
-	template<typename T> bool EventT(T& meas, uint16_t& index, const std::unordered_map<uint16_t,uint16_t>& map)
+	bool Event(std::shared_ptr<EventInfo> event) override
 	{
-		if(map.count(index))
+		auto* map = &AnalogMap;
+		switch(event->GetEventType())
 		{
-			index = map.at(index);
+			case EventType::Analog:
+				break;
+			case EventType::Binary:
+				map = &BinaryMap;
+				break;
+			case EventType::ControlRelayOutputBlock:
+				map = &ControlMap;
+				break;
+			default:
+				return true;
+		}
+		if(map->count(event->GetIndex()))
+		{
+			event->SetIndex(map->at(event->GetIndex()));
 			return true;
 		}
 		return false;

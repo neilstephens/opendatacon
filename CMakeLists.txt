@@ -39,6 +39,7 @@ install(FILES "NOTICE.txt" DESTINATION ".")
 install(FILES "README.md" DESTINATION ".")
 install(FILES "RELEASE_NOTES" DESTINATION ".")
 install(DIRECTORY "./3rdPartyLicenses" DESTINATION ".")
+install(DIRECTORY "install/init" DESTINATION ".")
 
 #Deploy git workflow hook scripts
 include(git-hooks.cmake)
@@ -58,6 +59,8 @@ add_custom_target(version DEPENDS "${CMAKE_SOURCE_DIR}/include/opendatacon/Versi
 
 # various optional libraries and projects
 option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, MD3Port, Tests, ConsoleUI, WebUI)" OFF)
+option(USE_ASIO_SUBMODULE "Use git submodule to download asio header library" ON)
+option(USE_SPDLOG_SUBMODULE "Use git submodule to download spdlog header library" ON)
 
 set(TESTS OFF CACHE BOOL "Build tests"					)
 set(WEBUI OFF CACHE BOOL "Build the http(s) web user interface"	)
@@ -145,7 +148,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall --no-gnu-unique -std=c++14 -pedantic")
 	option(STATIC_LIBSTDC++ "Link libstdc++ statically" OFF)
 	if(STATIC_LIBSTDC++)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
@@ -217,59 +220,34 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
-# Locate opendnp3 - this can be moved into DNP3Port when the other projects are decoupled from opendnp3
-set(DNP3_HOME_INSTRUCTIONS "Choose the location of opendnp3: where it was installed - there should be lib and include directories within")
-if(DEFINED DNP3_HOME)
-	set(DNP3_HOME ${DNP3_HOME} CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
-else()
-	set(DNP3_HOME "/usr/local" CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
-endif()
-foreach( component openpal opendnp3 asiopal asiodnp3 )
-	# Look for regular libraries
-	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
-	add_library(${component}_target UNKNOWN IMPORTED)
-	set_property(TARGET ${component}_target PROPERTY IMPORTED_LOCATION "${${component}_lib}")
-	# Look for debug libraries
-	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
-	add_library(${component}_dtarget UNKNOWN IMPORTED)
-	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
-	#set a variable to use for linking
-	set(${component}_libs debug ${component}_dtarget optimized ${component}_target )
-
-	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
-	mark_as_advanced(FORCE ${component}_lib ${component}_dlib)
-
-	#include in install/packaging
-	get_filename_component(_resolvedFile "${${component}_lib}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${${component}_lib})
-		#not a link - just install file
-		install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
-	else()
-		#is a link -install link and file
-		install(FILES "${${component}_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
-	endif()
-	get_filename_component(_resolvedFile "${${component}_dlib}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${${component}_dlib})
-		#not a link - just install file
-		install(FILES "${${component}_dlib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
-	else()
-		#is a link -install link and file
-		install(FILES "${${component}_dlib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
-	endif()
-endforeach()
-
 set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an include directory within")
-if(DEFINED ASIO_HOME)
-	set(ASIO_HOME ${ASIO_HOME} CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+if(USE_ASIO_SUBMODULE)
+	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/submodules/asio/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
+	if(NOT EXISTS "${ASIO_HOME}/.git")
+		execute_process(COMMAND git submodule update --init -- submodules/asio
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	endif()
 else()
-	set(ASIO_HOME "/usr" CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+	if(DEFINED ASIO_HOME)
+		set(ASIO_HOME ${ASIO_HOME} CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+	else()
+		set(ASIO_HOME "/usr" CACHE PATH ${ASIO_HOME_INSTRUCTIONS})
+	endif()
 endif()
 
-set(SPDLOG_HOME_INSTRUCTIONS "Choose the location of spdlog header library (>= v0.17.0): where it was installed - there should be an include directory within")
-if(DEFINED SPDLOG_HOME)
-	set(SPDLOG_HOME ${SPDLOG_HOME} CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS})
+set(SPDLOG_HOME_INSTRUCTIONS "Choose the location of spdlog header library: where it was installed - there should be an include directory within")
+if(USE_SPDLOG_SUBMODULE)
+	set(SPDLOG_HOME "${CMAKE_SOURCE_DIR}/submodules/spdlog" CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS} FORCE)
+	if(NOT EXISTS "${SPDLOG_HOME}/.git")
+		execute_process(COMMAND git submodule update --init -- submodules/spdlog
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	endif()
 else()
-	set(SPDLOG_HOME "/usr" CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS})
+	if(DEFINED SPDLOG_HOME)
+		set(SPDLOG_HOME ${SPDLOG_HOME} CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS})
+	else()
+		set(SPDLOG_HOME "/usr" CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS})
+	endif()
 endif()
 
 message("add subdir JSON")

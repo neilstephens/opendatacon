@@ -29,12 +29,16 @@
 #include "MD3Port.h"
 #include "MD3PortConf.h"
 
-MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pConnection(nullptr)
 {
 	//the creation of a new MD3PortConf will get the point details
 	pConf.reset(new MD3PortConf(ConfFilename, ConfOverrides));
+
+	// Just to save a lot of dereferencing..
+	MyConf = static_cast<MD3PortConf*>(this->pConf.get());
+	MyPointConf = MyConf->pPointConf;
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
@@ -42,35 +46,14 @@ MD3Port::MD3Port(std::string aName, std::string aConfFilename, const Json::Value
 
 TCPClientServer MD3Port::ClientOrServer()
 {
-	if (MyConf()->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
+	if (MyConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
 		return TCPClientServer::SERVER;
-	return MyConf()->mAddrConf.ClientServer;
+	return MyConf->mAddrConf.ClientServer;
 }
 bool MD3Port::IsServer()
 {
 	return (TCPClientServer::SERVER == ClientOrServer());
 }
-
-//DataPort function for UI
-/*
-const Json::Value MD3Port::GetStatus() const
-{
-      auto ret_val = Json::Value();
-
-      if (!enabled)
-            ret_val["Result"] = "Port disabled";
-      else if (link_dead)
-            ret_val["Result"] = "Port enabled - link down";
-      else if (status == opendnp3::LinkStatus::RESET)
-            ret_val["Result"] = "Port enabled - link up (reset)";
-      else if (status == opendnp3::LinkStatus::UNRESET)
-            ret_val["Result"] = "Port enabled - link up (unreset)";
-      else
-            ret_val["Result"] = "Port enabled - link status unknown";
-
-      return ret_val;
-}
-*/
 
 void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 {
@@ -85,7 +68,6 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("IP"))
 	{
 		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
-		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.SerialSettings.deviceName = "";
 	}
 
 	if (JSONRoot.isMember("Port"))
@@ -112,15 +94,7 @@ int MD3Port::Limit(int val, int max)
 {
 	return val > max ? max : val;
 }
-MD3PortConf* MD3Port::MyConf()
-{
-	return static_cast<MD3PortConf*>(this->pConf.get());
-}
 
-std::shared_ptr<MD3PointConf> MD3Port::MyPointConf()
-{
-	return MyConf()->pPointConf;
-}
 
 void MD3Port::SetSendTCPDataFn(std::function<void(std::string)> Send)
 {
@@ -135,347 +109,26 @@ void MD3Port::InjectSimulatedTCPMessage(buf_t&readbuf)
 }
 
 // The only method that sends to the TCP Socket
-void MD3Port::SendMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3Port::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 {
 	if (CompleteMD3Message.size() == 0)
 	{
 		LOGERROR("Tried to send an empty message to the TCP Port");
 		return;
 	}
-
 	// Turn the blocks into a binary string.
-	std::string MD3Message;
+	std::string MD3MessageString;
 	for (auto blk : CompleteMD3Message)
 	{
-		MD3Message += blk.ToBinaryString();
+		MD3MessageString += blk.ToBinaryString();
 	}
 
 	// This is a pointer to a function, so that we can hook it for testing. Otherwise calls the pSockMan Write templated function
 	// Small overhead to allow for testing - Is there a better way? - could not hook the pSockMan->Write function and/or another passed in function due to differences between a method and a lambda
 	if (SendTCPDataFn != nullptr)
-		SendTCPDataFn(MD3Message);
+		SendTCPDataFn(MD3MessageString);
 	else
 	{
-		pConnection->Write(std::string(MD3Message));
+		pConnection->Write(MD3MessageString);
 	}
 }
-
-#pragma region  PointTableAccess
-
-bool MD3Port::GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
-	{
-		res = MD3PointMapIter->second->Analog;
-		return true;
-	}
-	return false;
-}
-bool MD3Port::GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta)
-{
-	// Change being update the last read value
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
-	{
-		res = MD3PointMapIter->second->Analog;
-		delta = (int)res - (int)MD3PointMapIter->second->LastReadAnalog;
-		MD3PointMapIter->second->LastReadAnalog = res; // We assume it is sent to the master. May need better way to do this
-		return true;
-	}
-	return false;
-}
-bool MD3Port::SetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
-	{
-		MD3PointMapIter->second->Analog = meas;
-		MD3PointMapIter->second->ChangedTime = MD3Now();
-		return true;
-	}
-	return false;
-}
-bool MD3Port::GetCounterODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->CounterMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->CounterMD3PointMap.end())
-	{
-		res = MD3PointMapIter->second->Index;
-		return true;
-	}
-	return false;
-}
-bool MD3Port::SetCounterValueUsingODCIndex(const uint16_t index, const uint16_t meas)
-{
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = MyPointConf()->CounterODCPointMap.find(index);
-	if (ODCPointMapIter != MyPointConf()->CounterODCPointMap.end())
-	{
-		ODCPointMapIter->second->Analog = meas;
-		return true;
-	}
-	return false;
-}
-
-bool MD3Port::GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
-	{
-		res = MD3PointMapIter->second->Analog;
-		return true;
-	}
-	return false;
-}
-bool MD3Port::GetAnalogValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
-	{
-		res = MD3PointMapIter->second->Analog;
-		delta = (int)res - (int)MD3PointMapIter->second->LastReadAnalog;
-		MD3PointMapIter->second->LastReadAnalog = res; // We assume it is sent to the master. May need better way to do this
-		return true;
-	}
-	return false;
-}
-bool MD3Port::GetAnalogODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &res)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
-	{
-		res = MD3PointMapIter->second->Index;
-		return true;
-	}
-	return false;
-}
-bool MD3Port::SetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->AnalogMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->AnalogMD3PointMap.end())
-	{
-		MD3PointMapIter->second->Analog = meas;
-		MD3PointMapIter->second->ChangedTime = MD3Now();
-		return true;
-	}
-	return false;
-}
-bool MD3Port::GetAnalogValueUsingODCIndex(const uint16_t index, uint16_t &res)
-{
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = MyPointConf()->AnalogODCPointMap.find(index);
-	if (ODCPointMapIter != MyPointConf()->AnalogODCPointMap.end())
-	{
-		res = ODCPointMapIter->second->Analog;
-		return true;
-	}
-	return false;
-}
-bool MD3Port::SetAnalogValueUsingODCIndex(const uint16_t index, const uint16_t meas)
-{
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = MyPointConf()->AnalogODCPointMap.find(index);
-	if (ODCPointMapIter != MyPointConf()->AnalogODCPointMap.end())
-	{
-		ODCPointMapIter->second->Analog = meas;
-		return true;
-	}
-	return false;
-}
-
-bool MD3Port::GetBinaryODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &index)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
-	{
-		index = MD3PointMapIter->second->Index;
-		return true;
-	}
-	return false;
-}
-// Gets and Clears changed flag
-bool MD3Port::GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
-	{
-		res = MD3PointMapIter->second->Binary;
-		if (MD3PointMapIter->second->Changed)
-		{
-			changed = true;
-			MD3PointMapIter->second->Changed = false;
-		}
-		return true;
-	}
-	return false;
-}
-// Only gets value, does not clear changed flag
-bool MD3Port::GetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint8_t &res)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
-	{
-		res = MD3PointMapIter->second->Binary;
-		return true;
-	}
-	return false;
-}
-bool MD3Port::GetBinaryChangedUsingMD3Index(const uint16_t module, const uint8_t channel, bool &changed)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
-	{
-		if (MD3PointMapIter->second->Changed)
-		{
-			changed = MD3PointMapIter->second->Changed;
-		}
-		return true;
-	}
-	return false;
-}
-
-bool MD3Port::SetBinaryValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint8_t meas)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->BinaryMD3PointMap.end())
-	{
-		MD3PointMapIter->second->Binary = meas;
-		MD3PointMapIter->second->Changed = true;
-		MD3PointMapIter->second->ChangedTime = MD3Now();
-		return true;
-	}
-	return false;
-}
-bool MD3Port::GetBinaryValueUsingODCIndex(const uint16_t index, uint8_t &res, bool &changed)
-{
-	ODCBinaryPointMapIterType ODCPointMapIter = MyPointConf()->BinaryODCPointMap.find(index);
-	if (ODCPointMapIter != MyPointConf()->BinaryODCPointMap.end())
-	{
-		res = ODCPointMapIter->second->Binary;
-		if (ODCPointMapIter->second->Changed)
-		{
-			changed = true;
-			ODCPointMapIter->second->Changed = false;
-		}
-		return true;
-	}
-	return false;
-}
-bool MD3Port::SetBinaryValueUsingODCIndex(const uint16_t index, const uint8_t meas, MD3Time eventtime)
-{
-	ODCBinaryPointMapIterType ODCPointMapIter = MyPointConf()->BinaryODCPointMap.find(index);
-	if (ODCPointMapIter != MyPointConf()->BinaryODCPointMap.end())
-	{
-		ODCPointMapIter->second->Binary = meas;
-		ODCPointMapIter->second->Changed = true;
-
-		// We now need to add the change to the separate digital/binary event list
-		ODCPointMapIter->second->ChangedTime = eventtime;
-		MD3BinaryPoint CopyOfPoint(*(ODCPointMapIter->second));
-		AddToDigitalEvents(CopyOfPoint);
-		return true;
-	}
-	return false;
-}
-bool MD3Port::GetBinaryControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &index)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3BinaryPointMapIterType MD3PointMapIter = MyPointConf()->BinaryControlMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->BinaryControlMD3PointMap.end())
-	{
-		index = MD3PointMapIter->second->Index;
-		return true;
-	}
-	return false;
-}
-bool MD3Port::GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, int &index)
-{
-	uint16_t Md3Index = (module << 8) | channel;
-
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = MyPointConf()->AnalogControlMD3PointMap.find(Md3Index);
-	if (MD3PointMapIter != MyPointConf()->AnalogControlMD3PointMap.end())
-	{
-		index = MD3PointMapIter->second->Index;
-		return true;
-	}
-	return false;
-}
-
-void MD3Port::AddToDigitalEvents(MD3BinaryPoint & pt)
-{
-	// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
-	pBinaryTimeTaggedEventQueue->async_push(pt);
-
-	// Have to collect all the bits in the module to which this point belongs into a uint16_t,
-	// just to support COS Fn 11 where the whole 16 bits are returned for a possibly single bit change.
-	// Do not effect the change flags which are needed for normal scanning
-	bool ModuleFailed = false;
-	uint16_t wordres = CollectModuleBitsIntoWord(pt.ModuleAddress, ModuleFailed);
-
-	// Save it in the snapshot that is used for the Fn11 COS time tagged events.
-	pt.ModuleBinarySnapShot = wordres;
-	pBinaryModuleTimeTaggedEventQueue->async_push(pt);
-}
-uint16_t MD3Port::CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool &ModuleFailed)
-{
-	uint16_t wordres = 0;
-
-	for (int j = 0; j < 16; j++)
-	{
-		uint8_t bitres = 0;
-		bool changed = false; // We dont care about the returned value
-
-		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed)) // Reading this clears the changed bit
-		{
-			//TODO: Check the bit order here of the binaries
-			wordres |= (uint16_t)bitres << (15 - j);
-		}
-		//TODO: Check and update the module failed status for this module.
-	}
-	return wordres;
-}
-uint16_t MD3Port::CollectModuleBitsIntoWord(const uint8_t ModuleAddress, bool &ModuleFailed)
-{
-	uint16_t wordres = 0;
-
-	for (int j = 0; j < 16; j++)
-	{
-		uint8_t bitres = 0;
-		bool changed = false; // We dont care about the returned value
-
-		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres)) // Reading this clears the changed bit
-		{
-			//TODO: Check the bit order here of the binaries
-			wordres |= (uint16_t)bitres << (15 - j);
-		}
-		//TODO: Check and update the module failed status for this module.
-	}
-	return wordres;
-}
-
-#pragma endregion

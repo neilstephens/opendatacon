@@ -36,10 +36,18 @@
 
 #include <cstdint>
 #include <opendnp3/app/MeasurementTypes.h>
-#include <asiopal/UTCTimeSource.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <spdlog/spdlog.h>
+
+
+
+// Global TODO List in priority order
+//TODO: Trigger quality callbacks with ONLINE for when the master has valid data for the first time??
+//TODO: Master Sign on control called on ODC trigger - also send as part of poll?
+//TODO: Master OLD Digital Read
+//TODO: All command messages to have their own type, constructor to make understanding parameters simpler. Most already do.
+
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(msg) \
@@ -51,20 +59,16 @@
 #define LOGINFO(msg) \
 	if (auto log = spdlog::get("MD3Port")) log->info(msg);
 
-//#define LOG(logger, filters, location, msg) \
-// //	pLoggers->Log(openpal::LogEntry(logger, filters, location, std::string(msg).c_str(),-1));
-
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;
 
-//TODO: SJE Determine by testing if MD3 uses UTC or not. Nothing in the documentation
-typedef opendnp3::DNPTime MD3Time; // msec since epoch, utc, uint48_t - most time functions are uint64_t
+typedef uint64_t MD3Time; // msec since epoch, utc, most time functions are uint64_t
 
 static MD3Time MD3Now()
 {
-	// To get the time to pass through ODC events.
-	return (MD3Time)asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+	// To get the time to pass through ODC events. MD3 Uses UTC time in commands - as you would expect.
+	return static_cast<MD3Time>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 }
 
 
@@ -153,10 +157,191 @@ enum MD3_FUNCTION_CODE
 	SYSTEM_SIGNOFF_CONTROL = 41,
 	SYSTEM_RESTART_CONTROL = 42,
 	SYSTEM_SET_DATETIME_CONTROL = 43,
+	SYSTEM_SET_DATETIME_CONTROL_NEW = 44,
 	FILE_DOWNLOAD = 50,
 	FILE_UPLOAD = 51,
 	SYSTEM_FLAG_SCAN = 52,
 	LOW_RES_EVENTS_LIST_SCAN = 60
 };
 
+enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
+enum BinaryPointType { BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT };
+enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
+
+
+class MD3Point // Abstract Class
+{
+	//TODO: Can we convert protection to strands??
+	//TODO: Integrate ODC quality instead of HasBeenSet flag and Module failed flag.
+	/*	NONE              = 0,
+	ONLINE            = 1<<0,
+	RESTART           = 1<<1,
+	COMM_LOST         = 1<<2,
+	REMOTE_FORCED     = 1<<3,
+	LOCAL_FORCED      = 1<<4,
+	OVERRANGE         = 1<<5,
+	REFERENCE_ERR     = 1<<6,
+	ROLLOVER          = 1<<7,
+	DISCONTINUITY     = 1<<8,
+	CHATTER_FILTER    = 1<<9*/
+
+public:
+	MD3Point() {}
+
+	// We need these as we DO NOT want to copy the mutex!
+	MD3Point(const MD3Point &src):
+		Index(src.Index),
+		ModuleAddress(src.ModuleAddress),
+		ModuleFailed(src.ModuleFailed),
+		Channel(src.Channel),
+		PollGroup(src.PollGroup),
+		ChangedTime(src.ChangedTime),
+		HasBeenSet(src.HasBeenSet)
+	{}
+	virtual ~MD3Point() = 0; // Make the base class pure virtual
+
+	MD3Point& operator=(const MD3Point& src)
+	{
+		Index = src.Index;
+		ModuleAddress = src.ModuleAddress;
+		Channel = src.Channel;
+		PollGroup = src.PollGroup;
+		ChangedTime = src.ChangedTime;
+		ModuleFailed = src.ModuleFailed;
+		HasBeenSet = src.HasBeenSet;
+		return *this;
+	}
+
+	MD3Point(uint32_t index, uint8_t moduleaddress, uint8_t channel, MD3Time changedtime, uint8_t pollgroup):
+		Index(index),
+		ModuleAddress(moduleaddress),
+		Channel(channel),
+		PollGroup(pollgroup),
+		ChangedTime(changedtime)
+	{}
+
+	// These first 4 never change, so no protection
+	uint32_t GetIndex() { return Index; }
+	uint8_t GetModuleAddress() { return ModuleAddress; }
+	uint8_t GetChannel() { return Channel; }
+	uint8_t GetPollGroup() { return PollGroup; }
+
+	//TODO: Do we need to get them all at the same time - so one does not get changed in the middle??
+	bool GetModuleFailed() { std::unique_lock<std::mutex> lck(PointMutex); return ModuleFailed; }
+	MD3Time GetChangedTime() { std::unique_lock<std::mutex> lck(PointMutex); return ChangedTime; }
+	bool GetHasBeenSet() { std::unique_lock<std::mutex> lck(PointMutex); return HasBeenSet; }
+	//	void SetChangedTime(const MD3Time &ct) { std::unique_lock<std::mutex> lck(PointMutex); ChangedTime = ct; }; // Not needed...
+
+protected:
+	std::mutex PointMutex;
+	uint32_t Index = 0;
+	uint8_t ModuleAddress = 0;
+	bool ModuleFailed = false; // Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
+	uint8_t Channel = 0;
+	uint8_t PollGroup = 0;
+	MD3Time ChangedTime = static_cast<MD3Time>(0); // msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data. TimeStamp is Uint48_t, MD3 is uint64_t but does not overflow.
+	bool HasBeenSet = false;                       // To determine if we have been set since startup
+};
+
+
+class MD3BinaryPoint: public MD3Point
+{
+public:
+	MD3BinaryPoint() {}
+	MD3BinaryPoint(const MD3BinaryPoint &src): MD3Point(src),
+		Binary(src.Binary),
+		ModuleBinarySnapShot(src.ModuleBinarySnapShot),
+		Changed(src.Changed),
+		PointType(src.PointType)
+	{}
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup, BinaryPointType pointtype): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup),
+		PointType(pointtype)
+	{}
+
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup, BinaryPointType pointtype, uint8_t binval, bool changed, MD3Time changedtime):
+		MD3Point(index, moduleaddress, channel, changedtime, pollgroup),
+		Binary(binval),
+		Changed(changed),
+		PointType(pointtype)
+	{}
+
+	~MD3BinaryPoint();
+
+	// Needed for the templated Queue
+	MD3BinaryPoint& operator=(const MD3BinaryPoint& src);
+
+	BinaryPointType GetPointType() const { return PointType; }
+
+	uint8_t GetBinary() { std::unique_lock<std::mutex> lck(PointMutex); return Binary; }
+	uint16_t GetModuleBinarySnapShot() { std::unique_lock<std::mutex> lck(PointMutex); return ModuleBinarySnapShot; }
+
+	bool GetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); return Changed; }
+	void SetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); Changed = true; }
+	bool GetAndResetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); bool res = Changed; Changed = false; return res; }
+
+	void SetBinary(const uint8_t &b, const MD3Time &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; ChangedTime = ctime; Changed = (Binary != b); Binary = b; }
+	void SetChanged(const bool &c) { std::unique_lock<std::mutex> lck(PointMutex); Changed = c; }
+	void SetModuleBinarySnapShot(const uint16_t &bm) { std::unique_lock<std::mutex> lck(PointMutex); ModuleBinarySnapShot = bm; }
+
+protected:
+	// Only the values below will be changed in two places
+	uint8_t Binary = 0x01;
+	uint16_t ModuleBinarySnapShot = 0; // Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
+	bool Changed = true;
+	BinaryPointType PointType = BASICINPUT;
+};
+
+class MD3AnalogCounterPoint: public MD3Point
+{
+public:
+	MD3AnalogCounterPoint() {}
+
+	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
+	{}
+	~MD3AnalogCounterPoint();
+
+	uint16_t GetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); return Analog; }
+	uint16_t GetAnalogAndDelta(int &delta) { std::unique_lock<std::mutex> lck(PointMutex); delta = (int)Analog - (int)LastReadAnalog; LastReadAnalog = Analog; return Analog; }
+
+	void SetAnalog(const uint16_t & a, const MD3Time &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; Analog = a; ChangedTime = ctime; }
+	void SetLastReadAnalog(const uint16_t & a) { std::unique_lock<std::mutex> lck(PointMutex); LastReadAnalog = a; }
+
+protected:
+	uint16_t Analog = 0x8000;
+	uint16_t LastReadAnalog = 0x8000;
+};
+
+typedef std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>::iterator ODCBinaryPointMapIterType;
+typedef std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>::iterator MD3BinaryPointMapIterType;
+typedef std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator ODCAnalogCounterPointMapIterType;
+typedef std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator MD3AnalogCounterPointMapIterType;
+typedef std::map<uint8_t, uint16_t> ModuleMapType;
+
+
+class MD3PollGroup
+{
+public:
+	MD3PollGroup():
+		ID(0),
+		pollrate(0),
+		polltype(BinaryPoints),
+		ForceUnconditional(false)
+	{ }
+
+	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_, bool forceunconditional, bool timetaggeddigital):
+		ID(ID_),
+		pollrate(pollrate_),
+		polltype(polltype_),
+		ForceUnconditional(forceunconditional),
+		TimeTaggedDigital(timetaggeddigital)
+	{ }
+
+	uint32_t ID;
+	uint32_t pollrate;
+	PollGroupType polltype;
+	bool ForceUnconditional;       // Used to prevent use of delta or COS commands.
+	bool TimeTaggedDigital;        // Set to true if this poll group contains time tagged digital points.
+	ModuleMapType ModuleAddresses; // The second value is for channel count
+	// As we load points we will build this list
+};
 #endif

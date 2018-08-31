@@ -68,7 +68,7 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 			if(auto log = spdlog::get("opendatacon"))
 				log->error(msg);
 			else
-				std::cout << "ERROR: " << msg << std::endl;
+				std::cerr << "ERROR: " << msg << std::endl;
 			return nullptr;
 		}
 		Json::CharReaderBuilder JSONReader;
@@ -80,7 +80,7 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 			if(auto log = spdlog::get("opendatacon"))
 				log->error(msg);
 			else
-				std::cout << "ERROR: " << msg <<std::endl;
+				std::cerr << "ERROR: " << msg <<std::endl;
 			return nullptr;
 		}
 	}

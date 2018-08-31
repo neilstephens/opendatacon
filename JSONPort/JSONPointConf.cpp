@@ -53,25 +53,27 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 	this->TimestampPath = JSONRoot["TimestampPath"];
 
 	auto ind_marker = JSONRoot["TemplateIndex"].isString() ? JSONRoot["TemplateIndex"].asString() : "<INDEX>";
-	auto name_marker = JSONRoot["TemplateName"].isString() ? JSONRoot["TemplateName"].asString() : "<NAME>";
 	auto val_marker = JSONRoot["TemplateValue"].isString() ? JSONRoot["TemplateValue"].asString() : "<VALUE>";
 	auto qual_marker = JSONRoot["TemplateQuality"].isString() ? JSONRoot["TemplateQuality"].asString() : "<QUALITY>";
 	auto time_marker = JSONRoot["TemplateTimestamp"].isString() ? JSONRoot["TemplateTimestamp"].asString() : "<TIMESTAMP>";
+	auto name_marker = JSONRoot["TemplateName"].isString() ? JSONRoot["TemplateName"].asString() : "<NAME>";
+	auto source_marker = JSONRoot["TemplateSource"].isString() ? JSONRoot["TemplateSource"].asString() : "<SOURCE>";
 	auto sender_marker = JSONRoot["TemplateSender"].isString() ? JSONRoot["TemplateSender"].asString() : "<SENDER>";
 	if(JSONRoot.isMember("OutputTemplate"))
 	{
-		pJOT.reset(new JSONOutputTemplate(JSONRoot["OutputTemplate"],ind_marker,name_marker,val_marker,qual_marker,time_marker,sender_marker));
+		pJOT = std::make_unique<JSONOutputTemplate>(JSONRoot["OutputTemplate"],ind_marker,val_marker,qual_marker,time_marker,name_marker,source_marker,sender_marker);
 	}
 	else
 	{
 		Json::Value temp;
 		temp["Index"] = ind_marker;
-		temp["Name"] = name_marker;
 		temp["Value"] = val_marker;
 		temp["Quality"] = qual_marker;
 		temp["Timestamp"] = time_marker;
+		temp["Name"] = name_marker;
+		temp["Source"] = source_marker;
 		temp["Sender"] = sender_marker;
-		pJOT.reset(new JSONOutputTemplate(temp,ind_marker,name_marker,val_marker,qual_marker,time_marker,sender_marker));
+		pJOT = std::make_unique<JSONOutputTemplate>(temp,ind_marker,val_marker,qual_marker,time_marker,name_marker,source_marker,sender_marker);
 	}
 
 	const Json::Value PointConfs = JSONRoot["JSONPointConf"];

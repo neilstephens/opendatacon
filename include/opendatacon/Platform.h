@@ -43,7 +43,13 @@ const std::string DYNLIBEXT = ".dll";
 
 inline HMODULE LoadModule(const std::string& a)
 {
+	//LoadLibrary is ref counted so you can call FreeLibrary the same number of times to unload
 	return LoadLibraryExA(a.c_str(), 0, DWORD(0));
+}
+inline BOOL WINAPI UnLoadModule(HMODULE handle)
+{
+	//LoadLibrary is ref counted so you can call FreeLibrary the same number of times to unload
+	return FreeLibrary(handle);
 }
 
 inline FARPROC LoadSymbol(HMODULE a, const std::string& b)
@@ -100,8 +106,13 @@ const std::string DYNLIBEXT = ".so";
 
 inline void* LoadModule(const std::string& a)
 {
-	//TODO: use RTLD_NOLOAD to check if a library is already loaded before loading
+	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
 	return dlopen(a.c_str(), RTLD_LAZY);
+}
+inline int UnLoadModule(void* handle)
+{
+	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
+	return dlclose(handle);
 }
 inline void* LoadSymbol(void* a, const std::string& b)
 {

@@ -22,8 +22,6 @@
 #include <thread>
 #include <catch.hpp>
 
-#include "DNP3OutstationPort.h"
-#include "DNP3MasterPort.h"
 #include "PortLoader.h"
 
 #define SUITE(name) "DNP3PortEndToEndTestSuite - " name
@@ -31,24 +29,30 @@
 TEST_CASE(SUITE("TCP link"))
 {
 	//make an outstation port
-	fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 	REQUIRE(newOutstation);
+	delptr delOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+	REQUIRE(delOutstation);
 
 	Json::Value Oconf;
 	Oconf["IP"] = "0.0.0.0";
-	DataPort* OPUT = newOutstation("OutstationUnderTest", "", Oconf);
+	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
+	REQUIRE(OPUT);
 
 	//make a master port
-	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+	newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 	REQUIRE(newMaster);
+	delptr delMaster = GetPortDestroyer("DNP3Port", "DNP3Master");
+	REQUIRE(delMaster);
 
 	Json::Value Mconf;
 	Mconf["ServerType"] = "PERSISTENT";
-	DataPort* MPUT = newMaster("MasterUnderTest", "", Mconf);
+	auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild();
-	MPUT->BuildOrRebuild();
+	OPUT->Build();
+	MPUT->Build();
 
 	//turn them on
 	asio::io_service ios;
@@ -57,7 +61,7 @@ TEST_CASE(SUITE("TCP link"))
 	OPUT->Enable();
 	MPUT->Enable();
 
-	//TODO: write a better way to wait for GetStatus and timeout (when decouple gets merged)
+	//TODO: write a better way to wait for GetStatus
 	unsigned int count = 0;
 	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
 	{
@@ -81,8 +85,8 @@ TEST_CASE(SUITE("TCP link"))
 	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
-	delete MPUT;
-	delete OPUT;
+	MPUT.reset();
+	OPUT.reset();
 }
 
 TEST_CASE(SUITE("Serial link"))
@@ -99,36 +103,43 @@ TEST_CASE(SUITE("Serial link"))
 	}
 
 	//make an outstation port
-	fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 	REQUIRE(newOutstation);
+	delptr delOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+	REQUIRE(delOutstation);
 
 	Json::Value Oconf;
 	Oconf["SerialDevice"] = "SerialEndpoint1";
-	DataPort* OPUT = newOutstation("OutstationUnderTest", "", Oconf);
+	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
+	REQUIRE(OPUT);
 
 	//make a master port
-	fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+	newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 	REQUIRE(newMaster);
+	delptr delMaster = GetPortDestroyer("DNP3Port", "DNP3Master");
+	REQUIRE(delMaster);
 
 	Json::Value Mconf;
 	Mconf["ServerType"] = "PERSISTENT";
 	Mconf["SerialDevice"] = "SerialEndpoint2";
 	Mconf["LinkKeepAlivems"] = 200;
 	Mconf["LinkTimeoutms"] = 100;
-	DataPort* MPUT = newMaster("MasterUnderTest", "", Mconf);
+	auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
-	OPUT->BuildOrRebuild();
-	MPUT->BuildOrRebuild();
+	OPUT->Build();
+	MPUT->Build();
 
 	//turn them on
 	asio::io_service ios;
+	auto work = std::make_unique<asio::io_service::work>(ios);
 	OPUT->SetIOS(&ios);
 	MPUT->SetIOS(&ios);
 	OPUT->Enable();
 	MPUT->Enable();
 
-	//TODO: write a better way to wait for GetStatus and timeout (when decouple gets merged)
+	//TODO: write a better way to wait for GetStatus
 	unsigned int count = 0;
 	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
 	{
@@ -152,6 +163,7 @@ TEST_CASE(SUITE("Serial link"))
 	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
-	delete MPUT;
-	delete OPUT;
+	work.reset();
+	MPUT.reset();
+	OPUT.reset();
 }

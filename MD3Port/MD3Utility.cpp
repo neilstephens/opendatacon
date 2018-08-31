@@ -26,6 +26,33 @@
 
 
 #include "MD3.h"
+#include "MD3Utility.h"
+
+// Maybe need an MD3.cpp file to be clear?
+
+MD3BinaryPoint::~MD3BinaryPoint() {}
+
+// This not in header file due to odd gcc error
+MD3BinaryPoint& MD3BinaryPoint::operator=(const MD3BinaryPoint& src)
+{
+	if (this != &src) // Prevent self assignment
+	{
+		Index = src.Index;
+		ModuleAddress = src.ModuleAddress;
+		Channel = src.Channel;
+		PollGroup = src.PollGroup;
+		ChangedTime = src.ChangedTime;
+		ModuleFailed = src.ModuleFailed;
+		HasBeenSet = src.HasBeenSet;
+		Binary = src.Binary;
+		ModuleBinarySnapShot = src.ModuleBinarySnapShot;
+		Changed = src.Changed;
+		PointType = src.PointType;
+	}
+	return *this;
+}
+
+MD3AnalogCounterPoint::~MD3AnalogCounterPoint() {}
 
 static const uint8_t fcstab[256] =
 {
@@ -69,7 +96,44 @@ bool iequals(const std::string& a, const std::string& b)
 {
 	return std::equal(a.begin(), a.end(),
 		b.begin(), b.end(),
-		[](char a, char b) {
-		return tolower(a) == tolower(b);
-	});
+		[](char a, char b)
+		{
+			return tolower(a) == tolower(b);
+		});
+}
+
+std::string MD3MessageAsString(const MD3Message_t& CompleteMD3Message)
+{
+	std::string res = "";
+	// Output a human readable string containing the MD3 Data Blocks.
+	for (auto block : CompleteMD3Message)
+	{
+		res += block.ToString() + " ";
+	}
+	return res;
+}
+// Create an ASCII string version of the time from the MD3 time - which is msec since epoch.
+std::string to_timestringfromMD3time(MD3Time _time)
+{
+	time_t tp = _time/1000; // time_t is normally seconds since epoch. We deal in msec!
+	std::tm* t = std::localtime(&tp);
+	if (t != nullptr)
+	{
+		std::ostringstream oss;
+		oss << std::put_time(t, "%c %z"); // Local time format, with offset from UTC
+		return oss.str();
+	}
+	return "Time Conversion Problem";
+}
+int tz_offset()
+{
+	time_t when = std::time(nullptr);
+	auto const tm = *std::localtime(&when);
+	std::ostringstream os;
+	os << std::put_time(&tm, "%z");
+	std::string s = os.str();
+	int h = std::stoi(s.substr(0, 3), nullptr, 10);
+	int m = std::stoi(s[0] + s.substr(3), nullptr, 10);
+
+	return h * 60 + m;
 }

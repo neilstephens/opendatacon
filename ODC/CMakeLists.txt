@@ -21,17 +21,14 @@ project(ODC)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def ../include/opendatacon/*.h)
 
-include_directories(
+add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+add_dependencies(${PROJECT_NAME} version) #make sure version info is up-to-date first
+target_include_directories(${PROJECT_NAME} PUBLIC
 	"../JSON"
 	"../include"
 	"${SPDLOG_HOME}/include"
-	"${DNP3_HOME}/include"
-	"${ASIO_HOME}/include"
-)
-
-add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
-add_dependencies(${PROJECT_NAME} version) #make sure version info is up-to-date first
-target_link_libraries(${PROJECT_NAME} JSON ${asiopal_libs})
+	"${ASIO_HOME}/include")
+target_link_libraries(${PROJECT_NAME} JSON)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_LIBS} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)

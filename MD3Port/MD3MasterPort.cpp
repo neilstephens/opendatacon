@@ -30,19 +30,26 @@
 #include <opendnp3/app/MeasurementTypes.h>
 
 #include "MD3.h"
-#include "MD3Engine.h"
+#include "MD3Utility.h"
 #include "MD3MasterPort.h"
 
 
 MD3MasterPort::MD3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
 	MD3Port(aName, aConfFilename, aConfOverrides),
 	PollScheduler(nullptr)
-{}
+{
+	std::string over = "None";
+	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
+
+	IsOutStation = false;
+
+	LOGDEBUG("MD3Master Constructor - " + aName + " - " + aConfFilename + " Overrides - " + over);
+}
 
 MD3MasterPort::~MD3MasterPort()
 {
 	Disable();
-	pConnection->RemoveMaster(MyConf()->mAddrConf.OutstationAddr);
+	pConnection->RemoveMaster(MyConf->mAddrConf.OutstationAddr);
 	// The pConnection will be closed by this point, so is not holding any resources, and will be freed on program close when the static list is destroyed.
 }
 
@@ -81,8 +88,9 @@ void MD3MasterPort::SocketStateHandler(bool state)
 	if (state)
 	{
 		PollScheduler->Start();
-		PublishEvent(ConnectState::CONNECTED, 0);
+		PublishEvent(std::move(ConnectState::CONNECTED));
 		msg = Name + ": Connection established.";
+		ResetDigitalCommandSequenceNumber(); // Outstation when it sees this will send all digital values as if on power up.
 	}
 	else
 	{
@@ -92,40 +100,43 @@ void MD3MasterPort::SocketStateHandler(bool state)
 
 		ClearMD3CommandQueue(); // Remove all waiting commands and callbacks
 
-		PublishEvent(ConnectState::DISCONNECTED, 0);
+		PublishEvent(std::move(ConnectState::DISCONNECTED));
 		msg = Name + ": Connection closed.";
 	}
 	LOGINFO(msg);
 }
 
-
-void MD3MasterPort::BuildOrRebuild()
+// Will be change to Build only. No live reload
+void MD3MasterPort::Build()
 {
-	//TODO: Do we re-read the conf file - so we can do a live reload? - How do we kill all the sockets and connections properly?
-	std::string ChannelID = MyConf()->mAddrConf.ChannelID();
+	std::string ChannelID = MyConf->mAddrConf.ChannelID();
 
 	if (PollScheduler == nullptr)
 		PollScheduler.reset(new ASIOScheduler(*pIOS));
 
-	pMasterCommandQueue.reset(new StrandProtectedQueue<MasterCommandQueueItem>(*pIOS, 256)); // If we get more than 256 commands in the queue we have a problem.
+	MasterCommandProtectedData.CurrentCommandTimeoutTimer.reset(new Timer_t(*pIOS));
+	MasterCommandStrand.reset(new asio::strand(*pIOS));
+
+	// Need a couple of things passed to the point table.
+	MyPointConf->PointTable.Build(IsOutStation, MyPointConf->NewDigitalCommands, *pIOS);
 
 	pConnection = MD3Connection::GetConnection(ChannelID); //Static method
 
 	if (pConnection == nullptr)
 	{
-		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf()->mAddrConf.IP,
-			std::to_string(MyConf()->mAddrConf.Port), this, true, MyConf()->TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
+		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
+			std::to_string(MyConf->mAddrConf.Port), this, true, MyConf->TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}
 
-	pConnection->AddMaster(MyConf()->mAddrConf.OutstationAddr,
+	pConnection->AddMaster(MyConf->mAddrConf.OutstationAddr,
 		std::bind(&MD3MasterPort::ProcessMD3Message, this, std::placeholders::_1),
 		std::bind(&MD3MasterPort::SocketStateHandler, this, std::placeholders::_1));
 
 	PollScheduler->Stop();
 	PollScheduler->Clear();
-	for (auto pg : MyPointConf()->PollGroups)
+	for (auto pg : MyPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
 		auto action = [=]()
@@ -134,225 +145,387 @@ void MD3MasterPort::BuildOrRebuild()
 				  };
 		PollScheduler->Add(pg.second.pollrate, action);
 	}
-	//	PollScheduler->Start(); Is started and stopped in the socket state handler
+	//	PollScheduler->Start(); // This is started and stopped in the socket state handler
 }
 
-// Modbus code
-void MD3MasterPort::HandleError(int errnum, const std::string& source)
+void MD3MasterPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 {
-	// If not a MD3 error, tear down the connection?
-//    if (errnum < MD3_ENOBASE)
-//    {
-//        this->Disconnect();
+	if (CompleteMD3Message.size() == 0)
+	{
+		LOGERROR("MA - Tried to send an empty message to the TCP Port");
+		return;
+	}
+	LOGDEBUG("MA - Sending Message - " + MD3MessageAsString(CompleteMD3Message));
 
-//        MD3PortConf* pConf = static_cast<MD3PortConf*>(this->pConf.get());
-
-//        // Try and re-connect if a persistent connection
-//        if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
-//        {
-//            //try again later
-//            pTCPRetryTimer->expires_from_now(std::chrono::seconds(5));
-//            pTCPRetryTimer->async_wait(
-//                                       [this](asio::error_code err_code)
-//                                       {
-//                                           if(err_code != asio::error::operation_aborted)
-//                                               this->Connect();
-//                                       });
-//        }
-//    }
+	// Done this way just to get context into log messages.
+	MD3Port::SendMD3Message(CompleteMD3Message);
 }
-
 
 #pragma region MasterCommandQueue
 
 // We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
-// The type of the queue will contain a function pointer to the completion function and the timeout function.
-// There is a fixed timeout function (below) which will queue the next command and call any timeout function pointer
+// There is a fixed timeout function (below) which will queue the next command if we timeout.
 // If the ProcessMD3Message callback gets the command it expects, it will send the next command in the queue.
 // If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
 // This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
-// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used?
-void MD3MasterPort::QueueMD3Command(MasterCommandQueueItem &CompleteMD3Message)
+// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
+void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, SharedStatusCallback_t pStatusCallback)
 {
-	// Take a copy!
-	pMasterCommandQueue->async_push(CompleteMD3Message);
+	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post. Note the calling thread must be one of the io_service threads.... this changes our tests!
+		{
+			if (MasterCommandProtectedData.MasterCommandQueue.size() < MasterCommandProtectedData.MaxCommandQueueSize)
+			{
+			      MasterCommandProtectedData.MasterCommandQueue.push(MasterCommandQueueItem(CompleteMD3Message, pStatusCallback)); // async
+			}
+			else
+			{
+			      LOGDEBUG("Tried to queue another MD3 Master Command when the command queue is full");
+			      PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED); // Failed...
+			}
 
-	// Will only send if we can - ie. not currently processing a command
-	SendNextMasterCommand();
+			// Will only send if we can - i.e. not currently processing a command
+			UnprotectedSendNextMasterCommand(false);
+		});
 }
-
 // Handle the many single block command messages better
-void MD3MasterPort::QueueMD3Command(MD3BlockFormatted &SingleBlockMD3Message)
+void MD3MasterPort::QueueMD3Command(const MD3BlockData &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback)
 {
-	std::vector<MD3BlockData> CommandMD3Message;
+	MD3Message_t CommandMD3Message;
 	CommandMD3Message.push_back(SingleBlockMD3Message);
-	QueueMD3Command(CommandMD3Message);
+	QueueMD3Command(CommandMD3Message, pStatusCallback);
 }
+// Handle the many single block command messages better
+void MD3MasterPort::QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback)
+{
+	MD3Message_t CommandMD3Message;
+	CommandMD3Message.push_back(SingleBlockMD3Message);
+	QueueMD3Command(CommandMD3Message, pStatusCallback);
+}
+
+// Just schedule the callback, don't want to do it in a strand protected section.
+void MD3MasterPort::PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c)
+{
+	if (pStatusCallback != nullptr)
+	{
+		pIOS->post([&, pStatusCallback, c]()
+			{
+				(*pStatusCallback)(c);
+			});
+	}
+}
+
+
 // If a command is available in the queue, then send it.
 void MD3MasterPort::SendNextMasterCommand()
 {
-	//TODO: Mutex or other protection of ProcessingMD3Command flag - also reset in timeouts.
-	if (!ProcessingMD3Command)
-	{
-		// Send the next command if there is one.
-		std::vector<MD3BlockData> NextCommand;
-		if (pMasterCommandQueue->sync_front(NextCommand))
+	// We have to control access in the TCP callback, the send command, clear commands and the timeout callbacks.
+	MasterCommandStrand->dispatch([&]()
 		{
-			ProcessingMD3Command = true;
-			pMasterCommandQueue->sync_pop();
-			CurrentFunctionCode = ((MD3BlockFormatted)NextCommand[0]).GetFunctionCode();
-			SendMD3Message(NextCommand); // This should be the only place this is called for the MD3Master...
+			UnprotectedSendNextMasterCommand(false);
+		});
+}
+// There is a strand protected version of this command, as we can use it in another (already) protected area.
+// We will retry the required number of times, and then move onto the next command. If a retry we send exactly the same command as previously, the Outstation  will
+// check the sequence numbers on those commands that support it and reply accordingly.
+void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
+{
+	if (!MasterCommandProtectedData.ProcessingMD3Command)
+	{
+		if (timeoutoccured)
+		{
+			// Do we need to resend a command?
+			if (MasterCommandProtectedData.RetriesLeft-- > 0)
+			{
+				MasterCommandProtectedData.ProcessingMD3Command = true;
+				LOGDEBUG("Sending Retry on command :" + std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
+			}
+			else
+			{
+				// Have had multiple retries fail,
+
+				// Execute the callback with a fail code.
+				PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::UNDEFINED);
+
+				// so mark everything as if we have lost comms!
+				pIOS->post([&]()
+					{
+						SetAllPointsQualityToCommsLost(); // All the connected points need their quality set to comms lost
+					});
+
+				LOGDEBUG("Reached maximum number of retries on command :" + std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
+			}
+		}
+
+		if (!MasterCommandProtectedData.MasterCommandQueue.empty() && (MasterCommandProtectedData.ProcessingMD3Command != true))
+		{
+			// Send the next command if there is one and we are not retrying.
+
+			MasterCommandProtectedData.ProcessingMD3Command = true;
+			MasterCommandProtectedData.RetriesLeft = MyPointConf->MD3CommandRetries;
+
+			MasterCommandProtectedData.CurrentCommand = MasterCommandProtectedData.MasterCommandQueue.front();
+			MasterCommandProtectedData.MasterCommandQueue.pop();
+
+			MasterCommandProtectedData.CurrentFunctionCode = ((MD3BlockFormatted)MasterCommandProtectedData.CurrentCommand.first[0]).GetFunctionCode();
+			LOGDEBUG("Sending next command :" + std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
+		}
+
+		// If either of the above situations need us to send a command, do so.
+		if (MasterCommandProtectedData.ProcessingMD3Command == true)
+		{
+			SendMD3Message(MasterCommandProtectedData.CurrentCommand.first); // This should be the only place this is called for the MD3Master...
+
+			// Start an async timed callback for a timeout - cancelled if we receive a good response.
+			MasterCommandProtectedData.TimerExpireTime = std::chrono::milliseconds(MyPointConf->MD3CommandTimeoutmsec);
+			MasterCommandProtectedData.CurrentCommandTimeoutTimer->expires_from_now(MasterCommandProtectedData.TimerExpireTime);
+
+			std::chrono::milliseconds endtime = MasterCommandProtectedData.TimerExpireTime;
+
+			MasterCommandProtectedData.CurrentCommandTimeoutTimer->async_wait([&,endtime](asio::error_code err_code)
+				{
+					if (err_code != asio::error::operation_aborted)
+					{
+					// We need strand protection for the variables, so this will queue another chunk of work below.
+					// If we get an answer in the delay this causes, no big deal - the length of the timeout will kind of jitter.
+					      MasterCommandStrand->dispatch([&,endtime]()
+							{
+								// The checking of the expire time is another way to make sure that we have not cancelled the timer. We really need to make sure that if
+								// we have cancelled the timer and this callback is called, that we do NOT take any action!
+								if (endtime == MasterCommandProtectedData.TimerExpireTime)
+								{
+								      LOGDEBUG("MD3 Master Timeout valid - MD3 Function " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode));
+
+								      MasterCommandProtectedData.ProcessingMD3Command = false; // Only gets reset on success or timeout.
+
+								      UnprotectedSendNextMasterCommand(true); // We already have the strand, so don't need the wrapper here
+								}
+								else
+									LOGDEBUG("MD3 Master Timeout callback called, when we had already moved on to the next command");
+							});
+					}
+					else
+					{
+					      LOGDEBUG("MD3 Master Timeout callback cancelled");
+					}
+				});
+		}
+		else
+		{
+			// Clear current command?
 		}
 	}
 }
+// Strand protected clear the command queue.
 void MD3MasterPort::ClearMD3CommandQueue()
 {
-	std::vector<MD3BlockData> NextCommand;
-	while (pMasterCommandQueue->sync_front(NextCommand))
-	{
-		pMasterCommandQueue->sync_pop();
-	}
-	CurrentFunctionCode = 0;
-	ProcessingMD3Command = false;
+	MasterCommandStrand->dispatch([&]()
+		{
+			MD3Message_t NextCommand;
+			while (!MasterCommandProtectedData.MasterCommandQueue.empty())
+			{
+			      MasterCommandProtectedData.MasterCommandQueue.pop();
+			}
+			MasterCommandProtectedData.CurrentFunctionCode = 0;
+			MasterCommandProtectedData.ProcessingMD3Command = false;
+		});
 }
 
 #pragma endregion
 
+#pragma region MessageProcessing
+
 // After we have sent a command, this is where we will end up when the OutStation replies.
+// It is the callback for the ConnectionManager
 // If we get the wrong answer, we could ditch that command, and move on to the next one,
 // but then the actual reply might be in the following message and we would never re-sync.
 // If we timeout on (some) commands, we can ask the OutStation to resend the last command response.
 // We would have to limit how many times we could do this without giving up.
-void MD3MasterPort::ProcessMD3Message(std::vector<MD3BlockData> &CompleteMD3Message)
+void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 {
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
-	assert(CompleteMD3Message.size() != 0);
 
-	//! Anywhere we find that we dont have what we need, return. If we succeed we send the next command at the end of this method.
+	//! Anywhere we find that we don't have what we need, return. If we succeed we send the next command at the end of this method.
 	// If the timeout on the command is activated, then the next command will be sent - or resent.
+	// Cant just use by reference, complete message and header will go out of scope...
+	MasterCommandStrand->dispatch([&, CompleteMD3Message]()
+		{
 
-	MD3BlockFormatted Header = CompleteMD3Message[0];
+			if (CompleteMD3Message.size() == 0)
+			{
+			      LOGERROR("Received a Master to Station message with zero length!!! ");
+			      return;
+			}
 
-	ProcessingMD3Command = false;
+			MD3BlockFormatted Header = MD3BlockFormatted(CompleteMD3Message[0]);
 
-	if (Header.IsMasterToStationMessage() != false)
-	{
-		LOGERROR("Received a Master to Station message at the Master - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-			" On Station Address - " + std::to_string(Header.GetStationAddress()));
-		//TODO: SJE Trip an error so we don't have to wait for timeout?
-		return;
-	}
-	if ((Header.GetStationAddress() != 0) && (Header.GetStationAddress() != MyConf()->mAddrConf.OutstationAddr))
-	{
-		LOGERROR("Received a message from the wrong address - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-			" On Station Address - " + std::to_string(Header.GetStationAddress()));
-		//TODO: SJE Trip an error so we don't have to wait for timeout?
-		return;
-	}
-	// For a given command we can have multiple return codes. So check what we got...
-	if (!AllowableResponseToFunctionCode(CurrentFunctionCode,Header.GetFunctionCode()))
-	{
-		LOGERROR("Received a Function Code we were not expecting - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-			" Expecting "+ std::to_string(CurrentFunctionCode)+ " On Station Address - " + std::to_string(Header.GetStationAddress()));
-		//TODO: SJE Trip an error so we don't have to wait for timeout?
-		return;
-	}
-	if (Header.GetStationAddress() == 0)
-	{
-		LOGERROR("Received broadcast return message - address 0 - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-			" On Station Address - " + std::to_string(Header.GetStationAddress()));
-		//TODO: SJE Trip an error so we don't have to wait for timeout?
-		return;
-	}
+			// If we have an error, we have to wait for the timeout to occur, there may be another packet in behind which is the correct one. If we bail now we may never re-synchronise.
 
-	// Now based on the Command Function, take action. Not all codes are expected or result in action
-	switch (Header.GetFunctionCode())
-	{
-		case ANALOG_UNCONDITIONAL: // Command and reply
-			ProcessAnalogUnconditionalReturn(Header, CompleteMD3Message);
-			break;
-		case ANALOG_DELTA_SCAN: // Command and reply
-			ProcessAnalogDeltaScanReturn(Header, CompleteMD3Message);
-			break;
-		case DIGITAL_UNCONDITIONAL_OBS:
-			//	DoDigitalUnconditionalObs(Header);
-			break;
-		case DIGITAL_DELTA_SCAN:
-			//	DoDigitalChangeOnly(Header);
-			break;
-		case HRER_LIST_SCAN:
-			//		DoDigitalHRER(static_cast<MD3BlockFn9&>(Header), CompleteMD3Message);
-			break;
-		case DIGITAL_CHANGE_OF_STATE:
-			//	DoDigitalCOSScan(static_cast<MD3BlockFn10&>(Header));
-			break;
-		case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
-			//	DoDigitalScan(static_cast<MD3BlockFn11MtoS&>(Header));
-			break;
-		case DIGITAL_UNCONDITIONAL:
-			//	DoDigitalUnconditional(static_cast<MD3BlockFn12MtoS&>(Header));
-			break;
-		case ANALOG_NO_CHANGE_REPLY:
-			//TODO: ANALOG_NO_CHANGE_REPLY do we update the times on the points that we asked to be updated?
-			// Master Only to receive.
-			break;
-		case DIGITAL_NO_CHANGE_REPLY:
-			// Master Only
-			break;
-		case CONTROL_REQUEST_OK:
-			// Master Only
-			break;
-		case FREEZE_AND_RESET:
-			//	DoFreezeResetCounters(static_cast<MD3BlockFn16MtoS&>(Header));
-			break;
-		case POM_TYPE_CONTROL:
-			//	DoPOMControl(static_cast<MD3BlockFn17MtoS&>(Header), CompleteMD3Message);
-			break;
-		case DOM_TYPE_CONTROL:
-			//	DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
-			break;
-		case INPUT_POINT_CONTROL:
-			break;
-		case RAISE_LOWER_TYPE_CONTROL:
-			break;
-		case AOM_TYPE_CONTROL:
-			//	DoAOMControl(static_cast<MD3BlockFn23MtoS&>(Header), CompleteMD3Message);
-			break;
-		case CONTROL_OR_SCAN_REQUEST_REJECTED:
-			// Master Only
-			break;
-		case COUNTER_SCAN:
-			//	DoCounterScan(Header);
-			break;
-		case SYSTEM_SIGNON_CONTROL:
-			//	DoSystemSignOnControl(static_cast<MD3BlockFn40&>(Header));
-			break;
-		case SYSTEM_SIGNOFF_CONTROL:
-			break;
-		case SYSTEM_RESTART_CONTROL:
-			break;
-		case SYSTEM_SET_DATETIME_CONTROL:
-			//	DoSetDateTime(static_cast<MD3BlockFn43MtoS&>(Header), CompleteMD3Message);
-			break;
-		case FILE_DOWNLOAD:
-			break;
-		case FILE_UPLOAD:
-			break;
-		case SYSTEM_FLAG_SCAN:
-			//	DoSystemFlagScan(Header, CompleteMD3Message);
-			break;
-		case LOW_RES_EVENTS_LIST_SCAN:
-			break;
-		default:
-			LOGERROR("Unknown Message Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
-			break;
-	}
-	SendNextMasterCommand();
+			if (Header.IsMasterToStationMessage() != false)
+			{
+			      LOGERROR("Received a Master to Station message at the Master - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      return;
+			}
+			if ((Header.GetStationAddress() != 0) && (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr))
+			{
+			      LOGERROR("Received a message from the wrong address - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      return;
+			}
+			if (Header.GetStationAddress() == 0)
+			{
+			      LOGERROR("Received broadcast return message - address 0 - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      return;
+			}
+
+			LOGDEBUG("MD3 Master received a response to sending cmd " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " of " + std::to_string(Header.GetFunctionCode()));
+
+			bool success = false;
+
+			// Now based on the Command Function (Not the function code we got back!!), take action. Not all codes are expected or result in action
+			switch (MasterCommandProtectedData.CurrentFunctionCode)
+			{
+				case ANALOG_UNCONDITIONAL: // What we sent and reply
+					if (Header.GetFunctionCode() == ANALOG_UNCONDITIONAL)
+						success = ProcessAnalogUnconditionalReturn(Header, CompleteMD3Message);
+					break;
+
+				case ANALOG_DELTA_SCAN: // Command and reply
+					if (Header.GetFunctionCode() == ANALOG_UNCONDITIONAL)
+						success = ProcessAnalogUnconditionalReturn(Header, CompleteMD3Message);
+					else if (Header.GetFunctionCode() == ANALOG_DELTA_SCAN)
+						success = ProcessAnalogDeltaScanReturn(Header, CompleteMD3Message);
+					else if (Header.GetFunctionCode() == ANALOG_NO_CHANGE_REPLY)
+						success = ProcessAnalogNoChangeReturn(Header, CompleteMD3Message);
+					break;
+
+				case DIGITAL_UNCONDITIONAL_OBS:
+					// if ((FunctionCode == DIGITAL_UNCONDITIONAL_OBS) || (FunctionCode == DIGITAL_NO_CHANGE_REPLY))
+					LOGERROR("Fn7 - Old Style Digital - Digital Unconditional - IS NOT IMPLEMENTED");
+					break;
+				case DIGITAL_DELTA_SCAN:
+					// if ((FunctionCode == DIGITAL_DELTA_SCAN) || (FunctionCode == DIGITAL_UNCONDITIONAL_OBS) || (FunctionCode == DIGITAL_NO_CHANGE_REPLY))
+					LOGERROR("Fn8 - Old Style Digital - Digital Delta Scan - IS NOT IMPLEMENTED");
+					break;
+				case HRER_LIST_SCAN:
+					// if (FunctionCode == HRER_LIST_SCAN)
+					LOGERROR("Fn9 - Old Style Digital - Digital HRER Scan - IS NOT IMPLEMENTED");
+					break;
+				case DIGITAL_CHANGE_OF_STATE:
+					// if ((FunctionCode == DIGITAL_CHANGE_OF_STATE) || (FunctionCode == DIGITAL_NO_CHANGE_REPLY))
+					LOGERROR("Fn10 - Old Style Digital - Digital COS Scan - IS NOT IMPLEMENTED");
+					break;
+				case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
+					if (Header.GetFunctionCode() == DIGITAL_NO_CHANGE_REPLY)
+						success = ProcessDigitalNoChangeReturn(Header, CompleteMD3Message);
+					else if (Header.GetFunctionCode() == DIGITAL_CHANGE_OF_STATE_TIME_TAGGED)
+						success = ProcessDigitalScan(Header, CompleteMD3Message);
+					break;
+				case DIGITAL_UNCONDITIONAL:
+					if (Header.GetFunctionCode() == DIGITAL_NO_CHANGE_REPLY)
+						success = ProcessDigitalNoChangeReturn(Header, CompleteMD3Message);
+					else if ((Header.GetFunctionCode() == DIGITAL_UNCONDITIONAL) || (Header.GetFunctionCode() == DIGITAL_CHANGE_OF_STATE_TIME_TAGGED))
+					{
+					      LOGDEBUG("Doing Digital Unconditional (new) processing - which is the same as Digital Scan");
+					      success = ProcessDigitalScan(Header, CompleteMD3Message);
+					}
+					break;
+				case ANALOG_NO_CHANGE_REPLY:
+					LOGERROR("Master Should Never Send this Command - Fn 13 - ANALOG_NO_CHANGE_REPLY");
+					break;
+				case DIGITAL_NO_CHANGE_REPLY:
+					LOGERROR("Master Should Never Send this Command - Fn 14 - DIGITAL_NO_CHANGE_REPLY");
+					break;
+				case CONTROL_REQUEST_OK:
+					LOGERROR("Master Should Never Send this Command - Fn 15 - CONTROL_REQUEST_OK");
+					break;
+				case FREEZE_AND_RESET:
+					if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
+						success = ProcessFreezeResetReturn(Header, CompleteMD3Message);
+					break;
+				case POM_TYPE_CONTROL:
+					if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
+						success = ProcessPOMReturn(Header, CompleteMD3Message);
+					break;
+				case DOM_TYPE_CONTROL:
+					if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
+						success = ProcessDOMReturn(Header, CompleteMD3Message);
+					break;
+				case INPUT_POINT_CONTROL:
+					LOGERROR("Fn20 - INPUT_POINT_CONTROL - IS NOT IMPLEMENTED");
+					break;
+				case RAISE_LOWER_TYPE_CONTROL:
+					LOGERROR("Fn21 - RAISE_LOWER_TYPE_CONTROL - IS NOT IMPLEMENTED");
+					break;
+				case AOM_TYPE_CONTROL:
+					if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
+						success = ProcessAOMReturn(Header, CompleteMD3Message);
+					break;
+				case CONTROL_OR_SCAN_REQUEST_REJECTED:
+					LOGERROR("Master Should Never Send this Command - Fn 30 - CONTROL_OR_SCAN_REQUEST_REJECTED");
+					break;
+				case COUNTER_SCAN:
+					// if (Header.GetFunctionCode() == COUNTER_SCAN)
+					LOGERROR("Fn31 - COUNTER_SCAN - IS NOT IMPLEMENTED - USE ANALOG SCAN TO READ COUNTERS");
+					break;
+				case SYSTEM_SIGNON_CONTROL:
+					if (Header.GetFunctionCode() == SYSTEM_SIGNON_CONTROL)
+						success = ProcessSystemSignOnReturn(Header, CompleteMD3Message);
+					break;
+				case SYSTEM_SIGNOFF_CONTROL:
+					LOGERROR("Fn41 - SYSTEM_SIGNOFF_CONTROL - IS NOT IMPLEMENTED");
+					break;
+				case SYSTEM_RESTART_CONTROL:
+					LOGERROR("Fn42 - SYSTEM_RESTART_CONTROL - IS NOT IMPLEMENTED");
+					break;
+				case SYSTEM_SET_DATETIME_CONTROL:
+					if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
+						success = ProcessSetDateTimeReturn(Header, CompleteMD3Message);
+					break;
+				case SYSTEM_SET_DATETIME_CONTROL_NEW:
+					if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
+						success = ProcessSetDateTimeNewReturn(Header, CompleteMD3Message);
+					break;
+				case FILE_DOWNLOAD:
+					LOGERROR("Fn50 - RAISE_LOWER_TYPE_CONTROL - IS NOT IMPLEMENTED");
+					break;
+				case FILE_UPLOAD:
+					LOGERROR("Fn51 - RAISE_LOWER_TYPE_CONTROL - IS NOT IMPLEMENTED");
+					break;
+				case SYSTEM_FLAG_SCAN:
+					if (Header.GetFunctionCode() == SYSTEM_FLAG_SCAN)
+						success = ProcessFlagScanReturn(Header, CompleteMD3Message);
+					break;
+				case LOW_RES_EVENTS_LIST_SCAN:
+					LOGERROR("Fn60 - LOW_RES_EVENTS_LIST_SCAN - IS NOT IMPLEMENTED");
+					break;
+				default:
+					LOGERROR("Unknown Message Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+					break;
+			}
+
+			if (success) // Move to the next command. Only other place we do this is in the timeout.
+			{
+			      MasterCommandProtectedData.CurrentCommandTimeoutTimer->cancel(); // Have to be careful the handler still might do something?
+			      MasterCommandProtectedData.ProcessingMD3Command = false;         // Only gets reset on success or timeout.
+
+			      // Execute the callback with a success code.
+			      PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::SUCCESS); // Does null check
+			      UnprotectedSendNextMasterCommand(false);                                                    // We already have the strand, so don't need the wrapper here. Pass in that this is not a retry.
+			}
+			else
+			{
+			      LOGERROR("Command Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
+					" Expecting " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+			}
+		});
 }
 
 // We have received data from an Analog command - could be  the result of Fn 5 or 6
 // Store the decoded data into the point lists. Counter scan comes back in an identical format
-void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message)
+// Return success or failure
+bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
 	uint8_t ModuleAddress = Header.GetModuleAddress();
 	uint8_t Channels = Header.GetChannels();
@@ -361,10 +534,11 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 
 	if (NumberOfDataBlocks != CompleteMD3Message.size() - 1)
 	{
-		LOGERROR("Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
-		//TODO: SJE Trip an error so we dont have to wait for timeout?
-		return;
+		LOGERROR("MA - Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
 	}
+
+	LOGDEBUG("Doing Analog Unconditional processing ");
 
 	// Unload the analog values from the blocks
 	std::vector<uint16_t> AnalogValues;
@@ -384,9 +558,10 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 
 	// Now take the returned values and store them into the points
 	uint16_t wordres = 0;
+	bool hasbeenset;
 
 	// Search to see if the first value is a counter or analog
-	bool FirstModuleIsCounterModule = GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres);
+	bool FirstModuleIsCounterModule = MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres,hasbeenset);
 	MD3Time now = MD3Now();
 
 	for (int i = 0; i < Channels; i++)
@@ -397,61 +572,73 @@ void MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 		int idx = FirstModuleIsCounterModule ? i % 8 : i;
 		int maddress = (FirstModuleIsCounterModule && i > 8) ? ModuleAddress+1 : ModuleAddress;
 
-		if (SetAnalogValueUsingMD3Index(maddress, idx, AnalogValues[i]))
+		if (MyPointConf->PointTable.SetAnalogValueUsingMD3Index(maddress, idx, AnalogValues[i]))
 		{
 			// We have succeeded in setting the value
-			int intres;
-			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
+			LOGDEBUG("MA - Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
+			size_t ODCIndex;
+			if (MyPointConf->PointTable.GetAnalogODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
-				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				PublishEvent(Analog(AnalogValues[i], qual, now), intres); // We dont get counter time information through MD3, so add it as soon as possible
+				QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
+				LOGDEBUG("MA - Published Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
+
+				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+				event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
+				PublishEvent(event);
 			}
 		}
-		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
+		else if (MyPointConf->PointTable.SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
 		{
 			// We have succeeded in setting the value
-			int intres;
-			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
+			LOGDEBUG("MA - Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
+			size_t ODCIndex;
+			if (MyPointConf->PointTable.GetCounterODCIndexUsingMD3Index(maddress, idx, ODCIndex))
 			{
-				uint8_t qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-				PublishEvent(Counter(AnalogValues[i], qual, now), intres); // We dont get analog time information through MD3, so add it as soon as possible
+				QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
+				LOGDEBUG("MA - Published Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
+				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+				event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
+				PublishEvent(event);
 			}
 		}
 		else
 		{
-			LOGERROR("Fn5 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
+			LOGERROR("MA - Fn5 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
 				+ " On Station Address - " + std::to_string(Header.GetStationAddress())
 				+ " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
-			//TODO: SJE Trip an error so we dont have to wait for timeout?
+			return false;
 		}
 	}
+	return true;
 }
 
-// Fn 6. This is only one of three possible responses to the Fn 6 command from the Master. The others are 5 (Unconditonal) and 13 (No change)
-// The data that comes back is up to 16 8 bit signed values represnting the change from the last sent value.
+// Fn 6. This is only one of three possible responses to the Fn 6 command from the Master. The others are 5 (Unconditional) and 13 (No change)
+// The data that comes back is up to 16 8 bit signed values representing the change from the last sent value.
 // If there was a fault at the OutStation an Unconditional response will be sent instead.
 // If a channel is missing or in fault, the value will be 0, so it can still just be added to the value (even if it is 0x8000 - the fault value).
-void MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std::vector<MD3BlockData>& CompleteMD3Message)
+// Return success or failure
+bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
 	uint8_t ModuleAddress = Header.GetModuleAddress();
 	uint8_t Channels = Header.GetChannels();
 
-	int NumberOfDataBlocks = Channels / 4 + Channels % 4; // 2 --> 1, 5 -->2
+	uint8_t NumberOfDataBlocks = Channels / 4 + Channels % 4; // 2 --> 1, 5 -->2
 
 	if (NumberOfDataBlocks != CompleteMD3Message.size() - 1)
 	{
-		LOGERROR("Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+		LOGERROR("MA - Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) +
 			" On Station Address - " + std::to_string(Header.GetStationAddress()));
-		//TODO: SJE Trip an error so we dont have to wait for timeout?
-		return;
+		return false;
 	}
+
+	LOGDEBUG("Doing Analog Delta processing ");
 
 	// Unload the analog delta values from the blocks - 4 per block.
 	std::vector<int8_t> AnalogDeltaValues;
 	int ChanCount = 0;
-	for (int i = 0; i < NumberOfDataBlocks; i++)
+	for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
 	{
-		for (int j = 0; j < 4; j++)
+		for (uint8_t j = 0; j < 4; j++)
 		{
 			AnalogDeltaValues.push_back(CompleteMD3Message[i + 1].GetByte(j)); // Test unsigned/signed conversion here...
 			ChanCount++;
@@ -467,9 +654,87 @@ void MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std
 
 	// Now take the returned values and add them to the points
 	uint16_t wordres = 0;
+	bool hasbeenset;
 
 	// Search to see if the first value is a counter or analog
-	bool FirstModuleIsCounterModule = GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres);
+	bool FirstModuleIsCounterModule = MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres,hasbeenset);
+	MD3Time now = MD3Now();
+
+	for (int i = 0; i < Channels; i++)
+	{
+		// Code to adjust the ModuleAddress and index if the first module is a counter module (8 channels)
+		// 16 channels will cover two counters or one counter and 1/2 an analog, or one analog (16 channels).
+		// We assume that Analog and Counter modules cannot have the same module address - which we think is a safe assumption.
+		uint8_t idx = FirstModuleIsCounterModule ? i % 8 : i;
+		uint16_t maddress = (FirstModuleIsCounterModule && i > 8) ? ModuleAddress + 1 : ModuleAddress;
+
+		if (MyPointConf->PointTable.GetAnalogValueUsingMD3Index(maddress, idx, wordres,hasbeenset))
+		{
+			wordres += AnalogDeltaValues[i];                                             // Add the signed delta.
+			MyPointConf->PointTable.SetAnalogValueUsingMD3Index(maddress, idx, wordres); //TODO Do all SetMethods need to have a time field as well? With a magic number (Say 10 which is in the past) as default which means no change?
+
+			LOGDEBUG("MA - Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
+
+			size_t ODCIndex;
+			if (MyPointConf->PointTable.GetAnalogODCIndexUsingMD3Index(maddress, idx, ODCIndex))
+			{
+				QualityFlags qual = CalculateAnalogQuality(enabled, wordres, now);
+				LOGDEBUG("MA - Published Event - Analog Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(wordres));
+				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, (opendnp3::DNPTime)now); // We don't get time info from MD3, so add it as soon as possible
+				event->SetPayload<EventType::Analog>(std::move(wordres));
+				PublishEvent(event);
+			}
+		}
+		else if (MyPointConf->PointTable.GetCounterValueUsingMD3Index(maddress, idx,wordres,hasbeenset))
+		{
+			wordres += AnalogDeltaValues[i]; // Add the signed delta.
+			MyPointConf->PointTable.SetCounterValueUsingMD3Index(maddress, idx, wordres);
+
+			LOGDEBUG("MA - Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
+
+			size_t ODCIndex;
+			if (MyPointConf->PointTable.GetCounterODCIndexUsingMD3Index(maddress, idx, ODCIndex))
+			{
+				QualityFlags qual = CalculateAnalogQuality(enabled,wordres, now);
+				LOGDEBUG("MA - Published Event - Counter Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(wordres));
+				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+				event->SetPayload<EventType::Counter>(std::move(wordres));
+				PublishEvent(event);
+			}
+		}
+		else
+		{
+			LOGERROR("Fn6 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
+				+ " On Station Address - " + std::to_string(Header.GetStationAddress())
+				+ " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
+			return false;
+		}
+	}
+	return true;
+}
+
+// We have received data from an Analog command - could be  the result of Fn 5 or 6
+bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Received an analog no change with extra data - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+
+	LOGDEBUG("Doing Analog NoChange processing ");
+
+	// Now take the returned values and store them into the points
+	uint16_t wordres = 0;
+	bool hasbeenset;
+
+	//TODO: ANALOG_NO_CHANGE_REPLY do we update the times on the points that we asked to be updated?
+
+	// Search to see if the first value is a counter or analog
+	bool FirstModuleIsCounterModule = MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres,hasbeenset);
 	MD3Time now = MD3Now();
 
 	for (int i = 0; i < Channels; i++)
@@ -479,439 +744,934 @@ void MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, std
 		// We assume that Analog and Counter modules cannot have the same module address - which we think is a safe assumption.
 		int idx = FirstModuleIsCounterModule ? i % 8 : i;
 		int maddress = (FirstModuleIsCounterModule && i > 8) ? ModuleAddress + 1 : ModuleAddress;
-
-		if (GetAnalogValueUsingMD3Index(maddress, idx, wordres))
+		/*
+		if (SetAnalogValueUsingMD3Index(maddress, idx, ))
 		{
-			wordres += AnalogDeltaValues[i];                     // Add the signed delta.
-			SetAnalogValueUsingMD3Index(maddress, idx, wordres); //TODO Do all SetMethods need to have a time field as well? With a magic number (Say 10 which is in the past) as default which means no change?
-
-			int intres;
-			if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
-			{
-				uint8_t qual = CalculateAnalogQuality(enabled, wordres, now);
-				PublishEvent(Analog(wordres, qual, now), intres); // We dont get counter time information through MD3, so add it as soon as possible
-			}
+		      // We have succeeded in setting the value
+		      int intres;
+		      if (GetAnalogODCIndexUsingMD3Index(maddress, idx, intres))
+		      {
+		            QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i], now);
+		                  auto event = std::make_shared<EventInfo>(EventType::Analog, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+		                  event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
+		                  PublishEvent(event);
+		      }
 		}
-		else if (GetCounterValueUsingMD3Index(maddress, idx,wordres))
+		else if (SetCounterValueUsingMD3Index(maddress, idx, AnalogValues[i]))
 		{
-			wordres += AnalogDeltaValues[i]; // Add the signed delta.
-			SetCounterValueUsingMD3Index(maddress, idx, wordres);
+		      // We have succeeded in setting the value
+		      int intres;
+		      if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
+		      {
+		            QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i], now);
+		                  auto event = std::make_shared<EventInfo>(EventType::Counter, intres, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible);
+		                  event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
+		                  PublishEvent(event);
+		      }
+		}
+		else
+		{
+		      LOGERROR("Fn5 Failed to set an Analog or Counter Time - " + std::to_string(Header.GetFunctionCode())
+		            + " On Station Address - " + std::to_string(Header.GetStationAddress())
+		            + " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
+		      return false;
+		}
+		*/
+	}
+	return true;
+}
 
-			int intres;
-			if (GetCounterODCIndexUsingMD3Index(maddress, idx, intres))
+bool MD3MasterPort::ProcessDigitalNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Received a digital no change with extra data - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+
+	LOGDEBUG("Doing Digital NoChange processing... ");
+
+	//TODO: DIGITAL_NO_CHANGE_REPLY do we update the times on the points that we asked to be updated?
+
+	MD3Time now = MD3Now();
+
+	return true;
+}
+bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	MD3BlockFn11StoM Fn11Header = static_cast<MD3BlockFn11StoM>(Header);
+
+	uint8_t EventCnt = Fn11Header.GetTaggedEventCount();
+	uint8_t SeqNum = Fn11Header.GetDigitalSequenceNumber();
+	uint8_t ModuleCount = Fn11Header.GetModuleCount();
+	int MessageIndex = 1; // What block are we processing?
+	LOGDEBUG("Digital Scan (new) processing EventCnt : "+std::to_string(EventCnt)+" ModuleCnt : "+std::to_string(ModuleCount)+" Sequence Number : " + std::to_string(SeqNum));
+	LOGDEBUG("Digital Scan Data " + MD3MessageAsString(CompleteMD3Message));
+
+	//TODO: We may have to reorder the processing of the "now" module data, and the time tagged data, so that the ODC events go through in chronological order,
+	//TODO: Run a test on MOSAIC to see what it does with out of order binary events...
+
+	// Now take the returned values and store them into the points
+	// Process any module data (if any)
+	//NOTE: The module data on initial scan might have two blocks for the one address - the previous and current state????
+	for (int m = 0; m < ModuleCount; m++)
+	{
+		if (MessageIndex < (int)CompleteMD3Message.size())
+		{
+			// The data blocks are the same for time tagged and "normal". Module Address (byte), msec offset(byte) and 16 bits of data.
+			uint8_t ModuleAddress = CompleteMD3Message[MessageIndex].GetByte(0);
+			uint8_t msecOffset = CompleteMD3Message[MessageIndex].GetByte(1); // Will always be 0 for Module blocks
+			uint16_t ModuleData = CompleteMD3Message[MessageIndex].GetSecondWord();
+
+			if (ModuleAddress == 0 && msecOffset == 0)
 			{
-				uint8_t qual = CalculateAnalogQuality(enabled,wordres, now);
-				PublishEvent(Counter(wordres, qual, now), intres); // We dont get analog time information through MD3, so add it as soon as possible
+				// This is a status block.
+				ModuleAddress = CompleteMD3Message[MessageIndex].GetByte(2);
+				uint8_t ModuleFailStatus = CompleteMD3Message[MessageIndex].GetByte(3);
+				LOGDEBUG("Received a Fn 11 Status Block - Module Address : " + std::to_string(ModuleAddress) + " Fail Status : 0x" + to_hexstring(ModuleFailStatus));
+			}
+			else
+			{
+				LOGDEBUG("Received a Fn 11 Data Block - Module : " + std::to_string(ModuleAddress) + " Data : 0x" + to_hexstring(ModuleData) + " Data : " + to_binstring(ModuleData));
+				MD3Time eventtime = MD3Now();
+
+				GenerateODCEventsFromMD3ModuleWord(ModuleData, ModuleAddress, eventtime);
 			}
 		}
 		else
 		{
-			LOGERROR("Fn6 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
-				+ " On Station Address - " + std::to_string(Header.GetStationAddress())
-				+ " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
-			//TODO: SJE Trip an error so we dont have to wait for timeout?
+			LOGERROR("Tried to read a block past the end of the message processing module data : " + std::to_string(MessageIndex) + " Modules : " + std::to_string(CompleteMD3Message.size()));
+			return false;
+		}
+		MessageIndex++;
+	}
+
+	if (EventCnt > 0) // Process Events (if any)
+	{
+		MD3Time timebase = 0; // Moving time value for events received
+
+		// Process Time/Date Data
+		if (MessageIndex < (int)CompleteMD3Message.size())
+		{
+			timebase = (uint64_t)CompleteMD3Message[MessageIndex].GetData() * 1000; //MD3Time msec since Epoch.
+			LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+		}
+		else
+		{
+			LOGERROR("Tried to read a block past the end of the message processing time date data : " + std::to_string(MessageIndex) + " Modules : " + std::to_string(CompleteMD3Message.size()));
+			return false;
+		}
+		MessageIndex++;
+
+		// Now we have to convert the remaining data blocks into an array of words and process them. This is due to the time offset blocks which are only 16 bits long.
+		std::vector<uint16_t> ResponseWords;
+		while (MessageIndex < (int)CompleteMD3Message.size())
+		{
+			ResponseWords.push_back(CompleteMD3Message[MessageIndex].GetFirstWord());
+			ResponseWords.push_back(CompleteMD3Message[MessageIndex].GetSecondWord());
+			MessageIndex++;
+		}
+
+		// Now process the response words.
+		for (int i = 0; i < (int)ResponseWords.size(); i++)
+		{
+			// If we are processing a data block and the high byte will be non-zero.
+			// If it is zero it could be either:
+			// A time offset word or
+			// If the whole word is zero, then it must be the first word of a Status block.
+
+			if (ResponseWords[i] == 0)
+			{
+				// We have received a STATUS block, which has a following word.
+				i++;
+				if (i >= (int)ResponseWords.size())
+				{
+					// We likely received an all zero padding block at the end of the message. Ignore this as an error
+					LOGDEBUG("Fn11 Zero padding end word detected - ignoring");
+					return true;
+				}
+				//TODO: Handle status block returned in Fn11 processing.
+				LOGDEBUG("Fn11 Status Block detected - not handled yet!!!");
+			}
+			else if ((ResponseWords[i] & 0xFF00) == 0)
+			{
+				// We have received a TIME BLOCK (offset) which is a single word.
+				int msecoffset = (ResponseWords[i] & 0x00ff) * 256;
+				timebase += msecoffset;
+				LOGDEBUG("Fn11 TimeOffset : " + std::to_string(msecoffset) +" msec");
+			}
+			else
+			{
+				// We have received a DATA BLOCK which has a following word.
+				// The data blocks are the same for time tagged and "normal". Module Address (byte), msec offset(byte) and 16 bits of data.
+				uint8_t ModuleAddress = (ResponseWords[i] >> 8) & 0x007f;
+				uint8_t msecoffset = ResponseWords[i] & 0x00ff;
+				timebase += msecoffset; // Update the current tagged time
+				i++;
+
+				if (i >= (int)ResponseWords.size())
+				{
+					// Index error
+					LOGERROR("Tried to access past the end of the response words looking for the second part of a data block " + MD3MessageAsString(CompleteMD3Message));
+					return false;
+				}
+				uint16_t ModuleData = ResponseWords[i];
+
+				LOGDEBUG("Fn11 TimeTagged Block - Module : " + std::to_string(ModuleAddress) + " msec offset : " + std::to_string(msecoffset) + " Data : 0x" + to_hexstring(ModuleData));
+				GenerateODCEventsFromMD3ModuleWord(ModuleData, ModuleAddress,timebase);
+			}
+		}
+	}
+	return true;
+}
+void MD3MasterPort::GenerateODCEventsFromMD3ModuleWord(const uint16_t &ModuleData, const uint8_t &ModuleAddress, const MD3Time &eventtime)
+{
+	LOGDEBUG("Master Generate Events,  Module : "+std::to_string(ModuleAddress)+" Data : 0x" + to_hexstring(ModuleData));
+
+	for (uint8_t idx = 0; idx < 16; idx++)
+	{
+		// When we set the value it tells us if we really did set the value, or it was already at that value.
+		// Only fire the ODC event if the value changed.
+		bool valuechanged = false;
+		uint8_t bitvalue = (ModuleData >> (15 - idx)) & 0x0001;
+
+		bool res = MyPointConf->PointTable.SetBinaryValueUsingMD3Index(ModuleAddress, idx, bitvalue, valuechanged);
+
+		if (res && valuechanged)
+		{
+			size_t ODCIndex = 0;
+			if (MyPointConf->PointTable.GetBinaryODCIndexUsingMD3Index(ModuleAddress, idx, ODCIndex))
+			{
+				QualityFlags qual = CalculateBinaryQuality(enabled, eventtime);
+				LOGDEBUG("Published Event - Binary Index " + std::to_string(ODCIndex) + " Value " + std::to_string(bitvalue));
+				auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, (msSinceEpoch_t)eventtime);
+				event->SetPayload<EventType::Binary>(bitvalue == 1);
+				PublishEvent(event);
+			}
+			else
+			{
+				// The point did not exist in the table
+			}
 		}
 	}
 }
-
-// Check that what we got is one that is expected for the current Function we are processing.
-bool MD3MasterPort::AllowableResponseToFunctionCode(uint8_t CurrentFunctionCode, uint8_t FunctionCode)
+bool MD3MasterPort::ProcessDOMReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
-	// Only some of these we should receive at the Master!
-	bool result = false;
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
 
-	switch (CurrentFunctionCode)
+	if (CompleteMD3Message.size() != 1)
 	{
-		case ANALOG_UNCONDITIONAL: // Command and reply
-			result = (FunctionCode == ANALOG_UNCONDITIONAL);
-			break;
-		case ANALOG_DELTA_SCAN: // Command and reply
-			result = (FunctionCode == ANALOG_DELTA_SCAN) || (FunctionCode == ANALOG_UNCONDITIONAL) || (FunctionCode == ANALOG_NO_CHANGE_REPLY);
-			break;
-		case DIGITAL_UNCONDITIONAL_OBS:
-			//	DoDigitalUnconditionalObs(Header);
-			break;
-		case DIGITAL_DELTA_SCAN:
-			//	DoDigitalChangeOnly(Header);
-			break;
-		case HRER_LIST_SCAN:
-			//		DoDigitalHRER(static_cast<MD3BlockFn9&>(Header), CompleteMD3Message);
-			break;
-		case DIGITAL_CHANGE_OF_STATE:
-			//	DoDigitalCOSScan(static_cast<MD3BlockFn10&>(Header));
-			break;
-		case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
-			//	DoDigitalScan(static_cast<MD3BlockFn11MtoS&>(Header));
-			break;
-		case DIGITAL_UNCONDITIONAL:
-			//	DoDigitalUnconditional(static_cast<MD3BlockFn12MtoS&>(Header));
-			break;
-		case ANALOG_NO_CHANGE_REPLY:
-			//TODO: ANALOG_NO_CHANGE_REPLY do we update the times on the points that we asked to be updated?
-			// Master Only to receive.
-			break;
-		case DIGITAL_NO_CHANGE_REPLY:
-			// Master Only
-			break;
-		case CONTROL_REQUEST_OK:
-			// Master Only
-			break;
-		case FREEZE_AND_RESET:
-			//	DoFreezeResetCounters(static_cast<MD3BlockFn16MtoS&>(Header));
-			break;
-		case POM_TYPE_CONTROL:
-			//	DoPOMControl(static_cast<MD3BlockFn17MtoS&>(Header), CompleteMD3Message);
-			break;
-		case DOM_TYPE_CONTROL:
-			//	DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
-			break;
-		case INPUT_POINT_CONTROL:
-			break;
-		case RAISE_LOWER_TYPE_CONTROL:
-			break;
-		case AOM_TYPE_CONTROL:
-			//	DoAOMControl(static_cast<MD3BlockFn23MtoS&>(Header), CompleteMD3Message);
-			break;
-		case CONTROL_OR_SCAN_REQUEST_REJECTED:
-			// Master Only
-			break;
-		case COUNTER_SCAN:
-			//	DoCounterScan(Header);
-			break;
-		case SYSTEM_SIGNON_CONTROL:
-			//	DoSystemSignOnControl(static_cast<MD3BlockFn40&>(Header));
-			break;
-		case SYSTEM_SIGNOFF_CONTROL:
-			break;
-		case SYSTEM_RESTART_CONTROL:
-			break;
-		case SYSTEM_SET_DATETIME_CONTROL:
-			//	DoSetDateTime(static_cast<MD3BlockFn43MtoS&>(Header), CompleteMD3Message);
-			break;
-		case FILE_DOWNLOAD:
-			break;
-		case FILE_UPLOAD:
-			break;
-		case SYSTEM_FLAG_SCAN:
-			//	DoSystemFlagScan(Header, CompleteMD3Message);
-			break;
-		case LOW_RES_EVENTS_LIST_SCAN:
-			break;
-		default:
-			LOGERROR("Illegal Function Code Received - " + std::to_string(FunctionCode));
-			break;
+		LOGERROR("Master Received an DOM response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
 	}
 
-	return result;
+	LOGDEBUG("Master Got DOM response ");
+
+	return (Header.GetFunctionCode() == CONTROL_REQUEST_OK);
 }
+bool MD3MasterPort::ProcessPOMReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Master Received an POM response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+
+	LOGDEBUG("Master Got POM response ");
+
+	return (Header.GetFunctionCode() == CONTROL_REQUEST_OK);
+}
+bool MD3MasterPort::ProcessAOMReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Master Received an AOM response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+
+	LOGDEBUG("Master Got AOM response ");
+
+	return (Header.GetFunctionCode() == CONTROL_REQUEST_OK);
+}
+
+bool MD3MasterPort::ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Received an SetDateTime response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+
+	LOGDEBUG("Got SetDateTime response ");
+
+	return (Header.GetFunctionCode() == CONTROL_REQUEST_OK);
+}
+bool MD3MasterPort::ProcessSetDateTimeNewReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetModuleAddress();
+	uint8_t Channels = Header.GetChannels();
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Received an SetDateTimeNew response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+
+	LOGDEBUG("Got SetDateTimeNew response ");
+
+	return (Header.GetFunctionCode() == CONTROL_REQUEST_OK);
+}
+
+bool MD3MasterPort::ProcessSystemSignOnReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	uint8_t ModuleAddress = Header.GetStationAddress();
+
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Received an SystemSignOn response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+	MD3BlockFn40MtoS resp(Header);
+	if (!resp.IsValid())
+	{
+		LOGERROR("Received an SystemSignOn response that was not valid - ignoring - On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+	LOGDEBUG("Got SystemSignOn response ");
+
+	return (Header.GetFunctionCode() == SYSTEM_SIGNON_CONTROL);
+}
+bool MD3MasterPort::ProcessFreezeResetReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	if (CompleteMD3Message.size() != 1)
+	{
+		LOGERROR("Received an Freeze-Reset response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		return false;
+	}
+
+	LOGDEBUG("Got Freeze-Reset response ");
+
+	return (Header.GetFunctionCode() == CONTROL_REQUEST_OK);
+}
+
+bool MD3MasterPort::ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
+{
+	// The contents of the flag scan return can be contract dependent. There can be more than the single (default) block returned...
+	// We are only looking at the standard megadata flags here SPU, STI and FUP
+	// SPU - Bit 7, MegaDataFlags below - System Powered Up
+	// STI - Bit 6, MegaDataFlags below - System Time Incorrect
+	// FUP - Bit 5, MegaDataFlags below - File upload pending
+
+	// If any bit in the 16 bit status word changes (in the RTU), then the RSF flag bit (present in some messages) will be set.
+	// Executing a FlagScan will reset this bit in the RTU, so will then be 0 in those messages.
+
+	// Use the block access method to get at the bits.
+	MD3BlockFn52StoM Header52(Header);
+
+	bool SystemPoweredUpFlag = Header52.GetSystemPoweredUpFlag();
+	bool SystemTimeIncorrectFlag = Header52.GetSystemTimeIncorrectFlag();
+
+	LOGDEBUG("Got Flag Scan response, " + std::to_string(CompleteMD3Message.size()) + " blocks, System Powered Up Flag : " + std::to_string(SystemPoweredUpFlag) + ", System TimeIncorrect Flag : " + std::to_string(SystemTimeIncorrectFlag));
+
+	if (SystemTimeIncorrectFlag)
+	{
+		// Find if there is a poll group time set command, if so, do that poll (send the time)
+		for (auto pg : MyPointConf->PollGroups)
+		{
+			if (pg.second.polltype == TimeSetCommand)
+			{
+				this->DoPoll(pg.second.ID);
+			}
+			;
+		}
+	}
+
+	if (SystemPoweredUpFlag)
+	{
+		// Launch all digital polls/scans
+		for (auto pg : MyPointConf->PollGroups)
+		{
+			if (pg.second.polltype == BinaryPoints)
+			{
+				this->DoPoll(pg.second.ID);
+			}
+			;
+		}
+
+		// Launch all analog polls/scans
+		for (auto pg : MyPointConf->PollGroups)
+		{
+			if (pg.second.polltype == AnalogPoints)
+			{
+				this->DoPoll(pg.second.ID);
+			}
+			;
+		}
+	}
+	return (Header.GetFunctionCode() == SYSTEM_FLAG_SCAN);
+}
+
+#pragma endregion
 
 // We will be called at the appropriate time to trigger an Unconditional or Delta scan
 // For digital scans there are two formats we might use. Set in the conf file.
 void MD3MasterPort::DoPoll(uint32_t pollgroup)
 {
-	if(!enabled) return;
+	if (!enabled) return;
+	LOGDEBUG("DoPoll : " + std::to_string(pollgroup));
 
-	if (MyPointConf()->PollGroups[pollgroup].polltype == AnalogPoints)
+	switch (MyPointConf->PollGroups[pollgroup].polltype)
 	{
-		if (MyPointConf()->PollGroups[pollgroup].UnconditionalRequired)
+		case AnalogPoints:
 		{
-			// Use Unconditional Request Fn 5
-			// So now need to work out the start Module address and the number of channels to scan (can be Analog or Counter)
-			// For an analog, only one command to get the maximum of 16 channels. For counters it might be two modules that we can get with one command.
+			ModuleMapType::iterator mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
 
-			ModuleMapType::iterator mait = MyPointConf()->PollGroups[pollgroup].ModuleAddresses.begin();
-
-			// Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
+			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
 			int ModuleAddress = mait->first;
-			int channels = 16; // Most we can get in one command
-			MD3BlockFormatted commandblock(MyConf()->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL,ModuleAddress, channels, true);
+			int Channels = mait->second;
 
-			QueueMD3Command(commandblock);
-		}
-		else
-		{
-			// Use a delta command Fn 6
-		}
-	}
-
-	if (MyPointConf()->PollGroups[pollgroup].polltype == BinaryPoints)
-	{
-		if (MyPointConf()->NewDigitalCommands) // Old are 7,8,9,10 - New are 11 and 12
-		{
-			if (MyPointConf()->PollGroups[pollgroup].UnconditionalRequired)
+			if (MyPointConf->PollGroups[pollgroup].ModuleAddresses.size() > 1)
 			{
-				// Use Unconditional Request Fn 12
+				LOGERROR("Analog Poll group " + std::to_string(pollgroup) + " is configured for more than one MD3 address. Please create another poll group.");
+			}
+
+			// We need to do an analog unconditional on start up, until all the points have a valid value - even 0x8000 for does not exist.
+			//TODO: To do this we check the hasbeenset flag, which will be false on start up, and also set to false on comms lost event - kind of like a quality.
+			bool UnconditionalCommandRequired = false;
+			for (int idx = 0; idx < Channels; idx++)
+			{
+				uint16_t wordres;
+				bool hasbeenset;
+				bool res = MyPointConf->PointTable.GetAnalogValueUsingMD3Index(ModuleAddress, idx, wordres, hasbeenset);
+				if (res && !hasbeenset)
+					UnconditionalCommandRequired = true;
+			}
+
+			if (UnconditionalCommandRequired || MyPointConf->PollGroups[pollgroup].ForceUnconditional)
+			{
+				// Use Unconditional Request Fn 5
+				LOGDEBUG("Poll Issued a Analog Unconditional Command");
+
+				MD3BlockFormatted commandblock(MyConf->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL, ModuleAddress, Channels, true);
+				QueueMD3Command(commandblock, nullptr);
 			}
 			else
 			{
-				// Use a delta command Fn 11
+				LOGDEBUG("Poll Issued a Analog Delta Command");
+				// Use a delta command Fn 6
+				MD3BlockFormatted commandblock(MyConf->mAddrConf.OutstationAddr, true, ANALOG_DELTA_SCAN, ModuleAddress, Channels, true);
+				QueueMD3Command(commandblock, nullptr);
 			}
 		}
-		else
+		break;
+
+		case BinaryPoints:
 		{
-			if (MyPointConf()->PollGroups[pollgroup].UnconditionalRequired)
+			if (MyPointConf->NewDigitalCommands) // Old are 7,8,9,10 - New are 11 and 12
 			{
-				// Use Unconditional Request Fn 7
+				// If sequence number is zero - it means we have just started up, or communications re-established. So we dont have a full copy
+				// of the binary data (timetagged or otherwise). The outStation will use the zero sequnce number to send everything to initialise us. We
+				// don't have to send an unconditional.
+
+				ModuleMapType::iterator FirstModule = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+
+				// Request Digital Unconditional
+				int ModuleAddress = FirstModule->first;
+				// We expect the digital modules to be consecutive, or of there is a gap this will still work.
+				int Modules = MyPointConf->PollGroups[pollgroup].ModuleAddresses.size(); // Most modules we can get in one command - NOT channels!
+
+				bool UnconditionalCommandRequired = false;
+				for (int m = 0; m < Modules; m++)
+				{
+					for (int idx = 0; idx < 16; idx++)
+					{
+						bool hasbeenset;
+						bool res = MyPointConf->PointTable.GetBinaryQualityUsingMD3Index(ModuleAddress + m, idx, hasbeenset);
+						if (res && !hasbeenset)
+							UnconditionalCommandRequired = true;
+					}
+				}
+				MD3BlockFormatted commandblock;
+
+				// Also need to check if we already have all the values that this command would ask for..if not send unconditional.
+				if (UnconditionalCommandRequired || MyPointConf->PollGroups[pollgroup].ForceUnconditional)
+				{
+					// Use Unconditional Request Fn 12
+					//TODO:  Handle for than one DIM in a poll group...
+					LOGDEBUG("Poll Issued a Digital Unconditional (new) Command");
+
+					commandblock = MD3BlockFn12MtoS(MyConf->mAddrConf.OutstationAddr, ModuleAddress, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
+				}
+				else
+				{
+					// Use a delta command Fn 11
+					LOGDEBUG("Poll Issued a Digital Delta COS (new) Command");
+
+					uint8_t TaggedEventCount = 0; // Assuming no timetagged points initially.
+
+					// If we have timetagged points in the system, then we need to ask for them to be returned.
+					if (MyPointConf->PollGroups[pollgroup].TimeTaggedDigital == true)
+						TaggedEventCount = 15; // The most we can ask for
+
+					commandblock = MD3BlockFn11MtoS(MyConf->mAddrConf.OutstationAddr, TaggedEventCount, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
+				}
+
+				QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
 			}
-			else
+			else // Old digital commands
 			{
-				// Use a delta command Fn 8
+				if (MyPointConf->PollGroups[pollgroup].ForceUnconditional)
+				{
+					// Use Unconditional Request Fn 7
+					//TODO:  Handle for than one DIM in a poll group...
+					LOGDEBUG("Poll Issued a Digital Unconditional (old) Command");
+					ModuleMapType::iterator mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+
+					// Request Digital Unconditional
+					int ModuleAddress = mait->first;
+					int channels = 16; // Most we can get in one command
+					MD3BlockFormatted commandblock(MyConf->mAddrConf.OutstationAddr, true, DIGITAL_UNCONDITIONAL_OBS, ModuleAddress, channels, true);
+
+					QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
+				}
+				else
+				{
+					// Use a delta command Fn 8
+					LOGDEBUG("Poll Issued a Digital Delta (old) Command");
+				}
 			}
 		}
+		break;
+
+		case  TimeSetCommand:
+		{
+			// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
+			uint64_t currenttime = MD3Now();
+
+			LOGDEBUG("Poll Issued a TimeDate Command");
+			SendTimeDateChangeCommand(currenttime, nullptr);
+		}
+		break;
+
+		case NewTimeSetCommand:
+		{
+			// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
+			uint64_t currenttime = MD3Now();
+
+			LOGDEBUG("Poll Issued a NewTimeDate Command");
+			int utcoffsetminutes = tz_offset();
+
+			SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, nullptr);
+		}
+		break;
+
+		case SystemFlagScan:
+		{
+			// Send a flag scan command to the OutStation, (Fn 52)
+			LOGDEBUG("Poll Issued a System Flag Scan Command");
+			SendSystemFlagScanCommand(nullptr);
+		}
+		break;
+
+		default:
+			LOGDEBUG("Poll will an unknown polltype : " + std::to_string(MyPointConf->PollGroups[pollgroup].polltype));
 	}
+}
+
+void MD3MasterPort::ResetDigitalCommandSequenceNumber()
+{
+	std::unique_lock<std::mutex> lck(DigitalCommandSequenceNumberMutex);
+	DigitalCommandSequenceNumber = 0;
+}
+// Manage the access to the command sequence number. Very low possibility of contention, so use standard lock.
+int MD3MasterPort::GetAndIncrementDigitalCommandSequenceNumber()
+{
+	std::unique_lock<std::mutex> lck(DigitalCommandSequenceNumberMutex);
+
+	int retval = DigitalCommandSequenceNumber;
+
+	if (DigitalCommandSequenceNumber == 0) DigitalCommandSequenceNumber++; // If we send 0, we will get a sequence number of 1 back. So need to move on to 2 for next command
+
+	DigitalCommandSequenceNumber = (++DigitalCommandSequenceNumber > 15) ? 1 : DigitalCommandSequenceNumber;
+	return retval;
+}
+void MD3MasterPort::EnablePolling(bool on)
+{
+	if (on)
+		PollScheduler->Start();
+	else
+		PollScheduler->Stop();
+}
+void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec, SharedStatusCallback_t pStatusCallback)
+{
+	MD3BlockFn43MtoS commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
+	MD3BlockData datablock((uint32_t)(currenttimeinmsec / 1000), true);
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+	Cmd.push_back(datablock);
+	QueueMD3Command(Cmd, pStatusCallback);
+}
+void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback)
+{
+	MD3BlockFn44MtoS commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
+	MD3BlockData datablock((uint32_t)(currenttimeinmsec / 1000));
+	MD3BlockData datablock2((uint32_t)(utcoffsetminutes << 16), true);
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+	Cmd.push_back(datablock);
+	Cmd.push_back(datablock2);
+	QueueMD3Command(Cmd, pStatusCallback);
+}
+void MD3MasterPort::SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCallback)
+{
+	MD3BlockFn52MtoS commandblock(MyConf->mAddrConf.OutstationAddr);
+	QueueMD3Command(commandblock, pStatusCallback);
 }
 
 void MD3MasterPort::SetAllPointsQualityToCommsLost()
 {
+	LOGDEBUG("MD3 Master setting quality to comms lost");
+
+	auto eventbinary = std::make_shared<EventInfo>(EventType::BinaryQuality, 0, Name, QualityFlags::COMM_LOST);
+	eventbinary->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
+
 	// Loop through all Binary points.
-	for (auto const &Point : MyPointConf()->BinaryODCPointMap)
-	{
-		int index = Point.first;
-		PublishEvent(BinaryQuality::COMM_LOST, index);
-	}
+	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &Point)
+		{
+			int index = Point.GetIndex();
+			eventbinary->SetIndex(index);
+			PublishEvent(eventbinary);
+			Point.SetChangedFlag();
+		});
+
 	// Analogs
-	for (auto const &Point : MyPointConf()->AnalogODCPointMap)
-	{
-		int index = Point.first;
-		PublishEvent(AnalogQuality::COMM_LOST, index);
-	}
+
+	auto eventanalog = std::make_shared<EventInfo>(EventType::AnalogQuality, 0, Name, QualityFlags::COMM_LOST);
+	eventanalog->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
+	//TODO: Set all analog points to notset - should this be merged with quality? so that we can determine when we need to send an unconditional command.
+	MyPointConf->PointTable.ForEachAnalogPoint([&](MD3AnalogCounterPoint &Point)
+		{
+			int index = Point.GetIndex();
+			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(index, (uint16_t)0x8000))
+				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(index));
+
+			eventanalog->SetIndex(index);
+			PublishEvent(eventanalog);
+		});
 	// Counters
-	for (auto const &Point : MyPointConf()->CounterODCPointMap)
-	{
-		int index = Point.first;
-		PublishEvent(CounterQuality::COMM_LOST, index);
-	}
-	// Binary Control/Output
-	for (auto const &Point : MyPointConf()->BinaryControlODCPointMap)
-	{
-		int index = Point.first;
-		PublishEvent(BinaryOutputStatusQuality::COMM_LOST, index);
-	}
+	auto eventcounter = std::make_shared<EventInfo>(EventType::CounterQuality, 0, Name, QualityFlags::COMM_LOST);
+	eventcounter->SetPayload<EventType::CounterQuality>(QualityFlags::COMM_LOST);
+
+	MyPointConf->PointTable.ForEachCounterPoint([&](MD3AnalogCounterPoint &Point)
+		{
+			int index = Point.GetIndex();
+			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(index, (uint16_t)0x8000))
+				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(index));
+
+			eventcounter->SetIndex(index);
+			PublishEvent(eventcounter);
+		});
 }
 
-// When a new device connects to us through ODC (or an exisiting one reconnects), send them everything we currently have.
+// When a new device connects to us through ODC (or an existing one reconnects), send them everything we currently have.
 void MD3MasterPort::SendAllPointEvents()
 {
 	//TODO: SJE Set a quality of RESTART if we have just started up but not yet received information for a point. Not sure if super usefull...
 
 	// Quality of ONLINE means the data is GOOD.
-	for (auto const &Point : MyPointConf()->BinaryODCPointMap)
-	{
-		int index = Point.first;
-		uint8_t meas = Point.second->Binary;
-		uint8_t qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
-		PublishEvent(Binary( meas == 1, qual, Point.second->ChangedTime),index);
-	}
+	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &Point)
+		{
+			int index = Point.GetIndex();
+			uint8_t meas = Point.GetBinary();
+			QualityFlags qual = CalculateBinaryQuality(enabled, Point.GetChangedTime());
 
-	// Binary Control/Output - the status of which we show as a binary - on our other end we look for the index in both binary lists
-	//TODO: SJE Check that we need to report BinaryOutput status, or if it is just assumed?
-	for (auto const &Point : MyPointConf()->BinaryControlODCPointMap)
-	{
-		int index = Point.first;
-		uint8_t meas = Point.second->Binary;
-		uint8_t qual = CalculateBinaryQuality(enabled, Point.second->ChangedTime);
-		PublishEvent(Binary(meas == 1, qual, Point.second->ChangedTime), index);
-	}
+			auto event = std::make_shared<EventInfo>(EventType::Binary, index, Name, qual, (msSinceEpoch_t)Point.GetChangedTime());
+			event->SetPayload<EventType::Binary>(meas == 1);
+			PublishEvent(event);
+		});
+
 	// Analogs
-	for (auto const &Point : MyPointConf()->AnalogODCPointMap)
-	{
-		int index = Point.first;
-		uint16_t meas = Point.second->Analog;
-		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
-		PublishEvent(Analog(meas, qual, Point.second->ChangedTime), index);
-	}
+	MyPointConf->PointTable.ForEachAnalogPoint([&](MD3AnalogCounterPoint &Point)
+		{
+			int index = Point.GetIndex();
+			uint16_t meas = Point.GetAnalog();
+
+			// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
+			QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.GetChangedTime());
+
+			auto event = std::make_shared<EventInfo>(EventType::Analog, index, Name, qual, (msSinceEpoch_t)Point.GetChangedTime());
+			event->SetPayload<EventType::Analog>(std::move(meas));
+			PublishEvent(event);
+		});
+
 	// Counters
-	for (auto const &Point : MyPointConf()->CounterODCPointMap)
-	{
-		int index = Point.first;
-		uint16_t meas = Point.second->Analog;
-		// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
-		uint8_t qual = CalculateAnalogQuality(enabled, meas, Point.second->ChangedTime);
-		PublishEvent(Counter(meas, qual, Point.second->ChangedTime), index);
-	}
+	MyPointConf->PointTable.ForEachCounterPoint([&](MD3AnalogCounterPoint &Point)
+		{
+			int index = Point.GetIndex();
+			uint16_t meas = Point.GetAnalog();
+			// If the measurement is 0x8000 - there is a problem in the MD3 OutStation for that point.
+			QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.GetChangedTime());
+
+			auto event = std::make_shared<EventInfo>(EventType::Counter, index, Name, qual, (msSinceEpoch_t)Point.GetChangedTime());
+			event->SetPayload<EventType::Counter>(std::move(meas));
+			PublishEvent(event);
+		});
 }
 
 // Binary quality only depends on our link status and if we have received data
-uint8_t MD3MasterPort::CalculateBinaryQuality(bool enabled, MD3Time time)
+QualityFlags MD3MasterPort::CalculateBinaryQuality(bool enabled, MD3Time time)
 {
-	return (uint8_t)(enabled ? ((time == 0) ? BinaryQuality::RESTART : BinaryQuality::ONLINE) : BinaryQuality::COMM_LOST);
+	return (enabled ? ((time == 0) ? QualityFlags::RESTART : QualityFlags::ONLINE) : QualityFlags::COMM_LOST);
 }
 // Use the measurement value and if we are enabled to determine what the quality value should be.
-uint8_t MD3MasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time)
+QualityFlags MD3MasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas, MD3Time time)
 {
-	return (uint8_t)(enabled ? (time == 0 ? AnalogQuality::RESTART : ((meas == 0x8000) ? AnalogQuality::LOCAL_FORCED : AnalogQuality::ONLINE)) : AnalogQuality::COMM_LOST);
+	return (enabled ? (time == 0 ? QualityFlags::RESTART : ((meas == 0x8000) ? QualityFlags::LOCAL_FORCED : QualityFlags::ONLINE)) : QualityFlags::COMM_LOST);
 }
-
-// This will be fired by (typically) an MD3OutStation port on the "other" side of the ODC Event bus.
-// We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
-void MD3MasterPort::ConnectionEvent(ConnectState state, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
-{
-	if (!enabled)
-	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
-		return;
-	}
-
-	//something upstream has connected
-	if(state == ConnectState::CONNECTED)
-	{
-		LOGDEBUG("Upstream (other side of ODC) port enabled - Triggering sending of current data ");
-		// We don’t know the state of the upstream data, so send event information for all points.
-		SendAllPointEvents();
-	}
-	else // ConnectState::DISCONNECTED
-	{
-		// If we were an on demand connection, we would take down the connection . For MD3 we are using persistent connections only.
-		// We have lost an ODC connection, so events we send dont go anywhere.
-
-	}
-
-	(*pStatusCallback)(CommandStatus::SUCCESS);
-}
-
-//Implement some IOHandler - parent MD3Port implements the rest to return NOT_SUPPORTED
-void MD3MasterPort::Event(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const opendnp3::AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const opendnp3::AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
-void MD3MasterPort::Event(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) { EventT(arCommand, index, SenderName, pStatusCallback); }
 
 
 // So we have received an event, which for the Master will result in a write to the Outstation, so the command is a Binary Output or Analog Output
-// see all 5 possible definitions above.
-// We will have to translate from the float values to the uint16_t that MD3 actually handles, and then it is only a 12 bit number.
-template<typename T>
-inline void MD3MasterPort::EventT(T& arCommand, uint16_t index, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+// Also we have the pass through commands with special port values defined.
+void MD3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
 	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+		return;
+	}
+	switch (event->GetEventType())
+	{
+		case EventType::ControlRelayOutputBlock:
+			return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), (uint16_t)event->GetIndex(), pStatusCallback);
+		case EventType::AnalogOutputInt16:
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, (uint16_t)event->GetIndex(), pStatusCallback);
+		case EventType::AnalogOutputInt32:
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, (uint16_t)event->GetIndex(), pStatusCallback);
+		case EventType::AnalogOutputFloat32:
+			return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, (uint16_t)event->GetIndex(), pStatusCallback);
+		case EventType::AnalogOutputDouble64:
+			return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, (uint16_t)event->GetIndex(), pStatusCallback);
+		case EventType::ConnectState:
+		{
+			auto state = event->GetPayload<EventType::ConnectState>();
+			// This will be fired by (typically) an MD3OutStation port on the "other" side of the ODC Event bus. i.e. something upstream has connected
+			// We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
+
+			if (state == ConnectState::CONNECTED)
+			{
+				LOGDEBUG("Upstream (other side of ODC) port enabled - Triggering sending of current data ");
+				// We don\92t know the state of the upstream data, so send event information for all points.
+				SendAllPointEvents();
+			}
+			else if (state == ConnectState::DISCONNECTED)
+			{
+				// If we were an on demand connection, we would take down the connection . For MD3 we are using persistent connections only.
+				// We have lost an ODC connection, so events we send don't go anywhere.
+			}
+
+			return (*pStatusCallback)(CommandStatus::SUCCESS);
+		}
+		default:
+			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+	}
+}
+
+
+void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+{
+	uint8_t ModuleAddress = 0;
+	uint8_t Channel = 0;
+	BinaryPointType PointType;
+	bool exists = MyPointConf->PointTable.GetBinaryControlMD3IndexUsingODCIndex(index, ModuleAddress, Channel, PointType);
+
+	if (!exists)
+	{
+		LOGDEBUG("Master received a DOM/POM ODC Change Command on a point that is not defined " + std::to_string(index));
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
 
-	// We now have to (most likely) send a command out to an outstation and wait for a response
-	// We can launch the command here, create a lamda to be called in the event of timeout or response.
-	// At that time we will call the callback function.
-	// For now we just return so whatever sent the ODC Event can get on with things. It will have setup the callback we will call when the time is right.
-	//	cmd_promise->set_value(WriteObject(arCommand, index));
-	/*
-	auto lambda = capture( std::move(cmd_promise),
-	[=]( std::unique_ptr<std::promise<CommandStatus>> & cmd_promise ) {
-	cmd_promise->set_value(WriteObject(arCommand, index));
-	} );
-	pIOS->post([&](){ lambda(); });
-	*/
-	// For now, do the callback anyway!
-	(*pStatusCallback)(CommandStatus::UNDEFINED);
+	std::string OnOffString = "ON";
 
-	return;
+	if (PointType == DOMOUTPUT)
+	{
+		// The main issue is that a DOM command writes 16 bits in one go, so we have to remember the output state of the other bits,
+		// so that we only write the change that has been triggered.
+		// We have to gather up the current state of those bits.
+
+		bool ModuleFailed = false;                                                                            // Not used - yet
+		uint16_t outputbits = MyPointConf->PointTable.CollectModuleBitsIntoWord(ModuleAddress, ModuleFailed); // Reads from the digital input point list...
+
+		if ((command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
+		{
+			// OFF Command
+			outputbits &= ~(0x0001 << (15-Channel));
+			OnOffString = "OFF";
+		}
+		else
+		{
+			// ON Command  --> ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
+			outputbits |= (0x0001 << (15-Channel));
+			OnOffString = "ON";
+		}
+
+		LOGDEBUG("Master received a DOM ODC Change Command - Index: " + std::to_string(index) +" - "+ OnOffString + "  Module/Channel " + std::to_string(ModuleAddress) + "/" + std::to_string(Channel));
+		SendDOMOutputCommand(MyConf->mAddrConf.OutstationAddr, ModuleAddress, outputbits, pStatusCallback);
+	}
+	else if(PointType == POMOUTPUT)
+	{
+		// POM Point
+		// The POM output is a single output selection, value 0 to 15 which represents a TRIP 0-7 and CLOSE 8-15 for the up to 8 points in a POM module.
+		// We don't have to remember state here as we are sending only one bit.
+		uint8_t outputselection = 0;
+
+		if ((command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
+		{
+			// OFF Command
+			outputselection = Channel+8;
+			OnOffString = "OFF";
+		}
+		else
+		{
+			// ON Command  --> ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
+			outputselection = Channel;
+			OnOffString = "ON";
+		}
+
+		LOGDEBUG("Master received a POM ODC Change Command - Index: " + std::to_string(index) + " - " + OnOffString + "  Module/Channel " + std::to_string(ModuleAddress) + "/" + std::to_string(Channel));
+		SendPOMOutputCommand(MyConf->mAddrConf.OutstationAddr, ModuleAddress, outputselection, pStatusCallback);
+	}
+	else
+	{
+		LOGDEBUG("Master received Binary Output ODC Event on a point not defined as DOM or POM " + std::to_string(index));
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+		return;
+	}
 }
 
-/*
-template<>
-CommandStatus MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, uint16_t index)
+void MD3MasterPort::WriteObject(const int16_t & command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-      if (
-            (command.functionCode == ControlCode::NUL) ||
-            (command.functionCode == ControlCode::UNDEFINED)
-            )
-      {
-            return CommandStatus::FORMAT_ERROR;
-      }
+	// AOM Command
+	LOGDEBUG("Master received a AOM ODC Change Command " + std::to_string(index));
 
-      // MD3 function code 0x01 (read coil status)
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
+//TODO: Finish AOM command	SendDOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputFromSecondBlock(BlockData), pStatusCallback);
 
-      int rc;
-      if (
-            (command.functionCode == ControlCode::LATCH_OFF) ||
-            (command.functionCode == ControlCode::TRIP_PULSE_ON)
-            )
-      {
-//		rc = MD3_write_bit(mb, index, false);
-      }
-      else
-      {
-            //ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
-//		rc = MD3_write_bit(mb, index, true);
-      }
-
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-//	if (rc == -1) return HandleWriteError(errno, "write bit");
-      return CommandStatus::SUCCESS;
+	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
-template<>
-CommandStatus MD3MasterPort::WriteObject(const AnalogOutputInt16& command, uint16_t index)
+
+void MD3MasterPort::WriteObject(const int32_t & command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
+	// Other Magic point commands
 
-//	int rc = MD3_write_register(mb, index, command.value);
+	if (index == MyPointConf->POMControlPoint.second) // Is this out magic time set point?
+	{
+		LOGDEBUG("Master received POM Control Point command on the magic point through ODC " + std::to_string(index));
 
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
+		MD3BlockFn17MtoS Header = MD3BlockFn17MtoS(MD3BlockData(command));
+		SendPOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputSelection(), pStatusCallback);
+	}
+	else if (index == MyPointConf->SystemSignOnPoint.second)
+	{
+		// Normally a Fn40
+		LOGDEBUG("Master received System Sign On command on the magic point through ODC " + std::to_string(index));
+		MD3BlockFormatted MD3command(command, true);
+		QueueMD3Command(MD3command, pStatusCallback); // Single block send
+	}
+	else if (index == MyPointConf->FreezeResetCountersPoint.second)
+	{
+		// Normally a Fn16
+		LOGDEBUG("Master received Freeze/Reset Counters command on the magic point through ODC " + std::to_string(index));
+		MD3BlockFormatted MD3command(command,true);   // The packet rx'd by the outstation and passed to us through ODC is sent out unchanged by the master...
+		QueueMD3Command(MD3command, pStatusCallback); // Single block send
+	}
+	else if (index == MyPointConf->DOMControlPoint.second) // Is this out magic time set point?
+	{
+		LOGDEBUG("Master received DOM Control Point command on the magic point through ODC " + std::to_string(index));
+		uint32_t PacketData = static_cast<uint32_t>(command);
+		MD3BlockFn19MtoS Header = MD3BlockFn19MtoS((PacketData >> 24) & 0x7F, (PacketData >> 16) & 0xFF);
+		MD3BlockData BlockData = Header.GenerateSecondBlock(PacketData & 0xFFFF);
 
-//	if (rc == -1) return HandleWriteError(errno, "write register");
-      return CommandStatus::SUCCESS;
+		SendDOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputFromSecondBlock(BlockData), pStatusCallback);
+	}
+	else
+	{
+		LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event " + std::to_string(index));
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+	}
 }
 
-template<>
-CommandStatus MD3MasterPort::WriteObject(const AnalogOutputInt32& command, uint16_t index)
+void MD3MasterPort::WriteObject(const float& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
-
-//	int rc = MD3_write_register(mb, index, command.value);
-
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-//	if (rc == -1) return HandleWriteError(errno, "write register");
-      return CommandStatus::SUCCESS;
+	LOGERROR("On Master float Type is not implemented " + std::to_string(index));
+	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
-template<>
-CommandStatus MD3MasterPort::WriteObject(const AnalogOutputFloat32& command, uint16_t index)
+void MD3MasterPort::WriteObject(const double& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
+	if (index == MyPointConf->TimeSetPoint.second) // Is this out magic time set point?
+	{
+		LOGDEBUG("Master received a Time Change command on the magic point through ODC " + std::to_string(index));
+		uint64_t currenttime = static_cast<uint64_t>(command);
 
-//	int rc = MD3_write_register(mb, index, command.value);
-
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-//	if (rc == -1) return HandleWriteError(errno, "write register");
-      return CommandStatus::SUCCESS;
+		SendTimeDateChangeCommand(currenttime, pStatusCallback);
+	}
+	else if(index == MyPointConf->TimeSetPointNew.second) // Is this out magic time set point?
+	{
+		LOGDEBUG("Master received a New Time Change command on the magic point through ODC " + std::to_string(index));
+		uint64_t currenttime = static_cast<uint64_t>(command);
+		int utcoffsetminutes = tz_offset();
+		SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, pStatusCallback);
+	}
+	else
+	{
+		LOGDEBUG("Master received unknown double ODC Event " + std::to_string(index));
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+	}
 }
 
-template<>
-CommandStatus MD3MasterPort::WriteObject(const AnalogOutputDouble64& command, uint16_t index)
+void MD3MasterPort::SendDOMOutputCommand(const uint8_t &StationAddress, const uint8_t &ModuleAddress, const uint16_t &outputbits, const SharedStatusCallback_t &pStatusCallback)
 {
-      MD3ReadGroup<Binary>* TargetRange = GetRange(index);
-      if (TargetRange == nullptr) return CommandStatus::UNDEFINED;
-
-//	int rc = MD3_write_register(mb, index, command.value);
-
-      // If the index is part of a non-zero pollgroup, queue a poll task for the group
-      if (TargetRange->pollgroup > 0)
-            pIOS->post([=](){ DoPoll(TargetRange->pollgroup); });
-
-//	if (rc == -1) return HandleWriteError(errno, "write register");
-      return CommandStatus::SUCCESS;
+	MD3BlockFn19MtoS commandblock(StationAddress, ModuleAddress );
+	MD3BlockData datablock = commandblock.GenerateSecondBlock(outputbits);
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+	Cmd.push_back(datablock);
+	QueueMD3Command(Cmd, pStatusCallback);
 }
-*/
+void MD3MasterPort::SendPOMOutputCommand(const uint8_t &StationAddress, const uint8_t &ModuleAddress, const uint8_t &outputselection, const SharedStatusCallback_t &pStatusCallback)
+{
+	MD3BlockFn17MtoS commandblock(StationAddress, ModuleAddress, outputselection);
+	MD3BlockData datablock = commandblock.GenerateSecondBlock();
 
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+	Cmd.push_back(datablock);
+	QueueMD3Command(Cmd, pStatusCallback);
+}
+void MD3MasterPort::SendAOMOutputCommand(const uint8_t &StationAddress, const uint8_t &ModuleAddress, const uint8_t &Channel, const uint16_t &value, const SharedStatusCallback_t &pStatusCallback)
+{
+	MD3BlockFn23MtoS commandblock(StationAddress, ModuleAddress, Channel);
+	MD3BlockData datablock = commandblock.GenerateSecondBlock(value);
 
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+	Cmd.push_back(datablock);
+	QueueMD3Command(Cmd, pStatusCallback);
+}
 
 
 

@@ -60,7 +60,7 @@ public:
 				if (auto target = GetTarget(params))
 				{
 				      Json::Value result;
-				      result["Result"] = target->enabled;
+				      result["Result"] = target->Enabled();
 				      return result;
 				}
 				return IUIResponder::GenerateResult("Bad parameter");

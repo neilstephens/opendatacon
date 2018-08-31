@@ -21,7 +21,6 @@
  */
 #include <catch.hpp>
 
-#include "DNP3OutstationPort.h"
 #include "PortLoader.h"
 
 #define SUITE(name) "DNP3OutstationPortTestSuite - " name
@@ -29,7 +28,7 @@
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
-		fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+		newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 		REQUIRE(newOutstation);
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
@@ -42,7 +41,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	}
 	/// Test the destruction of an enabled port
 	{
-		fptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+		newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 		REQUIRE(newOutstation);
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 

@@ -27,27 +27,15 @@
 #include "MD3.h"
 
 #if defined(CATCH_CONFIG_RUNNER)
-#include <catchvs.hpp>		// This version has the hooks to display the tests in the VS Test Explorer
+#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 
-
-// Global TODO List in priority order
-//TODO: 1 Master Time set command, called when ODC triggers
-//TODO: 2 Master Sign on control called on ODC trigger - also send as part of poll?
-//TODO: 3 Master Freeze/reset control in response to ODC trigger.
-//TODO: 4 Master DOM Control
-//TODO: 5 Master POM Control
-//TODO: 6 Master AOM Control
-//TODO: 7 Master OLD Digital Read
-//TODO: 8 Master NEW Digital Read
-
 extern "C" MD3MasterPort* new_MD3MasterPort(std::string Name, std::string File, const Json::Value Overrides)
 {
-	return nullptr;
-//	return new MD3MasterPort(Name,File,Overrides);
+	return new MD3MasterPort(Name,File,Overrides);
 }
 
 extern "C" MD3OutstationPort* new_MD3OutstationPort(std::string Name, std::string File, const Json::Value Overrides)
@@ -57,7 +45,7 @@ extern "C" MD3OutstationPort* new_MD3OutstationPort(std::string Name, std::strin
 
 extern "C" void delete_MD3MasterPort(MD3MasterPort* aMD3MasterPort_ptr)
 {
-	// delete aMD3MasterPort_ptr;
+	delete aMD3MasterPort_ptr;
 	return;
 }
 

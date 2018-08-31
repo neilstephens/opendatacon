@@ -18,7 +18,9 @@
  *	limitations under the License.
  */
 
-#pragma once
+#ifndef UTIL_H
+#define UTIL_H
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -28,6 +30,10 @@
 //fast rough random numbers
 #define CONG(jcong) (jcong = 69069*jcong+1234567)
 #define ZERO_TO_ONE(a) (CONG(a)*2.328306e-10)
+
+namespace odc
+{
+
 typedef uint32_t rand_t;
 
 bool getline_noncomment(std::istream& is, std::string& line);
@@ -36,3 +42,6 @@ bool extract_delimited_string(const std::string& delims, std::istream& ist, std:
 
 bool GetBool(const std::string& value);
 
+} //namspace odc
+
+#endif //UTIL_H
