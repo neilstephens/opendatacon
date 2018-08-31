@@ -67,6 +67,7 @@ public:
 	uint32_t MasterResponseTimeoutms; /// Application layer response timeout
 	bool MasterRespondTimeSync;       /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	bool DoUnsolOnStartup;            /// If true, the master will enable unsol on startup
+	bool SetQualityOnLinkStatus;      /// Whether to set point quality to COMM_LOST when link down
 	/// Which classes should be requested in a startup integrity scan
 	opendnp3::ClassField GetStartupIntegrityClassMask();
 	bool StartupIntegrityClass0;
