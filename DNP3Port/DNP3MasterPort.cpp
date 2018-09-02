@@ -100,20 +100,23 @@ void DNP3MasterPort::PortDown()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	if(auto log = spdlog::get("DNP3Port"))
-		log->debug("{}: Setting point quality to COMM_LOST.", Name);
+	if(pConf->pPointConf->SetQualityOnLinkStatus)
+	{
+		if(auto log = spdlog::get("DNP3Port"))
+			log->debug("{}: Setting point quality to COMM_LOST.", Name);
 
-	for (auto index : pConf->pPointConf->BinaryIndicies)
-	{
-		auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,index,Name);
-		event->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
-		PublishEvent(event);
-	}
-	for (auto index : pConf->pPointConf->AnalogIndicies)
-	{
-		auto event = std::make_shared<EventInfo>(EventType::AnalogQuality,index,Name);
-		event->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
-		PublishEvent(event);
+		for (auto index : pConf->pPointConf->BinaryIndicies)
+		{
+			auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,index,Name);
+			event->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
+			PublishEvent(event);
+		}
+		for (auto index : pConf->pPointConf->AnalogIndicies)
+		{
+			auto event = std::make_shared<EventInfo>(EventType::AnalogQuality,index,Name);
+			event->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
+			PublishEvent(event);
+		}
 	}
 
 	// Update the comms state point if configured
