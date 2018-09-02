@@ -165,7 +165,7 @@ CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool 
 	}
 
 	//NEIL: enquire about the possibility of the opendnp3 API having a callback for the result that would avoid the below polling loop
-	std::atomic_bool cb_executed = false;
+	std::atomic_bool cb_executed(false);
 	CommandStatus cb_status;
 	auto StatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([&](CommandStatus status)
 		{
