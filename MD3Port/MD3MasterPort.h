@@ -29,7 +29,6 @@
 
 #include <queue>
 #include <utility>
-#include <opendnp3/master/ISOEHandler.h>
 #include <opendatacon/ASIOScheduler.h>
 
 #include "MD3.h"

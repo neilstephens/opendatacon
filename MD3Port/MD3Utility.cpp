@@ -30,6 +30,8 @@
 
 // Maybe need an MD3.cpp file to be clear?
 
+MD3Point::~MD3Point() {} // To keep the compiler/linker happy
+
 MD3BinaryPoint::~MD3BinaryPoint() {}
 
 // This not in header file due to odd gcc error

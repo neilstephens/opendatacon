@@ -35,9 +35,6 @@
 #include <regex>
 #include <chrono>
 
-#include <opendnp3/outstation/IOutstationApplication.h>
-#include <opendnp3/LogLevels.h>
-
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3OutstationPort.h"

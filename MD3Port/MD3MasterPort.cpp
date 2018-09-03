@@ -27,7 +27,6 @@
 #include <thread>
 #include <chrono>
 #include <array>
-#include <opendnp3/app/MeasurementTypes.h>
 
 #include "MD3.h"
 #include "MD3Utility.h"
@@ -680,7 +679,7 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 			{
 				QualityFlags qual = CalculateAnalogQuality(enabled, wordres, now);
 				LOGDEBUG("MA - Published Event - Analog Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(wordres));
-				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, (opendnp3::DNPTime)now); // We don't get time info from MD3, so add it as soon as possible
+				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, (msSinceEpoch_t)now); // We don't get time info from MD3, so add it as soon as possible
 				event->SetPayload<EventType::Analog>(std::move(wordres));
 				PublishEvent(event);
 			}

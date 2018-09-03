@@ -29,7 +29,6 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include <opendnp3/LogLevels.h>
 
 #include "MD3.h"
 #include "MD3Utility.h"

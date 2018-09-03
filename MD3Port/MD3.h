@@ -35,19 +35,12 @@
 ////////////////// IMPORTANT //////////////////////////////
 
 #include <cstdint>
-#include <opendnp3/app/MeasurementTypes.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <spdlog/spdlog.h>
 
-
-
 // Global TODO List in priority order
-//TODO: Trigger quality callbacks with ONLINE for when the master has valid data for the first time??
-//TODO: Master Sign on control called on ODC trigger - also send as part of poll?
-//TODO: Master OLD Digital Read
 //TODO: All command messages to have their own type, constructor to make understanding parameters simpler. Most already do.
-
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(msg) \
