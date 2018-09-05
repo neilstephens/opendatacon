@@ -9,3 +9,5 @@ CMakeLists.txt.user
 .vscode*
 
 .idea/
+/MD3Port/uncrustify_here.pl
+/MD3Port/uncrustify.cfg
