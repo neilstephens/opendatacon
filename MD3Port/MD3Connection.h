@@ -63,13 +63,13 @@ public:
 
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
 	void AddOutstation(uint8_t StationAddress, // For message routing, OutStation identification
-		const std::function<void(MD3Message_t MD3Message)> aReadCallback,
+		const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
 		const std::function<void(bool)> aStateCallback);
 
 	void RemoveOutstation(uint8_t StationAddress);
 
 	void AddMaster(uint8_t TargetStationAddress,
-		const std::function<void(MD3Message_t MD3Message)> aReadCallback,
+		const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
 		const std::function<void(bool)> aStateCallback);
 
 	void RemoveMaster(uint8_t TargetStationAddress);
@@ -110,7 +110,7 @@ private:
 	MD3Message_t MD3Message;
 
 	// Need maps for these two...
-	std::unordered_map<uint8_t, std::function<void(MD3Message_t MD3Message)>> ReadCallbackMap;
+	std::unordered_map<uint8_t, std::function<void(MD3Message_t &MD3Message)>> ReadCallbackMap;
 	std::unordered_map<uint8_t, std::function<void(bool)>> StateCallbackMap;
 
 	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;

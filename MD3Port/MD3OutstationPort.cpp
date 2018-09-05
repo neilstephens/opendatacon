@@ -123,9 +123,10 @@ void MD3OutstationPort::Build()
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}
 
-	pConnection->AddOutstation(MyConf->mAddrConf.OutstationAddr,
-		std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1),
-		std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1) );
+	std::function<void(MD3Message_t &MD3Message)> aReadCallback = std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1);
+	std::function<void(bool)> aStateCallback = std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1);
+
+	pConnection->AddOutstation(MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback );
 }
 
 void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
@@ -164,7 +165,7 @@ CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool 
 	}
 
 	//NEIL: enquire about the possibility of the opendnp3 API having a callback for the result that would avoid the below polling loop
-	std::atomic_bool cb_executed = false;
+	std::atomic_bool cb_executed(false);
 	CommandStatus cb_status;
 	auto StatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([&](CommandStatus status)
 		{

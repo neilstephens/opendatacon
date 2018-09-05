@@ -29,7 +29,6 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include <opendnp3/LogLevels.h>
 
 #include "MD3.h"
 #include "MD3Utility.h"
@@ -69,7 +68,7 @@ MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_s
 }
 
 void MD3Connection::AddOutstation(uint8_t StationAddress, // For message routing, OutStation identification
-	const std::function<void(std::vector < MD3BlockData > MD3Message)> aReadCallback,
+	const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
 	const std::function<void(bool)> aStateCallback)
 {
 	// Save the callbacks to two maps for the multidrop stations on this connection for quick access
@@ -83,7 +82,7 @@ void MD3Connection::RemoveOutstation(uint8_t StationAddress)
 }
 
 void MD3Connection::AddMaster(uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
-	const std::function<void(std::vector < MD3BlockData > MD3Message)> aReadCallback,
+	const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
 	const std::function<void(bool)> aStateCallback)
 {
 	// Save the callbacks to two maps for the multidrop stations on this connection for quick access
