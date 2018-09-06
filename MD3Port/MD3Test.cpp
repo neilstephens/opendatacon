@@ -32,8 +32,10 @@
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 
+#ifdef WIN32
 #include <spdlog/sinks/wincolor_sink.h>
 #include <spdlog/sinks/windebug_sink.h>
+#endif
 
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
@@ -241,7 +243,7 @@ std::string BuildHexStringFromASCIIHexString(const std::string &as)
 }
 void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
 {
-	// We don’t have to consider the timer going out of scope in this use case.
+	// We don\92t have to consider the timer going out of scope in this use case.
 	Timer_t timer(IOS);
 	timer.expires_from_now(std::chrono::seconds(seconds));
 	timer.async_wait([&IOS](asio::error_code err_code) // [=] all autos by copy, [&] all autos by ref
