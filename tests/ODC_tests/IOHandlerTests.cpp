@@ -104,7 +104,7 @@ TEST_CASE(SUITE("StatusCallback"))
 		c->Enable();
 	}
 
-	std::atomic_bool executed;
+	std::atomic_bool executed(false);
 	CommandStatus cb_status;
 	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
 		{
