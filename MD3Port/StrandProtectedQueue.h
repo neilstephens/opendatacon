@@ -43,8 +43,8 @@ class StrandProtectedQueue
 public:
 
 	StrandProtectedQueue(asio::io_service& _io_service, unsigned int _size)
-		: io_service(_io_service),
-		size(_size),
+		: size(_size),
+		io_service(_io_service),
 		internal_queue_strand(_io_service)
 	{}
 /*	StrandProtectedQueue()

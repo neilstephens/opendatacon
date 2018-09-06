@@ -88,6 +88,9 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("OutstationAddr"))
 		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.OutstationAddr = JSONRoot["OutstationAddr"].asUInt();
 
+	if (JSONRoot.isMember("TCPConnectRetryPeriodms"))
+		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.TCPConnectRetryPeriodms = JSONRoot["TCPConnectRetryPeriodms"].asUInt();
+
 }
 
 int MD3Port::Limit(int val, int max)

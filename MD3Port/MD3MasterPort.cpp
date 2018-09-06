@@ -33,7 +33,7 @@
 #include "MD3MasterPort.h"
 
 
-MD3MasterPort::MD3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+MD3MasterPort::MD3MasterPort(const std::string &aName, const std::string &aConfFilename, const Json::Value &aConfOverrides):
 	MD3Port(aName, aConfFilename, aConfOverrides),
 	PollScheduler(nullptr)
 {
@@ -124,7 +124,7 @@ void MD3MasterPort::Build()
 	if (pConnection == nullptr)
 	{
 		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-			std::to_string(MyConf->mAddrConf.Port), this, true, MyConf->TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
+			std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}
@@ -518,6 +518,7 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			      LOGERROR("Command Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
 					" Expecting " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			}
+			#pragma warning(suppress: 26495)
 		});
 }
 
@@ -734,6 +735,7 @@ bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, cons
 
 	// Search to see if the first value is a counter or analog
 	bool FirstModuleIsCounterModule = MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres,hasbeenset);
+	//TODO: Have a flag to control if analog change times are updated if we get an analog no change message. i.e. Time would be last valid value in effect
 	MD3Time now = MD3Now();
 
 	for (int i = 0; i < Channels; i++)
@@ -782,9 +784,6 @@ bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, cons
 
 bool MD3MasterPort::ProcessDigitalNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
-	uint8_t ModuleAddress = Header.GetModuleAddress();
-	uint8_t Channels = Header.GetChannels();
-
 	if (CompleteMD3Message.size() != 1)
 	{
 		LOGERROR("Received a digital no change with extra data - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
@@ -794,8 +793,6 @@ bool MD3MasterPort::ProcessDigitalNoChangeReturn(MD3BlockFormatted & Header, con
 	LOGDEBUG("Doing Digital NoChange processing... ");
 
 	//TODO: DIGITAL_NO_CHANGE_REPLY do we update the times on the points that we asked to be updated?
-
-	MD3Time now = MD3Now();
 
 	return true;
 }
@@ -959,9 +956,6 @@ void MD3MasterPort::GenerateODCEventsFromMD3ModuleWord(const uint16_t &ModuleDat
 }
 bool MD3MasterPort::ProcessDOMReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
-	uint8_t ModuleAddress = Header.GetModuleAddress();
-	uint8_t Channels = Header.GetChannels();
-
 	if (CompleteMD3Message.size() != 1)
 	{
 		LOGERROR("Master Received an DOM response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
@@ -974,9 +968,6 @@ bool MD3MasterPort::ProcessDOMReturn(MD3BlockFormatted & Header, const MD3Messag
 }
 bool MD3MasterPort::ProcessPOMReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
-	uint8_t ModuleAddress = Header.GetModuleAddress();
-	uint8_t Channels = Header.GetChannels();
-
 	if (CompleteMD3Message.size() != 1)
 	{
 		LOGERROR("Master Received an POM response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
@@ -989,9 +980,6 @@ bool MD3MasterPort::ProcessPOMReturn(MD3BlockFormatted & Header, const MD3Messag
 }
 bool MD3MasterPort::ProcessAOMReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
-	uint8_t ModuleAddress = Header.GetModuleAddress();
-	uint8_t Channels = Header.GetChannels();
-
 	if (CompleteMD3Message.size() != 1)
 	{
 		LOGERROR("Master Received an AOM response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
@@ -1005,9 +993,6 @@ bool MD3MasterPort::ProcessAOMReturn(MD3BlockFormatted & Header, const MD3Messag
 
 bool MD3MasterPort::ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
-	uint8_t ModuleAddress = Header.GetModuleAddress();
-	uint8_t Channels = Header.GetChannels();
-
 	if (CompleteMD3Message.size() != 1)
 	{
 		LOGERROR("Received an SetDateTime response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
@@ -1020,9 +1005,6 @@ bool MD3MasterPort::ProcessSetDateTimeReturn(MD3BlockFormatted & Header, const M
 }
 bool MD3MasterPort::ProcessSetDateTimeNewReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
-	uint8_t ModuleAddress = Header.GetModuleAddress();
-	uint8_t Channels = Header.GetChannels();
-
 	if (CompleteMD3Message.size() != 1)
 	{
 		LOGERROR("Received an SetDateTimeNew response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
@@ -1036,8 +1018,6 @@ bool MD3MasterPort::ProcessSetDateTimeNewReturn(MD3BlockFormatted & Header, cons
 
 bool MD3MasterPort::ProcessSystemSignOnReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message)
 {
-	uint8_t ModuleAddress = Header.GetStationAddress();
-
 	if (CompleteMD3Message.size() != 1)
 	{
 		LOGERROR("Received an SystemSignOn response longer than one block - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));

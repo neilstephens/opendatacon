@@ -944,7 +944,7 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn40MtoS(uint8_t stationaddress)
+	explicit MD3BlockFn40MtoS(uint8_t stationaddress)
 	{
 		bool lastblock = true;
 		bool mastertostation = true;
@@ -977,7 +977,7 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn40StoM(uint8_t stationaddress)
+	explicit MD3BlockFn40StoM(uint8_t stationaddress)
 	{
 		bool lastblock = true;
 		bool mastertostation = false;
@@ -1076,7 +1076,7 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn52MtoS(uint8_t stationaddress)
+	explicit MD3BlockFn52MtoS(uint8_t stationaddress)
 	{
 		bool lastblock = true;
 		bool mastertostation = true;

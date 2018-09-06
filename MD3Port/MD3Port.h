@@ -54,7 +54,7 @@ public:
 	void Disable() override =0;
 	void Build() override =0;
 
-	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
 	// Public only for UnitTesting
 	virtual void SendMD3Message(const MD3Message_t& CompleteMD3Message);

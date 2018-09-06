@@ -43,15 +43,11 @@ MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_s
 	bool aisServer,                                  //Whether to act as a server or client
 	const std::string& aEndPoint,                    //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                        //Port to connect to if client, or listen on if server
-	const MD3Port *OutStationPortInstance,           // Messy, just used so we can access pLogger
-	bool aauto_reopen,                               //Keeps the socket open (retry on error), unless you explicitly Close() it
 	uint16_t aretry_time_ms):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort),
 	isServer(aisServer),
-	pParentPort(OutStationPortInstance),
-	auto_reopen(aauto_reopen),
 	retry_time_ms(aretry_time_ms)
 {
 	pSockMan.reset(new TCPSocketManager<std::string>

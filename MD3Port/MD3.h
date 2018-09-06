@@ -32,6 +32,7 @@
 // If we are using VS and its test framework, don't define this.
 // #define CATCH_CONFIG_RUNNER
 //
+// Added __cplusplus to the project processor definitions, so that trum
 ////////////////// IMPORTANT //////////////////////////////
 
 #include <cstdint>
@@ -318,7 +319,8 @@ public:
 		ID(0),
 		pollrate(0),
 		polltype(BinaryPoints),
-		ForceUnconditional(false)
+		ForceUnconditional(false),
+		TimeTaggedDigital(false)
 	{ }
 
 	MD3PollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_, bool forceunconditional, bool timetaggeddigital):

@@ -24,10 +24,13 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
+// Disable excessing data on stack warning for the test file only.
+#pragma warning(disable: 6262)
+
 #include <array>
 #include <fstream>
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
-#include <trompeloeil.hpp>
+// #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 
 #include <spdlog/sinks/wincolor_sink.h>
 #include <spdlog/sinks/windebug_sink.h>
@@ -2008,7 +2011,6 @@ TEST_CASE("Station - SystemsSignOnFn40")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = MD3Now();
 
 	// System SignOn Command, Station 0 - the slave responds with the address set correctly (i.e. if originally 0, change to match the station address - where it is asked to identify itself.
 	MD3BlockFn40MtoS commandblock(0);

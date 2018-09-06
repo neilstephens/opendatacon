@@ -50,7 +50,7 @@ public:
 	MasterCommandQueueItem CurrentCommand; // Keep a copy of what has been sent to make retries easier.
 	uint8_t CurrentFunctionCode = 0;       // When we send a command, make sure the response we get is one we are waiting for.
 	bool ProcessingMD3Command = false;
-	std::chrono::milliseconds TimerExpireTime;
+	std::chrono::milliseconds TimerExpireTime = std::chrono::milliseconds(0);
 	pTimer_t CurrentCommandTimeoutTimer = nullptr;
 	uint32_t RetriesLeft = 0; // Decrementing counter for retries, if we get to zero move on to the next command.
 };
@@ -58,7 +58,7 @@ public:
 class MD3MasterPort: public MD3Port
 {
 public:
-	MD3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	MD3MasterPort(const std::string &aName, const std::string &aConfFilename, const Json::Value &aConfOverrides);
 	~MD3MasterPort() override;
 
 	void Enable() override;
@@ -71,7 +71,7 @@ public:
 	void SetAllPointsQualityToCommsLost();
 	void SendAllPointEvents();
 
-	void Event(std::shared_ptr<const EventInfo> event, const std::string & SenderName, SharedStatusCallback_t pStatusCallback);
+	void Event(std::shared_ptr<const EventInfo> event, const std::string & SenderName, SharedStatusCallback_t pStatusCallback) override;
 	void WriteObject(const ControlRelayOutputBlock & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
 	void WriteObject(const int16_t & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
 	void WriteObject(const int32_t & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);

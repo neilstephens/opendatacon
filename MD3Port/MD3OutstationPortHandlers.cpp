@@ -384,7 +384,7 @@ void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterO
 			{
 				ResponseType = AllChange;
 			}
-			else if (abs(deltares > 0) && (ResponseType != AllChange))
+			else if ((abs(deltares) > 0) && (ResponseType != AllChange))
 			{
 				ResponseType = DeltaChange;
 			}
@@ -663,9 +663,6 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 	LOGDEBUG("OS - DoDigitalCOSScan - Fn10");
 
 	MD3Message_t ResponseMD3Message;
-
-	bool NoChange = true;
-	bool SomeChange = false;
 	int NumberOfDataBlocks = Header.GetModuleCount();
 
 	bool ChangedBlocks = (CountBinaryBlocksWithChanges() != 0);
@@ -949,7 +946,6 @@ int MD3OutstationPort::CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBl
 
 		for (int j = 0; j < 16; j++)
 		{
-			uint8_t bitres = 0;
 			bool changed = false;
 
 			if (!MyPointConf->PointTable.GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed)) // Does not change the changed bit
@@ -975,7 +971,6 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(int NumberOfDataBl
 
 		for (int j = 0; j < 16; j++)
 		{
-			uint8_t bitres = 0;
 			bool changed = false;
 
 			if (!MyPointConf->PointTable.GetBinaryChangedUsingMD3Index(StartModuleAddress + i, j, changed))
@@ -1532,6 +1527,7 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t 
 
 	MD3BlockData &utcoffsetblock = CompleteMD3Message[2];
 
+	// Not used for now...
 	int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3

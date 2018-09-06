@@ -439,7 +439,6 @@ uint16_t MD3PointTableAccess::CollectModuleBitsIntoWord(const uint8_t ModuleAddr
 	for (int j = 0; j < 16; j++)
 	{
 		uint8_t bitres = 0;
-		bool changed = false; // We don't care about the returned value
 
 		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres)) // Reading this clears the changed bit
 		{

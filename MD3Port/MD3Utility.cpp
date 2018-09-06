@@ -118,6 +118,7 @@ std::string MD3MessageAsString(const MD3Message_t& CompleteMD3Message)
 std::string to_timestringfromMD3time(MD3Time _time)
 {
 	time_t tp = _time/1000; // time_t is normally seconds since epoch. We deal in msec!
+
 	std::tm* t = std::localtime(&tp);
 	if (t != nullptr)
 	{
