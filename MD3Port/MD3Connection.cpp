@@ -43,12 +43,12 @@ MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_s
 	bool aisServer,                                  //Whether to act as a server or client
 	const std::string& aEndPoint,                    //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                        //Port to connect to if client, or listen on if server
-	uint16_t aretry_time_ms):
+	uint16_t retry_time_ms):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort),
 	isServer(aisServer),
-	retry_time_ms(aretry_time_ms)
+	retry_time_ms(retry_time_ms)
 {
 	pSockMan.reset(new TCPSocketManager<std::string>
 			(pIOS, isServer, EndPoint, Port,
