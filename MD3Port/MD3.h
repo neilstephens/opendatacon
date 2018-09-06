@@ -40,9 +40,6 @@
 #include <opendatacon/util.h>
 #include <spdlog/spdlog.h>
 
-// Global TODO List in priority order
-//TODO: All command messages to have their own type, constructor to make understanding parameters simpler. Most already do.
-
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(msg) \
 	if (auto log = spdlog::get("MD3Port")) log->debug(msg);
@@ -59,11 +56,7 @@ typedef std::shared_ptr<Timer_t> pTimer_t;
 
 typedef uint64_t MD3Time; // msec since epoch, utc, most time functions are uint64_t
 
-static MD3Time MD3Now()
-{
-	// To get the time to pass through ODC events. MD3 Uses UTC time in commands - as you would expect.
-	return static_cast<MD3Time>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
-}
+MD3Time MD3Now();
 
 
 // Note that in the message block format, these characters are not excluded from appearing - so their appearance and use is message state dependent
@@ -166,7 +159,6 @@ enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetComma
 class MD3Point // Abstract Class
 {
 	//TODO: Can we convert protection to strands??
-	//TODO: Integrate ODC quality instead of HasBeenSet flag and Module failed flag.
 	/*	NONE              = 0,
 	ONLINE            = 1<<0,
 	RESTART           = 1<<1,
@@ -186,7 +178,6 @@ public:
 	MD3Point(const MD3Point &src):
 		Index(src.Index),
 		ModuleAddress(src.ModuleAddress),
-		ModuleFailed(src.ModuleFailed),
 		Channel(src.Channel),
 		PollGroup(src.PollGroup),
 		ChangedTime(src.ChangedTime),
@@ -201,7 +192,6 @@ public:
 		Channel = src.Channel;
 		PollGroup = src.PollGroup;
 		ChangedTime = src.ChangedTime;
-		ModuleFailed = src.ModuleFailed;
 		HasBeenSet = src.HasBeenSet;
 		return *this;
 	}
@@ -220,8 +210,6 @@ public:
 	uint8_t GetChannel() { return Channel; }
 	uint8_t GetPollGroup() { return PollGroup; }
 
-	//TODO: Do we need to get them all at the same time - so one does not get changed in the middle??
-	bool GetModuleFailed() { std::unique_lock<std::mutex> lck(PointMutex); return ModuleFailed; }
 	MD3Time GetChangedTime() { std::unique_lock<std::mutex> lck(PointMutex); return ChangedTime; }
 	bool GetHasBeenSet() { std::unique_lock<std::mutex> lck(PointMutex); return HasBeenSet; }
 	//	void SetChangedTime(const MD3Time &ct) { std::unique_lock<std::mutex> lck(PointMutex); ChangedTime = ct; }; // Not needed...
@@ -230,11 +218,12 @@ protected:
 	std::mutex PointMutex;
 	uint32_t Index = 0;
 	uint8_t ModuleAddress = 0;
-	bool ModuleFailed = false; // Will be set to true if the connection to a master through ODC signals the master is not talking to its slave. For digitals we send a different response
 	uint8_t Channel = 0;
 	uint8_t PollGroup = 0;
 	MD3Time ChangedTime = static_cast<MD3Time>(0); // msec since epoch. 1970,1,1 Only used for Fn9 and 11 queued data. TimeStamp is Uint48_t, MD3 is uint64_t but does not overflow.
 	bool HasBeenSet = false;                       // To determine if we have been set since startup
+	//TODO: Point quality to RESTART instead of HasBeenSet = false.
+	//TODO: Integrate ODC quality instead of HasBeenSet flag and Module failed flag.
 };
 
 
@@ -298,6 +287,7 @@ public:
 	uint16_t GetAnalogAndDelta(int &delta) { std::unique_lock<std::mutex> lck(PointMutex); delta = (int)Analog - (int)LastReadAnalog; LastReadAnalog = Analog; return Analog; }
 
 	void SetAnalog(const uint16_t & a, const MD3Time &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; Analog = a; ChangedTime = ctime; }
+	void ResetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = false; Analog = 0x8000; ChangedTime = 0; }
 	void SetLastReadAnalog(const uint16_t & a) { std::unique_lock<std::mutex> lck(PointMutex); LastReadAnalog = a; }
 
 protected:

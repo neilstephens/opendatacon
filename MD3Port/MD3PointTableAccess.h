@@ -66,6 +66,9 @@ public:
 	bool GetAnalogValueUsingODCIndex(const size_t index, uint16_t & res, bool & hasbeenset);
 	bool SetAnalogValueUsingODCIndex(const size_t index, const uint16_t meas);
 
+	bool ResetAnalogValueUsingODCIndex(const size_t index);
+	bool ResetCounterValueUsingODCIndex(const size_t index);
+
 	bool GetAnalogODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t &res);
 	bool GetBinaryODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t &res);
 

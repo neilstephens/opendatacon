@@ -143,6 +143,11 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		OverrideOldTimeStamps = JSONRoot["OverrideOldTimeStamps"].asBool();
 		LOGDEBUG("Conf processed - OverrideOldTimeStamps - " + std::to_string(OverrideOldTimeStamps));
 	}
+	if (JSONRoot.isMember("UpdateAnalogCounterTimeStamps"))
+	{
+		OverrideOldTimeStamps = JSONRoot["UpdateAnalogCounterTimeStamps"].asBool();
+		LOGDEBUG("Conf processed - UpdateAnalogCounterTimeStamps - " + std::to_string(UpdateAnalogCounterTimeStamps));
+	}
 	if (JSONRoot.isMember("StandAloneOutstation"))
 	{
 		StandAloneOutstation = JSONRoot["StandAloneOutstation"].asBool();

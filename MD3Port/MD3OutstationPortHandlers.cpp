@@ -502,7 +502,7 @@ void MD3OutstationPort::DoDigitalChangeOnly(MD3BlockFormatted &Header)
 	}
 	else if (ChangedBlocks != NumberOfDataBlocks) // Some change
 	{
-		//TODO: What are the module and channel set to in Function 8 digital change response packets - packet count can vary..
+		//TODO:  OLD STYLE DIGITAL - What are the module and channel set to in Function 8 digital change response packets - packet count can vary..
 		MD3BlockData FormattedBlock = MD3BlockFormatted(Header.GetStationAddress(), false, DIGITAL_DELTA_SCAN, Header.GetModuleAddress(), ChangedBlocks);
 		ResponseMD3Message.push_back(FormattedBlock);
 
@@ -567,7 +567,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, MD3Message_t &Complet
 
 		// We just log that we got it at the moment
 		LOGERROR("Received a Fn 9 Set Time/Date Command - not handled. Station Address - " + std::to_string(Header.GetStationAddress()));
-		//TODO: Pass through FN9 zero maxiumumevents used to set time in outstation.
+		//TODO: OLD STYLE DIGITAL - Pass through FN9 zero maxiumumevents used to set time in outstation.
 		return;
 	}
 	else
@@ -577,7 +577,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, MD3Message_t &Complet
 		// Handle a normal packet - each event can be a word( 16 bits) plus time and other words
 		Fn9AddTimeTaggedDataToResponseWords(Header.GetEventCount(), EventCount, ResponseWords);
 
-		//TODO: Fn9 Add any Internal HRER events unrelated to the digital bits. EventBufferOverflow (1) is the only one of interest. Use Zero Module address and 1 in the channel field. The time is when this occurred
+		//TODO: OLD STYLE DIGITAL - Fn9 Add any Internal HRER events unrelated to the digital bits. EventBufferOverflow (1) is the only one of interest. Use Zero Module address and 1 in the channel field. The time is when this occurred
 
 		if ((ResponseWords.size() % 2) != 0)
 		{
@@ -778,7 +778,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 				ResponseWords.push_back(MD3BlockFn11StoM::FillerPacket());
 			}
 
-			//TODO: A flag block can appear in the Fn11 time tagged response - which can indicate Internal Buffer Overflow, Time sync fail and restoration.
+			//TODO: NEW Style Digital - A flag block can appear in the OutStation Fn11 time tagged response - which can indicate Internal Buffer Overflow, Time sync fail and restoration. We have not implemented this
 
 			// Now translate the 16 bit packets into the 32 bit MD3 blocks.
 			for (uint16_t i = 0; i < ResponseWords.size(); i = i + 2)
@@ -1053,12 +1053,12 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 		{
 			if (FormatForFn11and12)
 			{
-				//TODO: Module failed response for Fn11/12 BuildScanReturnBlocksFromList
+				//TODO: NEW STYLE DIGITAL -  Module failed response for Fn11/12 BuildScanReturnBlocksFromList
 			}
 			else
 			{
 				// Queue the error block - Fn 7, 8 and 10 format
-				uint8_t errorflags = 0; //TODO: Application dependent, depends on the outstation implementation/master expectations. We could build in functionality here
+				uint8_t errorflags = 0; // Application dependent, depends on the outstation implementation/master expectations. We could build in functionality here
 				uint16_t lowword = (uint16_t)errorflags << 8 | (ModuleAddress);
 				auto block = MD3BlockData((uint16_t)StationAddress << 8, lowword, false);
 				ResponseMD3Message.push_back(block);
@@ -1426,7 +1426,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40MtoS &Header)
 		}
 		else
 		{
-			//TODO: Check if SIGNON can send back a rejected message
+			// SIGNON does not send back a rejected message
 			//SendControlOrScanRejected(Header);
 		}
 	}
@@ -1525,10 +1525,9 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t 
 	// If date time is within a window of now, accept. Otherwise send command rejected.
 	uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
 
-	MD3BlockData &utcoffsetblock = CompleteMD3Message[2];
-
 	// Not used for now...
-	int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
+	// MD3BlockData &utcoffsetblock = CompleteMD3Message[2];
+	// int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
 	uint64_t currenttime = MD3Now();
@@ -1573,13 +1572,13 @@ void MD3OutstationPort::DoSystemFlagScan(MD3BlockFn52MtoS &Header, MD3Message_t 
 	// As far as we can tell AusGrid does not have any extra packets
 	//
 	// The second 16 bits of the response are the flag bits. A change in any will set the RSF bit in ANY scan/control replies.
-	//TODO: Make sure the RSF bit gets set appropriately in the reply blocks, from a global flag. Reset it in DoSystemFlagScan
 	LOGDEBUG("OS - DoSystemFlagScan");
 
 	if (CompleteMD3Message.size() != 1)
 	{
-		//TODO Handle Flag scan commands with more than one block
+		// Handle Flag scan commands with more than one block - this only occurs if the MD3 software has been modified for a contract
 		SendControlOrScanRejected(Header); // If we did not get one blocks, then send back a command rejected message - for NOW
+		LOGDEBUG("OS - Got a flag scan command with more than one block - not handled at the moment and contract dependent");
 		return;
 	}
 

@@ -204,6 +204,16 @@ bool MD3PointTableAccess::SetCounterValueUsingODCIndex(const size_t index, const
 	}
 	return false;
 }
+bool MD3PointTableAccess::ResetCounterValueUsingODCIndex(const size_t index)
+{
+	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	if (ODCPointMapIter != AnalogODCPointMap.end())
+	{
+		ODCPointMapIter->second->ResetAnalog(); // Sets to 0x8000, time = 0, HasBeenSet to false
+		return true;
+	}
+	return false;
+}
 
 bool MD3PointTableAccess::GetAnalogValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t &res, bool &hasbeenset)
 {
@@ -272,6 +282,16 @@ bool MD3PointTableAccess::SetAnalogValueUsingODCIndex(const size_t index, const 
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
 		ODCPointMapIter->second->SetAnalog(meas, MD3Now());
+		return true;
+	}
+	return false;
+}
+bool MD3PointTableAccess::ResetAnalogValueUsingODCIndex(const size_t index)
+{
+	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	if (ODCPointMapIter != AnalogODCPointMap.end())
+	{
+		ODCPointMapIter->second->ResetAnalog(); // Sets to 0x8000, time = 0, HasBeenSet to false
 		return true;
 	}
 	return false;
@@ -428,7 +448,6 @@ uint16_t MD3PointTableAccess::CollectModuleBitsIntoWordandResetChangeFlags(const
 			//TODO: Check the bit order here of the binaries
 			wordres |= (uint16_t)bitres << (15 - j);
 		}
-		//TODO: Check and update the module failed status for this module.
 	}
 	return wordres;
 }
@@ -445,7 +464,6 @@ uint16_t MD3PointTableAccess::CollectModuleBitsIntoWord(const uint8_t ModuleAddr
 			//TODO: Check the bit order here of the binaries
 			wordres |= (uint16_t)bitres << (15 - j);
 		}
-		//TODO: Check and update the module failed status for this module.
 	}
 	return wordres;
 }

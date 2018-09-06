@@ -102,6 +102,7 @@ public:
 
 	// Checks if the point time is within 30 minutes of current time from a Binary event. If it is outside this window, sets the event time to the current time.
 	bool OverrideOldTimeStamps = false;
+	bool UpdateAnalogCounterTimeStamps = false; // Every time we get a no change message back, update the current timestamp on the point table - so the timestamp becomes last valid time.
 
 	// If true, the outstation will send responses on the TCP connection without waiting for ODC responses.
 	bool StandAloneOutstation = false;

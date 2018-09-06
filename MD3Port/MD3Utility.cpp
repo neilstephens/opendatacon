@@ -44,7 +44,6 @@ MD3BinaryPoint& MD3BinaryPoint::operator=(const MD3BinaryPoint& src)
 		Channel = src.Channel;
 		PollGroup = src.PollGroup;
 		ChangedTime = src.ChangedTime;
-		ModuleFailed = src.ModuleFailed;
 		HasBeenSet = src.HasBeenSet;
 		Binary = src.Binary;
 		ModuleBinarySnapShot = src.ModuleBinarySnapShot;
@@ -114,6 +113,13 @@ std::string MD3MessageAsString(const MD3Message_t& CompleteMD3Message)
 	}
 	return res;
 }
+
+MD3Time MD3Now()
+{
+	// To get the time to pass through ODC events. MD3 Uses UTC time in commands - as you would expect.
+	return static_cast<MD3Time>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+}
+
 // Create an ASCII string version of the time from the MD3 time - which is msec since epoch.
 std::string to_timestringfromMD3time(MD3Time _time)
 {

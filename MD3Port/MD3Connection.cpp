@@ -94,7 +94,6 @@ void MD3Connection::RemoveMaster(uint8_t TargetStationAddress)
 // Two static methods to manage the map of connections. Can only have one for an address/port combination.
 // To be able to shut this down cleanly, I need to maintain a reference count, when the last one lets go, we can free the pSockMan  object.
 // The port will be closed, so do we really have to worry?
-//TODO: SJE Free pSockMan in MD3Connection class in destructor? The static list will have a reference to the shared_ptr...
 std::shared_ptr<MD3Connection> MD3Connection::GetConnection(std::string ChannelID)
 {
 	// Check if the entry exists without adding to the map..
