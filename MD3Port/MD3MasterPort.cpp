@@ -861,7 +861,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 		// Process Time/Date Data
 		if (MessageIndex < static_cast<int>(CompleteMD3Message.size()))
 		{
-			timebase = (uint64_t)CompleteMD3Message[MessageIndex].GetData() * 1000; //MD3Time msec since Epoch.
+			timebase = static_cast<uint64_t>(CompleteMD3Message[MessageIndex].GetData()) * 1000; //MD3Time msec since Epoch.
 			LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
 		}
 		else

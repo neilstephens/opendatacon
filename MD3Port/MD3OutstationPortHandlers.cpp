@@ -1460,7 +1460,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &Co
 	MD3BlockData &timedateblock = CompleteMD3Message[1];
 
 	// If date time is within a window of now, accept. Otherwise send command rejected.
-	uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
+	uint64_t msecsinceepoch = static_cast<uint64_t>(timedateblock.GetData()) * 1000 + Header.GetMilliseconds();
 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
 	uint64_t currenttime = MD3Now();
@@ -1523,7 +1523,7 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t 
 	MD3BlockData &timedateblock = CompleteMD3Message[1];
 
 	// If date time is within a window of now, accept. Otherwise send command rejected.
-	uint64_t msecsinceepoch = (uint64_t)timedateblock.GetData() * 1000 + Header.GetMilliseconds();
+	uint64_t msecsinceepoch = static_cast<uint64_t>(timedateblock.GetData()) * 1000 + Header.GetMilliseconds();
 
 	// Not used for now...
 	// MD3BlockData &utcoffsetblock = CompleteMD3Message[2];

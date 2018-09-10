@@ -877,7 +877,7 @@ TEST_CASE("MD3Block - Fn43")
 	MD3BlockData b43_b2("5ad6b5b4d900");
 	REQUIRE(b43_b2.CheckSumPasses());
 
-	MD3Time timebase = (uint64_t)b43_b2.GetData() * 1000 + b43_t1.GetMilliseconds(); //MD3Time msec since Epoch.
+	MD3Time timebase = static_cast<uint64_t>(b43_b2.GetData()) * 1000 + b43_t1.GetMilliseconds(); //MD3Time msec since Epoch.
 	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
 
 	TestTearDown();
@@ -892,7 +892,7 @@ TEST_CASE("MD3Block - Fn44")
 	// Epoch Time : 1524021087.532344000 seconds
 	TestSetup(false);
 
-	MD3Time timebase = (uint64_t)(0x5ad6b75f) * 1000 + (0x252 & 0x03FF); //MD3Time msec since Epoch.
+	MD3Time timebase = static_cast<uint64_t>(0x5ad6b75f) * 1000 + (0x252 & 0x03FF); //MD3Time msec since Epoch.
 	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
 
 	MD3BlockFn44MtoS b44(0x38, 999);
@@ -914,7 +914,7 @@ TEST_CASE("MD3Block - Fn44")
 	REQUIRE(b44_b3.CheckSumPasses());
 
 	int UTCOffset = b44_b3.GetFirstWord();
-	timebase = (uint64_t)b44_b2.GetData() * 1000 + b44_t1.GetMilliseconds(); //MD3Time msec since Epoch.
+	timebase = static_cast<uint64_t>(b44_b2.GetData()) * 1000 + b44_t1.GetMilliseconds(); //MD3Time msec since Epoch.
 	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase)+ " UTC Offset Minutes "+std::to_string(UTCOffset));
 	TestTearDown();
 }
@@ -1651,7 +1651,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	BlockString = Response.substr(12, 6);
 	RBlock = MD3BlockData(BlockString);
 
-	MD3Time timebase = (uint64_t)RBlock.GetData() * 1000; //MD3Time msec since Epoch.
+	MD3Time timebase = static_cast<uint64_t>(RBlock.GetData()) * 1000; //MD3Time msec since Epoch.
 	LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
 	REQUIRE(timebase == 0x0000016338b6d400);
 
