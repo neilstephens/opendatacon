@@ -1315,7 +1315,7 @@ void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec,
 void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback)
 {
 	MD3BlockFn44MtoS commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
-	MD3BlockData datablock(currenttimeinmsec / 1000);
+	MD3BlockData datablock(static_cast<uint32_t>(currenttimeinmsec / 1000));
 	MD3BlockData datablock2(static_cast<uint32_t>(utcoffsetminutes) << 16, true);
 	MD3Message_t Cmd;
 	Cmd.push_back(commandblock);

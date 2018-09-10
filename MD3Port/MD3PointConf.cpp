@@ -327,7 +327,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 		{
 			for (uint32_t index = start; index <= stop; index++)
 			{
-				uint8_t moduleaddress = module + (index - start + offset) / 16;
+				uint8_t moduleaddress = static_cast<uint8_t>(module + (index - start + offset) / 16);
 				uint8_t channel = static_cast<uint8_t>((offset + (index - start)) % 16);
 
 				bool res = false;
@@ -422,7 +422,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 		{
 			for (auto index = start; index <= stop; index++)
 			{
-				uint8_t moduleaddress = module + (index - start + offset) / 16;
+				uint8_t moduleaddress = static_cast<uint8_t>(module + (index - start + offset) / 16);
 				uint8_t channel = static_cast<uint8_t>((offset + (index - start)) % 16);
 				bool res = false;
 
