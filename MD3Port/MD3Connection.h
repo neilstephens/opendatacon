@@ -102,7 +102,6 @@ private:
 
 	bool isServer;
 	bool enabled = false;
-	uint16_t retry_time_ms;
 	MD3Message_t MD3Message;
 
 	// Need maps for these two...

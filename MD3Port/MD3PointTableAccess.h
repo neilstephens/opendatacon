@@ -47,12 +47,12 @@ public:
 	MD3PointTableAccess();
 	void Build(const bool isoutstation, const bool newdigitalcommands, asio::io_service & IOS);
 
-	bool AddCounterPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, uint32_t & pollgroup);
-	bool AddAnalogPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, uint32_t & pollgroup);
-	bool AddAnalogControlPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, uint32_t & pollgroup);
+	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const uint32_t & pollgroup);
+	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const uint32_t & pollgroup);
+	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const uint32_t & pollgroup);
 
-	bool AddBinaryPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, BinaryPointType & pointtype, uint32_t & pollgroup);
-	bool AddBinaryControlPointToPointTable(size_t & index, uint8_t & moduleaddress, uint8_t & channel, BinaryPointType & pointtype, uint32_t & pollgroup);
+	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const BinaryPointType & pointtype, const uint32_t & pollgroup);
+	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const BinaryPointType & pointtype, const uint32_t & pollgroup);
 
 	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, bool &hasbeenset);
 	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool &hasbeenset);

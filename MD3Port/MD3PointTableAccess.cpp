@@ -40,7 +40,7 @@ void MD3PointTableAccess::Build(const bool isoutstation, const bool newdigitalco
 
 #pragma region Analog-Counter
 
-bool MD3PointTableAccess::AddCounterPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, uint32_t &pollgroup)
+bool MD3PointTableAccess::AddCounterPointToPointTable(const size_t &index, const uint8_t &moduleaddress, const uint8_t &channel, const uint32_t &pollgroup)
 {
 	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (CounterMD3PointMap.find(md3index) != CounterMD3PointMap.end())
@@ -60,7 +60,7 @@ bool MD3PointTableAccess::AddCounterPointToPointTable(size_t &index, uint8_t &mo
 	CounterODCPointMap[index] = pt;
 	return true;
 }
-bool MD3PointTableAccess::AddAnalogPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, uint32_t &pollgroup)
+bool MD3PointTableAccess::AddAnalogPointToPointTable(const size_t &index, const uint8_t &moduleaddress, const uint8_t &channel, const uint32_t &pollgroup)
 {
 	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (AnalogMD3PointMap.find(md3index) != AnalogMD3PointMap.end())
@@ -80,7 +80,7 @@ bool MD3PointTableAccess::AddAnalogPointToPointTable(size_t &index, uint8_t &mod
 	AnalogODCPointMap[index] = pt;
 	return true;
 }
-bool MD3PointTableAccess::AddAnalogControlPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, uint32_t &pollgroup)
+bool MD3PointTableAccess::AddAnalogControlPointToPointTable(const size_t &index, const uint8_t &moduleaddress, const uint8_t &channel, const uint32_t &pollgroup)
 {
 	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (AnalogControlMD3PointMap.find(md3index) != AnalogControlMD3PointMap.end())
@@ -101,7 +101,7 @@ bool MD3PointTableAccess::AddAnalogControlPointToPointTable(size_t &index, uint8
 	return true;
 }
 
-bool MD3PointTableAccess::AddBinaryPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, BinaryPointType &pointtype, uint32_t &pollgroup)
+bool MD3PointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &moduleaddress, const uint8_t &channel, const BinaryPointType &pointtype, const uint32_t &pollgroup)
 {
 	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (BinaryMD3PointMap.find(md3index) != BinaryMD3PointMap.end())
@@ -121,7 +121,7 @@ bool MD3PointTableAccess::AddBinaryPointToPointTable(size_t &index, uint8_t &mod
 	BinaryODCPointMap[index] = pt;
 	return true;
 }
-bool MD3PointTableAccess::AddBinaryControlPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, BinaryPointType &pointtype, uint32_t &pollgroup)
+bool MD3PointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, const uint8_t &moduleaddress, const uint8_t &channel, const BinaryPointType &pointtype, const uint32_t &pollgroup)
 {
 	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (BinaryControlMD3PointMap.find(md3index) != BinaryControlMD3PointMap.end())

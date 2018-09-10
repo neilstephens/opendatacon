@@ -1060,8 +1060,6 @@ public:
 		bool lastblock = true;
 		bool mastertostation = true;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
 		uint16_t lowword = 0; // All flags zero on master send, outstation will set...

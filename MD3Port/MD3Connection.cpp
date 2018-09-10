@@ -47,8 +47,7 @@ MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_s
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort),
-	isServer(aisServer),
-	retry_time_ms(retry_time_ms)
+	isServer(aisServer)
 {
 	pSockMan.reset(new TCPSocketManager<std::string>
 			(pIOS, isServer, EndPoint, Port,
