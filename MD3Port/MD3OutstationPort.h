@@ -127,8 +127,6 @@ public:
 	void Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header); // Fn 12
 
-	void MarkAllBinaryBlocksAsChanged();
-
 	int CountBinaryBlocksWithChanges();
 	int CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
 	void BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);

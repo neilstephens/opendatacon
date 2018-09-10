@@ -42,7 +42,7 @@ void MD3PointTableAccess::Build(const bool isoutstation, const bool newdigitalco
 
 bool MD3PointTableAccess::AddCounterPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, uint32_t &pollgroup)
 {
-	uint16_t md3index = ((uint16_t)moduleaddress << 8) | channel;
+	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (CounterMD3PointMap.find(md3index) != CounterMD3PointMap.end())
 	{
 		LOGERROR("Duplicate Counter MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
@@ -62,7 +62,7 @@ bool MD3PointTableAccess::AddCounterPointToPointTable(size_t &index, uint8_t &mo
 }
 bool MD3PointTableAccess::AddAnalogPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, uint32_t &pollgroup)
 {
-	uint16_t md3index = ((uint16_t)moduleaddress << 8) | channel;
+	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (AnalogMD3PointMap.find(md3index) != AnalogMD3PointMap.end())
 	{
 		LOGERROR("Duplicate Analog MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
@@ -82,7 +82,7 @@ bool MD3PointTableAccess::AddAnalogPointToPointTable(size_t &index, uint8_t &mod
 }
 bool MD3PointTableAccess::AddAnalogControlPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, uint32_t &pollgroup)
 {
-	uint16_t md3index = ((uint16_t)moduleaddress << 8) | channel;
+	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (AnalogControlMD3PointMap.find(md3index) != AnalogControlMD3PointMap.end())
 	{
 		LOGERROR("Duplicate Analog MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
@@ -103,7 +103,7 @@ bool MD3PointTableAccess::AddAnalogControlPointToPointTable(size_t &index, uint8
 
 bool MD3PointTableAccess::AddBinaryPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, BinaryPointType &pointtype, uint32_t &pollgroup)
 {
-	uint16_t md3index = ((uint16_t)moduleaddress << 8) | channel;
+	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (BinaryMD3PointMap.find(md3index) != BinaryMD3PointMap.end())
 	{
 		LOGERROR("Duplicate Binary MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
@@ -123,7 +123,7 @@ bool MD3PointTableAccess::AddBinaryPointToPointTable(size_t &index, uint8_t &mod
 }
 bool MD3PointTableAccess::AddBinaryControlPointToPointTable(size_t &index, uint8_t &moduleaddress, uint8_t &channel, BinaryPointType &pointtype, uint32_t &pollgroup)
 {
-	uint16_t md3index = ((uint16_t)moduleaddress << 8) | channel;
+	uint16_t md3index = static_cast<uint16_t>(moduleaddress) << 8 | channel;
 	if (BinaryControlMD3PointMap.find(md3index) != BinaryControlMD3PointMap.end())
 	{
 		LOGERROR("Duplicate BinaryControl MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
@@ -446,7 +446,7 @@ uint16_t MD3PointTableAccess::CollectModuleBitsIntoWordandResetChangeFlags(const
 		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed)) // Reading this clears the changed bit
 		{
 			//TODO: Check the bit order here of the binaries
-			wordres |= (uint16_t)bitres << (15 - j);
+			wordres |= static_cast<uint16_t>(bitres) << (15 - j);
 		}
 	}
 	return wordres;
@@ -462,7 +462,7 @@ uint16_t MD3PointTableAccess::CollectModuleBitsIntoWord(const uint8_t ModuleAddr
 		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres)) // Reading this clears the changed bit
 		{
 			//TODO: Check the bit order here of the binaries
-			wordres |= (uint16_t)bitres << (15 - j);
+			wordres |= static_cast<uint16_t>(bitres) << (15 - j);
 		}
 	}
 	return wordres;

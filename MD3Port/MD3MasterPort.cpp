@@ -824,7 +824,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 	//NOTE: The module data on initial scan might have two blocks for the one address - the previous and current state????
 	for (int m = 0; m < ModuleCount; m++)
 	{
-		if (MessageIndex < (int)CompleteMD3Message.size())
+		if (MessageIndex < static_cast<int>(CompleteMD3Message.size()))
 		{
 			// The data blocks are the same for time tagged and "normal". Module Address (byte), msec offset(byte) and 16 bits of data.
 			uint8_t ModuleAddress = CompleteMD3Message[MessageIndex].GetByte(0);
@@ -859,7 +859,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 		MD3Time timebase = 0; // Moving time value for events received
 
 		// Process Time/Date Data
-		if (MessageIndex < (int)CompleteMD3Message.size())
+		if (MessageIndex < static_cast<int>(CompleteMD3Message.size()))
 		{
 			timebase = (uint64_t)CompleteMD3Message[MessageIndex].GetData() * 1000; //MD3Time msec since Epoch.
 			LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
@@ -873,7 +873,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 
 		// Now we have to convert the remaining data blocks into an array of words and process them. This is due to the time offset blocks which are only 16 bits long.
 		std::vector<uint16_t> ResponseWords;
-		while (MessageIndex < (int)CompleteMD3Message.size())
+		while (MessageIndex < static_cast<int>(CompleteMD3Message.size()))
 		{
 			ResponseWords.push_back(CompleteMD3Message[MessageIndex].GetFirstWord());
 			ResponseWords.push_back(CompleteMD3Message[MessageIndex].GetSecondWord());
@@ -881,7 +881,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 		}
 
 		// Now process the response words.
-		for (int i = 0; i < (int)ResponseWords.size(); i++)
+		for (int i = 0; i < static_cast<int>(ResponseWords.size()); i++)
 		{
 			// If we are processing a data block and the high byte will be non-zero.
 			// If it is zero it could be either:
@@ -892,7 +892,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 			{
 				// We have received a STATUS block, which has a following word.
 				i++;
-				if (i >= (int)ResponseWords.size())
+				if (i >= static_cast<int>(ResponseWords.size()))
 				{
 					// We likely received an all zero padding block at the end of the message. Ignore this as an error
 					LOGDEBUG("Fn11 Zero padding end word detected - ignoring");
@@ -919,7 +919,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 				timebase += msecoffset; // Update the current tagged time
 				i++;
 
-				if (i >= (int)ResponseWords.size())
+				if (i >= static_cast<int>(ResponseWords.size()))
 				{
 					// Index error
 					LOGERROR("Tried to access past the end of the response words looking for the second part of a data block " + MD3MessageAsString(CompleteMD3Message));
@@ -1306,7 +1306,7 @@ void MD3MasterPort::EnablePolling(bool on)
 void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec, SharedStatusCallback_t pStatusCallback)
 {
 	MD3BlockFn43MtoS commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
-	MD3BlockData datablock((uint32_t)(currenttimeinmsec / 1000), true);
+	MD3BlockData datablock(static_cast<uint32_t>(currenttimeinmsec / 1000), true);
 	MD3Message_t Cmd;
 	Cmd.push_back(commandblock);
 	Cmd.push_back(datablock);
@@ -1315,8 +1315,8 @@ void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec,
 void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback)
 {
 	MD3BlockFn44MtoS commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
-	MD3BlockData datablock((uint32_t)(currenttimeinmsec / 1000));
-	MD3BlockData datablock2((uint32_t)(utcoffsetminutes << 16), true);
+	MD3BlockData datablock(currenttimeinmsec / 1000);
+	MD3BlockData datablock2(static_cast<uint32_t>(utcoffsetminutes) << 16, true);
 	MD3Message_t Cmd;
 	Cmd.push_back(commandblock);
 	Cmd.push_back(datablock);
@@ -1442,15 +1442,15 @@ void MD3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::str
 	switch (event->GetEventType())
 	{
 		case EventType::ControlRelayOutputBlock:
-			return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), (uint16_t)event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), event->GetIndex(), pStatusCallback);
 		case EventType::AnalogOutputInt16:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, (uint16_t)event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, event->GetIndex(), pStatusCallback);
 		case EventType::AnalogOutputInt32:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, (uint16_t)event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, event->GetIndex(), pStatusCallback);
 		case EventType::AnalogOutputFloat32:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, (uint16_t)event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, event->GetIndex(), pStatusCallback);
 		case EventType::AnalogOutputDouble64:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, (uint16_t)event->GetIndex(), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, event->GetIndex(), pStatusCallback);
 		case EventType::ConnectState:
 		{
 			auto state = event->GetPayload<EventType::ConnectState>();
@@ -1477,7 +1477,7 @@ void MD3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::str
 }
 
 
-void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	uint8_t ModuleAddress = 0;
 	uint8_t Channel = 0;
@@ -1549,7 +1549,7 @@ void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const ui
 	}
 }
 
-void MD3MasterPort::WriteObject(const int16_t & command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+void MD3MasterPort::WriteObject(const int16_t & command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	// AOM Command
 	LOGDEBUG("Master received a AOM ODC Change Command " + std::to_string(index));
@@ -1560,7 +1560,7 @@ void MD3MasterPort::WriteObject(const int16_t & command, const uint16_t &index, 
 }
 
 
-void MD3MasterPort::WriteObject(const int32_t & command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+void MD3MasterPort::WriteObject(const int32_t & command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	// Other Magic point commands
 
@@ -1601,13 +1601,13 @@ void MD3MasterPort::WriteObject(const int32_t & command, const uint16_t &index, 
 	}
 }
 
-void MD3MasterPort::WriteObject(const float& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+void MD3MasterPort::WriteObject(const float& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	LOGERROR("On Master float Type is not implemented " + std::to_string(index));
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
-void MD3MasterPort::WriteObject(const double& command, const uint16_t &index, const SharedStatusCallback_t &pStatusCallback)
+void MD3MasterPort::WriteObject(const double& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	if (index == MyPointConf->TimeSetPoint.second) // Is this out magic time set point?
 	{

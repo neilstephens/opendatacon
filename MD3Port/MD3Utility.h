@@ -109,16 +109,16 @@ public:
 			for (uint32_t i = 0; i < (hexdata.size() / 2); i++)
 			{
 				auto hexpair = hexdata.substr(i * 2, 2);
-				res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
+				res[i] = static_cast<uint8_t>(std::stol(hexpair, nullptr, 16));
 			}
 
-			data = (((uint32_t)res[0] & 0x0FF) << 24) | (((uint32_t)res[1] & 0x0FF) << 16) | (((uint32_t)res[2] & 0x0FF) << 8) | ((uint32_t)res[3] & 0x0FF);
+			data = CombineDataBytes(res[0],res[1],res[2],res[3]);
 			endbyte = res[4];
 			assert(res[5] == 0x00); // Sixth byte should always be zero.
 		}
 		else if (hexdata.size() == 6)
 		{
-			data = (((uint32_t)hexdata[0] & 0x0FF) << 24) | (((uint32_t)hexdata[1] & 0x0FF) << 16) | (((uint32_t)hexdata[2] & 0x0FF) << 8) | ((uint32_t)hexdata[3] & 0x0FF);
+			data = CombineDataBytes(hexdata[0],hexdata[1],hexdata[2],hexdata[3]);
 			endbyte = hexdata[4];
 			assert(hexdata[5] == 0x00); // Sixth byte should always be zero.
 		}
@@ -128,19 +128,22 @@ public:
 			LOGERROR("Illegal length passed into MD3BlockData constructor - must be 12 or 6");
 		}
 	}
-	MD3BlockData(uint16_t firstword, uint16_t secondword, bool lastblock = false)
+	explicit MD3BlockData(const uint16_t firstword, const uint16_t secondword, bool lastblock = false)
 	{
-		data = (uint32_t)firstword << 16 | (uint32_t)secondword;
+		data = static_cast<uint32_t>(firstword) << 16 | static_cast<uint32_t>(secondword);
 		SetEndByte(DataBlock, lastblock);
 	}
 
-	MD3BlockData(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, bool lastblock = false)
+	explicit MD3BlockData(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4, bool lastblock = false)
 	{
-		data = (((uint32_t)b1 & 0x0FF) << 24) | (((uint32_t)b2 & 0x0FF) << 16) | (((uint32_t)b3 & 0x0FF) << 8) | ((uint32_t)b4 & 0x0FF);
+		data = CombineDataBytes(b1, b2, b3, b4);
 		SetEndByte(DataBlock, lastblock);
 	}
-
-	MD3BlockData(uint32_t _data, bool lastblock = false)
+	uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
+	{
+		return static_cast<uint32_t>(b1) << 24 | static_cast<uint32_t>(b2) << 16 | static_cast<uint32_t>(b3) << 8 | static_cast<uint32_t>(b4);
+	}
+	explicit MD3BlockData(const uint32_t _data, bool lastblock = false)
 	{
 		data = _data;
 		SetEndByte(DataBlock, lastblock);
@@ -220,7 +223,7 @@ public:
 		oss << std::setw(2) << ((data >> 16) & 0x0FF);
 		oss << std::setw(2) << ((data >> 8) & 0x0FF);
 		oss << std::setw(2) << (data & 0x0FF);
-		oss << std::setw(2) << (uint32_t)(endbyte);
+		oss << std::setw(2) << static_cast<uint32_t>(endbyte);
 		oss << "00";
 		return oss.str();
 	}
@@ -250,15 +253,13 @@ public:
 	}
 	// Create a formatted block including checksum
 	// Note if the station address is set to 0x7F (MD3_EXTENDED_ADDRESS_MARKER), then the next data block contains the address.
-	MD3BlockFormatted(uint8_t stationaddress, bool mastertostation, MD3_FUNCTION_CODE functioncode, uint8_t moduleaddress, uint8_t channels, bool lastblock = false,
+	MD3BlockFormatted(uint8_t StationAddress, bool mastertostation, MD3_FUNCTION_CODE functioncode, uint8_t moduleaddress, uint8_t channels, bool lastblock = false,
 		bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		// Channels -> 0 on the wire == 1 channel, 15 == 16
 		channels--;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
-		assert((stationaddress & 0x7F) == stationaddress); // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert((channels & 0x0F) == channels);             // Max 4 bits;
 
 		uint32_t flags = 0;
@@ -267,9 +268,15 @@ public:
 		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)functioncode << 16 | (uint32_t)moduleaddress << 8 | flags | channels;
+		data = CombineFormattedBytes( mastertostation, StationAddress,functioncode,moduleaddress, flags | channels);
 
 		SetEndByte(FormattedBlock, lastblock);
+	}
+
+	uint32_t CombineFormattedBytes(bool mastertostation, uint8_t StationAddress, uint8_t functioncode, uint8_t moduleaddress, uint8_t b4)
+	{
+		uint8_t direction = mastertostation ? 0x00 : 0x80;
+		return CombineDataBytes(direction | StationAddress, functioncode, moduleaddress, b4);
 	}
 
 	// Apply to formatted blocks only!
@@ -341,15 +348,14 @@ public:
 		endbyte = parent.GetEndByte();
 	}
 
-	MD3BlockFn9(uint8_t stationaddress, bool mastertostation, uint8_t sequencenumber, uint8_t maximumevents, bool moreevents, bool lastblock = false)
+	MD3BlockFn9(uint8_t StationAddress, bool mastertostation, uint8_t sequencenumber, uint8_t maximumevents, bool moreevents, bool lastblock = false)
 	{
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-		uint32_t mevbit = moreevents ? MOREEVENTSBIT : 0;
+		uint8_t mevbit = moreevents ? 0x08 : 0;
 
-		assert((stationaddress & 0x7F) == stationaddress); // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert((sequencenumber & 0x0F) == sequencenumber); // Max 4 bits;
 
-		data = direction | mevbit | (uint32_t)stationaddress << 24 | (uint32_t)HRER_LIST_SCAN << 16 | ((uint32_t)sequencenumber & 0x0F) << 12 | maximumevents;
+		data = CombineFormattedBytes(mastertostation, StationAddress, HRER_LIST_SCAN, (sequencenumber & 0x0F) << 4 | mevbit, maximumevents);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -386,7 +392,7 @@ public:
 	}
 	static uint16_t HREREventPacket(uint8_t bitstate, uint8_t channel, uint8_t moduleaddress)
 	{
-		return ((uint16_t)bitstate << 14) | ((uint16_t)channel << 8) | (uint16_t)moduleaddress;
+		return static_cast<uint16_t>(bitstate) << 14 | static_cast<uint16_t>(channel) << 8 | static_cast<uint16_t>(moduleaddress);
 	}
 	static uint16_t FillerPacket()
 	{
@@ -406,11 +412,9 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn10(uint8_t stationaddress, bool mastertostation, uint8_t moduleaddress, uint8_t modulecount, bool lastblock, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
+	MD3BlockFn10(uint8_t StationAddress, bool mastertostation, uint8_t moduleaddress, uint8_t modulecount, bool lastblock, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
-		assert((stationaddress & 0x7F) == stationaddress); // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert((modulecount & 0x0F) == modulecount);       // Max 4 bits;
 
 		uint32_t flags = 0;
@@ -419,7 +423,7 @@ public:
 		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_CHANGE_OF_STATE << 16 | (uint32_t)moduleaddress << 8 | flags | (modulecount & 0x0F);
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_CHANGE_OF_STATE, moduleaddress, flags | (modulecount & 0x0F));
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -447,18 +451,17 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn11MtoS(uint8_t stationaddress, uint8_t taggedeventcount, uint8_t digitalsequencenumber, uint8_t modulecount)
+	MD3BlockFn11MtoS(uint8_t StationAddress, uint8_t taggedeventcount, uint8_t digitalsequencenumber, uint8_t modulecount)
 	{
 		bool mastertostation = true;
 		bool lastblock = true;
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
-		assert((stationaddress & 0x7F) == stationaddress);               // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress);               // Max of 7 bits;
 		assert((taggedeventcount & 0x0F) == taggedeventcount);           // Max 4 bits;
 		assert((digitalsequencenumber & 0x0F) == digitalsequencenumber); // Max 4 bits;
 		assert((modulecount & 0x0F) == modulecount);                     // Max 4 bits;
 
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_CHANGE_OF_STATE_TIME_TAGGED << 16 | ((uint32_t)taggedeventcount & 0x0F) << 12 | ((uint32_t)digitalsequencenumber & 0x0F) << 4 | modulecount;
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_CHANGE_OF_STATE_TIME_TAGGED, taggedeventcount << 4, digitalsequencenumber << 4 | modulecount);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -491,14 +494,13 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn11StoM(uint8_t stationaddress, uint8_t taggedeventcount, uint8_t digitalsequencenumber, uint8_t modulecount,
+	MD3BlockFn11StoM(uint8_t StationAddress, uint8_t taggedeventcount, uint8_t digitalsequencenumber, uint8_t modulecount,
 		bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		bool mastertostation = false;
 		bool lastblock = false; // There will always be following data, otherwise we send an Digital No Change response
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
-		assert((stationaddress & 0x7F) == stationaddress);               // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress);               // Max of 7 bits;
 		assert((taggedeventcount & 0x0F) == taggedeventcount);           // Max 4 bits;
 		assert((digitalsequencenumber & 0x0F) == digitalsequencenumber); // Max 4 bits;
 		assert((modulecount & 0x0F) == modulecount);                     // Max 4 bits;
@@ -509,7 +511,7 @@ public:
 		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_CHANGE_OF_STATE_TIME_TAGGED << 16 | ((uint32_t)taggedeventcount & 0x0F) << 12 | ((uint32_t)digitalsequencenumber & 0x0F) << 8 | flags | modulecount;
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_CHANGE_OF_STATE_TIME_TAGGED, taggedeventcount << 4 | digitalsequencenumber, flags | modulecount);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -521,7 +523,7 @@ public:
 	void SetTaggedEventCount(uint8_t eventcount)
 	{
 		data &= ~(0x0F << 12); // Clear the bits we are going to set.
-		data |= (uint32_t)eventcount << 12;
+		data |= static_cast<uint32_t>(eventcount) << 12;
 
 		endbyte &= 0xC0;         // Clear the CRC bits
 		endbyte |= MD3CRC(data); // Max 6 bits returned
@@ -564,17 +566,16 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn12MtoS(uint8_t stationaddress, uint8_t startmoduleaddress, uint8_t digitalsequencenumber, uint8_t modulecount)
+	MD3BlockFn12MtoS(uint8_t StationAddress, uint8_t startmoduleaddress, uint8_t digitalsequencenumber, uint8_t modulecount)
 	{
 		bool mastertostation = true;
 		bool lastblock = true;
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
-		assert((stationaddress & 0x7F) == stationaddress);               // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress);               // Max of 7 bits;
 		assert((digitalsequencenumber & 0x0F) == digitalsequencenumber); // Max 4 bits;
 		assert((modulecount & 0x0F) == modulecount);                     // Max 4 bits;
 
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_UNCONDITIONAL << 16 | ((uint32_t)startmoduleaddress) << 8 | ((uint32_t)digitalsequencenumber & 0x0F) << 4 | modulecount;
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_UNCONDITIONAL, startmoduleaddress, digitalsequencenumber << 4 | modulecount);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -606,14 +607,12 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn14StoM(uint8_t stationaddress, uint8_t moduleaddress, uint8_t modulecount, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
+	MD3BlockFn14StoM(uint8_t StationAddress, uint8_t moduleaddress, uint8_t modulecount, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		bool lastblock = true;
 		bool mastertostation = false;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
-		assert((stationaddress & 0x7F) == stationaddress); // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert((modulecount & 0x0F) == modulecount);       // Max 4 bits;
 
 		uint32_t flags = 0;
@@ -622,20 +621,18 @@ public:
 		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_NO_CHANGE_REPLY << 16 | (uint32_t)moduleaddress << 8 | flags | (modulecount & 0x0F);
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_NO_CHANGE_REPLY, moduleaddress, flags | modulecount);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
-	MD3BlockFn14StoM(uint8_t stationaddress,  uint8_t digitalsequencenumber, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
+	MD3BlockFn14StoM(uint8_t StationAddress,  uint8_t digitalsequencenumber, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		bool lastblock = true;
 		bool mastertostation = false;
 		uint8_t taggedeventcount = 0; // Not returning anything..
 		uint8_t modulecount = 0;      // Not returning anything..
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
-		assert((stationaddress & 0x7F) == stationaddress);               // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress);               // Max of 7 bits;
 		assert((taggedeventcount & 0x0F) == taggedeventcount);           // Max 4 bits;
 		assert((digitalsequencenumber & 0x0F) == digitalsequencenumber); // Max 4 bits;
 		assert((modulecount & 0x0F) == modulecount);                     // Max 4 bits;
@@ -646,7 +643,7 @@ public:
 		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)DIGITAL_NO_CHANGE_REPLY << 16 | ((uint32_t)taggedeventcount & 0x0F) << 12 | ((uint32_t)digitalsequencenumber & 0x0F) << 8 | flags | modulecount;
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_NO_CHANGE_REPLY, taggedeventcount << 4 | digitalsequencenumber, flags | modulecount);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -675,8 +672,8 @@ public:
 		bool mastertostation = false;
 		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
-		data &= ~((uint32_t)0x0FF << 16 | DIRECTIONBIT);        // Clear the bits we are going to set.
-		data |= (uint32_t)CONTROL_REQUEST_OK << 16 | direction; // Set the function code and direction
+		data &= ~(static_cast<uint32_t>(0x0FF) << 16 | DIRECTIONBIT);        // Clear the bits we are going to set.
+		data |= static_cast<uint32_t>(CONTROL_REQUEST_OK) << 16 | direction; // Set the function code and direction
 
 		// Regenerate the last byte
 		SetEndByte(FormattedBlock, lastblock);
@@ -703,12 +700,11 @@ public:
 		bool lastblock = true;
 		bool mastertostation = true;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-		uint32_t nocounterresetbit = NoCounterReset ? NOCOUNTERRESETBIT : 0x0000;
+		uint32_t nocounterresetbit = NoCounterReset ? 0x01 : 0x0000;
 
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
-		data = direction | nocounterresetbit | (uint32_t)StationAddress << 24 | (uint32_t)FREEZE_AND_RESET << 16 | ((uint32_t) ~StationAddress & 0x7F);
+		data = CombineFormattedBytes(mastertostation, StationAddress, FREEZE_AND_RESET, nocounterresetbit, ~StationAddress & 0x7F);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -743,12 +739,9 @@ public:
 		bool lastblock = false;
 		bool mastertostation = true;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
-		uint16_t lowword = ((uint16_t)ModuleAddress << 8) | ((uint16_t)OutputSelection & 0x00FF);
-		data = direction | (uint32_t)StationAddress << 24 | (uint32_t)POM_TYPE_CONTROL << 16 | (uint32_t)lowword;
+		data = CombineFormattedBytes(mastertostation, StationAddress, POM_TYPE_CONTROL, ModuleAddress, OutputSelection);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -761,7 +754,8 @@ public:
 	{
 		uint16_t lowword = 1 << (15 - GetOutputSelection());
 		uint32_t direction = GetData() & DIRECTIONBIT;
-		uint32_t seconddata = direction | ((uint32_t) ~GetStationAddress() & 0x07f) << 24 | (((uint32_t) ~GetModuleAddress() & 0x0FF) << 16) | (uint32_t)lowword;
+		uint32_t seconddata = direction | static_cast<uint32_t>(~GetStationAddress() & 0x07f) << 24 | static_cast<uint32_t>(~GetModuleAddress() & 0x0FF) << 16 | static_cast<uint32_t>(lowword);
+
 		MD3BlockData sb(seconddata, true);
 		return sb;
 	}
@@ -797,12 +791,9 @@ public:
 		bool lastblock = false;
 		bool mastertostation = true;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
-		uint16_t lowword = ((uint16_t)ModuleAddress << 8) | ((uint16_t) ~ModuleAddress & 0x00FF);
-		data = direction | (uint32_t)StationAddress << 24 | (uint32_t)DOM_TYPE_CONTROL << 16 | (uint32_t)lowword;
+		data = CombineFormattedBytes(mastertostation, StationAddress, DOM_TYPE_CONTROL, ModuleAddress, ~ModuleAddress);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -811,7 +802,7 @@ public:
 	MD3BlockData GenerateSecondBlock(uint16_t OutputData) const
 	{
 		uint32_t checkdata = (OutputData & 0x0FF) + ((OutputData >> 8) & 0x0FF);
-		uint32_t seconddata = ((uint32_t)OutputData << 16) | checkdata << 8 | ((uint32_t) ~GetStationAddress() & 0x07f);
+		uint32_t seconddata = static_cast<uint32_t>(OutputData) << 16 | checkdata << 8 | static_cast<uint32_t>(~GetStationAddress() & 0x07f);
 		MD3BlockData sb(seconddata, true);
 		return sb;
 	}
@@ -853,12 +844,9 @@ public:
 		bool lastblock = false;
 		bool mastertostation = true;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
-		uint16_t lowword = ((uint16_t)ModuleAddress << 8) | ((uint16_t)Channel & 0x00FF);
-		data = direction | (uint32_t)StationAddress << 24 | (uint32_t)AOM_TYPE_CONTROL << 16 | (uint32_t)lowword;
+		data = CombineFormattedBytes(mastertostation, StationAddress, AOM_TYPE_CONTROL, ModuleAddress, Channel);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -873,11 +861,11 @@ public:
 	// The second block in the message only contains a different format of the information in the first
 	MD3BlockData GenerateSecondBlock(uint16_t OutputData) const
 	{
-		uint16_t hiword = (uint16_t) ~GetChannel() << 12 | (OutputData & 0xFFF);
+		uint16_t hiword = static_cast<uint16_t>(~GetChannel()) << 12 | (OutputData & 0xFFF);
 
 		uint32_t checkdata = (hiword & 0x0FF) + ((hiword >> 8) & 0x0FF);
 
-		uint32_t seconddata = ((uint32_t)hiword << 16) | (checkdata << 8) | ((uint32_t) ~GetModuleAddress() & 0x0FF);
+		uint32_t seconddata = static_cast<uint32_t>(hiword) << 16 | checkdata << 8 | (static_cast<uint32_t>(~GetModuleAddress()) & 0x0FF);
 		MD3BlockData sb(seconddata, true);
 		return sb;
 	}
@@ -910,7 +898,6 @@ public:
 	MD3BlockFn30StoM(MD3BlockData& parent, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		// This Blockformat is a copy of the originating block header data, with the function code changed.
-		//
 		// We change the function code, change the direction bit, mark as last block and recalc the checksum.
 		data = parent.GetData();
 
@@ -928,8 +915,8 @@ public:
 		data &= ~(APLBIT | RSFBIT | HRPBIT | DCPBIT); // Clear the bits we are going to set.
 		data |= flags;
 
-		data &= ~((uint32_t)0x0FF << 16 | DIRECTIONBIT);                      // Clear the bits we are going to set.
-		data |= (uint32_t)CONTROL_OR_SCAN_REQUEST_REJECTED << 16 | direction; // Set the function code
+		data &= ~(static_cast<uint32_t>(0x0FF) << 16 | DIRECTIONBIT);                      // Clear the bits we are going to set. SJECHECK
+		data |= static_cast<uint32_t>(CONTROL_OR_SCAN_REQUEST_REJECTED) << 16 | direction; // Set the function code
 
 		// Regenerate the last byte
 		SetEndByte(FormattedBlock, lastblock);
@@ -944,17 +931,14 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	explicit MD3BlockFn40MtoS(uint8_t stationaddress)
+	explicit MD3BlockFn40MtoS(uint8_t StationAddress)
 	{
 		bool lastblock = true;
 		bool mastertostation = true;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
-		assert((stationaddress & 0x7F) == stationaddress); // Max of 7 bits;
-
-		uint16_t lowword = 0x8000 | (uint16_t)(~stationaddress) << 8 | ((uint16_t)(~SYSTEM_SIGNON_CONTROL) & 0x00FF);
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)SYSTEM_SIGNON_CONTROL << 16 | (uint32_t)lowword;
+		data = CombineFormattedBytes(mastertostation, StationAddress, SYSTEM_SIGNON_CONTROL, 0x80 | ~StationAddress, ~SYSTEM_SIGNON_CONTROL);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -977,17 +961,14 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	explicit MD3BlockFn40StoM(uint8_t stationaddress)
+	explicit MD3BlockFn40StoM(uint8_t StationAddress)
 	{
 		bool lastblock = true;
 		bool mastertostation = false;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
-		assert((stationaddress & 0x7F) == stationaddress); // Max of 7 bits;
-
-		uint16_t lowword = 0x8000 | (uint16_t)(~stationaddress) << 8 | ((uint16_t)(~SYSTEM_SIGNON_CONTROL) & 0x00FF);
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)SYSTEM_SIGNON_CONTROL << 16 | (uint32_t)lowword;
+		data = CombineFormattedBytes(mastertostation, StationAddress, SYSTEM_SIGNON_CONTROL, 0x80 | ~StationAddress, ~SYSTEM_SIGNON_CONTROL);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -1015,17 +996,16 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn43MtoS(uint8_t stationaddress, uint16_t milliseconds)
+	MD3BlockFn43MtoS(uint8_t StationAddress, uint16_t milliseconds)
 	{
 		bool lastblock = false; // Must always be followed by another data block
 		bool mastertostation = true;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
-		assert((stationaddress & 0x7F) == stationaddress); // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert(milliseconds < 1000);                       // Max 10 bits;
+		milliseconds &= 0x03FF;                            // Limited to these bits
 
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)SYSTEM_SET_DATETIME_CONTROL << 16 | ((uint32_t)milliseconds & 0x03FF);
+		data = CombineFormattedBytes(mastertostation, StationAddress, SYSTEM_SET_DATETIME_CONTROL,milliseconds >> 8, milliseconds & 0x0FF);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -1048,17 +1028,16 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	MD3BlockFn44MtoS(uint8_t stationaddress, uint16_t milliseconds)
+	MD3BlockFn44MtoS(uint8_t StationAddress, uint16_t milliseconds)
 	{
 		bool lastblock = false; // Must always be followed by another data block
 		bool mastertostation = true;
 
-		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
-
-		assert((stationaddress & 0x7F) == stationaddress); // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert(milliseconds < 1000);                       // Max 10 bits;
+		milliseconds &= 0x03FF;                            // Limited to these bits
 
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)SYSTEM_SET_DATETIME_CONTROL_NEW << 16 | ((uint32_t)milliseconds & 0x03FF);
+		data = CombineFormattedBytes(mastertostation, StationAddress, SYSTEM_SET_DATETIME_CONTROL_NEW, milliseconds >> 8, milliseconds & 0x0FF);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -1076,17 +1055,17 @@ public:
 		data = parent.GetData();
 		endbyte = parent.GetEndByte();
 	}
-	explicit MD3BlockFn52MtoS(uint8_t stationaddress)
+	explicit MD3BlockFn52MtoS(uint8_t StationAddress)
 	{
 		bool lastblock = true;
 		bool mastertostation = true;
 
 		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
-		assert((stationaddress & 0x7F) == stationaddress); // Max of 7 bits;
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
 		uint16_t lowword = 0; // All flags zero on master send, outstation will set...
-		data = direction | (uint32_t)stationaddress << 24 | (uint32_t)SYSTEM_FLAG_SCAN << 16 | (uint32_t)lowword;
+		data = CombineFormattedBytes(mastertostation, StationAddress, SYSTEM_FLAG_SCAN, lowword >> 8, lowword & 0x0FF);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}

@@ -72,11 +72,11 @@ public:
 	void SendAllPointEvents();
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string & SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void WriteObject(const ControlRelayOutputBlock & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
-	void WriteObject(const int16_t & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
-	void WriteObject(const int32_t & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
-	void WriteObject(const float & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
-	void WriteObject(const double & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
+	void WriteObject(const ControlRelayOutputBlock & command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
+	void WriteObject(const int16_t & command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
+	void WriteObject(const int32_t & command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
+	void WriteObject(const float& command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
+	void WriteObject(const double& command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
 
 	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
 	// There is a time out lambda in UnprotectedSendNextMasterCommand which will queue the next command if we timeout.

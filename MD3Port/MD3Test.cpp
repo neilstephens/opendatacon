@@ -235,7 +235,7 @@ std::string BuildHexStringFromASCIIHexString(const std::string &as)
 	for (uint32_t i = 0; i < (as.size() / 2); i++)
 	{
 		auto hexpair = as.substr(i * 2, 2);
-		res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
+		res[i] = static_cast<uint8_t>(std::stol(hexpair, nullptr, 16));
 	}
 	return res;
 }
@@ -741,7 +741,7 @@ TEST_CASE("MD3Block - Fn14")
 	REQUIRE(b14.CheckSumPasses());
 
 	// Old style no change response constructor - contains a module address (0x70) and # of modules 0x0E
-	MD3BlockFn14StoM b14a(0x25, 0x70, (uint8_t)0x0E);
+	MD3BlockFn14StoM b14a(0x25, 0x70, static_cast<uint8_t>(0x0E));
 	REQUIRE(b14a.IsMasterToStationMessage() == false);
 	REQUIRE(b14a.GetStationAddress() == 0x25);
 	REQUIRE(b14a.GetModuleAddress() == 0x70);
@@ -1485,7 +1485,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	output << commandblock.ToBinaryString();
 
 	uint64_t currenttime = MD3Now();
-	MD3BlockData datablock((uint32_t)(currenttime / 1000), true );
+	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000), true );
 	output << datablock.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1854,7 +1854,7 @@ TEST_CASE("Station - POMControlFn17")
 	//---------------------------
 	// Now do again with a bodgy second block.
 	output << commandblock.ToBinaryString();
-	MD3BlockData datablock2(1000, true); // Nonsensical block
+	MD3BlockData datablock2(static_cast<uint32_t>(1000), true); // Nonsensical block
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1925,7 +1925,7 @@ TEST_CASE("Station - DOMControlFn19")
 	//---------------------------
 	// Now do again with a bodgy second block.
 	output << commandblock.ToBinaryString();
-	MD3BlockData datablock2(1000, true); // Non nonsensical block
+	MD3BlockData datablock2(static_cast<uint32_t>(1000), true); // Non nonsensical block
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1981,7 +1981,7 @@ TEST_CASE("Station - AOMControlFn23")
 	//---------------------------
 	// Now do again with a bodgy second block.
 	output << commandblock.ToBinaryString();
-	MD3BlockData datablock2(1000, true); // Non nonsensical block
+	MD3BlockData datablock2(static_cast<uint32_t>(1000), true); // Non nonsensical block
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2050,7 +2050,7 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	std::ostream output(&write_buffer);
 	output << commandblock.ToBinaryString();
 
-	MD3BlockData datablock((uint32_t)(currenttime / 1000),true);
+	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000),true);
 	output << datablock.ToBinaryString();
 
 	// Hook the output function with a lambda
@@ -2066,7 +2066,7 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 
 	// Now do again with a bodgy time.
 	output << commandblock.ToBinaryString();
-	MD3BlockData datablock2(1000, true); // Nonsensical time
+	MD3BlockData datablock2(static_cast<uint32_t>(1000), true); // Nonsensical time
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2095,11 +2095,11 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	std::ostream output(&write_buffer);
 	output << commandblock.ToBinaryString();
 
-	MD3BlockData datablock((uint32_t)(currenttime / 1000));
+	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000));
 	output << datablock.ToBinaryString();
 
 	int UTCOffsetMinutes = -600;
-	MD3BlockData datablock2((uint32_t)(UTCOffsetMinutes<<16), true);
+	MD3BlockData datablock2(static_cast<uint32_t>(UTCOffsetMinutes<<16), true);
 	output << datablock2.ToBinaryString();
 
 	// Hook the output function with a lambda
@@ -2115,7 +2115,7 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 
 	// Now do again with a bodgy time.
 	output << commandblock.ToBinaryString();
-	datablock2 = MD3BlockData(1000, true); // Nonsensical time
+	datablock2 = MD3BlockData(static_cast<uint32_t>(1000), true); // Nonsensical time
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2275,7 +2275,7 @@ TEST_CASE("Station - System Flag Scan Test")
 	// Now send a time command, so the STI flag is cleared.
 	MD3BlockFn43MtoS timecommandblock(0x7C, currenttime % 1000);
 	output << timecommandblock.ToBinaryString();
-	MD3BlockData datablock((uint32_t)(currenttime / 1000), true);
+	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000), true);
 	output << datablock.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2971,7 +2971,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 
 		// TimeChange command (Fn 43), Station 0x7C
 		MD3BlockFn43MtoS commandblock(0x7C, currenttime % 1000);
-		MD3BlockData datablock((uint32_t)(currenttime / 1000), true);
+		MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000), true);
 
 		std::string TimeChangeCommand = commandblock.ToBinaryString() + datablock.ToBinaryString();
 
@@ -3175,7 +3175,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
 		MD3Time changedtime = (MD3Time)0x0000016338b6d4fb;
-		MD3BlockData b[] = { MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData((uint32_t)(changedtime / 1000)),
+		MD3BlockData b[] = { MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime / 1000)),
 			               MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true) };
 
 
@@ -3287,7 +3287,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
 		MD3Time changedtime = (MD3Time)0x0000016338b6d4fb;
-		MD3BlockData b[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData((uint32_t)(changedtime/1000)),
+		MD3BlockData b[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime/1000)),
 			              MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true)};
 
 		for (auto bl :b)
@@ -3564,7 +3564,7 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on POM command result : " + std::to_string((int)command_stat));
+			LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
 			res = command_stat;
 		});
 

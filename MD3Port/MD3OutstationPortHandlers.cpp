@@ -617,8 +617,8 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 		if (EventCount == 0)
 		{
 			// First packet is the time/date block and a milliseconds packet
-			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.GetChangedTime() / 1000);
-			uint16_t FirstEventMSec = (uint16_t)(CurrentPoint.GetChangedTime() % 1000);
+			uint32_t FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000);
+			uint16_t FirstEventMSec = static_cast<uint16_t>(CurrentPoint.GetChangedTime() % 1000);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
 			ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket(FirstEventMSec));
@@ -635,7 +635,7 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( int MaxEventCount, 
 			}
 			else if (delta != 0)
 			{
-				ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket((uint16_t)delta));
+				ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket(static_cast<uint16_t>(delta)));
 				LastPointmsec = CurrentPoint.GetChangedTime(); // The last point time moves with time added by the msec packets
 			}
 		}
@@ -669,7 +669,7 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 
 	if (ChangedBlocks == false) // No change
 	{
-		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), (uint8_t)0);
+		MD3BlockFormatted FormattedBlock = MD3BlockFn14StoM(Header.GetStationAddress(), Header.GetModuleAddress(), static_cast<uint8_t>(0));
 		FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
 
 		ResponseMD3Message.push_back(FormattedBlock);
@@ -689,7 +689,7 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 		BuildScanReturnBlocksFromList(ModuleList, NumberOfDataBlocks, Header.GetStationAddress(), false, ResponseMD3Message);
 
 		MD3BlockFn10 &firstblock = (MD3BlockFn10 &)ResponseMD3Message[0];
-		firstblock.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1); // The number of blocks taking away the header...
+		firstblock.SetModuleCount(static_cast<uint8_t>(ResponseMD3Message.size() - 1)); // The number of blocks taking away the header...
 
 		SendMD3Message(ResponseMD3Message);
 	}
@@ -762,7 +762,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 		BuildScanReturnBlocksFromList(ModuleList, Header.GetModuleCount(), Header.GetStationAddress(), true, ResponseMD3Message);
 
-		ModuleCount = (uint8_t)ResponseMD3Message.size() - 1; // The number of module block is the size at this point, less the start block.
+		ModuleCount = static_cast<uint8_t>(ResponseMD3Message.size() - 1); // The number of module block is the size at this point, less the start block.
 
 		if (AreThereTaggedEvents)
 		{
@@ -830,7 +830,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 		if (EventCount == 0)
 		{
 			// First packet is the time/date block
-			uint32_t FirstEventSeconds = (uint32_t)(CurrentPoint.GetChangedTime() / 1000);
+			uint32_t FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
 			LastPointmsec = CurrentPoint.GetChangedTime() - CurrentPoint.GetChangedTime() % 1000; // The first one is seconds only. Later events have actual msec
@@ -850,15 +850,15 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, 
 				return;
 			}
 			assert(msecoffsetdiv256 < 256);
-			ResponseWords.push_back((uint16_t)msecoffsetdiv256);
+			ResponseWords.push_back(static_cast<uint16_t>(msecoffsetdiv256));
 			LastPointmsec += msecoffsetdiv256 * 256; // The last point time moves with time added by the msec packet
 			msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
 		}
 
 		// Push the block onto the response word list
 		assert(msecoffset < 256);
-		ResponseWords.push_back((uint16_t)CurrentPoint.GetModuleAddress() << 8 | (uint16_t)msecoffset);
-		ResponseWords.push_back((uint16_t)CurrentPoint.GetModuleBinarySnapShot());
+		ResponseWords.push_back(static_cast<uint16_t>(CurrentPoint.GetModuleAddress()) << 8 | static_cast<uint16_t>(msecoffset));
+		ResponseWords.push_back(static_cast<uint16_t>(CurrentPoint.GetModuleBinarySnapShot()));
 
 		LastPointmsec = CurrentPoint.GetChangedTime(); // Update the last changed time to match what we have just sent.
 		MyPointConf->PointTable.PopNextTaggedEventPoint();
@@ -897,7 +897,7 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 	if (ResponseMD3Message.size() != 0)
 	{
 		MD3BlockFn11StoM &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
-		firstblockref.SetModuleCount((uint8_t)ResponseMD3Message.size() - 1); // The number of blocks taking away the header...
+		firstblockref.SetModuleCount(static_cast<uint8_t>(ResponseMD3Message.size() - 1)); // The number of blocks taking away the header...
 		firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
 
 		MD3BlockData &lastblock = ResponseMD3Message.back();
@@ -1040,7 +1040,7 @@ void MD3OutstationPort::BuildBinaryReturnBlocks(int NumberOfDataBlocks, int Star
 void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, MD3Message_t & ResponseMD3Message)
 {
 	// For each module address, or the max we can send
-	for (int i = 0; (i < (int)ModuleList.size()) && (i < MaxNumberOfDataBlocks); i++)
+	for (int i = 0; (i < static_cast<int>(ModuleList.size()) && (i < MaxNumberOfDataBlocks)); i++)
 	{
 		uint8_t ModuleAddress = ModuleList[i];
 
@@ -1059,8 +1059,8 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 			{
 				// Queue the error block - Fn 7, 8 and 10 format
 				uint8_t errorflags = 0; // Application dependent, depends on the outstation implementation/master expectations. We could build in functionality here
-				uint16_t lowword = (uint16_t)errorflags << 8 | (ModuleAddress);
-				auto block = MD3BlockData((uint16_t)StationAddress << 8, lowword, false);
+				uint16_t lowword = (static_cast<uint16_t>(errorflags) << 8) | ModuleAddress;
+				auto block = MD3BlockData(static_cast<uint16_t>(StationAddress) << 8, lowword, false);
 				ResponseMD3Message.push_back(block);
 			}
 		}
@@ -1069,14 +1069,14 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 			if (FormatForFn11and12)
 			{
 				// For Fn11 and 12 the data format is:
-				uint16_t address = (uint16_t)ModuleAddress << 8; // Low byte is msec offset - which is 0 for non time tagged data
+				uint16_t address = static_cast<uint16_t>(ModuleAddress) << 8; // Low byte is msec offset - which is 0 for non time tagged data
 				auto block = MD3BlockData(address, wordres, false);
 				ResponseMD3Message.push_back(block);
 			}
 			else
 			{
 				// Queue the data block Fn 7,8 and 10
-				uint16_t address = (uint16_t)StationAddress << 8 | (ModuleAddress);
+				uint16_t address = static_cast<uint16_t>(StationAddress) << 8 | ModuleAddress;
 				auto block = MD3BlockData(address, wordres, false);
 				ResponseMD3Message.push_back(block);
 			}
@@ -1115,7 +1115,7 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 	}
 
 	uint32_t ODCIndex = MyPointConf->FreezeResetCountersPoint.second;
-	MyPointConf->FreezeResetCountersPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
+	MyPointConf->FreezeResetCountersPoint.first = static_cast<int32_t>(Header.GetData()); // Pass the actual packet to the master across ODC
 
 	EventTypePayload<EventType::AnalogOutputInt32>::type val;
 	val.first = MyPointConf->FreezeResetCountersPoint.first;
@@ -1219,7 +1219,7 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 	if (MyPointConf->POMControlPoint.second != 0)
 	{
 		// Pass the command through ODC, just for MD3 on the other side.
-		MyPointConf->POMControlPoint.first = (int32_t)Header.GetData();
+		MyPointConf->POMControlPoint.first = static_cast<int32_t>(Header.GetData());
 
 		ODCIndex = MyPointConf->POMControlPoint.second;
 
@@ -1313,8 +1313,8 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 	if (MyPointConf->DOMControlPoint.second != 0)
 	{
 		// Pass the command through ODC, just for MD3 on the other side. Have to compress to fit into 32 bits
-		uint32_t PacketData = (uint32_t)Header.GetStationAddress() << 24 | (uint32_t)Header.GetModuleAddress() << 16 | (uint32_t)CompleteMD3Message[1].GetFirstWord();
-		MyPointConf->DOMControlPoint.first = (int32_t)PacketData;
+		uint32_t PacketData = static_cast<uint32_t>(Header.GetStationAddress()) << 24 | static_cast<uint32_t>(Header.GetModuleAddress()) << 16 | static_cast<uint32_t>(CompleteMD3Message[1].GetFirstWord());
+		MyPointConf->DOMControlPoint.first = static_cast<int32_t>(PacketData);
 		ODCIndex = MyPointConf->DOMControlPoint.second;
 
 		EventTypePayload<EventType::AnalogOutputInt32>::type val;
@@ -1403,7 +1403,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40MtoS &Header)
 	if (Header.IsValid())
 	{
 		uint32_t ODCIndex = MyPointConf->SystemSignOnPoint.second;
-		MyPointConf->SystemSignOnPoint.first = (int32_t)Header.GetData(); // Pass the actual packet to the master across ODC
+		MyPointConf->SystemSignOnPoint.first = static_cast<int32_t>(Header.GetData()); // Pass the actual packet to the master across ODC
 
 		EventTypePayload<EventType::AnalogOutputInt32>::type val;
 		val.first = MyPointConf->SystemSignOnPoint.first;
@@ -1465,7 +1465,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &Co
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
 	uint64_t currenttime = MD3Now();
 
-	if (abs((int64_t)msecsinceepoch - (int64_t)currenttime) > 30000) // Set window as +-30 seconds
+	if (abs(static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime)) > 30000) // Set window as +-30 seconds
 	{
 		if (Header.GetStationAddress() != 0)
 			SendControlOrScanRejected(Header);
@@ -1532,7 +1532,7 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
 	uint64_t currenttime = MD3Now();
 
-	if (abs((int64_t)msecsinceepoch - (int64_t)currenttime) > 30000) // Set window as +-30 seconds
+	if (abs(static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime)) > 30000) // Set window as +-30 seconds
 	{
 		if (Header.GetStationAddress() != 0)
 			SendControlOrScanRejected(Header);

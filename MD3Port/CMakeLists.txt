@@ -24,7 +24,6 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 include_directories(
 	"../include"
 	"../JSON"
-	"${DNP3_HOME}/include"
 	"${ASIO_HOME}/include"
 	"${SPDLOG_HOME}/include"
 )

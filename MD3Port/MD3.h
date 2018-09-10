@@ -284,7 +284,7 @@ public:
 	~MD3AnalogCounterPoint();
 
 	uint16_t GetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); return Analog; }
-	uint16_t GetAnalogAndDelta(int &delta) { std::unique_lock<std::mutex> lck(PointMutex); delta = (int)Analog - (int)LastReadAnalog; LastReadAnalog = Analog; return Analog; }
+	uint16_t GetAnalogAndDelta(int &delta) { std::unique_lock<std::mutex> lck(PointMutex); delta = static_cast<int>(Analog) - static_cast<int>(LastReadAnalog); LastReadAnalog = Analog; return Analog; }
 
 	void SetAnalog(const uint16_t & a, const MD3Time &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; Analog = a; ChangedTime = ctime; }
 	void ResetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = false; Analog = 0x8000; ChangedTime = 0; }

@@ -206,7 +206,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	{
 		case EventType::Analog:
 		{
-			uint16_t analogmeas = (uint16_t)event->GetPayload<EventType::Analog>();
+			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
 			LOGDEBUG("OS - Received Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
@@ -240,7 +240,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			// Check that the passed time is within 30 minutes of the actual time, if not use the current time
 			if (MyPointConf->OverrideOldTimeStamps)
 			{
-				if (abs((int64_t)(now / 1000) - (int64_t)(eventtime / 1000)) < 60 * 30)
+				if (abs(static_cast<int64_t>(now / 1000) - static_cast<int64_t>(eventtime / 1000)) < 60 * 30)
 				{
 					eventtime = now; // msec since epoch.
 					LOGDEBUG("Binary time tag value is too far from current time (>30min) changing to current time. Point index " + std::to_string(ODCIndex));
@@ -280,7 +280,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, (uint16_t)0x8000))
+				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
 				{
 					LOGERROR("Tried to set the failure value for an invalid analog point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
@@ -292,7 +292,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, (uint16_t)0x8000))
+				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
 				{
 					LOGERROR("Tried to set the failure value for an invalid counter point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
