@@ -76,6 +76,7 @@ protected:
 	std::shared_ptr<MD3PointConf> MyPointConf;
 
 	int Limit(int val, int max);
+	uint8_t Limit(uint8_t val, uint8_t max);
 
 	// We need to support multi-drop in both the OutStation and the Master.
 	// We have a separate OutStation or Master for each OutStation, but they could be sharing a TCP connection, then routing the traffic based on MD3 Station Address.

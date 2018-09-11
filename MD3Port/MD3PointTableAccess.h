@@ -106,21 +106,21 @@ protected:
 
 	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
 	std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> BinaryMD3PointMap; // ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> BinaryODCPointMap; // Index OpenDataCon, MD3Point
+	std::map<size_t, std::shared_ptr<MD3BinaryPoint>> BinaryODCPointMap;   // Index OpenDataCon, MD3Point
 
 	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogMD3PointMap; // ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogODCPointMap; // Index OpenDataCon, MD3Point
+	std::map<size_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogODCPointMap;   // Index OpenDataCon, MD3Point
 
 	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterMD3PointMap; // ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterODCPointMap; // Index OpenDataCon, MD3Point
+	std::map<size_t, std::shared_ptr<MD3AnalogCounterPoint>> CounterODCPointMap;   // Index OpenDataCon, MD3Point
 
 	// Binary Control Points are not readable
 	std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlMD3PointMap; // ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlODCPointMap; // Index OpenDataCon, MD3Point
+	std::map<size_t, std::shared_ptr<MD3BinaryPoint>> BinaryControlODCPointMap;   // Index OpenDataCon, MD3Point
 
 	// Analog Control Points are not readable
 	std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlMD3PointMap; // ModuleAndChannel, MD3Point
-	std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlODCPointMap; // Index OpenDataCon, MD3Point
+	std::map<size_t, std::shared_ptr<MD3AnalogCounterPoint>> AnalogControlODCPointMap;   // Index OpenDataCon, MD3Point
 
 	bool IsOutstation = true;
 	bool NewDigitalCommands = true;

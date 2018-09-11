@@ -58,6 +58,14 @@ typedef uint64_t MD3Time; // msec since epoch, utc, most time functions are uint
 
 MD3Time MD3Now();
 
+// We use for signed/unsigned conversions, where we know we will not have problems.
+// Static casting all over the place still produces a lot of gcc warning messages.
+// Also we can put checks in here if required.
+template <class OT, class ST>
+OT numeric_cast(const ST value)
+{
+	return static_cast<OT>(value);
+}
 
 // Note that in the message block format, these characters are not excluded from appearing - so their appearance and use is message state dependent
 // THESE ARE NOT PRESENT IN THE tcp STREAMS...
@@ -237,7 +245,7 @@ public:
 		Changed(src.Changed),
 		PointType(src.PointType)
 	{}
-	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup, BinaryPointType pointtype): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup),
+	MD3BinaryPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup, BinaryPointType pointtype): MD3Point(index, moduleaddress, channel, static_cast<MD3Time>(0), pollgroup),
 		PointType(pointtype)
 	{}
 
@@ -279,7 +287,7 @@ class MD3AnalogCounterPoint: public MD3Point
 public:
 	MD3AnalogCounterPoint() {}
 
-	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup): MD3Point(index, moduleaddress, channel, (MD3Time)0, pollgroup)
+	MD3AnalogCounterPoint(uint32_t index, uint8_t moduleaddress, uint8_t channel, uint8_t pollgroup): MD3Point(index, moduleaddress, channel, static_cast<MD3Time>(0), pollgroup)
 	{}
 	~MD3AnalogCounterPoint();
 
@@ -295,9 +303,9 @@ protected:
 	uint16_t LastReadAnalog = 0x8000;
 };
 
-typedef std::map<uint32_t, std::shared_ptr<MD3BinaryPoint>>::iterator ODCBinaryPointMapIterType;
+typedef std::map<size_t, std::shared_ptr<MD3BinaryPoint>>::iterator ODCBinaryPointMapIterType;
 typedef std::map<uint16_t, std::shared_ptr<MD3BinaryPoint>>::iterator MD3BinaryPointMapIterType;
-typedef std::map<uint32_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator ODCAnalogCounterPointMapIterType;
+typedef std::map<size_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator ODCAnalogCounterPointMapIterType;
 typedef std::map<uint16_t, std::shared_ptr<MD3AnalogCounterPoint>>::iterator MD3AnalogCounterPointMapIterType;
 typedef std::map<uint8_t, uint16_t> ModuleMapType;
 

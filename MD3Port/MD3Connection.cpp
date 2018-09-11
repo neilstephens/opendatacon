@@ -160,9 +160,9 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 	while (readbuf.size() >= MD3BlockArraySize)
 	{
 		MD3BlockArray d;
-		for (int i = 0; i < MD3BlockArraySize; i++)
+		for (size_t i = 0; i < MD3BlockArraySize; i++)
 		{
-			d[i] = readbuf.sgetc();
+			d[i] = static_cast<uint8_t>(readbuf.sgetc());
 			readbuf.consume(1);
 		}
 
@@ -208,7 +208,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 	// Check for and consume any not 6 byte block data - should never happen...
 	if (readbuf.size() > 0)
 	{
-		int bytesleft = readbuf.size();
+		size_t bytesleft = readbuf.size();
 		LOGDEBUG("Had data left over after reading blocks - " + std::to_string(bytesleft) + " bytes");
 		readbuf.consume(readbuf.size());
 	}
@@ -219,7 +219,7 @@ void MD3Connection::RouteMD3Message(MD3Message_t &CompleteMD3Message)
 	// We have a full set of MD3 message blocks from a minimum of 1.
 	assert(CompleteMD3Message.size() != 0);
 
-	uint8_t StationAddress = ((MD3BlockFormatted)CompleteMD3Message[0]).GetStationAddress();
+	uint8_t StationAddress = MD3BlockFormatted(CompleteMD3Message[0]).GetStationAddress();
 
 	if (StationAddress == 0)
 	{

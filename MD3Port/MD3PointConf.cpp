@@ -256,7 +256,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 	{
 		bool error = false;
 
-		size_t start, stop;
+		uint32_t start, stop;
 		if (JSONNode[n].isMember("Index"))
 		{
 			start = stop = JSONNode[n]["Index"].asUInt();
@@ -454,7 +454,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 						{
 							// This will add the module address to the poll group if missing, and then we add a channel to the current count (->second field)
 							// Assume second is 0 the first time it is referenced?
-							int channels = PollGroups[pollgroup].ModuleAddresses[moduleaddress];
+							uint16_t channels = PollGroups[pollgroup].ModuleAddresses[moduleaddress];
 							PollGroups[pollgroup].ModuleAddresses[moduleaddress] = channels + 1;
 							LOGDEBUG("Added Point " + std::to_string(moduleaddress) + ", " + std::to_string(channel) + " To Poll Group " + std::to_string(pollgroup));
 

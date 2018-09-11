@@ -55,7 +55,7 @@ struct MD3AddrConf
 	//Common
 	uint8_t OutstationAddr;
 	bool NewDigitalCommands;
-	uint32_t TCPConnectRetryPeriodms;
+	uint16_t TCPConnectRetryPeriodms;
 
 	// Default address values can minimally set IP.
 	MD3AddrConf():

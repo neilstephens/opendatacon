@@ -71,7 +71,7 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	if (JSONRoot.isMember("Port"))
-		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asUInt();
+		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.Port = numeric_cast<uint16_t>(JSONRoot["Port"].asUInt());
 
 	if (JSONRoot.isMember("TCPClientServer"))
 	{
@@ -86,14 +86,18 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	if (JSONRoot.isMember("OutstationAddr"))
-		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.OutstationAddr = JSONRoot["OutstationAddr"].asUInt();
+		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.OutstationAddr = numeric_cast<uint8_t>(JSONRoot["OutstationAddr"].asUInt());
 
 	if (JSONRoot.isMember("TCPConnectRetryPeriodms"))
-		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.TCPConnectRetryPeriodms = JSONRoot["TCPConnectRetryPeriodms"].asUInt();
+		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.TCPConnectRetryPeriodms = numeric_cast<uint16_t>(JSONRoot["TCPConnectRetryPeriodms"].asUInt());
 
 }
 
 int MD3Port::Limit(int val, int max)
+{
+	return val > max ? max : val;
+}
+uint8_t MD3Port::Limit(uint8_t val, uint8_t max)
 {
 	return val > max ? max : val;
 }

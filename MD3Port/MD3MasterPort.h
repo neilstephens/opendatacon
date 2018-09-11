@@ -94,7 +94,7 @@ public:
 	void DoPoll(uint32_t pollgroup);
 
 	void ResetDigitalCommandSequenceNumber();
-	int GetAndIncrementDigitalCommandSequenceNumber(); // Thread protected
+	uint8_t GetAndIncrementDigitalCommandSequenceNumber(); // Thread protected
 
 	void EnablePolling(bool on); // Enabled by default
 
@@ -107,14 +107,14 @@ public:
 	void SendAOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & Channel, const uint16_t & value, const SharedStatusCallback_t & pStatusCallback);
 
 	// Testing use only
-	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); };
+	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 private:
 
 	std::unique_ptr<asio::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
 
 	std::mutex DigitalCommandSequenceNumberMutex;
-	int DigitalCommandSequenceNumber = 0; // Used only by the digital commands to manage resends/retries. 0 for power on - connect/reconnect. Will vary from 1 to 15 normally.
+	uint8_t DigitalCommandSequenceNumber = 0; // Used only by the digital commands to manage resends/retries. 0 for power on - connect/reconnect. Will vary from 1 to 15 normally.
 
 	void SendNextMasterCommand();
 	void UnprotectedSendNextMasterCommand(bool timeoutoccured);

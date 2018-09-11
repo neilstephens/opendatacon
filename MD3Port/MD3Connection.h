@@ -113,6 +113,5 @@ private:
 	// A list of MD3Connections, so that we can find if one for out port/address combination already exists.
 	static std::unordered_map<std::string, std::shared_ptr<MD3Connection>> ConnectionMap;
 };
-
 #endif
 

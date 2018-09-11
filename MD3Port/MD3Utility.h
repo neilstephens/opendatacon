@@ -62,6 +62,15 @@ bool MD3CRCCompare(const uint8_t crc1, const uint8_t crc2);
 
 bool iequals(const std::string& a, const std::string& b);
 
+inline uint16_t ShiftLeft( uint16_t val, uint8_t shift)
+{
+	return numeric_cast<uint16_t>(val << shift);
+}
+inline uint16_t ShiftLeft8( uint16_t val)
+{
+	return numeric_cast<uint16_t>(val << 8);
+}
+
 template <class T>
 std::string to_hexstring(T val)
 {
@@ -91,12 +100,12 @@ class MD3BlockData
 public:
 	enum blocktype {FormattedBlock, DataBlock};
 
-	MD3BlockData() {};
+	MD3BlockData() {}
 
 	// We have received 6 bytes (a block on a stream now we need to decode it) it may not be valid!
 	explicit MD3BlockData(const MD3BlockArray _data)
 	{
-		data = _data[0] << 24 | _data[1] << 16 | _data[2] << 8 | _data[3];
+		data = CombineDataBytes(_data[0],_data[1],_data[2],_data[3]);
 		endbyte = _data[4];
 	}
 	explicit MD3BlockData(const std::string &hexdata)
@@ -109,17 +118,17 @@ public:
 			for (uint32_t i = 0; i < (hexdata.size() / 2); i++)
 			{
 				auto hexpair = hexdata.substr(i * 2, 2);
-				res[i] = static_cast<uint8_t>(std::stol(hexpair, nullptr, 16));
+				res[i] = numeric_cast<char>(std::stol(hexpair, nullptr, 16));
 			}
 
 			data = CombineDataBytes(res[0],res[1],res[2],res[3]);
-			endbyte = res[4];
+			endbyte = numeric_cast<uint8_t>(res[4]);
 			assert(res[5] == 0x00); // Sixth byte should always be zero.
 		}
 		else if (hexdata.size() == 6)
 		{
 			data = CombineDataBytes(hexdata[0],hexdata[1],hexdata[2],hexdata[3]);
-			endbyte = hexdata[4];
+			endbyte = numeric_cast<uint8_t>(hexdata[4]);
 			assert(hexdata[5] == 0x00); // Sixth byte should always be zero.
 		}
 		else
@@ -139,9 +148,18 @@ public:
 		data = CombineDataBytes(b1, b2, b3, b4);
 		SetEndByte(DataBlock, lastblock);
 	}
+	explicit MD3BlockData(const char c1, const char c2, const char c3, const char c4, bool lastblock = false)
+	{
+		data = CombineDataBytes(c1, c2, c3, c4);
+		SetEndByte(DataBlock, lastblock);
+	}
 	uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
 	{
 		return static_cast<uint32_t>(b1) << 24 | static_cast<uint32_t>(b2) << 16 | static_cast<uint32_t>(b3) << 8 | static_cast<uint32_t>(b4);
+	}
+	uint32_t CombineDataBytes(const char c1, const char c2, const char c3, const char c4)
+	{
+		return CombineDataBytes(numeric_cast<uint8_t>(c1), numeric_cast<uint8_t>(c2), numeric_cast<uint8_t>(c3), numeric_cast<uint8_t>(c4));
 	}
 	explicit MD3BlockData(const uint32_t _data, bool lastblock = false)
 	{
@@ -193,11 +211,11 @@ public:
 		return (data & 0xFFFF);
 	}
 	// The extended address would be retrieved from the correct block with this call.
-	const uint32_t GetData() const
+	uint32_t GetData() const
 	{
 		return data;
 	}
-	const uint8_t GetEndByte() const
+	uint8_t GetEndByte() const
 	{
 		return endbyte;
 	}
@@ -205,11 +223,11 @@ public:
 	{
 		std::ostringstream oss;
 
-		oss.put(data >> 24);
-		oss.put((data >> 16) & 0x0FF);
-		oss.put((data >> 8) & 0x0FF);
-		oss.put(data & 0x0FF);
-		oss.put(endbyte);
+		oss.put(numeric_cast<char>(data >> 24));
+		oss.put(numeric_cast<char>((data >> 16) & 0x0FF));
+		oss.put(numeric_cast<char>((data >> 8) & 0x0FF));
+		oss.put(numeric_cast<char>(data & 0x0FF));
+		oss.put(numeric_cast<char>(endbyte));
 		oss.put(0x00);
 
 		return oss.str();
@@ -239,7 +257,7 @@ std::string MD3MessageAsString(const MD3Message_t& CompleteMD3Message);
 class MD3BlockFormatted: public MD3BlockData
 {
 public:
-	MD3BlockFormatted() {};
+	MD3BlockFormatted() {}
 
 	explicit MD3BlockFormatted(const MD3BlockData &parent)
 	{
@@ -262,7 +280,7 @@ public:
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert((channels & 0x0F) == channels);             // Max 4 bits;
 
-		uint32_t flags = 0;
+		uint8_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
 		flags |= HRP ? HRPBIT : 0x0000;
@@ -313,7 +331,7 @@ public:
 		flags |= RSF ? RSFBIT : 0x0000;
 		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
-		data &= ~(RSFBIT|HRPBIT|DCPBIT); // Clear the bits we are going to set.
+		data &= numeric_cast<uint32_t>(~(RSFBIT|HRPBIT|DCPBIT)); // Clear the bits we are going to set.
 		data |= flags;
 
 		endbyte &= 0xC0;         // Clear the CRC bits
@@ -355,13 +373,13 @@ public:
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert((sequencenumber & 0x0F) == sequencenumber); // Max 4 bits;
 
-		data = CombineFormattedBytes(mastertostation, StationAddress, HRER_LIST_SCAN, (sequencenumber & 0x0F) << 4 | mevbit, maximumevents);
+		data = CombineFormattedBytes(mastertostation, StationAddress, HRER_LIST_SCAN, numeric_cast<uint8_t>((sequencenumber & 0x0F) << 4 | mevbit), maximumevents);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
 	void SetEventCountandMoreEventsFlag(uint8_t events, bool moreevents )
 	{
-		data &= ~(MOREEVENTSBIT | 0x0FF); // Clear the bits we are going to set.
+		data &= numeric_cast<uint32_t>(~(MOREEVENTSBIT | 0x0FF)); // Clear the bits we are going to set.
 
 		uint32_t mevbit = moreevents ? MOREEVENTSBIT : 0;
 		data |=  mevbit | events;
@@ -388,11 +406,11 @@ public:
 		uint16_t deltasec = allmsec / 1000;
 		uint16_t msec = allmsec % 1000;
 
-		return 0x8000 | (deltasec & 0x1F) << 10 | (msec & 0x00FF);
+		return numeric_cast<uint16_t>(0x8000 | (deltasec & 0x1F) << 10 | (msec & 0x00FF));
 	}
 	static uint16_t HREREventPacket(uint8_t bitstate, uint8_t channel, uint8_t moduleaddress)
 	{
-		return static_cast<uint16_t>(bitstate) << 14 | static_cast<uint16_t>(channel) << 8 | static_cast<uint16_t>(moduleaddress);
+		return ShiftLeft(bitstate,14) | ShiftLeft(channel,8) | ShiftLeft(moduleaddress,0);
 	}
 	static uint16_t FillerPacket()
 	{
@@ -417,7 +435,7 @@ public:
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert((modulecount & 0x0F) == modulecount);       // Max 4 bits;
 
-		uint32_t flags = 0;
+		uint8_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
 		flags |= HRP ? HRPBIT : 0x0000;
@@ -435,7 +453,7 @@ public:
 	}
 	void SetModuleCount(uint8_t modulecount)
 	{
-		data &= ~(0x0F); // Clear the bits we are going to set.
+		data &= numeric_cast<uint32_t>(~(0x0F)); // Clear the bits we are going to set.
 		data |= modulecount;
 
 		endbyte &= 0xC0;         // Clear the CRC bits
@@ -461,7 +479,7 @@ public:
 		assert((digitalsequencenumber & 0x0F) == digitalsequencenumber); // Max 4 bits;
 		assert((modulecount & 0x0F) == modulecount);                     // Max 4 bits;
 
-		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_CHANGE_OF_STATE_TIME_TAGGED, taggedeventcount << 4, digitalsequencenumber << 4 | modulecount);
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_CHANGE_OF_STATE_TIME_TAGGED, numeric_cast<uint8_t>(taggedeventcount << 4), numeric_cast<uint8_t>(digitalsequencenumber << 4 | modulecount));
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -505,13 +523,13 @@ public:
 		assert((digitalsequencenumber & 0x0F) == digitalsequencenumber); // Max 4 bits;
 		assert((modulecount & 0x0F) == modulecount);                     // Max 4 bits;
 
-		uint32_t flags = 0;
+		uint8_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
 		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
-		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_CHANGE_OF_STATE_TIME_TAGGED, taggedeventcount << 4 | digitalsequencenumber, flags | modulecount);
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_CHANGE_OF_STATE_TIME_TAGGED, numeric_cast<uint8_t>(taggedeventcount << 4 | digitalsequencenumber), flags | modulecount);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -522,7 +540,7 @@ public:
 	}
 	void SetTaggedEventCount(uint8_t eventcount)
 	{
-		data &= ~(0x0F << 12); // Clear the bits we are going to set.
+		data &= numeric_cast<uint8_t>(~(0x0F << 12)); // Clear the bits we are going to set.
 		data |= static_cast<uint32_t>(eventcount) << 12;
 
 		endbyte &= 0xC0;         // Clear the CRC bits
@@ -540,7 +558,7 @@ public:
 	}
 	void SetModuleCount(uint8_t modulecount)
 	{
-		data &= ~(0x0F); // Clear the bits we are going to set.
+		data &= numeric_cast<uint32_t>(~(0x0F)); // Clear the bits we are going to set.
 		data |= modulecount;
 
 		endbyte &= 0xC0;         // Clear the CRC bits
@@ -575,7 +593,7 @@ public:
 		assert((digitalsequencenumber & 0x0F) == digitalsequencenumber); // Max 4 bits;
 		assert((modulecount & 0x0F) == modulecount);                     // Max 4 bits;
 
-		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_UNCONDITIONAL, startmoduleaddress, digitalsequencenumber << 4 | modulecount);
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_UNCONDITIONAL, startmoduleaddress, numeric_cast<uint8_t>(digitalsequencenumber << 4 | modulecount));
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -615,7 +633,7 @@ public:
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 		assert((modulecount & 0x0F) == modulecount);       // Max 4 bits;
 
-		uint32_t flags = 0;
+		uint8_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
 		flags |= HRP ? HRPBIT : 0x0000;
@@ -637,13 +655,13 @@ public:
 		assert((digitalsequencenumber & 0x0F) == digitalsequencenumber); // Max 4 bits;
 		assert((modulecount & 0x0F) == modulecount);                     // Max 4 bits;
 
-		uint32_t flags = 0;
+		uint8_t flags = 0;
 		flags |= APL ? APLBIT : 0x0000;
 		flags |= RSF ? RSFBIT : 0x0000;
 		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
-		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_NO_CHANGE_REPLY, taggedeventcount << 4 | digitalsequencenumber, flags | modulecount);
+		data = CombineFormattedBytes(mastertostation, StationAddress, DIGITAL_NO_CHANGE_REPLY, numeric_cast<uint8_t>(taggedeventcount << 4 | digitalsequencenumber), flags | modulecount);
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -700,7 +718,7 @@ public:
 		bool lastblock = true;
 		bool mastertostation = true;
 
-		uint32_t nocounterresetbit = NoCounterReset ? 0x01 : 0x0000;
+		uint8_t nocounterresetbit = NoCounterReset ? 0x01 : 0x0000;
 
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
@@ -752,7 +770,7 @@ public:
 	// The second block in the message only contains a different format of the information in the first
 	MD3BlockData GenerateSecondBlock() const
 	{
-		uint16_t lowword = 1 << (15 - GetOutputSelection());
+		uint16_t lowword = ShiftLeft(1, (15 - GetOutputSelection()));
 		uint32_t direction = GetData() & DIRECTIONBIT;
 		uint32_t seconddata = direction | static_cast<uint32_t>(~GetStationAddress() & 0x07f) << 24 | static_cast<uint32_t>(~GetModuleAddress() & 0x0FF) << 16 | static_cast<uint32_t>(lowword);
 
@@ -769,7 +787,7 @@ public:
 		if ((GetModuleAddress() & 0x0ff) != ((~SecondBlock.GetData() >> 16) & 0x0FF)) // Is the module address correct?
 			return false;
 
-		uint16_t lowword = 1 << (15 - GetOutputSelection());
+		uint16_t lowword = ShiftLeft(1, (15 - GetOutputSelection()));
 		if (lowword != SecondBlock.GetSecondWord())
 			return false;
 
@@ -861,7 +879,7 @@ public:
 	// The second block in the message only contains a different format of the information in the first
 	MD3BlockData GenerateSecondBlock(uint16_t OutputData) const
 	{
-		uint16_t hiword = static_cast<uint16_t>(~GetChannel()) << 12 | (OutputData & 0xFFF);
+		uint16_t hiword = ShiftLeft(~GetChannel(), 12) | (OutputData & 0xFFF);
 
 		uint32_t checkdata = (hiword & 0x0FF) + ((hiword >> 8) & 0x0FF);
 
@@ -912,7 +930,7 @@ public:
 		flags |= HRP ? HRPBIT : 0x0000;
 		flags |= DCP ? DCPBIT : 0x0000;
 
-		data &= ~(APLBIT | RSFBIT | HRPBIT | DCPBIT); // Clear the bits we are going to set.
+		data &= numeric_cast<uint32_t>(~(APLBIT | RSFBIT | HRPBIT | DCPBIT)); // Clear the bits we are going to set.
 		data |= flags;
 
 		data &= ~(static_cast<uint32_t>(0x0FF) << 16 | DIRECTIONBIT);                      // Clear the bits we are going to set. SJECHECK
@@ -938,7 +956,7 @@ public:
 
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
-		data = CombineFormattedBytes(mastertostation, StationAddress, SYSTEM_SIGNON_CONTROL, 0x80 | ~StationAddress, ~SYSTEM_SIGNON_CONTROL);
+		data = CombineFormattedBytes(mastertostation, StationAddress, SYSTEM_SIGNON_CONTROL, numeric_cast<uint8_t>(0x80 | ~StationAddress), numeric_cast<uint8_t>(~SYSTEM_SIGNON_CONTROL));
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -968,7 +986,7 @@ public:
 
 		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
 
-		data = CombineFormattedBytes(mastertostation, StationAddress, SYSTEM_SIGNON_CONTROL, 0x80 | ~StationAddress, ~SYSTEM_SIGNON_CONTROL);
+		data = CombineFormattedBytes(mastertostation, StationAddress, SYSTEM_SIGNON_CONTROL, numeric_cast<uint8_t>(0x80 | ~StationAddress), numeric_cast<uint8_t>(~SYSTEM_SIGNON_CONTROL));
 
 		SetEndByte(FormattedBlock, lastblock);
 	}
@@ -1092,7 +1110,7 @@ public:
 		uint32_t flags = 0;
 		flags |= SPU ? SPUBIT : 0x0000;
 		flags |= STI ? STIBIT : 0x0000;
-		data &= ~(SPUBIT | STIBIT ); // Clear the bits we are going to set.
+		data &= static_cast<uint16_t>(~(SPUBIT | STIBIT )); // Clear the bits we are going to set.
 		data |= flags;
 
 		endbyte &= 0xC0;         // Clear the CRC bits

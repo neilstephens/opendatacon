@@ -118,7 +118,7 @@ void MD3OutstationPort::Build()
 	if (pConnection == nullptr)
 	{
 		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-			std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
+				std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}
@@ -150,7 +150,7 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 // This method will be called in response to data appearing on our TCP connection.
 // Remember there can be multiple responders!
 //
-//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we don’t get stuck here.
+//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we donÂ’t get stuck here.
 
 CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
 {
@@ -218,7 +218,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		}
 		case EventType::Counter:
 		{
-			uint16_t countermeas = event->GetPayload<EventType::Counter>();
+			uint16_t countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
 			LOGDEBUG("OS - Received Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))
@@ -265,7 +265,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			if (state == ConnectState::CONNECTED)
 			{
 				LOGDEBUG("Upstream (other side of ODC) port enabled - So a Master will send us events - and we can send what we have over ODC ");
-				// We don’t know the state of the upstream data, so send event information for all points.
+				// We donÂ’t know the state of the upstream data, so send event information for all points.
 
 			}
 			else if (state == ConnectState::DISCONNECTED)
