@@ -36,7 +36,7 @@ if(USE_DNP3_SUBMODULE)
 			-DCMAKE_INSTALL_PREFIX=${DNP3_HOME}/
 			-DASIO_HOME=${ASIO_HOME}/include
 			-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-			\"-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}\"
+			-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
 		CACHE STRING "cmake options to use when building DNP3 submodule"
 	)
 	if(NOT EXISTS "${DNP3_SOURCE}/.git")
@@ -90,22 +90,11 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 	mark_as_advanced(FORCE ${component}_lib ${component}_dlib)
 
 	#include in install/packaging
-	get_filename_component(_resolvedFile "${${component}_lib}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${${component}_lib})
-		#not a link - just install file
-		install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
-	else()
-		#is a link -install link and file
-		install(FILES "${${component}_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
-	endif()
-	get_filename_component(_resolvedFile "${${component}_dlib}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${${component}_dlib})
-		#not a link - just install file
-		install(FILES "${${component}_dlib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
-	else()
-		#is a link -install link and file
-		install(FILES "${${component}_dlib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
-	endif()
+	file_w_symlinks(file_w_links "${${component}_lib}") #resolve symlinks
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
+	file_w_symlinks(file_w_links "${${component}_dlib}") #resolve symlinks
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
+
 endforeach()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
