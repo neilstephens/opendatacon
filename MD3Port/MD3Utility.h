@@ -62,13 +62,21 @@ bool MD3CRCCompare(const uint8_t crc1, const uint8_t crc2);
 
 bool iequals(const std::string& a, const std::string& b);
 
-inline uint16_t ShiftLeft( uint16_t val, uint8_t shift)
+inline uint16_t ShiftLeftResult16Bits( uint16_t val, uint8_t shift)
 {
 	return numeric_cast<uint16_t>(val << shift);
 }
-inline uint16_t ShiftLeft8( uint16_t val)
+inline uint16_t ShiftLeft8Result16Bits( uint16_t val)
 {
 	return numeric_cast<uint16_t>(val << 8);
+}
+inline uint32_t ShiftLeftResult32Bits(uint32_t val, uint8_t shift)
+{
+	return numeric_cast<uint32_t>(val << shift);
+}
+inline char ToChar(uint8_t v)
+{
+	return numeric_cast<char>(v);
 }
 
 template <class T>
@@ -155,7 +163,7 @@ public:
 	}
 	uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
 	{
-		return static_cast<uint32_t>(b1) << 24 | static_cast<uint32_t>(b2) << 16 | static_cast<uint32_t>(b3) << 8 | static_cast<uint32_t>(b4);
+		return ShiftLeftResult32Bits(b1, 24) | ShiftLeftResult32Bits(b2,16) | ShiftLeftResult32Bits(b3,8) | numeric_cast<uint32_t>(b4);
 	}
 	uint32_t CombineDataBytes(const char c1, const char c2, const char c3, const char c4)
 	{
@@ -410,7 +418,7 @@ public:
 	}
 	static uint16_t HREREventPacket(uint8_t bitstate, uint8_t channel, uint8_t moduleaddress)
 	{
-		return ShiftLeft(bitstate,14) | ShiftLeft(channel,8) | ShiftLeft(moduleaddress,0);
+		return ShiftLeftResult16Bits(bitstate,14) | ShiftLeftResult16Bits(channel,8) | ShiftLeftResult16Bits(moduleaddress,0);
 	}
 	static uint16_t FillerPacket()
 	{
@@ -540,8 +548,8 @@ public:
 	}
 	void SetTaggedEventCount(uint8_t eventcount)
 	{
-		data &= numeric_cast<uint8_t>(~(0x0F << 12)); // Clear the bits we are going to set.
-		data |= static_cast<uint32_t>(eventcount) << 12;
+		data &= numeric_cast<uint32_t>(~(0x0F << 12)); // Clear the bits we are going to set.
+		data |= ShiftLeftResult32Bits(eventcount,12);
 
 		endbyte &= 0xC0;         // Clear the CRC bits
 		endbyte |= MD3CRC(data); // Max 6 bits returned
@@ -690,8 +698,8 @@ public:
 		bool mastertostation = false;
 		uint32_t direction = mastertostation ? 0x0000 : DIRECTIONBIT;
 
-		data &= ~(static_cast<uint32_t>(0x0FF) << 16 | DIRECTIONBIT);        // Clear the bits we are going to set.
-		data |= static_cast<uint32_t>(CONTROL_REQUEST_OK) << 16 | direction; // Set the function code and direction
+		data &= ~(ShiftLeftResult32Bits(0x0FF, 16) | DIRECTIONBIT);        // Clear the bits we are going to set.
+		data |= ShiftLeftResult32Bits(CONTROL_REQUEST_OK, 16) | direction; // Set the function code and direction
 
 		// Regenerate the last byte
 		SetEndByte(FormattedBlock, lastblock);
@@ -770,9 +778,9 @@ public:
 	// The second block in the message only contains a different format of the information in the first
 	MD3BlockData GenerateSecondBlock() const
 	{
-		uint16_t lowword = ShiftLeft(1, (15 - GetOutputSelection()));
+		uint16_t lowword = ShiftLeftResult16Bits(1, (15 - GetOutputSelection()));
 		uint32_t direction = GetData() & DIRECTIONBIT;
-		uint32_t seconddata = direction | static_cast<uint32_t>(~GetStationAddress() & 0x07f) << 24 | static_cast<uint32_t>(~GetModuleAddress() & 0x0FF) << 16 | static_cast<uint32_t>(lowword);
+		uint32_t seconddata = direction | ShiftLeftResult32Bits(~GetStationAddress() & 0x07f, 24) | ShiftLeftResult32Bits(~GetModuleAddress() & 0x0FF, 16) | numeric_cast<uint32_t>(lowword);
 
 		MD3BlockData sb(seconddata, true);
 		return sb;
@@ -787,7 +795,7 @@ public:
 		if ((GetModuleAddress() & 0x0ff) != ((~SecondBlock.GetData() >> 16) & 0x0FF)) // Is the module address correct?
 			return false;
 
-		uint16_t lowword = ShiftLeft(1, (15 - GetOutputSelection()));
+		uint16_t lowword = ShiftLeftResult16Bits(1, (15 - GetOutputSelection()));
 		if (lowword != SecondBlock.GetSecondWord())
 			return false;
 
@@ -820,7 +828,7 @@ public:
 	MD3BlockData GenerateSecondBlock(uint16_t OutputData) const
 	{
 		uint32_t checkdata = (OutputData & 0x0FF) + ((OutputData >> 8) & 0x0FF);
-		uint32_t seconddata = static_cast<uint32_t>(OutputData) << 16 | checkdata << 8 | static_cast<uint32_t>(~GetStationAddress() & 0x07f);
+		uint32_t seconddata = ShiftLeftResult32Bits(OutputData, 16) | ShiftLeftResult32Bits(checkdata , 8) | numeric_cast<uint32_t>(~GetStationAddress() & 0x07f);
 		MD3BlockData sb(seconddata, true);
 		return sb;
 	}
@@ -879,11 +887,11 @@ public:
 	// The second block in the message only contains a different format of the information in the first
 	MD3BlockData GenerateSecondBlock(uint16_t OutputData) const
 	{
-		uint16_t hiword = ShiftLeft(~GetChannel(), 12) | (OutputData & 0xFFF);
+		uint16_t hiword = ShiftLeftResult16Bits(~GetChannel(), 12) | (OutputData & 0xFFF);
 
 		uint32_t checkdata = (hiword & 0x0FF) + ((hiword >> 8) & 0x0FF);
 
-		uint32_t seconddata = static_cast<uint32_t>(hiword) << 16 | checkdata << 8 | (static_cast<uint32_t>(~GetModuleAddress()) & 0x0FF);
+		uint32_t seconddata = ShiftLeftResult32Bits(hiword, 16) | ShiftLeftResult32Bits(checkdata, 8) | (numeric_cast<uint32_t>(~GetModuleAddress()) & 0x0FF);
 		MD3BlockData sb(seconddata, true);
 		return sb;
 	}
@@ -933,8 +941,8 @@ public:
 		data &= numeric_cast<uint32_t>(~(APLBIT | RSFBIT | HRPBIT | DCPBIT)); // Clear the bits we are going to set.
 		data |= flags;
 
-		data &= ~(static_cast<uint32_t>(0x0FF) << 16 | DIRECTIONBIT);                      // Clear the bits we are going to set. SJECHECK
-		data |= static_cast<uint32_t>(CONTROL_OR_SCAN_REQUEST_REJECTED) << 16 | direction; // Set the function code
+		data &= ~(ShiftLeftResult32Bits(0x0FF,16) | DIRECTIONBIT);                       // Clear the bits we are going to set. SJECHECK
+		data |= ShiftLeftResult32Bits(CONTROL_OR_SCAN_REQUEST_REJECTED, 16) | direction; // Set the function code
 
 		// Regenerate the last byte
 		SetEndByte(FormattedBlock, lastblock);
@@ -1110,7 +1118,7 @@ public:
 		uint32_t flags = 0;
 		flags |= SPU ? SPUBIT : 0x0000;
 		flags |= STI ? STIBIT : 0x0000;
-		data &= static_cast<uint16_t>(~(SPUBIT | STIBIT )); // Clear the bits we are going to set.
+		data &= numeric_cast<uint32_t>(~(SPUBIT | STIBIT )); // Clear the bits we are going to set.
 		data |= flags;
 
 		endbyte &= 0xC0;         // Clear the CRC bits

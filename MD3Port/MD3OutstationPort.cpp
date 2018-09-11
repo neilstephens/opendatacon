@@ -118,7 +118,7 @@ void MD3OutstationPort::Build()
 	if (pConnection == nullptr)
 	{
 		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-				std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
+			std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}

@@ -327,8 +327,8 @@ namespace SimpleUnitTests
 TEST_CASE("Utility - HexStringTest")
 {
 	std::string ts = "c406400f0b00"  "0000fffe9000";
-	std::string w1 = { static_cast<char>(0xc4),0x06,0x40,0x0f,0x0b,0x00 };
-	std::string w2 = { 0x00,0x00,static_cast<char>(0xff),static_cast<char>(0xfe),static_cast<char>(0x90),0x00 };
+	std::string w1 = { ToChar(0xc4),0x06,0x40,0x0f,0x0b,0x00 };
+	std::string w2 = { 0x00,0x00,ToChar(0xff),ToChar(0xfe),ToChar(0x90),0x00 };
 
 	std::string res = BuildHexStringFromASCIIHexString(ts);
 	REQUIRE(res == (w1 + w2));
@@ -1396,10 +1396,10 @@ TEST_CASE("Station - DigitalHRERFn9")
 
 	// List should be empty...so get an emtpy HRER response
 
-	REQUIRE(Response[0] == static_cast<char>(0xfc)); // 0x7C plus 0x80 for direction
-	REQUIRE(Response[1] == 0x09);                    // Fn 9
-	REQUIRE((Response[2] & 0xF0) == 0x10);           // Top 4 bits are the sequence number - will be 1
-	REQUIRE((Response[2] & 0x08) == 0);              // Bit 3 is the MEV flag
+	REQUIRE(Response[0] == ToChar(0xfc));  // 0x7C plus 0x80 for direction
+	REQUIRE(Response[1] == 0x09);          // Fn 9
+	REQUIRE((Response[2] & 0xF0) == 0x10); // Top 4 bits are the sequence number - will be 1
+	REQUIRE((Response[2] & 0x08) == 0);    // Bit 3 is the MEV flag
 	REQUIRE(Response[3] == 0);
 
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
@@ -2077,8 +2077,8 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response[0] == static_cast<char>(0xFC));
-	REQUIRE(Response[1] == static_cast<char>(0x0F)); // OK Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
 
 	// Now do again with a bodgy time.
 	output << commandblock.ToBinaryString();
@@ -2088,8 +2088,8 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response[0] == static_cast<char>(0xFC));
-	REQUIRE(Response[1] == static_cast<char>(30)); // Control/Scan Rejected Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
 
 	TestTearDown();
 }
@@ -2126,8 +2126,8 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response[0] == static_cast<char>(0xFC));
-	REQUIRE(Response[1] == static_cast<char>(0x0F)); // OK Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
 
 	// Now do again with a bodgy time.
 	output << commandblock.ToBinaryString();
@@ -2137,8 +2137,8 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response[0] == static_cast<char>(0xFC));
-	REQUIRE(Response[1] == static_cast<char>(30)); // Control/Scan Rejected Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
 
 	TestTearDown();
 }
@@ -2296,8 +2296,8 @@ TEST_CASE("Station - System Flag Scan Test")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	REQUIRE(Response[0] == static_cast<char>(0xFC));
-	REQUIRE(Response[1] == static_cast<char>(0x0F)); // OK Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
 
 	Response = "Not Set";
 
@@ -3017,8 +3017,8 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 		REQUIRE(MAResponse == TimeChangeCommand);
 
 		// Now check we have an OK packet being sent by the OutStation.
-		REQUIRE(OSResponse[0] == static_cast<char>(0xFC));
-		REQUIRE(OSResponse[1] == static_cast<char>(0x0F)); // OK Command
+		REQUIRE(OSResponse[0] == ToChar(0xFC));
+		REQUIRE(OSResponse[1] == ToChar(0x0F)); // OK Command
 		REQUIRE(OSResponse.size() == 6);
 	}
 

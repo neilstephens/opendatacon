@@ -857,7 +857,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCou
 
 		// Push the block onto the response word list
 		assert(msecoffset < 256);
-		ResponseWords.push_back(ShiftLeft8(CurrentPoint.GetModuleAddress()) | numeric_cast<uint16_t>(msecoffset));
+		ResponseWords.push_back(ShiftLeft8Result16Bits(CurrentPoint.GetModuleAddress()) | numeric_cast<uint16_t>(msecoffset));
 		ResponseWords.push_back(CurrentPoint.GetModuleBinarySnapShot());
 
 		LastPointmsec = CurrentPoint.GetChangedTime(); // Update the last changed time to match what we have just sent.
@@ -1059,8 +1059,8 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 			{
 				// Queue the error block - Fn 7, 8 and 10 format
 				uint8_t errorflags = 0; // Application dependent, depends on the outstation implementation/master expectations. We could build in functionality here
-				uint16_t lowword = ShiftLeft8(errorflags) | ModuleAddress;
-				uint16_t highword = ShiftLeft8(StationAddress);
+				uint16_t lowword = ShiftLeft8Result16Bits(errorflags) | ModuleAddress;
+				uint16_t highword = ShiftLeft8Result16Bits(StationAddress);
 				auto block = MD3BlockData(highword, lowword, false);
 				ResponseMD3Message.push_back(block);
 			}
@@ -1070,14 +1070,14 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 			if (FormatForFn11and12)
 			{
 				// For Fn11 and 12 the data format is:
-				uint16_t address = ShiftLeft8(ModuleAddress); // Low byte is msec offset - which is 0 for non time tagged data
+				uint16_t address = ShiftLeft8Result16Bits(ModuleAddress); // Low byte is msec offset - which is 0 for non time tagged data
 				auto block = MD3BlockData(address, wordres, false);
 				ResponseMD3Message.push_back(block);
 			}
 			else
 			{
 				// Queue the data block Fn 7,8 and 10
-				uint16_t address = ShiftLeft8(StationAddress) | ModuleAddress;
+				uint16_t address = ShiftLeft8Result16Bits(StationAddress) | ModuleAddress;
 				auto block = MD3BlockData(address, wordres, false);
 				ResponseMD3Message.push_back(block);
 			}
