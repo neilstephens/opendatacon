@@ -26,42 +26,45 @@ option(USE_DNP3_SUBMODULE "Use git submodule to download and build opendnp3 libr
 set(DNP3_HOME_INSTRUCTIONS "Choose the location of opendnp3: where it was installed - there should be lib and include directories within")
 if(USE_DNP3_SUBMODULE)
 	set(DNP3_SOURCE "${CMAKE_SOURCE_DIR}/submodules/dnp3")
+	set(DNP3_BUILD "${CMAKE_BINARY_DIR}/submodules/dnp3")
 	mark_as_advanced(FORCE DNP3_SOURCE)
-	set(DNP3_HOME "${DNP3_SOURCE}/build/install" CACHE PATH ${DNP3_HOME_INSTRUCTIONS} FORCE)
+	mark_as_advanced(FORCE DNP3_BUILD)
+	set(DNP3_HOME "${DNP3_BUILD}/install" CACHE PATH ${DNP3_HOME_INSTRUCTIONS} FORCE)
 	set(
 		DNP3_CMAKE_OPTS
+			-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
 			-DCMAKE_INSTALL_PREFIX=${DNP3_HOME}/
 			-DASIO_HOME=${ASIO_HOME}/include
 			-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-			\"-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}\"
+			-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
 		CACHE STRING "cmake options to use when building DNP3 submodule"
 	)
 	if(NOT EXISTS "${DNP3_SOURCE}/.git")
 		execute_process(COMMAND git submodule update --init -- submodules/dnp3
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 	endif()
-	if(NOT EXISTS "${DNP3_SOURCE}/build")
-		file(MAKE_DIRECTORY "${DNP3_SOURCE}/build")
+	if(NOT EXISTS "${DNP3_BUILD}")
+		file(MAKE_DIRECTORY "${DNP3_BUILD}")
 	endif()
 	execute_process(
 		COMMAND ${CMAKE_COMMAND} ${DNP3_CMAKE_OPTS} ${DNP3_SOURCE}
-		WORKING_DIRECTORY "${DNP3_SOURCE}/build"
+		WORKING_DIRECTORY "${DNP3_BUILD}"
 		RESULT_VARIABLE EXEC_RESULT
 	)
 	if(EXEC_RESULT)
 		message( FATAL_ERROR "Failed to run cmake for DNP3 submodule, exiting")
 	endif()
 	execute_process(
-		COMMAND ${CMAKE_COMMAND} --build ${DNP3_SOURCE}/build --target install
-		WORKING_DIRECTORY "${DNP3_SOURCE}/build"
+		COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --target install
+		WORKING_DIRECTORY "${DNP3_BUILD}"
 		RESULT_VARIABLE EXEC_RESULT
 	)
 	if(EXEC_RESULT)
 		message( FATAL_ERROR "Failed to build DNP3 submodule, exiting")
 	endif()
 	add_custom_target( build_dnp3
-		WORKING_DIRECTORY "${DNP3_SOURCE}/build"
-		COMMAND ${CMAKE_COMMAND} --build ${DNP3_SOURCE}/build --target install
+		WORKING_DIRECTORY "${DNP3_BUILD}"
+		COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --target install
 	)
 else()
 	if(DEFINED DNP3_HOME)
@@ -87,22 +90,11 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 	mark_as_advanced(FORCE ${component}_lib ${component}_dlib)
 
 	#include in install/packaging
-	get_filename_component(_resolvedFile "${${component}_lib}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${${component}_lib})
-		#not a link - just install file
-		install(FILES "${${component}_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
-	else()
-		#is a link -install link and file
-		install(FILES "${${component}_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
-	endif()
-	get_filename_component(_resolvedFile "${${component}_dlib}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${${component}_dlib})
-		#not a link - just install file
-		install(FILES "${${component}_dlib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
-	else()
-		#is a link -install link and file
-		install(FILES "${${component}_dlib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
-	endif()
+	file_w_symlinks(file_w_links "${${component}_lib}") #resolve symlinks
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
+	file_w_symlinks(file_w_links "${${component}_dlib}") #resolve symlinks
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
+
 endforeach()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})

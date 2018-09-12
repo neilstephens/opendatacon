@@ -42,14 +42,8 @@ mark_as_advanced(FORCE MODBUS_LIB)
 #include in install/packaging
 option(PACKAGE_LIBMODBUS "Package libmodbus in c-pack installer" ON)
 if(PACKAGE_LIBMODBUS)
-	get_filename_component(_resolvedFile "${MODBUS_LIB}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${MODBUS_LIB})
-		#not a link - just install file
-		install(FILES "${MODBUS_LIB}" DESTINATION ${INSTALLDIR_LIBS})
-	else()
-		#is a link -install link and file
-		install(FILES "${MODBUS_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
-	endif()
+	file_w_symlinks(file_w_links "${MODBUS_LIB}")
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS})
 endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})

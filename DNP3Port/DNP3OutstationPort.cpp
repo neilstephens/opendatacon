@@ -314,7 +314,7 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	//TODO: enquire about the possibility of the opendnp3 API having a callback for the result
 	// Or if the outstation supported Group13Var1/2 (BinaryCommandEvent), we could use that (maybe the latest opendnp3 already does...?)
 	// either one would avoid the below polling loop
-	std::atomic_bool cb_executed;
+	std::atomic_bool cb_executed(false);
 	CommandStatus cb_status;
 	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
 		{
