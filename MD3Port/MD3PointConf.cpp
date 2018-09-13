@@ -143,6 +143,11 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		OverrideOldTimeStamps = JSONRoot["OverrideOldTimeStamps"].asBool();
 		LOGDEBUG("Conf processed - OverrideOldTimeStamps - " + std::to_string(OverrideOldTimeStamps));
 	}
+	if (JSONRoot.isMember("UpdateAnalogCounterTimeStamps"))
+	{
+		OverrideOldTimeStamps = JSONRoot["UpdateAnalogCounterTimeStamps"].asBool();
+		LOGDEBUG("Conf processed - UpdateAnalogCounterTimeStamps - " + std::to_string(UpdateAnalogCounterTimeStamps));
+	}
 	if (JSONRoot.isMember("StandAloneOutstation"))
 	{
 		StandAloneOutstation = JSONRoot["StandAloneOutstation"].asBool();
@@ -251,7 +256,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 	{
 		bool error = false;
 
-		size_t start, stop;
+		uint32_t start, stop;
 		if (JSONNode[n].isMember("Index"))
 		{
 			start = stop = JSONNode[n]["Index"].asUInt();
@@ -320,10 +325,10 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 
 		if (!error)
 		{
-			for (auto index = start; index <= stop; index++)
+			for (uint32_t index = start; index <= stop; index++)
 			{
-				uint8_t moduleaddress = module + ((uint16_t)index - (uint16_t)start + offset) / 16;
-				uint8_t channel = (uint8_t)((offset + ((uint16_t)index- (uint16_t)start)) % 16);
+				uint8_t moduleaddress = static_cast<uint8_t>(module + (index - start + offset) / 16);
+				uint8_t channel = static_cast<uint8_t>((offset + (index - start)) % 16);
 
 				bool res = false;
 
@@ -417,8 +422,8 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 		{
 			for (auto index = start; index <= stop; index++)
 			{
-				uint8_t moduleaddress = module + ((uint16_t)index - (uint16_t)start + offset) / 16;
-				uint8_t channel = (uint8_t)((offset + ((uint16_t)index - (uint16_t)start)) % 16);
+				uint8_t moduleaddress = static_cast<uint8_t>(module + (index - start + offset) / 16);
+				uint8_t channel = static_cast<uint8_t>((offset + (index - start)) % 16);
 				bool res = false;
 
 				if (ptype == Analog)
@@ -449,7 +454,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 						{
 							// This will add the module address to the poll group if missing, and then we add a channel to the current count (->second field)
 							// Assume second is 0 the first time it is referenced?
-							int channels = PollGroups[pollgroup].ModuleAddresses[moduleaddress];
+							uint16_t channels = PollGroups[pollgroup].ModuleAddresses[moduleaddress];
 							PollGroups[pollgroup].ModuleAddresses[moduleaddress] = channels + 1;
 							LOGDEBUG("Added Point " + std::to_string(moduleaddress) + ", " + std::to_string(channel) + " To Poll Group " + std::to_string(pollgroup));
 

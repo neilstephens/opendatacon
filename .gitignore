@@ -9,3 +9,10 @@ CMakeLists.txt.user
 .vscode*
 
 .idea/
+DNP3Port/DNP3OutstationPort.cpp.rej
+DNP3Port/DNP3OutstationPort.h.rej
+SimPort/SimPort.cpp.rej
+MD3Port/uncrustify.cfg
+MD3Port/uncrustify_here.pl
+
+cmake-build-debug-mingw/

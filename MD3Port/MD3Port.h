@@ -54,7 +54,7 @@ public:
 	void Disable() override =0;
 	void Build() override =0;
 
-	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
 	// Public only for UnitTesting
 	virtual void SendMD3Message(const MD3Message_t& CompleteMD3Message);
@@ -76,6 +76,7 @@ protected:
 	std::shared_ptr<MD3PointConf> MyPointConf;
 
 	int Limit(int val, int max);
+	uint8_t Limit(uint8_t val, uint8_t max);
 
 	// We need to support multi-drop in both the OutStation and the Master.
 	// We have a separate OutStation or Master for each OutStation, but they could be sharing a TCP connection, then routing the traffic based on MD3 Station Address.

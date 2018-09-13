@@ -29,7 +29,6 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include <opendnp3/LogLevels.h>
 
 #include "MD3.h"
 #include "MD3Utility.h"
@@ -44,16 +43,11 @@ MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_s
 	bool aisServer,                                  //Whether to act as a server or client
 	const std::string& aEndPoint,                    //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                        //Port to connect to if client, or listen on if server
-	const MD3Port *OutStationPortInstance,           // Messy, just used so we can access pLogger
-	bool aauto_reopen,                               //Keeps the socket open (retry on error), unless you explicitly Close() it
-	uint16_t aretry_time_ms):
+	uint16_t retry_time_ms):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort),
-	isServer(aisServer),
-	pParentPort(OutStationPortInstance),
-	auto_reopen(aauto_reopen),
-	retry_time_ms(aretry_time_ms)
+	isServer(aisServer)
 {
 	pSockMan.reset(new TCPSocketManager<std::string>
 			(pIOS, isServer, EndPoint, Port,
@@ -99,7 +93,6 @@ void MD3Connection::RemoveMaster(uint8_t TargetStationAddress)
 // Two static methods to manage the map of connections. Can only have one for an address/port combination.
 // To be able to shut this down cleanly, I need to maintain a reference count, when the last one lets go, we can free the pSockMan  object.
 // The port will be closed, so do we really have to worry?
-//TODO: SJE Free pSockMan in MD3Connection class in destructor? The static list will have a reference to the shared_ptr...
 std::shared_ptr<MD3Connection> MD3Connection::GetConnection(std::string ChannelID)
 {
 	// Check if the entry exists without adding to the map..
@@ -167,9 +160,9 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 	while (readbuf.size() >= MD3BlockArraySize)
 	{
 		MD3BlockArray d;
-		for (int i = 0; i < MD3BlockArraySize; i++)
+		for (size_t i = 0; i < MD3BlockArraySize; i++)
 		{
-			d[i] = readbuf.sgetc();
+			d[i] = static_cast<uint8_t>(readbuf.sgetc());
 			readbuf.consume(1);
 		}
 
@@ -215,7 +208,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 	// Check for and consume any not 6 byte block data - should never happen...
 	if (readbuf.size() > 0)
 	{
-		int bytesleft = readbuf.size();
+		size_t bytesleft = readbuf.size();
 		LOGDEBUG("Had data left over after reading blocks - " + std::to_string(bytesleft) + " bytes");
 		readbuf.consume(readbuf.size());
 	}
@@ -226,7 +219,7 @@ void MD3Connection::RouteMD3Message(MD3Message_t &CompleteMD3Message)
 	// We have a full set of MD3 message blocks from a minimum of 1.
 	assert(CompleteMD3Message.size() != 0);
 
-	uint8_t StationAddress = ((MD3BlockFormatted)CompleteMD3Message[0]).GetStationAddress();
+	uint8_t StationAddress = MD3BlockFormatted(CompleteMD3Message[0]).GetStationAddress();
 
 	if (StationAddress == 0)
 	{

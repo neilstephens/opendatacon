@@ -89,16 +89,15 @@ public:
 		std::unique_lock<std::mutex> lck(Mut);
 		return Queue.empty();
 	}
-
-	bool IsFull()
-	{
-		std::unique_lock<std::mutex> lck(Mut);
-		return (Queue.size >= Size);
-	}
 	int Size()
 	{
 		std::unique_lock<std::mutex> lck(Mut);
 		return Queue.size();
+	}
+	bool IsFull()
+	{
+		std::unique_lock<std::mutex> lck(Mut);
+		return (Queue.size >= MaxSize);
 	}
 };
 #endif

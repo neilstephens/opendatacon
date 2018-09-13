@@ -34,8 +34,6 @@
 #include <chrono>
 
 #include <opendatacon/IOTypes.h>
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendnp3/gen/ControlCode.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 
@@ -89,21 +87,22 @@ public:
 
 	// Time Set Point Configuration - this is a "special" point that is used to pass the time set command through ODC.
 	//TODO: double does not pass uint64_t through for time pass through commands - find another way...
-	std::pair<double, uint32_t> TimeSetPoint = std::make_pair(double(0), (uint32_t)0);
+	std::pair<double, uint32_t> TimeSetPoint = std::make_pair(double(0), uint32_t(0));
 	// Same as above but for Fn44 - don't pass UTC offset through. Get that from the machine running ODC
-	std::pair<double, uint32_t> TimeSetPointNew = std::make_pair(double(0), (uint32_t)0);
+	std::pair<double, uint32_t> TimeSetPointNew = std::make_pair(double(0), uint32_t(0));
 
 	// System Sign On Configuration - this is a "special" point that is used to pass the systemsignon command through ODC.
-	std::pair<int32_t, uint32_t> SystemSignOnPoint = std::make_pair(int32_t(0),(uint32_t)0);
-	std::pair<int32_t, uint32_t> FreezeResetCountersPoint = std::make_pair(int32_t(0), (uint32_t)0);
-	std::pair<int32_t, uint32_t> POMControlPoint = std::make_pair(int32_t(0), (uint32_t)0);
-	std::pair<int32_t, uint32_t> DOMControlPoint = std::make_pair(int32_t(0), (uint32_t)0);
+	std::pair<int32_t, uint32_t> SystemSignOnPoint = std::make_pair(int32_t(0),uint32_t(0));
+	std::pair<int32_t, uint32_t> FreezeResetCountersPoint = std::make_pair(int32_t(0), uint32_t(0));
+	std::pair<int32_t, uint32_t> POMControlPoint = std::make_pair(int32_t(0), uint32_t(0));
+	std::pair<int32_t, uint32_t> DOMControlPoint = std::make_pair(int32_t(0), uint32_t(0));
 
 	// Use the OLD Digital Commands 7/8 or the NEW ones 9/10/11/12
 	bool NewDigitalCommands = true;
 
 	// Checks if the point time is within 30 minutes of current time from a Binary event. If it is outside this window, sets the event time to the current time.
 	bool OverrideOldTimeStamps = false;
+	bool UpdateAnalogCounterTimeStamps = false; // Every time we get a no change message back, update the current timestamp on the point table - so the timestamp becomes last valid time.
 
 	// If true, the outstation will send responses on the TCP connection without waiting for ODC responses.
 	bool StandAloneOutstation = false;

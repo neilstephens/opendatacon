@@ -29,7 +29,6 @@
 
 #include <queue>
 #include <utility>
-#include <opendnp3/master/ISOEHandler.h>
 #include <opendatacon/ASIOScheduler.h>
 
 #include "MD3.h"
@@ -51,7 +50,7 @@ public:
 	MasterCommandQueueItem CurrentCommand; // Keep a copy of what has been sent to make retries easier.
 	uint8_t CurrentFunctionCode = 0;       // When we send a command, make sure the response we get is one we are waiting for.
 	bool ProcessingMD3Command = false;
-	std::chrono::milliseconds TimerExpireTime;
+	std::chrono::milliseconds TimerExpireTime = std::chrono::milliseconds(0);
 	pTimer_t CurrentCommandTimeoutTimer = nullptr;
 	uint32_t RetriesLeft = 0; // Decrementing counter for retries, if we get to zero move on to the next command.
 };
@@ -59,7 +58,7 @@ public:
 class MD3MasterPort: public MD3Port
 {
 public:
-	MD3MasterPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	MD3MasterPort(const std::string &aName, const std::string &aConfFilename, const Json::Value &aConfOverrides);
 	~MD3MasterPort() override;
 
 	void Enable() override;
@@ -72,12 +71,12 @@ public:
 	void SetAllPointsQualityToCommsLost();
 	void SendAllPointEvents();
 
-	void Event(std::shared_ptr<const EventInfo> event, const std::string & SenderName, SharedStatusCallback_t pStatusCallback);
-	void WriteObject(const ControlRelayOutputBlock & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
-	void WriteObject(const int16_t & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
-	void WriteObject(const int32_t & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
-	void WriteObject(const float & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
-	void WriteObject(const double & command, const uint16_t & index, const SharedStatusCallback_t & pStatusCallback);
+	void Event(std::shared_ptr<const EventInfo> event, const std::string & SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void WriteObject(const ControlRelayOutputBlock & command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
+	void WriteObject(const int16_t & command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
+	void WriteObject(const int32_t & command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
+	void WriteObject(const float& command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
+	void WriteObject(const double& command, const uint32_t & index, const SharedStatusCallback_t& pStatusCallback);
 
 	// We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
 	// There is a time out lambda in UnprotectedSendNextMasterCommand which will queue the next command if we timeout.
@@ -95,7 +94,7 @@ public:
 	void DoPoll(uint32_t pollgroup);
 
 	void ResetDigitalCommandSequenceNumber();
-	int GetAndIncrementDigitalCommandSequenceNumber(); // Thread protected
+	uint8_t GetAndIncrementDigitalCommandSequenceNumber(); // Thread protected
 
 	void EnablePolling(bool on); // Enabled by default
 
@@ -108,14 +107,14 @@ public:
 	void SendAOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & Channel, const uint16_t & value, const SharedStatusCallback_t & pStatusCallback);
 
 	// Testing use only
-	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); };
+	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 private:
 
 	std::unique_ptr<asio::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
 
 	std::mutex DigitalCommandSequenceNumberMutex;
-	int DigitalCommandSequenceNumber = 0; // Used only by the digital commands to manage resends/retries. 0 for power on - connect/reconnect. Will vary from 1 to 15 normally.
+	uint8_t DigitalCommandSequenceNumber = 0; // Used only by the digital commands to manage resends/retries. 0 for power on - connect/reconnect. Will vary from 1 to 15 normally.
 
 	void SendNextMasterCommand();
 	void UnprotectedSendNextMasterCommand(bool timeoutoccured);

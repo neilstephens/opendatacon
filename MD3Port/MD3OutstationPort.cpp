@@ -118,7 +118,7 @@ void MD3OutstationPort::Build()
 	if (pConnection == nullptr)
 	{
 		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-			std::to_string(MyConf->mAddrConf.Port), this, true, MyConf->TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
+			std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}
@@ -150,7 +150,7 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 // This method will be called in response to data appearing on our TCP connection.
 // Remember there can be multiple responders!
 //
-//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we don’t get stuck here.
+//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we donÂ’t get stuck here.
 
 CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
 {
@@ -165,7 +165,7 @@ CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool 
 	}
 
 	//NEIL: enquire about the possibility of the opendnp3 API having a callback for the result that would avoid the below polling loop
-	std::atomic_bool cb_executed = false;
+	std::atomic_bool cb_executed(false);
 	CommandStatus cb_status;
 	auto StatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([&](CommandStatus status)
 		{
@@ -200,14 +200,13 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		return (*pStatusCallback)(CommandStatus::UNDEFINED);
 	}
 
-	auto event_type = event->GetEventType();
 	size_t ODCIndex = event->GetIndex();
 
 	switch (event->GetEventType())
 	{
 		case EventType::Analog:
 		{
-			uint16_t analogmeas = (uint16_t)event->GetPayload<EventType::Analog>();
+			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
 			LOGDEBUG("OS - Received Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
@@ -219,7 +218,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		}
 		case EventType::Counter:
 		{
-			uint16_t countermeas = event->GetPayload<EventType::Counter>();
+			uint16_t countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
 			LOGDEBUG("OS - Received Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))
@@ -241,7 +240,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			// Check that the passed time is within 30 minutes of the actual time, if not use the current time
 			if (MyPointConf->OverrideOldTimeStamps)
 			{
-				if (abs((int64_t)(now / 1000) - (int64_t)(eventtime / 1000)) < 60 * 30)
+				if (abs(static_cast<int64_t>(now / 1000) - static_cast<int64_t>(eventtime / 1000)) < 60 * 30)
 				{
 					eventtime = now; // msec since epoch.
 					LOGDEBUG("Binary time tag value is too far from current time (>30min) changing to current time. Point index " + std::to_string(ODCIndex));
@@ -266,7 +265,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			if (state == ConnectState::CONNECTED)
 			{
 				LOGDEBUG("Upstream (other side of ODC) port enabled - So a Master will send us events - and we can send what we have over ODC ");
-				// We don’t know the state of the upstream data, so send event information for all points.
+				// We donÂ’t know the state of the upstream data, so send event information for all points.
 
 			}
 			else if (state == ConnectState::DISCONNECTED)
@@ -281,7 +280,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, (uint16_t)0x8000))
+				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
 				{
 					LOGERROR("Tried to set the failure value for an invalid analog point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
@@ -293,7 +292,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, (uint16_t)0x8000))
+				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
 				{
 					LOGERROR("Tried to set the failure value for an invalid counter point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);

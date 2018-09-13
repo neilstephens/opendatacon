@@ -45,7 +45,7 @@ class OutstationSystemFlags
 	// A change in any will set the RSF bit in ANY scan/control replies. So we maintain a separate RSF bit in the structure, which will be reset on a flag scan.
 
 public:
-	bool GetRemoteStatusChangeFlag() { return RSF; };
+	bool GetRemoteStatusChangeFlag() { return RSF; }
 
 	// This is calculated by checking the digital bit changed flag, using a method registered with us
 	bool GetDigitalChangedFlag()
@@ -55,7 +55,7 @@ public:
 
 		LOGERROR("GetDigitalChangedFlag called without a handler being registered");
 		return false;
-	};
+	}
 
 	// This is calculated by checking the timetagged data queues, using a method registered with us
 	bool GetTimeTaggedDataAvailableFlag()
@@ -65,16 +65,16 @@ public:
 
 		LOGERROR("GetTimeTaggedDataAvailableFlag called without a handler being registered");
 		return false;
-	};
+	}
 
-	bool GetSystemPoweredUpFlag() { return SPU; };
-	bool GetSystemTimeIncorrectFlag() { return STI; };
+	bool GetSystemPoweredUpFlag() { return SPU; }
+	bool GetSystemTimeIncorrectFlag() { return STI; }
 
-	void FlagScanPacketSent() { SPU = false; RSF = false; };
-	void TimePacketReceived() { STI = false; };
+	void FlagScanPacketSent() { SPU = false; RSF = false; }
+	void TimePacketReceived() { STI = false; }
 
-	void SetDigitalChangedFlagCalculationMethod(std::function<bool(void)> Calc) { DCPCalc = Calc; };
-	void SetTimeTaggedDataAvailableFlagCalculationMethod(std::function<bool(void)> Calc) { HRPCalc = Calc; };
+	void SetDigitalChangedFlagCalculationMethod(std::function<bool(void)> Calc) { DCPCalc = Calc; }
+	void SetTimeTaggedDataAvailableFlagCalculationMethod(std::function<bool(void)> Calc) { HRPCalc = Calc; }
 
 private:
 	bool RSF = true;                             // All true on start up...
@@ -110,8 +110,8 @@ public:
 	void DoCounterScan(MD3BlockFormatted & Header);
 	void DoAnalogDeltaScan(MD3BlockFormatted &Header);
 
-	void ReadAnalogOrCounterRange(int ModuleAddress, int Channels, MD3OutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues);
-	void GetAnalogModuleValues(AnalogCounterModuleType IsCounterOrAnalog, int Channels, int ModuleAddress, MD3OutstationPort::AnalogChangeType & ResponseType, std::vector<uint16_t>& AnalogValues, std::vector<int>& AnalogDeltaValues);
+	void ReadAnalogOrCounterRange(uint8_t ModuleAddress, uint8_t Channels, MD3OutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues);
+	void GetAnalogModuleValues(AnalogCounterModuleType IsCounterOrAnalog, uint8_t Channels, uint8_t ModuleAddress, MD3OutstationPort::AnalogChangeType & ResponseType, std::vector<uint16_t>& AnalogValues, std::vector<int>& AnalogDeltaValues);
 	void SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE functioncode, std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 	void SendAnalogDelta(std::vector<int> Deltas, uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
 	void SendAnalogNoChange(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t Channels);
@@ -121,20 +121,18 @@ public:
 	void MarkAllBinaryPointsAsChanged();
 	void DoDigitalChangeOnly(MD3BlockFormatted & Header);                       // Fn 8
 	void DoDigitalHRER(MD3BlockFn9 & Header, MD3Message_t& CompleteMD3Message); // Fn 9
-	void Fn9AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
+	void Fn9AddTimeTaggedDataToResponseWords(uint8_t MaxEventCount, uint8_t & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalCOSScan(MD3BlockFn10 & Header);               // Fn 10
 	void DoDigitalUnconditionalObs(MD3BlockFormatted & Header); // Fn 11
-	void Fn11AddTimeTaggedDataToResponseWords(int MaxEventCount, int & EventCount, std::vector<uint16_t>& ResponseWords);
+	void Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCount, uint8_t & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalUnconditional(MD3BlockFn12MtoS & Header); // Fn 12
 
-	void MarkAllBinaryBlocksAsChanged();
-
-	int CountBinaryBlocksWithChanges();
-	int CountBinaryBlocksWithChangesGivenRange(int NumberOfDataBlocks, int StartModuleAddress);
-	void BuildListOfModuleAddressesWithChanges(int NumberOfDataBlocks, int StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
-	void BuildBinaryReturnBlocks(int NumberOfDataBlocks, int StartModuleAddress, int StationAddress, bool forcesend, MD3Message_t &ResponseMD3Message);
-	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, int MaxNumberOfDataBlocks, int StationAddress, bool FormatForFn11and12, MD3Message_t& ResponseMD3Message);
-	void BuildListOfModuleAddressesWithChanges(int StartModuleAddress, std::vector<uint8_t> &ModuleList);
+	uint8_t CountBinaryBlocksWithChanges();
+	uint8_t CountBinaryBlocksWithChangesGivenRange(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress);
+	void BuildListOfModuleAddressesWithChanges(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
+	void BuildBinaryReturnBlocks(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress, uint8_t StationAddress, bool forcesend, MD3Message_t &ResponseMD3Message);
+	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, uint8_t MaxNumberOfDataBlocks, uint8_t StationAddress, bool FormatForFn11and12, MD3Message_t& ResponseMD3Message);
+	void BuildListOfModuleAddressesWithChanges(uint8_t StartModuleAddress, std::vector<uint8_t> &ModuleList);
 
 	void DoFreezeResetCounters(MD3BlockFn16MtoS & Header);
 	void DoPOMControl(MD3BlockFn17MtoS & Header, MD3Message_t& CompleteMD3Message);
@@ -150,7 +148,7 @@ public:
 	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
 
 	// Testing use only
-	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); };
+	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 private:
 
 	bool DigitalChangedFlagCalculationMethod(void);
@@ -160,8 +158,8 @@ private:
 
 	void SocketStateHandler(bool state);
 
-	int LastHRERSequenceNumber = 100;      // Used to remember the last HRER scan we sent, starts with an invalid value
-	int LastDigitalScanSequenceNumber = 0; // Used to remember the last digital scan we had
+	uint8_t LastHRERSequenceNumber = 100;      // Used to remember the last HRER scan we sent, starts with an invalid value
+	uint8_t LastDigitalScanSequenceNumber = 0; // Used to remember the last digital scan we had
 	MD3Message_t LastDigitialScanResponseMD3Message;
 	MD3Message_t LastDigitialHRERResponseMD3Message;
 };

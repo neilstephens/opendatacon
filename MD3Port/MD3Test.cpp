@@ -24,13 +24,18 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
+// Disable excessing data on stack warning for the test file only.
+#pragma warning(disable: 6262)
+
 #include <array>
 #include <fstream>
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
-#include <trompeloeil.hpp>
+// #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 
+#ifdef WIN32
 #include <spdlog/sinks/wincolor_sink.h>
 #include <spdlog/sinks/windebug_sink.h>
+#endif
 
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
@@ -40,6 +45,19 @@
 #include "MD3Test.h"
 
 #define SUITE(name) "MD3Tests - " name
+
+// To remove GCC warnings
+namespace RTUConnectedTests
+{
+extern const char *md3masterconffile;
+}
+
+extern const char *conffilename1;
+extern const char *conffilename2;
+extern const char *conffile1;
+extern const char *conffile2;
+extern std::vector<spdlog::sink_ptr> LogSinks;
+
 
 const char *conffilename1 = "MD3Config.conf";
 const char *conffilename2 = "MD3Config2.conf";
@@ -232,13 +250,13 @@ std::string BuildHexStringFromASCIIHexString(const std::string &as)
 	for (uint32_t i = 0; i < (as.size() / 2); i++)
 	{
 		auto hexpair = as.substr(i * 2, 2);
-		res[i] = (uint8_t)std::stol(hexpair, nullptr, 16);
+		res[i] = static_cast<char>(std::stol(hexpair, nullptr, 16));
 	}
 	return res;
 }
 void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
 {
-	// We don’t have to consider the timer going out of scope in this use case.
+	// We don\92t have to consider the timer going out of scope in this use case.
 	Timer_t timer(IOS);
 	timer.expires_from_now(std::chrono::seconds(seconds));
 	timer.async_wait([&IOS](asio::error_code err_code) // [=] all autos by copy, [&] all autos by ref
@@ -309,8 +327,8 @@ namespace SimpleUnitTests
 TEST_CASE("Utility - HexStringTest")
 {
 	std::string ts = "c406400f0b00"  "0000fffe9000";
-	std::string w1 = { (char)0xc4,0x06,0x40,0x0f,0x0b,0x00 };
-	std::string w2 = { 0x00,0x00,(char)0xff,(char)0xfe,(char)0x90,0x00 };
+	std::string w1 = { ToChar(0xc4),0x06,0x40,0x0f,0x0b,0x00 };
+	std::string w2 = { 0x00,0x00,ToChar(0xff),ToChar(0xfe),ToChar(0x90),0x00 };
 
 	std::string res = BuildHexStringFromASCIIHexString(ts);
 	REQUIRE(res == (w1 + w2));
@@ -319,7 +337,7 @@ TEST_CASE("Utility - HexStringTest")
 TEST_CASE("Utility - MD3CRCTest")
 {
 	// The first 4 are all formatted first and only packets
-	uint32_t res = MD3CRC(0x7C05200F);
+	uint8_t res = MD3CRC(0x7C05200F);
 	REQUIRE(MD3CRCCompare(res, 0x52));
 
 	res = MD3CRC(0x910d400f);
@@ -651,8 +669,9 @@ TEST_CASE("MD3Block - ClassConstructor5")
 {
 	uint32_t data = 0x32F1F203;
 	bool lastblock = true;
+	uint8_t bc[] = {0x32, 0xF1, 0xf2, 0x03};
 
-	MD3BlockData b(0x32, 0xF1, 0xf2, 0x03, lastblock);
+	MD3BlockData b(bc[0],bc[1],bc[2],bc[3], lastblock);
 
 	REQUIRE(b.GetData() == data);
 	REQUIRE(b.GetByte(0) == 0x32);
@@ -738,7 +757,7 @@ TEST_CASE("MD3Block - Fn14")
 	REQUIRE(b14.CheckSumPasses());
 
 	// Old style no change response constructor - contains a module address (0x70) and # of modules 0x0E
-	MD3BlockFn14StoM b14a(0x25, 0x70, (uint8_t)0x0E);
+	MD3BlockFn14StoM b14a(0x25, 0x70, static_cast<uint8_t>(0x0E));
 	REQUIRE(b14a.IsMasterToStationMessage() == false);
 	REQUIRE(b14a.GetStationAddress() == 0x25);
 	REQUIRE(b14a.GetModuleAddress() == 0x70);
@@ -874,7 +893,7 @@ TEST_CASE("MD3Block - Fn43")
 	MD3BlockData b43_b2("5ad6b5b4d900");
 	REQUIRE(b43_b2.CheckSumPasses());
 
-	MD3Time timebase = (uint64_t)b43_b2.GetData() * 1000 + b43_t1.GetMilliseconds(); //MD3Time msec since Epoch.
+	MD3Time timebase = static_cast<uint64_t>(b43_b2.GetData()) * 1000 + b43_t1.GetMilliseconds(); //MD3Time msec since Epoch.
 	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
 
 	TestTearDown();
@@ -889,7 +908,7 @@ TEST_CASE("MD3Block - Fn44")
 	// Epoch Time : 1524021087.532344000 seconds
 	TestSetup(false);
 
-	MD3Time timebase = (uint64_t)(0x5ad6b75f) * 1000 + (0x252 & 0x03FF); //MD3Time msec since Epoch.
+	MD3Time timebase = static_cast<uint64_t>(0x5ad6b75f) * 1000 + (0x252 & 0x03FF); //MD3Time msec since Epoch.
 	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
 
 	MD3BlockFn44MtoS b44(0x38, 999);
@@ -911,7 +930,7 @@ TEST_CASE("MD3Block - Fn44")
 	REQUIRE(b44_b3.CheckSumPasses());
 
 	int UTCOffset = b44_b3.GetFirstWord();
-	timebase = (uint64_t)b44_b2.GetData() * 1000 + b44_t1.GetMilliseconds(); //MD3Time msec since Epoch.
+	timebase = static_cast<uint64_t>(b44_b2.GetData()) * 1000 + b44_t1.GetMilliseconds(); //MD3Time msec since Epoch.
 	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase)+ " UTC Offset Minutes "+std::to_string(UTCOffset));
 	TestTearDown();
 }
@@ -1126,7 +1145,7 @@ TEST_CASE("Station - CounterScanFn30")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+		event->SetPayload<EventType::Counter>(std::move(numeric_cast<uint16_t>(4096 + ODCIndex + ODCIndex * 0x100)));
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1358,7 +1377,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	// Tests time tagged change response Fn 9
 	STANDARD_TEST_SETUP();
 	Json::Value portoverride;
-	portoverride["NewDigitalCommands"] = (Json::UInt)0;
+	portoverride["NewDigitalCommands"] = static_cast<Json::UInt>(0);
 	TEST_MD3OSPort(portoverride);
 	MD3OSPort->Enable();
 
@@ -1377,7 +1396,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 
 	// List should be empty...so get an emtpy HRER response
 
-	REQUIRE(Response[0] == (char)0xfc);    // 0x7C plus 0x80 for direction
+	REQUIRE(Response[0] == ToChar(0xfc));  // 0x7C plus 0x80 for direction
 	REQUIRE(Response[1] == 0x09);          // Fn 9
 	REQUIRE((Response[2] & 0xF0) == 0x10); // Top 4 bits are the sequence number - will be 1
 	REQUIRE((Response[2] & 0x08) == 0);    // Bit 3 is the MEV flag
@@ -1410,8 +1429,8 @@ TEST_CASE("Station - DigitalHRERFn9")
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	//TODO: Fn9 Test - Will have a set of blocks containing 10 change records. Need to decode to test as the times will vary by run.
-	//TODO: Need to write the master station decode - code for this in order to be able to check it. The message is going to change each time
+	// Fn9 Test - Will have a set of blocks containing 10 change records. Need to decode to test as the times will vary by run.
+	// Need to write the master station decode - code for this in order to be able to check it. The message is going to change each time
 
 	REQUIRE(Response[2] == 0x28); // Seq 3, MEV == 1
 	REQUIRE(Response[3] == 10);
@@ -1454,7 +1473,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	MD3Time changedtime = MD3Now();
 
 	MD3BinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true, changedtime);
-	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, (MD3Time)(changedtime + 32000));
+	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, static_cast<MD3Time>(changedtime + 32000));
 	MD3OSPort->GetPointTable()->AddToDigitalEvents(pt1);
 	MD3OSPort->GetPointTable()->AddToDigitalEvents(pt2);
 
@@ -1482,7 +1501,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	output << commandblock.ToBinaryString();
 
 	uint64_t currenttime = MD3Now();
-	MD3BlockData datablock((uint32_t)(currenttime / 1000), true );
+	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000), true );
 	output << datablock.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1497,7 +1516,7 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 	// Tests change response Fn 10
 	STANDARD_TEST_SETUP();
 	Json::Value portoverride;
-	portoverride["NewDigitalCommands"] = (Json::UInt)0;
+	portoverride["NewDigitalCommands"] = static_cast<Json::UInt>(0);
 	TEST_MD3OSPort(portoverride);
 
 	MD3OSPort->Enable();
@@ -1562,7 +1581,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	MD3OSPort->Enable();
 
-	MD3Time changedtime = (MD3Time)0x0000016338b6d4fb; // A value around June 2018
+	MD3Time changedtime = static_cast<MD3Time>(0x0000016338b6d4fb); // A value around June 2018
 
 	// Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on start up to send all data, 15 modules returned
 
@@ -1614,7 +1633,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
 	{
-		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "TestHarness", QualityFlags::ONLINE, (msSinceEpoch_t)changedtime);
+		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "TestHarness", QualityFlags::ONLINE, static_cast<MD3Time>(changedtime));
 		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
@@ -1648,7 +1667,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	BlockString = Response.substr(12, 6);
 	RBlock = MD3BlockData(BlockString);
 
-	MD3Time timebase = (uint64_t)RBlock.GetData() * 1000; //MD3Time msec since Epoch.
+	MD3Time timebase = static_cast<uint64_t>(RBlock.GetData()) * 1000; //MD3Time msec since Epoch.
 	LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
 	REQUIRE(timebase == 0x0000016338b6d400);
 
@@ -1682,8 +1701,8 @@ TEST_CASE("Station - DigitalCOSFn11")
 	// Cheat and write directly to the DCOS queue
 
 	MD3BinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true,  changedtime);
-	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, (MD3Time)(changedtime + 256));
-	MD3BinaryPoint pt3(3, 34, 3, 0, TIMETAGGEDINPUT, 1, true, (MD3Time)(changedtime + 0x20000)); // Time gap too big, will require another Master request
+	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, static_cast<MD3Time>(changedtime + 256));
+	MD3BinaryPoint pt3(3, 34, 3, 0, TIMETAGGEDINPUT, 1, true, static_cast<MD3Time>(changedtime + 0x20000)); // Time gap too big, will require another Master request
 	MD3OSPort->GetPointTable()->AddToDigitalEvents(pt1);
 	MD3OSPort->GetPointTable()->AddToDigitalEvents(pt2);
 	MD3OSPort->GetPointTable()->AddToDigitalEvents(pt3);
@@ -1851,7 +1870,7 @@ TEST_CASE("Station - POMControlFn17")
 	//---------------------------
 	// Now do again with a bodgy second block.
 	output << commandblock.ToBinaryString();
-	MD3BlockData datablock2(1000, true); // Nonsensical block
+	MD3BlockData datablock2(static_cast<uint32_t>(1000), true); // Nonsensical block
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1922,7 +1941,7 @@ TEST_CASE("Station - DOMControlFn19")
 	//---------------------------
 	// Now do again with a bodgy second block.
 	output << commandblock.ToBinaryString();
-	MD3BlockData datablock2(1000, true); // Non nonsensical block
+	MD3BlockData datablock2(static_cast<uint32_t>(1000), true); // Non nonsensical block
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1978,7 +1997,7 @@ TEST_CASE("Station - AOMControlFn23")
 	//---------------------------
 	// Now do again with a bodgy second block.
 	output << commandblock.ToBinaryString();
-	MD3BlockData datablock2(1000, true); // Non nonsensical block
+	MD3BlockData datablock2(static_cast<uint32_t>(1000), true); // Non nonsensical block
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2008,7 +2027,6 @@ TEST_CASE("Station - SystemsSignOnFn40")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = MD3Now();
 
 	// System SignOn Command, Station 0 - the slave responds with the address set correctly (i.e. if originally 0, change to match the station address - where it is asked to identify itself.
 	MD3BlockFn40MtoS commandblock(0);
@@ -2048,7 +2066,7 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	std::ostream output(&write_buffer);
 	output << commandblock.ToBinaryString();
 
-	MD3BlockData datablock((uint32_t)(currenttime / 1000),true);
+	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000),true);
 	output << datablock.ToBinaryString();
 
 	// Hook the output function with a lambda
@@ -2059,19 +2077,19 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response[0] == (char)0xFC);
-	REQUIRE(Response[1] == (char)0x0F); // OK Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
 
 	// Now do again with a bodgy time.
 	output << commandblock.ToBinaryString();
-	MD3BlockData datablock2(1000, true); // Nonsensical time
+	MD3BlockData datablock2(static_cast<uint32_t>(1000), true); // Nonsensical time
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response[0] == (char)0xFC);
-	REQUIRE(Response[1] == (char)30); // Control/Scan Rejected Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
 
 	TestTearDown();
 }
@@ -2093,11 +2111,11 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	std::ostream output(&write_buffer);
 	output << commandblock.ToBinaryString();
 
-	MD3BlockData datablock((uint32_t)(currenttime / 1000));
+	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000));
 	output << datablock.ToBinaryString();
 
 	int UTCOffsetMinutes = -600;
-	MD3BlockData datablock2((uint32_t)(UTCOffsetMinutes<<16), true);
+	MD3BlockData datablock2(static_cast<uint32_t>(UTCOffsetMinutes<<16), true);
 	output << datablock2.ToBinaryString();
 
 	// Hook the output function with a lambda
@@ -2108,19 +2126,19 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response[0] == (char)0xFC);
-	REQUIRE(Response[1] == (char)0x0F); // OK Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
 
 	// Now do again with a bodgy time.
 	output << commandblock.ToBinaryString();
-	datablock2 = MD3BlockData(1000, true); // Nonsensical time
+	datablock2 = MD3BlockData(static_cast<uint32_t>(1000), true); // Nonsensical time
 	output << datablock2.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response[0] == (char)0xFC);
-	REQUIRE(Response[1] == (char)30); // Control/Scan Rejected Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
 
 	TestTearDown();
 }
@@ -2142,12 +2160,12 @@ TEST_CASE("Station - Multi-drop TCP Test")
 	ProducerConsumerQueue<std::string> Response;
 	auto ResponseCallback = [&](buf_t& readbuf)
 					{
-						int bufsize = readbuf.size();
+						size_t bufsize = readbuf.size();
 						std::string S(bufsize, 0);
 
-						for (int i = 0; i < bufsize; i++)
+						for (size_t i = 0; i < bufsize; i++)
 						{
-							S[i] = readbuf.sgetc();
+							S[i] = static_cast<char>(readbuf.sgetc());
 							readbuf.consume(1);
 						}
 						Response.Push(S); // Store so we can check
@@ -2273,13 +2291,13 @@ TEST_CASE("Station - System Flag Scan Test")
 	// Now send a time command, so the STI flag is cleared.
 	MD3BlockFn43MtoS timecommandblock(0x7C, currenttime % 1000);
 	output << timecommandblock.ToBinaryString();
-	MD3BlockData datablock((uint32_t)(currenttime / 1000), true);
+	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000), true);
 	output << datablock.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	REQUIRE(Response[0] == (char)0xFC);
-	REQUIRE(Response[1] == (char)0x0F); // OK Command
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
 
 	Response = "Not Set";
 
@@ -2316,7 +2334,7 @@ TEST_CASE("Master - Analog")
 	TEST_MD3MAPort(Json::nullValue);
 
 	Json::Value portoverride;
-	portoverride["Port"] = (Json::UInt64)1001;
+	portoverride["Port"] = static_cast<Json::UInt64>(1001);
 	TEST_MD3OSPort(portoverride);
 
 	START_IOS(1);
@@ -2407,16 +2425,16 @@ TEST_CASE("Master - Analog")
 		output << commandblock.ToBinaryString();
 
 		// Create the delta values for the 16 channels
-		MD3BlockData b1(-1, 1, -127, 128, false);
+		MD3BlockData b1(static_cast<uint8_t>(-1), 1, static_cast<uint8_t>(-127), 128, false);
 		output << b1.ToBinaryString();
 
-		MD3BlockData b2(2, -3, 20, -125, false);
+		MD3BlockData b2(2, static_cast<uint8_t>(-3), 20, static_cast<uint8_t>(-125), false);
 		output << b2.ToBinaryString();
 
-		MD3BlockData b3(0, 0, 0, 0, false);
+		MD3BlockData b3(0x0000000, false);
 		output << b3.ToBinaryString();
 
-		MD3BlockData b4(0, 0, 0, 0, true); // Mark as last block.
+		MD3BlockData b4(0x00000000, true); // Mark as last block.
 		output << b4.ToBinaryString();
 
 		// Send the command in as if came from TCP channel
@@ -2578,7 +2596,7 @@ TEST_CASE("Master - DOM and POM Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -2782,7 +2800,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
 	OSportoverride["StandAloneOutstation"] = true;
 	OSportoverride["DOMControlPoint"]["Index"] = 60000;
 	OSportoverride["POMControlPoint"]["Index"] = 60001;
@@ -2902,7 +2920,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
 	OSportoverride["StandAloneOutstation"] = false;
 	OSportoverride["TimeSetPoint"]["Index"] = 60000;
 	TEST_MD3OSPort(OSportoverride);
@@ -2969,7 +2987,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 
 		// TimeChange command (Fn 43), Station 0x7C
 		MD3BlockFn43MtoS commandblock(0x7C, currenttime % 1000);
-		MD3BlockData datablock((uint32_t)(currenttime / 1000), true);
+		MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000), true);
 
 		std::string TimeChangeCommand = commandblock.ToBinaryString() + datablock.ToBinaryString();
 
@@ -2999,8 +3017,8 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 		REQUIRE(MAResponse == TimeChangeCommand);
 
 		// Now check we have an OK packet being sent by the OutStation.
-		REQUIRE(OSResponse[0] == (char)0xFC);
-		REQUIRE(OSResponse[1] == (char)0x0F); // OK Command
+		REQUIRE(OSResponse[0] == ToChar(0xFC));
+		REQUIRE(OSResponse[1] == ToChar(0x0F)); // OK Command
 		REQUIRE(OSResponse.size() == 6);
 	}
 
@@ -3019,7 +3037,7 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
 	OSportoverride["StandAloneOutstation"] = true;
 	OSportoverride["FreezeResetCountersPoint"]["Index"] = 60000;
 	OSportoverride["SystemSignOnPoint"]["Index"] = 60001;
@@ -3135,7 +3153,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -3172,8 +3190,8 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 		// Timedate is msec, but need seconds
 		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
-		MD3Time changedtime = (MD3Time)0x0000016338b6d4fb;
-		MD3BlockData b[] = { MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData((uint32_t)(changedtime / 1000)),
+		MD3Time changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
+		MD3BlockData b[] = { MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime / 1000)),
 			               MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true) };
 
 
@@ -3225,7 +3243,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -3270,7 +3288,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 
 		REQUIRE(MAResponse[0] == commandblock.GetByte(0));
 		REQUIRE(MAResponse[1] == commandblock.GetByte(1));
-		REQUIRE(MAResponse[2] == (char)commandblock.GetByte(2));
+		REQUIRE(MAResponse[2] == static_cast<char>(commandblock.GetByte(2)));
 		REQUIRE((MAResponse[3] & 0x0f) == (commandblock.GetByte(3) & 0x0f)); // Not comparing the sequence count, only the module count
 
 		// We now inject the expected response to the command above, a DCOS block
@@ -3284,8 +3302,8 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// Timedate is msec, but need seconds
 		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
-		MD3Time changedtime = (MD3Time)0x0000016338b6d4fb;
-		MD3BlockData b[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData((uint32_t)(changedtime/1000)),
+		MD3Time changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
+		MD3BlockData b[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime/1000)),
 			              MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true)};
 
 		for (auto bl :b)
@@ -3327,7 +3345,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = (Json::UInt64)1001;
+	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -3415,12 +3433,12 @@ TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 	std::vector<std::string> ResponseVec;
 	auto ResponseCallback = [&](buf_t& readbuf)
 					{
-						int bufsize = readbuf.size();
+						size_t bufsize = readbuf.size();
 						std::string S(bufsize, 0);
 
-						for (int i = 0; i < bufsize; i++)
+						for (size_t i = 0; i < bufsize; i++)
 						{
-							S[i] = readbuf.sgetc();
+							S[i] = static_cast<char>(readbuf.sgetc());
 							readbuf.consume(1);
 						}
 						ResponseVec.push_back(S); // Store so we can check
@@ -3562,7 +3580,7 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on POM command result : " + std::to_string((int)command_stat));
+			LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
 			res = command_stat;
 		});
 
