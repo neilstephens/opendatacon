@@ -34,6 +34,8 @@
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 
+std::shared_ptr<spdlog::logger> md3logger;
+
 extern "C" MD3MasterPort* new_MD3MasterPort(const std::string& Name,const std::string& File, const Json::Value& Overrides)
 {
 	//std::cout << "Made it into the dll - MasterPort";
@@ -59,7 +61,7 @@ extern "C" void delete_MD3OutstationPort(MD3OutstationPort* aMD3OutstationPort_p
 }
 
 // THIS IS SET IN MD3.h
-// Should be turned on for "normal" builds, and off is you want to use Visual Studio Test Integration.
+// Should be turned on for "normal" builds, and off if you want to use Visual Studio Test Integration.
 //
 
 extern "C" int run_tests( int argc, char* argv[] )
@@ -67,6 +69,10 @@ extern "C" int run_tests( int argc, char* argv[] )
 	#if defined(CATCH_CONFIG_RUNNER)
 
 	return Catch::Session().run( argc, argv );
+
+	#else
+
+	return 1;
 
 	#endif
 }

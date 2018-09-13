@@ -40,7 +40,7 @@
 #include <opendatacon/util.h>
 #include <spdlog/spdlog.h>
 
-std::shared_ptr<spdlog::logger> md3logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
+extern std::shared_ptr<spdlog::logger> md3logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(msg) \
