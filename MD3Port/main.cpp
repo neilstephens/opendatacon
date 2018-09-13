@@ -61,11 +61,14 @@ extern "C" void delete_MD3OutstationPort(MD3OutstationPort* aMD3OutstationPort_p
 // THIS IS SET IN MD3.h
 // Should be turned on for "normal" builds, and off is you want to use Visual Studio Test Integration.
 //
-#if defined(CATCH_CONFIG_RUNNER)
 
 extern "C" int run_tests( int argc, char* argv[] )
 {
+	#if defined(CATCH_CONFIG_RUNNER)
+
 	return Catch::Session().run( argc, argv );
+
+	#endif
 }
 
-#endif
+
