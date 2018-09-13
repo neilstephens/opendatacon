@@ -29,8 +29,20 @@
 
 #include <array>
 #include <fstream>
+
+//#define COMPILE_TESTS
+
+#ifdef COMPILE_TESTS
+
+
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
+//#else
+//#include <catch.hpp>
+//#endif
+
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
+
+#include <spdlog/sinks/ansicolor_sink.h>
 
 #ifdef WIN32
 #include <spdlog/sinks/wincolor_sink.h>
@@ -200,7 +212,7 @@ void SetupLoggers()
 {
 	// So create the log sink first - can be more than one and add to a vector.
 	#ifdef WIN32
-	auto console = std::make_shared<spdlog::sinks::msvc_sink_mt>(); // Windows Debug Sync - see how this goes.
+	auto console = std::make_shared<spdlog::sinks::msvc_sink_mt>(); // Windows Debug Sync - puts info into the test output window. Great for debugging...
 	// OR wincolor_stdout_sink_mt>();
 	#else
 	auto console = std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>();
@@ -3653,3 +3665,4 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 }
 }
 
+#endif
