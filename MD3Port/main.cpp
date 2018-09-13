@@ -24,6 +24,7 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
+#include <iostream>
 #include "MD3.h"
 
 #if defined(CATCH_CONFIG_RUNNER)
@@ -33,13 +34,15 @@
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 
-extern "C" MD3MasterPort* new_MD3MasterPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" MD3MasterPort* new_MD3MasterPort(const std::string& Name,const std::string& File, const Json::Value& Overrides)
 {
+	std::cout << "Made it into the dll - MasterPort";
 	return new MD3MasterPort(Name,File,Overrides);
 }
 
-extern "C" MD3OutstationPort* new_MD3OutstationPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" MD3OutstationPort* new_MD3OutstationPort(const std::string & Name, const std::string & File, const Json::Value & Overrides)
 {
+	std::cout << "Made it into the dll -OutstationPort";
 	return new MD3OutstationPort(Name,File,Overrides);
 }
 

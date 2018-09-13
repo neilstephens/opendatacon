@@ -29,16 +29,18 @@
 
 using namespace std;
 
+namespace odc
+{
 bool getline_noncomment(istream& is, string& line)
 {
 	//chew up blank lines and comments
 	do
 	{
 		std::getline(is, line);
-	} while(std::regex_match(line,std::regex("^[:space:]*#.*|^[^_[:alnum:]]*$",std::regex::extended)) && !is.eof());
+	} while (std::regex_match(line, std::regex("^[:space:]*#.*|^[^_[:alnum:]]*$", std::regex::extended)) && !is.eof());
 
 	//fail if we hit the end
-	if(is.eof())
+	if (is.eof())
 		return false;
 	//success!
 	return true;
@@ -49,13 +51,13 @@ bool extract_delimited_string(istream& ist, string& extracted)
 	extracted.clear();
 	char delim;
 	//The first char is the delimiter
-	if(!(ist>>delim))
+	if (!(ist >> delim))
 		return true; //nothing to extract - return successfully extracted nothing
 	char ch;
-	while(ist.get(ch))
+	while (ist.get(ch))
 	{
 		//return success once we find the second delimiter
-		if(ch == delim)
+		if (ch == delim)
 			return true;
 		//otherwise keep extracting
 		extracted.push_back(ch);
@@ -69,22 +71,22 @@ bool extract_delimited_string(const std::string& delims, istream& ist, string& e
 	extracted.clear();
 	char delim;
 	//The first char is the delimiter
-	if(!(ist>>delim))
+	if (!(ist >> delim))
 		return true; //nothing to extract - return successfully extracted nothing
-	if(delims.find(delim) == std::string::npos)
+	if (delims.find(delim) == std::string::npos)
 	{
 		/* no delimiter so just extract until we get to a space or end of string */
 		extracted.push_back(delim);
 		std::string temptoken;
-		ist>>temptoken;
+		ist >> temptoken;
 		extracted.append(temptoken);
 		return true;
 	}
 	char ch;
-	while(ist.get(ch))
+	while (ist.get(ch))
 	{
 		//return success once we find the second delimiter
-		if(ch == delim)
+		if (ch == delim)
 			return true;
 		//otherwise keep extracting
 		extracted.push_back(ch);
@@ -92,5 +94,4 @@ bool extract_delimited_string(const std::string& delims, istream& ist, string& e
 	//if we get to here, there wasn't a matching end delimiter
 	return false;
 }
-
-
+}

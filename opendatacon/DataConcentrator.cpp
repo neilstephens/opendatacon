@@ -250,6 +250,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 			std::string libfilename = GetLibFileName(libname);
 
+			log->debug("Attempting to load plugin: {}, {}", libname, libfilename);
+
 			//try to load the lib
 			auto* pluginlib = LoadModule(libfilename);
 
@@ -374,12 +376,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 			std::string libfilename(GetLibFileName(libname));
 
+			log->debug("Attempting to load library: {}, {}",libname, libfilename);
+
 			//try to load the lib
 			auto* portlib = LoadModule(libfilename);
 
 			if(portlib == nullptr)
 			{
-				log->error("{}",LastSystemError());
+				log->error("System Error: {}",LastSystemError());
 				log->error("Failed to load library '{}' mapping {} to NullPort...", libfilename, Ports[n]["Name"].asString());
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
@@ -389,7 +393,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of DataPort
 			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-			auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))LoadSymbol(portlib, new_funcname);
+			auto new_port_func = (DataPort*(*)(std::string&, std::string&, const Json::Value&))LoadSymbol(portlib, new_funcname);
 
 			std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
 			auto delete_port_func = (void (*)(DataPort*))LoadSymbol(portlib, delete_funcname);
@@ -423,7 +427,11 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 						  };
 
 			//call the creation function and wrap the returned pointer to a new port
-			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,decltype(port_cleanup)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
+			std::string PortName = Ports[n]["Name"].asString();
+			std::string CFN = Ports[n]["ConfFilename"].asString();
+			Json::Value CO = Ports[n]["ConfOverrides"];
+
+			DataPorts.emplace(PortName, std::unique_ptr<DataPort,decltype(port_cleanup)>(new_port_func(PortName, CFN, CO), port_cleanup));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 		}
 	}
