@@ -232,9 +232,11 @@ void SetupLoggers()
 	pODCLogger->set_level(spdlog::level::trace);
 	spdlog::register_logger(pODCLogger);
 
+	md3logger = spdlog::get("MD3Port"); // For our code - wont catch the config file errors???
+
 	std::string msg = "Logging for this test started..";
 
-	if (auto log = spdlog::get("MD3Port"))
+	if (md3logger)
 		log->info(msg);
 	else
 		std::cout << "Error MD3Port Logger not operational";

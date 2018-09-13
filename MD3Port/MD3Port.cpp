@@ -33,6 +33,8 @@ MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, co
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pConnection(nullptr)
 {
+	md3logger = spdlog::get("MD3Port"); // Only gets the opendatacon logger in Linux at the moment!
+
 	//the creation of a new MD3PortConf will get the point details
 	pConf.reset(new MD3PortConf(ConfFilename, ConfOverrides));
 

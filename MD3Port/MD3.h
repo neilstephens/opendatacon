@@ -40,15 +40,17 @@
 #include <opendatacon/util.h>
 #include <spdlog/spdlog.h>
 
+std::shared_ptr<spdlog::logger> md3logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
+
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(msg) \
-	if (auto log = spdlog::get("MD3Port")) log->debug(msg);
+	if (md3logger) md3logger->debug(msg);
 #define LOGERROR(msg) \
-	if (auto log = spdlog::get("MD3Port")) log->error(msg);
+	if (md3logger) md3logger->error(msg);
 #define LOGWARN(msg) \
-	if (auto log = spdlog::get("MD3Port")) log->warn(msg);
+	if (md3logger) md3logger->warn(msg);
 #define LOGINFO(msg) \
-	if (auto log = spdlog::get("MD3Port")) log->info(msg);
+	if (md3logger) md3logger->info(msg);
 
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
