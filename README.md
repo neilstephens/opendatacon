@@ -761,7 +761,7 @@ Custom implementations of ports are supported by allowing dynamic libraries to b
 To be successfully loaded, a library only needs to export a single C style construction routine for each type of port it implements, of the form:
 
 ```c
-extern "C" DataPort* new_PORTNAMEPort(std::string Name, std::string File, const Json::Value Overrides);
+extern "C" DataPort* new_PORTNAMEPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 extern "C" void delete_PORTNAMEPort(DataPort*);
 ```
 
@@ -771,15 +771,15 @@ PORTNAME in the example above is the name used as "Type" in the port configurati
 class DataPort: public IOHandler, public ConfigParser
 {
     public: 
-        DataPort(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+        DataPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
                 IOHandler(aName),
                 ConfigParser(aConfFilename, aConfOverrides),
                 pConf(nullptr)
         {};
 
         virtual void Enable()=0; virtual void Disable()=0;
-        virtual void BuildOrRebuild(asiodnp3::DNP3Manager&amp; DNP3Mgr, openpal::LogFilters& LOG_LEVEL)=0;
-        virtual void ProcessElements(const Json::Value&amp; JSONRoot)=0;
+        virtual void Build()=0;
+        virtual void ProcessElements(const Json::Value& JSONRoot)=0;
         virtual const Json::Value GetStatistics() const { return Json::Value(); };
         virtual const Json::Value GetCurrentState() const { return Json::Value(); };
     protected:
@@ -792,7 +792,7 @@ class DataPort: public IOHandler, public ConfigParser
 Similar to Ports, custom Transforms can be implemented as dynamically loaded modules with specified entry points.
 
 ```c
-extern "C" Transform* new_SOMETransform(const Json::Value params);
+extern "C" Transform* new_SOMETransform(const Json::Value& params);
 extern "C" void delete_SOMETransform(Transform* pSometx);
 ```
 The 'newing' function just has to construct a instance of a class derriving from the Transform base class (see below) on the heap, and return a pointer to the object.
@@ -805,7 +805,7 @@ Here is the Transform class declaration, taken from the public header file direc
 class Transform
 {
 public:
-	Transform(Json::Value params): params(params){}
+	Transform(const Json::Value& params): params(params){}
 	virtual ~Transform(){}
 
 	virtual bool Event(Binary& meas, uint16_t& index) { return true; }

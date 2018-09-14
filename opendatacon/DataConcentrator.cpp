@@ -388,7 +388,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of DataPort
 			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-			auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))LoadSymbol(portlib, new_funcname);
+			auto new_port_func = (DataPort*(*)(const std::string&, const std::string&, const Json::Value&))LoadSymbol(portlib, new_funcname);
 
 			std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
 			auto delete_port_func = (void (*)(DataPort*))LoadSymbol(portlib, delete_funcname);
