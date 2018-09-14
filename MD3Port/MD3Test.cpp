@@ -30,15 +30,10 @@
 #include <array>
 #include <fstream>
 
-//#define COMPILE_TESTS
+#define COMPILE_TESTS
 
 #ifdef COMPILE_TESTS
 
-
-#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
-//#else
-//#include <catch.hpp>
-//#endif
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 
@@ -55,6 +50,12 @@
 #include "StrandProtectedQueue.h"
 #include "ProducerConsumerQueue.h"
 #include "MD3Test.h"
+
+#ifdef NONVSTESTING
+#include <catch.hpp>
+#else
+#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
+#endif
 
 #define SUITE(name) "MD3Tests - " name
 
@@ -77,6 +78,7 @@ const char *conffilename2 = "MD3Config2.conf";
 // Serial connection string...
 // std::string  JsonSerialOverride = "{ ""SerialDevice"" : "" / dev / ttyUSB0"", ""BaudRate"" : 115200, ""Parity"" : ""NONE"", ""DataBits"" : 8, ""StopBits" : 1, "MasterAddr" : 0, "OutstationAddr" : 1, "ServerType" : "PERSISTENT"}";
 
+#pragma region conffiles
 // We actually have the conf file here to match the tests it is used in below. We write out to a file (overwrite) on each test so it can be read back in.
 const char *conffile1 = R"001(
 {
@@ -179,6 +181,7 @@ const char *conffile2 = R"002(
 
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })002";
+#pragma endregion
 
 #pragma region TEST_HELPERS
 
@@ -203,7 +206,9 @@ void WriteConfFilesToCurrentWorkingDirectory()
 
 void TestSetup(bool writeconffiles = true)
 {
+	#ifndef NONVSTESTING
 	SetupLoggers();
+	#endif
 
 	if (writeconffiles)
 		WriteConfFilesToCurrentWorkingDirectory();
@@ -237,12 +242,12 @@ void SetupLoggers()
 	std::string msg = "Logging for this test started..";
 
 	if (md3logger)
-		log->info(msg);
+		md3logger->info(msg);
 	else
 		std::cout << "Error MD3Port Logger not operational";
 
-	if (auto log = spdlog::get("opendatacon"))
-		log->info(msg);
+	if (auto odclogger = spdlog::get("opendatacon"))
+		odclogger->info(msg);
 	else
 		std::cout << "Error opendatacon Logger not operational";
 }

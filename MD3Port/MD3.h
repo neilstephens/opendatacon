@@ -27,13 +27,9 @@
 #ifndef MD3_H_
 #define MD3_H_
 
-////////////////// IMPORTANT //////////////////////////////
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-// #define CATCH_CONFIG_RUNNER
-//
-// Added __cplusplus to the project processor definitions, so that trum
-////////////////// IMPORTANT //////////////////////////////
+#define NONVSTESTING
 
 #include <cstdint>
 #include <opendatacon/DataPort.h>

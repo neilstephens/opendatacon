@@ -23,3 +23,4 @@ EXPORTS
 	new_MD3OutstationPort
 	delete_MD3MasterPort
 	delete_MD3OutstationPort
+	run_tests

@@ -27,7 +27,11 @@
 #include <iostream>
 #include "MD3.h"
 
-#if defined(CATCH_CONFIG_RUNNER)
+
+#ifdef NONVSTESTING
+#define CATCH_CONFIG_RUNNER
+#include <catch.hpp>
+#else
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
@@ -60,20 +64,16 @@ extern "C" void delete_MD3OutstationPort(MD3OutstationPort* aMD3OutstationPort_p
 	return;
 }
 
-// THIS IS SET IN MD3.h
+//
 // Should be turned on for "normal" builds, and off if you want to use Visual Studio Test Integration.
 //
 
 extern "C" int run_tests( int argc, char* argv[] )
 {
-	#if defined(CATCH_CONFIG_RUNNER)
-
+	#ifdef NONVSTESTING
 	return Catch::Session().run( argc, argv );
-
 	#else
-
 	return 1;
-
 	#endif
 }
 
