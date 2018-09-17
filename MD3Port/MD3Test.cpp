@@ -50,7 +50,6 @@
 #include "MD3Utility.h"
 #include "StrandProtectedQueue.h"
 #include "ProducerConsumerQueue.h"
-#include "MD3Test.h"
 
 #ifdef NONVSTESTING
 #include <catch.hpp>
