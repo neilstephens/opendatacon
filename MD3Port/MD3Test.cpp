@@ -29,6 +29,7 @@
 
 #include <array>
 #include <fstream>
+#include <cassert>
 
 #define COMPILE_TESTS
 
@@ -189,13 +190,13 @@ std::vector<spdlog::sink_ptr> LogSinks;
 void WriteConfFilesToCurrentWorkingDirectory()
 {
 	std::ofstream ofs(conffilename1);
-	if (!ofs) REQUIRE("Could not open conffile1 for writing");
+	if (!ofs) FAIL("Could not open conffile1 for writing");
 
 	ofs << conffile1;
 	ofs.close();
 
 	std::ofstream ofs2(conffilename2);
-	if (!ofs2) REQUIRE("Could not open conffile2 for writing");
+	if (!ofs2) FAIL("Could not open conffile2 for writing");
 
 	ofs2 << conffile2;
 	ofs.close();

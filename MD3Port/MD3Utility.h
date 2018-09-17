@@ -18,7 +18,7 @@
 *	limitations under the License.
 */
 /*
-* MD3Engine.h
+* MD3Utility.h
 *
 *  Created on: 01/04/2018
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
@@ -26,9 +26,6 @@
 
 #ifndef MD3ENGINE_H_
 #define MD3ENGINE_H_
-
-// We want to use the asiosocketmanager for communications, but wrap it in a class derived from a "general" comms interface class.This way can add serial later if necessary.
-// Also this will allow us to more easily mock the comms layer for unit testing.
 
 #include <cstddef>
 #include <cstdint>
