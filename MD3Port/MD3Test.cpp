@@ -75,9 +75,6 @@ extern std::vector<spdlog::sink_ptr> LogSinks;
 const char *conffilename1 = "MD3Config.conf";
 const char *conffilename2 = "MD3Config2.conf";
 
-// Serial connection string...
-// std::string  JsonSerialOverride = "{ ""SerialDevice"" : "" / dev / ttyUSB0"", ""BaudRate"" : 115200, ""Parity"" : ""NONE"", ""DataBits"" : 8, ""StopBits" : 1, "MasterAddr" : 0, "OutstationAddr" : 1, "ServerType" : "PERSISTENT"}";
-
 #pragma region conffiles
 // We actually have the conf file here to match the tests it is used in below. We write out to a file (overwrite) on each test so it can be read back in.
 const char *conffile1 = R"001(

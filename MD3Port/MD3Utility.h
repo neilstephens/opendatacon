@@ -40,19 +40,6 @@
 
 #include "MD3.h"
 
-#define EOMBIT 0x40
-#define FOMBIT 0x80
-#define APLBIT 0x0080
-#define RSFBIT 0x0040
-#define HRPBIT 0x0020
-#define DCPBIT 0x0010
-#define DIRECTIONBIT 0x80000000
-#define MOREEVENTSBIT 0x0800
-#define NOCOUNTERRESETBIT 0x00000100
-
-// Flag Scan Bits
-#define SPUBIT 0x00008000
-#define STIBIT 0x00004000
 
 const int MD3BlockArraySize = 6;
 typedef  std::array<uint8_t, MD3BlockArraySize> MD3BlockArray;
@@ -278,7 +265,7 @@ public:
 		SetEndByte(FormattedBlock, lastblock);
 	}
 	// Create a formatted block including checksum
-	// Note if the station address is set to 0x7F (MD3_EXTENDED_ADDRESS_MARKER), then the next data block contains the address.
+	// Note if the station address is set to 0x7F , then the next data block contains the address.
 	MD3BlockFormatted(uint8_t StationAddress, bool mastertostation, MD3_FUNCTION_CODE functioncode, uint8_t moduleaddress, uint8_t channels, bool lastblock = false,
 		bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{

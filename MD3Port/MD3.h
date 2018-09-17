@@ -65,20 +65,10 @@ OT numeric_cast(const ST value)
 	return static_cast<OT>(value);
 }
 
-// Note that in the message block format, these characters are not excluded from appearing - so their appearance and use is message state dependent
-// THESE ARE NOT PRESENT IN THE tcp STREAMS...
-#define MD3_START_OF_MESSAGE_CHAR   0x01       // SOM
-#define MD3_SYNC_CHAR                     0x16 // SYN
-#define MD3_END_OF_MESSAGE_CHAR           0x03 // ETX
-
-// Message block format:
-// Possible multiple SOH
-// SOM
+// Message block format 4 data bytes, 1 checksum/eom byte, 1 zero pad byte.
 // DATA 1,2,3,4
 // BCC - Checksum and format bits: FRM, EOM, BCC[6]
-// DATA 1,2,3,4
-// BCC
-// ETX
+// 0x00
 
 // The BCC uses the polynomial x^6 + x^4 + x^3 + x + 1 for a 6 bit result.
 // Dividing the polynomial above into the 32 data bits, no carry, no borrow - mutlipled by 0x40. The 6 bit remainder is inverted to give the BCC.
@@ -100,30 +90,8 @@ OT numeric_cast(const ST value)
 // But then for each module address, we can have up to 16 channels. SO 16 analogs, or 16 digital bits. We always return all 16 bits for a digital unconditional.
 // For deltas we have to return the channel, the value and the time tag.
 // Also a value of 0 is actually == 1. A scan of zero channels does not make sense, and allows us up to 16.
-// So our Outstation data structure needs to support these modes and adressing/module limits.
+// So our Outstation data structure needs to support these modes and addressing/module limits.
 
-enum MD3_FORMAT_BIT
-{
-	FORMATTED_BLOCK = 0,
-	UNFORMATTED_BLOCK = 1
-};
-
-enum MD3_END_OF_MESSAGE_BIT
-{
-	NOT_LAST_BLOCK = 0,
-	LAST_BLOCK = 1
-};
-
-#define MD3_BROADCAST_ADDRESS             0
-#define MD3_EXTENDED_ADDRESS_MARKER       0x7F
-#define MD3_MAXIMUM_NORMAL_ADDRESS        0x7E
-#define MD3_MAXIMUM_EXTENDED_ADDRESS      0x7FFF
-
-enum MD3_MESSAGE_DIRECTION_BIT
-{
-	MASTER_TO_OUTSTATION = 0,
-	OUTSTATION_TO_MASTER = 1
-};
 
 enum MD3_FUNCTION_CODE
 {
@@ -160,6 +128,20 @@ enum MD3_FUNCTION_CODE
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
 enum BinaryPointType { BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT };
 enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
+
+#define EOMBIT 0x40
+#define FOMBIT 0x80
+#define APLBIT 0x0080
+#define RSFBIT 0x0040
+#define HRPBIT 0x0020
+#define DCPBIT 0x0010
+#define DIRECTIONBIT 0x80000000
+#define MOREEVENTSBIT 0x0800
+#define NOCOUNTERRESETBIT 0x00000100
+
+// Flag Scan Bits
+#define SPUBIT 0x00008000
+#define STIBIT 0x00004000
 
 
 class MD3Point // Abstract Class
