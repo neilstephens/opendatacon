@@ -61,7 +61,7 @@ add_custom_command(
 add_custom_target(version DEPENDS "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h")
 
 # various optional libraries and projects
-option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, MD3Port, Tests, ConsoleUI, WebUI)" OFF)
+option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, MD3Port, CBPort, Tests, ConsoleUI, WebUI)" OFF)
 option(USE_ASIO_SUBMODULE "Use git submodule to download asio header library" ON)
 option(USE_SPDLOG_SUBMODULE "Use git submodule to download spdlog header library" ON)
 
@@ -72,6 +72,7 @@ set(JSONPORT OFF CACHE BOOL "Build JSON Port"				)
 set(MODBUSPORT OFF CACHE BOOL "Build Modbus Port"			)
 set(SIMPORT OFF CACHE BOOL "Build Simulation Port"			)
 set(MD3PORT OFF CACHE BOOL "Build MD3 Port"				)
+set(CBPORT OFF CACHE BOOL "Build Conitel-Baker Port"				)
 set(CONSOLEUI OFF CACHE BOOL "Build the console user interface"	)
 
 # other options off-by-default that you can enable
@@ -85,7 +86,8 @@ if(FULL)
 	set(JSONPORT ON CACHE BOOL "Build JSON Port"			   	FORCE)
 	set(MODBUSPORT ON CACHE BOOL "Build Modbus Port"		   	FORCE)
 	set(SIMPORT ON CACHE BOOL "Build Simulation Port"		   	FORCE)
-	set(MD3PORT ON CACHE BOOL "Build MD3Port Port"			   	FORCE)
+	set(MD3PORT ON CACHE BOOL "Build MD3 Port"			   	FORCE)
+	set(CBPORT ON CACHE BOOL "Build Conitel-Baker Port"			   	FORCE)
 	set(CONSOLEUI ON CACHE BOOL "Build the console user interface"	FORCE)
 endif()
 
@@ -295,4 +297,8 @@ add_subdirectory("install")
 if(MD3PORT)
 	message("add subdir MD3Port")
 	add_subdirectory(MD3Port)
+endif()
+if(CBPORT)
+	message("add subdir CBPort")
+	add_subdirectory(CBPort)
 endif()

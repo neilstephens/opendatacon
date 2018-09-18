@@ -22,7 +22,7 @@
 
 extern "C" ConsoleUI* new_ConsoleUIPlugin(const std::string& Name, const std::string& File, const Json::Value& Overrides)
 {
-	if(Overrides.isObject())
+	//if(Overrides.isObject())
 	{}
 
 	return new ConsoleUI();
