@@ -32,7 +32,7 @@ set(CPACK_PACKAGE_VERSION_PATCH ${ODC_MICRO_VERSION})
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 
 string(REGEX MATCH "/([^/]*)(-)" TOOLCHAIN_MATCH ${CMAKE_TOOLCHAIN_FILE} "")
-set(cross_detect "${CMAKE_MATCH_1}${CMAKE_MATCH_1}")
+set(cross_detect "${CMAKE_MATCH_2}${CMAKE_MATCH_1}")
 message("Cross toolchain detect: ${cross_detect}")
 string(REGEX MATCH "(-m32)" BITNESS_MATCH ${CMAKE_CXX_FLAGS} "")
 set(bit_detect ${CMAKE_MATCH_1})
