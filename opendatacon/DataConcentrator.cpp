@@ -29,6 +29,7 @@
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/ostream_sink.h>
+#include <spdlog/sinks/ansicolor_sink.h>
 
 #include <opendatacon/Version.h>
 #include "DataConcentrator.h"

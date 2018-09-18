@@ -29,6 +29,9 @@
 
 using namespace std;
 
+namespace odc
+{
+
 bool getline_noncomment(istream& is, string& line)
 {
 	//chew up blank lines and comments
@@ -93,4 +96,4 @@ bool extract_delimited_string(const std::string& delims, istream& ist, string& e
 	return false;
 }
 
-
+}

@@ -60,14 +60,24 @@ if(USE_DNP3_SUBMODULE)
 	if(EXEC_RESULT)
 		message( FATAL_ERROR "Failed to run cmake for DNP3 submodule, exiting")
 	endif()
-	execute_process(
-		COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config $<CONFIG> --target install
-		WORKING_DIRECTORY "${DNP3_BUILD}"
-		RESULT_VARIABLE EXEC_RESULT
-	)
-	if(EXEC_RESULT)
-		message( FATAL_ERROR "Failed to build DNP3 submodule, exiting")
+	set(CONFIGS "${CMAKE_BUILD_TYPE}")
+	if("${CMAKE_CONFIGURATION_TYPES}" MATCHES ".*Rel.*")
+		list(APPEND CONFIGS "Release")
 	endif()
+	if("${CMAKE_CONFIGURATION_TYPES}" MATCHES ".*Deb.*")
+		list(APPEND CONFIGS "Debug")
+	endif()
+	foreach(CONF ${CONFIGS})
+		message("Building DNP3 dependency")
+		execute_process(
+			COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config ${CONF} --target install
+			WORKING_DIRECTORY "${DNP3_BUILD}"
+			RESULT_VARIABLE EXEC_RESULT
+		)
+		if(EXEC_RESULT)
+			message( FATAL_ERROR "Failed to build DNP3 submodule, exiting")
+		endif()
+	endforeach()
 	add_custom_target( build_dnp3
 		WORKING_DIRECTORY "${DNP3_BUILD}"
 		COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config $<CONFIG> --target install
