@@ -28,6 +28,7 @@
 #include <opendatacon/asio.h>
 
 #include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/sinks/ansicolor_sink.h>
 
@@ -485,19 +486,19 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 }
 void DataConcentrator::Build()
 {
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Initialising Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
 		Name_n_UI.second->Build();
 	}
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Initialising DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
 		Name_n_Port.second->Build();
 	}
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Initialising DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
@@ -506,12 +507,12 @@ void DataConcentrator::Build()
 }
 void DataConcentrator::Run()
 {
-	if (auto log = spdlog::get("opendatacon"))
+	if (auto log = odc::spdlog_get("opendatacon"))
 		log->info("Starting worker threads...");
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		threads.emplace_back([&]() {IOS.run(); });
 
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
@@ -533,7 +534,7 @@ void DataConcentrator::Run()
 				});
 		}
 	}
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
@@ -555,7 +556,7 @@ void DataConcentrator::Run()
 				});
 		}
 	}
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
@@ -565,7 +566,7 @@ void DataConcentrator::Run()
 			});
 	}
 
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Up and running.");
 
 	IOS.run();
@@ -573,15 +574,15 @@ void DataConcentrator::Run()
 		thread.join();
 	threads.clear();
 
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Destoying Interfaces...");
 	Interfaces.clear();
 
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Destoying DataConnectors...");
 	DataConnectors.clear();
 
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Destoying DataPorts...");
 	DataPorts.clear();
 	shut_down = true;
@@ -594,28 +595,28 @@ void DataConcentrator::Shutdown()
 	std::call_once(shutdown_flag, [this]()
 		{
 			shutting_down = true;
-			if(auto log = spdlog::get("opendatacon"))
+			if(auto log = odc::spdlog_get("opendatacon"))
 				log->info("Disabling Interfaces...");
 			for(auto& Name_n_UI : Interfaces)
 			{
 			      Name_n_UI.second->Disable();
 			}
-			if(auto log = spdlog::get("opendatacon"))
+			if(auto log = odc::spdlog_get("opendatacon"))
 				log->info("Disabling DataConnectors...");
 			for(auto& Name_n_Conn : DataConnectors)
 			{
 			      Name_n_Conn.second->Disable();
 			}
-			if(auto log = spdlog::get("opendatacon"))
+			if(auto log = odc::spdlog_get("opendatacon"))
 				log->info("Disabling DataPorts...");
 			for(auto& Name_n_Port : DataPorts)
 			{
 			      Name_n_Port.second->Disable();
 			}
-			if(auto log = spdlog::get("opendatacon"))
+			if(auto log = odc::spdlog_get("opendatacon"))
 				log->flush();
 			TCPbuf.DeInit();
-			if(auto log = spdlog::get("opendatacon"))
+			if(auto log = odc::spdlog_get("opendatacon"))
 				log->info("Finishing asynchronous tasks...");
 			ios_working.reset();
 		});

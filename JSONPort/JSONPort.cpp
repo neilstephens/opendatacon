@@ -26,7 +26,7 @@
 
 #include <memory>
 #include <chrono>
-#include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
 #include "JSONPort.h"
 
@@ -56,7 +56,7 @@ void JSONPort::Enable()
 	}
 	catch(std::exception& e)
 	{
-		if(auto log = spdlog::get("JSONPort"))
+		if(auto log = odc::spdlog_get("JSONPort"))
 			log->error("{}: Problem opening connection:: {}", Name, e.what());
 		return;
 	}
@@ -85,7 +85,7 @@ void JSONPort::SocketStateHandler(bool state)
 		msg = Name+": Connection closed.";
 		conn_state = ConnectState::DISCONNECTED;
 	}
-	if(auto log = spdlog::get("JSONPort"))
+	if(auto log = odc::spdlog_get("JSONPort"))
 		log->info(msg);
 
 	//Send an event out
@@ -147,7 +147,7 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 			{
 				braced.clear(); //discard because it must be outside matched braces
 				count_close_braces = count_open_braces = 0;
-				if(auto log = spdlog::get("JSONPort"))
+				if(auto log = odc::spdlog_get("JSONPort"))
 					log->warn("Malformed JSON recieved: unmatched closing brace.");
 			}
 		}
@@ -208,7 +208,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			}
 			catch(std::runtime_error e)
 			{
-				if(auto log = spdlog::get("JSONPort"))
+				if(auto log = odc::spdlog_get("JSONPort"))
 					log->error("Error decoding timestamp as Uint64: '{}'",e.what());
 			}
 		}
@@ -235,7 +235,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					}
 					catch(std::exception&)
 					{
-						if(auto log = spdlog::get("JSONPort"))
+						if(auto log = odc::spdlog_get("JSONPort"))
 							log->error("Error decoding Analog from string '{}', for index {}",val.asString(),point_pair.first);
 						event->SetPayload<EventType::Analog>(0);
 						event->SetQuality(QualityFlags::OVERRANGE);
@@ -243,7 +243,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				}
 				else
 				{
-					if(auto log = spdlog::get("JSONPort"))
+					if(auto log = odc::spdlog_get("JSONPort"))
 						log->error("Error decoding Analog for index {}",point_pair.first);
 					event->SetPayload<EventType::Analog>(0);
 					event->SetQuality(QualityFlags::OVERRANGE);
@@ -358,7 +358,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						}
 						catch(std::runtime_error e)
 						{
-							if(auto log = spdlog::get("JSONPort"))
+							if(auto log = odc::spdlog_get("JSONPort"))
 								log->error("'{}', for index {}",e.what(),point_pair.first);
 							continue;
 						}
@@ -376,7 +376,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						}
 						catch(std::runtime_error e)
 						{
-							if(auto log = spdlog::get("JSONPort"))
+							if(auto log = odc::spdlog_get("JSONPort"))
 								log->error("'{}', for index {}",e.what(),point_pair.first);
 							continue;
 						}
@@ -387,7 +387,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					}
 					else if(cm != "PULSE")
 					{
-						if(auto log = spdlog::get("JSONPort"))
+						if(auto log = odc::spdlog_get("JSONPort"))
 							log->error("Unrecongnised ControlMode '{}', recieved for index {}",cm,point_pair.first);
 						continue;
 					}
@@ -428,7 +428,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 	}
 	else
 	{
-		if(auto log = spdlog::get("JSONPort"))
+		if(auto log = odc::spdlog_get("JSONPort"))
 			log->warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
 	}
 }

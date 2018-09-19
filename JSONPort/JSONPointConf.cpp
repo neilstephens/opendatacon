@@ -24,7 +24,7 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 #include <cstdint>
 #include "JSONPointConf.h"
 
@@ -39,7 +39,7 @@ inline bool check_index(const Json::Value& Point)
 {
 	if(!Point.isMember("Index"))
 	{
-		if(auto log = spdlog::get("JSONPort"))
+		if(auto log = odc::spdlog_get("JSONPort"))
 			log->error("A point needs an \"Index\" : '{}'", Point.toStyledString());
 		return false;
 	}
@@ -109,7 +109,7 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		else
 		{
-			if(auto log = spdlog::get("JSONPort"))
+			if(auto log = odc::spdlog_get("JSONPort"))
 				log->warn("Ignoring unrecognised PointType '{}' : from '{}'", PointType, PointConfs[n].toStyledString());
 		}
 	}

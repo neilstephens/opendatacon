@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
 			ret_val = 1;
 		}
 
-		if(auto log = spdlog::get("opendatacon"))
+		if(auto log = odc::spdlog_get("opendatacon"))
 			log->critical(msg);
 		else
 			std::cout << msg << std::endl;
@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
 	{
 		std::string msg = "Command line error: " + e.error() +" for arg " + e.argId();
-		if(auto log = spdlog::get("opendatacon"))
+		if(auto log = odc::spdlog_get("opendatacon"))
 			log->critical(msg);
 		else
 			std::cerr << msg << std::endl;
@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
 	catch (std::exception& e) // catch opendatacon runtime exceptions
 	{
 		std::string msg = std::string("Caught exception: ") + e.what();
-		if(auto log = spdlog::get("opendatacon"))
+		if(auto log = odc::spdlog_get("opendatacon"))
 			log->critical(msg);
 		else
 			std::cerr << msg << std::endl;
@@ -176,11 +176,11 @@ int main(int argc, char* argv[])
 	if(pidfile != "")
 	{
 		if(std::remove(pidfile.c_str()))
-			if(auto log = spdlog::get("opendatacon"))
+			if(auto log = odc::spdlog_get("opendatacon"))
 				log->info("PID file removed");
 	}
 
-	if(auto log = spdlog::get("opendatacon"))
+	if(auto log = odc::spdlog_get("opendatacon"))
 		log->flush();
 
 	spdlog::drop_all();

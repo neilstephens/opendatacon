@@ -25,7 +25,7 @@
 //
 //
 
-#include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 #include "WebUI.h"
 
 /* Test Certificate */
@@ -122,7 +122,7 @@ WebUI::WebUI(uint16_t pPort):
 	}
 	catch (std::exception e)
 	{
-		if(auto log = spdlog::get("WebUI"))
+		if(auto log = odc::spdlog_get("WebUI"))
 			log->warn("WebUI port {}: The key/certificate files could not be read. Reverting to default certificate.", pPort);
 		cert_pem = default_cert_pem;
 		key_pem = default_key_pem;
