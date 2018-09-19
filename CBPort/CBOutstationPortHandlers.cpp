@@ -62,6 +62,7 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 	switch (Header.GetFunctionCode())
 	{
 		case FUNC_SCAN_DATA:
+			ScanRequest(Header); // Fn - 0
 			break;
 		case FUNC_EXECUTE_COMMAND:
 			break;
@@ -131,41 +132,57 @@ bool CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
 
 #pragma endregion
 
-#pragma region ANALOG and COUNTER
-// Function 5
-void CBOutstationPort::DoAnalogUnconditional(CBBlockData &Header)
+#pragma region RESPONSE METHODS
+
+void CBOutstationPort::ScanRequest(CBBlockData &Header)
 {
-	LOGDEBUG("OS - DoAnalogUnconditional - Fn5");
-	// This has only one response
-	std::vector<uint16_t> AnalogValues;
-	std::vector<int> AnalogDeltaValues;
-	AnalogChangeType ResponseType = NoChange;
+	LOGDEBUG("OS - ScanRequest - Fn0");
 
-//	ReadAnalogOrCounterRange(Header.GetGroup(), Header.GetChannels(), ResponseType, AnalogValues, AnalogDeltaValues);
+	// Assemble the block values A and B in order ready to be placed into the response message.
+	std::vector<uint16_t> BlockValues;
 
-	// Now send those values.
-//	SendAnalogOrCounterUnconditional(ANALOG_UNCONDITIONAL,AnalogValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+	// Use the group definition to assemble the scan data
+	BuildScanRequestResponseData(Header.GetGroup(), BlockValues);
+
+	// Now assemble and return the required response..
+	CBMessage_t ResponseCBMessage;
+	uint32_t index = 0;
+	uint16_t FirstBlockBValue = 0x000; // Default
+
+	if (BlockValues.size() > 0)
+	{
+		FirstBlockBValue = BlockValues[index++];
+	}
+
+	// The first block is mostly an echo of the request, except that the B field contains data.
+	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), FirstBlockBValue, BlockValues.size() < 2);
+	ResponseCBMessage.push_back(firstblock);
+
+	// index will be 1 when we get to here..
+	while (index < BlockValues.size())
+	{
+		uint16_t A = BlockValues[index++];
+
+		// If there is no B value, default to zero.
+		uint16_t B = 0x00;
+		if (index < BlockValues.size())
+		{
+			B = BlockValues[index++];
+		}
+		auto block = CBBlockData(A, B, index >= BlockValues.size()); // Just some data, end of message is true if we have no more data.
+		ResponseCBMessage.push_back(block);
+	}
+
+	SendCBMessage(ResponseCBMessage);
 }
 
-// Function 31 - Essentially the same as Analog Unconditional. Either can be used to return either analog or counter, or both.
-// The only difference is that an analog module seems to have 16 channels, the counter module only 8.
-// The expectation is that if you ask for more than 8 from a counter module, it will roll over to the next module (counter or analog).
-// As an analog module has 16, the most that can be requested the overflow never happens.
-// In order to make this work, we need to know if the module we are dealing with is a counter or analog module.
-void CBOutstationPort::DoCounterScan(CBBlockData &Header)
+void CBOutstationPort::BuildScanRequestResponseData(uint8_t Group, std::vector<uint16_t> &BlockValues)
 {
-	LOGDEBUG("OS - DoCounterScan - Fn31");
-	// This has only one response
-	std::vector<uint16_t> AnalogValues;
-	std::vector<int> AnalogDeltaValues;
-	AnalogChangeType ResponseType = NoChange;
-
-	// This is the method that has to deal with analog/counter channel overflow issues - into the next module.
-//	ReadAnalogOrCounterRange(Header.GetModuleAddress(), Header.GetChannels(), ResponseType, AnalogValues, AnalogDeltaValues);
-
-	// Now send those values.
-//	SendAnalogOrCounterUnconditional(COUNTER_SCAN, AnalogValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
+	BlockValues.push_back(0x111);
+	BlockValues.push_back(0x222);
+	BlockValues.push_back(0x333);
 }
+
 // Function 6
 void CBOutstationPort::DoAnalogDeltaScan( CBBlockData &Header )
 {

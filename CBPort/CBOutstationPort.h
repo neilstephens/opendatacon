@@ -106,8 +106,8 @@ public:
 	void ProcessCBMessage(CBMessage_t &CompleteCBMessage);
 
 	// Analog
-	void DoAnalogUnconditional(CBBlockData &Header);
-	void DoCounterScan(CBBlockData & Header);
+	void ScanRequest(CBBlockData &Header);
+	void BuildScanRequestResponseData(uint8_t Group, std::vector<uint16_t>& BlockValues);
 	void DoAnalogDeltaScan(CBBlockData &Header);
 
 	void ReadAnalogOrCounterRange(uint8_t Group, uint8_t Channels, CBOutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues);
@@ -119,11 +119,6 @@ public:
 	// Digital/Binary
 	void DoDigitalScan(CBBlockData & Header); // Fn 7
 	void MarkAllBinaryPointsAsChanged();
-	void DoDigitalChangeOnly(CBBlockData & Header);                           // Fn 8
-	void DoDigitalHRER(CBBlockData & Header, CBMessage_t& CompleteCBMessage); // Fn 9
-	void Fn9AddTimeTaggedDataToResponseWords(uint8_t MaxEventCount, uint8_t & EventCount, std::vector<uint16_t>& ResponseWords);
-	void DoDigitalCOSScan(CBBlockData & Header);          // Fn 10
-	void DoDigitalUnconditionalObs(CBBlockData & Header); // Fn 11
 	void Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCount, uint8_t & EventCount, std::vector<uint16_t>& ResponseWords);
 	void DoDigitalUnconditional(CBBlockData & Header); // Fn 12
 
@@ -139,10 +134,7 @@ public:
 	void DoDOMControl(CBBlockData & Header, CBMessage_t& CompleteCBMessage);
 	void DoAOMControl(CBBlockData & Header, CBMessage_t& CompleteCBMessage);
 
-	void DoSystemSignOnControl(CBBlockData & Header);
-	void DoSetDateTime(CBBlockData & Header, CBMessage_t& CompleteCBMessage); // Fn 43
 	void DoSetDateTimeNew(CBBlockData & Header, CBMessage_t & CompleteCBMessage);
-	void DoSystemFlagScan(CBBlockData & Header, CBMessage_t & CompleteCBMessage); // Fn 52
 
 	void SendControlOK(CBBlockData & Header);             // Fn 15
 	void SendControlOrScanRejected(CBBlockData & Header); // Fn 30

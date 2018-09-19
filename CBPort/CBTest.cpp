@@ -57,7 +57,7 @@
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
-#define SUITE(name) "CBTests - " name
+//#define SUITE(name) "CBTests - " name
 
 // To remove GCC warnings
 namespace RTUConnectedTests
@@ -108,21 +108,21 @@ const char *conffile1 = R"001(
 	// Binaries - we can send 12 bits back in a payload location, the offset is the bit within that payload location.
 	// The payload location can be 1B, 2A, 2B, or 3 (for a 24 bit result)
 	// The point table will build a group list with all the data it has to collect for a given group number.
+	// The problem is that a point could actually be in two (or more) groups...
 
-	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": 1A, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"}],
+	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1A", "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"}]
 
-	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Offset" : 0, "PayloadLocation" : 2}],
-
-	"BinaryControls" : [{"Index": 80,  "Group" : 33, "Offset" : 0, "PointType" : "DOMOUTPUT"},
-						{"Range" : {"Start" : 100, "Stop" : 115}, "Group" : 37, "Offset" : 0, "PointType" : "DOMOUTPUT"},
-						{"Range" : {"Start" : 116, "Stop" : 123}, "Group" : 38, "Offset" : 0, "PointType" : "POMOUTPUT"}],
-
-	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Offset" : 0},
-					{"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Offset" : 0}],
-
-	"AnalogControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Group" : 39, "Offset" : 0}]
 })001";
+/*	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Offset" : 0, "PayloadLocation" : 2}],
 
+      "BinaryControls" : [{"Index": 80,  "Group" : 33, "Offset" : 0, "PointType" : "DOMOUTPUT"},
+                                    {"Range" : {"Start" : 100, "Stop" : 115}, "Group" : 37, "Offset" : 0, "PointType" : "DOMOUTPUT"},
+                                    {"Range" : {"Start" : 116, "Stop" : 123}, "Group" : 38, "Offset" : 0, "PointType" : "POMOUTPUT"}],
+
+      "Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Offset" : 0},
+                              {"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Offset" : 0}],
+
+      "AnalogControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Group" : 39, "Offset" : 0}]*/
 
 // We actually have the conf file here to match the tests it is used in below. We write out to a file (overwrite) on each test so it can be read back in.
 const char *conffile2 = R"002(
@@ -139,24 +139,25 @@ const char *conffile2 = R"002(
 	"IsBakerDevice" : true,
 
 	// The magic Analog point we use to pass through the CB time set command.
-	"TimeSetPoint" : {"Index" : 0},	// Not defined if 0
 	"StandAloneOutstation" : true,
 
 	// Maximum time to wait for CB Master responses to a command and number of times to retry a command.
 	"CBCommandTimeoutmsec" : 4000,
 	"CBCommandRetries" : 1,
 
-	"Binaries" : [{"Index": 90,  "Group" : 33, "Offset" : 0},
-				{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 34, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"},
-				{"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"},
-				{"Range" : {"Start" : 32, "Stop" : 47}, "Group" : 63, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"}],
+	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1A", "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"}]
 
-	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Offset" : 0}],
-
-	"BinaryControls" : [{"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Offset" : 0, "PointType" : "DOMOUTPUT"}],
-
-	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Offset" : 0}]
 })002";
+/*"Binaries" : [{"Index": 90,  "Group" : 33, "Offset" : 0},
+                        {"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 34, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"},
+                        {"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"},
+                        {"Range" : {"Start" : 32, "Stop" : 47}, "Group" : 63, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"}],
+
+      "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Offset" : 0}],
+
+      "BinaryControls" : [{"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Offset" : 0, "PointType" : "DOMOUTPUT"}],
+
+      "Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Offset" : 0}]*/
 #pragma endregion
 
 #pragma region TEST_HELPERS
@@ -228,7 +229,7 @@ void TestSetup(bool writeconffiles = true)
 	if (writeconffiles)
 		WriteConfFilesToCurrentWorkingDirectory();
 }
-void TestTearDown()
+void TestTearDown(void)
 {
 	spdlog::drop_all(); // Close off everything
 }
@@ -319,7 +320,7 @@ void Wait(asio::io_service &IOS, int seconds)
 
 namespace SimpleUnitTestsCB
 {
-TEST_CASE("Utility - HexStringTest")
+TEST_CASE("Util - HexStringTest")
 {
 	std::string ts = "c406400f0b00"  "0000fffe9000";
 	std::string w1 = { ToChar(0xc4),0x06,0x40,0x0f,0x0b,0x00 };
@@ -329,7 +330,7 @@ TEST_CASE("Utility - HexStringTest")
 	REQUIRE(res == (w1 + w2));
 }
 
-TEST_CASE("Utility - CBBCHTest")
+TEST_CASE("Util - CBBCHTest")
 {
 	CBBlockData res = CBBlockData(0x09200028);
 	REQUIRE(res.BCHPasses());
@@ -352,7 +353,7 @@ TEST_CASE("Utility - CBBCHTest")
 	res = CBBlockData(0x08080029);
 	REQUIRE(res.BCHPasses());
 }
-TEST_CASE("Utility - ParsePayloadString")
+TEST_CASE("Util - ParsePayloadString")
 {
 	PayloadLocationType payloadlocation;
 
@@ -432,16 +433,6 @@ TEST_CASE("Utility - Strand Queue")
 }
 */
 #pragma region Block Tests
-
-
-// The first 4 are all formatted first and only packets
-/*09200028	- Address
-000c0020	- Data
-0009111e
-00291106
-22290030
-22280126
-08080029*/
 
 TEST_CASE("CBBlock - ClassConstructor1")
 {
@@ -559,46 +550,57 @@ TEST_CASE("CBBlock - ClassConstructor5")
 namespace StationTests
 {
 #pragma region Station Tests
-/*
+
+// The first 4 are all formatted first and only packets - this is a scan response
+/*09200028	- Address
+000c0020	- Data
+0009111e
+00291106
+22290030
+22280126
+08080029*/
+
+
 TEST_CASE("Station - BinaryEvent")
 {
-      STANDARD_TEST_SETUP();
-      TEST_CBOSPort(Json::nullValue);
+	STANDARD_TEST_SETUP();
+	TEST_CBOSPort(Json::nullValue);
 
-      CBOSPort->Enable();
+	CBOSPort->Enable();
 
-      // Set up a callback for the result - assume sync operation at the moment
-      CommandStatus res = CommandStatus::NOT_AUTHORIZED;
-      auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=,&res](CommandStatus command_stat)
-            {
-                  res = command_stat;
-            });
+	// Set up a callback for the result - assume sync operation at the moment
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=,&res](CommandStatus command_stat)
+		{
+			res = command_stat;
+		});
 
-      // TEST EVENTS WITH DIRECT CALL
-      // Test on a valid binary point
-      const int ODCIndex = 1;
+	// TEST EVENTS WITH DIRECT CALL
+	// Test on a valid binary point
+	const int ODCIndex = 1;
 
-      EventTypePayload<EventType::Binary>::type val;
-      val = true;
-      auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-      event->SetPayload<EventType::Binary>(std::move(val));
+	EventTypePayload<EventType::Binary>::type val = true;
 
-      CBOSPort->Event(event, "TestHarness", pStatusCallback);
+	std::shared_ptr<odc::EventInfo> event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+	event->SetPayload<EventType::Binary>(std::move(val));
 
-      REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set. 1 is defined
+	CBOSPort->Event(event, "TestHarness", pStatusCallback);
 
-      res = CommandStatus::NOT_AUTHORIZED;
+	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set. 1 is defined
 
-      // Test on an undefined binary point. 40 NOT defined in the config text at the top of this file.
-      auto event2 = std::make_shared<EventInfo>(EventType::Binary, ODCIndex+200);
-      event2->SetPayload<EventType::Binary>(std::move(val));
+	res = CommandStatus::NOT_AUTHORIZED;
 
-      CBOSPort->Event(event2, "TestHarness", pStatusCallback);
-      REQUIRE((res == CommandStatus::UNDEFINED)); // The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
-      // Wait for some period to do something?? Check that the port is open and we can connect to it?
+	// Test on an undefined binary point. 40 NOT defined in the config text at the top of this file.
+	auto event2 = std::make_shared<EventInfo>(EventType::Binary, ODCIndex+200);
+	event2->SetPayload<EventType::Binary>(std::move(val));
 
-      TestTearDown();
+	CBOSPort->Event(event2, "TestHarness", pStatusCallback);
+	REQUIRE((res == CommandStatus::UNDEFINED)); // The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
+	// Wait for some period to do something?? Check that the port is open and we can connect to it?
+
+	TestTearDown();
 }
+/*
 TEST_CASE("Station - AnalogUnconditionalF5")
 {
       // Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.

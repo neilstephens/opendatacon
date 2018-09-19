@@ -40,13 +40,15 @@
 
 using namespace odc;
 
-// Collect the access routines into the point table here. Could possibly go into the PointConf class as well...
+// Collect the access routines into the point table here.
 class CBPointTableAccess
 {
 public:
 	CBPointTableAccess();
 	void Build(const bool isoutstation, asio::io_service & IOS);
 
+	// The add to point table functions add to both the ODC and MD3 Map.
+	// The Conitel Baker methods require that a
 	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const BinaryPointType & pointtype, const PayloadLocationType &payloadlocation);
 	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const BinaryPointType & pointtype, const PayloadLocationType &payloadlocation);
 

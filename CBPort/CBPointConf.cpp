@@ -92,47 +92,6 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 		ProcessBinaryPoints(BinaryControl, BinaryControls);
 	}
 
-
-	// TimeSet Point Configuration
-	if (JSONRoot.isMember("TimeSetPoint") && JSONRoot["TimeSetPoint"].isMember("Index"))
-	{
-		TimeSetPoint.first = double(0); // Default to 0 - we know as unset - will never be used in operation.
-		TimeSetPoint.second = JSONRoot["TimeSetPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - TimeSetPoint - " + std::to_string(TimeSetPoint.second));
-	}
-
-	// SystemSignOnPoint Point Configuration
-	if (JSONRoot.isMember("SystemSignOnPoint") && JSONRoot["SystemSignOnPoint"].isMember("Index"))
-	{
-		SystemSignOnPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-		SystemSignOnPoint.second = JSONRoot["SystemSignOnPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - SystemSignOnPoint - " + std::to_string(SystemSignOnPoint.second));
-	}
-
-	// FreezeResetCountersPoint Point Configuration
-	if (JSONRoot.isMember("FreezeResetCountersPoint") && JSONRoot["FreezeResetCountersPoint"].isMember("Index"))
-	{
-		FreezeResetCountersPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-		FreezeResetCountersPoint.second = JSONRoot["FreezeResetCountersPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - FreezeResetCountersPoint - " + std::to_string(FreezeResetCountersPoint.second));
-	}
-
-	// POMControlPoint Point Configuration
-	if (JSONRoot.isMember("POMControlPoint") && JSONRoot["POMControlPoint"].isMember("Index"))
-	{
-		POMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-		POMControlPoint.second = JSONRoot["POMControlPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - POMControlPoint - " + std::to_string(POMControlPoint.second));
-	}
-
-	// DOMControlPoint Point Configuration
-	if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
-	{
-		DOMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-		DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - DOMControlPoint - " + std::to_string(DOMControlPoint.second));
-	}
-
 	if (JSONRoot.isMember("IsBakerDevice"))
 	{
 		IsBakerDevice = JSONRoot["IsBakerDevice"].asBool();
@@ -236,7 +195,7 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 			TimeTaggedDigital = JSONNode[n]["TimeTaggedDigital"].asBool();
 		}
 
-		LOGDEBUG("Conf processed - PayloadLocation - " + std::to_string(PollGroupID) + " Rate " + std::to_string(pollrate) + " Type " + std::to_string(polltype) + " TimeTaggedDigital " + std::to_string(TimeTaggedDigital) + " Force Unconditional Command " + std::to_string(ForceUnconditional));
+		LOGDEBUG("Conf processed - PollGroup - " + std::to_string(PollGroupID) + " Rate " + std::to_string(pollrate) + " Type " + std::to_string(polltype) + " TimeTaggedDigital " + std::to_string(TimeTaggedDigital) + " Force Unconditional Command " + std::to_string(ForceUnconditional));
 		PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate, polltype, ForceUnconditional, TimeTaggedDigital));
 	}
 	LOGDEBUG("Conf processing - PollGroups - Finished");
@@ -359,76 +318,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 	LOGDEBUG("Conf processing - Binary - Finished");
 }
 
-// The string will have "2", or "2B" or "3A" or "15A". The number 1 to 15, the letter A/B/or nothing
-bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType& payloadlocation)
-{
-	payloadlocation = PayloadLocationType(); // Error value by default
 
-	if (pl.size() == 0)
-	{
-		LOGERROR("Payload string zero length. Needs to be '3' or '2B' or '15B' in format");
-		return false;
-	}
-
-	// First character
-	if ((pl[0] >= '1') && (pl[0] <= '9'))
-	{
-		payloadlocation.Packet = (pl[0] - '0'); // 1 to 9
-	}
-	else
-	{
-		LOGERROR("Payload string first character needs to be 1 to 9 Needs to be '3' or '2B' in format");
-		return false;
-	}
-	if (pl.size() == 1)
-	{
-		payloadlocation.Position = PayloadABType::BothAB; // Just got the number, no A/B
-		return true;
-	}
-
-	// So second character
-	if ((pl[1] >= '0') && (pl[1] <= '6') && (pl[0] == '1'))
-	{
-		// Have a second number, the first must be '1'
-		payloadlocation.Packet = (pl[1] - '0' + 10);
-
-		if (pl.size() == 2)
-		{
-			payloadlocation.Position = PayloadABType::BothAB; // Just got the number, no A/B
-			return true;
-		}
-	}
-	else if (pl[1] == 'A')
-	{
-		payloadlocation.Position = PayloadABType::PositionA;
-		return true;
-	}
-	else if (pl[1] == 'B')
-	{
-		payloadlocation.Position = PayloadABType::PositionB;
-		return true;
-	}
-	else
-	{
-		LOGERROR("Payload string second character not correct. Needs to be '3' or '2B' or '16B' in format");
-		return false;
-	}
-
-	// Do we have a third character? To get to here we must...
-	if (pl[2] == 'A')
-	{
-		payloadlocation.Position = PayloadABType::PositionA;
-		return true;
-	}
-	if (pl[2] == 'B')
-	{
-		payloadlocation.Position = PayloadABType::PositionB;
-		return true;
-	}
-
-	LOGERROR("Payload string third character not correct. Needs to be A or B as in '16B' in format");
-	return false;
-}
 
 // This method loads both Analog and Counter/Timers. They look functionally similar in CB
 void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value& JSONNode)
@@ -518,6 +408,76 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 		}
 	}
 	LOGDEBUG("Conf processing - Analog/Counter - Finished");
+}
+// The string will have "2", or "2B" or "3A" or "15A". The number 1 to 15, the letter A/B/or nothing
+bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType& payloadlocation)
+{
+	payloadlocation = PayloadLocationType(); // Error value by default
+
+	if (pl.size() == 0)
+	{
+		LOGERROR("Payload string zero length. Needs to be '3' or '2B' or '15B' in format");
+		return false;
+	}
+
+	// First character
+	if ((pl[0] >= '1') && (pl[0] <= '9'))
+	{
+		payloadlocation.Packet = (pl[0] - '0'); // 1 to 9
+	}
+	else
+	{
+		LOGERROR("Payload string first character needs to be 1 to 9 Needs to be '3' or '2B' in format");
+		return false;
+	}
+	if (pl.size() == 1)
+	{
+		payloadlocation.Position = PayloadABType::BothAB; // Just got the number, no A/B
+		return true;
+	}
+
+	// So second character
+	if ((pl[1] >= '0') && (pl[1] <= '6') && (pl[0] == '1'))
+	{
+		// Have a second number, the first must be '1'
+		payloadlocation.Packet = (pl[1] - '0' + 10);
+
+		if (pl.size() == 2)
+		{
+			payloadlocation.Position = PayloadABType::BothAB; // Just got the number, no A/B
+			return true;
+		}
+	}
+	else if (pl[1] == 'A')
+	{
+		payloadlocation.Position = PayloadABType::PositionA;
+		return true;
+	}
+	else if (pl[1] == 'B')
+	{
+		payloadlocation.Position = PayloadABType::PositionB;
+		return true;
+	}
+	else
+	{
+		LOGERROR("Payload string second character not correct. Needs to be '3' or '2B' or '16B' in format");
+		return false;
+	}
+
+	// Do we have a third character? To get to here we must...
+	if (pl[2] == 'A')
+	{
+		payloadlocation.Position = PayloadABType::PositionA;
+		return true;
+	}
+	if (pl[2] == 'B')
+	{
+		payloadlocation.Position = PayloadABType::PositionB;
+		return true;
+	}
+
+	LOGERROR("Payload string third character not correct. Needs to be A or B as in '16B' in format");
+	return false;
 }
 
 #endif
