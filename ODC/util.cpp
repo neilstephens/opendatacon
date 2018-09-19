@@ -32,6 +32,16 @@ using namespace std;
 namespace odc
 {
 
+void spdlog_init_thread_pool(size_t q_size, size_t thread_count)
+{
+	spdlog::init_thread_pool(q_size, thread_count);
+}
+
+std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool()
+{
+	return spdlog::thread_pool();
+}
+
 void spdlog_register_logger(std::shared_ptr<spdlog::logger> logger)
 {
 	return spdlog::register_logger(logger);
