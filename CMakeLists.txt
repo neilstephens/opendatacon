@@ -110,6 +110,9 @@ if(WIN32)
 	
 	# Postfix for debug builds
 	SET(CMAKE_DEBUG_POSTFIX "d")
+	
+	#min max macro rubbish
+	add_definitions(-DNOMINMAX)
 
 	# Install directories
 	set(INSTALLDIR_BINS ".")
