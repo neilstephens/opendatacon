@@ -179,14 +179,16 @@ void CBConnection::Write(const CBMessage_t &CompleteCBMessage)
 
 	std::string CBMessageString;
 
+	CBBlockData blk = CompleteCBMessage[0];
+
 	if (IsBakerDevice)
 	{
 		// If Is a Baker device, swap Station and Group values before sending...
-		CBBlockData blk = CompleteCBMessage[0];
 		blk.DoBakerConitelSwap();
-		CBMessageString += blk.ToBinaryString();
 	}
+	CBMessageString += blk.ToBinaryString();
 
+	// Done the first block, now do the rest
 	for (uint8_t i = 1; i < CompleteCBMessage.size(); i++)
 	{
 		CBMessageString += CompleteCBMessage[i].ToBinaryString();

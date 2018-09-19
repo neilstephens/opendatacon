@@ -114,24 +114,6 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 	}
 }
 
-#pragma region Worker Methods
-
-// This method is passed to the SystemFlags variable to do the necessary calculation
-// Access through SystemFlags.GetDigitalChangedFlag()
-bool CBOutstationPort::DigitalChangedFlagCalculationMethod(void)
-{
-	// Return true if there is unsent digital changes
-	return (CountBinaryBlocksWithChanges() > 0);
-}
-// This method is passed to the SystemFlags variable to do the necessary calculation
-// Access through SystemFlags.GetTimeTaggedDataAvailableFlag()
-bool CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
-{
-	return true; //TODO: MyPointConf->PointTable.TimeTaggedDataAvailable();
-}
-
-#pragma endregion
-
 #pragma region RESPONSE METHODS
 
 void CBOutstationPort::ScanRequest(CBBlockData &Header)
@@ -178,9 +160,55 @@ void CBOutstationPort::ScanRequest(CBBlockData &Header)
 
 void CBOutstationPort::BuildScanRequestResponseData(uint8_t Group, std::vector<uint16_t> &BlockValues)
 {
-	BlockValues.push_back(0x111);
-	BlockValues.push_back(0x222);
-	BlockValues.push_back(0x333);
+	// We now have to collect all the current values for this group.
+	// Search for the group and payload location, and if we have data process it. We have to search 3 lists and the RST table to get what we need
+
+	//TODO: Need to store the max payload for a group, so that we know when to stop searching for values...
+	//TODO: Need to store the Status Byte details so we can see if it needs to be sent...
+
+	// An Even block counter value is A, Odd block counter is B. We start at 1, which is block 1B, 2 is block 2A, 3 is block 2B and so on.
+	for (uint8_t blockcounter = 1; blockcounter <= 16; blockcounter++)
+	{
+		PayloadLocationType payloadlocation(blockcounter / 2 + 1, ((blockcounter % 2) == 0 ? PayloadABType::PositionA : PayloadABType::PositionB));
+		bool FoundMatch = false;
+
+		uint16_t Payload = 0;
+
+		MyPointConf->PointTable.ForEachMatchingAnalogPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+			{
+				// We have a matching point - there will be only 1!!, set a flag to indicate we have a match, and set our bit in the output.
+				Payload = pt.GetAnalog();
+				FoundMatch = true;
+			});
+
+		if (!FoundMatch)
+		{
+			MyPointConf->PointTable.ForEachMatchingCounterPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+				{
+					// We have a matching point - there will be only 1!!, set a flag to indicate we have a match, and set our bit in the output.
+					Payload = pt.GetAnalog();
+					FoundMatch = true;
+				});
+		}
+		if (!FoundMatch)
+		{
+			MyPointConf->PointTable.ForEachMatchingBinaryPoint(Group, payloadlocation, [&](CBBinaryPoint &pt)
+				{
+					// We have a matching point, set a flag to indicate we have a match, and set our bit in the output.
+					uint8_t ch = pt.GetChannel();
+					if (pt.GetBinary() == 1)
+					{
+					      Payload |= ShiftLeftResult16Bits(1, 12 - ch); // Just have to OR, we know it was zero initially.
+					}
+					FoundMatch = true;
+				});
+		}
+		if (!FoundMatch)
+		{
+			LOGDEBUG("Failed to find a payload for: " + payloadlocation.to_string() + " Setting to zero");
+		}
+		BlockValues.push_back(Payload);
+	}
 }
 
 // Function 6
@@ -344,6 +372,25 @@ void CBOutstationPort::SendAnalogNoChange(uint8_t StationAddress, uint8_t Group,
 
 #pragma endregion
 
+
+#pragma region Worker Methods
+
+// This method is passed to the SystemFlags variable to do the necessary calculation
+// Access through SystemFlags.GetDigitalChangedFlag()
+bool CBOutstationPort::DigitalChangedFlagCalculationMethod(void)
+{
+	// Return true if there is unsent digital changes
+	return (CountBinaryBlocksWithChanges() > 0);
+}
+// This method is passed to the SystemFlags variable to do the necessary calculation
+// Access through SystemFlags.GetTimeTaggedDataAvailableFlag()
+bool CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
+{
+	return true; //TODO: MyPointConf->PointTable.TimeTaggedDataAvailable();
+}
+
+#pragma endregion
+
 #pragma region DIGITAL
 
 
@@ -431,7 +478,7 @@ void CBOutstationPort::DoDigitalScan(CBBlockData &Header)
                         ResponseWords.push_back(CBBlockFn11StoM::FillerPacket());
                   }
 
-                  //TODO: NEW Style Digital - A flag block can appear in the OutStation Fn11 time tagged response - which can indicate Internal Buffer Overflow, Time sync fail and restoration. We have not implemented this
+
 
                   // Now translate the 16 bit packets into the 32 bit CB blocks.
                   for (uint16_t i = 0; i < ResponseWords.size(); i = i + 2)

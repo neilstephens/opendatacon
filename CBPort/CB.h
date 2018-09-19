@@ -65,19 +65,27 @@ OT numeric_cast(const ST value)
 	return static_cast<OT>(value);
 }
 
-
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
-enum BinaryPointType { BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT };
+enum BinaryPointType { DIG, MCA, MCB, MCC };
+enum AnalogCounterPointType { ANA, ACC12, ACC24 };
 enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
 
 // Need to hold the packet position for each point. a number 1 to 16 and one of the enum options.
-enum class PayloadABType { PositionA, PositionB, BothAB, Error };
+enum class PayloadABType { PositionA, PositionB, Error };
 
 class PayloadLocationType
 {
 public:
-	uint8_t Packet = 0;
-	PayloadABType Position = PayloadABType::Error;
+	PayloadLocationType(): Packet(0),Position(PayloadABType::Error) {}
+	PayloadLocationType(uint8_t packet, PayloadABType position): Packet(packet), Position(position) {}
+
+	//TODO: Use Getter and Setters so we can range check.
+	uint8_t Packet; // Should be 1 to 16. 0 is an error.
+	PayloadABType Position;
+	std::string to_string()
+	{
+		return std::to_string(Packet) + ((Position == PayloadABType::PositionA) ? "A" : (Position == PayloadABType::PositionB) ? "B" : "Error");
+	}
 };
 
 class CBPoint // Abstract Class
@@ -195,7 +203,7 @@ protected:
 	uint8_t Binary = 0x01;
 	uint16_t ModuleBinarySnapShot = 0; // Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
 	bool Changed = true;
-	BinaryPointType PointType = BASICINPUT;
+	BinaryPointType PointType = DIG;
 };
 
 class CBAnalogCounterPoint: public CBPoint

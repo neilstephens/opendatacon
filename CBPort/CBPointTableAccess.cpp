@@ -39,91 +39,110 @@ void CBPointTableAccess::Build(const bool isoutstation, asio::io_service& IOS)
 
 #pragma region Analog-Counter
 
-bool CBPointTableAccess::AddCounterPointToPointTable(const size_t &index, const uint8_t &moduleaddress, const uint8_t &channel, const PayloadLocationType &payloadlocation)
+bool CBPointTableAccess::AddCounterPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation)
 {
-	uint16_t CBindex = ShiftLeft8Result16Bits(moduleaddress) | channel;
-	if (CounterCBPointMap.find(CBindex) != CounterCBPointMap.end())
+	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
+	if (CounterCBPointMap.find(CBIndex) != CounterCBPointMap.end())
 	{
-		LOGERROR("Duplicate Counter CB Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
+		LOGERROR("Error Duplicate Counter CB Index " + std::to_string(group) + " - " + std::to_string(channel));
 		return false;
 	}
 
 	if (CounterODCPointMap.find(index) != CounterODCPointMap.end())
 	{
-		LOGERROR("Duplicate Counter ODC Index : " + std::to_string(index));
-		return false;
+		LOGWARN("Warning Duplicate Counter ODC Index : " + std::to_string(index));
+		//Find the point and add to the CB table again
+		CounterCBPointMap[CBIndex] = CounterODCPointMap[index];
 	}
-
-	auto pt = std::make_shared<CBAnalogCounterPoint>(index, moduleaddress, channel, payloadlocation);
-	CounterCBPointMap[CBindex] = pt;
-	CounterODCPointMap[index] = pt;
+	else
+	{
+		auto pt = std::make_shared<CBAnalogCounterPoint>(index, group, channel, payloadlocation);
+		CounterCBPointMap[CBIndex] = pt;
+		CounterODCPointMap[index] = pt;
+	}
 	return true;
 }
-bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const uint8_t &moduleaddress, const uint8_t &channel, const PayloadLocationType &payloadlocation)
+bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation)
 {
-	uint16_t CBindex = ShiftLeft8Result16Bits(moduleaddress) | channel;
-	if (AnalogCBPointMap.find(CBindex) != AnalogCBPointMap.end())
+	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
+	if (AnalogCBPointMap.find(CBIndex) != AnalogCBPointMap.end())
 	{
-		LOGERROR("Duplicate Analog CB Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
+		LOGERROR("Error Duplicate Analog CB Index " + std::to_string(group) + " - " + std::to_string(channel));
 		return false;
 	}
 
 	if (AnalogODCPointMap.find(index) != AnalogODCPointMap.end())
 	{
-		LOGERROR("Duplicate Analog ODC Index : " + std::to_string(index));
-		return false;
+		LOGWARN("Warning Duplicate Analog ODC Index : " + std::to_string(index));
+		AnalogCBPointMap[CBIndex] = AnalogODCPointMap[index];
 	}
-
-	auto pt = std::make_shared<CBAnalogCounterPoint>(index, moduleaddress, channel, payloadlocation);
-	AnalogCBPointMap[CBindex] = pt;
-	AnalogODCPointMap[index] = pt;
+	else
+	{
+		auto pt = std::make_shared<CBAnalogCounterPoint>(index, group, channel, payloadlocation);
+		AnalogCBPointMap[CBIndex] = pt;
+		AnalogODCPointMap[index] = pt;
+	}
 	return true;
 }
-bool CBPointTableAccess::AddAnalogControlPointToPointTable(const size_t &index, const uint8_t &moduleaddress, const uint8_t &channel, const PayloadLocationType &payloadlocation)
+bool CBPointTableAccess::AddAnalogControlPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation)
 {
-	uint16_t CBindex = ShiftLeft8Result16Bits(moduleaddress) | channel;
-	if (AnalogControlCBPointMap.find(CBindex) != AnalogControlCBPointMap.end())
+	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
+	if (AnalogControlCBPointMap.find(CBIndex) != AnalogControlCBPointMap.end())
 	{
-		LOGERROR("Duplicate Analog CB Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
+		LOGERROR("Error Duplicate Analog CB Index " + std::to_string(group) + " - " + std::to_string(channel));
 		return false;
 	}
 
 	if (AnalogControlODCPointMap.find(index) != AnalogControlODCPointMap.end())
 	{
 		LOGERROR("Duplicate Analog ODC Index : " + std::to_string(index));
-		return false;
+		AnalogControlCBPointMap[CBIndex] = AnalogControlODCPointMap[index];
 	}
-
-	auto pt = std::make_shared<CBAnalogCounterPoint>(index, moduleaddress, channel, payloadlocation);
-	AnalogControlCBPointMap[CBindex] = pt;
-	AnalogControlODCPointMap[index] = pt;
+	else
+	{
+		auto pt = std::make_shared<CBAnalogCounterPoint>(index, group, channel, payloadlocation);
+		AnalogControlCBPointMap[CBIndex] = pt;
+		AnalogControlODCPointMap[index] = pt;
+	}
 	return true;
 }
 
 bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const BinaryPointType &pointtype, const PayloadLocationType &payloadlocation)
 {
-	uint16_t CBindex = ShiftLeft8Result16Bits(group) | channel;
-	if (BinaryCBPointMap.find(CBindex) != BinaryCBPointMap.end())
+	// So we need to access the Conitel data by Group/PayLoadLocation/Channel
+	// When we get a scan, we need to get everything for a given group, payload by payload 1B,2A,2B and then for binary all matching channels.
+	// For that scan, we will need to query the Binaries/Analog/Counters and the Status field.
+	// There 'could' be gaps in the payload - we should handle this gracefully and just fill with zero.
+	// For Binaries there will only be a maximum of 12 channels(bits)
+	// The channels might have gaps, dont need to be in order.
+
+	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
+
+	if (BinaryCBPointMap.find(CBIndex) != BinaryCBPointMap.end())
 	{
-		LOGERROR("Duplicate Binary CB Index " + std::to_string(group) + " - " + std::to_string(channel));
+		LOGERROR("Error Duplicate Binary CB Index " + std::to_string(group) + " - " + std::to_string(channel));
 		return false;
 	}
 
 	if (BinaryODCPointMap.find(index) != BinaryODCPointMap.end())
 	{
-		LOGERROR("Duplicate Binary ODC Index : " + std::to_string(index));
-		return false;
+		LOGWARN("Warning Duplicate Binary ODC Index : " + std::to_string(index));
+		BinaryCBPointMap[CBIndex] = BinaryODCPointMap[index];
 	}
-
-	auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype);
-	BinaryCBPointMap[CBindex] = pt;
-	BinaryODCPointMap[index] = pt;
+	else
+	{
+		LOGDEBUG("Adding Binary Point at " + to_hexstring(CBIndex));
+		auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype);
+		BinaryCBPointMap[CBIndex] = pt;
+		BinaryODCPointMap[index] = pt;
+	}
 	return true;
 }
 bool CBPointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const BinaryPointType &pointtype, const PayloadLocationType &payloadlocation)
 {
-	uint16_t CBindex = ShiftLeft8Result16Bits(group) | channel;
-	if (BinaryControlCBPointMap.find(CBindex) != BinaryControlCBPointMap.end())
+	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
+
+	if (BinaryControlCBPointMap.find(CBIndex) != BinaryControlCBPointMap.end())
 	{
 		LOGERROR("Duplicate BinaryControl CB Index " + std::to_string(group) + " - " + std::to_string(channel));
 		return false;
@@ -136,15 +155,15 @@ bool CBPointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, 
 	}
 
 	auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype);
-	BinaryControlCBPointMap[CBindex] = pt;
+	BinaryControlCBPointMap[CBIndex] = pt;
 	BinaryControlODCPointMap[index] = pt;
 	return true;
 }
 
 
-bool CBPointTableAccess::GetCounterValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t &res, bool &hasbeenset)
+bool CBPointTableAccess::GetCounterValueUsingCBIndex(const uint16_t group, const uint8_t channel, uint16_t &res, bool &hasbeenset)
 {
-	uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
+	uint16_t CBIndex = 0; // GetCBPointMapIndex(group, channel, payloadlocation);
 
 	CBAnalogCounterPointMapIterType CBPointMapIter = CounterCBPointMap.find(CBIndex);
 	if (CBPointMapIter != CounterCBPointMap.end())
@@ -414,7 +433,7 @@ bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const u
 
 void CBPointTableAccess::AddToDigitalEvents(CBBinaryPoint &inpt)
 {
-	if (inpt.GetPointType() == TIMETAGGEDINPUT) // Only add if the point not configured for time tagged data
+	if (inpt.GetPointType() == MCA) // Only add if the point not configured for time tagged data
 	{
 		CBBinaryPoint pt = CBBinaryPoint(inpt);
 
@@ -463,7 +482,6 @@ uint16_t CBPointTableAccess::CollectModuleBitsIntoWord(const uint8_t Group, bool
 	}
 	return wordres;
 }
-
 
 #pragma endregion
 
@@ -533,23 +551,66 @@ bool CBPointTableAccess::TimeTaggedDataAvailable()
       return !pBinaryTimeTaggedEventQueue->sync_empty();
 }
 */
+uint16_t CBPointTableAccess::GetCBPointMapIndex(const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation)
+{
+	assert(group <= 0x0F);
+	assert(channel != 0);
+	assert(channel <= 12);
+	assert(payloadlocation.Position != PayloadABType::Error);
+
+	// Top 4 bits group (0-15), Next 4 bits channel (1-12), next 4 bits payload packet number (0-15), next 4 bits 0(A) or 1(B)
+	uint16_t CBIndex = ShiftLeftResult16Bits(group, 12) | ShiftLeftResult16Bits(channel, 8) | ShiftLeftResult16Bits(payloadlocation.Packet-1, 4) | (payloadlocation.Position == PayloadABType::PositionA ? 0 : 1);
+	return CBIndex;
+}
+void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBBinaryPoint &pt)> fn)
+{
+	// Need to do a search for channels 1 to 12 in the group and payloadlocation
+	for (uint8_t channel = 1; channel < 13; channel++)
+	{
+		uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
+		if (BinaryCBPointMap.count(CBIndex) != 0)
+		{
+			// We have a match - call our function with the point as a parameter.
+			fn(*BinaryCBPointMap[CBIndex]);
+		}
+	}
+}
+void CBPointTableAccess::ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint &pt)> fn)
+{
+	uint16_t CBIndex = GetCBPointMapIndex(group, 1, payloadlocation);
+	if (AnalogCBPointMap.count(CBIndex) != 0)
+	{
+		// We have a match - call our function with the point as a parameter.
+		fn(*AnalogCBPointMap[CBIndex]);
+	}
+}
+void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint &pt)> fn)
+{
+	uint16_t CBIndex = GetCBPointMapIndex(group, 1, payloadlocation);
+	if (CounterCBPointMap.count(CBIndex) != 0)
+	{
+		// We have a match - call our function with the point as a parameter.
+		fn(*CounterCBPointMap[CBIndex]);
+	}
+}
+
 void CBPointTableAccess::ForEachBinaryPoint(std::function<void(CBBinaryPoint &pt)> fn)
 {
-	for (auto CBpt : BinaryCBPointMap) // We always use the CB map - its order is the only one we care about.
+	for (auto CBpt : BinaryODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}
 }
 void CBPointTableAccess::ForEachAnalogPoint(std::function<void(CBAnalogCounterPoint &pt)> fn)
 {
-	for (auto CBpt : AnalogCBPointMap) // We always use the CB map - its order is the only one we care about.
+	for (auto CBpt : AnalogODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}
 }
 void CBPointTableAccess::ForEachCounterPoint(std::function<void(CBAnalogCounterPoint &pt)> fn)
 {
-	for (auto CBpt : CounterCBPointMap) // We always use the CB map - its order is the only one we care about.
+	for (auto CBpt : CounterODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}

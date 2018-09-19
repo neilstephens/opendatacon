@@ -94,6 +94,10 @@ public:
 	void ForEachAnalogPoint(std::function<void(CBAnalogCounterPoint&pt)> fn);
 	void ForEachCounterPoint(std::function<void(CBAnalogCounterPoint&pt)> fn);
 
+	void ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBBinaryPoint&pt)> fn);
+	void ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
+	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
+
 //	std::vector<CBBinaryPoint> DumpTimeTaggedPointList();
 
 //	bool TimeTaggedDataAvailable();
@@ -104,24 +108,29 @@ public:
 	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t Group, bool & ModuleFailed);
 	uint16_t CollectModuleBitsIntoWord(const uint8_t Group, bool & ModuleFailed);
 
+	// Public only for testing
+	static uint16_t GetCBPointMapIndex(const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation); // Group/Payload/Channel
 protected:
 
+
+
+
 	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
-	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinaryCBPointMap; // ModuleAndChannel, CBPoint
+	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinaryCBPointMap; // Group/Payload/Channel, CBPoint
 	std::map<size_t, std::shared_ptr<CBBinaryPoint>> BinaryODCPointMap;  // Index OpenDataCon, CBPoint
 
-	std::map<uint16_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogCBPointMap; // ModuleAndChannel, CBPoint
+	std::map<uint16_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogCBPointMap; // Group/Payload/Channel, CBPoint
 	std::map<size_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogODCPointMap;  // Index OpenDataCon, CBPoint
 
-	std::map<uint16_t, std::shared_ptr<CBAnalogCounterPoint>> CounterCBPointMap; // ModuleAndChannel, CBPoint
+	std::map<uint16_t, std::shared_ptr<CBAnalogCounterPoint>> CounterCBPointMap; // Group/Payload/Channel, CBPoint
 	std::map<size_t, std::shared_ptr<CBAnalogCounterPoint>> CounterODCPointMap;  // Index OpenDataCon, CBPoint
 
 	// Binary Control Points are not readable
-	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinaryControlCBPointMap; // ModuleAndChannel, CBPoint
+	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinaryControlCBPointMap; //Group/Payload/Channel, CBPoint
 	std::map<size_t, std::shared_ptr<CBBinaryPoint>> BinaryControlODCPointMap;  // Index OpenDataCon, CBPoint
 
 	// Analog Control Points are not readable
-	std::map<uint16_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogControlCBPointMap; // ModuleAndChannel, CBPoint
+	std::map<uint16_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogControlCBPointMap; // Group/Payload/Channel, CBPoint
 	std::map<size_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogControlODCPointMap;  // Index OpenDataCon, CBPoint
 
 	bool IsOutstation = true;

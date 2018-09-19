@@ -1462,7 +1462,7 @@ void CBMasterPort::WriteObject(const ControlRelayOutputBlock& command, const uin
 
 	std::string OnOffString = "ON";
 
-	if (PointType == DOMOUTPUT)
+	if (PointType == MCB)
 	{
 		// The main issue is that a DOM command writes 16 bits in one go, so we have to remember the output state of the other bits,
 		// so that we only write the change that has been triggered.
@@ -1487,7 +1487,7 @@ void CBMasterPort::WriteObject(const ControlRelayOutputBlock& command, const uin
 		LOGDEBUG("Master received a DOM ODC Change Command - Index: " + std::to_string(index) +" - "+ OnOffString + "  Module/Channel " + std::to_string(Group) + "/" + std::to_string(Channel));
 		SendDOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Group, outputbits, pStatusCallback);
 	}
-	else if(PointType == POMOUTPUT)
+	else if(PointType == MCC)
 	{
 		// POM Point
 		// The POM output is a single output selection, value 0 to 15 which represents a TRIP 0-7 and CLOSE 8-15 for the up to 8 points in a POM module.

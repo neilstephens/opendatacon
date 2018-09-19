@@ -150,7 +150,6 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 // This method will be called in response to data appearing on our TCP connection.
 // Remember there can be multiple responders!
 //
-//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we dot get stuck here.
 
 CommandStatus CBOutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
 {
@@ -206,6 +205,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 	{
 		case EventType::Analog:
 		{
+			// ODC Analog is a double by default...
 			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
 			LOGDEBUG("OS - Received Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(analogmeas));

@@ -33,13 +33,13 @@
 
 #define COMPILE_TESTS
 
-#ifdef COMPILE_TESTS
+#if defined(COMPILE_TESTS)
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 
 #include <spdlog/sinks/ansicolor_sink.h>
 
-#ifdef WIN32
+#if defined(WIN32)
 #include <spdlog/sinks/wincolor_sink.h>
 #include <spdlog/sinks/windebug_sink.h>
 #endif
@@ -51,13 +51,13 @@
 //#include "ProducerConsumerQueue.h"
 
 
-#ifdef NONVSTESTING
+#if defined(NONVSTESTING)
 #include <catch.hpp>
 #else
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
-//#define SUITE(name) "CBTests - " name
+#define SUITE(name) "CBTests - " name
 
 // To remove GCC warnings
 namespace RTUConnectedTests
@@ -81,14 +81,14 @@ const char *conffile1 = R"001(
 {
 	"IP" : "127.0.0.1",
 	"Port" : 1000,
-	"OutstationAddr" : 124,
+	"OutstationAddr" : 9,
 	"ServerType" : "PERSISTENT",
 	"TCPClientServer" : "SERVER",
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
 	// We have two modes for the digital/binary commands. Can be one or the other - not both!
-	"IsBakerDevice" : true,
+	"IsBakerDevice" : false,
 
 	// If a binary event time stamp is outside 30 minutes of current time, replace the timestamp
 	"OverrideOldTimeStamps" : false,
@@ -105,31 +105,57 @@ const char *conffile1 = R"001(
 
 	"PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary", "TimeTaggedDigital" : true }],
 
-	// Binaries - we can send 12 bits back in a payload location, the offset is the bit within that payload location.
-	// The payload location can be 1B, 2A, 2B, or 3 (for a 24 bit result)
+	// The payload location can be 1B, 2A, 2B
+	// Where there is a 24 bit result (MCA,MCB,MCC,ACC24) the next payload location will automatically be used. Do not put something else in there!
 	// The point table will build a group list with all the data it has to collect for a given group number.
 	// The problem is that a point could actually be in two (or more) groups...
+	// We can only use range for Binary and Control. For analog each one has to be defined singularly
 
-	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1A", "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"}]
+	// Digital IN
+	// DIG - 12 bits to a Payload, Channel(bit) 1 to 12. On a range, the Channel is the first Channel in the range.
+	// MCA,MCB,MCC - 12 bits and takes two payloads (as soon as you have 1 bit, you have two payloads.
+
+	// Analog IN
+	// ANA - 1 Channel to a payload,
+
+	// Counter IN
+	// ACC12 - 1 to a payload,
+	// ACC24 - takes two payloads.
+
+	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG"},
+					{"Range" : {"Start" : 12, "Stop" : 17}, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"}],
+
+	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
+					{"Index" : 1, "Group" : 3, "PayloadLocation": "3B","Channel" : 1, "Type":"ANA"},
+					{"Index" : 2, "Group" : 3, "PayloadLocation": "4A","Channel" : 1, "Type":"ANA"},
+					{"Index" : 3, "Group" : 3, "PayloadLocation": "4B","Channel" : 1, "Type":"ANA"}],
+
+	"Counters" : [	{"Index" : 4, "Group" : 3, "PayloadLocation": "5A","Channel" : 1, "Type":"ACC12"},
+					{"Index" : 5, "Group" : 3, "PayloadLocation": "5B","Channel" : 1, "Type":"ACC12"},
+					{"Index" : 6, "Group" : 3, "PayloadLocation": "6A","Channel" : 1, "Type":"ACC24"}],
+
+	// Special definition, so we know where to find the Remote Status Data in the scanned group.
+
+	"RemoteStatus" : [{"Group":3, "PayloadLocation": "7A"}]
 
 })001";
-/*	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Offset" : 0, "PayloadLocation" : 2}],
+/*	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Channel" : 0, "PayloadLocation" : 2}],
 
-      "BinaryControls" : [{"Index": 80,  "Group" : 33, "Offset" : 0, "PointType" : "DOMOUTPUT"},
-                                    {"Range" : {"Start" : 100, "Stop" : 115}, "Group" : 37, "Offset" : 0, "PointType" : "DOMOUTPUT"},
-                                    {"Range" : {"Start" : 116, "Stop" : 123}, "Group" : 38, "Offset" : 0, "PointType" : "POMOUTPUT"}],
+      "BinaryControls" : [{"Index": 80,  "Group" : 33, "Channel" : 0, "PointType" : "MCB"},
+                                    {"Range" : {"Start" : 100, "Stop" : 115}, "Group" : 37, "Channel" : 0, "PointType" : "MCB"},
+                                    {"Range" : {"Start" : 116, "Stop" : 123}, "Group" : 38, "Channel" : 0, "PointType" : "MCC"}],
 
-      "Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Offset" : 0},
-                              {"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Offset" : 0}],
+      "Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Channel" : 0},
+                              {"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Channel" : 0}],
 
-      "AnalogControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Group" : 39, "Offset" : 0}]*/
+      "AnalogControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Group" : 39, "Channel" : 0}]*/
 
 // We actually have the conf file here to match the tests it is used in below. We write out to a file (overwrite) on each test so it can be read back in.
 const char *conffile2 = R"002(
 {
 	"IP" : "127.0.0.1",
 	"Port" : 1000,
-	"OutstationAddr" : 125,
+	"OutstationAddr" : 10,
 	"ServerType" : "PERSISTENT",
 	"TCPClientServer" : "SERVER",
 	"LinkNumRetry": 4,
@@ -145,19 +171,19 @@ const char *conffile2 = R"002(
 	"CBCommandTimeoutmsec" : 4000,
 	"CBCommandRetries" : 1,
 
-	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1A", "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"}]
+	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1A", "Channel" : 0, "PointType" : "MCA"}]
 
 })002";
-/*"Binaries" : [{"Index": 90,  "Group" : 33, "Offset" : 0},
-                        {"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 34, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"},
-                        {"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"},
-                        {"Range" : {"Start" : 32, "Stop" : 47}, "Group" : 63, "Offset" : 0, "PointType" : "TIMETAGGEDINPUT"}],
+/*"Binaries" : [{"Index": 90,  "Group" : 33, "Channel" : 0},
+                        {"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 34, "Channel" : 0, "PointType" : "MCA"},
+                        {"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Channel" : 0, "PointType" : "MCA"},
+                        {"Range" : {"Start" : 32, "Stop" : 47}, "Group" : 63, "Channel" : 0, "PointType" : "MCA"}],
 
-      "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Offset" : 0}],
+      "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Channel" : 0}],
 
-      "BinaryControls" : [{"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Offset" : 0, "PointType" : "DOMOUTPUT"}],
+      "BinaryControls" : [{"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Channel" : 0, "PointType" : "MCB"}],
 
-      "Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Offset" : 0}]*/
+      "Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Channel" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Channel" : 0}]*/
 #pragma endregion
 
 #pragma region TEST_HELPERS
@@ -169,13 +195,13 @@ std::vector<spdlog::sink_ptr> LogSinks;
 void WriteConfFilesToCurrentWorkingDirectory()
 {
 	std::ofstream ofs(conffilename1);
-	if (!ofs) FAIL("Could not open conffile1 for writing");
+	if (!ofs) WARN("Could not open conffile1 for writing");
 
 	ofs << conffile1;
 	ofs.close();
 
 	std::ofstream ofs2(conffilename2);
-	if (!ofs2) FAIL("Could not open conffile2 for writing");
+	if (!ofs2) WARN("Could not open conffile2 for writing");
 
 	ofs2 << conffile2;
 	ofs.close();
@@ -365,13 +391,9 @@ TEST_CASE("Util - ParsePayloadString")
 	REQUIRE(payloadlocation.Packet == 1);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionB);
 
-	res = CBPointConf::ParsePayloadString("16", payloadlocation);
+	res = CBPointConf::ParsePayloadString("16A", payloadlocation);
 	REQUIRE(payloadlocation.Packet == 16);
-	REQUIRE(payloadlocation.Position == PayloadABType::BothAB);
-
-	res = CBPointConf::ParsePayloadString("1", payloadlocation);
-	REQUIRE(payloadlocation.Packet == 1);
-	REQUIRE(payloadlocation.Position == PayloadABType::BothAB);
+	REQUIRE(payloadlocation.Position == PayloadABType::PositionA);
 
 	res = CBPointConf::ParsePayloadString("1A", payloadlocation);
 	REQUIRE(payloadlocation.Packet == 1);
@@ -385,6 +407,23 @@ TEST_CASE("Util - ParsePayloadString")
 	REQUIRE(res == false);
 	REQUIRE(payloadlocation.Position == PayloadABType::Error);
 }
+TEST_CASE("Util - CBIndexTest")
+{
+	uint8_t group = 1;
+	uint8_t channel = 1;
+	PayloadLocationType payloadlocation(1, PayloadABType::PositionA);
+
+	// Top 4 bits group (0-15), Next 4 bits channel (1-12), next 4 bits payload packet number (0-15), next 4 bits 0(A) or 1(B)
+	uint16_t CBIndex = CBPointTableAccess::GetCBPointMapIndex(group, channel, payloadlocation);
+	REQUIRE(CBIndex == 0x1100);
+
+	group = 15;
+	channel = 12;
+	payloadlocation= PayloadLocationType(16, PayloadABType::PositionB);
+	CBIndex = CBPointTableAccess::GetCBPointMapIndex(group, channel, payloadlocation);
+	REQUIRE(CBIndex == 0xFCF1);
+}
+
 
 /*
 TEST_CASE("Utility - Strand Queue")
@@ -544,7 +583,7 @@ TEST_CASE("CBBlock - ClassConstructor5")
 	REQUIRE(b.CheckBBitIsZero());
 }
 
-#pragma endregion
+#pragma endregion Block Tests
 }
 
 namespace StationTests
@@ -560,7 +599,57 @@ namespace StationTests
 22280126
 08080029*/
 
+TEST_CASE("Station - ScanRequest F0")
+{
+	// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
+	// Checks the TCP send output for correct data and format.
+	STANDARD_TEST_SETUP();
+	TEST_CBOSPort(Json::nullValue);
 
+	CBOSPort->Enable();
+
+	// Request Analog Unconditional, Station 9 Module 0x20, 16 Channels
+	uint8_t station = 9;
+	uint8_t group = 3;
+	CBBlockData commandblock(station, group, FUNC_SCAN_DATA, 0, true);
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+	output << commandblock.ToBinaryString();
+
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			res = command_stat;
+		});
+
+	// Call the Event functions to set the CB table data to what we are expecting to get back.
+	// Write to the analog registers that we are going to request the values for.
+	/*   for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
+	   {
+	         auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+	         event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+
+	         CBOSPort->Event(event, "TestHarness", pStatusCallback);
+
+	         REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
+	   }
+	*/
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+
+	// Send the Analog Unconditional command in as if came from TCP channel
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("093088a8" // Echoed block plus data 1B
+		                                                             "2229999b" // Data 2A and 2B
+		);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response == DesiredResult);
+
+	TestTearDown();
+}
 TEST_CASE("Station - BinaryEvent")
 {
 	STANDARD_TEST_SETUP();
@@ -600,62 +689,9 @@ TEST_CASE("Station - BinaryEvent")
 
 	TestTearDown();
 }
+
+
 /*
-TEST_CASE("Station - AnalogUnconditionalF5")
-{
-      // Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
-      // Checks the TCP send output for correct data and format.
-      STANDARD_TEST_SETUP();
-      TEST_CBOSPort(Json::nullValue);
-
-      CBOSPort->Enable();
-
-      // Request Analog Unconditional, Station 0x7C, Module 0x20, 16 Channels
-      CBBlockData commandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
-      asio::streambuf write_buffer;
-      std::ostream output(&write_buffer);
-      output << commandblock.ToBinaryString();
-
-      CommandStatus res = CommandStatus::NOT_AUTHORIZED;
-      auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
-            {
-                  res = command_stat;
-            });
-
-      // Call the Event functions to set the CB table data to what we are expecting to get back.
-      // Write to the analog registers that we are going to request the values for.
-      for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
-      {
-            auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-            event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
-
-            CBOSPort->Event(event, "TestHarness", pStatusCallback);
-
-            REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
-      }
-
-      // Hook the output function with a lambda
-      std::string Response = "Not Set";
-      CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
-
-      // Send the Analog Unconditional command in as if came from TCP channel
-      CBOSPort->InjectSimulatedTCPMessage(write_buffer);
-
-      const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc05205f1500" // Echoed block
-                                                                         "100011018400" // Channel 0 and 1
-                                                                         "12021303b700" // Channel 2 and 3 etc
-                                                                         "14041505b900"
-                                                                         "160617078a00"
-                                                                         "18081909a500"
-                                                                         "1A0A1B0B9600"
-                                                                         "1C0C1D0D9800"
-                                                                         "1E0E1F0Feb00");
-
-      // No need to delay to process result, all done in the InjectCommand at call time.
-      REQUIRE(Response == DesiredResult);
-
-      TestTearDown();
-}
 TEST_CASE("Station - CounterScanFn30")
 {
       // Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
@@ -666,7 +702,7 @@ TEST_CASE("Station - CounterScanFn30")
       CBOSPort->Enable();
 
       // Do the same test as analog unconditional, we should give the same response from the Counter Scan.
-      CBBlockData commandblock(0x7C, true, COUNTER_SCAN, 0x20, 16, true);
+      CBBlockData commandblock(9, true, COUNTER_SCAN, 0x20, 16, true);
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
       output << commandblock.ToBinaryString();
@@ -709,8 +745,8 @@ TEST_CASE("Station - CounterScanFn30")
       // No need to delay to process result, all done in the InjectCommand at call time.
       REQUIRE(Response == DesiredResult);
 
-      // Station 0x7c, Module 61 and 62 - 8 channels each.
-      CBBlockData commandblock2(0x7C, true, COUNTER_SCAN, 61, 16, true);
+      // Station 9, Module 61 and 62 - 8 channels each.
+      CBBlockData commandblock2(9, true, COUNTER_SCAN, 61, 16, true);
       output << commandblock2.ToBinaryString();
 
       // Set the counter values to match what the analogs were set to.
@@ -771,8 +807,8 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
             REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
       }
 
-      // Request Analog Delta Scan, Station 0x7C, Module 0x20, 16 Channels
-      CBBlockData commandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
+      // Request Analog Delta Scan, Station 9, Module 0x20, 16 Channels
+      CBBlockData commandblock(9, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
       output << commandblock.ToBinaryString();
@@ -859,8 +895,8 @@ TEST_CASE("Station - DigitalUnconditionalFn7")
             REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
       }
 
-      // Request Digital Unconditional (Fn 7), Station 0x7C, Module 33, 3 Modules(Channels)
-      CBBlockData commandblock(0x7C, true, DIGITAL_UNCONDITIONAL_OBS, 33, 3, true);
+      // Request Digital Unconditional (Fn 7), Station 9, Module 33, 3 Modules(Channels)
+      CBBlockData commandblock(9, true, DIGITAL_UNCONDITIONAL_OBS, 33, 3, true);
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
       output << commandblock.ToBinaryString();
@@ -889,8 +925,8 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 
       CBOSPort->Enable();
 
-      // Request Digital Unconditional (Fn 7), Station 0x7C, Module 34, 2 Modules( fills the Channels field)
-      CBBlockData commandblock(0x7C, true, DIGITAL_DELTA_SCAN, 34, 2, true);
+      // Request Digital Unconditional (Fn 7), Station 9, Module 34, 2 Modules( fills the Channels field)
+      CBBlockData commandblock(9, true, DIGITAL_DELTA_SCAN, 34, 2, true);
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
       output << commandblock.ToBinaryString();
@@ -953,8 +989,8 @@ TEST_CASE("Station - DigitalHRERFn9")
       TEST_CBOSPort(portoverride);
       CBOSPort->Enable();
 
-      // Request HRER List (Fn 9), Station 0x7C,  sequence # 0, max 10 events, mev = 1
-      CBBlockData commandblock(0x7C, true, 0, 10,true, true);
+      // Request HRER List (Fn 9), Station 9,  sequence # 0, max 10 events, mev = 1
+      CBBlockData commandblock(9, true, 0, 10,true, true);
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
       output << commandblock.ToBinaryString();
@@ -968,7 +1004,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 
       // List should be empty...so get an emtpy HRER response
 
-      REQUIRE(Response[0] == ToChar(0xfc));  // 0x7C plus 0x80 for direction
+      REQUIRE(Response[0] == ToChar(0xfc));  // 9 plus 0x80 for direction
       REQUIRE(Response[1] == 0x09);          // Fn 9
       REQUIRE((Response[2] & 0xF0) == 0x10); // Top 4 bits are the sequence number - will be 1
       REQUIRE((Response[2] & 0x08) == 0);    // Bit 3 is the MEV flag
@@ -996,7 +1032,7 @@ TEST_CASE("Station - DigitalHRERFn9")
       Response = "Not Set";
 
       // The command remains the same each time, but is consumed in the InjectCommand
-      commandblock = CBBlockData(0x7C, true, 2, 10, true, true);
+      commandblock = CBBlockData(9, true, 2, 10, true, true);
       output << commandblock.ToBinaryString();
       // Inject command as if it came from TCP channel
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1012,7 +1048,7 @@ TEST_CASE("Station - DigitalHRERFn9")
       // Now repeat the command to get the last 6 results
 
       // The command remains the same each time, but is consumed in the InjectCommand
-      commandblock = CBBlockData(0x7C, true, 3, 10, true, true);
+      commandblock = CBBlockData(9, true, 3, 10, true, true);
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1023,7 +1059,7 @@ TEST_CASE("Station - DigitalHRERFn9")
       REQUIRE(Response.size() == 48);
 
       // Send the command again, but we should get an empty response. Should only be the one block.
-      commandblock = CBBlockData(0x7C, true, 4, 10, true, true);
+      commandblock = CBBlockData(9, true, 4, 10, true, true);
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1033,7 +1069,7 @@ TEST_CASE("Station - DigitalHRERFn9")
       REQUIRE(Response == DesiredResult2);
 
       // Send the command again, we should get the previous response - tests the recovery from lost packet code.
-      commandblock = CBBlockData(0x7C, true, 4, 10, true, true);
+      commandblock = CBBlockData(9, true, 4, 10, true, true);
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1044,12 +1080,12 @@ TEST_CASE("Station - DigitalHRERFn9")
       // Cheat and write directly to the HRER queue
       CBTime changedtime = CBNow();
 
-      CBBinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true, changedtime);
-      CBBinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, static_cast<CBTime>(changedtime + 32000));
+      CBBinaryPoint pt1(1, 34, 1, 0, MCA, 1, true, changedtime);
+      CBBinaryPoint pt2(2, 34, 2, 0, MCA, 0, true, static_cast<CBTime>(changedtime + 32000));
       CBOSPort->GetPointTable()->AddToDigitalEvents(pt1);
       CBOSPort->GetPointTable()->AddToDigitalEvents(pt2);
 
-      commandblock = CBBlockData(0x7C, true,5, 10, true, true);
+      commandblock = CBBlockData(9, true,5, 10, true, true);
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1058,7 +1094,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 
       REQUIRE(Response.size() == 18); // DecodeFnResponse(Response)
 
-      commandblock = CBBlockData(0x7C, true, 6, 10, true, true);
+      commandblock = CBBlockData(9, true, 6, 10, true, true);
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1069,7 +1105,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 
       //---------------------
       // Test rejection of set time command - which is when MaximumEvents is set to 0
-      commandblock = CBBlockData(0x7C, true, 5, 0, true, true);
+      commandblock = CBBlockData(9, true, 5, 0, true, true);
       output << commandblock.ToBinaryString();
 
       uint64_t currenttime = CBNow();
@@ -1093,8 +1129,8 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 
       CBOSPort->Enable();
 
-      // Request Digital Change Only Fn 10, Station 0x7C, Module 0 scan from the first module, Modules 2 max number to return
-      CBBlockData commandblock(0x7C, true, 0, 2, true);
+      // Request Digital Change Only Fn 10, Station 9, Module 0 scan from the first module, Modules 2 max number to return
+      CBBlockData commandblock(9, true, 0, 2, true);
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
       output << commandblock.ToBinaryString();
@@ -1122,7 +1158,7 @@ TEST_CASE("Station - DigitalCOSScanFn10")
       CBOSPort->Event(event, "TestHarness", pStatusCallback); // 0x21, bit 1
 
       // Send the command but start from module 0x22, we did not get all the blocks last time. Test the wrap around
-      commandblock = CBBlockData(0x7C, true, 0x25, 5, true);
+      commandblock = CBBlockData(9, true, 0x25, 5, true);
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1136,7 +1172,7 @@ TEST_CASE("Station - DigitalCOSScanFn10")
       REQUIRE(Response == DesiredResult2);
 
       // Send the command with 0 start module, should return a no change block.
-      commandblock = CBBlockData(0x7C, true, 0, 2, true);
+      commandblock = CBBlockData(9, true, 0, 2, true);
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1155,9 +1191,9 @@ TEST_CASE("Station - DigitalCOSFn11")
 
       CBTime changedtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
 
-      // Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on start up to send all data, 15 modules returned
+      // Request Digital COS (Fn 11), Station 9, 15 tagged events, sequence #0 - used on start up to send all data, 15 modules returned
 
-      CBBlockData commandblock = CBBlockData(0x7C, 15, 1, 15);
+      CBBlockData commandblock = CBBlockData(9, 15, 1, 15);
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
       output << commandblock.ToBinaryString();
@@ -1176,7 +1212,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
       //---------------------
       // No data changes so should get a no change Fn14 block
-      commandblock = CBBlockData(0x7C, 15, 2, 15); // Sequence number must increase
+      commandblock = CBBlockData(9, 15, 2, 15); // Sequence number must increase
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1186,7 +1222,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
       //---------------------
       // No sequence number change, so should get the same data back as above.
-      commandblock = CBBlockData(0x7C, 15, 2, 15); // Sequence number must increase - but for this test not
+      commandblock = CBBlockData(9, 15, 2, 15); // Sequence number must increase - but for this test not
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1194,7 +1230,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
       //---------------------
       // Now change data in one block only
-      commandblock = CBBlockData(0x7C, 15, 3, 15); // Sequence number must increase
+      commandblock = CBBlockData(9, 15, 3, 15); // Sequence number must increase
       output << commandblock.ToBinaryString();
 
       CommandStatus res = CommandStatus::NOT_AUTHORIZED;
@@ -1224,7 +1260,7 @@ TEST_CASE("Station - DigitalCOSFn11")
       std::string BlockString = Response.substr(0, 6);
       CBBlockFn11StoM RBlock1 = CBBlockFn11StoM(CBBlockData(BlockString));
 
-      REQUIRE(RBlock1.GetStationAddress() == 0x7C);
+      REQUIRE(RBlock1.GetStationAddress() == 9);
       REQUIRE(RBlock1.GetModuleCount() == 1);
       REQUIRE(RBlock1.GetTaggedEventCount() == 4);
 
@@ -1272,14 +1308,14 @@ TEST_CASE("Station - DigitalCOSFn11")
       // Need to test the code path where the delta between two records is > 255 milliseconds. Also when it is more than 0xFFFF
       // Cheat and write directly to the DCOS queue
 
-      CBBinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true,  changedtime);
-      CBBinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, static_cast<CBTime>(changedtime + 256));
-      CBBinaryPoint pt3(3, 34, 3, 0, TIMETAGGEDINPUT, 1, true, static_cast<CBTime>(changedtime + 0x20000)); // Time gap too big, will require another Master request
+      CBBinaryPoint pt1(1, 34, 1, 0, MCA, 1, true,  changedtime);
+      CBBinaryPoint pt2(2, 34, 2, 0, MCA, 0, true, static_cast<CBTime>(changedtime + 256));
+      CBBinaryPoint pt3(3, 34, 3, 0, MCA, 1, true, static_cast<CBTime>(changedtime + 0x20000)); // Time gap too big, will require another Master request
       CBOSPort->GetPointTable()->AddToDigitalEvents(pt1);
       CBOSPort->GetPointTable()->AddToDigitalEvents(pt2);
       CBOSPort->GetPointTable()->AddToDigitalEvents(pt3);
 
-      commandblock = CBBlockData(0x7C, 15, 4, 0); // Sequence number must increase
+      commandblock = CBBlockData(9, 15, 4, 0); // Sequence number must increase
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1289,7 +1325,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
       //-----------------------------------------
       // Get the single event left in the queue
-      commandblock = CBBlockData(0x7C, 15, 5, 0); // Sequence number must increase
+      commandblock = CBBlockData(9, 15, 5, 0); // Sequence number must increase
       output << commandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1306,9 +1342,9 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 
       CBOSPort->Enable();
 
-      // Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 15 modules returned
+      // Request DigitalUnconditional (Fn 12), Station 9,  sequence #1, up to 15 modules returned
 
-      CBBlockData commandblock = CBBlockData(0x7C, 0x21, 1, 3);
+      CBBlockData commandblock = CBBlockData(9, 0x21, 1, 3);
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
       output << commandblock.ToBinaryString();
@@ -1352,7 +1388,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
       REQUIRE(Response == DesiredResult1);
 
       //--------------------------------
-      commandblock = CBBlockData(0x7C, 0x21, 2, 3); // Have to change the sequence number
+      commandblock = CBBlockData(9, 0x21, 2, 3); // Have to change the sequence number
       output << commandblock.ToBinaryString();
 
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1370,8 +1406,8 @@ TEST_CASE("Station - FreezeResetFn16")
 
       CBOSPort->Enable();
 
-      //  Station 0x7C
-      CBBlockData commandblock(0x7C, true);
+      //  Station 9
+      CBBlockData commandblock(9, true);
 
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
@@ -1418,8 +1454,8 @@ TEST_CASE("Station - POMControlFn17")
 
       CBOSPort->Enable();
 
-      //  Station 0x7C
-      CBBlockData commandblock(0x7C, 37, 1);
+      //  Station 9
+      CBBlockData commandblock(9, 37, 1);
 
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
@@ -1452,7 +1488,7 @@ TEST_CASE("Station - POMControlFn17")
       REQUIRE(Response == DesiredResult2); // Control/Scan Rejected Command
 
       //---------------------------
-      CBBlockData commandblock2(0x7C, 36, 1); // Invalid control point
+      CBBlockData commandblock2(9, 36, 1); // Invalid control point
       output << commandblock2.ToBinaryString();
 
       CBBlockData datablock3 = commandblock.GenerateSecondBlock();
@@ -1489,8 +1525,8 @@ TEST_CASE("Station - DOMControlFn19")
 
       CBOSPort->Enable();
 
-      //  Station 0x7C
-      CBBlockData commandblock(0x7C, 37);
+      //  Station 9
+      CBBlockData commandblock(9, 37);
 
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
@@ -1523,7 +1559,7 @@ TEST_CASE("Station - DOMControlFn19")
       REQUIRE(Response == DesiredResult2); // Control/Scan Rejected Command
 
       //---------------------------
-      CBBlockData commandblock2(0x7C, 36); // Invalid control point
+      CBBlockData commandblock2(9, 36); // Invalid control point
       output << commandblock2.ToBinaryString();
 
       CBBlockData datablock3 = commandblock.GenerateSecondBlock(0x73);
@@ -1545,8 +1581,8 @@ TEST_CASE("Station - AOMControlFn23")
 
       CBOSPort->Enable();
 
-      //  Station 0x7C
-      CBBlockData commandblock(0x7C, 39, 1);
+      //  Station 9
+      CBBlockData commandblock(9, 39, 1);
 
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
@@ -1579,7 +1615,7 @@ TEST_CASE("Station - AOMControlFn23")
       REQUIRE(Response == DesiredResult2); // Control/Scan Rejected Command
 
       //---------------------------
-      CBBlockData commandblock2(0x7C, 36, 1); // Invalid control point
+      CBBlockData commandblock2(9, 36, 1); // Invalid control point
       output << commandblock2.ToBinaryString();
 
       CBBlockData datablock3 = commandblock.GenerateSecondBlock(0x55);
@@ -1631,8 +1667,8 @@ TEST_CASE("Station - ChangeTimeDateFn43")
       CBOSPort->Enable();
       uint64_t currenttime = CBNow();
 
-      // TimeChange command (Fn 43), Station 0x7C
-      CBBlockData commandblock(0x7C, currenttime % 1000);
+      // TimeChange command (Fn 43), Station 9
+      CBBlockData commandblock(9, currenttime % 1000);
 
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
@@ -1676,8 +1712,8 @@ TEST_CASE("Station - ChangeTimeDateFn44")
       CBOSPort->Enable();
       uint64_t currenttime = CBNow();
 
-      // TimeChange command (Fn 44), Station 0x7C
-      CBBlockData commandblock(0x7C, currenttime % 1000);
+      // TimeChange command (Fn 44), Station 9
+      CBBlockData commandblock(9, currenttime % 1000);
 
       asio::streambuf write_buffer;
       std::ostream output(&write_buffer);
@@ -1717,7 +1753,7 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 TEST_CASE("Station - Multi-drop TCP Test")
 {
       // Here we test the ability to support multiple Stations on the one Port/IP Combination.
-      // The Stations will be 0x7C, 0x7D
+      // The Stations will be 9, 0x7D
       STANDARD_TEST_SETUP();
 
       START_IOS(1);
@@ -1765,8 +1801,8 @@ TEST_CASE("Station - Multi-drop TCP Test")
       REQUIRE(socketisopen); // Should be set in a callback.
 
       // Send the Command - results in an async write
-      //  Station 0x7C
-      CBBlockData commandblock(0x7C, true);
+      //  Station 9
+      CBBlockData commandblock(9, true);
       pSockMan->Write(commandblock.ToBinaryString());
 
       //  Station 0x7D
@@ -1818,7 +1854,7 @@ TEST_CASE("Station - System Flag Scan Test")
       std::ostream output(&write_buffer);
 
       // Do a "Normal" analog scan command, and make sure that the RSF bit in the response is set - for each packet that carries that bit???
-      CBBlockData analogcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
+      CBBlockData analogcommandblock(9, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
       output << analogcommandblock.ToBinaryString();
       CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1831,8 +1867,8 @@ TEST_CASE("Station - System Flag Scan Test")
 
       Response = "Not Set";
 
-      // FlagScan command (Fn 52), Station 0x7C
-      CBBlockData commandblock(0x7C);
+      // FlagScan command (Fn 52), Station 9
+      CBBlockData commandblock(9);
 
       // Send the Command
       output << commandblock.ToBinaryString();
@@ -1861,7 +1897,7 @@ TEST_CASE("Station - System Flag Scan Test")
       Response = "Not Set";
 
       // Now send a time command, so the STI flag is cleared.
-      CBBlockData timecommandblock(0x7C, currenttime % 1000);
+      CBBlockData timecommandblock(9, currenttime % 1000);
       output << timecommandblock.ToBinaryString();
       CBBlockData datablock(static_cast<uint32_t>(currenttime / 1000), true);
       output << datablock.ToBinaryString();
@@ -1926,7 +1962,7 @@ TEST_CASE("Master - Analog")
       {
             // Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
             // The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
-            CBBlockData sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
+            CBBlockData sendcommandblock(9, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
             CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
 
             Wait(IOS, 1);
@@ -1936,7 +1972,7 @@ TEST_CASE("Master - Analog")
             REQUIRE(Response == DesiredResponse);
 
             // We now inject the expected response to the command above.
-            CBBlockData commandblock(0x7C, false, ANALOG_UNCONDITIONAL, 0x20, 16, false);
+            CBBlockData commandblock(9, false, ANALOG_UNCONDITIONAL, 0x20, 16, false);
             asio::streambuf write_buffer;
             std::ostream output(&write_buffer);
             output << commandblock.ToBinaryString();
@@ -1983,7 +2019,7 @@ TEST_CASE("Master - Analog")
       {
             // We need to have done an Unconditional to correctly test a delta so do following the previous test.
             // Same address and channels as above
-            CBBlockData sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
+            CBBlockData sendcommandblock(9, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
             Response = "Not Set";
             CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
             Wait(IOS, 1);
@@ -1993,7 +2029,7 @@ TEST_CASE("Master - Analog")
             REQUIRE(Response == DesiredResponse);
 
             // We now inject the expected response to the command above.
-            CBBlockData commandblock(0x7C, false, ANALOG_DELTA_SCAN, 0x20, 16, false);
+            CBBlockData commandblock(9, false, ANALOG_DELTA_SCAN, 0x20, 16, false);
             asio::streambuf write_buffer;
             std::ostream output(&write_buffer);
             output << commandblock.ToBinaryString();
@@ -2047,7 +2083,7 @@ TEST_CASE("Master - Analog")
       {
             // We need to have done an Unconditional to correctly test a delta so do following the previous test.
             // Same address and channels as above
-            CBBlockData sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
+            CBBlockData sendcommandblock(9, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
             Response = "Not Set";
             CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
             Wait(IOS, 1);
@@ -2057,7 +2093,7 @@ TEST_CASE("Master - Analog")
             REQUIRE(Response == DesiredResponse);
 
             // We now inject the expected response to the command above. This should stop a resend of the command due to timeout...
-            CBBlockData commandblock(0x7C, false, ANALOG_NO_CHANGE_REPLY, 0x20, 16, true); // Channels etc remain the same
+            CBBlockData commandblock(9, false, ANALOG_NO_CHANGE_REPLY, 0x20, 16, true); // Channels etc remain the same
             asio::streambuf write_buffer;
             std::ostream output(&write_buffer);
             output << commandblock.ToBinaryString();
@@ -2096,7 +2132,7 @@ TEST_CASE("Master - Analog")
       {
             // Now send a request analog unconditional command
             // The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
-            CBBlockData sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
+            CBBlockData sendcommandblock(9, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
             Response = "Not Set";
             CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
             Wait(IOS, 1);
@@ -2157,7 +2193,6 @@ TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 
       // If we loose communication down the line (TCP) we then set all data to COMMS-LOST quality through ODC so the ports
       // connected know that data is now not valid. As the CB slave maintains its own copy of data, to respond to polls, this is important.
-      //TODO: Comms up/Down test not complete
 
       STOP_IOS();
       TestTearDown();
@@ -2291,7 +2326,7 @@ TEST_CASE("Master - DOM and POM Tests")
 
             IOS.post([&]()
                   {
-                        CBBlockData commandblock(0x7C, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
+                        CBBlockData commandblock(9, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
                         CBBlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON? Top byte ON, bottom byte OFF
 
                         OSoutput << commandblock.ToBinaryString();
@@ -2331,7 +2366,7 @@ TEST_CASE("Master - DOM and POM Tests")
 
             IOS.post([&]()
                   {
-                        CBBlockData commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
+                        CBBlockData commandblock(9, 38, 0); // POM Module is 38, 116 to 123 Idx
                         CBBlockData datablock = commandblock.GenerateSecondBlock();
 
                         OSoutput << commandblock.ToBinaryString();
@@ -2412,7 +2447,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 
             IOS.post([&]()
                   {
-                        CBBlockData commandblock(0x7C, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
+                        CBBlockData commandblock(9, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
                         CBBlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON?
 
                         OSoutput << commandblock.ToBinaryString();
@@ -2450,7 +2485,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
             OSResponse = "Not Set";
             MAResponse = "Not Set";
 
-            CBBlockData commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
+            CBBlockData commandblock(9, 38, 0); // POM Module is 38, 116 to 123 Idx
             CBBlockData datablock = commandblock.GenerateSecondBlock();
 
             IOS.post([&]()
@@ -2532,7 +2567,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 
             // We check the command, but it does not go anywhere, we inject the expected response below.
             // The value for the time will always be different...
-            REQUIRE(MAResponse[0] == 0x7c);
+            REQUIRE(MAResponse[0] == 9);
             REQUIRE(MAResponse[1] == 0x2b);
             REQUIRE(MAResponse.size() == 12);
 
@@ -2559,8 +2594,8 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
             // "TimeSetPoint" : {"Index" : 100000},
             uint64_t currenttime = CBNow(); // 0x1111222233334444;
 
-            // TimeChange command (Fn 43), Station 0x7C
-            CBBlockData commandblock(0x7C, currenttime % 1000);
+            // TimeChange command (Fn 43), Station 9
+            CBBlockData commandblock(9, currenttime % 1000);
             CBBlockData datablock(static_cast<uint32_t>(currenttime / 1000), true);
 
             std::string TimeChangeCommand = commandblock.ToBinaryString() + datablock.ToBinaryString();
@@ -2648,7 +2683,7 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
       INFO("System Sign On OutStation->ODC->Master Pass Through Command Test");
       {
             // We want to send a System Sign On Command to the OutStation, but pass it through ODC unchanged. Use a "magic" analog port to do this.
-            CBBlockData commandblock(0x7C);
+            CBBlockData commandblock(9);
 
             IOS.post([&]()
                   {
@@ -2684,7 +2719,7 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
             OSResponse = "Not Set";
             MAResponse = "Not Set";
 
-            CBBlockData commandblock(0x7C, true); // TRUE == Don't reset counters
+            CBBlockData commandblock(9, true); // TRUE == Don't reset counters
 
             IOS.post([&]()
                   {
@@ -2765,7 +2800,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
             // Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
             // So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
             CBTime changedtime = static_cast<CBTime>(0x0000016338b6d4fb);
-            CBBlockData b[] = { CBBlockFn11StoM(0x7C, 4, 1, 2),CBBlockData(0x22008000),CBBlockData(0x2300ff00), CBBlockData(static_cast<uint32_t>(changedtime / 1000)),
+            CBBlockData b[] = { CBBlockFn11StoM(9, 4, 1, 2),CBBlockData(0x22008000),CBBlockData(0x2300ff00), CBBlockData(static_cast<uint32_t>(changedtime / 1000)),
                                  CBBlockData(0x22058000), CBBlockData(0x23100100), CBBlockData(0x00202200),CBBlockData(0xfe000000,true) };
 
 
@@ -2775,7 +2810,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
             MAResponse = "Not Set";
 
             // Send the command
-            auto cmdblock = CBBlockData(0x7C, 15, 1, 2); // Up to 15 events, sequence #1, Two modules.
+            auto cmdblock = CBBlockData(9, 15, 1, 2); // Up to 15 events, sequence #1, Two modules.
             CBMAPort->QueueCBCommand(cmdblock, nullptr);    // No callback, does not originate from ODC
             Wait(IOS, 2);
 
@@ -2857,8 +2892,8 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
             Wait(IOS, 1);
 
             // We check the command, but it does not go anywhere, we inject the expected response below.
-            // Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 2 modules returned - that is what the RTU we are testing has
-            CBBlockData commandblock = CBBlockData(0x7C, 0x22, 1, 2); // Check out methods give the same result
+            // Request DigitalUnconditional (Fn 12), Station 9,  sequence #1, up to 2 modules returned - that is what the RTU we are testing has
+            CBBlockData commandblock = CBBlockData(9, 0x22, 1, 2); // Check out methods give the same result
 
             REQUIRE(MAResponse[0] == commandblock.GetByte(0));
             REQUIRE(MAResponse[1] == commandblock.GetByte(1));
@@ -2877,7 +2912,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
             // Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
             // So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
             CBTime changedtime = static_cast<CBTime>(0x0000016338b6d4fb);
-            CBBlockData b[] = {CBBlockFn11StoM(0x7C, 4, 1, 2),CBBlockData(0x22008000),CBBlockData(0x2300ff00), CBBlockData(static_cast<uint32_t>(changedtime/1000)),
+            CBBlockData b[] = {CBBlockFn11StoM(9, 4, 1, 2),CBBlockData(0x22008000),CBBlockData(0x2300ff00), CBBlockData(static_cast<uint32_t>(changedtime/1000)),
                                 CBBlockData(0x22058000), CBBlockData(0x23100100), CBBlockData(0x00202200),CBBlockData(0xfe000000,true)};
 
             for (auto bl :b)
@@ -2964,7 +2999,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
             MAResponse = "Not Set";
 
 
-            CBBlockFn52StoM commandblock = CBBlockFn52StoM(CBBlockData(0x7C, true, SYSTEM_FLAG_SCAN, 0x22, 1, true)); // Check out methods give the same result
+            CBBlockFn52StoM commandblock = CBBlockFn52StoM(CBBlockData(9, true, SYSTEM_FLAG_SCAN, 0x22, 1, true)); // Check out methods give the same result
             bool SPU = true;                                                                                                  // System power on flag - should trigger unconditional scans
             bool STI = true;                                                                                                  // System time invalid - should trigger a time command
             commandblock.SetSystemFlags(SPU, STI);
@@ -2980,7 +3015,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
             // A time response, all digital scans, all analog scans...
 
             // We should get a time set command back first (little dependent on scheduling?
-            REQUIRE(MAResponse[0] == 0x7c);
+            REQUIRE(MAResponse[0] == 9);
             REQUIRE(MAResponse[1] == 0x2b);
             REQUIRE(MAResponse.size() == 12);
 
@@ -2993,7 +3028,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 }
 TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 {
-      // Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
+      // Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 9, 0x7D
 
       STANDARD_TEST_SETUP();
       TEST_CBOSPort(Json::nullValue);
@@ -3040,8 +3075,8 @@ TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
       REQUIRE(socketisopen); // Should be set in a callback.
 
       // Send the Command - results in an async write
-      //  Station 0x7C
-      CBBlockData commandblock(0x7C, true);
+      //  Station 9
+      CBBlockData commandblock(9, true);
       pSockMan->Write(commandblock.ToBinaryString());
 
       //  Station 0x7D
@@ -3100,12 +3135,12 @@ const char *CBmasterconffile = R"011(
                               {"PollRate" : 120000, "ID" :4, "PointType" : "TimeSetCommand"},
                               {"PollRate" : 180000, "ID" :5, "PointType" : "SystemFlagScan"}],
 
-      "Binaries" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 16, "Offset" : 0, "PayloadLocation" : 1, "PointType" : "TIMETAGGEDINPUT"},
-                        {"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 17, "Offset" : 0,  "PointType" : "TIMETAGGEDINPUT"}],
+      "Binaries" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 16, "Channel" : 0, "PayloadLocation" : 1, "PointType" : "MCA"},
+                        {"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 17, "Channel" : 0,  "PointType" : "MCA"}],
 
-      "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Offset" : 0, "PayloadLocation" : 2}],
+      "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Channel" : 0, "PayloadLocation" : 2}],
 
-      "BinaryControls" : [{"Range" : {"Start" : 100, "Stop" : 115}, "Group" : 192, "Offset" : 0, "PointType" : "POMOUTPUT"}]
+      "BinaryControls" : [{"Range" : {"Start" : 100, "Stop" : 115}, "Group" : 192, "Channel" : 0, "PointType" : "MCC"}]
 
 })011";
 
@@ -3139,7 +3174,7 @@ TEST_CASE("RTU - Binary Scan TO CB311 ON 172.21.136.80:5001 CB 0x20")
 
       // Delta Scan up to 15 events, 2 modules. Seq # 10
       // Digital Scan Data a00b01610100 00001101e100
-      //CBBlockData commandblock = CBBlockData(0x7C, 15, 10, 2); // This resulted in a time out - sequence number related - need to send 0 on start up??
+      //CBBlockData commandblock = CBBlockData(9, 15, 10, 2); // This resulted in a time out - sequence number related - need to send 0 on start up??
       //CBMAPort->QueueCBCommand(commandblock, nullptr);
 
       // Read the current analog state.
