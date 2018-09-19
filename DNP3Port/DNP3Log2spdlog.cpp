@@ -27,6 +27,7 @@
 #include "DNP3Log2spdlog.h"
 #include <spdlog/spdlog.h>
 #include <opendnp3/LogLevels.h>
+#include <opendatacon/util.h>
 
 DNP3Log2spdlog::DNP3Log2spdlog()
 {}
@@ -35,7 +36,7 @@ void DNP3Log2spdlog::Log( const openpal::LogEntry& arEntry )
 {
 	auto DNP3LevelName = opendnp3::LogFlagToString(arEntry.filters.GetBitfield());
 	spdlog::level::level_enum spdlevel = FilterToLevel(arEntry.filters);
-	if(auto log = spdlog::get("DNP3Port"))
+	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->log(spdlevel, "{} - {} - {}",
 			DNP3LevelName,
 			arEntry.loggerid,

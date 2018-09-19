@@ -32,6 +32,7 @@
 #include <spdlog/sinks/ansicolor_sink.h>
 
 #include <opendatacon/Version.h>
+#include <opendatacon/util.h>
 #include "DataConcentrator.h"
 #include "NullPort.h"
 
@@ -202,14 +203,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		auto pMainLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinksVec), end(LogSinksVec),
 			4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 		pMainLogger->set_level(spdlog::level::trace);
-		spdlog::register_logger(pMainLogger);
+		odc::spdlog_register_logger(pMainLogger);
 	}
 	catch (const spdlog::spdlog_ex& ex)
 	{
 		throw std::runtime_error("Main logger initialization failed: " + std::string(ex.what()));
 	}
 
-	auto log = spdlog::get("opendatacon");
+	auto log = odc::spdlog_get("opendatacon");
 	if(!log)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
@@ -281,12 +282,12 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				continue;
 			}
 			//Create a logger if we haven't already
-			if(!spdlog::get(libname))
+			if(!odc::spdlog_get(libname))
 			{
 				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
 					4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 				pLibLogger->set_level(spdlog::level::trace);
-				spdlog::register_logger(pLibLogger);
+				odc::spdlog_register_logger(pLibLogger);
 			}
 
 			auto plugin_cleanup = [=](IUI* plugin)
@@ -411,12 +412,12 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 
 			//Create a logger if we haven't already
-			if(!spdlog::get(libname))
+			if(!odc::spdlog_get(libname))
 			{
 				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
 					4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 				pLibLogger->set_level(spdlog::level::trace);
-				spdlog::register_logger(pLibLogger);
+				odc::spdlog_register_logger(pLibLogger);
 			}
 
 			auto port_cleanup = [=](DataPort* port)
@@ -439,7 +440,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		auto pConnLogger = std::make_shared<spdlog::async_logger>("Connectors", begin(LogSinksVec), end(LogSinksVec),
 			4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
 		pConnLogger->set_level(spdlog::level::trace);
-		spdlog::register_logger(pConnLogger);
+		odc::spdlog_register_logger(pConnLogger);
 
 		for(Json::Value::ArrayIndex n = 0; n < Connectors.size(); ++n)
 		{
