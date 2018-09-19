@@ -32,6 +32,21 @@ using namespace std;
 namespace odc
 {
 
+void spdlog_register_logger(std::shared_ptr<spdlog::logger> logger)
+{
+	return spdlog::register_logger(logger);
+}
+
+std::shared_ptr<spdlog::logger> spdlog_get(const std::string &name)
+{
+	return spdlog::get(name);
+}
+
+void spdlog_drop(const std::string &name)
+{
+	spdlog::drop(name);
+}
+
 bool getline_noncomment(istream& is, string& line)
 {
 	//chew up blank lines and comments
