@@ -54,10 +54,6 @@ DataConcentrator::DataConcentrator(std::string FileName):
 			return result;
 		},"Return the version information of opendatacon.");
 
-	//fire up some worker threads
-	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		threads.emplace_back([&](){IOS.run();});
-
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
 
@@ -92,7 +88,14 @@ DataConcentrator::DataConcentrator(std::string FileName):
 }
 
 DataConcentrator::~DataConcentrator()
-{}
+{
+	//In case of exception - ie. if we're destructed while still running
+	//dump (detach) any threads
+	//the threads would be already joined and cleared on normal shutdown
+	for (auto& thread : threads)
+		thread.detach();
+	threads.clear();
+}
 
 void DataConcentrator::SetLogLevel(std::stringstream& ss)
 {
@@ -502,6 +505,11 @@ void DataConcentrator::Build()
 }
 void DataConcentrator::Run()
 {
+	if (auto log = spdlog::get("opendatacon"))
+		log->info("Starting worker threads...");
+	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
+		threads.emplace_back([&]() {IOS.run(); });
+
 	if(auto log = spdlog::get("opendatacon"))
 		log->info("Enabling DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
