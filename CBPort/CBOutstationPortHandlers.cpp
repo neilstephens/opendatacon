@@ -149,7 +149,7 @@ void CBOutstationPort::ScanRequest(CBBlockData &Header)
 		uint16_t B = 0x00;
 		if (index < BlockValues.size())
 		{
-			B = BlockValues[index++];
+			B = BlockValues[index++]; // This should always be triggered as our BuildScanResponseData should give us a full message. We handle the missing case anyway!
 		}
 		auto block = CBBlockData(A, B, index >= BlockValues.size()); // Just some data, end of message is true if we have no more data.
 		ResponseCBMessage.push_back(block);
@@ -162,214 +162,229 @@ void CBOutstationPort::BuildScanRequestResponseData(uint8_t Group, std::vector<u
 {
 	// We now have to collect all the current values for this group.
 	// Search for the group and payload location, and if we have data process it. We have to search 3 lists and the RST table to get what we need
+	// This will always return a complete set of blocks, i.e. there will always be a last B value.
 
-	//TODO: Need to store the max payload for a group, so that we know when to stop searching for values...
-	//TODO: Need to store the Status Byte details so we can see if it needs to be sent...
+	//TODO: Need to store the Status Byte details in the config processing so we can see if it needs to be sent...
 
-	// An Even block counter value is A, Odd block counter is B. We start at 1, which is block 1B, 2 is block 2A, 3 is block 2B and so on.
-	for (uint8_t blockcounter = 1; blockcounter <= 16; blockcounter++)
+	uint8_t MaxBlockNum = 1; // If the following fails, we just respond with an empty single block.
+
+	MyPointConf->PointTable.GetMaxPayload(Group, MaxBlockNum);
+
+	// Block 1B will always need a value. 1A is always emtpy - used for group/station/function
+	PayloadLocationType payloadlocationA(1, PayloadABType::PositionB);
+	BlockValues.push_back(GetPayload(Group, payloadlocationA)); // Returns 0 if payload value cannot be found and logs a message
+
+	for (uint8_t blocknumber = 2; blocknumber <= MaxBlockNum; blocknumber++)
 	{
-		PayloadLocationType payloadlocation(blockcounter / 2 + 1, ((blockcounter % 2) == 0 ? PayloadABType::PositionA : PayloadABType::PositionB));
-		bool FoundMatch = false;
+		PayloadLocationType payloadlocationA(blocknumber, PayloadABType::PositionA );
+		BlockValues.push_back(GetPayload(Group, payloadlocationA));
 
-		uint16_t Payload = 0;
+		PayloadLocationType payloadlocationB(blocknumber, PayloadABType::PositionB);
+		BlockValues.push_back(GetPayload(Group, payloadlocationB));
+	}
+}
 
-		MyPointConf->PointTable.ForEachMatchingAnalogPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &payloadlocation)
+{
+	bool FoundMatch = false;
+	uint16_t Payload = 0;
+
+	MyPointConf->PointTable.ForEachMatchingAnalogPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+		{
+			// We have a matching point - there will be only 1!!, set a flag to indicate we have a match, and set our bit in the output.
+			Payload = pt.GetAnalog();
+			FoundMatch = true;
+		});
+
+	if (!FoundMatch)
+	{
+		MyPointConf->PointTable.ForEachMatchingCounterPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
 			{
 				// We have a matching point - there will be only 1!!, set a flag to indicate we have a match, and set our bit in the output.
 				Payload = pt.GetAnalog();
 				FoundMatch = true;
 			});
-
-		if (!FoundMatch)
-		{
-			MyPointConf->PointTable.ForEachMatchingCounterPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
-				{
-					// We have a matching point - there will be only 1!!, set a flag to indicate we have a match, and set our bit in the output.
-					Payload = pt.GetAnalog();
-					FoundMatch = true;
-				});
-		}
-		if (!FoundMatch)
-		{
-			MyPointConf->PointTable.ForEachMatchingBinaryPoint(Group, payloadlocation, [&](CBBinaryPoint &pt)
-				{
-					// We have a matching point, set a flag to indicate we have a match, and set our bit in the output.
-					uint8_t ch = pt.GetChannel();
-					if (pt.GetBinary() == 1)
-					{
-					      Payload |= ShiftLeftResult16Bits(1, 12 - ch); // Just have to OR, we know it was zero initially.
-					}
-					FoundMatch = true;
-				});
-		}
-		if (!FoundMatch)
-		{
-			LOGDEBUG("Failed to find a payload for: " + payloadlocation.to_string() + " Setting to zero");
-		}
-		BlockValues.push_back(Payload);
 	}
+	if (!FoundMatch)
+	{
+		MyPointConf->PointTable.ForEachMatchingBinaryPoint(Group, payloadlocation, [&](CBBinaryPoint &pt)
+			{
+				// We have a matching point, set a flag to indicate we have a match, and set our bit in the output.
+				uint8_t ch = pt.GetChannel();
+				if (pt.GetBinary() == 1)
+				{
+				      Payload |= ShiftLeftResult16Bits(1, 12 - ch); // Just have to OR, we know it was zero initially.
+				}
+				FoundMatch = true;
+			});
+	}
+	if (!FoundMatch)
+	{
+		LOGDEBUG("Failed to find a payload for: " + payloadlocation.to_string() + " Setting to zero");
+	}
+	return Payload;
 }
 
+/*
 // Function 6
 void CBOutstationPort::DoAnalogDeltaScan( CBBlockData &Header )
 {
-	LOGDEBUG("OS - DoAnalogDeltaScan - Fn6");
-	// First work out what our response will be, loading the data to be sent into two vectors.
-	std::vector<uint16_t> AnalogValues;
-	std::vector<int> AnalogDeltaValues;
-	AnalogChangeType ResponseType = NoChange;
+      LOGDEBUG("OS - DoAnalogDeltaScan - Fn6");
+      // First work out what our response will be, loading the data to be sent into two vectors.
+      std::vector<uint16_t> AnalogValues;
+      std::vector<int> AnalogDeltaValues;
+      AnalogChangeType ResponseType = NoChange;
 
 //	ReadAnalogOrCounterRange(Header.GetModuleAddress(), Header.GetChannels(), ResponseType, AnalogValues, AnalogDeltaValues);
 
-	// Now we know what type of response we are going to send.
-	if (ResponseType == AllChange)
-	{
+      // Now we know what type of response we are going to send.
+      if (ResponseType == AllChange)
+      {
 //		SendAnalogOrCounterUnconditional(ANALOG_UNCONDITIONAL,AnalogValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
-	}
-	else if (ResponseType == DeltaChange)
-	{
+      }
+      else if (ResponseType == DeltaChange)
+      {
 //		SendAnalogDelta(AnalogDeltaValues, Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
-	}
-	else
-	{
+      }
+      else
+      {
 //		SendAnalogNoChange(Header.GetStationAddress(), Header.GetModuleAddress(), Header.GetChannels());
-	}
+      }
 }
 
 void CBOutstationPort::ReadAnalogOrCounterRange(uint8_t Group, uint8_t Channels, CBOutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues)
 {
-	// The Analog and Counters are  maintained in two lists, we need to deal with both of them as they both can be read by this method.
-	// So if we find an entry in the analog list, we dont have to worry about overflow, as there are 16 channels, and the most we can ask for is 16.
-	//
-	uint16_t wordres = 0;
-	bool hasbeenset;
+      // The Analog and Counters are  maintained in two lists, we need to deal with both of them as they both can be read by this method.
+      // So if we find an entry in the analog list, we dont have to worry about overflow, as there are 16 channels, and the most we can ask for is 16.
+      //
+      uint16_t wordres = 0;
+      bool hasbeenset;
 
-	// Is it a counter module? Fails if not at this address
-	if (MyPointConf->PointTable.GetCounterValueUsingCBIndex(Group, 0, wordres, hasbeenset))
-	{
-		// We have a counter module, can get up to 8 values from it
-		uint8_t chancnt = Channels >= 8 ? 8 : Channels;
-		GetAnalogModuleValues(CounterModule,chancnt, Group, ResponseType, AnalogValues, AnalogDeltaValues);
+      // Is it a counter module? Fails if not at this address
+      if (MyPointConf->PointTable.GetCounterValueUsingCBIndex(Group, 0, wordres, hasbeenset))
+      {
+            // We have a counter module, can get up to 8 values from it
+            uint8_t chancnt = Channels >= 8 ? 8 : Channels;
+            GetAnalogModuleValues(CounterModule,chancnt, Group, ResponseType, AnalogValues, AnalogDeltaValues);
 
-		if (Channels > 8)
-		{
-			// Now we have to get the remaining channels (up to 8) from the next module, if it exists.
-			// Check if it is a counter, otherwise assume analog. Will return correct error codes if not there
-			if (MyPointConf->PointTable.GetCounterValueUsingCBIndex(Group+1, 0, wordres,hasbeenset))
-			{
-				GetAnalogModuleValues(CounterModule, Channels - 8, Group + 1, ResponseType, AnalogValues, AnalogDeltaValues);
-			}
-			else
-			{
-				GetAnalogModuleValues(AnalogModule, Channels - 8, Group + 1, ResponseType, AnalogValues, AnalogDeltaValues);
-			}
-		}
-	}
-	else
-	{
-		// It must be an analog module (if it does not exist, we return appropriate error codes anyway
-		// Yes proceed , up to 16 channels.
-		GetAnalogModuleValues(AnalogModule, Channels, Group, ResponseType, AnalogValues, AnalogDeltaValues);
-	}
+            if (Channels > 8)
+            {
+                  // Now we have to get the remaining channels (up to 8) from the next module, if it exists.
+                  // Check if it is a counter, otherwise assume analog. Will return correct error codes if not there
+                  if (MyPointConf->PointTable.GetCounterValueUsingCBIndex(Group+1, 0, wordres,hasbeenset))
+                  {
+                        GetAnalogModuleValues(CounterModule, Channels - 8, Group + 1, ResponseType, AnalogValues, AnalogDeltaValues);
+                  }
+                  else
+                  {
+                        GetAnalogModuleValues(AnalogModule, Channels - 8, Group + 1, ResponseType, AnalogValues, AnalogDeltaValues);
+                  }
+            }
+      }
+      else
+      {
+            // It must be an analog module (if it does not exist, we return appropriate error codes anyway
+            // Yes proceed , up to 16 channels.
+            GetAnalogModuleValues(AnalogModule, Channels, Group, ResponseType, AnalogValues, AnalogDeltaValues);
+      }
 }
 void CBOutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterOrAnalog, uint8_t Channels, uint8_t Group, CBOutstationPort::AnalogChangeType & ResponseType, std::vector<uint16_t> & AnalogValues, std::vector<int> & AnalogDeltaValues)
 {
-	for (uint8_t i = 0; i < Channels; i++)
-	{
-		uint16_t wordres = 0;
-		int deltares = 0;
-		bool hasbeenset;
-		bool foundentry = false;
+      for (uint8_t i = 0; i < Channels; i++)
+      {
+            uint16_t wordres = 0;
+            int deltares = 0;
+            bool hasbeenset;
+            bool foundentry = false;
 
-		if (IsCounterOrAnalog == CounterModule)
-		{
-			foundentry = MyPointConf->PointTable.GetCounterValueAndChangeUsingCBIndex(Group, i, wordres, deltares,hasbeenset);
-		}
-		else
-		{
-			foundentry= MyPointConf->PointTable.GetAnalogValueAndChangeUsingCBIndex(Group, i, wordres, deltares,hasbeenset);
-		}
+            if (IsCounterOrAnalog == CounterModule)
+            {
+                  foundentry = MyPointConf->PointTable.GetCounterValueAndChangeUsingCBIndex(Group, i, wordres, deltares,hasbeenset);
+            }
+            else
+            {
+                  foundentry= MyPointConf->PointTable.GetAnalogValueAndChangeUsingCBIndex(Group, i, wordres, deltares,hasbeenset);
+            }
 
-		if (!foundentry)
-		{
-			// Point does not exist - If we do an unconditional we send 0x8000, if a delta we send 0 (so the 0x8000 will not change when 0 gets added to it!!)
-			AnalogValues.push_back(0x8000); // Magic value
-			AnalogDeltaValues.push_back(0);
-		}
-		else
-		{
-			AnalogValues.push_back(wordres);
-			AnalogDeltaValues.push_back(deltares);
+            if (!foundentry)
+            {
+                  // Point does not exist
+                  AnalogValues.push_back(MISSINGVALUE); // Magic value
+                  AnalogDeltaValues.push_back(0);
+            }
+            else
+            {
+                  AnalogValues.push_back(wordres);
+                  AnalogDeltaValues.push_back(deltares);
 
-			if (abs(deltares) > 127)
-			{
-				ResponseType = AllChange;
-			}
-			else if ((abs(deltares) > 0) && (ResponseType != AllChange))
-			{
-				ResponseType = DeltaChange;
-			}
-		}
-	}
+                  if (abs(deltares) > 127)
+                  {
+                        ResponseType = AllChange;
+                  }
+                  else if ((abs(deltares) > 0) && (ResponseType != AllChange))
+                  {
+                        ResponseType = DeltaChange;
+                  }
+            }
+      }
 }
 void CBOutstationPort::SendAnalogOrCounterUnconditional(uint8_t functioncode, std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t Group, uint8_t Channels)
 {
-	CBMessage_t ResponseCBMessage;
+      CBMessage_t ResponseCBMessage;
 
-	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
+      // The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
 
-	CBBlockData FormattedBlock = CBBlockData(StationAddress, false, functioncode, Group, Channels);
+      CBBlockData FormattedBlock = CBBlockData(StationAddress, false, functioncode, Group, Channels);
 
-	ResponseCBMessage.push_back(FormattedBlock);
+      ResponseCBMessage.push_back(FormattedBlock);
 
-	assert(Channels == Analogs.size());
+      assert(Channels == Analogs.size());
 
-	int NumberOfDataBlocks = Channels / 2 + Channels % 2; // 2 --> 1, 3 -->2
+      int NumberOfDataBlocks = Channels / 2 + Channels % 2; // 2 --> 1, 3 -->2
 
-	for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
-	{
-		bool lastblock = (i + 1 == NumberOfDataBlocks);
+      for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
+      {
+            bool lastblock = (i + 1 == NumberOfDataBlocks);
 
-		auto block = CBBlockData(Analogs[2 * i], Analogs[2 * i + 1], lastblock);
-		ResponseCBMessage.push_back(block);
-	}
-	SendCBMessage(ResponseCBMessage);
+            auto block = CBBlockData(Analogs[2 * i], Analogs[2 * i + 1], lastblock);
+            ResponseCBMessage.push_back(block);
+      }
+      SendCBMessage(ResponseCBMessage);
 }
 void CBOutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t StationAddress, uint8_t Group, uint8_t Channels)
 {
-	CBMessage_t ResponseCBMessage;
+      CBMessage_t ResponseCBMessage;
 
-	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	CBBlockData FormattedBlock = CBBlockData(StationAddress, false, 122, Group, Channels);
+      // The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
+      CBBlockData FormattedBlock = CBBlockData(StationAddress, false, 122, Group, Channels);
 
-	ResponseCBMessage.push_back(FormattedBlock);
+      ResponseCBMessage.push_back(FormattedBlock);
 
-	assert(Channels == Deltas.size());
+      assert(Channels == Deltas.size());
 
-	// Can be 4 channel delta values to a block.
-	int NumberOfDataBlocks = Channels / 4 + (Channels % 4 == 0 ? 0 : 1);
+      // Can be 4 channel delta values to a block.
+      int NumberOfDataBlocks = Channels / 4 + (Channels % 4 == 0 ? 0 : 1);
 
-	for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
-	{
-		bool lastblock = (i + 1 == NumberOfDataBlocks);
+      for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
+      {
+            bool lastblock = (i + 1 == NumberOfDataBlocks);
 
-		auto block = CBBlockData(numeric_cast<uint8_t>(Deltas[i * 4]), numeric_cast<uint8_t>(Deltas[i * 4 + 1]), numeric_cast<uint8_t>(Deltas[i * 4 + 2]), numeric_cast<uint8_t>(Deltas[i * 4 + 3]), lastblock);
-		ResponseCBMessage.push_back(block);
-	}
-	SendCBMessage(ResponseCBMessage);
+            auto block = CBBlockData(numeric_cast<uint8_t>(Deltas[i * 4]), numeric_cast<uint8_t>(Deltas[i * 4 + 1]), numeric_cast<uint8_t>(Deltas[i * 4 + 2]), numeric_cast<uint8_t>(Deltas[i * 4 + 3]), lastblock);
+            ResponseCBMessage.push_back(block);
+      }
+      SendCBMessage(ResponseCBMessage);
 }
 void CBOutstationPort::SendAnalogNoChange(uint8_t StationAddress, uint8_t Group, uint8_t Channels)
 {
-	CBMessage_t ResponseCBMessage;
+      CBMessage_t ResponseCBMessage;
 
-	// The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
-	CBBlockData FormattedBlock = CBBlockData(StationAddress, 2, 3,0xFFF,true);
+      // The spec says echo the formatted block, but a few things need to change. EndOfMessage, MasterToStationMessage,
+      CBBlockData FormattedBlock = CBBlockData(StationAddress, 2, 3,0xFFF,true);
 
-	ResponseCBMessage.push_back(FormattedBlock);
-	SendCBMessage(ResponseCBMessage);
+      ResponseCBMessage.push_back(FormattedBlock);
+      SendCBMessage(ResponseCBMessage);
 }
-
+*/
 #pragma endregion
 
 
@@ -388,32 +403,38 @@ bool CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
 {
 	return true; //TODO: MyPointConf->PointTable.TimeTaggedDataAvailable();
 }
-
+void CBOutstationPort::MarkAllBinaryPointsAsChanged()
+{
+	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &pt)
+		{
+			pt.SetChangedFlag();
+		});
+}
 #pragma endregion
 
 #pragma region DIGITAL
 
-
+/*
 // Function 11
 void CBOutstationPort::DoDigitalScan(CBBlockData &Header)
 {
-	// So we scan all our digital modules, creating change records for where there are changes.
-	// We can return non-time tagged data - up to the number given by ModuleCount.
-	// Following this we can return time tagged data - up to the the number given by TaggedEventCount. Both are 1 numbered - i.e. 0 is a valid value.
-	// The time tagging in the modules is optional, so need to build that into our config file. It is the module capability that determines what we return.
-	//
-	// If the sequence number is zero, every time tagged module will be sent. It is used by the master to reset its state on power up.
-	//
-	// The date and time block is a 32 bit number representing the number of seconds since 1/1/1970
-	// The milliseconds component is derived from the offset component in the module data block.
-	//
-	// If we get another scan message (and nothing else changes) we will send the next block of changes and so on.
+      // So we scan all our digital modules, creating change records for where there are changes.
+      // We can return non-time tagged data - up to the number given by ModuleCount.
+      // Following this we can return time tagged data - up to the the number given by TaggedEventCount. Both are 1 numbered - i.e. 0 is a valid value.
+      // The time tagging in the modules is optional, so need to build that into our config file. It is the module capability that determines what we return.
+      //
+      // If the sequence number is zero, every time tagged module will be sent. It is used by the master to reset its state on power up.
+      //
+      // The date and time block is a 32 bit number representing the number of seconds since 1/1/1970
+      // The milliseconds component is derived from the offset component in the module data block.
+      //
+      // If we get another scan message (and nothing else changes) we will send the next block of changes and so on.
 
-	LOGDEBUG("OS - DoDigitalScan - Fn11");
+      LOGDEBUG("OS - DoDigitalScan - Fn11");
 
-	CBMessage_t ResponseCBMessage;
+      CBMessage_t ResponseCBMessage;
 
-/*	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
+      if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
       {
             // The last time we sent this, it did not get there, so we have to just resend that stored set of blocks. Don't do anything else.
             // If we go back and reread the Binary bits, the change information will already have been lost, as we assume it was sent when we read it last time.
@@ -506,74 +527,68 @@ void CBOutstationPort::DoDigitalScan(CBBlockData &Header)
       // Store this set of packets in case we have to resend
       LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
       LastDigitialScanResponseCBMessage = ResponseCBMessage;
-      */
+
 }
 
-void CBOutstationPort::MarkAllBinaryPointsAsChanged()
-{
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &pt)
-		{
-			pt.SetChangedFlag();
-		});
-}
+
 
 void CBOutstationPort::Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCount, uint8_t &EventCount, std::vector<uint16_t> &ResponseWords)
 {
-	CBBinaryPoint CurrentPoint;
-	uint64_t LastPointmsec = 0;
+      CBBinaryPoint CurrentPoint;
+      uint64_t LastPointmsec = 0;
 
-	while ((EventCount < MaxEventCount)) // && MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint))
-	{
-		// The time date is seconds, the data block contains a msec entry.
-		// The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
-		// add a time packet to bridge the gap.
+      while ((EventCount < MaxEventCount)) // && MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint))
+      {
+            // The time date is seconds, the data block contains a msec entry.
+            // The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
+            // add a time packet to bridge the gap.
 
-		if (EventCount == 0)
-		{
-			// First packet is the time/date block
-			uint32_t FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000);
-			ResponseWords.push_back(FirstEventSeconds >> 16);
-			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
-			LastPointmsec = CurrentPoint.GetChangedTime() - CurrentPoint.GetChangedTime() % 1000; // The first one is seconds only. Later events have actual msec
-		}
+            if (EventCount == 0)
+            {
+                  // First packet is the time/date block
+                  uint32_t FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000);
+                  ResponseWords.push_back(FirstEventSeconds >> 16);
+                  ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
+                  LastPointmsec = CurrentPoint.GetChangedTime() - CurrentPoint.GetChangedTime() % 1000; // The first one is seconds only. Later events have actual msec
+            }
 
-		uint64_t msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
+            uint64_t msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
 
-		if (msecoffset > 255) // Do we need a Milliseconds extension packet? A TimeBlock
-		{
-			uint64_t msecoffsetdiv256 = msecoffset / 256;
+            if (msecoffset > 255) // Do we need a Milliseconds extension packet? A TimeBlock
+            {
+                  uint64_t msecoffsetdiv256 = msecoffset / 256;
 
-			if (msecoffsetdiv256 > 255)
-			{
-				// Huston we have a problem, to much time offset..
-				// The master will have to do another scan to get this data. So here we will just return as if we have sent all we can
-				// The point we were looking at remains on the queue to be processed on the next call.
-				return;
-			}
-			assert(msecoffsetdiv256 < 256);
-			ResponseWords.push_back(numeric_cast<uint16_t>(msecoffsetdiv256));
-			LastPointmsec += msecoffsetdiv256 * 256; // The last point time moves with time added by the msec packet
-			msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
-		}
+                  if (msecoffsetdiv256 > 255)
+                  {
+                        // Huston we have a problem, to much time offset..
+                        // The master will have to do another scan to get this data. So here we will just return as if we have sent all we can
+                        // The point we were looking at remains on the queue to be processed on the next call.
+                        return;
+                  }
+                  assert(msecoffsetdiv256 < 256);
+                  ResponseWords.push_back(numeric_cast<uint16_t>(msecoffsetdiv256));
+                  LastPointmsec += msecoffsetdiv256 * 256; // The last point time moves with time added by the msec packet
+                  msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
+            }
 
-		// Push the block onto the response word list
-		assert(msecoffset < 256);
-		ResponseWords.push_back(ShiftLeft8Result16Bits(CurrentPoint.GetGroup()) | numeric_cast<uint16_t>(msecoffset));
-		ResponseWords.push_back(CurrentPoint.GetModuleBinarySnapShot());
+            // Push the block onto the response word list
+            assert(msecoffset < 256);
+            ResponseWords.push_back(ShiftLeft8Result16Bits(CurrentPoint.GetGroup()) | numeric_cast<uint16_t>(msecoffset));
+            ResponseWords.push_back(CurrentPoint.GetModuleBinarySnapShot());
 
-		LastPointmsec = CurrentPoint.GetChangedTime(); // Update the last changed time to match what we have just sent.
-		//	MyPointConf->PointTable.PopNextTaggedEventPoint();
-		EventCount++;
-	}
+            LastPointmsec = CurrentPoint.GetChangedTime(); // Update the last changed time to match what we have just sent.
+            //	MyPointConf->PointTable.PopNextTaggedEventPoint();
+            EventCount++;
+      }
 }
 // Function 12
 void CBOutstationPort::DoDigitalUnconditional(CBBlockData &Header)
 {
-	CBMessage_t ResponseCBMessage;
+      CBMessage_t ResponseCBMessage;
 
-	LOGDEBUG("OS - DoDigitalUnconditional - Fn12");
+      LOGDEBUG("OS - DoDigitalUnconditional - Fn12");
 
-/*	if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
+      if ((Header.GetDigitalSequenceNumber() == LastDigitalScanSequenceNumber) && (Header.GetDigitalSequenceNumber() != 0))
       {
             // The last time we sent this, it did not get there, so we have to just resend that stored set of blocks. Dont do anything else.
             // If we go back and reread the Binary bits, the change information will already have been lost, as we assume it was sent when we read it last time.
@@ -610,9 +625,9 @@ void CBOutstationPort::DoDigitalUnconditional(CBBlockData &Header)
       // Store this set of packets in case we have to resend
       LastDigitalScanSequenceNumber = Header.GetDigitalSequenceNumber();
       LastDigitialScanResponseCBMessage = ResponseCBMessage;
-      */
-}
 
+}
+*/
 // Scan all binary/digital blocks for changes - used to determine what response we need to send
 // We return the total number of changed blocks we assume every block supports time tagging
 // If SendEverything is true,
@@ -662,240 +677,240 @@ uint8_t CBOutstationPort::CountBinaryBlocksWithChangesGivenRange(uint8_t NumberO
 	}
 	return changedblocks;
 }
-
+/*
 // Used in Fn7, Fn8 and Fn12
 void CBOutstationPort::BuildListOfModuleAddressesWithChanges(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress, bool forcesend, std::vector<uint8_t> &ModuleList)
 {
-	// We want a list of modules to send...
-	for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
-	{
-		bool datachanged = false;
+      // We want a list of modules to send...
+      for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
+      {
+            bool datachanged = false;
 
-		for (uint8_t j = 0; j < 16; j++)
-		{
-			bool changed = false;
+            for (uint8_t j = 0; j < 16; j++)
+            {
+                  bool changed = false;
 
-			if (!MyPointConf->PointTable.GetBinaryChangedUsingCBIndex(StartModuleAddress + i, j, changed))
-			{
-				// Data is missing, need to send the error block for this module address.
-				changed = true;
-			}
-			if (changed)
-				datachanged = true;
-		}
-		if (datachanged || forcesend)
-		{
-			ModuleList.push_back(StartModuleAddress + i);
-		}
-	}
+                  if (!MyPointConf->PointTable.GetBinaryChangedUsingCBIndex(StartModuleAddress + i, j, changed))
+                  {
+                        // Data is missing, need to send the error block for this module address.
+                        changed = true;
+                  }
+                  if (changed)
+                        datachanged = true;
+            }
+            if (datachanged || forcesend)
+            {
+                  ModuleList.push_back(StartModuleAddress + i);
+            }
+      }
 }
 // Fn 10
 void CBOutstationPort::BuildListOfModuleAddressesWithChanges(uint8_t StartModuleAddress, std::vector<uint8_t> &ModuleList)
 {
-	uint8_t LastModuleAddress = 0;
-	bool WeAreScanning = (StartModuleAddress == 0); // If the startmoduleaddress is zero, we store changes from the start.
+      uint8_t LastModuleAddress = 0;
+      bool WeAreScanning = (StartModuleAddress == 0); // If the startmoduleaddress is zero, we store changes from the start.
 
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &Point)
-		{
-			uint8_t Group = Point.GetGroup();
+      MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &Point)
+            {
+                  uint8_t Group = Point.GetGroup();
 
-			if (Group == StartModuleAddress)
-				WeAreScanning = true;
+                  if (Group == StartModuleAddress)
+                        WeAreScanning = true;
 
-			if (WeAreScanning && Point.GetChangedFlag() && (LastModuleAddress != Group))
-			{
-			// We should save the module address so we have a list of modules that have changed
-			      ModuleList.push_back(Group);
-			      LastModuleAddress = Group;
-			}
-		});
+                  if (WeAreScanning && Point.GetChangedFlag() && (LastModuleAddress != Group))
+                  {
+                  // We should save the module address so we have a list of modules that have changed
+                        ModuleList.push_back(Group);
+                        LastModuleAddress = Group;
+                  }
+            });
 
-	if (StartModuleAddress != 0)
-	{
-		// We have to then start again from zero, if we did not start from there.
-		MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &Point)
-			{
-				uint8_t Group = Point.GetGroup();
+      if (StartModuleAddress != 0)
+      {
+            // We have to then start again from zero, if we did not start from there.
+            MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &Point)
+                  {
+                        uint8_t Group = Point.GetGroup();
 
-				if (Group == StartModuleAddress)
-					WeAreScanning = false; // Stop when we reach the start again
+                        if (Group == StartModuleAddress)
+                              WeAreScanning = false; // Stop when we reach the start again
 
-				if (WeAreScanning && Point.GetChangedFlag() && (LastModuleAddress != Group))
-				{
-				// We should save the module address so we have a list of modules that have changed
-				      ModuleList.push_back(Group);
-				      LastModuleAddress = Group;
-				}
-			});
-	}
+                        if (WeAreScanning && Point.GetChangedFlag() && (LastModuleAddress != Group))
+                        {
+                        // We should save the module address so we have a list of modules that have changed
+                              ModuleList.push_back(Group);
+                              LastModuleAddress = Group;
+                        }
+                  });
+      }
 }
 // Fn 7,8
 void CBOutstationPort::BuildBinaryReturnBlocks(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress, uint8_t StationAddress, bool forcesend, CBMessage_t &ResponseCBMessage)
 {
-	std::vector<uint8_t> ModuleList;
-	BuildListOfModuleAddressesWithChanges(NumberOfDataBlocks, StartModuleAddress, forcesend, ModuleList);
-	// We have a list of modules to send...
-	BuildScanReturnBlocksFromList(ModuleList, NumberOfDataBlocks, StationAddress,false, ResponseCBMessage);
+      std::vector<uint8_t> ModuleList;
+      BuildListOfModuleAddressesWithChanges(NumberOfDataBlocks, StartModuleAddress, forcesend, ModuleList);
+      // We have a list of modules to send...
+      BuildScanReturnBlocksFromList(ModuleList, NumberOfDataBlocks, StationAddress,false, ResponseCBMessage);
 }
 
 // Fn 7, 8 and 10, 11 and 12 NOT Fn 9
 void CBOutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char> &ModuleList, uint8_t MaxNumberOfDataBlocks, uint8_t StationAddress, bool FormatForFn11and12, CBMessage_t & ResponseCBMessage)
 {
-	// For each module address, or the max we can send
-	for (size_t i = 0; ((i < ModuleList.size()) && (i < MaxNumberOfDataBlocks)); i++)
-	{
-		uint8_t Group = ModuleList[i];
+      // For each module address, or the max we can send
+      for (size_t i = 0; ((i < ModuleList.size()) && (i < MaxNumberOfDataBlocks)); i++)
+      {
+            uint8_t Group = ModuleList[i];
 
-		// Have to collect all the bits into a uint16_t
-		bool ModuleFailed = false;
+            // Have to collect all the bits into a uint16_t
+            bool ModuleFailed = false;
 
-		uint16_t wordres = MyPointConf->PointTable.CollectModuleBitsIntoWordandResetChangeFlags(Group, ModuleFailed);
+            uint16_t wordres = MyPointConf->PointTable.CollectModuleBitsIntoWordandResetChangeFlags(Group, ModuleFailed);
 
-		if (ModuleFailed)
-		{
-			if (FormatForFn11and12)
-			{
-				//TODO: NEW STYLE DIGITAL -  Module failed response for Fn11/12 BuildScanReturnBlocksFromList
-			}
-			else
-			{
-				// Queue the error block - Fn 7, 8 and 10 format
-				uint8_t errorflags = 0; // Application dependent, depends on the outstation implementation/master expectations. We could build in functionality here
-				uint16_t lowword = ShiftLeft8Result16Bits(errorflags) | Group;
-				uint16_t highword = ShiftLeft8Result16Bits(StationAddress);
-				auto block = CBBlockData(highword, lowword, false);
-				ResponseCBMessage.push_back(block);
-			}
-		}
-		else
-		{
-			if (FormatForFn11and12)
-			{
-				// For Fn11 and 12 the data format is:
-				uint16_t address = ShiftLeft8Result16Bits(Group); // Low byte is msec offset - which is 0 for non time tagged data
-				auto block = CBBlockData(address, wordres, false);
-				ResponseCBMessage.push_back(block);
-			}
-			else
-			{
-				// Queue the data block Fn 7,8 and 10
-				uint16_t address = ShiftLeft8Result16Bits(StationAddress) | Group;
-				auto block = CBBlockData(address, wordres, false);
-				ResponseCBMessage.push_back(block);
-			}
-		}
-	}
-	// Not sure which is the last block for the send only changes..so just mark it when we get to here.
-	// Format Fn 11 and 12 may not be the end of packet
-	if ((ResponseCBMessage.size() != 0) && !FormatForFn11and12)
-	{
-		// The header for Fn7, Fn 8 and Fn 10 need this. NOT Fn9, Fn11 and Fn12
-		CBBlockData &firstblockref = ResponseCBMessage.front();
+            if (ModuleFailed)
+            {
+                  if (FormatForFn11and12)
+                  {
+                        //TODO: NEW STYLE DIGITAL -  Module failed response for Fn11/12 BuildScanReturnBlocksFromList
+                  }
+                  else
+                  {
+                        // Queue the error block - Fn 7, 8 and 10 format
+                        uint8_t errorflags = 0; // Application dependent, depends on the outstation implementation/master expectations. We could build in functionality here
+                        uint16_t lowword = ShiftLeft8Result16Bits(errorflags) | Group;
+                        uint16_t highword = ShiftLeft8Result16Bits(StationAddress);
+                        auto block = CBBlockData(highword, lowword, false);
+                        ResponseCBMessage.push_back(block);
+                  }
+            }
+            else
+            {
+                  if (FormatForFn11and12)
+                  {
+                        // For Fn11 and 12 the data format is:
+                        uint16_t address = ShiftLeft8Result16Bits(Group); // Low byte is msec offset - which is 0 for non time tagged data
+                        auto block = CBBlockData(address, wordres, false);
+                        ResponseCBMessage.push_back(block);
+                  }
+                  else
+                  {
+                        // Queue the data block Fn 7,8 and 10
+                        uint16_t address = ShiftLeft8Result16Bits(StationAddress) | Group;
+                        auto block = CBBlockData(address, wordres, false);
+                        ResponseCBMessage.push_back(block);
+                  }
+            }
+      }
+      // Not sure which is the last block for the send only changes..so just mark it when we get to here.
+      // Format Fn 11 and 12 may not be the end of packet
+      if ((ResponseCBMessage.size() != 0) && !FormatForFn11and12)
+      {
+            // The header for Fn7, Fn 8 and Fn 10 need this. NOT Fn9, Fn11 and Fn12
+            CBBlockData &firstblockref = ResponseCBMessage.front();
 
-		CBBlockData &lastblock = ResponseCBMessage.back();
-		lastblock.MarkAsEndOfMessageBlock();
-	}
+            CBBlockData &lastblock = ResponseCBMessage.back();
+            lastblock.MarkAsEndOfMessageBlock();
+      }
 }
 
-
+*/
 #pragma endregion
 
 #pragma region CONTROL
-
+/*
 void CBOutstationPort::DoFreezeResetCounters(CBBlockData &Header)
 {
-	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
-	// Don't have an equivalent ODC command?
+      // If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+      // We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
+      // Don't have an equivalent ODC command?
 
-	bool failed = false;
+      bool failed = false;
 
 
-	uint32_t ODCIndex = MyPointConf->FreezeResetCountersPoint.second;
-	MyPointConf->FreezeResetCountersPoint.first = static_cast<int32_t>(Header.GetData()); // Pass the actual packet to the master across ODC
+      uint32_t ODCIndex = MyPointConf->FreezeResetCountersPoint.second;
+      MyPointConf->FreezeResetCountersPoint.first = static_cast<int32_t>(Header.GetData()); // Pass the actual packet to the master across ODC
 
-	EventTypePayload<EventType::AnalogOutputInt32>::type val;
-	val.first = MyPointConf->FreezeResetCountersPoint.first;
+      EventTypePayload<EventType::AnalogOutputInt32>::type val;
+      val.first = MyPointConf->FreezeResetCountersPoint.first;
 
-	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
-	event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
+      auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
+      event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
 
-	bool waitforresult = !MyPointConf->StandAloneOutstation;
+      bool waitforresult = !MyPointConf->StandAloneOutstation;
 
-	if (Header.GetStationAddress() != 0)
-	{
-		if (failed)
-		{
-			SendControlOrScanRejected(Header);
-			return;
-		}
+      if (Header.GetStationAddress() != 0)
+      {
+            if (failed)
+            {
+                  SendControlOrScanRejected(Header);
+                  return;
+            }
 
-		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
-		{
-			SendControlOK(Header);
-		}
-		else
-		{
-			SendControlOrScanRejected(Header);
-		}
-	}
-	else
-	{
-		if (!failed)
-		{
-			// This is an all station (0 address) freeze reset function.
-			// No response, don't wait for a result
-			Perform(event, false);
-		}
-	}
+            if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
+            {
+                  SendControlOK(Header);
+            }
+            else
+            {
+                  SendControlOrScanRejected(Header);
+            }
+      }
+      else
+      {
+            if (!failed)
+            {
+                  // This is an all station (0 address) freeze reset function.
+                  // No response, don't wait for a result
+                  Perform(event, false);
+            }
+      }
 }
 
 // Think that POM stands for PULSE.
 void CBOutstationPort::DoPOMControl(CBBlockData &Header, CBMessage_t &CompleteCBMessage)
 {
-	// We have two blocks incoming, not just one.
-	// Seems we don\92t have any POM control signals greater than 7 in the data I have seen??
-	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
+      // We have two blocks incoming, not just one.
+      // Seems we don\92t have any POM control signals greater than 7 in the data I have seen??
+      // If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+      // We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
 
-	LOGDEBUG("OS - DoPOMControl");
+      LOGDEBUG("OS - DoPOMControl");
 
-	bool failed = false;
+      bool failed = false;
 
-	// Check all the things we can
-	if (CompleteCBMessage.size() != 2)
-	{
-		// If we did not get two blocks, then send back a command rejected message.
-		failed = true;
-	}
+      // Check all the things we can
+      if (CompleteCBMessage.size() != 2)
+      {
+            // If we did not get two blocks, then send back a command rejected message.
+            failed = true;
+      }
 
 
-	// Check that the control point is defined, otherwise return a fail.
-	size_t ODCIndex = 0;
+      // Check that the control point is defined, otherwise return a fail.
+      size_t ODCIndex = 0;
 //	failed = MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, ODCIndex) ? failed : true;
 
-	if (Header.GetStationAddress() == 0)
-	{
-		// An all station command we do not respond to.
-		return;
-	}
+      if (Header.GetStationAddress() == 0)
+      {
+            // An all station command we do not respond to.
+            return;
+      }
 
-	if (failed)
-	{
-		SendControlOrScanRejected(Header);
-		return;
-	}
+      if (failed)
+      {
+            SendControlOrScanRejected(Header);
+            return;
+      }
 
-	bool waitforresult = !MyPointConf->StandAloneOutstation;
-	bool success = true;
+      bool waitforresult = !MyPointConf->StandAloneOutstation;
+      bool success = true;
 
-	// POM is only a single bit, so easy to do... if the bit position is > 7, i.e.TRIP/OPEN/OFF 8-15 and PULSE_CLOSE/PULSE/LATCH_ON 0-7 for the up to 8 points in a POM module.
-	bool point_on = 1; // (Header.GetOutputSelection() < 8);
+      // POM is only a single bit, so easy to do... if the bit position is > 7, i.e.TRIP/OPEN/OFF 8-15 and PULSE_CLOSE/PULSE/LATCH_ON 0-7 for the up to 8 points in a POM module.
+      bool point_on = 1; // (Header.GetOutputSelection() < 8);
 
-	if (MyPointConf->POMControlPoint.second == 0) // If NO pass through, then do normal operation
-	{
-		// Module contains 0 to 7 channels..
-/*		if (MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, ODCIndex))
+      if (MyPointConf->POMControlPoint.second == 0) // If NO pass through, then do normal operation
+      {
+            // Module contains 0 to 7 channels..
+            if (MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(Header.GetModuleAddress(), Header.GetOutputSelection() % 8, ODCIndex))
             {
                   EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
                   val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
@@ -905,76 +920,76 @@ void CBOutstationPort::DoPOMControl(CBBlockData &Header, CBMessage_t &CompleteCB
 
                   success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
             }
-*/    }
+    }
 
-	// If the index is !=0, then the pass through is active. So success depends on the pass through
-	if (MyPointConf->POMControlPoint.second != 0)
-	{
-		// Pass the command through ODC, just for CB on the other side.
-		MyPointConf->POMControlPoint.first = static_cast<int32_t>(Header.GetData());
+      // If the index is !=0, then the pass through is active. So success depends on the pass through
+      if (MyPointConf->POMControlPoint.second != 0)
+      {
+            // Pass the command through ODC, just for CB on the other side.
+            MyPointConf->POMControlPoint.first = static_cast<int32_t>(Header.GetData());
 
-		ODCIndex = MyPointConf->POMControlPoint.second;
+            ODCIndex = MyPointConf->POMControlPoint.second;
 
-		EventTypePayload<EventType::AnalogOutputInt32>::type val;
-		val.first = MyPointConf->POMControlPoint.first;
+            EventTypePayload<EventType::AnalogOutputInt32>::type val;
+            val.first = MyPointConf->POMControlPoint.first;
 
-		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
-		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
+            auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
+            event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
 
-		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS);
-	}
+            success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS);
+      }
 
-	if (success)
-	{
-		SendControlOK(Header);
-	}
-	else
-	{
-		SendControlOrScanRejected(Header);
-	}
+      if (success)
+      {
+            SendControlOK(Header);
+      }
+      else
+      {
+            SendControlOrScanRejected(Header);
+      }
 }
 
 // DOM stands for DIGITAL.
 void CBOutstationPort::DoDOMControl(CBBlockData &Header, CBMessage_t &CompleteCBMessage)
 {
-	// We have two blocks incoming, not just one.
-	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
-	// The output is a 16bit word. Will send a 32 bit block through ODC that contains the output data , station address and module address.
-	// The Perform method waits until it has a result, unless we are in stand alone mode.
+      // We have two blocks incoming, not just one.
+      // If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+      // We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
+      // The output is a 16bit word. Will send a 32 bit block through ODC that contains the output data , station address and module address.
+      // The Perform method waits until it has a result, unless we are in stand alone mode.
 
-	LOGDEBUG("OS - DoDOMControl");
-	bool failed = false;
+      LOGDEBUG("OS - DoDOMControl");
+      bool failed = false;
 
-	// Check all the things we can
-	if (CompleteCBMessage.size() != 2)
-	{
-		// If we did not get two blocks, then send back a command rejected message.
-		failed = true;
-	}
+      // Check all the things we can
+      if (CompleteCBMessage.size() != 2)
+      {
+            // If we did not get two blocks, then send back a command rejected message.
+            failed = true;
+      }
 
 
-	// Check that the first one exists, not all 16 may exist.
-	size_t ODCIndex = 0;
+      // Check that the first one exists, not all 16 may exist.
+      size_t ODCIndex = 0;
 //	failed = MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(Header.GetModuleAddress(), 0, ODCIndex) ? failed : true;
 
-	uint16_t output = 1; // Header.GetOutputFromSecondBlock(CompleteCBMessage[1]);
-	bool waitforresult = !MyPointConf->StandAloneOutstation;
+      uint16_t output = 1; // Header.GetOutputFromSecondBlock(CompleteCBMessage[1]);
+      bool waitforresult = !MyPointConf->StandAloneOutstation;
 
-	if (Header.GetStationAddress() == 0)
-	{
-		// An all station command we do not respond to.
-		return;
-	}
+      if (Header.GetStationAddress() == 0)
+      {
+            // An all station command we do not respond to.
+            return;
+      }
 
-	if (failed)
-	{
-		SendControlOrScanRejected(Header);
-		return;
-	}
+      if (failed)
+      {
+            SendControlOrScanRejected(Header);
+            return;
+      }
 
-	bool success = true;
-/*
+      bool success = true;
+
       if (MyPointConf->DOMControlPoint.second == 0) // NO pass through, normal operation
       {
             // Send each of the DigitalOutputs (If we were connected to an DNP3 Port the CB pass through would not work)
@@ -1012,44 +1027,44 @@ void CBOutstationPort::DoDOMControl(CBBlockData &Header, CBMessage_t &CompleteCB
 
             success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS);
       }
-*/
-	if (success)
-	{
-		SendControlOK(Header);
-	}
-	else
-	{
-		SendControlOrScanRejected(Header);
-	}
+
+      if (success)
+      {
+            SendControlOK(Header);
+      }
+      else
+      {
+            SendControlOrScanRejected(Header);
+      }
 }
 
 // AOM is ANALOG output control.
 void CBOutstationPort::DoAOMControl(CBBlockData &Header, CBMessage_t &CompleteCBMessage)
 {
-	// We have two blocks incoming, not just one.
-	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
+      // We have two blocks incoming, not just one.
+      // If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+      // We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
 
-	LOGDEBUG("OS - DoAOMControl");
+      LOGDEBUG("OS - DoAOMControl");
 
-	bool failed = false;
+      bool failed = false;
 
-	// Check all the things we can
-	if (CompleteCBMessage.size() != 2)
-	{
-		// If we did not get two blocks, then send back a command rejected message.
-		failed = true;
-	}
+      // Check all the things we can
+      if (CompleteCBMessage.size() != 2)
+      {
+            // If we did not get two blocks, then send back a command rejected message.
+            failed = true;
+      }
 
-	if (Header.GetStationAddress() == 0)
-	{
-		// An all station command we do not respond to.
-		return;
-	}
+      if (Header.GetStationAddress() == 0)
+      {
+            // An all station command we do not respond to.
+            return;
+      }
 
-	// Check that the control point is defined, otherwise return a fail.
-	size_t ODCIndex = 0;
-/*	failed = MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(Header.GetModuleAddress(), Header.GetChannel(), ODCIndex) ? failed : true;
+      // Check that the control point is defined, otherwise return a fail.
+      size_t ODCIndex = 0;
+      failed = MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(Header.GetModuleAddress(), Header.GetChannel(), ODCIndex) ? failed : true;
 
       uint16_t output = Header.GetOutputFromSecondBlock(CompleteCBMessage[1]);
       bool waitforresult = !MyPointConf->StandAloneOutstation;
@@ -1068,9 +1083,9 @@ void CBOutstationPort::DoAOMControl(CBBlockData &Header, CBMessage_t &CompleteCB
       {
             SendControlOrScanRejected(Header);
       }
-      */
-}
 
+}
+*/
 #pragma endregion
 
 #pragma region SYSTEM

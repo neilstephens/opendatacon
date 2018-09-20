@@ -280,7 +280,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
+				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(MISSINGVALUE)))
 				{
 					LOGERROR("Tried to set the failure value for an invalid analog point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
@@ -292,7 +292,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
+				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(MISSINGVALUE)))
 				{
 					LOGERROR("Tried to set the failure value for an invalid counter point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);

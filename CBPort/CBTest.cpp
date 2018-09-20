@@ -601,8 +601,9 @@ namespace StationTests
 
 TEST_CASE("Station - ScanRequest F0")
 {
-	// Tests triggering events to set the Outstation data points, then sends an Analog Unconditional command in as if from TCP.
-	// Checks the TCP send output for correct data and format.
+	// So we send a Scan F0 packet to the Outstation, it responds with the data in the point table.
+	// Then we update the data in the point table, scan again and check the data we get back.
+
 	STANDARD_TEST_SETUP();
 	TEST_CBOSPort(Json::nullValue);
 
@@ -614,7 +615,7 @@ TEST_CASE("Station - ScanRequest F0")
 	CBBlockData commandblock(station, group, FUNC_SCAN_DATA, 0, true);
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
-	output << commandblock.ToBinaryString();
+
 
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
@@ -622,28 +623,66 @@ TEST_CASE("Station - ScanRequest F0")
 			res = command_stat;
 		});
 
-	// Call the Event functions to set the CB table data to what we are expecting to get back.
-	// Write to the analog registers that we are going to request the values for.
-	/*   for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
-	   {
-	         auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-	         event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
-
-	         CBOSPort->Event(event, "TestHarness", pStatusCallback);
-
-	         REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
-	   }
-	*/
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
 	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
 
 	// Send the Analog Unconditional command in as if came from TCP channel
+	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult = BuildHexStringFromASCIIHexString("093088a8" // Echoed block plus data 1B
-		                                                             "2229999b" // Data 2A and 2B
-		);
+	std::string DesiredResult = BuildHexStringFromASCIIHexString(     "0937ffaa" // Echoed block plus data 1B
+		                                                            "fc080016" // Data 2A and 2B
+		                                                            "00080006"
+		                                                            "00080006"
+		                                                            "00080006"
+		                                                            "00080007");
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response == DesiredResult);
+
+
+	// Call the Event functions to set the CB table data to what we are expecting to get back.
+	// Write to the analog registers that we are going to request the values for.
+	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event->SetPayload<EventType::Analog>(std::move(1024 + ODCIndex));
+
+		CBOSPort->Event(event, "TestHarness", pStatusCallback);
+
+		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
+	}
+	for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
+		event->SetPayload<EventType::Counter>(std::move(1024 + ODCIndex));
+
+		CBOSPort->Event(event, "TestHarness", pStatusCallback);
+
+		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
+	}
+	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+
+		CBOSPort->Event(event, "TestHarness", pStatusCallback);
+
+		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+	}
+
+	Response = "Not Set";
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// Should now get different data!
+	DesiredResult = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
+		                                           "fc080016" // Data 2A and 2B
+		                                           "400a00b6"
+		                                           "402a0186"
+		                                           "404a029c"
+		                                           "4068003d");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -1930,239 +1969,116 @@ namespace MasterTests
 {
 
 #pragma region Master Tests
-/*
-TEST_CASE("Master - Analog")
+
+TEST_CASE("Master - Scan Request F0")
 {
-      // Tests the decoding of return data in the format of Fn 5
-      // We send the response to an analog unconditional command.
-      // Need the Master to send the correct command first, so that what we send back is expected.
-      // We need to create an OutStation port, and subscribe it to the Master Events, so that we can then see if the events are triggered.
-      // We can determine this by checking the values stored in the point table.
+	// So here we send out an F0 command (so the Master is expecting it back)
+	// Then we decode the response from the point table group setup, and fire off the appropriate events.
 
-      STANDARD_TEST_SETUP();
+	STANDARD_TEST_SETUP();
 
-      TEST_CBMAPort(Json::nullValue);
+	TEST_CBMAPort(Json::nullValue);
 
-      Json::Value portoverride;
-      portoverride["Port"] = static_cast<Json::UInt64>(1001);
-      TEST_CBOSPort(portoverride);
+	Json::Value portoverride;
+	portoverride["Port"] = static_cast<Json::UInt64>(1001);
+	TEST_CBOSPort(portoverride);
 
-      START_IOS(1);
+	START_IOS(1);
 
-      CBMAPort->Subscribe(CBOSPort, "TestLink"); // The subscriber is just another port. CBOSPort is registering to get CBPort messages.
-      // Usually is a cross subscription, where each subscribes to the other.
-      CBOSPort->Enable();
-      CBMAPort->Enable();
+	CBMAPort->Subscribe(CBOSPort, "TestLink"); // The subscriber is just another port. CBOSPort is registering to get CBPort messages.
+	// Usually is a cross subscription, where each subscribes to the other.
+	CBOSPort->Enable();
+	CBMAPort->Enable();
 
-      // Hook the output function with a lambda
-      std::string Response = "Not Set";
-      CBMAPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	CBMAPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
 
-      INFO("Analog Unconditional Fn5");
-      {
-            // Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
-            // The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
-            CBBlockData sendcommandblock(9, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
-            CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
+	INFO("Analog Unconditional Fn5");
+	{
+		// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
+		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
+		CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);
+		CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
 
-            Wait(IOS, 1);
+		Wait(IOS, 1);
 
-            // We check the command, but it does not go anywhere, we inject the expected response below.
-            const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c05200f5200");
-            REQUIRE(Response == DesiredResponse);
+		// We check the command, but it does not go anywhere, we inject the expected response below.
+		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("09300025");
+		REQUIRE(Response == DesiredResponse);
 
-            // We now inject the expected response to the command above.
-            CBBlockData commandblock(9, false, ANALOG_UNCONDITIONAL, 0x20, 16, false);
-            asio::streambuf write_buffer;
-            std::ostream output(&write_buffer);
-            output << commandblock.ToBinaryString();
+		// We now inject the expected response to the command above.
+		asio::streambuf write_buffer;
+		std::ostream output(&write_buffer);
 
-            const std::string Payload = BuildHexStringFromASCIIHexString("100011018400" // Channel 0 and 1
-                                                                         "12021303b700" // Channel 2 and 3 etc
-                                                                         "14041505b900"
-                                                                         "160617078a00"
-                                                                         "18081909a500"
-                                                                         "1A0A1B0B9600"
-                                                                         "1C0C1D0D9800"
-                                                                         "1E0E1F0Feb00");
-            output << Payload;
+		// From the outstation test above!!
+		std::string Payload = BuildHexStringFromASCIIHexString(                 "09355516" // Echoed block plus data 1B
+			                                                                  "fc080016" // Data 2A and 2B
+			                                                                  "400a00b6"
+			                                                                  "402a0186"
+			                                                                  "404a029c"
+			                                                                  "4068003d");
+		output << Payload;
 
-            // Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
-            CBMAPort->InjectSimulatedTCPMessage(write_buffer);
+		// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
+		CBMAPort->InjectSimulatedTCPMessage(write_buffer);
 
-            Wait(IOS, 1);
+		Wait(IOS, 5);
 
-            // To check the result, see if the points in the master point list have been changed to the correct values.
-            uint16_t res = 0;
-            bool hasbeenset;
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 0, res,hasbeenset);
-            REQUIRE(res == 0x1000);
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 1, res, hasbeenset);
-            REQUIRE(res == 0x1101);
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 7, res, hasbeenset);
-            REQUIRE(res == 0x1707);
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 8, res, hasbeenset);
-            REQUIRE(res == 0x1808);
+		// To check the result, see if the points in the master point list have been changed to the correct values.
+		bool hasbeenset;
 
-            // Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
-            // Need to give ASIO time to process them?
-            Wait(IOS, 1);
+		for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
+		{
+			uint16_t res;
+			CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
+			REQUIRE(res == (1024 + ODCIndex));
+		}
+		for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
+		{
+			uint16_t res;
+			CBMAPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
+			REQUIRE(res == (1024 + ODCIndex));
+		}
+		for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+		{
+			uint8_t res;
+			bool changed;
+			CBMAPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res, changed, hasbeenset);
+			REQUIRE(res == ((ODCIndex+1) % 2));
+		}
 
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 0, res, hasbeenset);
-            REQUIRE(res == 0x1000);
+		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
+		// Need to give ASIO time to process them?
+		Wait(IOS, 1);
 
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 8, res, hasbeenset);
-            REQUIRE(res == 0x1808);
-      }
+		for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
+		{
+			uint16_t res;
+			CBOSPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
+			REQUIRE(res == (1024 + ODCIndex));
+		}
+		for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
+		{
+			uint16_t res;
+			CBOSPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
+			REQUIRE(res == (1024 + ODCIndex));
+		}
+		for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+		{
+			uint8_t res;
+			bool changed;
+			CBOSPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res, changed, hasbeenset);
+			REQUIRE(res == ((ODCIndex+1) % 2));
+		}
+	}
 
-      INFO("Analog Delta Fn6");
-      {
-            // We need to have done an Unconditional to correctly test a delta so do following the previous test.
-            // Same address and channels as above
-            CBBlockData sendcommandblock(9, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
-            Response = "Not Set";
-            CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
-            Wait(IOS, 1);
+	work.reset(); // Indicate all work is finished.
 
-            // We check the command, but it does not go anywhere, we inject the expected response below. This should stop a resend of the command due to timeout...
-            const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c06200f7600");
-            REQUIRE(Response == DesiredResponse);
-
-            // We now inject the expected response to the command above.
-            CBBlockData commandblock(9, false, ANALOG_DELTA_SCAN, 0x20, 16, false);
-            asio::streambuf write_buffer;
-            std::ostream output(&write_buffer);
-            output << commandblock.ToBinaryString();
-
-            // Create the delta values for the 16 channels
-            CBBlockData b1(static_cast<uint8_t>(-1), 1, static_cast<uint8_t>(-127), 128, false);
-            output << b1.ToBinaryString();
-
-            CBBlockData b2(2, static_cast<uint8_t>(-3), 20, static_cast<uint8_t>(-125), false);
-            output << b2.ToBinaryString();
-
-            CBBlockData b3(0x0000000, false);
-            output << b3.ToBinaryString();
-
-            CBBlockData b4(0x00000000, true); // Mark as last block.
-            output << b4.ToBinaryString();
-
-            // Send the command in as if came from TCP channel
-            CBMAPort->InjectSimulatedTCPMessage(write_buffer);
-            Wait(IOS, 1);
-
-            // To check the result, see if the points in the master point list have been changed to the correct values.
-            uint16_t res = 0;
-            bool hasbeenset;
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 0, res, hasbeenset);
-            REQUIRE(res == 0x0FFF); // -1
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 1, res, hasbeenset);
-            REQUIRE(res == 0x1102); // +1
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 7, res, hasbeenset);
-            REQUIRE(res == 0x168A); // 0x1707 - 125
-
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 8, res, hasbeenset);
-            REQUIRE(res == 0x1808); // Unchanged
-
-            // Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
-            // Need to give ASIO time to process them?
-            Wait(IOS, 1);
-
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 0, res, hasbeenset);
-            REQUIRE(res == 0x0FFF); // -1
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 1, res, hasbeenset);
-            REQUIRE(res == 0x1102); // +1
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 7, res, hasbeenset);
-            REQUIRE(res == 0x168A); // 0x1707 - 125
-
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 8, res, hasbeenset);
-            REQUIRE(res == 0x1808); // Unchanged
-      }
-
-      INFO("Analog Delta Fn6 - No Change Response");
-      {
-            // We need to have done an Unconditional to correctly test a delta so do following the previous test.
-            // Same address and channels as above
-            CBBlockData sendcommandblock(9, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
-            Response = "Not Set";
-            CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
-            Wait(IOS, 1);
-
-            // We check the command, but it does not go anywhere, we inject the expected response below.
-            const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c06200f7600");
-            REQUIRE(Response == DesiredResponse);
-
-            // We now inject the expected response to the command above. This should stop a resend of the command due to timeout...
-            CBBlockData commandblock(9, false, ANALOG_NO_CHANGE_REPLY, 0x20, 16, true); // Channels etc remain the same
-            asio::streambuf write_buffer;
-            std::ostream output(&write_buffer);
-            output << commandblock.ToBinaryString();
-
-            // Send the command in as if came from TCP channel
-            CBMAPort->InjectSimulatedTCPMessage(write_buffer);
-            Wait(IOS, 1);
-
-            // To check the result, see if the points in the master point list have not changed?
-            // Should their time stamp be updated?
-            uint16_t res = 0;
-            bool hasbeenset;
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 0, res, hasbeenset);
-            REQUIRE(res == 0x0FFF); // -1
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 1, res, hasbeenset);
-            REQUIRE(res == 0x1102); // +1
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 7, res, hasbeenset);
-            REQUIRE(res == 0x168A); // 0x1707 - 125
-
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 8, res, hasbeenset);
-            REQUIRE(res == 0x1808); // Unchanged
-
-            // Check that the OutStation values have not been updated over ODC.
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 0, res, hasbeenset);
-            REQUIRE(res == 0x0FFF); // -1
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 1, res, hasbeenset);
-            REQUIRE(res == 0x1102); // +1
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 7, res, hasbeenset);
-            REQUIRE(res == 0x168A); // 0x1707 - 125
-
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 8, res, hasbeenset);
-            REQUIRE(res == 0x1808); // Unchanged
-      }
-
-      INFO("Analog Unconditional Fn5 Timeout");
-      {
-            // Now send a request analog unconditional command
-            // The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
-            CBBlockData sendcommandblock(9, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
-            Response = "Not Set";
-            CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
-            Wait(IOS, 1);
-
-            // We check the command, but it does not go anywhere, we inject the expected response below.
-            const std::string DesiredResponse = BuildHexStringFromASCIIHexString("7c05200f5200");
-            REQUIRE(Response == DesiredResponse);
-
-            // Instead of injecting the expected response, we don't send anything, which should result in a timeout.
-            // That timeout should then result in the analog value being set to 0x8000 to indicate it is invalid??
-
-            // Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
-            // Need to give ASIO time to process them
-            Wait(IOS, 10);
-
-            // To check the result, the quality of the points will be set to comms_lost - and this will result in the values being set to 0x8000 which is CB for something has failed.
-            uint16_t res = 0;
-            bool hasbeenset;
-            CBOSPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 0, res, hasbeenset);
-            REQUIRE(res == 0x8000);
-
-            CBMAPort->GetPointTable()->GetAnalogValueUsingCBIndex(0x20, 0, res, hasbeenset);
-            REQUIRE(res == 0x8000);
-      }
-
-      work.reset(); // Indicate all work is finished.
-
-      STOP_IOS();
-      TestTearDown();
+	STOP_IOS();
+	TestTearDown();
 }
+/*
 TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 {
       // When ODC signals that it has regained communication up the line (or is a new connection), we will resend all data through ODC.
@@ -2327,7 +2243,7 @@ TEST_CASE("Master - DOM and POM Tests")
             IOS.post([&]()
                   {
                         CBBlockData commandblock(9, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
-                        CBBlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON? Top byte ON, bottom byte OFF
+                        CBBlockData datablock = commandblock.GenerateSecondBlock(MISSINGVALUE); // Bit 0 ON? Top byte ON, bottom byte OFF
 
                         OSoutput << commandblock.ToBinaryString();
                         OSoutput << datablock.ToBinaryString();
@@ -2448,7 +2364,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
             IOS.post([&]()
                   {
                         CBBlockData commandblock(9, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
-                        CBBlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON?
+                        CBBlockData datablock = commandblock.GenerateSecondBlock(MISSINGVALUE); // Bit 0 ON?
 
                         OSoutput << commandblock.ToBinaryString();
                         OSoutput << datablock.ToBinaryString();
@@ -2821,7 +2737,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
             // Check the module values made it into the point table
             bool ModuleFailed = false;
             uint16_t wordres = CBOSPort->GetPointTable()->CollectModuleBitsIntoWord(0x22, ModuleFailed);
-            REQUIRE(wordres == 0xfe00); //0x8000 Would be this value if no timetagged data was present
+            REQUIRE(wordres == 0xfe00); //MISSINGVALUE Would be this value if no timetagged data was present
 
             wordres = CBOSPort->GetPointTable()->CollectModuleBitsIntoWord(0x23, ModuleFailed);
             REQUIRE(wordres == 0x0100); //0xff00 Would be this value if no timetagged data was present

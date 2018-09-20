@@ -58,7 +58,12 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto PollGroups = JSONRoot["PollGroups"];
 		ProcessPollGroups(PollGroups);
 	}
-
+	if (JSONRoot.isMember("RemoteStatus"))
+	{
+		//const auto Analogs = JSONRoot["Analogs"];
+		LOGDEBUG("ERROR Conf processed - RemoteStatus - Not implemented yet");
+		//ProcessAnalogCounterPoints(Analog, Analogs);
+	}
 	if (JSONRoot.isMember("Analogs"))
 	{
 		const auto Analogs = JSONRoot["Analogs"];
@@ -312,7 +317,6 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 				{
 					// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
 					LOGDEBUG(BinaryName+" Adding a Binary - Index: "+std::to_string(index)+" Group: "+ std::to_string(group) + " Channel: " + std::to_string(currentchannel) + " Point Type: "+ pointtypestring +" Payload Location: "+payloadlocation.to_string());
-//TODO: SJE			Groups[group].AddPoint(res);
 				}
 			}
 		}
@@ -423,7 +427,6 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 			{
 				// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
 				LOGDEBUG("Adding a "+Name+" - Index: " + std::to_string(channel) + " Group: " + std::to_string(group) + " Channel: " + std::to_string(channel) + " Point Type: " + pointtypestring + " Payload Location: " + payloadlocation.to_string());
-//TODO: SJE			Groups[group].AddPoint(res);
 			}
 		}
 	}

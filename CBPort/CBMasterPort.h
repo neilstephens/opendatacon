@@ -118,6 +118,10 @@ private:
 	void ClearCBCommandQueue();
 	void ProcessCBMessage(CBMessage_t& CompleteCBMessage);
 
+	bool ProcessScanRequestReturn(const CBMessage_t & CompleteCBMessage);
+	void ProccessScanPayload(uint16_t data, uint8_t group, PayloadLocationType payloadlocation);
+	void GenerateODCEventsFromDIGPayload(const uint16_t & data, const uint8_t & Group, PayloadLocationType payloadlocation, const CBTime & eventtime);
+
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 /*	bool ProcessAnalogUnconditionalReturn(  const CBMessage_t& CompleteCBMessage);
       bool ProcessAnalogDeltaScanReturn(  const CBMessage_t& CompleteCBMessage);
@@ -126,7 +130,7 @@ private:
       bool ProcessDigitalNoChangeReturn( const CBMessage_t & CompleteCBMessage);
       bool ProcessDigitalScan( const CBMessage_t & CompleteCBMessage); // Handles new COS and Unconditional Scan
 
-      void GenerateODCEventsFromCBModuleWord(const uint16_t &ModuleData, const uint8_t &Group, const CBTime &eventtime);
+      void GenerateODCEventsFromDIGPayload(const uint16_t &ModuleData, const uint8_t &Group, const CBTime &eventtime);
 
       bool ProcessDOMReturn( const CBMessage_t & CompleteCBMessage);
       bool ProcessPOMReturn( const CBMessage_t & CompleteCBMessage);

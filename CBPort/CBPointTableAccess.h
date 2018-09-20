@@ -53,13 +53,14 @@ public:
 	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const BinaryPointType & pointtype, const PayloadLocationType &payloadlocation);
 
 	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
+	void UpdateMaxPayload(const uint8_t & group, const PayloadLocationType & payloadlocation);
 	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
 	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
 
 	bool GetCounterValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t & res, bool &hasbeenset);
 	bool GetCounterValueAndChangeUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool &hasbeenset);
 	bool SetCounterValueUsingCBIndex(const uint16_t module, const uint8_t channel, const uint16_t meas);
-	bool GetCounterODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t & res);
+	bool GetCounterValueUsingODCIndex(const size_t index, uint16_t & res, bool & hasbeenset);
 	bool SetCounterValueUsingODCIndex(const size_t index, const uint16_t meas);
 
 	bool GetAnalogValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t & res, bool & hasbeenset);
@@ -71,6 +72,7 @@ public:
 	bool ResetAnalogValueUsingODCIndex(const size_t index);
 	bool ResetCounterValueUsingODCIndex(const size_t index);
 
+	bool GetCounterODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t & res);
 	bool GetAnalogODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t &res);
 	bool GetBinaryODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t &res);
 
@@ -82,7 +84,7 @@ public:
 	bool SetBinaryValueUsingCBIndex(const uint16_t module, const uint8_t channel, const uint8_t meas, bool & valuechanged);
 	bool GetBinaryChangedUsingCBIndex(const uint16_t module, const uint8_t channel, bool &changed);
 
-	bool GetBinaryValueUsingODCIndex(const size_t index, uint8_t &res, bool &changed);
+	bool GetBinaryValueUsingODCIndexAndResetChangedFlag(const size_t index, uint8_t &res, bool &changed, bool &hasbeenset);
 	bool SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, CBTime eventtime);
 
 	bool GetBinaryControlODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t & index);
@@ -98,6 +100,8 @@ public:
 	void ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
 	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
 
+	void GetMaxPayload(uint8_t group, uint8_t &blockcount);
+
 //	std::vector<CBBinaryPoint> DumpTimeTaggedPointList();
 
 //	bool TimeTaggedDataAvailable();
@@ -111,9 +115,6 @@ public:
 	// Public only for testing
 	static uint16_t GetCBPointMapIndex(const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation); // Group/Payload/Channel
 protected:
-
-
-
 
 	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
 	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinaryCBPointMap; // Group/Payload/Channel, CBPoint
@@ -132,6 +133,8 @@ protected:
 	// Analog Control Points are not readable
 	std::map<uint16_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogControlCBPointMap; // Group/Payload/Channel, CBPoint
 	std::map<size_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogControlODCPointMap;  // Index OpenDataCon, CBPoint
+
+	std::map<uint8_t, uint8_t> MaxiumPayloadPerGroupMap; // Group 0 to 15, Max payload - a count of 1 to 16.
 
 	bool IsOutstation = true;
 

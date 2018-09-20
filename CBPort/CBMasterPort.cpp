@@ -183,7 +183,7 @@ void CBMasterPort::QueueCBCommand(const CBMessage_t &CompleteCBMessage, SharedSt
 			      PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED); // Failed...
 			}
 
-			// Will only send if we can - i.e. not currently processing a command
+			// Will only send if we can - blockindex.e. not currently processing a command
 			UnprotectedSendNextMasterCommand(false);
 		});
 }
@@ -352,146 +352,77 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 
 			CBBlockData Header = CompleteCBMessage[0];
 
-			// If we have an error, we have to wait for the timeout to occur, there may be another packet in behind which is the correct one. If we bail now we may never re-synchronise.
+			LOGDEBUG("CB Master received a response to sending cmd " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode)+" On Station Address - " + std::to_string(Header.GetStationAddress()));
 
-			if ((Header.GetStationAddress() != 0) && (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr))
-			{
-			      LOGERROR("Received a message from the wrong address - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-					" On Station Address - " + std::to_string(Header.GetStationAddress()));
-			      return;
-			}
+			// If we have an error, we have to wait for the timeout to occur, there may be another packet in behind which is the correct one. If we bail now we may never re-synchronise.
 			if (Header.GetStationAddress() == 0)
 			{
 			      LOGERROR("Received broadcast return message - address 0 - ignoring - " + std::to_string(Header.GetFunctionCode()) +
 					" On Station Address - " + std::to_string(Header.GetStationAddress()));
 			      return;
 			}
-
-			LOGDEBUG("CB Master received a response to sending cmd " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " of " + std::to_string(Header.GetFunctionCode()));
+			if (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr)
+			{
+			      LOGERROR("Received a message from the wrong address - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      return;
+			}
+			if (Header.GetFunctionCode() != MasterCommandProtectedData.CurrentFunctionCode)
+			{
+			      LOGERROR("Received a message with the wrong (non-matching) function code - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      return;
+			}
 
 			bool success = false;
+			bool NotImplemented = false;
 
 			// Now based on the Command Function (Not the function code we got back!!), take action. Not all codes are expected or result in action
 			switch (MasterCommandProtectedData.CurrentFunctionCode)
 			{
-				/*				case ANALOG_UNCONDITIONAL: // What we sent and reply
-				                              if (Header.GetFunctionCode() == ANALOG_UNCONDITIONAL)
-				                                    success = ProcessAnalogUnconditionalReturn(Header, CompleteCBMessage);
-				                              break;
-
-				                        case ANALOG_DELTA_SCAN: // Command and reply
-				                              if (Header.GetFunctionCode() == ANALOG_UNCONDITIONAL)
-				                                    success = ProcessAnalogUnconditionalReturn(Header, CompleteCBMessage);
-				                              else if (Header.GetFunctionCode() == ANALOG_DELTA_SCAN)
-				                                    success = ProcessAnalogDeltaScanReturn(Header, CompleteCBMessage);
-				                              else if (Header.GetFunctionCode() == ANALOG_NO_CHANGE_REPLY)
-				                                    success = ProcessAnalogNoChangeReturn(Header, CompleteCBMessage);
-				                              break;
-
-				                        case DIGITAL_UNCONDITIONAL_OBS:
-				                              // if ((FunctionCode == DIGITAL_UNCONDITIONAL_OBS) || (FunctionCode == DIGITAL_NO_CHANGE_REPLY))
-				                              LOGERROR("Fn7 - Old Style Digital - Digital Unconditional - IS NOT IMPLEMENTED");
-				                              break;
-				                        case DIGITAL_DELTA_SCAN:
-				                              // if ((FunctionCode == DIGITAL_DELTA_SCAN) || (FunctionCode == DIGITAL_UNCONDITIONAL_OBS) || (FunctionCode == DIGITAL_NO_CHANGE_REPLY))
-				                              LOGERROR("Fn8 - Old Style Digital - Digital Delta Scan - IS NOT IMPLEMENTED");
-				                              break;
-				                        case HRER_LIST_SCAN:
-				                              // if (FunctionCode == HRER_LIST_SCAN)
-				                              LOGERROR("Fn9 - Old Style Digital - Digital HRER Scan - IS NOT IMPLEMENTED");
-				                              break;
-				                        case DIGITAL_CHANGE_OF_STATE:
-				                              // if ((FunctionCode == DIGITAL_CHANGE_OF_STATE) || (FunctionCode == DIGITAL_NO_CHANGE_REPLY))
-				                              LOGERROR("Fn10 - Old Style Digital - Digital COS Scan - IS NOT IMPLEMENTED");
-				                              break;
-				                        case DIGITAL_CHANGE_OF_STATE_TIME_TAGGED:
-				                              if (Header.GetFunctionCode() == DIGITAL_NO_CHANGE_REPLY)
-				                                    success = ProcessDigitalNoChangeReturn(Header, CompleteCBMessage);
-				                              else if (Header.GetFunctionCode() == DIGITAL_CHANGE_OF_STATE_TIME_TAGGED)
-				                                    success = ProcessDigitalScan(Header, CompleteCBMessage);
-				                              break;
-				                        case DIGITAL_UNCONDITIONAL:
-				                              if (Header.GetFunctionCode() == DIGITAL_NO_CHANGE_REPLY)
-				                                    success = ProcessDigitalNoChangeReturn(Header, CompleteCBMessage);
-				                              else if ((Header.GetFunctionCode() == DIGITAL_UNCONDITIONAL) || (Header.GetFunctionCode() == DIGITAL_CHANGE_OF_STATE_TIME_TAGGED))
-				                              {
-				                                    LOGDEBUG("Doing Digital Unconditional (new) processing - which is the same as Digital Scan");
-				                                    success = ProcessDigitalScan(Header, CompleteCBMessage);
-				                              }
-				                              break;
-				                        case ANALOG_NO_CHANGE_REPLY:
-				                              LOGERROR("Master Should Never Send this Command - Fn 13 - ANALOG_NO_CHANGE_REPLY");
-				                              break;
-				                        case DIGITAL_NO_CHANGE_REPLY:
-				                              LOGERROR("Master Should Never Send this Command - Fn 14 - DIGITAL_NO_CHANGE_REPLY");
-				                              break;
-				                        case CONTROL_REQUEST_OK:
-				                              LOGERROR("Master Should Never Send this Command - Fn 15 - CONTROL_REQUEST_OK");
-				                              break;
-				                        case FREEZE_AND_RESET:
-				                              if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
-				                                    success = ProcessFreezeResetReturn(Header, CompleteCBMessage);
-				                              break;
-				                        case POM_TYPE_CONTROL:
-				                              if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
-				                                    success = ProcessPOMReturn(Header, CompleteCBMessage);
-				                              break;
-				                        case DOM_TYPE_CONTROL:
-				                              if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
-				                                    success = ProcessDOMReturn(Header, CompleteCBMessage);
-				                              break;
-				                        case INPUT_POINT_CONTROL:
-				                              LOGERROR("Fn20 - INPUT_POINT_CONTROL - IS NOT IMPLEMENTED");
-				                              break;
-				                        case RAISE_LOWER_TYPE_CONTROL:
-				                              LOGERROR("Fn21 - RAISE_LOWER_TYPE_CONTROL - IS NOT IMPLEMENTED");
-				                              break;
-				                        case AOM_TYPE_CONTROL:
-				                              if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
-				                                    success = ProcessAOMReturn(Header, CompleteCBMessage);
-				                              break;
-				                        case CONTROL_OR_SCAN_REQUEST_REJECTED:
-				                              LOGERROR("Master Should Never Send this Command - Fn 30 - CONTROL_OR_SCAN_REQUEST_REJECTED");
-				                              break;
-				                        case COUNTER_SCAN:
-				                              // if (Header.GetFunctionCode() == COUNTER_SCAN)
-				                              LOGERROR("Fn31 - COUNTER_SCAN - IS NOT IMPLEMENTED - USE ANALOG SCAN TO READ COUNTERS");
-				                              break;
-				                        case SYSTEM_SIGNON_CONTROL:
-				                              if (Header.GetFunctionCode() == SYSTEM_SIGNON_CONTROL)
-				                                    success = ProcessSystemSignOnReturn(Header, CompleteCBMessage);
-				                              break;
-				                        case SYSTEM_SIGNOFF_CONTROL:
-				                              LOGERROR("Fn41 - SYSTEM_SIGNOFF_CONTROL - IS NOT IMPLEMENTED");
-				                              break;
-				                        case SYSTEM_RESTART_CONTROL:
-				                              LOGERROR("Fn42 - SYSTEM_RESTART_CONTROL - IS NOT IMPLEMENTED");
-				                              break;
-				                        case SYSTEM_SET_DATETIME_CONTROL:
-				                              if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
-				                                    success = ProcessSetDateTimeReturn(Header, CompleteCBMessage);
-				                              break;
-				                        case SYSTEM_SET_DATETIME_CONTROL_NEW:
-				                              if (Header.GetFunctionCode() == CONTROL_REQUEST_OK)
-				                                    success = ProcessSetDateTimeNewReturn(Header, CompleteCBMessage);
-				                              break;
-				                        case FILE_DOWNLOAD:
-				                              LOGERROR("Fn50 - RAISE_LOWER_TYPE_CONTROL - IS NOT IMPLEMENTED");
-				                              break;
-				                        case FILE_UPLOAD:
-				                              LOGERROR("Fn51 - RAISE_LOWER_TYPE_CONTROL - IS NOT IMPLEMENTED");
-				                              break;
-				                        case SYSTEM_FLAG_SCAN:
-				                              if (Header.GetFunctionCode() == SYSTEM_FLAG_SCAN)
-				                                    success = ProcessFlagScanReturn(Header, CompleteCBMessage);
-				                              break;
-				                        case LOW_RES_EVENTS_LIST_SCAN:
-				                              LOGERROR("Fn60 - LOW_RES_EVENTS_LIST_SCAN - IS NOT IMPLEMENTED");
-				                              break;
-				                              */
+				case FUNC_SCAN_DATA:
+					success = ProcessScanRequestReturn(CompleteCBMessage); // Fn - 0
+					break;
+				case FUNC_EXECUTE_COMMAND:
+					break;
+				case FUNC_TRIP:
+					break;
+				case FUNC_SETPOINT_A:
+					NotImplemented = true;
+					break;
+				case FUNC_CLOSE:
+					break;
+				case FUNC_SETPOINT_B:
+					NotImplemented = true;
+					break;
+				case FUNC_RESET:
+					NotImplemented = true;
+					break;
+				case FUNC_MASTER_STATION_REQUEST:
+					break;
+				case FUNC_SEND_NEW_SOE:
+					NotImplemented = true;
+					break;
+				case FUNC_REPEAT_SOE:
+					NotImplemented = true;
+					break;
+				case FUNC_UNIT_RAISE_LOWER:
+					NotImplemented = true;
+					break;
+				case FUNC_FREEZE_AND_SCAN_ACC:
+					NotImplemented = true;
+					break;
+				case FUNC_FREEZE_SCAN_AND_RESET_ACC:
+					NotImplemented = true;
+					break;
 				default:
 					LOGERROR("Unknown Message Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 					break;
+			}
+
+			if (NotImplemented == true)
+			{
+			      LOGERROR("Command Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			}
 
 			if (success) // Move to the next command. Only other place we do this is in the timeout.
@@ -512,101 +443,124 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 		});
 }
 
-/*
-// We have received data from an Analog command - could be  the result of Fn 5 or 6
-// Store the decoded data into the point lists. Counter scan comes back in an identical format
+
+// We have received data from a Scan command. Now decode...
 // Return success or failure
-bool CBMasterPort::ProcessAnalogUnconditionalReturn(const CBMessage_t& CompleteCBMessage)
+bool CBMasterPort::ProcessScanRequestReturn(const CBMessage_t& CompleteCBMessage)
 {
-      uint8_t Group = Header.GetModuleAddress();
-      uint8_t Channels = Header.GetChannels();
+	uint8_t Group = CompleteCBMessage[0].GetGroup();
 
-      uint32_t NumberOfDataBlocks = Channels / 2 + Channels % 2; // 2 --> 1, 3 -->2
+	uint32_t NumberOfBlocks = CompleteCBMessage.size();
 
-      if (NumberOfDataBlocks != CompleteCBMessage.size() - 1)
-      {
-            LOGERROR("MA - Received a message with the wrong number of blocks - ignoring - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
-            return false;
-      }
+	LOGDEBUG("Scan Data processing ");
 
-      LOGDEBUG("Doing Analog Unconditional processing ");
+	// For each of the payloads, find the matching points, save the values and trigger the Events.
+	// There is always Block 1, payload B no matter what.
 
-      // Unload the analog values from the blocks
-      std::vector<uint16_t> AnalogValues;
-      int ChanCount = 0;
-      for (uint32_t i = 0; i < NumberOfDataBlocks; i++)
-      {
-            AnalogValues.push_back(CompleteCBMessage[i + 1].GetFirstWord());
-            ChanCount++;
+	auto payloadlocation = PayloadLocationType(1, PayloadABType::PositionB);
 
-            // The last block may only have one reading in it. The second might be filler.
-            if (ChanCount < Channels)
-            {
-                  AnalogValues.push_back(CompleteCBMessage[i + 1].GetSecondWord());
-                  ChanCount++;
-            }
-      }
+	ProccessScanPayload(CompleteCBMessage[0].GetB(), Group,  payloadlocation);
 
-      // Now take the returned values and store them into the points
-      uint16_t wordres = 0;
-      bool hasbeenset;
+	for (uint32_t blockindex = 1; blockindex < NumberOfBlocks; blockindex++)
+	{
+		payloadlocation = PayloadLocationType(blockindex + 1, PayloadABType::PositionA);
 
-      // Search to see if the first value is a counter or analog
-      bool FirstModuleIsCounterModule = MyPointConf->PointTable.GetCounterValueUsingCBIndex(Group, 0, wordres,hasbeenset);
-      CBTime now = CBNow();
+		ProccessScanPayload(CompleteCBMessage[blockindex].GetA(), Group, payloadlocation);
 
-      for (uint8_t i = 0; i < Channels; i++)
-      {
-            // Code to adjust the Group and index if the first module is a counter module (8 channels)
-            // 16 channels will cover two counters or one counter and 1/2 an analog, or one analog (16 channels).
-            // We assume that Analog and Counter modules cannot have the same module address - which we think is a safe assumption.
-            uint8_t idx = FirstModuleIsCounterModule ? i % 8 : i;
-            uint16_t maddress = (FirstModuleIsCounterModule && i > 8) ? Group+1 : Group;
+		payloadlocation = PayloadLocationType(blockindex + 1, PayloadABType::PositionB);
 
-            if (MyPointConf->PointTable.SetAnalogValueUsingCBIndex(maddress, idx, AnalogValues[i]))
-            {
-                  // We have succeeded in setting the value
-                  LOGDEBUG("MA - Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
-                  size_t ODCIndex;
-                  if (MyPointConf->PointTable.GetAnalogODCIndexUsingCBIndex(maddress, idx, ODCIndex))
-                  {
-                        QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-                        LOGDEBUG("MA - Published Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
+		ProccessScanPayload(CompleteCBMessage[blockindex].GetB(), Group, payloadlocation);
+	}
+	return true;
+}
+void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLocationType payloadlocation)
+{
+	bool FoundMatch = false;
+	uint16_t Payload = 0;
+	CBTime now = CBNow();
 
-                        auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from CB, so add it as soon as possible);
-                        event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
-                        PublishEvent(event);
-                  }
-            }
-            else if (MyPointConf->PointTable.SetCounterValueUsingCBIndex(maddress, idx, AnalogValues[i]))
-            {
-                  // We have succeeded in setting the value
-                  LOGDEBUG("MA - Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(AnalogValues[i]));
-                  size_t ODCIndex;
-                  if (MyPointConf->PointTable.GetCounterODCIndexUsingCBIndex(maddress, idx, ODCIndex))
-                  {
-                        QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
-                        LOGDEBUG("MA - Published Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(AnalogValues[i]));
-                        auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from CB, so add it as soon as possible);
-                        event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
-                        PublishEvent(event);
-                  }
-            }
-            else
-            {
-                  LOGERROR("MA - Fn5 Failed to set an Analog or Counter Value - " + std::to_string(Header.GetFunctionCode())
-                        + " On Station Address - " + std::to_string(Header.GetStationAddress())
-                        + " Module : " + std::to_string(maddress) + " Channel : " + std::to_string(idx));
-                  return false;
-            }
-      }
-      return true;
+	MyPointConf->PointTable.ForEachMatchingAnalogPoint(group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+		{
+			// We have a matching point - there will be only 1!!, set a flag to indicate we have a match.
+
+			pt.SetAnalog(data, now);
+
+			LOGDEBUG("MA - Set Analog - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string() + " Value 0x" + to_hexstring(data));
+
+			uint32_t ODCIndex = pt.GetIndex();
+			QualityFlags qual = QualityFlags::ONLINE; // CalculateAnalogQuality(enabled, data, now); //TODO: Handle quality better?
+
+			LOGDEBUG("MA - Published Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(data));
+
+			auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from CB, so add it as soon as possible);
+			event->SetPayload<EventType::Analog>(std::move(data));
+			PublishEvent(event);
+
+			FoundMatch = true;
+		});
+
+	if (!FoundMatch)
+	{
+		MyPointConf->PointTable.ForEachMatchingCounterPoint(group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+			{
+				// We have a matching point - there will be only 1!!, set a flag to indicate we have a match.
+				pt.SetAnalog(data, now);
+
+				LOGDEBUG("MA - Set Counter - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string() + " Value 0x" + to_hexstring(data));
+
+				uint32_t ODCIndex = pt.GetIndex();
+				QualityFlags qual = QualityFlags::ONLINE; // CalculateAnalogQuality(enabled, data, now); //TODO: Handle quality better?
+
+				LOGDEBUG("MA - Published Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(data));
+
+				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from CB, so add it as soon as possible);
+				event->SetPayload<EventType::Counter>(std::move(data));
+				PublishEvent(event);
+
+				FoundMatch = true;
+			});
+	}
+	if (!FoundMatch)
+	{
+		MyPointConf->PointTable.ForEachMatchingBinaryPoint(group, payloadlocation, [&](CBBinaryPoint &pt)
+			{
+				// We have a matching point, set a flag to indicate we have a match, save and trigger an event
+				if (pt.GetPointType() == DIG)
+				{
+				      uint8_t ch = pt.GetChannel();
+				      uint8_t bitvalue = (data >> (12 - ch)) & 0x0001;
+
+				// Only process if the value has changed
+				      if ((pt.GetBinary() != bitvalue) || (pt.GetHasBeenSet() == false))
+				      {
+				            pt.SetBinary(bitvalue, now); // Sets the has been set flag!
+
+				            uint32_t ODCIndex = pt.GetIndex();
+
+				            QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
+				            LOGDEBUG("Published Event - Binary Index " + std::to_string(ODCIndex) + " Value " + std::to_string(bitvalue));
+				            auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now));
+				            event->SetPayload<EventType::Binary>(bitvalue == 1);
+				            PublishEvent(event);
+					}
+				      FoundMatch = true;
+				}
+				else
+					//TODO: Works only for DIG type, need other processing for other Digital types.
+					LOGERROR("We received an unhandled digital point type. Only deal with DIG type for now - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string());
+			});
+	}
+	if (!FoundMatch)
+	{
+		LOGDEBUG("Failed to find a payload for: " + payloadlocation.to_string() + " Setting to zero");
+	}
 }
 
+/*
 // Fn 6. This is only one of three possible responses to the Fn 6 command from the Master. The others are 5 (Unconditional) and 13 (No change)
 // The data that comes back is up to 16 8 bit signed values representing the change from the last sent value.
 // If there was a fault at the OutStation an Unconditional response will be sent instead.
-// If a channel is missing or in fault, the value will be 0, so it can still just be added to the value (even if it is 0x8000 - the fault value).
+// If a channel is missing or in fault, the value will be 0, so it can still just be added to the value (even if it is MISSINGVALUE - the fault value).
 // Return success or failure
 bool CBMasterPort::ProcessAnalogDeltaScanReturn(const CBMessage_t& CompleteCBMessage)
 {
@@ -627,11 +581,11 @@ bool CBMasterPort::ProcessAnalogDeltaScanReturn(const CBMessage_t& CompleteCBMes
       // Unload the analog delta values from the blocks - 4 per block.
       std::vector<int8_t> AnalogDeltaValues;
       int ChanCount = 0;
-      for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
+      for (uint8_t blockindex = 0; blockindex < NumberOfDataBlocks; blockindex++)
       {
             for (uint8_t j = 0; j < 4; j++)
             {
-                  AnalogDeltaValues.push_back(numeric_cast<char>(CompleteCBMessage[i + 1].GetByte(j)));
+                  AnalogDeltaValues.push_back(numeric_cast<char>(CompleteCBMessage[blockindex + 1].GetByte(j)));
                   ChanCount++;
 
                   // The last block may only have one reading in it. The 1,2,3 bytes might be filler.
@@ -651,17 +605,17 @@ bool CBMasterPort::ProcessAnalogDeltaScanReturn(const CBMessage_t& CompleteCBMes
       bool FirstModuleIsCounterModule = MyPointConf->PointTable.GetCounterValueUsingCBIndex(Group, 0, wordres,hasbeenset);
       CBTime now = CBNow();
 
-      for (uint8_t i = 0; i < Channels; i++)
+      for (uint8_t blockindex = 0; blockindex < Channels; blockindex++)
       {
             // Code to adjust the Group and index if the first module is a counter module (8 channels)
             // 16 channels will cover two counters or one counter and 1/2 an analog, or one analog (16 channels).
             // We assume that Analog and Counter modules cannot have the same module address - which we think is a safe assumption.
-            uint8_t idx = FirstModuleIsCounterModule ? i % 8 : i;
-            uint16_t maddress = (FirstModuleIsCounterModule && i > 8) ? Group + 1 : Group;
+            uint8_t idx = FirstModuleIsCounterModule ? blockindex % 8 : blockindex;
+            uint16_t maddress = (FirstModuleIsCounterModule && blockindex > 8) ? Group + 1 : Group;
 
             if (MyPointConf->PointTable.GetAnalogValueUsingCBIndex(maddress, idx, wordres,hasbeenset))
             {
-                  wordres += AnalogDeltaValues[i]; // Add the signed delta.
+                  wordres += AnalogDeltaValues[blockindex]; // Add the signed delta.
                   MyPointConf->PointTable.SetAnalogValueUsingCBIndex(maddress, idx, wordres);
 
                   LOGDEBUG("MA - Set Analog - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
@@ -678,7 +632,7 @@ bool CBMasterPort::ProcessAnalogDeltaScanReturn(const CBMessage_t& CompleteCBMes
             }
             else if (MyPointConf->PointTable.GetCounterValueUsingCBIndex(maddress, idx,wordres,hasbeenset))
             {
-                  wordres += AnalogDeltaValues[i]; // Add the signed delta.
+                  wordres += AnalogDeltaValues[blockindex]; // Add the signed delta.
                   MyPointConf->PointTable.SetCounterValueUsingCBIndex(maddress, idx, wordres);
 
                   LOGDEBUG("MA - Set Counter - Module " + std::to_string(maddress) + " Channel " + std::to_string(idx) + " Value 0x" + to_hexstring(wordres));
@@ -730,13 +684,13 @@ bool CBMasterPort::ProcessAnalogNoChangeReturn(const CBMessage_t& CompleteCBMess
 
             CBTime now = CBNow();
 
-            for (uint8_t i = 0; i < Channels; i++)
+            for (uint8_t blockindex = 0; blockindex < Channels; blockindex++)
             {
                   // Code to adjust the Group and index if the first module is a counter module (8 channels)
                   // 16 channels will cover two counters or one counter and 1/2 an analog, or one analog (16 channels).
                   // We assume that Analog and Counter modules cannot have the same module address - which we think is a safe assumption.
-                  uint8_t idx = FirstModuleIsCounterModule ? i % 8 : i;
-                  uint8_t maddress = (FirstModuleIsCounterModule && i > 8) ? Group + 1 : Group;
+                  uint8_t idx = FirstModuleIsCounterModule ? blockindex % 8 : blockindex;
+                  uint8_t maddress = (FirstModuleIsCounterModule && blockindex > 8) ? Group + 1 : Group;
 
                   if (MyPointConf->PointTable.GetAnalogValueUsingCBIndex(maddress, idx, wordres, hasbeenset))
                   {
@@ -820,7 +774,7 @@ bool CBMasterPort::ProcessDigitalScan(const CBMessage_t& CompleteCBMessage)
                   // The data blocks are the same for time tagged and "normal". Module Address (byte), msec offset(byte) and 16 bits of data.
                   uint8_t Group = CompleteCBMessage[MessageIndex].GetByte(0);
                   uint8_t msecOffset = CompleteCBMessage[MessageIndex].GetByte(1); // Will always be 0 for Module blocks
-                  uint16_t ModuleData = CompleteCBMessage[MessageIndex].GetSecondWord();
+                  uint16_t data = CompleteCBMessage[MessageIndex].GetSecondWord();
 
                   if (Group == 0 && msecOffset == 0)
                   {
@@ -831,10 +785,10 @@ bool CBMasterPort::ProcessDigitalScan(const CBMessage_t& CompleteCBMessage)
                   }
                   else
                   {
-                        LOGDEBUG("Received a Fn 11 Data Block - Module : " + std::to_string(Group) + " Data : 0x" + to_hexstring(ModuleData) + " Data : " + to_binstring(ModuleData));
+                        LOGDEBUG("Received a Fn 11 Data Block - Module : " + std::to_string(Group) + " Data : 0x" + to_hexstring(data) + " Data : " + to_binstring(data));
                         CBTime eventtime = CBNow();
 
-                        GenerateODCEventsFromCBModuleWord(ModuleData, Group, eventtime);
+                        GenerateODCEventsFromDIGPayload(data, Group, eventtime);
                   }
             }
             else
@@ -872,32 +826,32 @@ bool CBMasterPort::ProcessDigitalScan(const CBMessage_t& CompleteCBMessage)
             }
 
             // Now process the response words.
-            for (size_t i = 0; i < ResponseWords.size(); i++)
+            for (size_t blockindex = 0; blockindex < ResponseWords.size(); blockindex++)
             {
                   // If we are processing a data block and the high byte will be non-zero.
                   // If it is zero it could be either:
                   // A time offset word or
                   // If the whole word is zero, then it must be the first word of a Status block.
 
-                  if (ResponseWords[i] == 0)
+                  if (ResponseWords[blockindex] == 0)
                   {
                         // We have received a STATUS block, which has a following word.
-                        i++;
-                        if (i >= ResponseWords.size())
+                        blockindex++;
+                        if (blockindex >= ResponseWords.size())
                         {
                               // We likely received an all zero padding block at the end of the message. Ignore this as an error
                               LOGDEBUG("Fn11 Zero padding end word detected - ignoring");
                               return true;
                         }
                         // This is a status or if module address is 0 a flag block.
-                        uint8_t Group = (ResponseWords[i+1] >> 8) & 0x0FF;
-                        uint8_t ModuleFailStatus = ResponseWords[i + 1] & 0x0FF;
+                        uint8_t Group = (ResponseWords[blockindex+1] >> 8) & 0x0FF;
+                        uint8_t ModuleFailStatus = ResponseWords[blockindex + 1] & 0x0FF;
                         LOGDEBUG("Received a Fn 11 Status or Flag Block (addr=0) - We do not process - Module Address : " + std::to_string(Group) + " Fail Status : 0x" + to_hexstring(ModuleFailStatus));
                   }
-                  else if ((ResponseWords[i] & 0xFF00) == 0)
+                  else if ((ResponseWords[blockindex] & 0xFF00) == 0)
                   {
                         // We have received a TIME BLOCK (offset) which is a single word.
-                        uint16_t msecoffset = (ResponseWords[i] & 0x00ff) * 256;
+                        uint16_t msecoffset = (ResponseWords[blockindex] & 0x00ff) * 256;
                         timebase += msecoffset;
                         LOGDEBUG("Fn11 TimeOffset : " + std::to_string(msecoffset) +" msec");
                   }
@@ -905,36 +859,36 @@ bool CBMasterPort::ProcessDigitalScan(const CBMessage_t& CompleteCBMessage)
                   {
                         // We have received a DATA BLOCK which has a following word.
                         // The data blocks are the same for time tagged and "normal". Module Address (byte), msec offset(byte) and 16 bits of data.
-                        uint8_t Group = (ResponseWords[i] >> 8) & 0x007f;
-                        uint8_t msecoffset = ResponseWords[i] & 0x00ff;
+                        uint8_t Group = (ResponseWords[blockindex] >> 8) & 0x007f;
+                        uint8_t msecoffset = ResponseWords[blockindex] & 0x00ff;
                         timebase += msecoffset; // Update the current tagged time
-                        i++;
+                        blockindex++;
 
-                        if (i >= ResponseWords.size())
+                        if (blockindex >= ResponseWords.size())
                         {
                               // Index error
                               LOGERROR("Tried to access past the end of the response words looking for the second part of a data block " + CBMessageAsString(CompleteCBMessage));
                               return false;
                         }
-                        uint16_t ModuleData = ResponseWords[i];
+                        uint16_t data = ResponseWords[blockindex];
 
-                        LOGDEBUG("Fn11 TimeTagged Block - Module : " + std::to_string(Group) + " msec offset : " + std::to_string(msecoffset) + " Data : 0x" + to_hexstring(ModuleData));
-                        GenerateODCEventsFromCBModuleWord(ModuleData, Group,timebase);
+                        LOGDEBUG("Fn11 TimeTagged Block - Module : " + std::to_string(Group) + " msec offset : " + std::to_string(msecoffset) + " Data : 0x" + to_hexstring(data));
+                        GenerateODCEventsFromDIGPayload(data, Group,timebase);
                   }
             }
       }
       return true;
 }
-void CBMasterPort::GenerateODCEventsFromCBModuleWord(const uint16_t &ModuleData, const uint8_t &Group, const CBTime &eventtime)
+void CBMasterPort::GenerateODCEventsFromDIGPayload(const uint16_t &data, const uint8_t &Group, const CBTime &eventtime)
 {
-      LOGDEBUG("Master Generate Events,  Module : "+std::to_string(Group)+" Data : 0x" + to_hexstring(ModuleData));
+      LOGDEBUG("Master Generate Events,  Module : "+std::to_string(Group)+" Data : 0x" + to_hexstring(data));
 
       for (uint8_t idx = 0; idx < 16; idx++)
       {
             // When we set the value it tells us if we really did set the value, or it was already at that value.
             // Only fire the ODC event if the value changed.
             bool valuechanged = false;
-            uint8_t bitvalue = (ModuleData >> (15 - idx)) & 0x0001;
+            uint8_t bitvalue = (data >> (15 - idx)) & 0x0001;
 
             bool res = MyPointConf->PointTable.SetBinaryValueUsingCBIndex(Group, idx, bitvalue, valuechanged);
 
@@ -1129,7 +1083,7 @@ void CBMasterPort::DoPoll(uint32_t payloadlocation)
 				LOGERROR("Analog Poll group " + std::to_string(payloadlocation) + " is configured for more than one CB address. Please create another poll group.");
 			}
 
-			// We need to do an analog unconditional on start up, until all the points have a valid value - even 0x8000 for does not exist.
+			// We need to do an analog unconditional on start up, until all the points have a valid value - even MISSINGVALUE for does not exist.
 			// To do this we check the hasbeenset flag, which will be false on start up, and also set to false on comms lost event - kind of like a quality.
 			bool UnconditionalCommandRequired = false;
 			for (uint8_t idx = 0; idx < Channels; idx++)
@@ -1321,7 +1275,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 	MyPointConf->PointTable.ForEachAnalogPoint([&](CBAnalogCounterPoint &Point)
 		{
 			uint32_t index = Point.GetIndex();
-			if (!MyPointConf->PointTable.ResetAnalogValueUsingODCIndex(index)) // Sets to 0x8000, time = 0, HasBeenSet to false
+			if (!MyPointConf->PointTable.ResetAnalogValueUsingODCIndex(index)) // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
 				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(index));
 
 			eventanalog->SetIndex(index);
@@ -1334,7 +1288,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 	MyPointConf->PointTable.ForEachCounterPoint([&](CBAnalogCounterPoint &Point)
 		{
 			uint32_t index = Point.GetIndex();
-			if (!MyPointConf->PointTable.ResetCounterValueUsingODCIndex(index)) // Sets to 0x8000, time = 0, HasBeenSet to false
+			if (!MyPointConf->PointTable.ResetCounterValueUsingODCIndex(index)) // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
 				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(index));
 
 			eventcounter->SetIndex(index);
@@ -1363,7 +1317,7 @@ void CBMasterPort::SendAllPointEvents()
 			uint32_t index = Point.GetIndex();
 			uint16_t meas = Point.GetAnalog();
 
-			// If the measurement is 0x8000 - there is a problem in the CB OutStation for that point.
+			// If the measurement is MISSINGVALUE - there is a problem in the CB OutStation for that point.
 			QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.GetChangedTime());
 
 			auto event = std::make_shared<EventInfo>(EventType::Analog, index, Name, qual, static_cast<msSinceEpoch_t>(Point.GetChangedTime()));
@@ -1376,7 +1330,7 @@ void CBMasterPort::SendAllPointEvents()
 		{
 			uint32_t index = Point.GetIndex();
 			uint16_t meas = Point.GetAnalog();
-			// If the measurement is 0x8000 - there is a problem in the CB OutStation for that point.
+			// If the measurement is MISSINGVALUE - there is a problem in the CB OutStation for that point.
 			QualityFlags qual = CalculateAnalogQuality(enabled, meas, Point.GetChangedTime());
 
 			auto event = std::make_shared<EventInfo>(EventType::Counter, index, Name, qual, static_cast<msSinceEpoch_t>(Point.GetChangedTime()));
@@ -1395,7 +1349,7 @@ QualityFlags CBMasterPort::CalculateBinaryQuality(bool enabled, CBTime time)
 QualityFlags CBMasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas, CBTime time)
 {
 	//TODO: Change this to Quality being part of the point object
-	return (enabled ? (time == 0 ? QualityFlags::RESTART : ((meas == 0x8000) ? QualityFlags::LOCAL_FORCED : QualityFlags::ONLINE)) : QualityFlags::COMM_LOST);
+	return (enabled ? (time == 0 ? QualityFlags::RESTART : ((meas == MISSINGVALUE) ? QualityFlags::LOCAL_FORCED : QualityFlags::ONLINE)) : QualityFlags::COMM_LOST);
 }
 
 
@@ -1423,7 +1377,7 @@ void CBMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::stri
 		case EventType::ConnectState:
 		{
 			auto state = event->GetPayload<EventType::ConnectState>();
-			// This will be fired by (typically) an CBOutStation port on the "other" side of the ODC Event bus. i.e. something upstream has connected
+			// This will be fired by (typically) an CBOutStation port on the "other" side of the ODC Event bus. blockindex.e. something upstream has connected
 			// We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
 
 			if (state == ConnectState::CONNECTED)

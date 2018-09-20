@@ -108,6 +108,7 @@ public:
 	// Analog
 	void ScanRequest(CBBlockData &Header);
 	void BuildScanRequestResponseData(uint8_t Group, std::vector<uint16_t>& BlockValues);
+	uint16_t GetPayload(uint8_t &Group, PayloadLocationType &payloadlocation);
 	void DoAnalogDeltaScan(CBBlockData &Header);
 
 	void ReadAnalogOrCounterRange(uint8_t Group, uint8_t Channels, CBOutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues);

@@ -70,6 +70,8 @@ enum BinaryPointType { DIG, MCA, MCB, MCC };
 enum AnalogCounterPointType { ANA, ACC12, ACC24 };
 enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
 
+#define MISSINGVALUE 0 // If we have a missing point or have no data, substitute this. MD3 it was 0x8000
+
 // Need to hold the packet position for each point. a number 1 to 16 and one of the enum options.
 enum class PayloadABType { PositionA, PositionB, Error };
 
@@ -219,12 +221,12 @@ public:
 	uint16_t GetAnalogAndDelta(int &delta) { std::unique_lock<std::mutex> lck(PointMutex); delta = static_cast<int>(Analog) - static_cast<int>(LastReadAnalog); LastReadAnalog = Analog; return Analog; }
 
 	void SetAnalog(const uint16_t & a, const CBTime &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; Analog = a; ChangedTime = ctime; }
-	void ResetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = false; Analog = 0x8000; ChangedTime = 0; }
+	void ResetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = false; Analog = MISSINGVALUE; ChangedTime = 0; }
 	void SetLastReadAnalog(const uint16_t & a) { std::unique_lock<std::mutex> lck(PointMutex); LastReadAnalog = a; }
 
 protected:
-	uint16_t Analog = 0x8000;
-	uint16_t LastReadAnalog = 0x8000;
+	uint16_t Analog = MISSINGVALUE;
+	uint16_t LastReadAnalog = MISSINGVALUE;
 };
 
 typedef std::map<size_t, std::shared_ptr<CBBinaryPoint>>::iterator ODCBinaryPointMapIterType;
