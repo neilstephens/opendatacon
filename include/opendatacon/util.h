@@ -43,6 +43,7 @@ std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool();
 void spdlog_register_logger(std::shared_ptr<spdlog::logger> logger);
 std::shared_ptr<spdlog::logger> spdlog_get(const std::string &name);
 void spdlog_drop(const std::string &name);
+void spdlog_shutdown();
 
 bool getline_noncomment(std::istream& is, std::string& line);
 bool extract_delimited_string(std::istream& ist, std::string& extracted);

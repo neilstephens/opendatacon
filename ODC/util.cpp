@@ -57,6 +57,11 @@ void spdlog_drop(const std::string &name)
 	spdlog::drop(name);
 }
 
+void spdlog_shutdown()
+{
+	spdlog::shutdown();
+}
+
 bool getline_noncomment(istream& is, string& line)
 {
 	//chew up blank lines and comments
