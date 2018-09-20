@@ -47,14 +47,15 @@ install(DIRECTORY "install/init" DESTINATION ".")
 #Deploy git workflow hook scripts
 include(git-hooks.cmake)
 
-#Generate version info now, and set to generate on every build
-include(version.cmake)
 #This will run on every build, because output is never actually produced.
 add_custom_command(OUTPUT always_rebuild COMMAND ${CMAKE_COMMAND} -E echo)
+
+#Generate version info now, and set to generate on every build
+include(version.cmake)
 add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 	OUTPUT "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
-	COMMAND ${CMAKE_COMMAND} -P "version.cmake"
+	COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${CMAKE_BINARY_DIR} -DCURRENT_CONFIG=$<CONFIG> -P "version.cmake"
 	DEPENDS always_rebuild
 )
 #version info target that our other targets can have a dependance on

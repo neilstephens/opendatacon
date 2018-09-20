@@ -41,6 +41,12 @@ if(GIT_FOUND)
 	set(GIT_REPO_DIRTY ${CMAKE_MATCH_6})
 	message("-- opendatacon version: ${ODC_VERSION} ${GIT_REPO_COMMIT} ${GIT_REPO_DIRTY}")
 
+	if(DEFINED CURRENT_CONFIG)
+		message("writing ${BINARY_DIR}/current_build_config: ${CURRENT_CONFIG}")
+		file(WRITE "${BINARY_DIR}/current_build_config" "-${CURRENT_CONFIG}")
+		configure_file ("${BINARY_DIR}/current_build_config" "${BINARY_DIR}/current_build_config" COPYONLY)
+	endif()
+
 	configure_file (
 		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h.in"
 		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
