@@ -365,15 +365,15 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 					" On Station Address - " + std::to_string(Header.GetStationAddress()));
 			      return;
 			}
-			if ((Header.GetStationAddress() != 0) && (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr))
-			{
-			      LOGERROR("Received a message from the wrong address - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-					" On Station Address - " + std::to_string(Header.GetStationAddress()));
-			      return;
-			}
 			if (Header.GetStationAddress() == 0)
 			{
 			      LOGERROR("Received broadcast return message - address 0 - ignoring - " + std::to_string(Header.GetFunctionCode()) +
+					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      return;
+			}
+			if (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr)
+			{
+			      LOGERROR("Received a message from the wrong address - ignoring - " + std::to_string(Header.GetFunctionCode()) +
 					" On Station Address - " + std::to_string(Header.GetStationAddress()));
 			      return;
 			}

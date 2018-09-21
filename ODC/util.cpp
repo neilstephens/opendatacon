@@ -94,4 +94,5 @@ bool extract_delimited_string(const std::string& delims, istream& ist, string& e
 	//if we get to here, there wasn't a matching end delimiter
 	return false;
 }
+
 }
