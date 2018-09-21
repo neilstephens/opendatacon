@@ -24,22 +24,31 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
+#include <iostream>
 #include "MD3.h"
 
-#if defined(CATCH_CONFIG_RUNNER)
+
+#ifdef NONVSTESTING
+#define CATCH_CONFIG_RUNNER
+#include <catch.hpp>
+#else
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 
-extern "C" MD3MasterPort* new_MD3MasterPort(std::string Name, std::string File, const Json::Value Overrides)
+// std::shared_ptr<spdlog::logger> md3logger;
+
+extern "C" MD3MasterPort* new_MD3MasterPort(const std::string& Name,const std::string& File, const Json::Value& Overrides)
 {
+	//std::cout << "Made it into the dll - MasterPort";
 	return new MD3MasterPort(Name,File,Overrides);
 }
 
-extern "C" MD3OutstationPort* new_MD3OutstationPort(std::string Name, std::string File, const Json::Value Overrides)
+extern "C" MD3OutstationPort* new_MD3OutstationPort(const std::string & Name, const std::string & File, const Json::Value & Overrides)
 {
+	//std::cout << "Made it into the dll -OutstationPort";
 	return new MD3OutstationPort(Name,File,Overrides);
 }
 
@@ -55,14 +64,17 @@ extern "C" void delete_MD3OutstationPort(MD3OutstationPort* aMD3OutstationPort_p
 	return;
 }
 
-// THIS IS SET IN MD3.h
-// Should be turned on for "normal" builds, and off is you want to use Visual Studio Test Integration.
 //
-#if defined(CATCH_CONFIG_RUNNER)
+// Should be turned on for "normal" builds, and off if you want to use Visual Studio Test Integration.
+//
 
 extern "C" int run_tests( int argc, char* argv[] )
 {
+	#ifdef NONVSTESTING
 	return Catch::Session().run( argc, argv );
+	#else
+	return 1;
+	#endif
 }
 
-#endif
+

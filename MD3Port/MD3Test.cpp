@@ -29,20 +29,28 @@
 
 #include <array>
 #include <fstream>
-#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
+#include <cassert>
+
+#define COMPILE_TESTS
+
+#ifdef COMPILE_TESTS
+
+
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 
-#ifdef WIN32
-#include <spdlog/sinks/wincolor_sink.h>
-#include <spdlog/sinks/windebug_sink.h>
-#endif
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 #include "MD3Utility.h"
 #include "StrandProtectedQueue.h"
 #include "ProducerConsumerQueue.h"
-#include "MD3Test.h"
+
+#ifdef NONVSTESTING
+#include <catch.hpp>
+#else
+#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
+#endif
 
 #define SUITE(name) "MD3Tests - " name
 
@@ -62,9 +70,7 @@ extern std::vector<spdlog::sink_ptr> LogSinks;
 const char *conffilename1 = "MD3Config.conf";
 const char *conffilename2 = "MD3Config2.conf";
 
-// Serial connection string...
-// std::string  JsonSerialOverride = "{ ""SerialDevice"" : "" / dev / ttyUSB0"", ""BaudRate"" : 115200, ""Parity"" : ""NONE"", ""DataBits"" : 8, ""StopBits" : 1, "MasterAddr" : 0, "OutstationAddr" : 1, "ServerType" : "PERSISTENT"}";
-
+#pragma region conffiles
 // We actually have the conf file here to match the tests it is used in below. We write out to a file (overwrite) on each test so it can be read back in.
 const char *conffile1 = R"001(
 {
@@ -167,6 +173,7 @@ const char *conffile2 = R"002(
 
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })002";
+#pragma endregion
 
 #pragma region TEST_HELPERS
 
@@ -177,61 +184,63 @@ std::vector<spdlog::sink_ptr> LogSinks;
 void WriteConfFilesToCurrentWorkingDirectory()
 {
 	std::ofstream ofs(conffilename1);
-	if (!ofs) REQUIRE("Could not open conffile1 for writing");
+	if (!ofs) FAIL("Could not open conffile1 for writing");
 
 	ofs << conffile1;
 	ofs.close();
 
 	std::ofstream ofs2(conffilename2);
-	if (!ofs2) REQUIRE("Could not open conffile2 for writing");
+	if (!ofs2) FAIL("Could not open conffile2 for writing");
 
 	ofs2 << conffile2;
 	ofs.close();
-}
-
-void TestSetup(bool writeconffiles = true)
-{
-	SetupLoggers();
-
-	if (writeconffiles)
-		WriteConfFilesToCurrentWorkingDirectory();
 }
 void SetupLoggers()
 {
 	// So create the log sink first - can be more than one and add to a vector.
 	#ifdef WIN32
-	auto console = std::make_shared<spdlog::sinks::msvc_sink_mt>(); // Windows Debug Sync - see how this goes.
-	// OR wincolor_stdout_sink_mt>();
-	#else
-	auto console = std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>();
+	// Add a sink to the TestLogger?
 	#endif
+	auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 	console->set_level(spdlog::level::debug);
 	LogSinks.push_back(console);
 
 	// Then create the logger (async - as used in ODC) then connect to all sinks.
 	auto pLibLogger = std::make_shared<spdlog::async_logger>("MD3Port", begin(LogSinks), end(LogSinks),
-		4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
+		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+
 	pLibLogger->set_level(spdlog::level::trace);
-	spdlog::register_logger(pLibLogger);
+	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
-		4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
+		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+
 	pODCLogger->set_level(spdlog::level::trace);
-	spdlog::register_logger(pODCLogger);
+	odc::spdlog_register_logger(pODCLogger);
 
 	std::string msg = "Logging for this test started..";
 
-	if (auto log = spdlog::get("MD3Port"))
-		log->info(msg);
+	if (auto md3logger = odc::spdlog_get("MD3Port"))
+		md3logger->info(msg);
 	else
 		std::cout << "Error MD3Port Logger not operational";
 
-	if (auto log = spdlog::get("opendatacon"))
-		log->info(msg);
+	if (auto odclogger = odc::spdlog_get("opendatacon"))
+		odclogger->info(msg);
 	else
 		std::cout << "Error opendatacon Logger not operational";
 }
+void TestSetup(bool writeconffiles = true)
+{
+	#ifndef NONVSTESTING
+	SetupLoggers();
+	#endif
+
+	if (writeconffiles)
+		WriteConfFilesToCurrentWorkingDirectory();
+}
+
 void TestTearDown()
 {
 	spdlog::drop_all(); // Close off everything
@@ -3653,3 +3662,4 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 }
 }
 
+#endif

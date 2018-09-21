@@ -54,7 +54,6 @@ struct MD3AddrConf
 
 	//Common
 	uint8_t OutstationAddr;
-	bool NewDigitalCommands;
 	uint16_t TCPConnectRetryPeriodms;
 
 	// Default address values can minimally set IP.
@@ -63,7 +62,6 @@ struct MD3AddrConf
 		Port(20000),
 		ClientServer(TCPClientServer::DEFAULT),
 		OutstationAddr(1),
-		NewDigitalCommands(true),
 		TCPConnectRetryPeriodms(500)
 	{}
 	std::string ChannelID()
