@@ -47,14 +47,15 @@ install(DIRECTORY "install/init" DESTINATION ".")
 #Deploy git workflow hook scripts
 include(git-hooks.cmake)
 
-#Generate version info now, and set to generate on every build
-include(version.cmake)
 #This will run on every build, because output is never actually produced.
 add_custom_command(OUTPUT always_rebuild COMMAND ${CMAKE_COMMAND} -E echo)
+
+#Generate version info now, and set to generate on every build
+include(version.cmake)
 add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 	OUTPUT "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
-	COMMAND ${CMAKE_COMMAND} -P "version.cmake"
+	COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${CMAKE_BINARY_DIR} -DCURRENT_CONFIG=$<CONFIG> -P "version.cmake"
 	DEPENDS always_rebuild
 )
 #version info target that our other targets can have a dependance on
@@ -108,6 +109,9 @@ if(WIN32)
 	
 	# Postfix for debug builds
 	SET(CMAKE_DEBUG_POSTFIX "d")
+	
+	#min max macro rubbish
+	add_definitions(-DNOMINMAX)
 
 	# Install directories
 	set(INSTALLDIR_BINS ".")
@@ -206,10 +210,6 @@ SET(CMAKE_INSTALL_RPATH "${RPATH_BASE}"
 	"${RPATH_BASE}/../${INSTALLDIR_MODULES}"
 	"${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_LIBS}"
 	"${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}")
-# when building use the install RPATH already
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-# add the automatically determined parts of the RPATH - for linked libs outside build tree
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
 set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build/${INSTALLDIR_LIBS}" )

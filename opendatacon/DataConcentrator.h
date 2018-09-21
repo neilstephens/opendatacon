@@ -40,6 +40,7 @@
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/TCPstringbuf.h>
 #include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 
 #include "DataConnector.h"
 

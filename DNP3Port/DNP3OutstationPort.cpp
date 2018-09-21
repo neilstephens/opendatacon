@@ -32,6 +32,7 @@
 #include <asiopal/UTCTimeSource.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include <openpal/logging/LogLevels.h>
+#include <opendatacon/util.h>
 #include "DNP3OutstationPort.h"
 #include "DNP3PortConf.h"
 
@@ -59,7 +60,7 @@ void DNP3OutstationPort::Enable()
 		return;
 	if(nullptr == pOutstation)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: DNP3 stack not configured.", Name);
 
 		return;
@@ -131,21 +132,21 @@ void DNP3OutstationPort::Build()
 
 	if (pChannel == nullptr)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for outstation.", Name);
 		return;
 	}
 
 	asiodnp3::OutstationStackConfig StackConfig(opendnp3::DatabaseSizes(
-		pConf->pPointConf->BinaryIndicies.size(), //numBinary
-		0,                                        //numDoubleBinary
-		pConf->pPointConf->AnalogIndicies.size(), //numAnalog
-		0,                                        //numCounter
-		0,                                        //numFrozenCounter
-		0,                                        //numBinaryOutputStatus
-		0,                                        //numAnalogOutputStatus
-		0,                                        //numTimeAndInterval
-		0));                                      //numOctetString
+			pConf->pPointConf->BinaryIndicies.size(), //numBinary
+			0,                                        //numDoubleBinary
+			pConf->pPointConf->AnalogIndicies.size(), //numAnalog
+			0,                                        //numCounter
+			0,                                        //numFrozenCounter
+			0,                                        //numBinaryOutputStatus
+			0,                                        //numAnalogOutputStatus
+			0,                                        //numTimeAndInterval
+			0));                                      //numOctetString
 
 	uint16_t rawIndex = 0;
 	for (auto index : pConf->pPointConf->AnalogIndicies)
@@ -206,7 +207,7 @@ void DNP3OutstationPort::Build()
 
 	if (pOutstation == nullptr)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Error creating outstation.", Name);
 		return;
 	}

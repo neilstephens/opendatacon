@@ -26,7 +26,7 @@
 #include <memory>
 #include <random>
 #include <limits>
-#include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
 #include "SimPort.h"
 #include "SimPortConf.h"
@@ -192,7 +192,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				if(auto log = spdlog::get("SimPort"))
+				if(auto log = odc::spdlog_get("SimPort"))
 					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
 				continue;
 			}
@@ -268,7 +268,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				if(auto log = spdlog::get("SimPort"))
+				if(auto log = odc::spdlog_get("SimPort"))
 					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
 				continue;
 			}
@@ -329,7 +329,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				if(auto log = spdlog::get("SimPort"))
+				if(auto log = odc::spdlog_get("SimPort"))
 					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
 				continue;
 			}
@@ -366,7 +366,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 					{
 						if(!FeedbackBinaries[fbn].isMember("Index"))
 						{
-							if(auto log = spdlog::get("SimPort"))
+							if(auto log = odc::spdlog_get("SimPort"))
 								log->error("An 'Index' is required for Binary feedback : '{}'",FeedbackBinaries[fbn].toStyledString());
 							continue;
 						}
@@ -402,7 +402,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 								mode = FeedbackMode::LATCH;
 							else
 							{
-								if(auto log = spdlog::get("SimPort"))
+								if(auto log = odc::spdlog_get("SimPort"))
 									log->warn("Unrecognised feedback mode: '{}'",FeedbackBinaries[fbn].toStyledString());
 							}
 						}

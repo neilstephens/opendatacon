@@ -26,7 +26,6 @@
 
 #include <regex>
 #include <algorithm>
-#include <spdlog/spdlog.h>
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
 #include "ModbusPointConf.h"
@@ -101,14 +100,14 @@ void ModbusPointConf::ProcessReadGroup(const Json::Value& Ranges, ModbusReadGrou
 			stop = Ranges[n]["Range"]["Stop"].asUInt();
 			if (start > stop)
 			{
-				if(auto log = spdlog::get("ModbusPort"))
+				if(auto log = odc::spdlog_get("ModbusPort"))
 					log->error("Invalid range: Start > Stop: '{}'", Ranges[n].toStyledString());
 				continue;
 			}
 		}
 		else
 		{
-			if(auto log = spdlog::get("ModbusPort"))
+			if(auto log = odc::spdlog_get("ModbusPort"))
 				log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Ranges[n].toStyledString());
 			continue;
 		}
@@ -137,13 +136,13 @@ void ModbusPointConf::ProcessElements(const Json::Value& JSONRoot)
 		{
 			if(!jPollGroups[n].isMember("ID"))
 			{
-				if(auto log = spdlog::get("ModbusPort"))
+				if(auto log = odc::spdlog_get("ModbusPort"))
 					log->error("Poll group missing ID : '{}'", jPollGroups[n].toStyledString());
 				continue;
 			}
 			if(!jPollGroups[n].isMember("PollRate"))
 			{
-				if(auto log = spdlog::get("ModbusPort"))
+				if(auto log = odc::spdlog_get("ModbusPort"))
 					log->error("Poll group missing PollRate : '{}'", jPollGroups[n].toStyledString());
 				continue;
 			}
@@ -153,14 +152,14 @@ void ModbusPointConf::ProcessElements(const Json::Value& JSONRoot)
 
 			if(PollGroupID == 0)
 			{
-				if(auto log = spdlog::get("ModbusPort"))
+				if(auto log = odc::spdlog_get("ModbusPort"))
 					log->error("Poll group 0 is reserved (do not poll) : '{}'", jPollGroups[n].toStyledString());
 				continue;
 			}
 
 			if(PollGroups.count(PollGroupID) > 0)
 			{
-				if(auto log = spdlog::get("ModbusPort"))
+				if(auto log = odc::spdlog_get("ModbusPort"))
 					log->error("Duplicate poll group ignored : '{}'", jPollGroups[n].toStyledString());
 				continue;
 			}
