@@ -34,19 +34,18 @@
 #include <cstdint>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
-#include <spdlog/spdlog.h>
 
-extern std::shared_ptr<spdlog::logger> md3logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
+// extern std::shared_ptr<spdlog::logger> md3logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(msg) \
-	if (md3logger) md3logger->debug(msg);
+	if (auto log = odc::spdlog_get("MD3Port")) log->debug(msg);
 #define LOGERROR(msg) \
-	if (md3logger) md3logger->error(msg);
+	if (auto log = odc::spdlog_get("MD3Port")) log->error(msg);
 #define LOGWARN(msg) \
-	if (md3logger) md3logger->warn(msg);
+	if (auto log = odc::spdlog_get("MD3Port")) log->warn(msg);
 #define LOGINFO(msg) \
-	if (md3logger) md3logger->info(msg);
+	if (auto log = odc::spdlog_get("MD3Port")) log->info(msg);
 
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

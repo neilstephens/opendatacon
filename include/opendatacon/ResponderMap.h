@@ -30,7 +30,7 @@
 
 #include <memory>
 #include <regex>
-#include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 #include "IUIResponder.h"
 
 template <class T>
@@ -92,7 +92,7 @@ public:
 			catch(std::exception& e)
 			{
 				std::string msg("Regex exception: '" + std::string(e.what()) + "'");
-				if(auto log = spdlog::get("opendatacon"))
+				if(auto log = odc::spdlog_get("opendatacon"))
 					log->error(msg);
 				else
 					std::cout << msg << std::endl;
@@ -124,7 +124,7 @@ public:
 			catch(std::exception& e)
 			{
 				std::string msg("Regex exception: '" + std::string(e.what()) + "'");
-				if(auto log = spdlog::get("opendatacon"))
+				if(auto log = odc::spdlog_get("opendatacon"))
 					log->error(msg);
 				else
 					std::cout << msg << std::endl;

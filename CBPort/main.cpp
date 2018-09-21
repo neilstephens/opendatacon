@@ -35,35 +35,35 @@
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
-//#include "CBOutstationPort.h"
-//#include "CBMasterPort.h"
+#include "CBOutstationPort.h"
+#include "CBMasterPort.h"
 
-std::shared_ptr<spdlog::logger> logger;
-/*
+// std::shared_ptr<spdlog::logger> logger;
+
 extern "C" CBMasterPort* new_CBMasterPort(const std::string& Name,const std::string& File, const Json::Value& Overrides)
 {
-      //std::cout << "Made it into the dll - MasterPort";
-      return new CBMasterPort(Name,File,Overrides);
+	//std::cout << "Made it into the dll - MasterPort";
+	return new CBMasterPort(Name,File,Overrides);
 }
 
 extern "C" CBOutstationPort* new_CBOutstationPort(const std::string & Name, const std::string & File, const Json::Value & Overrides)
 {
-      //std::cout << "Made it into the dll -OutstationPort";
-      return new CBOutstationPort(Name,File,Overrides);
+	//std::cout << "Made it into the dll -OutstationPort";
+	return new CBOutstationPort(Name,File,Overrides);
 }
 
 extern "C" void delete_CBMasterPort(CBMasterPort* aCBMasterPort_ptr)
 {
-      delete aCBMasterPort_ptr;
-      return;
+	delete aCBMasterPort_ptr;
+	return;
 }
 
 extern "C" void delete_CBOutstationPort(CBOutstationPort* aCBOutstationPort_ptr)
 {
-      delete aCBOutstationPort_ptr;
-      return;
+	delete aCBOutstationPort_ptr;
+	return;
 }
-*/
+
 //
 // Should be turned on for "normal" builds, and off if you want to use Visual Studio Test Integration.
 //

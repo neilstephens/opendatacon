@@ -34,7 +34,7 @@ CBPort::CBPort(const std::string &aName, const std::string & aConfFilename, cons
 	pConnection(nullptr)
 {
 	//TODO: Do we have to create our own logger instance? Or just assume will be run on linux...
-	logger = spdlog::get("CBPort"); // Only gets the opendatacon logger in Linux at the moment!
+	// logger = spdlog::get("CBPort"); // Only gets the opendatacon logger in Linux at the moment!
 
 	//the creation of a new CBPortConf will get the point details
 	pConf.reset(new CBPortConf(ConfFilename, ConfOverrides));

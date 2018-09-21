@@ -29,7 +29,7 @@
 #include "DNP3MasterPort.h"
 #include <array>
 #include <asiopal/UTCTimeSource.h>
-#include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 
 #include "TypeConversion.h"
 #include "ChannelStateSubscriber.h"
@@ -52,7 +52,7 @@ void DNP3MasterPort::Enable()
 		return;
 	if(nullptr == pMaster)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: DNP3 stack not initialised.", Name);
 		return;
 	}
@@ -86,7 +86,7 @@ void DNP3MasterPort::PortUp()
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Updating comms state point to good.", Name);
 
 		auto commsUpEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
@@ -102,7 +102,7 @@ void DNP3MasterPort::PortDown()
 
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Setting point quality to COMM_LOST.", Name);
 
 		for (auto index : pConf->pPointConf->BinaryIndicies)
@@ -122,7 +122,7 @@ void DNP3MasterPort::PortDown()
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Setting comms point to failed.", Name);
 
 		auto commsDownEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
@@ -165,7 +165,7 @@ void DNP3MasterPort::OnLinkDown()
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
 		{
-			if(auto log = spdlog::get("DNP3Port"))
+			if(auto log = odc::spdlog_get("DNP3Port"))
 				log->info("{}: Disabling stack following disconnect on non-persistent port.", Name);
 
 			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
@@ -204,7 +204,7 @@ void DNP3MasterPort::Build()
 
 	if (pChannel == nullptr)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for masterstation.", Name);
 		return;
 	}
@@ -241,7 +241,7 @@ void DNP3MasterPort::Build()
 
 	if (pMaster == nullptr)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Error creating masterstation.", Name);
 		return;
 	}
@@ -314,7 +314,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
 		if (stack_enabled && state == ConnectState::PORT_UP)
 		{
-			if(auto log = spdlog::get("DNP3Port"))
+			if(auto log = odc::spdlog_get("DNP3Port"))
 				log->info("{}: Upstream port enabled, performing integrity scan.", Name);
 
 			IntegrityScan->Demand();
@@ -325,7 +325,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		// If an upstream port is connected, attempt a connection (if on demand)
 		if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
-			if(auto log = spdlog::get("DNP3Port"))
+			if(auto log = odc::spdlog_get("DNP3Port"))
 				log->info("{}: upstream port connected, performing on-demand connection.", Name);
 
 			pIOS->post([&]()
@@ -361,7 +361,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 	{
 		if(i == index)
 		{
-			if(auto log = spdlog::get("DNP3Port"))
+			if(auto log = odc::spdlog_get("DNP3Port"))
 				log->debug("{}: Executing direct operate to index: {}", Name, index);
 
 			auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
@@ -430,7 +430,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			return;
 		}
 	}
-	if(auto log = spdlog::get("DNP3Port"))
+	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->warn("{}: Control sent to invalid DNP3 index: {}", Name, index);
 
 	(*pStatusCallback)(CommandStatus::UNDEFINED);

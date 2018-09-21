@@ -29,7 +29,7 @@
 #include <opendnp3/app/ClassField.h>
 #include "DNP3PointConf.h"
 #include "OpenDNP3Helpers.h"
-#include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 
 
 DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides):
@@ -125,7 +125,7 @@ opendnp3::PointClass GetClass(Json::Value JPoint)
 					clazz = opendnp3::PointClass::Class3;
 					break;
 				default:
-					if(auto log = spdlog::get("DNP3Port"))
+					if(auto log = odc::spdlog_get("DNP3Port"))
 						log->error("Invalid class for Point: '{}'", JPoint.toStyledString());
 					break;
 			}
@@ -148,7 +148,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("LinkUseConfirms"))
 		LinkUseConfirms = JSONRoot["LinkUseConfirms"].asBool();
 	if (JSONRoot.isMember("UseConfirms"))
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '{}'", JSONRoot["UseConfirms"].toStyledString());
 
 	// Common application configuration
@@ -159,7 +159,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		else if(JSONRoot["TCPConnectRetryPeriodMinms"].asString() == "CloseExisting")
 			ServerAcceptMode = opendnp3::ServerAcceptMode::CloseExisting;
 		else
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("Invalid ServerAcceptMode : '{}'", JSONRoot["ServerAcceptMode"].asString());
 	}
 	if (JSONRoot.isMember("TCPConnectRetryPeriodMinms"))
@@ -285,7 +285,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			TimestampOverride = DNP3PointConf::TimestampOverride_t::NEVER;
 		else
 		{
-			if(auto log = spdlog::get("DNP3Port"))
+			if(auto log = odc::spdlog_get("DNP3Port"))
 				log->error("Invalid TimestampOverride: {}, should be ALWAYS, ZERO, or NEVER - defaulting to ZERO", JSONRoot["TimestampOverride"].asString());
 		}
 	}
@@ -319,7 +319,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				if(auto log = spdlog::get("DNP3Port"))
+				if(auto log = odc::spdlog_get("DNP3Port"))
 					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
 				continue;
 			}
@@ -388,7 +388,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				if(auto log = spdlog::get("DNP3Port"))
+				if(auto log = odc::spdlog_get("DNP3Port"))
 					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
 				continue;
 			}
@@ -456,7 +456,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				if(auto log = spdlog::get("DNP3Port"))
+				if(auto log = odc::spdlog_get("DNP3Port"))
 					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
 				continue;
 			}

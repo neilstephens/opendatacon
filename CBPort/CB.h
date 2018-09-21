@@ -34,19 +34,19 @@
 #include <cstdint>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
-#include <spdlog/spdlog.h>
 
-extern std::shared_ptr<spdlog::logger> logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
+
+//extern std::shared_ptr<spdlog::logger> logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(msg) \
-	if (logger) logger->debug(msg);
+	if (auto log = odc::spdlog_get("CBPort")) log->debug(msg);
 #define LOGERROR(msg) \
-	if (logger) logger->error(msg);
+	if (auto log = odc::spdlog_get("CBPort")) log->error(msg);
 #define LOGWARN(msg) \
-	if (logger) logger->warn(msg);
+	if (auto log = odc::spdlog_get("CBPort")) log->warn(msg);
 #define LOGINFO(msg) \
-	if (logger) logger->info(msg);
+	if (auto log = odc::spdlog_get("CBPort")) log->info(msg);
 
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

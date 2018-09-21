@@ -32,6 +32,7 @@
 #include <asiopal/UTCTimeSource.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include <openpal/logging/LogLevels.h>
+#include <opendatacon/util.h>
 #include "DNP3OutstationPort.h"
 #include "DNP3PortConf.h"
 
@@ -59,7 +60,7 @@ void DNP3OutstationPort::Enable()
 		return;
 	if(nullptr == pOutstation)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: DNP3 stack not configured.", Name);
 
 		return;
@@ -131,7 +132,7 @@ void DNP3OutstationPort::Build()
 
 	if (pChannel == nullptr)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for outstation.", Name);
 		return;
 	}
@@ -206,7 +207,7 @@ void DNP3OutstationPort::Build()
 
 	if (pOutstation == nullptr)
 	{
-		if(auto log = spdlog::get("DNP3Port"))
+		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Error creating outstation.", Name);
 		return;
 	}

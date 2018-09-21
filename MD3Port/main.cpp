@@ -38,7 +38,7 @@
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
 
-std::shared_ptr<spdlog::logger> md3logger;
+// std::shared_ptr<spdlog::logger> md3logger;
 
 extern "C" MD3MasterPort* new_MD3MasterPort(const std::string& Name,const std::string& File, const Json::Value& Overrides)
 {
