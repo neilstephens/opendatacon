@@ -69,8 +69,12 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void ProcessPollGroups(const Json::Value & JSONRoot);
 	void ProcessBinaryPoints(PointType ptype, const Json::Value & JSONNode);
-	static bool ParsePayloadString(const std::string & pl, PayloadLocationType & payloadlocation);
 	void ProcessAnalogCounterPoints(PointType ptype, const Json::Value & JSONNode);
+
+	void ProcessStatusByte(const Json::Value & JSONNode);
+
+	static bool ParsePayloadString(const std::string & pl, PayloadLocationType & payloadlocation);
+
 
 	CBPointTableAccess PointTable; // All access to point table through this.
 

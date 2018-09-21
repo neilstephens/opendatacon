@@ -60,9 +60,8 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 	}
 	if (JSONRoot.isMember("RemoteStatus"))
 	{
-		//const auto Analogs = JSONRoot["Analogs"];
-		LOGDEBUG("ERROR Conf processed - RemoteStatus - Not implemented yet");
-		//ProcessAnalogCounterPoints(Analog, Analogs);
+		const auto RemoteStatus = JSONRoot["RemoteStatus"];
+		ProcessStatusByte(RemoteStatus);
 	}
 	if (JSONRoot.isMember("Analogs"))
 	{
@@ -323,8 +322,56 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 	}
 	LOGDEBUG("Conf processing - Binary - Finished");
 }
+// This method loads status byte location in the group.
+void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
+{
+	LOGDEBUG("Conf processing - Remote Status Byte");
 
+	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
+	{
+		bool error = false;
 
+		uint32_t group = 0;
+		uint32_t channel = 0;
+		PayloadLocationType payloadlocation;
+
+		if (JSONNode[n].isMember("PayloadLocation"))
+		{
+			error = !ParsePayloadString(JSONNode[n]["PayloadLocation"].asString(), payloadlocation);
+		}
+		else
+		{
+			LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
+			error = true;
+		}
+
+		if (JSONNode[n].isMember("Group"))
+			group = JSONNode[n]["Group"].asUInt();
+		else
+		{
+			LOGERROR(" A point needs a \"Group\" : " + JSONNode[n].toStyledString());
+			error = true;
+		}
+
+		if (JSONNode[n].isMember("Channel"))
+			channel = JSONNode[n]["Channel"].asUInt();
+		else
+		{
+			LOGERROR(" A point needs a \"Channel\" : " + JSONNode[n].toStyledString());
+			error = true;
+		}
+
+		if (!error)
+		{
+			if (PointTable.AddStatusByteToCBMap(group, channel, payloadlocation))
+			{
+				// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
+				LOGDEBUG("Adding a Status Byte - Group: " + std::to_string(group) + " Channel: " + std::to_string(channel) + " Payload Location: " + payloadlocation.to_string());
+			}
+		}
+	}
+	LOGDEBUG("Conf processing - Status Byte - Finished");
+}
 
 // This method loads both Analog and Counter/Timers. They look functionally similar in CB
 void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value& JSONNode)

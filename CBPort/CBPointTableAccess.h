@@ -51,11 +51,12 @@ public:
 	// The Conitel Baker methods require that a
 	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const BinaryPointType & pointtype, const PayloadLocationType &payloadlocation);
 	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const BinaryPointType & pointtype, const PayloadLocationType &payloadlocation);
-
 	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
-	void UpdateMaxPayload(const uint8_t & group, const PayloadLocationType & payloadlocation);
 	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
 	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
+
+	bool AddStatusByteToCBMap(const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
+	void UpdateMaxPayload(const uint8_t & group, const PayloadLocationType & payloadlocation);
 
 	bool GetCounterValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t & res, bool &hasbeenset);
 	bool GetCounterValueAndChangeUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool &hasbeenset);
@@ -99,6 +100,7 @@ public:
 	void ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBBinaryPoint&pt)> fn);
 	void ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
 	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
+	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn);
 
 	void GetMaxPayload(uint8_t group, uint8_t &blockcount);
 
@@ -133,6 +135,8 @@ protected:
 	// Analog Control Points are not readable
 	std::map<uint16_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogControlCBPointMap; // Group/Payload/Channel, CBPoint
 	std::map<size_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogControlODCPointMap;  // Index OpenDataCon, CBPoint
+
+	std::map<uint16_t, uint8_t> StatusByteMap; // Group/Payload/Channel, second parameter empty.
 
 	std::map<uint8_t, uint8_t> MaxiumPayloadPerGroupMap; // Group 0 to 15, Max payload - a count of 1 to 16.
 

@@ -135,8 +135,7 @@ const char *conffile1 = R"001(
 					{"Index" : 6, "Group" : 3, "PayloadLocation": "6A","Channel" : 1, "Type":"ACC24"}],
 
 	// Special definition, so we know where to find the Remote Status Data in the scanned group.
-
-	"RemoteStatus" : [{"Group":3, "PayloadLocation": "7A"}]
+	"RemoteStatus" : [{"Group":3, "Channel" : 1, "PayloadLocation": "7A"}]
 
 })001";
 /*	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Channel" : 0, "PayloadLocation" : 2}],
@@ -636,7 +635,8 @@ TEST_CASE("Station - ScanRequest F0")
 		                                                            "00080006"
 		                                                            "00080006"
 		                                                            "00080006"
-		                                                            "00080007");
+		                                                            "00080006"
+		                                                            "55580013");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -682,7 +682,8 @@ TEST_CASE("Station - ScanRequest F0")
 		                                           "400a00b6"
 		                                           "402a0186"
 		                                           "404a029c"
-		                                           "4068003d");
+		                                           "4068003c"
+		                                           "55580013");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -2012,12 +2013,13 @@ TEST_CASE("Master - Scan Request F0")
 		std::ostream output(&write_buffer);
 
 		// From the outstation test above!!
-		std::string Payload = BuildHexStringFromASCIIHexString(                 "09355516" // Echoed block plus data 1B
-			                                                                  "fc080016" // Data 2A and 2B
-			                                                                  "400a00b6"
-			                                                                  "402a0186"
-			                                                                  "404a029c"
-			                                                                  "4068003d");
+		std::string Payload = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
+			                                                 "fc080016" // Data 2A and 2B
+			                                                 "400a00b6"
+			                                                 "402a0186"
+			                                                 "404a029c"
+			                                                 "4068003c"
+			                                                 "55580013");
 		output << Payload;
 
 		// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...

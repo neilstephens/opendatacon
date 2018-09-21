@@ -220,6 +220,17 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	}
 	if (!FoundMatch)
 	{
+		// See if it is a StatusByte we need to provide - there is only one status byte, but it could be requested in several groups.
+		MyPointConf->PointTable.ForEachMatchingStatusByte(Group, payloadlocation, [&](void)
+			{
+				// We have a matching status byte, set a flag to indicate we have a match.
+				LOGDEBUG("Got a Status Byte request at : " + std::to_string(Group) + " - " + payloadlocation.to_string());
+				Payload = 0x555; //TODO: Have to populate the status byte
+				FoundMatch = true;
+			});
+	}
+	if (!FoundMatch)
+	{
 		LOGDEBUG("Failed to find a payload for: " + payloadlocation.to_string() + " Setting to zero");
 	}
 	return Payload;
@@ -652,32 +663,33 @@ uint8_t CBOutstationPort::CountBinaryBlocksWithChanges()
 
 	return changedblocks;
 }
+/*
 // This is used to determine which response we should send NoChange, DeltaChange or AllChange
 uint8_t CBOutstationPort::CountBinaryBlocksWithChangesGivenRange(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress)
 {
-	uint8_t changedblocks = 0;
+      uint8_t changedblocks = 0;
 
-	for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
-	{
-		bool datachanged = false;
+      for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
+      {
+            bool datachanged = false;
 
-		for (uint8_t j = 0; j < 16; j++)
-		{
-			bool changed = false;
+            for (uint8_t j = 0; j < 16; j++)
+            {
+                  bool changed = false;
 
-			if (!MyPointConf->PointTable.GetBinaryChangedUsingCBIndex(StartModuleAddress + i, j, changed)) // Does not change the changed bit
-			{
-				changed = true;
-			}
-			if (changed)
-				datachanged = true;
-		}
-		if (datachanged)
-			changedblocks++;
-	}
-	return changedblocks;
+                  if (!MyPointConf->PointTable.GetBinaryChangedUsingCBIndex(StartModuleAddress + i, j, changed)) // Does not change the changed bit
+                  {
+                        changed = true;
+                  }
+                  if (changed)
+                        datachanged = true;
+            }
+            if (datachanged)
+                  changedblocks++;
+      }
+      return changedblocks;
 }
-/*
+
 // Used in Fn7, Fn8 and Fn12
 void CBOutstationPort::BuildListOfModuleAddressesWithChanges(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress, bool forcesend, std::vector<uint8_t> &ModuleList)
 {
@@ -1089,98 +1101,98 @@ void CBOutstationPort::DoAOMControl(CBBlockData &Header, CBMessage_t &CompleteCB
 #pragma endregion
 
 #pragma region SYSTEM
-
+/*
 // Function 44
 void CBOutstationPort::DoSetDateTimeNew(CBBlockData &Header, CBMessage_t &CompleteCBMessage)
 {
-	// We have two blocks incoming, not just one.
-	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to  ODC, then set-up a lambda to handle the sending of the response - when we get it.
+      // We have two blocks incoming, not just one.
+      // If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+      // We have to pass the command to  ODC, then set-up a lambda to handle the sending of the response - when we get it.
 
-	// Two possible responses, they depend on the future result - of type CommandStatus.
-	// SUCCESS = 0 /// command was accepted, initiated, or queue
-	// TIMEOUT = 1 /// command timed out before completing
-	// BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
-	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
-	// Non-zero will be a fail.
+      // Two possible responses, they depend on the future result - of type CommandStatus.
+      // SUCCESS = 0 /// command was accepted, initiated, or queue
+      // TIMEOUT = 1 /// command timed out before completing
+      // BLOCKED_OTHER_MASTER = 17 /// command not accepted because the outstation is forwarding the request to another downstream device which cannot be reached
+      // Really comes down to success - which we want to be we have an answer - not that the request was queued..
+      // Non-zero will be a fail.
 
-	LOGDEBUG("OS - DoSetdateTimeNew");
+      LOGDEBUG("OS - DoSetdateTimeNew");
 
-	if ((CompleteCBMessage.size() != 3) && (Header.GetStationAddress() != 0))
-	{
-		SendControlOrScanRejected(Header); // If we did not get three blocks, then send back a command rejected message.
-		return;
-	}
+      if ((CompleteCBMessage.size() != 3) && (Header.GetStationAddress() != 0))
+      {
+            SendControlOrScanRejected(Header); // If we did not get three blocks, then send back a command rejected message.
+            return;
+      }
 
-	CBBlockData &timedateblock = CompleteCBMessage[1];
+      CBBlockData &timedateblock = CompleteCBMessage[1];
 
-	// If date time is within a window of now, accept. Otherwise send command rejected.
-	uint64_t msecsinceepoch = 1; // static_cast<uint64_t>(timedateblock.GetData()) * 1000 + Header.GetMilliseconds();
+      // If date time is within a window of now, accept. Otherwise send command rejected.
+      uint64_t msecsinceepoch = 1; // static_cast<uint64_t>(timedateblock.GetData()) * 1000 + Header.GetMilliseconds();
 
-	// Not used for now...
-	// CBBlockData &utcoffsetblock = CompleteCBMessage[2];
-	// int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
+      // Not used for now...
+      // CBBlockData &utcoffsetblock = CompleteCBMessage[2];
+      // int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
 
-	// CB only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for CB
-	uint64_t currenttime = CBNow();
+      // CB only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for CB
+      uint64_t currenttime = CBNow();
 
-	if (abs(static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime)) > 30000) // Set window as +-30 seconds
-	{
-		if (Header.GetStationAddress() != 0)
-			SendControlOrScanRejected(Header);
-	}
-	else
-	{
-		uint32_t ODCIndex = MyPointConf->TimeSetPointNew.second;
-		MyPointConf->TimeSetPointNew.first = numeric_cast<double>(msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
+      if (abs(static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime)) > 30000) // Set window as +-30 seconds
+      {
+            if (Header.GetStationAddress() != 0)
+                  SendControlOrScanRejected(Header);
+      }
+      else
+      {
+            uint32_t ODCIndex = MyPointConf->TimeSetPointNew.second;
+            MyPointConf->TimeSetPointNew.first = numeric_cast<double>(msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
 
-		EventTypePayload<EventType::AnalogOutputDouble64>::type val;
-		val.first = MyPointConf->TimeSetPointNew.first;
+            EventTypePayload<EventType::AnalogOutputDouble64>::type val;
+            val.first = MyPointConf->TimeSetPointNew.first;
 
-		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
-		event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
+            auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
+            event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
 
-		// If StandAloneOutstation, don\92t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-		bool waitforresult = !MyPointConf->StandAloneOutstation;
+            // If StandAloneOutstation, don\92t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
+            bool waitforresult = !MyPointConf->StandAloneOutstation;
 
-		// This does a PublishCommand and waits for the result - or times out.
-		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
-		{
-			if (Header.GetStationAddress() != 0)
-				SendControlOK(Header);
-		}
-		else
-		{
-			if (Header.GetStationAddress() != 0)
-				SendControlOrScanRejected(Header);
-		}
-	}
-	SystemFlags.TimePacketReceived();
+            // This does a PublishCommand and waits for the result - or times out.
+            if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
+            {
+                  if (Header.GetStationAddress() != 0)
+                        SendControlOK(Header);
+            }
+            else
+            {
+                  if (Header.GetStationAddress() != 0)
+                        SendControlOrScanRejected(Header);
+            }
+      }
+      SystemFlags.TimePacketReceived();
 }
 
 // Function 15 Output
 void CBOutstationPort::SendControlOK(CBBlockData &Header)
 {
-	// The Control OK block seems to return the originating message first block, but with the function code changed to 15
-	CBMessage_t ResponseCBMessage;
+      // The Control OK block seems to return the originating message first block, but with the function code changed to 15
+      CBMessage_t ResponseCBMessage;
 
-	// The CBBlockFn15StoM does the changes we need for us. The control blocks do not have space for the System flags to be returned...
-	CBBlockData FormattedBlock(Header);
-	ResponseCBMessage.push_back(FormattedBlock);
-	SendCBMessage(ResponseCBMessage);
+      // The CBBlockFn15StoM does the changes we need for us. The control blocks do not have space for the System flags to be returned...
+      CBBlockData FormattedBlock(Header);
+      ResponseCBMessage.push_back(FormattedBlock);
+      SendCBMessage(ResponseCBMessage);
 }
 // Function 30 Output
 void CBOutstationPort::SendControlOrScanRejected(CBBlockData &Header)
 {
-	// The Control rejected block seems to return the originating message first block, but with the function code changed to 30
-	CBMessage_t ResponseCBMessage;
+      // The Control rejected block seems to return the originating message first block, but with the function code changed to 30
+      CBMessage_t ResponseCBMessage;
 
-	// The CBBlockFn30StoM does the changes we need for us.
-	CBBlockData FormattedBlock(Header);
-	//FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
+      // The CBBlockFn30StoM does the changes we need for us.
+      CBBlockData FormattedBlock(Header);
+      //FormattedBlock.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
 
-	ResponseCBMessage.push_back(FormattedBlock);
-	SendCBMessage(ResponseCBMessage);
+      ResponseCBMessage.push_back(FormattedBlock);
+      SendCBMessage(ResponseCBMessage);
 }
-
+*/
 #pragma endregion

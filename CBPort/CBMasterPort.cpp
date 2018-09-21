@@ -552,6 +552,17 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	}
 	if (!FoundMatch)
 	{
+		// See if it is a StatusByte we need to handle - there is only one status byte, but it could be requested in several groups. So deal with it whenever it comes back
+		MyPointConf->PointTable.ForEachMatchingStatusByte(group, payloadlocation, [&](void)
+			{
+				// We have a matching status byte, set a flag to indicate we have a match.
+				LOGDEBUG("Received a Status Byte at : " + std::to_string(group) + " - " + payloadlocation.to_string());
+				//TODO: Not sure what we are going to do with the status byte - YET
+				FoundMatch = true;
+			});
+	}
+	if (!FoundMatch)
+	{
 		LOGDEBUG("Failed to find a payload for: " + payloadlocation.to_string() + " Setting to zero");
 	}
 }

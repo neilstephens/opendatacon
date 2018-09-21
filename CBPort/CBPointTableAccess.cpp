@@ -44,7 +44,7 @@ bool CBPointTableAccess::AddCounterPointToPointTable(const size_t &index, const 
 	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
 	if (CounterCBPointMap.find(CBIndex) != CounterCBPointMap.end())
 	{
-		LOGERROR("Error Duplicate Counter CB Index " + std::to_string(group) + " - " + std::to_string(channel));
+		LOGERROR("Error Duplicate Counter CB Index " + std::to_string(group) + " - " + std::to_string(channel) + " - " + payloadlocation.to_string());
 		return false;
 	}
 
@@ -70,7 +70,7 @@ bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const u
 	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
 	if (AnalogCBPointMap.find(CBIndex) != AnalogCBPointMap.end())
 	{
-		LOGERROR("Error Duplicate Analog CB Index " + std::to_string(group) + " - " + std::to_string(channel));
+		LOGERROR("Error Duplicate Analog CB Index " + std::to_string(group) + " - " + std::to_string(channel) + " - " + payloadlocation.to_string());
 		return false;
 	}
 
@@ -103,7 +103,7 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 
 	if (BinaryCBPointMap.find(CBIndex) != BinaryCBPointMap.end())
 	{
-		LOGERROR("Error Duplicate Binary CB Index " + std::to_string(group) + " - " + std::to_string(channel));
+		LOGERROR("Error Duplicate Binary CB Index " + std::to_string(group) + " - " + std::to_string(channel) + " - " + payloadlocation.to_string());
 		return false;
 	}
 
@@ -121,6 +121,20 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 		BinaryCBPointMap[CBIndex] = pt;
 		BinaryODCPointMap[index] = pt;
 	}
+	return true;
+}
+
+bool CBPointTableAccess::AddStatusByteToCBMap(const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation)
+{
+	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
+	if (StatusByteMap.find(CBIndex) != StatusByteMap.end())
+	{
+		LOGERROR("Error Duplicate Status Byte CB Index " + std::to_string(group) + " - " + std::to_string(channel) + " - " + payloadlocation.to_string());
+		return false;
+	}
+
+	UpdateMaxPayload(group, payloadlocation);
+	StatusByteMap[CBIndex] = 0; // Creates the map entry
 	return true;
 }
 
@@ -628,6 +642,15 @@ void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, cons
 	{
 		// We have a match - call our function with the point as a parameter.
 		fn(*CounterCBPointMap[CBIndex]);
+	}
+}
+void CBPointTableAccess::ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn)
+{
+	uint16_t CBIndex = GetCBPointMapIndex(group, 1, payloadlocation); // Use the same index as the points
+	if (StatusByteMap.count(CBIndex) != 0)
+	{
+		// We have a match - call our function
+		fn();
 	}
 }
 

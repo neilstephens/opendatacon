@@ -84,7 +84,7 @@ public:
 	//TODO: Use Getter and Setters so we can range check.
 	uint8_t Packet; // Should be 1 to 16. 0 is an error.
 	PayloadABType Position;
-	std::string to_string()
+	std::string to_string() const
 	{
 		return std::to_string(Packet) + ((Position == PayloadABType::PositionA) ? "A" : (Position == PayloadABType::PositionB) ? "B" : "Error");
 	}
