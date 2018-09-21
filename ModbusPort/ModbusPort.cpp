@@ -24,7 +24,7 @@
  *      Author: Alan Murray
  */
 
-#include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 #include "ModbusPort.h"
 
 ModbusPort::ModbusPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
@@ -56,7 +56,7 @@ void ModbusPort::ProcessElements(const Json::Value& JSONRoot)
 			static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.Parity = SerialParity::NONE;
 		else
 		{
-			if(auto log = spdlog::get("ModbusPort"))
+			if(auto log = odc::spdlog_get("ModbusPort"))
 				log->warn("Invalid Modbus port parity: {}, should be EVEN, ODD, or NONE.", JSONRoot["Parity"].asString());
 		}
 	}

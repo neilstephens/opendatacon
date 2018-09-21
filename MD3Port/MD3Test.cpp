@@ -38,12 +38,7 @@
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 
-#include <spdlog/sinks/ansicolor_sink.h>
-
-#ifdef WIN32
-#include <spdlog/sinks/wincolor_sink.h>
-#include <spdlog/sinks/windebug_sink.h>
-#endif
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
@@ -200,7 +195,42 @@ void WriteConfFilesToCurrentWorkingDirectory()
 	ofs2 << conffile2;
 	ofs.close();
 }
+void SetupLoggers()
+{
+	// So create the log sink first - can be more than one and add to a vector.
+	#ifdef WIN32
+	// Add a sink to the TestLogger?
+	#endif
+	auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	console->set_level(spdlog::level::debug);
+	LogSinks.push_back(console);
 
+	// Then create the logger (async - as used in ODC) then connect to all sinks.
+	auto pLibLogger = std::make_shared<spdlog::async_logger>("MD3Port", begin(LogSinks), end(LogSinks),
+		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+
+	pLibLogger->set_level(spdlog::level::trace);
+	odc::spdlog_register_logger(pLibLogger);
+
+	// We need an opendatacon logger to catch config file parsing errors
+	auto pODCLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
+		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+
+	pODCLogger->set_level(spdlog::level::trace);
+	odc::spdlog_register_logger(pODCLogger);
+
+	std::string msg = "Logging for this test started..";
+
+	if (auto md3logger = odc::spdlog_get("MD3Port"))
+		md3logger->info(msg);
+	else
+		std::cout << "Error MD3Port Logger not operational";
+
+	if (auto odclogger = odc::spdlog_get("opendatacon"))
+		odclogger->info(msg);
+	else
+		std::cout << "Error opendatacon Logger not operational";
+}
 void TestSetup(bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
@@ -210,44 +240,7 @@ void TestSetup(bool writeconffiles = true)
 	if (writeconffiles)
 		WriteConfFilesToCurrentWorkingDirectory();
 }
-void SetupLoggers()
-{
-	// So create the log sink first - can be more than one and add to a vector.
-	#ifdef WIN32
-	auto console = std::make_shared<spdlog::sinks::msvc_sink_mt>(); // Windows Debug Sync - puts info into the test output window. Great for debugging...
-	// OR wincolor_stdout_sink_mt>();
-	#else
-	auto console = std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>();
-	#endif
-	console->set_level(spdlog::level::debug);
-	LogSinks.push_back(console);
 
-	// Then create the logger (async - as used in ODC) then connect to all sinks.
-	auto pLibLogger = std::make_shared<spdlog::async_logger>("MD3Port", begin(LogSinks), end(LogSinks),
-		4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
-	pLibLogger->set_level(spdlog::level::trace);
-	spdlog::register_logger(pLibLogger);
-
-	// We need an opendatacon logger to catch config file parsing errors
-	auto pODCLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
-		4096, spdlog::async_overflow_policy::discard_log_msg, nullptr, std::chrono::seconds(2));
-	pODCLogger->set_level(spdlog::level::trace);
-	spdlog::register_logger(pODCLogger);
-
-	md3logger = spdlog::get("MD3Port"); // For our code - wont catch the config file errors???
-
-	std::string msg = "Logging for this test started..";
-
-	if (md3logger)
-		md3logger->info(msg);
-	else
-		std::cout << "Error MD3Port Logger not operational";
-
-	if (auto odclogger = spdlog::get("opendatacon"))
-		odclogger->info(msg);
-	else
-		std::cout << "Error opendatacon Logger not operational";
-}
 void TestTearDown()
 {
 	spdlog::drop_all(); // Close off everything
