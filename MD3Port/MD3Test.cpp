@@ -75,7 +75,7 @@ const char *conffilename2 = "MD3Config2.conf";
 const char *conffile1 = R"001(
 {
 	"IP" : "127.0.0.1",
-	"Port" : 1000,
+	"Port" : 10000,
 	"OutstationAddr" : 124,
 	"ServerType" : "PERSISTENT",
 	"TCPClientServer" : "SERVER",
@@ -144,7 +144,7 @@ const char *conffile1 = R"001(
 const char *conffile2 = R"002(
 {
 	"IP" : "127.0.0.1",
-	"Port" : 1000,
+	"Port" : 10000,
 	"OutstationAddr" : 125,
 	"ServerType" : "PERSISTENT",
 	"TCPClientServer" : "SERVER",
@@ -287,6 +287,7 @@ void StopIOSThread(asio::io_service &IOS, std::thread *runthread)
 {
 	IOS.stop();        // This does not block. The next line will! If we have multiple threads, have to join all of them.
 	runthread->join(); // Wait for it to exit
+	delete runthread;
 }
 void Wait(asio::io_service &IOS, int seconds)
 {
@@ -314,17 +315,17 @@ void Wait(asio::io_service &IOS, int seconds)
 	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
 
 #define TEST_MD3MAPort(overridejson)\
-	auto MD3MAPort = new  MD3MasterPort("TestMaster", conffilename1, overridejson); \
+	auto MD3MAPort = std::make_unique<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
 	MD3MAPort->SetIOS(&IOS);      \
 	MD3MAPort->Build();
 
 #define TEST_MD3OSPort(overridejson)      \
-	auto MD3OSPort = new  MD3OutstationPort("TestOutStation", conffilename1, overridejson);   \
+	auto MD3OSPort = std::make_unique<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
 	MD3OSPort->SetIOS(&IOS);      \
 	MD3OSPort->Build();
 
 #define TEST_MD3OSPort2(overridejson)     \
-	auto MD3OSPort2 = new  MD3OutstationPort("TestOutStation2", conffilename2, overridejson); \
+	auto MD3OSPort2 = std::make_unique<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
 	MD3OSPort2->SetIOS(&IOS);     \
 	MD3OSPort2->Build();
 
@@ -2190,7 +2191,7 @@ TEST_CASE("Station - Multi-drop TCP Test")
 	// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
 	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 	pSockMan.reset(new TCPSocketManager<std::string>
-			(&IOS, false, "127.0.0.1", "1000",
+			(&IOS, false, "127.0.0.1", "10000",
 			ResponseCallback,
 			SocketStateHandler,
 			std::numeric_limits<size_t>::max(),
@@ -2205,6 +2206,8 @@ TEST_CASE("Station - Multi-drop TCP Test")
 	//  Station 0x7C
 	MD3BlockFn16MtoS commandblock(0x7C, true);
 	pSockMan->Write(commandblock.ToBinaryString());
+
+	Wait(IOS, 1);
 
 	//  Station 0x7D
 	MD3BlockFn16MtoS commandblock2(0x7D, true);
@@ -2343,12 +2346,12 @@ TEST_CASE("Master - Analog")
 	TEST_MD3MAPort(Json::nullValue);
 
 	Json::Value portoverride;
-	portoverride["Port"] = static_cast<Json::UInt64>(1001);
+	portoverride["Port"] = static_cast<Json::UInt64>(10001);
 	TEST_MD3OSPort(portoverride);
 
 	START_IOS(1);
 
-	MD3MAPort->Subscribe(MD3OSPort, "TestLink"); // The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
+	MD3MAPort->Subscribe(MD3OSPort.get(), "TestLink"); // The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
@@ -2605,7 +2608,7 @@ TEST_CASE("Master - DOM and POM Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -2613,8 +2616,8 @@ TEST_CASE("Master - DOM and POM Tests")
 
 	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
-	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
-	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+	MD3MAPort->Subscribe(MD3OSPort.get(), "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort.get(), "TestLink");
 
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
@@ -2809,7 +2812,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
 	OSportoverride["StandAloneOutstation"] = true;
 	OSportoverride["DOMControlPoint"]["Index"] = 60000;
 	OSportoverride["POMControlPoint"]["Index"] = 60001;
@@ -2819,8 +2822,8 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 
 	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
-	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
-	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+	MD3MAPort->Subscribe(MD3OSPort.get(), "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort.get(), "TestLink");
 
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
@@ -2929,7 +2932,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
 	OSportoverride["StandAloneOutstation"] = false;
 	OSportoverride["TimeSetPoint"]["Index"] = 60000;
 	TEST_MD3OSPort(OSportoverride);
@@ -2938,8 +2941,8 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 
 	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
-	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
-	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+	MD3MAPort->Subscribe(MD3OSPort.get(), "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort.get(), "TestLink");
 
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
@@ -3046,7 +3049,7 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
 	OSportoverride["StandAloneOutstation"] = true;
 	OSportoverride["FreezeResetCountersPoint"]["Index"] = 60000;
 	OSportoverride["SystemSignOnPoint"]["Index"] = 60001;
@@ -3056,8 +3059,8 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 
 	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
-	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
-	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+	MD3MAPort->Subscribe(MD3OSPort.get(), "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort.get(), "TestLink");
 
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
@@ -3162,7 +3165,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -3170,8 +3173,8 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 
 	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
-	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
-	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+	MD3MAPort->Subscribe(MD3OSPort.get(), "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort.get(), "TestLink");
 
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
@@ -3252,7 +3255,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -3260,8 +3263,8 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 
 	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
-	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
-	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+	MD3MAPort->Subscribe(MD3OSPort.get(), "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort.get(), "TestLink");
 
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
@@ -3354,7 +3357,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(1001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -3362,8 +3365,8 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 
 	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
-	MD3MAPort->Subscribe(MD3OSPort, "TestLink");
-	MD3OSPort->Subscribe(MD3MAPort, "TestLink");
+	MD3MAPort->Subscribe(MD3OSPort.get(), "TestLink");
+	MD3OSPort->Subscribe(MD3MAPort.get(), "TestLink");
 
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
@@ -3463,7 +3466,7 @@ TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 	// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
 	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 	pSockMan.reset(new TCPSocketManager<std::string>
-			(&IOS, false, "127.0.0.1", "1000",
+			(&IOS, false, "127.0.0.1", "10000",
 			ResponseCallback,
 			SocketStateHandler,
 			std::numeric_limits<size_t>::max(),
@@ -3478,6 +3481,8 @@ TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 	//  Station 0x7C
 	MD3BlockFn16MtoS commandblock(0x7C, true);
 	pSockMan->Write(commandblock.ToBinaryString());
+
+	Wait(IOS, 1);
 
 	//  Station 0x7D
 	MD3BlockFn16MtoS commandblock2(0x7D, true);

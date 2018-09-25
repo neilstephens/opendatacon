@@ -37,7 +37,7 @@
 using namespace odc;
 
 
-std::unordered_map<std::string, std::shared_ptr<MD3Connection>> MD3Connection::ConnectionMap;
+std::unordered_map<std::string, std::weak_ptr<MD3Connection>> MD3Connection::ConnectionMap;
 
 MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_service
 	bool aisServer,                                  //Whether to act as a server or client
@@ -98,8 +98,16 @@ std::shared_ptr<MD3Connection> MD3Connection::GetConnection(std::string ChannelI
 	// Check if the entry exists without adding to the map..
 	if (ConnectionMap.count(ChannelID) == 0)
 		return nullptr;
-
-	return ConnectionMap[ChannelID];
+	// Check if the connection is expired
+	if (auto shared = ConnectionMap[ChannelID].lock())
+	{
+		return shared;
+	}
+	else
+	{
+		ConnectionMap.erase(ChannelID);
+		return nullptr;
+	}
 }
 void MD3Connection::AddConnection(std::string ChannelID, std::shared_ptr<MD3Connection> pConnection)
 {
