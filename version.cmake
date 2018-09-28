@@ -41,10 +41,23 @@ if(GIT_FOUND)
 	set(GIT_REPO_DIRTY ${CMAKE_MATCH_6})
 	message("-- opendatacon version: ${ODC_VERSION} ${GIT_REPO_COMMIT} ${GIT_REPO_DIRTY}")
 
+	if(DEFINED CURRENT_CONFIG) #true at build-time
+		set(build_config_file "${BINARY_DIR}/current_build_config")
+		message("writing ${build_config_file}: ${CURRENT_CONFIG}")
+		file(WRITE ${build_config_file} "-${CURRENT_CONFIG}")
+	else()
+		set(build_config_file "${CMAKE_BINARY_DIR}/current_build_config")
+	endif()
+
 	configure_file (
 		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h.in"
 		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
 	)
 	#hack to trigger cmake reconfigure if Version.h changed
+	#reconfigure needed because we use version info to generate cpack info etc.
 	configure_file ("${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h" "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h" COPYONLY)
+	#ditto for build type
+	if(EXISTS ${build_config_file})
+		configure_file (${build_config_file} ${build_config_file} COPYONLY)
+	endif()
 endif()

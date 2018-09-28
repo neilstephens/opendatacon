@@ -255,13 +255,16 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 			switch (ClientOrServer())
 			{
 				case TCPClientServer::SERVER:
+				{
 					Channels[ChannelID] = IOMgr()->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 						pConf->pPointConf->ServerAcceptMode,
 						pConf->mAddrConf.IP,
 						pConf->mAddrConf.Port,listener);
 					break;
+				}
 
 				case TCPClientServer::CLIENT:
+				{
 					Channels[ChannelID] = IOMgr()->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 						asiopal::ChannelRetry(
 							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
@@ -270,12 +273,15 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 						"0.0.0.0",
 						pConf->mAddrConf.Port,listener);
 					break;
+				}
 
 				default:
+				{
 					const std::string msg(Name + ": Can't determine if TCP socket is client or server");
 					if(auto log = odc::spdlog_get("DNP3Port"))
 						log->error(msg);
 					throw std::runtime_error(msg);
+				}
 			}
 		}
 	}

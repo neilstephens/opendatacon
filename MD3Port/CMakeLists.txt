@@ -21,13 +21,6 @@ project(MD3Port)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
-include_directories(
-	"../include"
-	"../JSON"
-	"${ASIO_HOME}/include"
-	"${SPDLOG_HOME}/include"
-)
-
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC)
 

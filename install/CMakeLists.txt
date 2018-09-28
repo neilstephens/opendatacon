@@ -33,15 +33,14 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 
 string(REGEX MATCH "/([^/]*)(-)" TOOLCHAIN_MATCH ${CMAKE_TOOLCHAIN_FILE} "")
 set(cross_detect "${CMAKE_MATCH_2}${CMAKE_MATCH_1}")
-message("Cross toolchain detect: ${cross_detect}")
 string(REGEX MATCH "(-m32)" BITNESS_MATCH ${CMAKE_CXX_FLAGS} "")
 set(bit_detect ${CMAKE_MATCH_1})
-message("Compile bitness detect: ${bit_detect}")
-if(DEFINED CMAKE_BUILD_TYPE)
-	set(build_type "-${CMAKE_BUILD_TYPE}")
+if(EXISTS "${CMAKE_BINARY_DIR}/current_build_config")
+	file(READ "${CMAKE_BINARY_DIR}/current_build_config" build_type)
 else()
 	set(build_type "")
 endif()
+
 set(CPACK_PACKAGE_FILE_NAME "opendatacon-${GIT_DESCRIBE}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}${bit_detect}${cross_detect}${build_type}")
 message("CPack package filename base: ${CPACK_PACKAGE_FILE_NAME}")
 

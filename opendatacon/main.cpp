@@ -154,6 +154,8 @@ int main(int argc, char* argv[])
 			log->critical(msg);
 		else
 			std::cout << msg << std::endl;
+
+		TheDataConcentrator.reset();
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
 	{
@@ -184,6 +186,6 @@ int main(int argc, char* argv[])
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->flush();
 
-	spdlog::drop_all();
+	odc::spdlog_shutdown();
 	return ret_val;
 }

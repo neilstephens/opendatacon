@@ -111,7 +111,7 @@ private:
 	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 
 	// A list of MD3Connections, so that we can find if one for out port/address combination already exists.
-	static std::unordered_map<std::string, std::shared_ptr<MD3Connection>> ConnectionMap;
+	static std::unordered_map<std::string, std::weak_ptr<MD3Connection>> ConnectionMap;
 };
 #endif
 
