@@ -36,7 +36,7 @@
 
 using namespace odc;
 
-std::unordered_map<std::string, std::shared_ptr<CBConnection>> CBConnection::ConnectionMap;
+std::unordered_map<uint64_t, std::shared_ptr<CBConnection>> CBConnection::ConnectionMap;
 std::mutex CBConnection::MapMutex; // Control access
 
 CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_service
@@ -59,7 +59,7 @@ CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_ser
 			true,
 			retry_time_ms));
 
-	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
+	InternalChannelID = MakeStringChannelID(aEndPoint, aPort, aisServer);
 
 
 	LOGDEBUG("Opened an CBConnection object " + InternalChannelID + " As a " + (IsServer ? "Server" : "Client") + (IsBakerDevice ? " Baker Device" : " Conitel Device"));
@@ -76,7 +76,7 @@ void CBConnection::AddConnection(asio::io_service* apIOS, //pointer to an asio i
 	// This can occur as the map is a static object.
 	// It can then return a null_ptr. We need to make sure every call to GetConnection can cope with a null_ptr returned.
 
-	std::string ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
+	uint64_t ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
 	std::unique_lock<std::mutex> lck(CBConnection::MapMutex); // Access the Map
 
@@ -91,7 +91,7 @@ void CBConnection::AddConnection(asio::io_service* apIOS, //pointer to an asio i
 		LOGDEBUG("Connection already exists, using that connection - " + ChannelID);
 }
 
-void CBConnection::AddOutstation(std::string ChannelID, uint8_t StationAddress, // For message routing, OutStation identification
+void CBConnection::AddOutstation(uint64_t ChannelID, uint8_t StationAddress, // For message routing, OutStation identification
 	const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
 	const std::function<void(bool)> aStateCallback,
 	bool isbakerdevice)
@@ -115,25 +115,25 @@ void CBConnection::AddOutstation(std::string ChannelID, uint8_t StationAddress, 
 		pConnection->StateCallbackMap[StationAddress] = aStateCallback;
 	}
 }
-void CBConnection::RemoveOutstation(std::string ChannelID, uint8_t StationAddress)
+void CBConnection::RemoveOutstation(uint64_t ChannelID, uint8_t StationAddress)
 {
 	std::shared_ptr<CBConnection> pConnection;
 	if (CBConnection::GetConnection(ChannelID, pConnection))
 	{
 		pConnection->ReadCallbackMap.erase(StationAddress);
 		pConnection->StateCallbackMap.erase(StationAddress);
-	}
 
-	// If we have removed the last StateCallBack - then we are done - delete the connection.
-	if (pConnection->StateCallbackMap.size() == 0)
-	{
-		LOGDEBUG("Remove OutStation - Last OutStation Removed - Destroying the Connection - " + ChannelID);
-		ConnectionMap[ChannelID].reset(); // Destroy the object
-		ConnectionMap.erase(ChannelID);   // Remove the map entry
+		// If we have removed the last StateCallBack - then we are done - delete the connection.
+		if (pConnection->StateCallbackMap.size() == 0)
+		{
+			LOGDEBUG("Remove OutStation - Last OutStation Removed - Destroying the Connection - " + ChannelID);
+			ConnectionMap[ChannelID].reset(); // Destroy the object
+			ConnectionMap.erase(ChannelID);   // Remove the map entry
+		}
 	}
 }
 
-void CBConnection::AddMaster(std::string ChannelID, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
+void CBConnection::AddMaster(uint64_t ChannelID, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
 	const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
 	const std::function<void(bool)> aStateCallback,
 	bool isbakerdevice)
@@ -157,7 +157,7 @@ void CBConnection::AddMaster(std::string ChannelID, uint8_t TargetStationAddress
 		pConnection->StateCallbackMap[TargetStationAddress] = aStateCallback;
 	}
 }
-void CBConnection::RemoveMaster(std::string ChannelID, uint8_t TargetStationAddress)
+void CBConnection::RemoveMaster(uint64_t ChannelID, uint8_t TargetStationAddress)
 {
 	std::shared_ptr<CBConnection> pConnection;
 	if (CBConnection::GetConnection(ChannelID, pConnection))
@@ -175,7 +175,7 @@ void CBConnection::RemoveMaster(std::string ChannelID, uint8_t TargetStationAddr
 	}
 }
 
-bool CBConnection::GetConnection(std::string ChannelID, std::shared_ptr<CBConnection> &pConnection)
+bool CBConnection::GetConnection(uint64_t ChannelID, std::shared_ptr<CBConnection> &pConnection)
 {
 	// Check if the entry exists without adding to the map..
 	std::unique_lock<std::mutex> lck(CBConnection::MapMutex);
@@ -190,7 +190,7 @@ bool CBConnection::GetConnection(std::string ChannelID, std::shared_ptr<CBConnec
 	return true;
 }
 
-void CBConnection::Open(std::string ChannelID)
+void CBConnection::Open(uint64_t ChannelID)
 {
 	std::shared_ptr<CBConnection> pConnection;
 	if (CBConnection::GetConnection(ChannelID, pConnection))
@@ -216,7 +216,7 @@ void CBConnection::Open()
 		return;
 	}
 }
-void CBConnection::Close(std::string ChannelID)
+void CBConnection::Close(uint64_t ChannelID)
 {
 	std::shared_ptr<CBConnection> pConnection;
 	if (CBConnection::GetConnection(ChannelID,pConnection))
@@ -240,7 +240,7 @@ CBConnection::~CBConnection()
 	Close();
 }
 
-void CBConnection::Write(std::string ChannelID,const CBMessage_t &CompleteCBMessage)
+void CBConnection::Write(uint64_t ChannelID,const CBMessage_t &CompleteCBMessage)
 {
 	if (CompleteCBMessage.size() == 0)
 	{
@@ -282,7 +282,7 @@ void CBConnection::Write(std::string ChannelID,const CBMessage_t &CompleteCBMess
 	}
 }
 
-void CBConnection::SetSendTCPDataFn(std::string ChannelID, std::function<void(std::string)> f)
+void CBConnection::SetSendTCPDataFn(uint64_t ChannelID, std::function<void(std::string)> f)
 {
 	std::shared_ptr<CBConnection> pConnection;
 	if (CBConnection::GetConnection(ChannelID, pConnection))
@@ -295,7 +295,7 @@ void CBConnection::Write(std::string &msg)
 	pSockMan->Write(std::string(msg)); // Strange, it requires the std::string() constructor to be passed otherwise the templating fails.
 }
 
-void CBConnection::InjectSimulatedTCPMessage(std::string ChannelID, buf_t&readbuf)
+void CBConnection::InjectSimulatedTCPMessage(uint64_t ChannelID, buf_t&readbuf)
 {
 	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
 	std::shared_ptr<CBConnection> pConnection;
@@ -413,7 +413,7 @@ void CBConnection::RouteCBMessage(CBMessage_t &CompleteCBMessage)
 
 void CBConnection::SocketStateHandler(bool state)
 {
-	LOGDEBUG("Connection changed state " + InternalChannelID + " As a " + (IsServer ? "Open" : "Close"));
+	LOGDEBUG("Connection changed state " + InternalChannelID + " As a " + (state ? "Open" : "Close"));
 
 	// Call all the OutStation State Callbacks
 	for (auto it = StateCallbackMap.begin(); it != StateCallbackMap.end(); ++it)

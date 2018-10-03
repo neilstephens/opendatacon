@@ -31,13 +31,14 @@
 #include <opendatacon/TCPSocketManager.h>
 #include "CBPointConf.h"
 #include "CBPointTableAccess.h"
+#include "CBConnection.h"
 
 // Megadata System Flag register definition bits
 #define SYSTEMPOWERUPFLAGBIT 15
 #define SYSTEMTIMEINCORRECTFLAGBIT 14
 #define FILEUPLOADPENDINGFLAGBIT 13
 
-enum TCPClientServer { CLIENT, SERVER, DEFAULT };
+enum TCPClientServer { CLIENT, SERVER };
 enum server_type_t { ONDEMAND, PERSISTENT, MANUAL };
 
 enum class SerialParity: char
@@ -49,7 +50,7 @@ struct CBAddrConf
 {
 	//IP
 	std::string IP;
-	uint16_t Port;
+	std::string Port;
 	TCPClientServer ClientServer;
 
 	//Common
@@ -59,15 +60,20 @@ struct CBAddrConf
 	// Default address values can minimally set IP.
 	CBAddrConf():
 		IP("127.0.0.1"),
-		Port(20000),
-		ClientServer(TCPClientServer::DEFAULT),
+		Port("20000"),
+		ClientServer(TCPClientServer::SERVER),
 		OutstationAddr(1),
 		TCPConnectRetryPeriodms(500)
 	{}
-	std::string ChannelID()
+	uint64_t ChannelID()
 	{
-		return IP + ":" + std::to_string(Port) + ":" + std::to_string(ClientServer);
+		if (channelid == 0)
+			channelid = CBConnection::MakeChannelID(IP, Port, (ClientServer == SERVER));
+		return channelid;
 	}
+
+private:
+	uint64_t channelid = 0;
 };
 
 class CBPortConf: public DataPortConf

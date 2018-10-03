@@ -102,13 +102,13 @@ void CBOutstationPort::SocketStateHandler(bool state)
 
 void CBOutstationPort::Build()
 {
-	std::string ChannelID = MyConf->mAddrConf.ChannelID();
+	uint64_t ChannelID = MyConf->mAddrConf.ChannelID();
 
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(IsOutStation, *pIOS);
 
 	// Creates internally if necessary
-	CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, std::to_string(MyConf->mAddrConf.Port), MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
+	CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
 
 	std::function<void(CBMessage_t &CBMessage)> aReadCallback = std::bind(&CBOutstationPort::ProcessCBMessage, this, std::placeholders::_1);

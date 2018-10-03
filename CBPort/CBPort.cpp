@@ -48,8 +48,7 @@ CBPort::CBPort(const std::string &aName, const std::string & aConfFilename, cons
 
 TCPClientServer CBPort::ClientOrServer()
 {
-	if (MyConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
-		return TCPClientServer::SERVER;
+	// SERVER is DEFAULT
 	return MyConf->mAddrConf.ClientServer;
 }
 bool CBPort::IsServer()
@@ -73,7 +72,7 @@ void CBPort::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	if (JSONRoot.isMember("Port"))
-		static_cast<CBPortConf*>(pConf.get())->mAddrConf.Port = numeric_cast<uint16_t>(JSONRoot["Port"].asUInt());
+		static_cast<CBPortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asString();
 
 	if (JSONRoot.isMember("TCPClientServer"))
 	{
@@ -82,9 +81,9 @@ void CBPort::ProcessElements(const Json::Value& JSONRoot)
 		else if (JSONRoot["TCPClientServer"].asString() == "SERVER")
 			static_cast<CBPortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::SERVER;
 		else if (JSONRoot["TCPClientServer"].asString() == "DEFAULT")
-			static_cast<CBPortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::DEFAULT;
+			static_cast<CBPortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::SERVER;
 		else
-			LOGERROR("Warning: Invalid TCP client/server type, it should be CLIENT, SERVER, or DEFAULT : "+ JSONRoot["TCPClientServer"].asString());
+			LOGERROR("Warning: Invalid TCP client/server type, it should be CLIENT, SERVER, or DEFAULT(SERVER) : "+ JSONRoot["TCPClientServer"].asString());
 	}
 
 	if (JSONRoot.isMember("OutstationAddr"))

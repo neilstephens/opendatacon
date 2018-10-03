@@ -54,6 +54,17 @@ CBBinaryPoint& CBBinaryPoint::operator=(const CBBinaryPoint& src)
 
 CBAnalogCounterPoint::~CBAnalogCounterPoint() {}
 
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	while (std::getline(tokenStream, token, delimiter))
+	{
+		tokens.push_back(token);
+	}
+	return tokens;
+}
 
 static const uint8_t BCH[] = { 0x12,0x09,0x16,0xB,0x17,0x19,0x1E,0xF,0x15,0x18,0xC,0x6,0x3,
 	                         0x13,0x1B,0x1F,0x1D,0x1C,0xE,0x7,0x11,0x1A,0xD,0x14,0xA,0x5 };

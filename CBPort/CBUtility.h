@@ -115,6 +115,7 @@ inline char ToChar(uint8_t v)
 {
 	return numeric_cast<char>(v);
 }
+std::vector<std::string> split(const std::string& s, char delimiter);
 
 template <class T>
 std::string to_hexstring(T val)

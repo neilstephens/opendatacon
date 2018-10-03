@@ -99,10 +99,9 @@ void CBMasterPort::SocketStateHandler(bool state)
 	LOGINFO(msg);
 }
 
-// Will be change to Build only. No live reload
 void CBMasterPort::Build()
 {
-	std::string ChannelID = MyConf->mAddrConf.ChannelID();
+	uint64_t ChannelID = MyConf->mAddrConf.ChannelID();
 
 	if (PollScheduler == nullptr)
 		PollScheduler.reset(new ASIOScheduler(*pIOS));
@@ -114,7 +113,7 @@ void CBMasterPort::Build()
 	MyPointConf->PointTable.Build(IsOutStation, *pIOS);
 
 	// Creates internally if necessary
-	CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP,std::to_string(MyConf->mAddrConf.Port), MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
+	CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP,MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
 	CBConnection::AddMaster(ChannelID,MyConf->mAddrConf.OutstationAddr,
 		std::bind(&CBMasterPort::ProcessCBMessage, this, std::placeholders::_1),

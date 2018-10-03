@@ -50,6 +50,7 @@
 #if defined(NONVSTESTING)
 #include <catch.hpp>
 #else
+#include "spdlog/sinks/msvc_sink.h"
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
@@ -183,8 +184,6 @@ const char *conffile2 = R"002(
 
 #pragma region TEST_HELPERS
 
-std::vector<spdlog::sink_ptr> LogSinks;
-
 
 // Write out the conf file information about into a file so that it can be read back in by the code.
 void WriteConfFilesToCurrentWorkingDirectory()
@@ -205,28 +204,27 @@ void WriteConfFilesToCurrentWorkingDirectory()
 void SetupLoggers()
 {
 	// So create the log sink first - can be more than one and add to a vector.
-	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	console_sink->set_level(spdlog::level::debug);
-	LogSinks.push_back(console_sink);
-
+	// The consol sink does not work in VS...
+	// Perhaps the
+	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>(); //stdout_color_sink_mt>();
 	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("testslog.txt", true);
-	file_sink->set_level(spdlog::level::debug);
-	LogSinks.push_back(file_sink);
 
-	// Then create the logger (async - as used in ODC) then connect to all sinks.
-	auto pLibLogger = std::make_shared<spdlog::async_logger>("CBPort", begin(LogSinks), end(LogSinks),
-		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
-	pLibLogger->set_level(spdlog::level::debug);
+	auto pLibLogger = std::make_shared<spdlog::logger>("CBPort", begin(sinks),end(sinks));
+
+	//pLibLogger->set_level(spdlog::level::debug);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
-	auto pODCLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
-		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
 
-	pODCLogger->set_level(spdlog::level::debug);
+	// pODCLogger->set_level(spdlog::level::debug);
 	odc::spdlog_register_logger(pODCLogger);
 
+}
+void WriteStartLoggingMessage()
+{
 	std::string msg = "Logging for this test started..";
 
 	if (auto cblogger = odc::spdlog_get("CBPort"))
@@ -243,6 +241,7 @@ void TestSetup(bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
 	SetupLoggers();
+	WriteStartLoggingMessage();
 	#endif
 
 	if (writeconffiles)
@@ -251,15 +250,8 @@ void TestSetup(bool writeconffiles = true)
 void TestTearDown(void)
 {
 	#ifndef NONVSTESTING
-	for (auto l : LogSinks)
-		l->flush();
-
 	if (auto cblogger = odc::spdlog_get("CBPort"))
-		cblogger->flush();
-	if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->flush();
-
-	LogSinks.clear();
+		cblogger->info("Test Finished");
 
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 	#endif
@@ -321,6 +313,9 @@ void Wait(asio::io_service &IOS, int seconds)
 	TestSetup();\
 	asio::io_service IOS(4); // Max 4 threads
 
+#define STANDARD_TEST_TEARDOWN()\
+	TestTearDown();\
+
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = std::make_shared<asio::io_service::work>(IOS); /* To keep run - running!*/\
@@ -361,7 +356,6 @@ TEST_CASE("Util - HexStringTest")
 	std::string res = BuildHexStringFromASCIIHexString(ts);
 	REQUIRE(res == (w1 + w2));
 }
-
 TEST_CASE("Util - CBBCHTest")
 {
 	CBBlockData res = CBBlockData(0x09200028);
@@ -412,6 +406,21 @@ TEST_CASE("Util - ParsePayloadString")
 	res = CBPointConf::ParsePayloadString("123", payloadlocation);
 	REQUIRE(res == false);
 	REQUIRE(payloadlocation.Position == PayloadABType::Error);
+}
+TEST_CASE("Util - MakeChannelID")
+{
+	std::string IP = "192.168.1.23";
+	std::string Port = "34567";
+	bool isaserver = true;
+
+	uint64_t res = CBConnection::MakeChannelID(IP, Port, isaserver);
+	REQUIRE(res == 0xc0a8011700870701);
+
+	isaserver = false;
+	IP = "127.0.0.1";
+	Port = "10000";
+	res = CBConnection::MakeChannelID(IP, Port, isaserver);
+	REQUIRE(res == 0x7f00000100271000);
 }
 TEST_CASE("Util - CBIndexTest")
 {
@@ -609,7 +618,6 @@ TEST_CASE("Station - ScanRequest F0")
 {
 	// So we send a Scan F0 packet to the Outstation, it responds with the data in the point table.
 	// Then we update the data in the point table, scan again and check the data we get back.
-
 	STANDARD_TEST_SETUP();
 	TEST_CBOSPort(Json::nullValue);
 
@@ -637,13 +645,13 @@ TEST_CASE("Station - ScanRequest F0")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	std::string DesiredResult = BuildHexStringFromASCIIHexString(     "0937ffaa" // Echoed block plus data 1B
-		                                                            "fc080016" // Data 2A and 2B
-		                                                            "00080006"
-		                                                            "00080006"
-		                                                            "00080006"
-		                                                            "00080006"
-		                                                            "55580013");
+	std::string DesiredResult = BuildHexStringFromASCIIHexString("0937ffaa" // Echoed block plus data 1B
+		                                                       "fc080016" // Data 2A and 2B
+		                                                       "00080006"
+		                                                       "00080006"
+		                                                       "00080006"
+		                                                       "00080006"
+		                                                       "55580013");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -695,8 +703,9 @@ TEST_CASE("Station - ScanRequest F0")
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
 
-	TestTearDown();
+	STANDARD_TEST_TEARDOWN();
 }
+
 TEST_CASE("Station - BinaryEvent")
 {
 	STANDARD_TEST_SETUP();
@@ -734,7 +743,7 @@ TEST_CASE("Station - BinaryEvent")
 	REQUIRE((res == CommandStatus::UNDEFINED)); // The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
 	// Wait for some period to do something?? Check that the port is open and we can connect to it?
 
-	TestTearDown();
+	STANDARD_TEST_TEARDOWN();
 }
 
 
@@ -825,7 +834,7 @@ TEST_CASE("Station - CounterScanFn30")
       // No need to delay to process result, all done in the InjectCommand at call time.
       REQUIRE(Response == DesiredResult2);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - AnalogDeltaScanFn6")
 {
@@ -913,7 +922,7 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
       // Now no changes so should get analog no change response.
       REQUIRE(Response == DesiredResult3);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - DigitalUnconditionalFn7")
 {
@@ -962,7 +971,7 @@ TEST_CASE("Station - DigitalUnconditionalFn7")
       // No need to delay to process result, all done in the InjectCommand at call time.
       REQUIRE(Response == DesiredResult);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - DigitalChangeOnlyFn8")
 {
@@ -1025,7 +1034,7 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 
       REQUIRE(Response == DesiredResult3);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - DigitalHRERFn9")
 {
@@ -1164,7 +1173,7 @@ TEST_CASE("Station - DigitalHRERFn9")
       const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e58505100"); // Should get a command rejected response
       REQUIRE(Response == DesiredResult3);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - DigitalCOSScanFn10")
 {
@@ -1227,7 +1236,7 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 
       REQUIRE(Response == DesiredResult3);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - DigitalCOSFn11")
 {
@@ -1380,7 +1389,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
       REQUIRE(Response == DesiredResult5);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - DigitalUnconditionalFn12")
 {
@@ -1444,7 +1453,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 
       REQUIRE(Response == DesiredResult2);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - FreezeResetFn16")
 {
@@ -1480,7 +1489,7 @@ TEST_CASE("Station - FreezeResetFn16")
 
       REQUIRE(Response =="Not Set"); // As address zero, no response expected
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - POMControlFn17")
 {
@@ -1547,7 +1556,7 @@ TEST_CASE("Station - POMControlFn17")
 
       REQUIRE(Response == DesiredResult3); // Control/Scan Rejected Command
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - DOMControlFn19")
 {
@@ -1618,7 +1627,7 @@ TEST_CASE("Station - DOMControlFn19")
 
       REQUIRE(Response == DesiredResult3); // Control/Scan Rejected Command
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - AOMControlFn23")
 {
@@ -1674,7 +1683,7 @@ TEST_CASE("Station - AOMControlFn23")
 
       REQUIRE(Response == DesiredResult3); // Control/Scan Rejected Command
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - SystemsSignOnFn40")
 {
@@ -1701,7 +1710,7 @@ TEST_CASE("Station - SystemsSignOnFn40")
 
       REQUIRE(Response == DesiredResult);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - ChangeTimeDateFn43")
 {
@@ -1746,7 +1755,7 @@ TEST_CASE("Station - ChangeTimeDateFn43")
       REQUIRE(Response[0] == ToChar(0xFC));
       REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - ChangeTimeDateFn44")
 {
@@ -1795,7 +1804,7 @@ TEST_CASE("Station - ChangeTimeDateFn44")
       REQUIRE(Response[0] == ToChar(0xFC));
       REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - Multi-drop TCP Test")
 {
@@ -1877,7 +1886,7 @@ TEST_CASE("Station - Multi-drop TCP Test")
 
       REQUIRE(Response.IsEmpty());
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Station - System Flag Scan Test")
 {
@@ -1967,7 +1976,7 @@ TEST_CASE("Station - System Flag Scan Test")
       REQUIRE(resp3.GetSystemPoweredUpFlag() == false);
       REQUIRE(resp3.GetSystemTimeIncorrectFlag() == false);
 
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 */
 #pragma endregion
@@ -2082,7 +2091,7 @@ TEST_CASE("Master - Scan Request F0")
 	work.reset(); // Indicate all work is finished.
 
 	STOP_IOS();
-	TestTearDown();
+	STANDARD_TEST_TEARDOWN();
 }
 /*
 TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
@@ -2117,7 +2126,7 @@ TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
       // connected know that data is now not valid. As the CB slave maintains its own copy of data, to respond to polls, this is important.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - DOM and POM Tests")
 {
@@ -2319,7 +2328,7 @@ TEST_CASE("Master - DOM and POM Tests")
       work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - DOM and POM Pass Through Tests")
 {
@@ -2440,7 +2449,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
       work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 {
@@ -2556,7 +2565,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
       work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 {
@@ -2673,7 +2682,7 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
       work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - Digital Fn11 Command Test")
 {
@@ -2763,7 +2772,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
       work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 {
@@ -2865,7 +2874,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
       work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - System Flag Scan Poll Test")
 {
@@ -2946,7 +2955,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
       work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 {
@@ -3024,7 +3033,7 @@ TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
       CBOSPort2->Disable();
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 */
 #pragma endregion
@@ -3133,7 +3142,7 @@ TEST_CASE("RTU - Binary Scan TO CB311 ON 172.21.136.80:5001 CB 0x20")
       work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 
 TEST_CASE("RTU - GetScanned CB311 ON 172.21.8.111:5001 CB 0x20")
@@ -3181,7 +3190,7 @@ TEST_CASE("RTU - GetScanned CB311 ON 172.21.8.111:5001 CB 0x20")
       work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
-      TestTearDown();
+      STANDARD_TEST_TEARDOWN();
 }
 */
 }
