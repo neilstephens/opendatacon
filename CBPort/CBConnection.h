@@ -61,52 +61,52 @@ public:
 		uint16_t retry_time_ms = 0);
 
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
-	void AddOutstation(uint8_t StationAddress, // For message routing, OutStation identification
+	static void AddOutstation(std::string ChannelID,
+		uint8_t StationAddress, // For message routing, OutStation identification
 		const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
 		const std::function<void(bool)> aStateCallback,
 		bool isbakerdevice); // Check that we dont have different devices on the one connection!
 
-	void RemoveOutstation(uint8_t StationAddress);
+	static void RemoveOutstation(std::string ChannelID, uint8_t StationAddress);
 
-	void AddMaster(uint8_t TargetStationAddress,
+	static void AddMaster(std::string ChannelID,
+		uint8_t TargetStationAddress,
 		const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
 		const std::function<void(bool)> aStateCallback,
 		bool isbakerdevice); // Check that we dont have different devices on the one connection!
 
-	void RemoveMaster(uint8_t TargetStationAddress);
+	static void RemoveMaster(std::string ChannelID,uint8_t TargetStationAddress);
 
-	// Two static methods to manage the map of connections. Can only have one for an address/port combination.
-	static std::shared_ptr<CBConnection> GetConnection(std::string ChannelID);
+	static void AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
+		bool aisServer,                              //Whether to act as a server or client
+		const std::string& aEndPoint,                //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                    //Port to connect to if client, or listen on if server
+		bool isbakerdevice,
+		uint16_t retry_time_ms = 0);
 
-	static void AddConnection(std::string ChannelID, std::shared_ptr<CBConnection> pConnection);
+	static void Open(std::string ChannelID);
 
-	void Open();
+	static void Close(std::string ChannelID);
 
-	void Close();
+	static std::string MakeChannelID(std::string aEndPoint, std::string aPort, bool aisServer)
+	{
+		return aEndPoint + ":" + aPort + ":" + std::to_string(aisServer);
+	}
 
 	~CBConnection();
 
 	// Will do Baker/Conitel swap if needed
-	void Write(const CBMessage_t &CompleteCBMessage);
+	static void Write(std::string ChannelID, const CBMessage_t &CompleteCBMessage);
 
-	// We need one read completion handler hooked to each address/port combination. This method is re-entrant,
-	// We do some basic CB block identification and processing, enough to give us complete blocks and StationAddresses
-	void ReadCompletionHandler(buf_t& readbuf);
+	static void InjectSimulatedTCPMessage(std::string ChannelID, buf_t&readbuf);
 
-	void RouteCBMessage(CBMessage_t &CompleteCBMessage);
-
-	void SocketStateHandler(bool state);
-
-	void SetSendTCPDataFn(std::function<void(std::string)> f)
-	{
-		SendTCPDataFn = f;
-	}
+	static void SetSendTCPDataFn(std::string ChannelID, std::function<void(std::string)> f);
 
 private:
 	asio::io_service* pIOS;
 	std::string EndPoint;
 	std::string Port;
-	std::string ChannelID;
+	std::string InternalChannelID;
 
 	bool IsServer;
 	bool IsBakerDevice; // Swap Station and Group if it is a Baker device. Set in constructor
@@ -124,9 +124,20 @@ private:
 
 	// A list of CBConnections, so that we can find if one for out port/address combination already exists.
 	static std::unordered_map<std::string, std::shared_ptr<CBConnection>> ConnectionMap;
+	static std::mutex MapMutex; // Control access
 
-	// We don't need to know who is doing the writing. Just pass to the socket
+	void Open();
+	void Close();
 	void Write(std::string &msg);
+	void RouteCBMessage(CBMessage_t &CompleteCBMessage);
+	void SocketStateHandler(bool state);
+	// Two static methods to manage the map of connections. Can only have one for an address/port combination.
+	static bool GetConnection(std::string ChannelID, std::shared_ptr<CBConnection> &pConnection);
+
+	// We need one read completion handler hooked to each address/port combination. This method is re-entrant,
+	// We do some basic CB block identification and processing, enough to give us complete blocks and StationAddresses
+	void ReadCompletionHandler(buf_t& readbuf);
+
 };
 #endif
 

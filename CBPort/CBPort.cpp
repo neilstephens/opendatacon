@@ -30,8 +30,7 @@
 #include "CBPortConf.h"
 
 CBPort::CBPort(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
-	DataPort(aName, aConfFilename, aConfOverrides),
-	pConnection(nullptr)
+	DataPort(aName, aConfFilename, aConfOverrides)
 {
 	//TODO: Do we have to create our own logger instance? Or just assume will be run on linux...
 	// logger = spdlog::get("CBPort"); // Only gets the opendatacon logger in Linux at the moment!
@@ -107,14 +106,14 @@ uint8_t CBPort::Limit(uint8_t val, uint8_t max)
 
 void CBPort::SetSendTCPDataFn(std::function<void(std::string)> Send)
 {
-	pConnection->SetSendTCPDataFn(Send);
+	CBConnection::SetSendTCPDataFn(MyConf->mAddrConf.ChannelID(),Send);
 }
 
 // Test only method for simulating input from the TCP Connection.
 void CBPort::InjectSimulatedTCPMessage(buf_t&readbuf)
 {
 	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
-	pConnection->ReadCompletionHandler(readbuf);
+	CBConnection::InjectSimulatedTCPMessage(MyConf->mAddrConf.ChannelID(),readbuf);
 }
 
 // The only method that sends to the TCP Socket
@@ -125,5 +124,5 @@ void CBPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 		LOGERROR("Tried to send an empty message to the TCP Port");
 		return;
 	}
-	pConnection->Write(CompleteCBMessage);
+	CBConnection::Write(MyConf->mAddrConf.ChannelID(),CompleteCBMessage);
 }

@@ -38,6 +38,7 @@
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/basic_file_sink.h>
 
 #include "CBOutstationPort.h"
 #include "CBMasterPort.h"
@@ -204,31 +205,32 @@ void WriteConfFilesToCurrentWorkingDirectory()
 void SetupLoggers()
 {
 	// So create the log sink first - can be more than one and add to a vector.
-	#ifdef WIN32
-// Add a sink to the TestLogger?
-	#endif
-	auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	console->set_level(spdlog::level::debug);
-	LogSinks.push_back(console);
+	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	console_sink->set_level(spdlog::level::debug);
+	LogSinks.push_back(console_sink);
+
+	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("testslog.txt", true);
+	file_sink->set_level(spdlog::level::debug);
+	LogSinks.push_back(file_sink);
 
 	// Then create the logger (async - as used in ODC) then connect to all sinks.
 	auto pLibLogger = std::make_shared<spdlog::async_logger>("CBPort", begin(LogSinks), end(LogSinks),
 		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
 
-	pLibLogger->set_level(spdlog::level::trace);
+	pLibLogger->set_level(spdlog::level::debug);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
 		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
 
-	pODCLogger->set_level(spdlog::level::trace);
+	pODCLogger->set_level(spdlog::level::debug);
 	odc::spdlog_register_logger(pODCLogger);
 
 	std::string msg = "Logging for this test started..";
 
-	if (auto md3logger = odc::spdlog_get("CBPort"))
-		md3logger->info(msg);
+	if (auto cblogger = odc::spdlog_get("CBPort"))
+		cblogger->info(msg);
 	else
 		std::cout << "Error CBPort Logger not operational";
 
@@ -248,7 +250,19 @@ void TestSetup(bool writeconffiles = true)
 }
 void TestTearDown(void)
 {
-	spdlog::drop_all(); // Close off everything
+	#ifndef NONVSTESTING
+	for (auto l : LogSinks)
+		l->flush();
+
+	if (auto cblogger = odc::spdlog_get("CBPort"))
+		cblogger->flush();
+	if (auto odclogger = odc::spdlog_get("opendatacon"))
+		odclogger->flush();
+
+	LogSinks.clear();
+
+	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
+	#endif
 }
 
 // A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
@@ -292,6 +306,7 @@ void StopIOSThread(asio::io_service &IOS, std::thread *runthread)
 {
 	IOS.stop();        // This does not block. The next line will! If we have multiple threads, have to join all of them.
 	runthread->join(); // Wait for it to exit
+	delete runthread;
 }
 void Wait(asio::io_service &IOS, int seconds)
 {
@@ -319,17 +334,17 @@ void Wait(asio::io_service &IOS, int seconds)
 	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
 
 #define TEST_CBMAPort(overridejson)\
-	auto CBMAPort = new  CBMasterPort("TestMaster", conffilename1, overridejson); \
+	auto CBMAPort = std::make_unique<CBMasterPort>("TestMaster", conffilename1, overridejson); \
 	CBMAPort->SetIOS(&IOS);      \
 	CBMAPort->Build();
 
 #define TEST_CBOSPort(overridejson)      \
-	auto CBOSPort = new  CBOutstationPort("TestOutStation", conffilename1, overridejson);   \
+	auto CBOSPort = std::make_unique<CBOutstationPort>("TestOutStation", conffilename1, overridejson);   \
 	CBOSPort->SetIOS(&IOS);      \
 	CBOSPort->Build();
 
 #define TEST_CBOSPort2(overridejson)     \
-	auto CBOSPort2 = new  CBOutstationPort("TestOutStation2", conffilename2, overridejson); \
+	auto CBOSPort2 = std::make_unique<CBOutstationPort>("TestOutStation2", conffilename2, overridejson); \
 	CBOSPort2->SetIOS(&IOS);     \
 	CBOSPort2->Build();
 
@@ -1978,7 +1993,7 @@ TEST_CASE("Master - Scan Request F0")
 
 	START_IOS(1);
 
-	CBMAPort->Subscribe(CBOSPort, "TestLink"); // The subscriber is just another port. CBOSPort is registering to get CBPort messages.
+	CBMAPort->Subscribe(CBOSPort.get(), "TestLink"); // The subscriber is just another port. CBOSPort is registering to get CBPort messages.
 	// Usually is a cross subscription, where each subscribes to the other.
 	CBOSPort->Enable();
 	CBMAPort->Enable();
@@ -1987,84 +2002,81 @@ TEST_CASE("Master - Scan Request F0")
 	std::string Response = "Not Set";
 	CBMAPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
 
-	INFO("Analog Unconditional Fn5");
+	// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
+	// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
+	CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);
+	CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
+
+	Wait(IOS, 1);
+
+	// We check the command, but it does not go anywhere, we inject the expected response below.
+	const std::string DesiredResponse = BuildHexStringFromASCIIHexString("09300025");
+	REQUIRE(Response == DesiredResponse);
+
+	// We now inject the expected response to the command above.
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+
+	// From the outstation test above!!
+	std::string Payload = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
+		                                                 "fc080016" // Data 2A and 2B
+		                                                 "400a00b6"
+		                                                 "402a0186"
+		                                                 "404a029c"
+		                                                 "4068003c"
+		                                                 "55580013");
+	output << Payload;
+
+	// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
+	CBMAPort->InjectSimulatedTCPMessage(write_buffer);
+
+	Wait(IOS, 5);
+
+	// To check the result, see if the points in the master point list have been changed to the correct values.
+	bool hasbeenset;
+
+	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
 	{
-		// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
-		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
-		CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);
-		CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
+		uint16_t res;
+		CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
+		REQUIRE(res == (1024 + ODCIndex));
+	}
+	for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
+	{
+		uint16_t res;
+		CBMAPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
+		REQUIRE(res == (1024 + ODCIndex));
+	}
+	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+	{
+		uint8_t res;
+		bool changed;
+		CBMAPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res, changed, hasbeenset);
+		REQUIRE(res == ((ODCIndex + 1) % 2));
+	}
 
-		Wait(IOS, 1);
+	// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
+	// Need to give ASIO time to process them?
+	Wait(IOS, 1);
 
-		// We check the command, but it does not go anywhere, we inject the expected response below.
-		const std::string DesiredResponse = BuildHexStringFromASCIIHexString("09300025");
-		REQUIRE(Response == DesiredResponse);
-
-		// We now inject the expected response to the command above.
-		asio::streambuf write_buffer;
-		std::ostream output(&write_buffer);
-
-		// From the outstation test above!!
-		std::string Payload = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-			                                                 "fc080016" // Data 2A and 2B
-			                                                 "400a00b6"
-			                                                 "402a0186"
-			                                                 "404a029c"
-			                                                 "4068003c"
-			                                                 "55580013");
-		output << Payload;
-
-		// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
-		CBMAPort->InjectSimulatedTCPMessage(write_buffer);
-
-		Wait(IOS, 5);
-
-		// To check the result, see if the points in the master point list have been changed to the correct values.
-		bool hasbeenset;
-
-		for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
-		{
-			uint16_t res;
-			CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
-			REQUIRE(res == (1024 + ODCIndex));
-		}
-		for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
-		{
-			uint16_t res;
-			CBMAPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
-			REQUIRE(res == (1024 + ODCIndex));
-		}
-		for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
-		{
-			uint8_t res;
-			bool changed;
-			CBMAPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res, changed, hasbeenset);
-			REQUIRE(res == ((ODCIndex+1) % 2));
-		}
-
-		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
-		// Need to give ASIO time to process them?
-		Wait(IOS, 1);
-
-		for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
-		{
-			uint16_t res;
-			CBOSPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
-			REQUIRE(res == (1024 + ODCIndex));
-		}
-		for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
-		{
-			uint16_t res;
-			CBOSPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
-			REQUIRE(res == (1024 + ODCIndex));
-		}
-		for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
-		{
-			uint8_t res;
-			bool changed;
-			CBOSPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res, changed, hasbeenset);
-			REQUIRE(res == ((ODCIndex+1) % 2));
-		}
+	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
+	{
+		uint16_t res;
+		CBOSPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
+		REQUIRE(res == (1024 + ODCIndex));
+	}
+	for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
+	{
+		uint16_t res;
+		CBOSPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
+		REQUIRE(res == (1024 + ODCIndex));
+	}
+	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+	{
+		uint8_t res;
+		bool changed;
+		CBOSPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res, changed, hasbeenset);
+		REQUIRE(res == ((ODCIndex + 1) % 2));
 	}
 
 	work.reset(); // Indicate all work is finished.
