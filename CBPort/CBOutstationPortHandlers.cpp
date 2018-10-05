@@ -65,13 +65,19 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			ScanRequest(Header); // Fn - 0
 			break;
 		case FUNC_EXECUTE_COMMAND:
+			// The other functions below will setup what needs to be executed, has to be executed within a certain time...
+
 			break;
 		case FUNC_TRIP:
+			// Binary Control
+
 			break;
 		case FUNC_SETPOINT_A:
 			NotImplemented = true;
 			break;
 		case FUNC_CLOSE:
+			// Binary Control
+
 			break;
 		case FUNC_SETPOINT_B:
 			NotImplemented = true;
@@ -80,20 +86,26 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			NotImplemented = true;
 			break;
 		case FUNC_MASTER_STATION_REQUEST:
+			// What is this? Python Sim does not implement
+
 			break;
 		case FUNC_SEND_NEW_SOE:
 			NotImplemented = true;
 			break;
 		case FUNC_REPEAT_SOE:
+			// Resend the last message - surely we need this?
+
 			NotImplemented = true;
 			break;
 		case FUNC_UNIT_RAISE_LOWER:
 			NotImplemented = true;
 			break;
 		case FUNC_FREEZE_AND_SCAN_ACC:
+			// Warm Restart (from python sim)??
 			NotImplemented = true;
 			break;
 		case FUNC_FREEZE_SCAN_AND_RESET_ACC:
+			// Cold restart (from python sim)??
 			NotImplemented = true;
 			break;
 
@@ -164,8 +176,6 @@ void CBOutstationPort::BuildScanRequestResponseData(uint8_t Group, std::vector<u
 	// Search for the group and payload location, and if we have data process it. We have to search 3 lists and the RST table to get what we need
 	// This will always return a complete set of blocks, i.e. there will always be a last B value.
 
-	//TODO: Need to store the Status Byte details in the config processing so we can see if it needs to be sent...
-
 	uint8_t MaxBlockNum = 1; // If the following fails, we just respond with an empty single block.
 
 	MyPointConf->PointTable.GetMaxPayload(Group, MaxBlockNum);
@@ -191,8 +201,15 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 
 	MyPointConf->PointTable.ForEachMatchingAnalogPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
 		{
-			// We have a matching point - there will be only 1!!, set a flag to indicate we have a match, and set our bit in the output.
-			Payload = pt.GetAnalog();
+			// We have a matching point - there may be 2, set a flag to indicate we have a match, and set our bits in the output.
+			uint8_t ch = pt.GetChannel();
+			if ((pt.GetPointType() == ANA6) && (ch == 1))
+			{
+			      Payload |= ShiftLeftResult16Bits(pt.GetAnalog(), 6);
+			}
+			else
+				Payload |= pt.GetAnalog();
+
 			FoundMatch = true;
 		});
 
@@ -211,9 +228,31 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 			{
 				// We have a matching point, set a flag to indicate we have a match, and set our bit in the output.
 				uint8_t ch = pt.GetChannel();
-				if (pt.GetBinary() == 1)
+				if (pt.GetPointType() == DIG)
 				{
-				      Payload |= ShiftLeftResult16Bits(1, 12 - ch); // Just have to OR, we know it was zero initially.
+				      if (pt.GetBinary() == 1)
+				      {
+				                                                          // ch 1 to 12
+				            Payload |= ShiftLeftResult16Bits(1, 12 - ch); // Just have to OR, we know it was zero initially.
+					}
+				}
+				else if ((pt.GetPointType() == MCA) || (pt.GetPointType() == MCC))
+				{
+				// Set our bit and changed flag in the output. Data bit is first then change bit So bit 11 = data, bit 10 = change in 12 bit word - 11 highest bit.
+				      if (pt.GetBinary() == 1)
+				      {
+				// ch 1 to 6
+				            Payload |= ShiftLeftResult16Bits(1, 6 - ch*2);
+					}
+				      if (pt.GetAndResetChangedFlag() == 1)
+				      {
+				// ch 1 to 6
+				            Payload |= ShiftLeftResult16Bits(1, 6 - (ch * 2 - 1));
+					}
+				}
+				else if (pt.GetPointType() == MCB)
+				{
+				      LOGERROR("MCB Binary Point not handled - no valid value returned");
 				}
 				FoundMatch = true;
 			});

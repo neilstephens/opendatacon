@@ -465,13 +465,22 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	uint16_t Payload = 0;
 	CBTime now = CBNow();
 
+	LOGDEBUG("MA - Group - "+ std::to_string(group) + "Processing Payload - " + payloadlocation.to_string() + " Value 0x" + to_hexstring(data));
+
 	MyPointConf->PointTable.ForEachMatchingAnalogPoint(group, payloadlocation, [&](CBAnalogCounterPoint &pt)
 		{
-			// We have a matching point - there will be only 1!!, set a flag to indicate we have a match.
+			// We have a matching point - there will be 1 or 2, set a flag to indicate we have a match.
 
-			pt.SetAnalog(data, now);
+			uint16_t analogvalue = data;
+			if (pt.GetPointType() == ANA6)
+			{
+			      if (pt.GetChannel() == 1)
+					analogvalue = data >> 6; // Top 6 bits only.
+			      else
+					analogvalue &= 0x3F; // Bottom 6 bits only.
+			}
 
-			LOGDEBUG("MA - Set Analog - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string() + " Value 0x" + to_hexstring(data));
+			pt.SetAnalog(analogvalue, now);
 
 			uint32_t ODCIndex = pt.GetIndex();
 			QualityFlags qual = QualityFlags::ONLINE; // CalculateAnalogQuality(enabled, data, now); //TODO: Handle quality better?
@@ -491,8 +500,6 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 			{
 				// We have a matching point - there will be only 1!!, set a flag to indicate we have a match.
 				pt.SetAnalog(data, now);
-
-				LOGDEBUG("MA - Set Counter - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string() + " Value 0x" + to_hexstring(data));
 
 				uint32_t ODCIndex = pt.GetIndex();
 				QualityFlags qual = QualityFlags::ONLINE; // CalculateAnalogQuality(enabled, data, now); //TODO: Handle quality better?

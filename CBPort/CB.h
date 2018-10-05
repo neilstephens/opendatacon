@@ -35,18 +35,37 @@
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 
+// Conitel Mosaic Data Types
+//	DIG - Used
+//	MCDC - Used - Same as SMCDC
+//	SMCDC - Used - input binary - data and change bit - 6 channels per location. Same as MCC.
+//	SOEDIG
+//	AHA - Used
+//	SMCDA - Used - input, binary - data and change bit - 6 channels per location. Same as MCA.
+//	ACC
+//	SPA
+//	RST - Used
+//	CONTROL - Used
+//	ACC24
+//	MCDA - Used - Same as SMCDA
+//	ANA6 - Used - Half of an analog 12 bit value... //TODO: Need to combine these and split out again.
+
 
 //extern std::shared_ptr<spdlog::logger> logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(msg) \
-	if (auto log = odc::spdlog_get("CBPort")) log->debug(msg);
+	if (auto log = odc::spdlog_get("CBPort")) \
+		log->debug(msg);
 #define LOGERROR(msg) \
-	if (auto log = odc::spdlog_get("CBPort")) log->error(msg);
+	if (auto log = odc::spdlog_get("CBPort")) \
+		log->error(msg);
 #define LOGWARN(msg) \
-	if (auto log = odc::spdlog_get("CBPort")) log->warn(msg);
+	if (auto log = odc::spdlog_get("CBPort"))  \
+		log->warn(msg);
 #define LOGINFO(msg) \
-	if (auto log = odc::spdlog_get("CBPort")) log->info(msg);
+	if (auto log = odc::spdlog_get("CBPort")) \
+		log->info(msg);
 
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
@@ -66,8 +85,8 @@ OT numeric_cast(const ST value)
 }
 
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
-enum BinaryPointType { DIG, MCA, MCB, MCC };
-enum AnalogCounterPointType { ANA, ACC12, ACC24 };
+enum BinaryPointType { DIG, MCA, MCB, MCC, CONTROL }; // Inputs and outputs
+enum AnalogCounterPointType { ANA, ANA6, ACC12, ACC24 };
 enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
 
 #define MISSINGVALUE 0 // If we have a missing point or have no data, substitute this. MD3 it was 0x8000
@@ -82,7 +101,7 @@ public:
 	PayloadLocationType(uint8_t packet, PayloadABType position): Packet(packet), Position(position) {}
 
 	//TODO: Use Getter and Setters so we can range check.
-	uint8_t Packet; // Should be 1 to 16. 0 is an error.
+	uint8_t Packet; // Should be 1 to 16. 0 is an error - or unitialised.
 	PayloadABType Position;
 	std::string to_string() const
 	{
@@ -213,12 +232,16 @@ class CBAnalogCounterPoint: public CBPoint
 public:
 	CBAnalogCounterPoint() {}
 
-	CBAnalogCounterPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation): CBPoint(index, group, channel, static_cast<CBTime>(0), payloadlocation)
+	CBAnalogCounterPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, AnalogCounterPointType pointtype): CBPoint(index, group, channel, static_cast<CBTime>(0), payloadlocation),
+		PointType(pointtype)
 	{}
 	~CBAnalogCounterPoint();
 
+	AnalogCounterPointType GetPointType() const { return PointType; }
+
 	uint16_t GetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); return Analog; }
-	uint16_t GetAnalogAndDelta(int &delta) { std::unique_lock<std::mutex> lck(PointMutex); delta = static_cast<int>(Analog) - static_cast<int>(LastReadAnalog); LastReadAnalog = Analog; return Analog; }
+	uint16_t GetAnalogAndHasBeenSet(bool &hasbeenset) { std::unique_lock<std::mutex> lck(PointMutex); hasbeenset = HasBeenSet; return Analog;}
+	uint16_t GetAnalogAndDeltaAndHasBeenSet(int &delta, bool &hasbeenset) { std::unique_lock<std::mutex> lck(PointMutex); delta = static_cast<int>(Analog) - static_cast<int>(LastReadAnalog); LastReadAnalog = Analog; hasbeenset = HasBeenSet; return Analog; }
 
 	void SetAnalog(const uint16_t & a, const CBTime &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; Analog = a; ChangedTime = ctime; }
 	void ResetAnalog() { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = false; Analog = MISSINGVALUE; ChangedTime = 0; }
@@ -227,6 +250,7 @@ public:
 protected:
 	uint16_t Analog = MISSINGVALUE;
 	uint16_t LastReadAnalog = MISSINGVALUE;
+	AnalogCounterPointType PointType = ANA;
 };
 
 typedef std::map<size_t, std::shared_ptr<CBBinaryPoint>>::iterator ODCBinaryPointMapIterType;

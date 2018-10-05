@@ -39,7 +39,7 @@ void CBPointTableAccess::Build(const bool isoutstation, asio::io_service& IOS)
 
 #pragma region Add Read Points
 
-bool CBPointTableAccess::AddCounterPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation)
+bool CBPointTableAccess::AddCounterPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype)
 {
 	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
 	if (CounterCBPointMap.find(CBIndex) != CounterCBPointMap.end())
@@ -58,14 +58,14 @@ bool CBPointTableAccess::AddCounterPointToPointTable(const size_t &index, const 
 	}
 	else
 	{
-		auto pt = std::make_shared<CBAnalogCounterPoint>(index, group, channel, payloadlocation);
+		auto pt = std::make_shared<CBAnalogCounterPoint>(index, group, channel, payloadlocation,pointtype);
 		CounterCBPointMap[CBIndex] = pt;
 		CounterODCPointMap[index] = pt;
 	}
 	return true;
 }
 
-bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation)
+bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype)
 {
 	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
 	if (AnalogCBPointMap.find(CBIndex) != AnalogCBPointMap.end())
@@ -83,14 +83,14 @@ bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const u
 	}
 	else
 	{
-		auto pt = std::make_shared<CBAnalogCounterPoint>(index, group, channel, payloadlocation);
+		auto pt = std::make_shared<CBAnalogCounterPoint>(index, group, channel, payloadlocation, pointtype);
 		AnalogCBPointMap[CBIndex] = pt;
 		AnalogODCPointMap[index] = pt;
 	}
 	return true;
 }
 
-bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const BinaryPointType &pointtype, const PayloadLocationType &payloadlocation)
+bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const BinaryPointType &pointtype)
 {
 	// So we need to access the Conitel data by Group/PayLoadLocation/Channel
 	// When we get a scan, we need to get everything for a given group, payload by payload 1B,2A,2B and then for binary all matching channels.
@@ -116,7 +116,7 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 	}
 	else
 	{
-		LOGDEBUG("Adding Binary Point at " + to_hexstring(CBIndex));
+		LOGDEBUG("Adding Binary Point at CBIndex - " + to_hexstring(CBIndex));
 		auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype);
 		BinaryCBPointMap[CBIndex] = pt;
 		BinaryODCPointMap[index] = pt;
@@ -155,7 +155,7 @@ void CBPointTableAccess::UpdateMaxPayload(const uint8_t & group, const PayloadLo
 
 #pragma region Add Control Points
 
-bool CBPointTableAccess::AddAnalogControlPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation)
+bool CBPointTableAccess::AddAnalogControlPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype)
 {
 	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
 	if (AnalogControlCBPointMap.find(CBIndex) != AnalogControlCBPointMap.end())
@@ -171,13 +171,13 @@ bool CBPointTableAccess::AddAnalogControlPointToPointTable(const size_t &index, 
 	}
 	else
 	{
-		auto pt = std::make_shared<CBAnalogCounterPoint>(index, group, channel, payloadlocation);
+		auto pt = std::make_shared<CBAnalogCounterPoint>(index, group, channel, payloadlocation, pointtype);
 		AnalogControlCBPointMap[CBIndex] = pt;
 		AnalogControlODCPointMap[index] = pt;
 	}
 	return true;
 }
-bool CBPointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const BinaryPointType &pointtype, const PayloadLocationType &payloadlocation)
+bool CBPointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const BinaryPointType &pointtype)
 {
 	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
 
@@ -208,8 +208,7 @@ bool CBPointTableAccess::GetCounterValueUsingCBIndex(const uint16_t group, const
 	CBAnalogCounterPointMapIterType CBPointMapIter = CounterCBPointMap.find(CBIndex);
 	if (CBPointMapIter != CounterCBPointMap.end())
 	{
-		res = CBPointMapIter->second->GetAnalog();
-		hasbeenset = CBPointMapIter->second->GetHasBeenSet();
+		res = CBPointMapIter->second->GetAnalogAndHasBeenSet(hasbeenset);
 		return true;
 	}
 	return false;
@@ -222,8 +221,7 @@ bool CBPointTableAccess::GetCounterValueAndChangeUsingCBIndex(const uint16_t mod
 	CBAnalogCounterPointMapIterType CBPointMapIter = CounterCBPointMap.find(CBIndex);
 	if (CBPointMapIter != CounterCBPointMap.end())
 	{
-		res = CBPointMapIter->second->GetAnalogAndDelta(delta);
-		hasbeenset = CBPointMapIter->second->GetHasBeenSet();
+		res = CBPointMapIter->second->GetAnalogAndDeltaAndHasBeenSet(delta,hasbeenset);
 		return true;
 	}
 	return false;
@@ -304,8 +302,7 @@ bool CBPointTableAccess::GetAnalogValueAndChangeUsingCBIndex(const uint16_t modu
 	CBAnalogCounterPointMapIterType CBPointMapIter = AnalogCBPointMap.find(CBIndex);
 	if (CBPointMapIter != AnalogCBPointMap.end())
 	{
-		res = CBPointMapIter->second->GetAnalogAndDelta(delta);
-		hasbeenset = CBPointMapIter->second->GetHasBeenSet();
+		res = CBPointMapIter->second->GetAnalogAndDeltaAndHasBeenSet(delta, hasbeenset);
 		return true;
 	}
 	return false;
@@ -339,8 +336,7 @@ bool CBPointTableAccess::GetAnalogValueUsingODCIndex(const size_t index, uint16_
 	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
-		res = ODCPointMapIter->second->GetAnalog();
-		hasbeenset = ODCPointMapIter->second->GetHasBeenSet();
+		res = ODCPointMapIter->second->GetAnalogAndHasBeenSet( hasbeenset);
 		return true;
 	}
 	return false;
@@ -616,7 +612,7 @@ uint16_t CBPointTableAccess::GetCBPointMapIndex(const uint8_t & group, const uin
 void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBBinaryPoint &pt)> fn)
 {
 	// Need to do a search for channels 1 to 12 in the group and payloadlocation
-	for (uint8_t channel = 1; channel < 13; channel++)
+	for (uint8_t channel = 1; channel <= 12; channel++)
 	{
 		uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
 		if (BinaryCBPointMap.count(CBIndex) != 0)
@@ -628,11 +624,15 @@ void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const
 }
 void CBPointTableAccess::ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint &pt)> fn)
 {
-	uint16_t CBIndex = GetCBPointMapIndex(group, 1, payloadlocation);
-	if (AnalogCBPointMap.count(CBIndex) != 0)
+	// Max of two channels for analogs
+	for (uint8_t channel = 1; channel <= 2; channel++)
 	{
-		// We have a match - call our function with the point as a parameter.
-		fn(*AnalogCBPointMap[CBIndex]);
+		uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
+		if (AnalogCBPointMap.count(CBIndex) != 0)
+		{
+			// We have a match - call our function with the point as a parameter.
+			fn(*AnalogCBPointMap[CBIndex]);
+		}
 	}
 }
 void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint &pt)> fn)

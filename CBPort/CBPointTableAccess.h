@@ -49,11 +49,11 @@ public:
 
 	// The add to point table functions add to both the ODC and MD3 Map.
 	// The Conitel Baker methods require that a
-	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const BinaryPointType & pointtype, const PayloadLocationType &payloadlocation);
-	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const BinaryPointType & pointtype, const PayloadLocationType &payloadlocation);
-	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
-	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
-	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
+	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel,  const PayloadLocationType &payloadlocation, const BinaryPointType & pointtype);
+	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const BinaryPointType & pointtype );
+	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
+	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
+	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
 
 	bool AddStatusByteToCBMap(const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
 	void UpdateMaxPayload(const uint8_t & group, const PayloadLocationType & payloadlocation);

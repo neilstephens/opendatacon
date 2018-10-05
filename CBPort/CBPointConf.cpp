@@ -219,8 +219,13 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
 		bool error = false;
+		uint32_t start, stop; // Will set index from these later
+		uint32_t group = 0;
+		uint32_t channel = 0;
+		BinaryPointType pointtype = DIG;
+		std::string pointtypestring = "";
+		PayloadLocationType payloadlocation;
 
-		uint32_t start, stop;
 		if (JSONNode[n].isMember("Index"))
 		{
 			start = stop = JSONNode[n]["Index"].asUInt();
@@ -232,41 +237,46 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		}
 		else
 		{
-			LOGERROR(BinaryName+" A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : "+ JSONNode[n].toStyledString());
+			LOGERROR(BinaryName + " A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : " + JSONNode[n].toStyledString());
 			start = 1;
 			stop = 0;
 			error = true;
 		}
 
-		uint32_t group = 0;
-		uint32_t channel = 0;
-		BinaryPointType pointtype = DIG;
-		std::string pointtypestring = "";
-		PayloadLocationType payloadlocation;
-
-		if (JSONNode[n].isMember("PayloadLocation"))
+		if (ptype == Binary) // Control points do not have a payload location.
 		{
-			error = !ParsePayloadString(JSONNode[n]["PayloadLocation"].asString(), payloadlocation);
+			if (JSONNode[n].isMember("PayloadLocation"))
+			{
+				error = !ParsePayloadString(JSONNode[n]["PayloadLocation"].asString(), payloadlocation);
+			}
+			else
+			{
+				LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
+				error = true;
+			}
 		}
 		else
 		{
-			LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
-			error = true;
+			//TODO: Check Command payload location
+			// For a control point, the payload location is always 1B - the command comes as one block only
+			ParsePayloadString("1B", payloadlocation);
 		}
 
 		if (JSONNode[n].isMember("Group"))
 			group = JSONNode[n]["Group"].asUInt();
 		else
 		{
-			LOGERROR(BinaryName + " A point needs a \"Group\" : "+JSONNode[n].toStyledString());
+			LOGERROR(BinaryName + " A point needs a \"Group\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
 		if (JSONNode[n].isMember("Channel"))
+		{
 			channel = JSONNode[n]["Channel"].asUInt();
+		}
 		else
 		{
-			LOGERROR(BinaryName + " A point needs a \"Channel\" : "+ JSONNode[n].toStyledString());
+			LOGERROR(BinaryName + " A point needs a \"Channel\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -281,6 +291,8 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 				pointtype = MCB;
 			else if (pointtypestring == "MCC")
 				pointtype = MCC;
+			else if (pointtypestring == "CONTROL")
+				pointtype = CONTROL;
 			else
 			{
 				LOGERROR(BinaryName + " A point needs a valid \"Type\" : " + JSONNode[n].toStyledString());
@@ -303,11 +315,41 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 
 				if (ptype == Binary)
 				{
-					res = PointTable.AddBinaryPointToPointTable(index, group, currentchannel, pointtype, payloadlocation);
+					// Do some sanity checks
+					if ((pointtype == DIG) && ((currentchannel < 1) || (currentchannel > 12)))
+					{
+						LOGERROR("A binary point channel for point type DIG must be between 1 and 12 " + std::to_string(currentchannel));
+					}
+					else if (((pointtype == MCA) || (pointtype == MCB) || (pointtype == MCC)) && ((currentchannel < 1) || (currentchannel > 6)))
+					{
+						LOGERROR("A binary point channel for point type MCA/MCB/MCC must be between 1 and 6 " + std::to_string(currentchannel));
+					}
+					else if (pointtype == CONTROL)
+					{
+						LOGERROR("A binary input cannot have type CONTROL " + std::to_string(currentchannel));
+					}
+					else
+					{
+						// Only add the point if it passes
+						res = PointTable.AddBinaryPointToPointTable(index, group, currentchannel, payloadlocation, pointtype);
+					}
 				}
 				else if (ptype == BinaryControl)
 				{
-					res = PointTable.AddBinaryControlPointToPointTable(index, group, currentchannel, pointtype, payloadlocation);
+					if (pointtype != CONTROL)
+					{
+						LOGERROR("A binary control can only have type CONTROL " + std::to_string(currentchannel));
+					}
+					//TODO: Trip and Close separate points or same point with different command - 12 or 24 channels?
+					else if ((currentchannel < 1) || (currentchannel > 12))
+					{
+						LOGERROR("A binary control channel must be between 1 and 12 " + std::to_string(currentchannel));
+					}
+					else
+					{
+						// Only add the point if it passes
+						res = PointTable.AddBinaryControlPointToPointTable(index, group, currentchannel, payloadlocation, pointtype);
+					}
 				}
 				else
 					LOGERROR("Illegal point type passed to ProcessBinaryPoints");
@@ -388,6 +430,11 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 	{
 		bool error = false;
 		size_t index = 0;
+		uint32_t group = 0;
+		uint32_t channel = 0;
+		PayloadLocationType payloadlocation;
+		std::string pointtypestring = "";
+		AnalogCounterPointType pointtype = ANA;
 
 		if (JSONNode[n].isMember("Index"))
 		{
@@ -395,15 +442,9 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 		}
 		else
 		{
-			LOGERROR("A point needs an \"Index\" : "+ JSONNode[n].toStyledString());
+			LOGERROR("A point needs an \"Index\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
-
-		uint32_t group = 0;
-		uint32_t channel = 0;
-		PayloadLocationType payloadlocation;
-		std::string pointtypestring = "";
-		AnalogCounterPointType pointtype = ANA;
 
 		if (JSONNode[n].isMember("PayloadLocation"))
 		{
@@ -436,6 +477,8 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 			pointtypestring = JSONNode[n]["Type"].asString();
 			if (pointtypestring == "ANA")
 				pointtype = ANA;
+			else if (pointtypestring == "ANA6")
+				pointtype = ANA6;
 			else if (pointtypestring == "ACC12")
 				pointtype = ACC12;
 			else if (pointtypestring == "ACC24")
@@ -457,15 +500,45 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 
 			if (ptype == Analog)
 			{
-				res = PointTable.AddAnalogPointToPointTable(index, group, channel, payloadlocation);
+				// Do some sanity checks
+				if ((pointtype == ANA) && (channel != 1))
+				{
+					LOGERROR("An Analog point channel for point type ANA must be 1 " + std::to_string(channel));
+				}
+				else if ((pointtype == ANA6) && ((channel < 1) || (channel > 2)))
+				{
+					LOGERROR("An analog point channel for point type ANA6 must be between 1 and 2 " + std::to_string(channel));
+				}
+				else if ((pointtype == ACC12) || (pointtype==ACC24))
+				{
+					LOGERROR("An Analog input cannot have type ACC12 or ACC24 " + std::to_string(channel));
+				}
+				else
+				{
+					// Only add the point if it passes
+					res = PointTable.AddAnalogPointToPointTable(index, group, channel, payloadlocation, pointtype);
+				}
 			}
 			else if (ptype == Counter)
 			{
-				res = PointTable.AddCounterPointToPointTable(index, group, channel, payloadlocation);
+				// Do some sanity checks
+				if (((pointtype == ACC12) || (pointtype == ACC24)) && (channel != 1))
+				{
+					LOGERROR("A Counter input only have a channel of 1 " + std::to_string(channel));
+				}
+				else if ((pointtype == ANA6) || (pointtype == ANA))
+				{
+					LOGERROR("A Counter point cannot have a type ANA6 or ANA " + std::to_string(channel));
+				}
+				else
+				{
+					// Only add the point if it passes
+					res = PointTable.AddCounterPointToPointTable(index, group, channel, payloadlocation, pointtype);
+				}
 			}
 			else if (ptype == AnalogControl)
 			{
-				res = PointTable.AddAnalogControlPointToPointTable(index, group, channel, payloadlocation);
+				res = PointTable.AddAnalogControlPointToPointTable(index, group, channel, payloadlocation, pointtype);
 			}
 			else
 				LOGERROR("Illegal point type passed to ProcessAnalogCounterPoints");
@@ -473,7 +546,7 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 			if (res)
 			{
 				// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
-				LOGDEBUG("Adding a "+Name+" - Index: " + std::to_string(channel) + " Group: " + std::to_string(group) + " Channel: " + std::to_string(channel) + " Point Type: " + pointtypestring + " Payload Location: " + payloadlocation.to_string());
+				LOGDEBUG("Adding a "+Name+" - Index: " + std::to_string(index) + " Group: " + std::to_string(group) + " Channel: " + std::to_string(channel) + " Point Type: " + pointtypestring + " Payload Location: " + payloadlocation.to_string());
 			}
 		}
 	}

@@ -120,29 +120,29 @@ const char *conffile1 = R"001(
 	// ACC24 - takes two payloads.
 
 	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG"},
-					{"Range" : {"Start" : 12, "Stop" : 17}, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"}],
+					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
+					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCC"}],
 
 	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
 					{"Index" : 1, "Group" : 3, "PayloadLocation": "3B","Channel" : 1, "Type":"ANA"},
 					{"Index" : 2, "Group" : 3, "PayloadLocation": "4A","Channel" : 1, "Type":"ANA"},
-					{"Index" : 3, "Group" : 3, "PayloadLocation": "4B","Channel" : 1, "Type":"ANA"}],
+					{"Index" : 3, "Group" : 3, "PayloadLocation": "4B","Channel" : 1, "Type":"ANA6"},
+					{"Index" : 4, "Group" : 3, "PayloadLocation": "4B","Channel" : 2, "Type":"ANA6"}],
 
-	"Counters" : [	{"Index" : 4, "Group" : 3, "PayloadLocation": "5A","Channel" : 1, "Type":"ACC12"},
-					{"Index" : 5, "Group" : 3, "PayloadLocation": "5B","Channel" : 1, "Type":"ACC12"},
-					{"Index" : 6, "Group" : 3, "PayloadLocation": "6A","Channel" : 1, "Type":"ACC24"}],
+	// None of the counter commands are used  - ACC(12) and ACC24 are not used.
+	"Counters" : [	{"Index" : 5, "Group" : 3, "PayloadLocation": "5A","Channel" : 1, "Type":"ACC12"},
+					{"Index" : 6, "Group" : 3, "PayloadLocation": "5B","Channel" : 1, "Type":"ACC12"},
+					{"Index" : 7, "Group" : 3, "PayloadLocation": "6A","Channel" : 1, "Type":"ACC24"}],
+
+	// CONTROL up to 12 bits per group address, Channel 1 to 12. Simulator used dual points one for trip one for close.
+	"BinaryControls" : [{"Index": 1,  "Group" : 4, "Channel" : 1, "Type" : "CONTROL"},
+                        {"Range" : {"Start" : 10, "Stop" : 21}, "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
 
 	// Special definition, so we know where to find the Remote Status Data in the scanned group.
 	"RemoteStatus" : [{"Group":3, "Channel" : 1, "PayloadLocation": "7A"}]
 
 })001";
-/*	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Channel" : 0, "PayloadLocation" : 2}],
-
-      "BinaryControls" : [{"Index": 80,  "Group" : 33, "Channel" : 0, "PointType" : "MCB"},
-                                    {"Range" : {"Start" : 100, "Stop" : 115}, "Group" : 37, "Channel" : 0, "PointType" : "MCB"},
-                                    {"Range" : {"Start" : 116, "Stop" : 123}, "Group" : 38, "Channel" : 0, "PointType" : "MCC"}],
-
-      "Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Channel" : 0},
-                              {"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Channel" : 0}],
+/*
 
       "AnalogControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Group" : 39, "Channel" : 0}]*/
 
@@ -212,14 +212,12 @@ void SetupLoggers()
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
 	auto pLibLogger = std::make_shared<spdlog::logger>("CBPort", begin(sinks),end(sinks));
-
-	//pLibLogger->set_level(spdlog::level::debug);
+	pLibLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
-
-	// pODCLogger->set_level(spdlog::level::debug);
+	pODCLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pODCLogger);
 
 }
@@ -646,7 +644,7 @@ TEST_CASE("Station - ScanRequest F0")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	std::string DesiredResult = BuildHexStringFromASCIIHexString("0937ffaa" // Echoed block plus data 1B
-		                                                       "fc080016" // Data 2A and 2B
+		                                                       "03c8003e" // Data 2A and 2B
 		                                                       "00080006"
 		                                                       "00080006"
 		                                                       "00080006"
@@ -659,16 +657,23 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Call the Event functions to set the CB table data to what we are expecting to get back.
 	// Write to the analog registers that we are going to request the values for.
-	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
+	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
 		event->SetPayload<EventType::Analog>(std::move(1024 + ODCIndex));
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
-
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 	}
-	for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
+	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event->SetPayload<EventType::Analog>(std::move(1+ODCIndex));
+
+		CBOSPort->Event(event, "TestHarness", pStatusCallback);
+		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
+	}
+	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
 		event->SetPayload<EventType::Counter>(std::move(1024 + ODCIndex));
@@ -677,6 +682,7 @@ TEST_CASE("Station - ScanRequest F0")
 
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 	}
+
 	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
@@ -693,11 +699,11 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                           "fc080016" // Data 2A and 2B
+		                                           "01480028" // Data 2A and 2B
 		                                           "400a00b6"
-		                                           "402a0186"
-		                                           "404a029c"
-		                                           "4068003c"
+		                                           "402882b8"
+		                                           "405a032c"
+		                                           "40780030"
 		                                           "55580013");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
@@ -2028,11 +2034,11 @@ TEST_CASE("Master - Scan Request F0")
 
 	// From the outstation test above!!
 	std::string Payload = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                                 "fc080016" // Data 2A and 2B
+		                                                 "01480028" // Data 2A and 2B
 		                                                 "400a00b6"
-		                                                 "402a0186"
-		                                                 "404a029c"
-		                                                 "4068003c"
+		                                                 "402882b8"
+		                                                 "405a032c"
+		                                                 "40780030"
 		                                                 "55580013");
 	output << Payload;
 
@@ -2044,18 +2050,28 @@ TEST_CASE("Master - Scan Request F0")
 	// To check the result, see if the points in the master point list have been changed to the correct values.
 	bool hasbeenset;
 
-	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
+	//ANA
+	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
 		uint16_t res;
 		CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		REQUIRE(res == (1024 + ODCIndex));
 	}
-	for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
+	//ANA6
+	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
+	{
+		uint16_t res;
+		CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
+		REQUIRE(res == (1+ODCIndex));
+	}
+	//Counters
+	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		uint16_t res;
 		CBMAPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		REQUIRE(res == (1024 + ODCIndex));
 	}
+
 	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
 	{
 		uint8_t res;
@@ -2068,13 +2084,19 @@ TEST_CASE("Master - Scan Request F0")
 	// Need to give ASIO time to process them?
 	Wait(IOS, 1);
 
-	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
+	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
 		uint16_t res;
 		CBOSPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		REQUIRE(res == (1024 + ODCIndex));
 	}
-	for (int ODCIndex = 4; ODCIndex < 7; ODCIndex++)
+	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
+	{
+		uint16_t res;
+		CBOSPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
+		REQUIRE(res == (1+ODCIndex));
+	}
+	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		uint16_t res;
 		CBOSPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
