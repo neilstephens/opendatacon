@@ -64,21 +64,26 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 		case FUNC_SCAN_DATA:
 			ScanRequest(Header); // Fn - 0
 			break;
+
 		case FUNC_EXECUTE_COMMAND:
 			// The other functions below will setup what needs to be executed, has to be executed within a certain time...
 
 			break;
+
 		case FUNC_TRIP:
 			// Binary Control
-
+			FuncTripClose(Header, Trip);
 			break;
+
 		case FUNC_SETPOINT_A:
 			NotImplemented = true;
 			break;
+
 		case FUNC_CLOSE:
 			// Binary Control
-
+			FuncTripClose(Header, Close);
 			break;
+
 		case FUNC_SETPOINT_B:
 			NotImplemented = true;
 			break;
@@ -273,6 +278,42 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 		LOGDEBUG("Failed to find a payload for: " + payloadlocation.to_string() + " Setting to zero");
 	}
 	return Payload;
+}
+
+
+void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandToExecute Command)
+{
+	// Sets up data to be executed when we get the execute command...
+	// So we dont trigger any ODC events at this point, only when the execute occurs.
+	std::string cmd = "Trip";
+	if (Command == Close) cmd = "Close";
+
+	LOGDEBUG("OS - {} Command - Fn2/4",cmd);
+
+	// Now assemble and return the required response..
+	CBMessage_t ResponseCBMessage;
+
+	PendingCommandData = Header.GetB();
+
+	// Can/must only be 1 bit set, check this.
+	if (BitsSet(PendingCommandData,12) == 1)
+	{
+		// Also now check that this is actually a valid CONTROL point.
+		PendingCommand = Command;
+		LOGDEBUG("OS - Got a valid Trip Command, Data {}",PendingCommandData);
+
+		auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommandData, true);
+		ResponseCBMessage.push_back(firstblock);
+
+		SendCBMessage(ResponseCBMessage);
+	}
+	else
+	{
+		PendingCommand = None;
+
+		// Error - dont reply..
+		LOGERROR("OS - More than one or no bit set in a {} Command - Not responding to master",cmd);
+	}
 }
 
 /*

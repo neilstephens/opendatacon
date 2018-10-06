@@ -94,6 +94,7 @@ enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetComma
 // Need to hold the packet position for each point. a number 1 to 16 and one of the enum options.
 enum class PayloadABType { PositionA, PositionB, Error };
 
+
 class PayloadLocationType
 {
 public:

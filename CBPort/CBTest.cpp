@@ -43,7 +43,7 @@
 #include "CBOutstationPort.h"
 #include "CBMasterPort.h"
 #include "CBUtility.h"
-//#include "StrandProtectedQueue.h"
+#include "StrandProtectedQueue.h"
 //#include "ProducerConsumerQueue.h"
 
 
@@ -77,9 +77,8 @@ const char *conffilename2 = "CBConfig2.conf";
 const char *conffile1 = R"001(
 {
 	"IP" : "127.0.0.1",
-	"Port" : 1000,
+	"Port" : 10000,
 	"OutstationAddr" : 9,
-	"ServerType" : "PERSISTENT",
 	"TCPClientServer" : "SERVER",
 	"LinkNumRetry": 4,
 
@@ -150,9 +149,8 @@ const char *conffile1 = R"001(
 const char *conffile2 = R"002(
 {
 	"IP" : "127.0.0.1",
-	"Port" : 1000,
+	"Port" : 10000,
 	"OutstationAddr" : 10,
-	"ServerType" : "PERSISTENT",
 	"TCPClientServer" : "SERVER",
 	"LinkNumRetry": 4,
 
@@ -167,19 +165,13 @@ const char *conffile2 = R"002(
 	"CBCommandTimeoutmsec" : 4000,
 	"CBCommandRetries" : 1,
 
-	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1A", "Channel" : 0, "PointType" : "MCA"}]
+	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 0, "PointType" : "DIG"}],
+
+	// CONTROL up to 12 bits per group address, Channel 1 to 12. Simulator used dual points one for trip one for close.
+	"BinaryControls" : [{"Index": 20,  "Group" : 5, "Channel" : 1, "Type" : "CONTROL"}]
 
 })002";
-/*"Binaries" : [{"Index": 90,  "Group" : 33, "Channel" : 0},
-                        {"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 34, "Channel" : 0, "PointType" : "MCA"},
-                        {"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Channel" : 0, "PointType" : "MCA"},
-                        {"Range" : {"Start" : 32, "Stop" : 47}, "Group" : 63, "Channel" : 0, "PointType" : "MCA"}],
 
-      "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Channel" : 0}],
-
-      "BinaryControls" : [{"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 35, "Channel" : 0, "PointType" : "MCB"}],
-
-      "Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Group" : 61, "Channel" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Group" : 62, "Channel" : 0}]*/
 #pragma endregion
 
 #pragma region TEST_HELPERS
@@ -204,9 +196,11 @@ void WriteConfFilesToCurrentWorkingDirectory()
 void SetupLoggers()
 {
 	// So create the log sink first - can be more than one and add to a vector.
-	// The consol sink does not work in VS...
-	// Perhaps the
-	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>(); //stdout_color_sink_mt>();
+	#ifdef WIN32
+	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
+	#else
+	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	#endif
 	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("testslog.txt", true);
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
@@ -331,6 +325,12 @@ void Wait(asio::io_service &IOS, int seconds)
 	CBMAPort->SetIOS(&IOS);      \
 	CBMAPort->Build();
 
+#define TEST_CBMAPort2(overridejson)\
+	auto CBMAPort2 = std::make_unique<CBMasterPort>("TestMaster", conffilename2, overridejson); \
+	CBMAPort2->SetIOS(&IOS);      \
+	CBMAPort2->Build();
+
+
 #define TEST_CBOSPort(overridejson)      \
 	auto CBOSPort = std::make_unique<CBOutstationPort>("TestOutStation", conffilename1, overridejson);   \
 	CBOSPort->SetIOS(&IOS);      \
@@ -436,54 +436,51 @@ TEST_CASE("Util - CBIndexTest")
 	CBIndex = CBPointTableAccess::GetCBPointMapIndex(group, channel, payloadlocation);
 	REQUIRE(CBIndex == 0xFCF1);
 }
-
-
-/*
 TEST_CASE("Utility - Strand Queue")
 {
-      asio::io_service IOS(2);
+	asio::io_service IOS(2);
 
-      asio::io_service::work work(IOS); // Just to keep things from stopping..
+	asio::io_service::work work(IOS); // Just to keep things from stopping..
 
-      std::thread t1([&]() {IOS.run(); });
-      std::thread t2([&]() {IOS.run(); });
+	std::thread t1([&]() {IOS.run(); });
+	std::thread t2([&]() {IOS.run(); });
 
-      StrandProtectedQueue<int> foo(IOS, 10);
-      foo.sync_push(21);
-      foo.sync_push(31);
-      foo.sync_push(41);
+	StrandProtectedQueue<int> foo(IOS, 10);
+	foo.sync_push(21);
+	foo.sync_push(31);
+	foo.sync_push(41);
 
-      int res;
-      bool success = foo.sync_front(res);
-      REQUIRE(success);
-      REQUIRE(res == 21);
-      foo.sync_pop();
+	int res;
+	bool success = foo.sync_front(res);
+	REQUIRE(success);
+	REQUIRE(res == 21);
+	foo.sync_pop();
 
-      success = foo.sync_front(res);
-      REQUIRE(success);
-      REQUIRE(res == 31);
-      foo.sync_pop();
+	success = foo.sync_front(res);
+	REQUIRE(success);
+	REQUIRE(res == 31);
+	foo.sync_pop();
 
-      foo.sync_push(2 * res);
-      success = foo.sync_front(res);
-      foo.sync_pop();
-      REQUIRE(success);
-      REQUIRE(res == 41);
+	foo.sync_push(2 * res);
+	success = foo.sync_front(res);
+	foo.sync_pop();
+	REQUIRE(success);
+	REQUIRE(res == 41);
 
-      success = foo.sync_front(res);
-      foo.sync_pop();
-      REQUIRE(success);
-      REQUIRE(res == 31 * 2);
+	success = foo.sync_front(res);
+	foo.sync_pop();
+	REQUIRE(success);
+	REQUIRE(res == 31 * 2);
 
-      success = foo.sync_front(res);
-      REQUIRE(!success);
+	success = foo.sync_front(res);
+	REQUIRE(!success);
 
-      IOS.stop(); // Or work.reset(), if work was a pointer.!
+	IOS.stop(); // Or work.reset(), if work was a pointer.!
 
-      t1.join(); // Wait for thread to end
-      t2.join();
+	t1.join(); // Wait for thread to end
+	t2.join();
 }
-*/
+
 #pragma region Block Tests
 
 TEST_CASE("CBBlock - ClassConstructor1")
@@ -752,6 +749,47 @@ TEST_CASE("Station - BinaryEvent")
 	STANDARD_TEST_TEARDOWN();
 }
 
+TEST_CASE("Station - CONTROL Commands")
+{
+	STANDARD_TEST_SETUP();
+	TEST_CBOSPort(Json::nullValue);
+
+	CBOSPort->Enable();
+
+	uint8_t station = 9;
+	uint8_t group = 3;
+	uint16_t BData = 1;
+	CBBlockData commandblock(station, group, FUNC_TRIP, BData, true); // Trip is OPEN or OFF
+
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+	output << commandblock.ToBinaryString();
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+
+	// Send the Command
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	std::string DesiredResult = BuildHexStringFromASCIIHexString("2930009d");
+
+	REQUIRE(Response == DesiredResult); // OK Command
+
+	CBBlockData commandblock2(station, group, FUNC_CLOSE, BData, true); // Trip is OPEN or OFF
+
+	output << commandblock2.ToBinaryString();
+
+	// Hook the output function with a lambda
+	Response = "Not Set";
+
+	// Send the Command
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	DesiredResult = BuildHexStringFromASCIIHexString("493000a3");
+
+	REQUIRE(Response == DesiredResult); // OK Command
+}
 
 /*
 TEST_CASE("Station - CounterScanFn30")
@@ -2115,6 +2153,97 @@ TEST_CASE("Master - Scan Request F0")
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
 }
+
+TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
+{
+	// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
+	// Create two masters, and then see if they can share the TCP connection successfully.
+	STANDARD_TEST_SETUP();
+	// Outstations are as for the conf files
+	TEST_CBOSPort(Json::nullValue);
+	TEST_CBOSPort2(Json::nullValue);
+
+	// The masters need to be TCP Clients - should be only change necessary.
+	Json::Value MAportoverride;
+	MAportoverride["TCPClientServer"] = "CLIENT";
+	TEST_CBMAPort(MAportoverride);
+
+	Json::Value MAportoverride2;
+	MAportoverride2["TCPClientServer"] = "CLIENT";
+	TEST_CBMAPort2(MAportoverride2);
+
+
+	START_IOS(1);
+
+	CBOSPort->Enable();
+	CBOSPort2->Enable();
+	CBMAPort->Enable();
+	CBMAPort2->Enable();
+
+	// Allow everything to get setup.
+	Wait(IOS,2);
+
+	// So to do this test, we are going to send an Event into the Master which will require it to send a POM command to the outstation.
+	// We should then have an Event triggered on the outstation caused by the POM. We need to capture this to check that it was the correct POM Event.
+
+	// Send a POM command by injecting an ODC event to the Master
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on CONTROL command result : " + std::to_string(static_cast<int>(command_stat)));
+			res = command_stat;
+		});
+
+	bool point_on = true;
+	uint16_t ODCIndex = 1;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+	val.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+	// Send an ODC DigitalOutput command to the Master.
+	CBMAPort->Event(event, "TestHarness", pStatusCallback);
+
+	// Wait for it to go to the OutStation and Back again
+	Wait(IOS, 2);
+
+	REQUIRE(res == CommandStatus::SUCCESS);
+
+	// Now do the other Master/Outstation combination.
+	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on CONTROL command result : " + std::to_string(static_cast<int>(command_stat)));
+			res2 = command_stat;
+		});
+
+	ODCIndex = 20;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val2;
+	val2.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event2 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event2->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val2));
+
+	// Send an ODC DigitalOutput command to the Master.
+	CBMAPort2->Event(event2, "TestHarness2", pStatusCallback2);
+
+	// Wait for it to go to the OutStation and Back again
+	Wait(IOS, 3);
+
+	REQUIRE(res2 == CommandStatus::SUCCESS);
+
+	CBOSPort->Disable();
+	CBOSPort2->Disable();
+
+	CBMAPort->Disable();
+	CBMAPort2->Disable();
+
+	STOP_IOS();
+	TestTearDown();
+}
 /*
 TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 {
@@ -2979,84 +3108,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
       STOP_IOS();
       STANDARD_TEST_TEARDOWN();
 }
-TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
-{
-      // Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 9, 0x7D
 
-      STANDARD_TEST_SETUP();
-      TEST_CBOSPort(Json::nullValue);
-      TEST_CBOSPort2(Json::nullValue);
-
-      START_IOS(1);
-
-      CBOSPort->Enable();
-      CBOSPort2->Enable();
-
-      std::vector<std::string> ResponseVec;
-      auto ResponseCallback = [&](buf_t& readbuf)
-                              {
-                                    size_t bufsize = readbuf.size();
-                                    std::string S(bufsize, 0);
-
-                                    for (size_t i = 0; i < bufsize; i++)
-                                    {
-                                          S[i] = static_cast<char>(readbuf.sgetc());
-                                          readbuf.consume(1);
-                                    }
-                                    ResponseVec.push_back(S); // Store so we can check
-                              };
-
-      bool socketisopen = false;
-      auto SocketStateHandler = [&socketisopen](bool state)
-                                {
-                                      socketisopen = state;
-                                };
-
-      // An outstation is a server by default (Master connects to it...)
-      // Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
-      std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
-      pSockMan.reset(new TCPSocketManager<std::string>
-                  (&IOS, false, "127.0.0.1", "1000",
-                  ResponseCallback,
-                  SocketStateHandler,
-                  std::numeric_limits<size_t>::max(),
-                  true,
-                  500));
-      pSockMan->Open();
-
-      Wait(IOS, 3);
-      REQUIRE(socketisopen); // Should be set in a callback.
-
-      // Send the Command - results in an async write
-      //  Station 9
-      CBBlockData commandblock(9, true);
-      pSockMan->Write(commandblock.ToBinaryString());
-
-      //  Station 0x7D
-      CBBlockData commandblock2(0x7D, true);
-      pSockMan->Write(commandblock2.ToBinaryString());
-
-      Wait(IOS, 5); // Allow async processes to run.
-
-      // Need to handle multiple responses...
-      // Deal with the last response first...
-      REQUIRE(ResponseVec.size() == 2);
-
-      REQUIRE(ResponseVec.back() == BuildHexStringFromASCIIHexString("fd0f01027c00")); // OK Command
-      ResponseVec.pop_back();
-
-      REQUIRE(ResponseVec.back() == BuildHexStringFromASCIIHexString("fc0f01034600")); // OK Command
-      ResponseVec.pop_back();
-
-      REQUIRE(ResponseVec.empty());
-
-      pSockMan->Close();
-      CBOSPort->Disable();
-      CBOSPort2->Disable();
-
-      STOP_IOS();
-      STANDARD_TEST_TEARDOWN();
-}
 */
 #pragma endregion
 }

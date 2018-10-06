@@ -29,6 +29,17 @@
 #include "CBUtility.h"
 
 
+int BitsSet(uint32_t data, int numberofbits)
+{
+	int bitsset = 0;
+	for (uint8_t i = 0; i < numberofbits; i++)
+	{
+		if (((data >> i) & 0x001) == 1)
+			bitsset++;
+	}
+	return bitsset;
+}
+
 CBPoint::~CBPoint() {} // To keep the compiler/linker happy
 
 CBBinaryPoint::~CBBinaryPoint() {}

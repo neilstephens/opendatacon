@@ -52,7 +52,7 @@ CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string 
 
 	IsOutStation = true;
 
-	LOGDEBUG("CBOutstation Constructor - " + aName + " - " + aConfFilename + " Overrides - " + over);
+	LOGDEBUG("CBOutstation Constructor - {} - {}  Overrides - {}", aName,aConfFilename,over);
 }
 
 CBOutstationPort::~CBOutstationPort()

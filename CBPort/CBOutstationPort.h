@@ -90,6 +90,7 @@ class CBOutstationPort: public CBPort
 {
 	enum AnalogChangeType { NoChange, DeltaChange, AllChange };
 	enum AnalogCounterModuleType { CounterModule, AnalogModule };
+	enum PendingCommandToExecute { None, Trip, Close, SetA, SetB };
 
 public:
 	CBOutstationPort(const std::string & aName, const std::string & aConfFilename, const Json::Value & aConfOverrides);
@@ -105,40 +106,15 @@ public:
 	void SendCBMessage(const CBMessage_t & CompleteCBMessage) override;
 	void ProcessCBMessage(CBMessage_t &CompleteCBMessage);
 
-	// Analog
+	// Response to Command Methods
 	void ScanRequest(CBBlockData &Header);
+	void FuncTripClose(CBBlockData & Header, PendingCommandToExecute Command);
+
 	void BuildScanRequestResponseData(uint8_t Group, std::vector<uint16_t>& BlockValues);
 	uint16_t GetPayload(uint8_t &Group, PayloadLocationType &payloadlocation);
-	void DoAnalogDeltaScan(CBBlockData &Header);
 
-	void ReadAnalogOrCounterRange(uint8_t Group, uint8_t Channels, CBOutstationPort::AnalogChangeType &ResponseType, std::vector<uint16_t> &AnalogValues, std::vector<int> &AnalogDeltaValues);
-	void GetAnalogModuleValues(AnalogCounterModuleType IsCounterOrAnalog, uint8_t Channels, uint8_t Group, CBOutstationPort::AnalogChangeType & ResponseType, std::vector<uint16_t>& AnalogValues, std::vector<int>& AnalogDeltaValues);
-	void SendAnalogOrCounterUnconditional(uint8_t functioncode, std::vector<uint16_t> Analogs, uint8_t StationAddress, uint8_t Group, uint8_t Channels);
-	void SendAnalogDelta(std::vector<int> Deltas, uint8_t StationAddress, uint8_t Group, uint8_t Channels);
-	void SendAnalogNoChange(uint8_t StationAddress, uint8_t Group, uint8_t Channels);
-
-	// Digital/Binary
-	void DoDigitalScan(CBBlockData & Header); // Fn 7
 	void MarkAllBinaryPointsAsChanged();
-	void Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCount, uint8_t & EventCount, std::vector<uint16_t>& ResponseWords);
-	void DoDigitalUnconditional(CBBlockData & Header); // Fn 12
-
 	uint8_t CountBinaryBlocksWithChanges();
-	uint8_t CountBinaryBlocksWithChangesGivenRange(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress);
-	void BuildListOfModuleAddressesWithChanges(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress, bool forcesend, std::vector<uint8_t>& ModuleList);
-	void BuildBinaryReturnBlocks(uint8_t NumberOfDataBlocks, uint8_t StartModuleAddress, uint8_t StationAddress, bool forcesend, CBMessage_t &ResponseCBMessage);
-	void BuildScanReturnBlocksFromList(std::vector<unsigned char>& ModuleList, uint8_t MaxNumberOfDataBlocks, uint8_t StationAddress, bool FormatForFn11and12, CBMessage_t& ResponseCBMessage);
-	void BuildListOfModuleAddressesWithChanges(uint8_t StartModuleAddress, std::vector<uint8_t> &ModuleList);
-
-	void DoFreezeResetCounters(CBBlockData & Header);
-	void DoPOMControl(CBBlockData & Header, CBMessage_t& CompleteCBMessage);
-	void DoDOMControl(CBBlockData & Header, CBMessage_t& CompleteCBMessage);
-	void DoAOMControl(CBBlockData & Header, CBMessage_t& CompleteCBMessage);
-
-	void DoSetDateTimeNew(CBBlockData & Header, CBMessage_t & CompleteCBMessage);
-
-	void SendControlOK(CBBlockData & Header);             // Fn 15
-	void SendControlOrScanRejected(CBBlockData & Header); // Fn 30
 
 	// Testing use only
 	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
@@ -155,6 +131,10 @@ private:
 	uint8_t LastDigitalScanSequenceNumber = 0; // Used to remember the last digital scan we had
 	CBMessage_t LastDigitialScanResponseCBMessage;
 	CBMessage_t LastDigitialHRERResponseCBMessage;
+
+	//TODO: Can only be one pending command, and there is a time factor?
+	PendingCommandToExecute PendingCommand = None;
+	uint16_t PendingCommandData = 0;
 };
 
 #endif

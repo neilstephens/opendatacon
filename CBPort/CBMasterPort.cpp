@@ -475,7 +475,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 			if (pt.GetPointType() == ANA6)
 			{
 			      if (pt.GetChannel() == 1)
-					analogvalue = data >> 6; // Top 6 bits only.
+					analogvalue = (data >> 6) & 0x3F; // Top 6 bits only.
 			      else
 					analogvalue &= 0x3F; // Bottom 6 bits only.
 			}

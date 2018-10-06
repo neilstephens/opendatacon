@@ -126,7 +126,7 @@ void CBConnection::RemoveOutstation(uint64_t ChannelID, uint8_t StationAddress)
 		// If we have removed the last StateCallBack - then we are done - delete the connection.
 		if (pConnection->StateCallbackMap.size() == 0)
 		{
-			LOGDEBUG("Remove OutStation - Last OutStation Removed - Destroying the Connection - " + ChannelID);
+			LOGDEBUG("Remove OutStation - Last OutStation Removed - Destroying the Connection - {}",ChannelID);
 			ConnectionMap[ChannelID].reset(); // Destroy the object
 			ConnectionMap.erase(ChannelID);   // Remove the map entry
 		}
