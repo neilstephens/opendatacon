@@ -86,11 +86,22 @@ private:
 };
 
 
+
+class PendingCommandType
+{
+public:
+	enum CommandType { None, Trip, Close, SetA, SetB };
+
+	const CBTime CommandValidTimemsec = 10000; // PendingCommand valid for 10 seconds..
+	CommandType Command = None;
+	uint16_t Data = 0;
+	CBTime ExpiryTime = 0; // If we dont receive the execute before this time, it will not be executed
+};
+
 class CBOutstationPort: public CBPort
 {
 	enum AnalogChangeType { NoChange, DeltaChange, AllChange };
 	enum AnalogCounterModuleType { CounterModule, AnalogModule };
-	enum PendingCommandToExecute { None, Trip, Close, SetA, SetB };
 
 public:
 	CBOutstationPort(const std::string & aName, const std::string & aConfFilename, const Json::Value & aConfOverrides);
@@ -106,9 +117,13 @@ public:
 	void SendCBMessage(const CBMessage_t & CompleteCBMessage) override;
 	void ProcessCBMessage(CBMessage_t &CompleteCBMessage);
 
-	// Response to Command Methods
+	// Response to PendingCommand Methods
 	void ScanRequest(CBBlockData &Header);
-	void FuncTripClose(CBBlockData & Header, PendingCommandToExecute Command);
+	void FuncTripClose(CBBlockData & Header, PendingCommandType::CommandType pCommand);
+	void FuncSetAB(CBBlockData & Header, PendingCommandType::CommandType pCommand);
+	void ExecuteCommand(CBBlockData & Header);
+	void ExecuteBinaryControl(uint8_t group, int Channel, bool point_on);
+	void ExecuteAnalogControl(uint8_t group, int Channel, uint16_t data);
 
 	void BuildScanRequestResponseData(uint8_t Group, std::vector<uint16_t>& BlockValues);
 	uint16_t GetPayload(uint8_t &Group, PayloadLocationType &payloadlocation);
@@ -118,6 +133,7 @@ public:
 
 	// Testing use only
 	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
+	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group]; } // Return a copy, cannot be changed
 private:
 
 	bool DigitalChangedFlagCalculationMethod(void);
@@ -132,9 +148,7 @@ private:
 	CBMessage_t LastDigitialScanResponseCBMessage;
 	CBMessage_t LastDigitialHRERResponseCBMessage;
 
-	//TODO: Can only be one pending command, and there is a time factor?
-	PendingCommandToExecute PendingCommand = None;
-	uint16_t PendingCommandData = 0;
+	PendingCommandType PendingCommands[15]; // Store a potential pending command for each group.
 };
 
 #endif

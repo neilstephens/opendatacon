@@ -78,7 +78,6 @@ public:
 
 	CBPointTableAccess PointTable; // All access to point table through this.
 
-
 	std::map<uint32_t, CBPollGroup> PollGroups;
 
 	// Time Set Point Configuration - this is a "special" point that is used to pass the time set command through ODC.

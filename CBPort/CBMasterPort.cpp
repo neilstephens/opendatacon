@@ -165,7 +165,7 @@ void CBMasterPort::QueueCBCommand(const CBMessage_t &CompleteCBMessage, SharedSt
 			}
 			else
 			{
-			      LOGDEBUG("Tried to queue another CB Master Command when the command queue is full");
+			      LOGDEBUG("Tried to queue another CB Master PendingCommand when the command queue is full");
 			      PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED); // Failed...
 			}
 
@@ -363,23 +363,26 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			bool success = false;
 			bool NotImplemented = false;
 
-			// Now based on the Command Function (Not the function code we got back!!), take action. Not all codes are expected or result in action
+			// Now based on the PendingCommand Function (Not the function code we got back!!), take action. Not all codes are expected or result in action
 			switch (MasterCommandProtectedData.CurrentFunctionCode)
 			{
 				case FUNC_SCAN_DATA:
 					success = ProcessScanRequestReturn(CompleteCBMessage); // Fn - 0
 					break;
 				case FUNC_EXECUTE_COMMAND:
+					success = CheckResponseHeaderMatch(Header, MasterCommandProtectedData.CurrentCommand.first[0]);
 					break;
 				case FUNC_TRIP:
+					success = CheckResponseHeaderMatch(Header, MasterCommandProtectedData.CurrentCommand.first[0]);
 					break;
 				case FUNC_SETPOINT_A:
-					NotImplemented = true;
+					success = CheckResponseHeaderMatch(Header, MasterCommandProtectedData.CurrentCommand.first[0]);
 					break;
 				case FUNC_CLOSE:
+					success = CheckResponseHeaderMatch(Header, MasterCommandProtectedData.CurrentCommand.first[0]);
 					break;
 				case FUNC_SETPOINT_B:
-					NotImplemented = true;
+					success = CheckResponseHeaderMatch(Header, MasterCommandProtectedData.CurrentCommand.first[0]);
 					break;
 				case FUNC_RESET:
 					NotImplemented = true;
@@ -408,7 +411,7 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 
 			if (NotImplemented == true)
 			{
-			      LOGERROR("Command Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      LOGERROR("PendingCommand Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			}
 
 			if (success) // Move to the next command. Only other place we do this is in the timeout.
@@ -422,7 +425,7 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			}
 			else
 			{
-			      LOGERROR("Command Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
+			      LOGERROR("PendingCommand Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
 					" Expecting " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			}
 			#pragma warning(suppress: 26495)
@@ -560,6 +563,23 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	}
 }
 
+// Checks what we got back against what we sent. We know the function code and address have been checked.
+bool CBMasterPort::CheckResponseHeaderMatch(const CBBlockData& ReceivedHeader, const CBBlockData& SentHeader)
+{
+	if (ReceivedHeader.GetGroup() != SentHeader.GetGroup())
+	{
+		LOGDEBUG("Returned Header mismatch on Group {}, {}", ReceivedHeader.GetGroup(),SentHeader.GetGroup());
+		return false;
+	}
+	if (ReceivedHeader.GetB() != SentHeader.GetB())
+	{
+		LOGDEBUG("Returned Header mismatch on B Data {}, {}", ReceivedHeader.GetB(),SentHeader.GetB());
+		return false;
+	}
+
+	LOGDEBUG("Returned Header match Sent Header");
+	return true;
+}
 /*
 // Fn 6. This is only one of three possible responses to the Fn 6 command from the Master. The others are 5 (Unconditional) and 13 (No change)
 // The data that comes back is up to 16 8 bit signed values representing the change from the last sent value.
@@ -1067,106 +1087,18 @@ bool CBMasterPort::ProcessFlagScanReturn(const CBMessage_t& CompleteCBMessage)
 
 // We will be called at the appropriate time to trigger an Unconditional or Delta scan
 // For digital scans there are two formats we might use. Set in the conf file.
-void CBMasterPort::DoPoll(uint32_t payloadlocation)
+void CBMasterPort::DoPoll(uint32_t PollID)
 {
 	if (!enabled) return;
-	LOGDEBUG("DoPoll : " + std::to_string(payloadlocation));
+	LOGDEBUG("DoPoll : " + std::to_string(PollID));
 
-	switch (MyPointConf->PollGroups[payloadlocation].polltype)
+	switch (MyPointConf->PollGroups[PollID].polltype)
 	{
-		case AnalogPoints:
+		case Scan:
 		{
-			ModuleMapType::iterator mait = MyPointConf->PollGroups[payloadlocation].ModuleAddresses.begin();
-
 			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
-			uint8_t Group = mait->first;
-			uint8_t Channels = numeric_cast<uint8_t>(mait->second);
-
-			if (MyPointConf->PollGroups[payloadlocation].ModuleAddresses.size() > 1)
-			{
-				LOGERROR("Analog Poll group " + std::to_string(payloadlocation) + " is configured for more than one CB address. Please create another poll group.");
-			}
-
-			// We need to do an analog unconditional on start up, until all the points have a valid value - even MISSINGVALUE for does not exist.
-			// To do this we check the hasbeenset flag, which will be false on start up, and also set to false on comms lost event - kind of like a quality.
-			bool UnconditionalCommandRequired = false;
-			for (uint8_t idx = 0; idx < Channels; idx++)
-			{
-				uint16_t wordres;
-				bool hasbeenset;
-				bool res = MyPointConf->PointTable.GetAnalogValueUsingCBIndex(Group, idx, wordres, hasbeenset);
-				if (res && !hasbeenset)
-					UnconditionalCommandRequired = true;
-			}
-
-			if (UnconditionalCommandRequired || MyPointConf->PollGroups[payloadlocation].ForceUnconditional)
-			{
-				// Use Unconditional Request Fn 5
-				LOGDEBUG("Poll Issued a Analog Unconditional Command");
-
-//TODO:				CBBlockData commandblock(MyConf->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL, Group, Channels, true);
-//				QueueCBCommand(commandblock, nullptr);
-			}
-			else
-			{
-				LOGDEBUG("Poll Issued a Analog Delta Command");
-				// Use a delta command Fn 6
-//				CBBlockData commandblock(MyConf->mAddrConf.OutstationAddr, true, ANALOG_DELTA_SCAN, Group, Channels, true);
-//				QueueCBCommand(commandblock, nullptr);
-			}
-		}
-		break;
-
-		case BinaryPoints:
-		{
-
-			// If sequence number is zero - it means we have just started up, or communications re-established. So we dont have a full copy
-			// of the binary data (timetagged or otherwise). The outStation will use the zero sequnce number to send everything to initialise us. We
-			// don't have to send an unconditional.
-
-			ModuleMapType::iterator FirstModule = MyPointConf->PollGroups[payloadlocation].ModuleAddresses.begin();
-
-			// Request Digital Unconditional
-			uint8_t Group = FirstModule->first;
-			// We expect the digital modules to be consecutive, or of there is a gap this will still work.
-			uint8_t Modules = numeric_cast<uint8_t>(MyPointConf->PollGroups[payloadlocation].ModuleAddresses.size()); // Most modules we can get in one command - NOT channels!
-
-			bool UnconditionalCommandRequired = false;
-			for (uint8_t m = 0; m < Modules; m++)
-			{
-				for (uint8_t idx = 0; idx < 16; idx++)
-				{
-					bool hasbeenset;
-					bool res = MyPointConf->PointTable.GetBinaryQualityUsingCBIndex(Group + m, idx, hasbeenset);
-					if (res && !hasbeenset)
-						UnconditionalCommandRequired = true;
-				}
-			}
-			//				CBBlockData commandblock;
-
-			// Also need to check if we already have all the values that this command would ask for..if not send unconditional.
-			if (UnconditionalCommandRequired || MyPointConf->PollGroups[payloadlocation].ForceUnconditional)
-			{
-				// Use Unconditional Request Fn 12
-				LOGDEBUG("Poll Issued a Digital Unconditional (new) Command");
-
-				//					commandblock = CBBlockData(MyConf->mAddrConf.OutstationAddr, Group, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
-			}
-			else
-			{
-				// Use a delta command Fn 11
-				LOGDEBUG("Poll Issued a Digital Delta COS (new) Command");
-
-				uint8_t TaggedEventCount = 0; // Assuming no timetagged points initially.
-
-				// If we have timetagged points in the system, then we need to ask for them to be returned.
-				if (MyPointConf->PollGroups[payloadlocation].TimeTaggedDigital == true)
-					TaggedEventCount = 15; // The most we can ask for
-
-//					commandblock = CBBlockData(MyConf->mAddrConf.OutstationAddr, TaggedEventCount, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
-			}
-
-			//				QueueCBCommand(commandblock, nullptr); // No callback, does not originate from ODC
+			uint8_t Group = MyPointConf->PollGroups[PollID].group;
+			SendScanCommand(Group, nullptr);
 		}
 		break;
 
@@ -1175,33 +1107,21 @@ void CBMasterPort::DoPoll(uint32_t payloadlocation)
 			// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
 			uint64_t currenttime = CBNow();
 
-			LOGDEBUG("Poll Issued a TimeDate Command");
+			LOGDEBUG("Poll Issued a TimeDate PendingCommand");
 //			SendTimeDateChangeCommand(currenttime, nullptr);
-		}
-		break;
-
-		case NewTimeSetCommand:
-		{
-			// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
-			uint64_t currenttime = CBNow();
-
-			LOGDEBUG("Poll Issued a NewTimeDate Command");
-			int utcoffsetminutes = tz_offset();
-
-//			SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, nullptr);
 		}
 		break;
 
 		case SystemFlagScan:
 		{
 			// Send a flag scan command to the OutStation, (Fn 52)
-			LOGDEBUG("Poll Issued a System Flag Scan Command");
+			LOGDEBUG("Poll Issued a System Flag Scan PendingCommand");
 //			SendSystemFlagScanCommand(nullptr);
 		}
 		break;
 
 		default:
-			LOGDEBUG("Poll will an unknown polltype : " + std::to_string(MyPointConf->PollGroups[payloadlocation].polltype));
+			LOGDEBUG("Poll will an unknown polltype : " + std::to_string(MyPointConf->PollGroups[PollID].polltype));
 	}
 }
 
@@ -1229,33 +1149,15 @@ void CBMasterPort::EnablePolling(bool on)
 	else
 		PollScheduler->Stop();
 }
-/*
+
 void CBMasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec, SharedStatusCallback_t pStatusCallback)
+{}
+void CBMasterPort::SendScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback)
 {
-      CBBlockData commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
-      CBBlockData datablock(static_cast<uint32_t>(currenttimeinmsec / 1000), true);
-      CBMessage_t Cmd;
-      Cmd.push_back(commandblock);
-      Cmd.push_back(datablock);
-      QueueCBCommand(Cmd, pStatusCallback);
+	CBBlockData sendcommandblock(MyConf->mAddrConf.OutstationAddr, group, FUNC_SCAN_DATA, 0, true);
+	QueueCBCommand(sendcommandblock, pStatusCallback);
 }
-void CBMasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback)
-{
-      CBBlockData commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
-      CBBlockData datablock(static_cast<uint32_t>(currenttimeinmsec / 1000));
-      CBBlockData datablock2(static_cast<uint32_t>(utcoffsetminutes) << 16, true);
-      CBMessage_t Cmd;
-      Cmd.push_back(commandblock);
-      Cmd.push_back(datablock);
-      Cmd.push_back(datablock2);
-      QueueCBCommand(Cmd, pStatusCallback);
-}
-void CBMasterPort::SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCallback)
-{
-      CBBlockData commandblock(MyConf->mAddrConf.OutstationAddr);
-      QueueCBCommand(commandblock, pStatusCallback);
-}
-*/
+
 void CBMasterPort::SetAllPointsQualityToCommsLost()
 {
 	LOGDEBUG("CB Master setting quality to comms lost");
@@ -1408,124 +1310,71 @@ void CBMasterPort::WriteObject(const ControlRelayOutputBlock& command, const uin
 {
 	uint8_t Group = 0;
 	uint8_t Channel = 0;
-	BinaryPointType PointType;
-	bool exists = MyPointConf->PointTable.GetBinaryControlCBIndexUsingODCIndex(index, Group, Channel, PointType);
+	bool exists = MyPointConf->PointTable.GetBinaryControlCBIndexUsingODCIndex(index, Group, Channel);
 
 	if (!exists)
 	{
-		LOGDEBUG("Master received a DOM/POM ODC Change Command on a point that is not defined " + std::to_string(index));
+		LOGDEBUG("Master received a Binary Control ODC Change Command on a point that is not defined " + std::to_string(index));
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
 
 	std::string OnOffString = "ON";
 
-	if (PointType == MCB)
+	if ((command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
 	{
-		// The main issue is that a DOM command writes 16 bits in one go, so we have to remember the output state of the other bits,
-		// so that we only write the change that has been triggered.
-		// We have to gather up the current state of those bits.
+		OnOffString = "OFF";
 
-		bool ModuleFailed = false;                                                                    // Not used - yet
-		uint16_t outputbits = MyPointConf->PointTable.CollectModuleBitsIntoWord(Group, ModuleFailed); // Reads from the digital input point list...
-
-		if ((command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
-		{
-			// OFF Command
-			outputbits &= ~(0x0001 << (15-Channel));
-			OnOffString = "OFF";
-		}
-		else
-		{
-			// ON Command  --> ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
-			outputbits |= (0x0001 << (15-Channel));
-			OnOffString = "ON";
-		}
-
-		LOGDEBUG("Master received a DOM ODC Change Command - Index: " + std::to_string(index) +" - "+ OnOffString + "  Module/Channel " + std::to_string(Group) + "/" + std::to_string(Channel));
-		SendDOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Group, outputbits, pStatusCallback);
-	}
-	else if(PointType == MCC)
-	{
-		// POM Point
-		// The POM output is a single output selection, value 0 to 15 which represents a TRIP 0-7 and CLOSE 8-15 for the up to 8 points in a POM module.
-		// We don't have to remember state here as we are sending only one bit.
-		uint8_t outputselection = 0;
-
-		if ((command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
-		{
-			// OFF Command
-			outputselection = Channel+8;
-			OnOffString = "OFF";
-		}
-		else
-		{
-			// ON Command  --> ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
-			outputselection = Channel;
-			OnOffString = "ON";
-		}
-
-		LOGDEBUG("Master received a POM ODC Change Command - Index: " + std::to_string(index) + " - " + OnOffString + "  Module/Channel " + std::to_string(Group) + "/" + std::to_string(Channel));
-//		SendPOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Group, outputselection, pStatusCallback);
+		SendDigitalControlOffCommand(MyConf->mAddrConf.OutstationAddr, Group, Channel, pStatusCallback);
 	}
 	else
 	{
-		LOGDEBUG("Master received Binary Output ODC Event on a point not defined as DOM or POM " + std::to_string(index));
+		OnOffString = "ON";
+
+		SendDigitalControlOnCommand(MyConf->mAddrConf.OutstationAddr, Group, Channel, pStatusCallback);
+	}
+	LOGDEBUG("Master received a Binary Control Output Command - Index: " + std::to_string(index) + " - " + OnOffString + " Group/Channel " + std::to_string(Group) + "/" + std::to_string(Channel));
+}
+
+void CBMasterPort::WriteObject(const int16_t &command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
+{
+	LOGDEBUG("Master received an ANALOG CONTROL Change Command " + std::to_string(index));
+
+	uint8_t Group = 0;
+	uint8_t Channel = 0;
+	bool exists = MyPointConf->PointTable.GetAnalogControlCBIndexUsingODCIndex(index, Group, Channel);
+
+	if (!exists)
+	{
+		LOGDEBUG("Master received an Analog Control ODC Change Command on a point that is not defined " + std::to_string(index));
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
-}
 
-void CBMasterPort::WriteObject(const int16_t & command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
-{
-	// AOM Command
-	LOGDEBUG("Master received a AOM ODC Change Command " + std::to_string(index));
+	assert((Channel >= 1) && (Channel <= 2));
 
-//TODO: Finish AOM command	SendDOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputFromSecondBlock(BlockData), pStatusCallback);
+	uint16_t BData = command;
+	uint8_t FunctionCode = FUNC_SETPOINT_A;
 
-	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+	if (Channel == 2)
+		FunctionCode = FUNC_SETPOINT_B;
+
+	CBBlockData commandblock = CBBlockData(MyConf->mAddrConf.OutstationAddr, Group, FunctionCode, BData, true);
+	QueueCBCommand(commandblock, nullptr);
+
+	// Then queue the execute command - if the previous one does not work, then this one will not either.
+	// Bit of a question about how to  feedback failure.
+	// Only do the callback on the second - EXECUTE - command.
+
+	CBBlockData executeblock = CBBlockData(MyConf->mAddrConf.OutstationAddr, Group, FUNC_EXECUTE_COMMAND, 0, true);
+	QueueCBCommand(executeblock, pStatusCallback);
 }
 
 
 void CBMasterPort::WriteObject(const int32_t & command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-	// Other Magic point commands
-
-	if (index == MyPointConf->POMControlPoint.second) // Is this out magic time set point?
-	{
-		LOGDEBUG("Master received POM Control Point command on the magic point through ODC " + std::to_string(index));
-
-//		CBBlockData Header = CBBlockData(CBBlockData(numeric_cast<uint32_t>(command)));
-//		SendPOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputSelection(), pStatusCallback);
-	}
-	else if (index == MyPointConf->SystemSignOnPoint.second)
-	{
-		// Normally a Fn40
-		LOGDEBUG("Master received System Sign On command on the magic point through ODC " + std::to_string(index));
-//		CBBlockData CBcommand(numeric_cast<uint32_t>(command), true);
-//		QueueCBCommand(CBcommand, pStatusCallback); // Single block send
-	}
-	else if (index == MyPointConf->FreezeResetCountersPoint.second)
-	{
-		// Normally a Fn16
-		LOGDEBUG("Master received Freeze/Reset Counters command on the magic point through ODC " + std::to_string(index));
-//		CBBlockData CBcommand(numeric_cast<uint32_t>(command),true); // The packet rx'd by the outstation and passed to us through ODC is sent out unchanged by the master...
-//		QueueCBCommand(CBcommand, pStatusCallback);                       // Single block send
-	}
-	else if (index == MyPointConf->DOMControlPoint.second) // Is this out magic time set point?
-	{
-		LOGDEBUG("Master received DOM Control Point command on the magic point through ODC " + std::to_string(index));
-		uint32_t PacketData = numeric_cast<uint32_t>(command);
-//		CBBlockData Header = CBBlockData((PacketData >> 24) & 0x7F, (PacketData >> 16) & 0xFF);
-//		CBBlockData BlockData = Header.GenerateSecondBlock(PacketData & 0xFFFF);
-
-//
-	}
-	else
-	{
-		LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event " + std::to_string(index));
-		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-	}
+	LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event " + std::to_string(index));
+	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
 void CBMasterPort::WriteObject(const float& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
@@ -1536,35 +1385,40 @@ void CBMasterPort::WriteObject(const float& command, const uint32_t &index, cons
 
 void CBMasterPort::WriteObject(const double& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-	if (index == MyPointConf->TimeSetPoint.second) // Is this out magic time set point?
-	{
-		LOGDEBUG("Master received a Time Change command on the magic point through ODC " + std::to_string(index));
-//		uint64_t currenttime = static_cast<uint64_t>(command);
 
-//		SendTimeDateChangeCommand(currenttime, pStatusCallback);
-	}
-	else if(index == MyPointConf->TimeSetPointNew.second) // Is this out magic time set point?
-	{
-		LOGDEBUG("Master received a New Time Change command on the magic point through ODC " + std::to_string(index));
-//		uint64_t currenttime = static_cast<uint64_t>(command);
-//		int utcoffsetminutes = tz_offset();
-//		SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, pStatusCallback);
-	}
-	else
-	{
-		LOGDEBUG("Master received unknown double ODC Event " + std::to_string(index));
-		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-	}
+	LOGDEBUG("Master received unknown double ODC Event " + std::to_string(index));
+	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
-void CBMasterPort::SendDOMOutputCommand(const uint8_t &StationAddress, const uint8_t &Group, const uint16_t &outputbits, const SharedStatusCallback_t &pStatusCallback)
+void CBMasterPort::SendDigitalControlOnCommand(const uint8_t &StationAddress, const uint8_t &Group, const uint16_t &Channel, const SharedStatusCallback_t &pStatusCallback)
 {
-//	CBBlockData commandblock(StationAddress, Group );
-//	CBBlockData datablock = commandblock.GenerateSecondBlock(outputbits);
-	CBMessage_t Cmd;
-//	Cmd.push_back(commandblock);
-//	Cmd.push_back(datablock);
-	QueueCBCommand(Cmd, pStatusCallback);
+	assert((Channel >= 1) && (Channel <= 12));
+	uint16_t BData = 1 << (12 - Channel);
+
+	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_CLOSE, BData, true); // Trip is OPEN or OFF
+	QueueCBCommand(commandblock, nullptr);
+
+	// Then queue the execute command - if the previous one does not work, then this one will not either.
+	// Bit of a question about how to  feedback failure.
+	// Only do the callback on the second - EXECUTE - command.
+
+	CBBlockData executeblock = CBBlockData(StationAddress, Group, FUNC_EXECUTE_COMMAND, 0, true);
+	QueueCBCommand(executeblock, pStatusCallback);
+}
+void CBMasterPort::SendDigitalControlOffCommand(const uint8_t &StationAddress, const uint8_t &Group, const uint16_t &Channel, const SharedStatusCallback_t &pStatusCallback)
+{
+	assert((Channel >= 1) && (Channel <= 12));
+	uint16_t BData = 1 << (12 - Channel);
+
+	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_TRIP, BData, true); // Trip is OPEN or OFF
+	QueueCBCommand(commandblock, nullptr);
+
+	// Then queue the execute command - if the previous one does not work, then this one will not either.
+	// Bit of a question about how to  feedback failure.
+	// Only do the callback on the second - EXECUTE - command.
+
+	CBBlockData executeblock = CBBlockData(StationAddress, Group, FUNC_EXECUTE_COMMAND, 0, true);
+	QueueCBCommand(executeblock, pStatusCallback);
 }
 
 

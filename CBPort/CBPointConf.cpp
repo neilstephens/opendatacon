@@ -133,13 +133,17 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 {
 	LOGDEBUG("Conf processing - PollGroups");
-	//TODO: PollGroup rejig
 
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
+		if (!JSONNode[n].isMember("Group"))
+		{
+			LOGERROR("Poll group missing Group : "+JSONNode[n].toStyledString() );
+			continue;
+		}
 		if (!JSONNode[n].isMember("ID"))
 		{
-			LOGERROR("Poll group missing ID : "+JSONNode[n].toStyledString() );
+			LOGERROR("Poll group missing ID : " + JSONNode[n].toStyledString());
 			continue;
 		}
 		if (!JSONNode[n].isMember("PollRate"))
@@ -147,42 +151,28 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 			LOGERROR("Poll group missing PollRate : "+ JSONNode[n].toStyledString());
 			continue;
 		}
-		if (!JSONNode[n].isMember("PointType"))
-		{
-			LOGERROR("Poll group missing PollType (Binary, Analog or TimeSetCommand, NewTimeSetCommand, SystemFlagScan) : "+ JSONNode[n].toStyledString());
-			continue;
-		}
 
-		uint32_t PollGroupID = JSONNode[n]["ID"].asUInt();
+		uint32_t PollID = JSONNode[n]["ID"].asUInt();
+		uint32_t group = JSONNode[n]["Group"].asUInt();
 		uint32_t pollrate = JSONNode[n]["PollRate"].asUInt();
 
-		if (PollGroupID == 0)
-		{
-			LOGERROR("Poll group 0 is reserved (do not poll) : "+ JSONNode[n].toStyledString());
-			continue;
-		}
-
-		if (PollGroups.count(PollGroupID) > 0)
+		if (PollGroups.count(PollID) > 0)
 		{
 			LOGERROR("Duplicate poll group ignored : "+ JSONNode[n].toStyledString());
 			continue;
 		}
 
-		PollGroupType polltype = BinaryPoints; // Default to Binary
+		PollGroupType polltype = Scan; // Scan
 
-		if (iequals(JSONNode[n]["PointType"].asString(), "Analog"))
+		if (iequals(JSONNode[n]["PollType"].asString(), "Scan"))
 		{
-			polltype = AnalogPoints;
+			polltype = Scan;
 		}
-		if (iequals(JSONNode[n]["PointType"].asString(), "TimeSetCommand"))
+		if (iequals(JSONNode[n]["PollType"].asString(), "TimeSetCommand"))
 		{
 			polltype = TimeSetCommand;
 		}
-		if (iequals(JSONNode[n]["PointType"].asString(), "NewTimeSetCommand"))
-		{
-			polltype = NewTimeSetCommand;
-		}
-		if (iequals(JSONNode[n]["PointType"].asString(), "SystemFlagScan"))
+		if (iequals(JSONNode[n]["PollType"].asString(), "SystemFlagScan"))
 		{
 			polltype = SystemFlagScan;
 		}
@@ -193,14 +183,9 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 			ForceUnconditional = JSONNode[n]["ForceUnconditional"].asBool();
 		}
 
-		bool TimeTaggedDigital = false;
-		if (JSONNode[n].isMember("TimeTaggedDigital"))
-		{
-			TimeTaggedDigital = JSONNode[n]["TimeTaggedDigital"].asBool();
-		}
+		LOGDEBUG("Conf processed - PollID - " + std::to_string(PollID) + " Rate " + std::to_string(pollrate) + " Type " + std::to_string(polltype) + " Group " + std::to_string(group) + " Force Unconditional PendingCommand " + std::to_string(ForceUnconditional));
 
-		LOGDEBUG("Conf processed - PollGroup - " + std::to_string(PollGroupID) + " Rate " + std::to_string(pollrate) + " Type " + std::to_string(polltype) + " TimeTaggedDigital " + std::to_string(TimeTaggedDigital) + " Force Unconditional Command " + std::to_string(ForceUnconditional));
-		PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate, polltype, ForceUnconditional, TimeTaggedDigital));
+		PollGroups[PollID] = CBPollGroup(PollID, pollrate, polltype, group, ForceUnconditional);
 	}
 	LOGDEBUG("Conf processing - PollGroups - Finished");
 }
@@ -257,7 +242,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		}
 		else
 		{
-			//TODO: Check Command payload location
+			//TODO: Check PendingCommand payload location
 			// For a control point, the payload location is always 1B - the command comes as one block only
 			ParsePayloadString("1B", payloadlocation);
 		}
@@ -292,7 +277,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			else if (pointtypestring == "MCC")
 				pointtype = MCC;
 			else if (pointtypestring == "CONTROL")
-				pointtype = CONTROL;
+				pointtype = BINCONTROL;
 			else
 			{
 				LOGERROR(BinaryName + " A point needs a valid \"Type\" : " + JSONNode[n].toStyledString());
@@ -324,7 +309,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					{
 						LOGERROR("A binary point channel for point type MCA/MCB/MCC must be between 1 and 6 " + std::to_string(currentchannel));
 					}
-					else if (pointtype == CONTROL)
+					else if (pointtype == BINCONTROL)
 					{
 						LOGERROR("A binary input cannot have type CONTROL " + std::to_string(currentchannel));
 					}
@@ -336,7 +321,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 				}
 				else if (ptype == BinaryControl)
 				{
-					if (pointtype != CONTROL)
+					if (pointtype != BINCONTROL)
 					{
 						LOGERROR("A binary control can only have type CONTROL " + std::to_string(currentchannel));
 					}
@@ -348,7 +333,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					else
 					{
 						// Only add the point if it passes
-						res = PointTable.AddBinaryControlPointToPointTable(index, group, currentchannel, payloadlocation, pointtype);
+						res = PointTable.AddBinaryControlPointToPointTable(index, group, currentchannel, pointtype);
 					}
 				}
 				else
@@ -424,6 +409,8 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 		Name = "Analog";
 	if (ptype == Counter)
 		Name = "Counter";
+	if (ptype == AnalogControl)
+		Name = "AnalogControl";
 
 	LOGDEBUG("Conf processing - "+Name);
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
@@ -446,14 +433,17 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 			error = true;
 		}
 
-		if (JSONNode[n].isMember("PayloadLocation"))
+		if (ptype != AnalogControl) // Control points do not have a payload location.
 		{
-			error = !ParsePayloadString(JSONNode[n]["PayloadLocation"].asString(), payloadlocation);
-		}
-		else
-		{
-			LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
-			error = true;
+			if (JSONNode[n].isMember("PayloadLocation"))
+			{
+				error = !ParsePayloadString(JSONNode[n]["PayloadLocation"].asString(), payloadlocation);
+			}
+			else
+			{
+				LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
+				error = true;
+			}
 		}
 
 		if (JSONNode[n].isMember("Group"))
@@ -483,6 +473,8 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 				pointtype = ACC12;
 			else if (pointtypestring == "ACC24")
 				pointtype = ACC24;
+			else if (pointtypestring == "CONTROL")
+				pointtype = ANACONTROL;
 			else
 			{
 				LOGERROR("A point needs a valid \"Type\" : " + JSONNode[n].toStyledString());
@@ -538,7 +530,18 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 			}
 			else if (ptype == AnalogControl)
 			{
-				res = PointTable.AddAnalogControlPointToPointTable(index, group, channel, payloadlocation, pointtype);
+				if (pointtype != ANACONTROL)
+				{
+					LOGERROR("An analogcontrol point must be type CONTROL ");
+				}
+				else if ((channel < 1) || (channel > 2))
+				{
+					LOGERROR("An analogcontrol point channel for point type CONTROL must be between 1 and 2 " + std::to_string(channel));
+				}
+				else
+				{
+					res = PointTable.AddAnalogControlPointToPointTable(index, group, channel, pointtype);
+				}
 			}
 			else
 				LOGERROR("Illegal point type passed to ProcessAnalogCounterPoints");

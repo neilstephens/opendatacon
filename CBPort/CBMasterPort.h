@@ -96,12 +96,11 @@ public:
 	uint8_t GetAndIncrementDigitalCommandSequenceNumber(); // Thread protected
 
 	void EnablePolling(bool on); // Enabled by default
+	void SendTimeDateChangeCommand(const uint64_t & currenttimeinmsec, SharedStatusCallback_t pStatusCallback);
+	void SendScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
 
-//	void SendTimeDateChangeCommand(const uint64_t &currenttime, SharedStatusCallback_t pStatusCallback);
-//	void SendNewTimeDateChangeCommand(const uint64_t & currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback);
-//	void SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCallback);
-
-	void SendDOMOutputCommand(const uint8_t & StationAddress, const uint8_t & Group, const uint16_t & outputbits, const SharedStatusCallback_t &pStatusCallback);
+	void SendDigitalControlOnCommand(const uint8_t & StationAddress, const uint8_t & Group, const uint16_t & outputbits, const SharedStatusCallback_t &pStatusCallback);
+	void SendDigitalControlOffCommand(const uint8_t & StationAddress, const uint8_t & Group, const uint16_t & outputbit, const SharedStatusCallback_t & pStatusCallback);
 
 	// Testing use only
 	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
@@ -120,7 +119,7 @@ private:
 
 	bool ProcessScanRequestReturn(const CBMessage_t & CompleteCBMessage);
 	void ProccessScanPayload(uint16_t data, uint8_t group, PayloadLocationType payloadlocation);
-	void GenerateODCEventsFromDIGPayload(const uint16_t & data, const uint8_t & Group, PayloadLocationType payloadlocation, const CBTime & eventtime);
+	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 /*	bool ProcessAnalogUnconditionalReturn(  const CBMessage_t& CompleteCBMessage);

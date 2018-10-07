@@ -48,7 +48,7 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 	size_t ExpectedMessageSize = 1; // Only set in switch statement if not 1
 
 	CBBlockData &Header = CompleteCBMessage[0];
-	// Now based on the Command Function, take action. Some of these are responses from - not commands to an OutStation.
+	// Now based on the PendingCommand Function, take action. Some of these are responses from - not commands to an OutStation.
 
 	bool NotImplemented = false;
 
@@ -67,26 +67,27 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 
 		case FUNC_EXECUTE_COMMAND:
 			// The other functions below will setup what needs to be executed, has to be executed within a certain time...
-
+			ExecuteCommand(Header);
 			break;
 
 		case FUNC_TRIP:
 			// Binary Control
-			FuncTripClose(Header, Trip);
+			FuncTripClose(Header, PendingCommandType::CommandType::Trip);
 			break;
 
 		case FUNC_SETPOINT_A:
-			NotImplemented = true;
+			FuncSetAB(Header, PendingCommandType::CommandType::SetA);
 			break;
 
 		case FUNC_CLOSE:
 			// Binary Control
-			FuncTripClose(Header, Close);
+			FuncTripClose(Header, PendingCommandType::CommandType::Close);
 			break;
 
 		case FUNC_SETPOINT_B:
-			NotImplemented = true;
+			FuncSetAB(Header, PendingCommandType::CommandType::SetB);
 			break;
+
 		case FUNC_RESET:
 			NotImplemented = true;
 			break;
@@ -115,12 +116,12 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			break;
 
 		default:
-			LOGERROR("Unknown Command Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+			LOGERROR("Unknown PendingCommand Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			break;
 	}
 	if (NotImplemented == true)
 	{
-		LOGERROR("Command Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		LOGERROR("PendingCommand Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 	}
 
 	if (ExpectedMessageSize != CompleteCBMessage.size())
@@ -281,41 +282,203 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 }
 
 
-void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandToExecute Command)
+void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::CommandType pCommand)
 {
 	// Sets up data to be executed when we get the execute command...
 	// So we dont trigger any ODC events at this point, only when the execute occurs.
 	std::string cmd = "Trip";
-	if (Command == Close) cmd = "Close";
+	if (pCommand == PendingCommandType::CommandType::Close) cmd = "Close";
 
-	LOGDEBUG("OS - {} Command - Fn2/4",cmd);
+	LOGDEBUG("OS - {} PendingCommand - Fn2/4",cmd);
 
-	// Now assemble and return the required response..
-	CBMessage_t ResponseCBMessage;
-
-	PendingCommandData = Header.GetB();
+	uint8_t group = Header.GetGroup();
+	PendingCommands[group].Data = Header.GetB();
 
 	// Can/must only be 1 bit set, check this.
-	if (BitsSet(PendingCommandData,12) == 1)
+	if (GetBitsSet(PendingCommands[group].Data,12) == 1)
 	{
-		// Also now check that this is actually a valid CONTROL point.
-		PendingCommand = Command;
-		LOGDEBUG("OS - Got a valid Trip Command, Data {}",PendingCommandData);
+		// Check that this is actually a valid CONTROL point.
+		uint8_t Channel = 1 + GetSetBit(PendingCommands[group].Data, 12);
+		size_t ODCIndex;
+		if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
+		{
+			PendingCommands[group].Command = PendingCommandType::CommandType::None;
+			LOGDEBUG("FuncTripClose - Could not find an ODC BinaryControl to match Group {}, Channel {}", Header.GetGroup(), Channel);
+			return;
+		}
 
-		auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommandData, true);
+		PendingCommands[group].Command = pCommand;
+		PendingCommands[group].ExpiryTime = CBNow() + PendingCommands[group].CommandValidTimemsec;
+
+		LOGDEBUG("OS - Got a valid {} PendingCommand, Data {}",cmd, PendingCommand.Data);
+
+		auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommands[group].Data, true);
+
+		// Now assemble and return the required response..
+		CBMessage_t ResponseCBMessage;
 		ResponseCBMessage.push_back(firstblock);
 
 		SendCBMessage(ResponseCBMessage);
 	}
 	else
 	{
-		PendingCommand = None;
+		PendingCommands[group].Command = PendingCommandType::CommandType::None;
 
 		// Error - dont reply..
-		LOGERROR("OS - More than one or no bit set in a {} Command - Not responding to master",cmd);
+		LOGERROR("OS - More than one or no bit set in a {} PendingCommand - Not responding to master",cmd);
 	}
 }
 
+void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::CommandType pCommand)
+{
+	// Sets up data to be executed when we get the execute command...
+	// So we dont trigger any ODC events at this point, only when the execute occurs.
+	std::string cmd = "SetA";
+	uint8_t Channel = 1;
+
+	if (pCommand == PendingCommandType::CommandType::SetB)
+	{
+		Channel = 2;
+		cmd = "SetB";
+	}
+
+	LOGDEBUG("OS - {} PendingCommand - Fn3/5", cmd);
+	uint8_t group = Header.GetGroup();
+
+	// Also now check that this is actually a valid CONTROL point.
+	size_t ODCIndex;
+	if (!MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
+	{
+		PendingCommands[group].Command = PendingCommandType::CommandType::None;
+		LOGDEBUG("FuncSetAB - Could not find an ODC AnalogControl to match Group {}, Channel {}", Header.GetGroup(), Channel);
+		return;
+	}
+
+	PendingCommands[group].Command = pCommand;
+	PendingCommands[group].ExpiryTime = CBNow() + PendingCommands[group].CommandValidTimemsec;
+	PendingCommands[group].Data = Header.GetB();
+
+	LOGDEBUG("OS - Got a valid {} PendingCommand, Data {}", cmd, PendingCommand.Data);
+
+	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommands[group].Data, true);
+
+	// Now assemble and return the required response..
+	CBMessage_t ResponseCBMessage;
+	ResponseCBMessage.push_back(firstblock);
+
+	SendCBMessage(ResponseCBMessage);
+}
+
+void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
+{
+	// Now if there is a command to be executed - do so
+	LOGDEBUG("OS - ExecuteCommand - Fn1");
+
+	// Find a matching PendingCommand (by Group)
+	PendingCommandType &PendingCommand = PendingCommands[Header.GetGroup()];
+
+	if (CBNow() > PendingCommand.ExpiryTime)
+	{
+		LOGDEBUG("Received an Execute Command, but the current command had expired");
+		//TODO: Should we reply in some way?
+		return;
+	}
+
+	switch (PendingCommand.Command)
+	{
+		case PendingCommandType::CommandType::None:
+			LOGDEBUG("Received an Execute Command, but there is no current command");
+			break;
+
+		case PendingCommandType::CommandType::Trip:
+		{
+			LOGDEBUG("Received an Execute Command, Trip");
+			uint8_t SetBit = GetSetBit(PendingCommand.Data, 12);
+			bool point_on = false; // Trip is OFF??
+
+			ExecuteBinaryControl(Header.GetGroup(), SetBit+1, point_on);
+		}
+		break;
+
+		case PendingCommandType::CommandType::Close:
+		{
+			LOGDEBUG("Received an Execute Command, Close");
+			uint8_t SetBit = GetSetBit(PendingCommand.Data, 12);
+			bool point_on = true; // Trip is OFF??
+
+			ExecuteBinaryControl(Header.GetGroup(), SetBit+1, point_on);
+		}
+		break;
+
+		case PendingCommandType::CommandType::SetA:
+		{
+			LOGDEBUG("Received an Execute Command, SetA");
+			ExecuteAnalogControl(Header.GetGroup(), 1, PendingCommand.Data);
+		}
+		break;
+		case PendingCommandType::CommandType::SetB:
+		{
+			LOGDEBUG("Received an Execute Command, SetB");
+			ExecuteAnalogControl(Header.GetGroup(), 2, PendingCommand.Data);
+		}
+		break;
+	}
+
+	PendingCommand.Command = PendingCommandType::CommandType::None;
+
+	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), 0, true);
+	CBMessage_t ResponseCBMessage;
+	ResponseCBMessage.push_back(firstblock);
+	SendCBMessage(ResponseCBMessage);
+}
+
+void CBOutstationPort::ExecuteBinaryControl(uint8_t group, int Channel, bool point_on)
+{
+	size_t ODCIndex = 0;
+
+	if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
+	{
+		LOGDEBUG("Could not find an ODC BinaryControl to match Group {}, Channel {}", Header.GetGroup(), SetBit);
+		return;
+	}
+
+	// Set our output value. Only really used for testing
+	MyPointConf->PointTable.SetBinaryControlValueUsingODCIndex(ODCIndex, point_on, CBNow());
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+	val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+
+	auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
+	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
+
+	bool success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+}
+void CBOutstationPort::ExecuteAnalogControl(uint8_t group, int Channel, uint16_t data)
+{
+	// The Setbit+1 == Channel
+	size_t ODCIndex = 0;
+
+	if (!MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
+	{
+		LOGDEBUG("Could not find an ODC AnalogControl to match Group {}, Channel {}", Header.GetGroup(), Channel);
+		return;
+	}
+
+	// Set our output value. Only really used for testing
+	MyPointConf->PointTable.SetAnalogControlValueUsingODCIndex(ODCIndex, data, CBNow());
+
+	EventTypePayload<EventType::AnalogOutputInt16>::type val;
+	val.first = data;
+
+	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
+	event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
+
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
+
+	bool success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+}
 /*
 // Function 6
 void CBOutstationPort::DoAnalogDeltaScan( CBBlockData &Header )

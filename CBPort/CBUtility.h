@@ -58,7 +58,7 @@
 // This will create multiple copies, one in each file that uses this include file...
 const std::map<uint8_t, std::string> FunctionCodeStrings = {
 	{ FUNC_SCAN_DATA,                       "Scan Data"  },
-	{ FUNC_EXECUTE_COMMAND,           "Execute Command" },
+	{ FUNC_EXECUTE_COMMAND,           "Execute PendingCommand" },
 	{ FUNC_TRIP,                  "Trip" },
 	{ FUNC_SETPOINT_A,            "Setpoint A" },
 	{ FUNC_CLOSE,                 "Close" },
@@ -115,7 +115,8 @@ inline char ToChar(uint8_t v)
 {
 	return numeric_cast<char>(v);
 }
-int BitsSet(uint32_t data, int numberofbits);
+int GetBitsSet(uint32_t data, int numberofbits);
+int GetSetBit(uint32_t data, int numberofbits);
 
 std::vector<std::string> split(const std::string& s, char delimiter);
 

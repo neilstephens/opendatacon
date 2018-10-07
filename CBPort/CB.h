@@ -85,9 +85,9 @@ OT numeric_cast(const ST value)
 }
 
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
-enum BinaryPointType { DIG, MCA, MCB, MCC, CONTROL }; // Inputs and outputs
-enum AnalogCounterPointType { ANA, ANA6, ACC12, ACC24 };
-enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
+enum BinaryPointType { DIG, MCA, MCB, MCC, BINCONTROL }; // Inputs and outputs
+enum AnalogCounterPointType { ANA, ANA6, ACC12, ACC24, ANACONTROL };
+enum PollGroupType { Scan, TimeSetCommand, SystemFlagScan };
 
 #define MISSINGVALUE 0 // If we have a missing point or have no data, substitute this. MD3 it was 0x8000
 
@@ -267,26 +267,24 @@ public:
 	CBPollGroup():
 		ID(0),
 		pollrate(0),
-		polltype(BinaryPoints),
-		ForceUnconditional(false),
-		TimeTaggedDigital(false)
+		polltype(Scan),
+		group(0),
+		ForceUnconditional(false)
 	{ }
 
-	CBPollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_, bool forceunconditional, bool timetaggeddigital):
+	CBPollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_, uint8_t group_, bool forceunconditional):
 		ID(ID_),
 		pollrate(pollrate_),
 		polltype(polltype_),
-		ForceUnconditional(forceunconditional),
-		TimeTaggedDigital(timetaggeddigital)
+		group(group_),
+		ForceUnconditional(forceunconditional)
 	{ }
 
 	uint32_t ID;
 	uint32_t pollrate;
+	uint8_t group;
 	PollGroupType polltype;
-	bool ForceUnconditional;       // Used to prevent use of delta or COS commands.
-	bool TimeTaggedDigital;        // Set to true if this poll group contains time tagged digital points.
-	ModuleMapType ModuleAddresses; // The second value is for channel count
-	// As we load points we will build this list
+	bool ForceUnconditional; // Used to prevent use of delta or COS commands.
 };
 
 #endif

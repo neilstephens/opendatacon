@@ -29,7 +29,7 @@
 #include "CBUtility.h"
 
 
-int BitsSet(uint32_t data, int numberofbits)
+int GetBitsSet(uint32_t data, int numberofbits)
 {
 	int bitsset = 0;
 	for (uint8_t i = 0; i < numberofbits; i++)
@@ -38,6 +38,18 @@ int BitsSet(uint32_t data, int numberofbits)
 			bitsset++;
 	}
 	return bitsset;
+}
+int GetSetBit(uint32_t data, int numberofbits)
+{
+	int bitsset = 0;
+	for (uint8_t i = 0; i < numberofbits; i++)
+	{
+		if (((data >> i) & 0x001) == 1)
+		{
+			return numberofbits - i -1;
+		}
+	}
+	return -1;
 }
 
 CBPoint::~CBPoint() {} // To keep the compiler/linker happy
