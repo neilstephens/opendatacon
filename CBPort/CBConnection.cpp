@@ -88,7 +88,7 @@ void CBConnection::AddConnection(asio::io_service* apIOS, //pointer to an asio i
 		ConnectionMap[ChannelID] = pConnection;
 	}
 	else
-		LOGDEBUG("Connection already exists, using that connection - " + ChannelID);
+		LOGDEBUG("Connection already exists, using that connection - {}",ChannelID);
 }
 
 void CBConnection::AddOutstation(uint64_t ChannelID, uint8_t StationAddress, // For message routing, OutStation identification

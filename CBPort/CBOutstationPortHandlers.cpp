@@ -92,9 +92,11 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			NotImplemented = true;
 			break;
 		case FUNC_MASTER_STATION_REQUEST:
-			// What is this? Python Sim does not implement
-
+			// Has many sub messages, determined by Group Number
+			// This is the only code that has extra Master to RTU blocks
+			FuncMasterStationRequest(Header, CompleteCBMessage);
 			break;
+
 		case FUNC_SEND_NEW_SOE:
 			NotImplemented = true;
 			break;
@@ -122,13 +124,6 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 	if (NotImplemented == true)
 	{
 		LOGERROR("PendingCommand Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
-	}
-
-	if (ExpectedMessageSize != CompleteCBMessage.size())
-	{
-		LOGERROR("Unexpected Message Size - " + std::to_string(CompleteCBMessage.size()) +
-			" On Station Address - " + std::to_string(Header.GetStationAddress())+
-			" Function - " + std::to_string(Header.GetFunctionCode()));
 	}
 }
 
@@ -248,7 +243,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				      if (pt.GetBinary() == 1)
 				      {
 				// ch 1 to 6
-				            Payload |= ShiftLeftResult16Bits(1, 6 - ch*2);
+				            Payload |= ShiftLeftResult16Bits(1, 6 - ch * 2);
 					}
 				      if (pt.GetAndResetChangedFlag() == 1)
 				      {
@@ -303,14 +298,14 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 		if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
 		{
 			PendingCommands[group].Command = PendingCommandType::CommandType::None;
-			LOGDEBUG("FuncTripClose - Could not find an ODC BinaryControl to match Group {}, Channel {}", Header.GetGroup(), Channel);
+			LOGDEBUG("FuncTripClose - Could not find an ODC BinaryControl to match Group {}, channel {}", Header.GetGroup(), Channel);
 			return;
 		}
 
 		PendingCommands[group].Command = pCommand;
 		PendingCommands[group].ExpiryTime = CBNow() + PendingCommands[group].CommandValidTimemsec;
 
-		LOGDEBUG("OS - Got a valid {} PendingCommand, Data {}",cmd, PendingCommand.Data);
+		LOGDEBUG("OS - Got a valid {} PendingCommand, Data {}",cmd, PendingCommands[group].Data);
 
 		auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommands[group].Data, true);
 
@@ -350,7 +345,7 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 	if (!MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
 	{
 		PendingCommands[group].Command = PendingCommandType::CommandType::None;
-		LOGDEBUG("FuncSetAB - Could not find an ODC AnalogControl to match Group {}, Channel {}", Header.GetGroup(), Channel);
+		LOGDEBUG("FuncSetAB - Could not find an ODC AnalogControl to match Group {}, channel {}", group, Channel);
 		return;
 	}
 
@@ -358,7 +353,7 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 	PendingCommands[group].ExpiryTime = CBNow() + PendingCommands[group].CommandValidTimemsec;
 	PendingCommands[group].Data = Header.GetB();
 
-	LOGDEBUG("OS - Got a valid {} PendingCommand, Data {}", cmd, PendingCommand.Data);
+	LOGDEBUG("OS - Got a valid {} PendingCommand, Data {}", cmd, PendingCommands[group].Data);
 
 	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommands[group].Data, true);
 
@@ -432,13 +427,13 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 	SendCBMessage(ResponseCBMessage);
 }
 
-void CBOutstationPort::ExecuteBinaryControl(uint8_t group, int Channel, bool point_on)
+void CBOutstationPort::ExecuteBinaryControl(uint8_t group, int channel, bool point_on)
 {
 	size_t ODCIndex = 0;
 
-	if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
+	if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(group, channel, ODCIndex))
 	{
-		LOGDEBUG("Could not find an ODC BinaryControl to match Group {}, Channel {}", Header.GetGroup(), SetBit);
+		LOGDEBUG("Could not find an ODC BinaryControl to match Group {}, channel {}", group, channel);
 		return;
 	}
 
@@ -455,14 +450,14 @@ void CBOutstationPort::ExecuteBinaryControl(uint8_t group, int Channel, bool poi
 
 	bool success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
 }
-void CBOutstationPort::ExecuteAnalogControl(uint8_t group, int Channel, uint16_t data)
+void CBOutstationPort::ExecuteAnalogControl(uint8_t group, int channel, uint16_t data)
 {
-	// The Setbit+1 == Channel
+	// The Setbit+1 == channel
 	size_t ODCIndex = 0;
 
-	if (!MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
+	if (!MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(group, channel, ODCIndex))
 	{
-		LOGDEBUG("Could not find an ODC AnalogControl to match Group {}, Channel {}", Header.GetGroup(), Channel);
+		LOGDEBUG("Could not find an ODC AnalogControl to match Group {}, channel {}", group, channel);
 		return;
 	}
 
@@ -478,6 +473,96 @@ void CBOutstationPort::ExecuteAnalogControl(uint8_t group, int Channel, uint16_t
 	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 	bool success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+}
+void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_t & CompleteCBMessage)
+{
+	LOGDEBUG("OS - MasterStationRequest - Fn9 - Code {}", Header.GetGroup());
+	// The purpose of this function is determined by Group Number
+	switch (Header.GetGroup())
+	{
+		case MASTER_SUB_FUNC_0_NOTUSED:
+		case MASTER_SUB_FUNC_SPARE1:
+		case MASTER_SUB_FUNC_SPARE2:
+		case MASTER_SUB_FUNC_SPARE3:
+			// Not used, we do not respond;
+			LOGERROR("Received Unused Master Command Function - {} ",Header.GetGroup());
+			break;
+
+		case MASTER_SUB_FUNC_TESTRAM:
+		case MASTER_SUB_FUNC_TESTPROM:
+		case MASTER_SUB_FUNC_TESTEPROM:
+		case MASTER_SUB_FUNC_TESTIO:
+
+			// We respond as if everything is OK - we just send back what we got. One block only.
+			EchoReceivedHeaderToMaster(Header);
+			break;
+
+		case MASTER_SUB_FUNC_SEND_TIME_UPDATES:
+		{
+			// This is the only code that has extra Master to RTU blocks
+			uint8_t DataIndex = Header.GetB() >> 8;
+			uint16_t Data = Header.GetB() & 0x1FF;
+			if (DataIndex == 0)
+			{
+				ProcessUpdateTimeRequest(CompleteCBMessage);
+			}
+			else
+			{
+				LOGERROR("Received Illegal MASTER_SUB_FUNC_SEND_TIME_UPDATES DataIndex value - {} ", DataIndex);
+			}
+		}
+		break;
+
+		case MASTER_SUB_FUNC_RETRIEVE_REMOTE_STATUS_WORD:
+
+			break;
+
+		case MASTER_SUB_FUNC_RETREIVE_INPUT_CIRCUIT_DATA:
+
+			break;
+
+		case MASTER_SUB_FUNC_TIME_CORRECTION_FACTOR_ESTABLISHMENT:
+
+			break;
+
+		case MASTER_SUB_FUNC_REPEAT_PREVIOUS_TRANSMISSION:
+
+			break;
+
+		case MASTER_SUB_FUNC_SET_LOOPBACKS:
+
+			break;
+
+		case MASTER_SUB_FUNC_RESET_RTU_WARM:
+
+			break;
+
+		case MASTER_SUB_FUNC_RESET_RTU_COLD:
+
+			break;
+
+		default:
+			LOGERROR("Unknown PendingCommand Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+			break;
+	}
+}
+
+// We do not update the time, just send back our current time - assume UTC time of day in milliseconds since 1970 (CBTime()).
+void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage)
+{
+	CBMessage_t ResponseCBMessage;
+
+	BuildUpdateTimeMessage(CompleteCBMessage[0].GetStationAddress(), CompleteCBMessage[0].GetGroup(), CBNow(), ResponseCBMessage);
+
+	SendCBMessage(ResponseCBMessage);
+}
+
+void CBOutstationPort::EchoReceivedHeaderToMaster(CBBlockData & Header)
+{
+	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), 0, true);
+	CBMessage_t ResponseCBMessage;
+	ResponseCBMessage.push_back(firstblock);
+	SendCBMessage(ResponseCBMessage);
 }
 /*
 // Function 6

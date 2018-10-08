@@ -154,6 +154,20 @@ std::string to_timestringfromCBtime(CBTime _time)
 	}
 	return "Time Conversion Problem";
 }
+void to_hhmmssmmfromCBtime(CBTime _time, uint8_t &hh, uint8_t &mm, uint8_t &ss, uint16_t &msec)
+{
+	time_t tp = _time / 1000; // time_t is normally seconds since epoch. We deal in msec!
+	msec = _time % 1000;
+
+	std::tm* t = std::gmtime(&tp);
+	if (t != nullptr)
+	{
+		hh = t->tm_hour;
+		mm = t->tm_min;
+		ss = t->tm_sec;
+	}
+}
+
 int tz_offset()
 {
 	time_t when = std::time(nullptr);

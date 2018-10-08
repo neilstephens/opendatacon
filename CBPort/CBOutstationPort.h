@@ -124,6 +124,10 @@ public:
 	void ExecuteCommand(CBBlockData & Header);
 	void ExecuteBinaryControl(uint8_t group, int Channel, bool point_on);
 	void ExecuteAnalogControl(uint8_t group, int Channel, uint16_t data);
+	void FuncMasterStationRequest(CBBlockData &Header, CBMessage_t &CompleteCBMessage);
+
+	void ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage);
+	void EchoReceivedHeaderToMaster(CBBlockData & Header);
 
 	void BuildScanRequestResponseData(uint8_t Group, std::vector<uint16_t>& BlockValues);
 	uint16_t GetPayload(uint8_t &Group, PayloadLocationType &payloadlocation);

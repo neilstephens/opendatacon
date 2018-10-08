@@ -50,22 +50,27 @@
 //	MCDA - Used - Same as SMCDA
 //	ANA6 - Used - Half of an analog 12 bit value... //TODO: Need to combine these and split out again.
 
+// Microsoft Message Analyzer filter
+// Virtually all the master commands are 4 bytes only. So look for these only with command # > 0
+// Then we can see what has to be implemented. Fn0 is the bulk of the traffic.
+// Filter for Conitel/Baker traffic - based on payload size, and Function code != 0
+// (tcp.PayloadLength != 0) && ((tcp.PayloadLength % 4) == 0) && (tcp.payload[0] > 0x0F)
 
 //extern std::shared_ptr<spdlog::logger> logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
 
 // Hide some of the code to make Logging cleaner
-#define LOGDEBUG(msg) \
+#define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("CBPort")) \
-		log->debug(msg);
-#define LOGERROR(msg) \
+		log->debug(__VA_ARGS__);
+#define LOGERROR(...) \
 	if (auto log = odc::spdlog_get("CBPort")) \
-		log->error(msg);
-#define LOGWARN(msg) \
+		log->error(__VA_ARGS__);
+#define LOGWARN(...) \
 	if (auto log = odc::spdlog_get("CBPort"))  \
-		log->warn(msg);
-#define LOGINFO(msg) \
+		log->warn(__VA_ARGS__);
+#define LOGINFO(...) \
 	if (auto log = odc::spdlog_get("CBPort")) \
-		log->info(msg);
+		log->info(__VA_ARGS__);
 
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

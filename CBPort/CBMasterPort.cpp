@@ -488,7 +488,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 			uint32_t ODCIndex = pt.GetIndex();
 			QualityFlags qual = QualityFlags::ONLINE; // CalculateAnalogQuality(enabled, data, now); //TODO: Handle quality better?
 
-			LOGDEBUG("MA - Published Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(data));
+			LOGDEBUG("MA - Published Event - Analog - Index {} Value 0x{}", ODCIndex,to_hexstring(data));
 
 			auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from CB, so add it as soon as possible);
 			event->SetPayload<EventType::Analog>(std::move(data));

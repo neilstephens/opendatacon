@@ -482,6 +482,35 @@ TEST_CASE("Utility - Strand Queue")
 	t1.join(); // Wait for thread to end
 	t2.join();
 }
+TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
+{
+	uint8_t group = 1;
+	uint8_t address = 1;
+	CBTime cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
+
+	CBMessage_t CompleteCBMessage;
+
+	CBPort::BuildUpdateTimeMessage(address, group, cbtime, CompleteCBMessage);
+
+	REQUIRE(CompleteCBMessage.size() == 2);
+
+	uint16_t B0 = CompleteCBMessage[0].GetB();
+	uint16_t A1 = CompleteCBMessage[1].GetA();
+	uint16_t B1 = CompleteCBMessage[1].GetB();
+
+	REQUIRE(B0 == 0x0020);
+	REQUIRE(A1 == 0x0f04);
+	REQUIRE(B1 == 0x00fb);
+	REQUIRE(CompleteCBMessage[0].IsEndOfMessageBlock() == false);
+	REQUIRE(CompleteCBMessage[1].IsEndOfMessageBlock() == true);
+
+/*	uint16_t FirstDataB = ((hh >> 2) & 0x07) | 0x20;	// The 2 is the number of blocks.
+      auto firstblock = CBBlockData(StationAddress, Group, MASTER_SUB_FUNC_SEND_TIME_UPDATES, FirstDataB, false);
+
+      uint16_t DataA = ShiftLeftResult16Bits(hh & 0x02, 10) | ShiftLeftResult16Bits(mm & 0x3F, 4) | ((ss >> 2) & 0x0F);
+      uint16_t DataB = ShiftLeftResult16Bits(ss & 0x03, 10) | (msec & 0x3ff);
+*/
+}
 
 #pragma region Block Tests
 

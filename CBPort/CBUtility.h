@@ -49,47 +49,31 @@
 #define     FUNC_SETPOINT_B                     5
 #define     FUNC_RESET                          8
 #define     FUNC_MASTER_STATION_REQUEST         9
-#define     FUNC_SEND_NEW_SOE                   10
-#define     FUNC_REPEAT_SOE                     11
-#define     FUNC_UNIT_RAISE_LOWER               13
-#define     FUNC_FREEZE_AND_SCAN_ACC            14
-#define     FUNC_FREEZE_SCAN_AND_RESET_ACC      15
-
-// This will create multiple copies, one in each file that uses this include file...
-const std::map<uint8_t, std::string> FunctionCodeStrings = {
-	{ FUNC_SCAN_DATA,                       "Scan Data"  },
-	{ FUNC_EXECUTE_COMMAND,           "Execute PendingCommand" },
-	{ FUNC_TRIP,                  "Trip" },
-	{ FUNC_SETPOINT_A,            "Setpoint A" },
-	{ FUNC_CLOSE,                 "Close" },
-	{ FUNC_SETPOINT_B,            "Setpoint B" },
-	{ FUNC_RESET,                 "Reset RTU" },
-	{ FUNC_MASTER_STATION_REQUEST,"Master Station Request" },
-	{ FUNC_SEND_NEW_SOE,          "Send New SOE" },
-	{ FUNC_REPEAT_SOE,            "Repeat SOE" },
-	{ FUNC_UNIT_RAISE_LOWER,      "Unit Raise / Lower" },
-	{ FUNC_FREEZE_AND_SCAN_ACC,   "Freeze and Scan Accumulators" },
-	{ FUNC_FREEZE_SCAN_AND_RESET_ACC, "Freeze, Scan and Reset Accumulators" }
-};
+#define     FUNC_SEND_NEW_SOE                   10 //A
+#define     FUNC_REPEAT_SOE                     11 //B
+//C
+#define     FUNC_UNIT_RAISE_LOWER               13 //D
+#define     FUNC_FREEZE_AND_SCAN_ACC            14 //E
+#define     FUNC_FREEZE_SCAN_AND_RESET_ACC      15 //F
 
 // Master Station Request Sub-Codes
 
-#define     MASTER_SUB_FUNC_SEND_TIME_UPDATES                     5
-#define     MASTER_SUB_FUNC_RETRIEVE_REMOTE_STATUS_WORD           8
-#define     MASTER_SUB_FUNC_TIME_CORRECTION_FACTOR_ESTABLISHMENT  10
-#define     MASTER_SUB_FUNC_REPEAT_PREVIOUS_TRANSMISSION          11
-#define     MASTER_SUB_FUNC_SET_LOOPBACKS                         13
-#define     MASTER_SUB_FUNC_RESET_RTU                             15
-
-const std::map<uint8_t, std::string> SubFunctionCodeStrings = {
-	{ MASTER_SUB_FUNC_SEND_TIME_UPDATES,                            "Send Time Updates" },
-	{ MASTER_SUB_FUNC_RETRIEVE_REMOTE_STATUS_WORD,            "Retrieve Remote Status Word" },
-	{ MASTER_SUB_FUNC_TIME_CORRECTION_FACTOR_ESTABLISHMENT,"Time Correction Factor Establishment" },
-	{ MASTER_SUB_FUNC_REPEAT_PREVIOUS_TRANSMISSION,       "Repeat Previous Transmission" },
-	{ MASTER_SUB_FUNC_SET_LOOPBACKS,                      "Set Loopbacks" },
-	{ MASTER_SUB_FUNC_RESET_RTU,                          "Reset RTU" }
-};
-
+#define     MASTER_SUB_FUNC_0_NOTUSED                                               0
+#define     MASTER_SUB_FUNC_TESTRAM                                                 1
+#define MASTER_SUB_FUNC_TESTPROM                                              2
+#define MASTER_SUB_FUNC_TESTEPROM                                             3
+#define MASTER_SUB_FUNC_TESTIO                                                      4
+#define MASTER_SUB_FUNC_SEND_TIME_UPDATES                               5 // Could be used for other memory areas (OTHER THAN TIME), but none are defined.
+#define MASTER_SUB_FUNC_SPARE1                                                      6
+#define MASTER_SUB_FUNC_SPARE2                                                      7
+#define MASTER_SUB_FUNC_RETRIEVE_REMOTE_STATUS_WORD                     8
+#define MASTER_SUB_FUNC_RETREIVE_INPUT_CIRCUIT_DATA                     9
+#define MASTER_SUB_FUNC_TIME_CORRECTION_FACTOR_ESTABLISHMENT      10
+#define MASTER_SUB_FUNC_REPEAT_PREVIOUS_TRANSMISSION              11
+#define MASTER_SUB_FUNC_SPARE3                                                      12
+#define MASTER_SUB_FUNC_SET_LOOPBACKS                                         13
+#define MASTER_SUB_FUNC_RESET_RTU_WARM                                        14
+#define MASTER_SUB_FUNC_RESET_RTU_COLD                                        15
 
 const int CBBlockArraySize = CONITEL_BLOCK_LENGTH;
 typedef  std::array<uint8_t, CBBlockArraySize> CBBlockArray;
@@ -137,6 +121,9 @@ std::string to_binstring(T val)
 
 // Create an ASCII string version of the time from the CB time - which is msec since epoch.
 std::string to_timestringfromCBtime(CBTime _time);
+
+void to_hhmmssmmfromCBtime(CBTime _time, uint8_t &hh, uint8_t &mm, uint8_t &ss, uint16_t &msec);
+
 // Return the current UTC offset in minutes.
 int tz_offset();
 
