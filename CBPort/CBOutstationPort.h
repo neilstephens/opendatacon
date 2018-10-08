@@ -115,6 +115,10 @@ public:
 	CommandStatus Perform(std::shared_ptr<EventInfo> event, bool waitforresult);
 
 	void SendCBMessage(const CBMessage_t & CompleteCBMessage) override;
+	void ResendLastCBMessage()
+	{
+		SendCBMessage(LastSentCBMessage);
+	};
 	void ProcessCBMessage(CBMessage_t &CompleteCBMessage);
 
 	// Response to PendingCommand Methods
@@ -147,11 +151,7 @@ private:
 
 	void SocketStateHandler(bool state);
 
-	uint8_t LastHRERSequenceNumber = 100;      // Used to remember the last HRER scan we sent, starts with an invalid value
-	uint8_t LastDigitalScanSequenceNumber = 0; // Used to remember the last digital scan we had
-	CBMessage_t LastDigitialScanResponseCBMessage;
-	CBMessage_t LastDigitialHRERResponseCBMessage;
-
+	CBMessage_t LastSentCBMessage;
 	PendingCommandType PendingCommands[15]; // Store a potential pending command for each group.
 };
 

@@ -88,9 +88,9 @@ public:
 	void QueueCBCommand(const CBBlockData & SingleBlockCBMessage, SharedStatusCallback_t pStatusCallback); // Handle the many single block command messages better
 	void PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c);
 
-
 	//*** PUBLIC for unit tests only
 	void DoPoll(uint32_t payloadlocation);
+	void SendFn9TimeUpdate( SharedStatusCallback_t pStatusCallback);
 
 	void ResetDigitalCommandSequenceNumber();
 	uint8_t GetAndIncrementDigitalCommandSequenceNumber(); // Thread protected
@@ -113,6 +113,7 @@ private:
 	uint8_t DigitalCommandSequenceNumber = 0; // Used only by the digital commands to manage resends/retries. 0 for power on - connect/reconnect. Will vary from 1 to 15 normally.
 
 	void SendNextMasterCommand();
+	CBMessage_t GetResendMessage();
 	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
 	void ClearCBCommandQueue();
 	void ProcessCBMessage(CBMessage_t& CompleteCBMessage);
@@ -122,24 +123,8 @@ private:
 	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
-/*	bool ProcessAnalogUnconditionalReturn(  const CBMessage_t& CompleteCBMessage);
-      bool ProcessAnalogDeltaScanReturn(  const CBMessage_t& CompleteCBMessage);
-      bool ProcessAnalogNoChangeReturn( const CBMessage_t& CompleteCBMessage);
 
-      bool ProcessDigitalNoChangeReturn( const CBMessage_t & CompleteCBMessage);
-      bool ProcessDigitalScan( const CBMessage_t & CompleteCBMessage); // Handles new COS and Unconditional Scan
-
-      void GenerateODCEventsFromDIGPayload(const uint16_t &ModuleData, const uint8_t &Group, const CBTime &eventtime);
-
-      bool ProcessDOMReturn( const CBMessage_t & CompleteCBMessage);
-      bool ProcessPOMReturn( const CBMessage_t & CompleteCBMessage);
-      bool ProcessAOMReturn( const CBMessage_t & CompleteCBMessage);
-      bool ProcessSetDateTimeReturn( const CBMessage_t& CompleteCBMessage);
-      bool ProcessSetDateTimeNewReturn( const CBMessage_t & CompleteCBMessage);
-      bool ProcessSystemSignOnReturn( const CBMessage_t & CompleteCBMessage);
-      bool ProcessFreezeResetReturn( const CBMessage_t & CompleteCBMessage);
-      bool ProcessFlagScanReturn( const CBMessage_t & CompleteCBMessage);
-*/
+	//TODO: Check if we need these Quality Calculations
 	QualityFlags  CalculateBinaryQuality(bool enabled, CBTime time);
 	QualityFlags  CalculateAnalogQuality(bool enabled, uint16_t meas, CBTime time);
 };

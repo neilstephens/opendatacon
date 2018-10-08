@@ -204,19 +204,36 @@ void CBMasterPort::SendNextMasterCommand()
 			UnprotectedSendNextMasterCommand(false);
 		});
 }
+
+CBMessage_t CBMasterPort::GetResendMessage()
+{
+	CBMessage_t CompleteCBMessage;
+	auto firstblock = CBBlockData(MyConf->mAddrConf.OutstationAddr, MASTER_SUB_FUNC_REPEAT_PREVIOUS_TRANSMISSION, FUNC_MASTER_STATION_REQUEST, 0, true);
+	CompleteCBMessage.push_back(firstblock);
+	return CompleteCBMessage;
+}
 // There is a strand protected version of this command, as we can use it in another (already) protected area.
 // We will retry the required number of times, and then move onto the next command. If a retry we send exactly the same command as previously, the Outstation  will
 // check the sequence numbers on those commands that support it and reply accordingly.
 void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 {
+	bool DoResendCommand = false;
+
+
 	if (!MasterCommandProtectedData.ProcessingCBCommand)
 	{
+		// Do we need to resend a command?
 		if (timeoutoccured)
 		{
-			// Do we need to resend a command?
 			if (MasterCommandProtectedData.RetriesLeft-- > 0)
 			{
 				MasterCommandProtectedData.ProcessingCBCommand = true;
+
+				//TODO: Do we resend the orginal command, or do we ask the RTU to send us the last response again???
+				// It depends if you think that the outbound message got there - if so ask for the reponse again. If not, send the command again....
+				// If you want a resend command and not send the same command again, allow the following line.
+				// DoResendCommand = true;
+
 				LOGDEBUG("Sending Retry on command :" + std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
 			}
 			else
@@ -253,7 +270,10 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 		// If either of the above situations need us to send a command, do so.
 		if (MasterCommandProtectedData.ProcessingCBCommand == true)
 		{
-			SendCBMessage(MasterCommandProtectedData.CurrentCommand.first); // This should be the only place this is called for the CBMaster...
+			if (DoResendCommand)
+				SendCBMessage(GetResendMessage());
+			else
+				SendCBMessage(MasterCommandProtectedData.CurrentCommand.first); // This should be the only place this is called for the CBMaster...
 
 			// Start an async timed callback for a timeout - cancelled if we receive a good response.
 			MasterCommandProtectedData.TimerExpireTime = std::chrono::milliseconds(MyPointConf->CBCommandTimeoutmsec);
@@ -388,7 +408,9 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 					NotImplemented = true;
 					break;
 				case FUNC_MASTER_STATION_REQUEST:
+					success = true; // We dont need to check what we get back...
 					break;
+
 				case FUNC_SEND_NEW_SOE:
 					NotImplemented = true;
 					break;
@@ -1104,11 +1126,9 @@ void CBMasterPort::DoPoll(uint32_t PollID)
 
 		case  TimeSetCommand:
 		{
-			// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
-			uint64_t currenttime = CBNow();
-
+			// Send a time set command to the OutStation
+			SendFn9TimeUpdate(nullptr);
 			LOGDEBUG("Poll Issued a TimeDate PendingCommand");
-//			SendTimeDateChangeCommand(currenttime, nullptr);
 		}
 		break;
 
@@ -1124,6 +1144,15 @@ void CBMasterPort::DoPoll(uint32_t PollID)
 			LOGDEBUG("Poll will an unknown polltype : " + std::to_string(MyPointConf->PollGroups[PollID].polltype));
 	}
 }
+void CBMasterPort::SendFn9TimeUpdate( SharedStatusCallback_t pStatusCallback)
+{
+	CBMessage_t CompleteCBMessage;
+
+	CBPort::BuildUpdateTimeMessage(MyConf->mAddrConf.OutstationAddr, CBNow(), CompleteCBMessage);
+
+	QueueCBCommand(CompleteCBMessage, pStatusCallback);
+}
+
 
 void CBMasterPort::ResetDigitalCommandSequenceNumber()
 {

@@ -47,6 +47,7 @@ CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string 
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
 
+	//TODO: Do we need these flags for Conitel/Baker
 	SystemFlags.SetDigitalChangedFlagCalculationMethod(std::bind(&CBOutstationPort::DigitalChangedFlagCalculationMethod, this));
 	SystemFlags.SetTimeTaggedDataAvailableFlagCalculationMethod(std::bind(&CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod, this));
 
@@ -127,6 +128,8 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 	LOGDEBUG("OS - Sending Message - " + CBMessageAsString(CompleteCBMessage));
 	// Done this way just to get context into log messages.
 	CBPort::SendCBMessage(CompleteCBMessage);
+
+	LastSentCBMessage = CompleteCBMessage; // Take a copy of last message
 }
 
 #pragma region OpenDataConInteraction
