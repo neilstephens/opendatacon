@@ -340,7 +340,6 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			pIOS->post([&]()
 				{
 					DisableStack();
-					PortDown();
 				});
 		}
 
