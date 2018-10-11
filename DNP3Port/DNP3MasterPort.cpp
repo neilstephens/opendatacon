@@ -87,7 +87,7 @@ void DNP3MasterPort::PortUp()
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Updating comms state point to good.", Name);
+			log->debug("{}: Updating comms point (good).", Name);
 
 		auto commsUpEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
@@ -123,7 +123,7 @@ void DNP3MasterPort::PortDown()
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Setting comms point to failed.", Name);
+			log->debug("{}: Updating comms point (failed).", Name);
 
 		auto commsDownEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
