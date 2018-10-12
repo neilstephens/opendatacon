@@ -73,10 +73,16 @@ void SimPort::PortUp()
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 	for(auto index : pConf->AnalogIndicies)
 	{
+		//send initial event
+		auto mean = pConf->AnalogStartVals.count(index) ? pConf->AnalogStartVals[index] : 0;
+		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
+		event->SetPayload<EventType::Analog>(std::move(mean));
+		PublishEvent(event);
+
+		//queue up a timer if it has an update interval
 		if(pConf->AnalogUpdateIntervalms.count(index))
 		{
 			auto interval = pConf->AnalogUpdateIntervalms[index];
-			auto mean = pConf->AnalogStartVals.count(index) ? pConf->AnalogStartVals[index] : 0;
 			auto std_dev = pConf->AnalogStdDevs.count(index) ? pConf->AnalogStdDevs[index] : (mean ? (pConf->default_std_dev_factor*mean) : 20);
 
 			pTimer_t pTimer(new Timer_t(*pIOS));
@@ -96,10 +102,16 @@ void SimPort::PortUp()
 	}
 	for(auto index : pConf->BinaryIndicies)
 	{
+		//send initial event
+		auto val = pConf->BinaryStartVals.count(index) ? pConf->BinaryStartVals[index] : false;
+		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
+		event->SetPayload<EventType::Binary>(std::move(val));
+		PublishEvent(event);
+
+		//queue up a timer if it has an update interval
 		if(pConf->BinaryUpdateIntervalms.count(index))
 		{
 			auto interval = pConf->BinaryUpdateIntervalms[index];
-			auto val = pConf->BinaryStartVals.count(index) ? pConf->BinaryStartVals[index] : false;
 
 			pTimer_t pTimer(new Timer_t(*pIOS));
 			Timers.push_back(pTimer);
