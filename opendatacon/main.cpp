@@ -141,6 +141,7 @@ int main(int argc, char* argv[])
 			run_thread.join();
 			msg += "' shutdown cleanly.";
 			ret_val = 0;
+			TheDataConcentrator.reset();
 		}
 		else
 		{
@@ -153,8 +154,6 @@ int main(int argc, char* argv[])
 			log->critical(msg);
 		else
 			std::cout << msg << std::endl;
-
-		TheDataConcentrator.reset();
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
 	{
