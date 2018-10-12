@@ -83,6 +83,9 @@ void DNP3MasterPort::PortUp()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: PortUp() called.", Name);
+
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
@@ -99,6 +102,9 @@ void DNP3MasterPort::PortUp()
 void DNP3MasterPort::PortDown()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: PortDown() called.", Name);
 
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
@@ -137,9 +143,12 @@ void DNP3MasterPort::PortDown()
 void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	this->status = status;
+
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
+
 	if(link_dead && !channel_dead) //must be on link up
 	{
-
 		link_dead = false;
 		// Update the comms state point and qualities
 		PortUp();
@@ -150,6 +159,8 @@ void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 // Called when a keep alive message (request link status) receives no response
 void DNP3MasterPort::OnKeepAliveFailure()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: KeepAliveFailure() called.", Name);
 	this->OnLinkDown();
 }
 void DNP3MasterPort::OnLinkDown()
@@ -180,6 +191,9 @@ void DNP3MasterPort::OnLinkDown()
 // Called when a keep alive message receives a valid response
 void DNP3MasterPort::OnKeepAliveSuccess()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: KeepAliveSuccess() called.", Name);
+
 	if(link_dead)
 	{
 		link_dead = false;

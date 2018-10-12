@@ -84,6 +84,10 @@ void DNP3OutstationPort::Disable()
 void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	this->status = status;
+
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
+
 	if(link_dead && !channel_dead) //must be on link up
 	{
 		link_dead = false;
@@ -95,6 +99,8 @@ void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 // Called when a keep alive message (request link status) receives no response
 void DNP3OutstationPort::OnKeepAliveFailure()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: KeepAliveFailure() called.", Name);
 	this->OnLinkDown();
 }
 void DNP3OutstationPort::OnLinkDown()
@@ -109,6 +115,8 @@ void DNP3OutstationPort::OnLinkDown()
 // Called when a keep alive message receives a valid response
 void DNP3OutstationPort::OnKeepAliveSuccess()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: KeepAliveSuccess() called.", Name);
 	if(link_dead)
 	{
 		link_dead = false;
