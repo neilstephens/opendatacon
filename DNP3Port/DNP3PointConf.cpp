@@ -203,12 +203,18 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();
 
 	// Comms Point Configuration
-	if (!JSONRoot.isMember("CommsPoint") || !JSONRoot["CommsPoint"].isMember("Index"))
-		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
-	else
+	if (JSONRoot.isMember("CommsPoint"))
 	{
-		mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
-		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
+		if(JSONRoot["CommsPoint"].isMember("Index") && JSONRoot["CommsPoint"].isMember("FailValue"))
+		{
+			mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+			mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->error("CommsPoint an 'Index' and a 'FailValue'.");
+		}
 	}
 
 	// Master Station scanning configuration
