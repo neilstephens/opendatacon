@@ -33,7 +33,7 @@ public:
 	PublicPublishNullPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		NullPort(aName, aConfFilename, aConfOverrides)
 	{}
-	void PublicPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	void PublicPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}))
 	{
 		PublishEvent(event,pStatusCallback);
 	}

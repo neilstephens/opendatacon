@@ -240,7 +240,7 @@ inline msSinceEpoch_t msSinceEpoch()
 //Map EventTypes to payload types
 template<EventType t> struct EventTypePayload { typedef void type; };
 #define EVENTPAYLOAD(E,T)\
-	template<> struct EventTypePayload<E>{ typedef T type; };
+	template<> struct EventTypePayload<E> { typedef T type; };
 
 //TODO: make these structs?
 typedef std::pair<bool,bool> DBB;

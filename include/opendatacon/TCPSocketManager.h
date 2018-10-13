@@ -166,17 +166,17 @@ public:
 				}
 
 				asio::async_write(Sock,buf,asio::transfer_all(),WriteStrand.wrap([this,buf](asio::error_code err_code, std::size_t n)
+					{
+						if(err_code)
 						{
-							if(err_code)
-							{
-							      writebufs.push_back(buf);
-							      if(writebufs.size() > buffer_limit)
-									writebufs.erase(writebufs.begin());
-							      AutoClose();
-							      AutoOpen();
-							      return;
-							}
-						}));
+						      writebufs.push_back(buf);
+						      if(writebufs.size() > buffer_limit)
+								writebufs.erase(writebufs.begin());
+						      AutoClose();
+						      AutoOpen();
+						      return;
+						}
+					}));
 			});
 	}
 
@@ -253,18 +253,18 @@ private:
 	void Read()
 	{
 		asio::async_read(Sock, readbuf, asio::transfer_at_least(1), ReadStrand.wrap([this](asio::error_code err_code, std::size_t n)
+			{
+				if(err_code)
 				{
-					if(err_code)
-					{
-					      AutoClose();
-					      AutoOpen();
-					}
-					else
-					{
-					      ReadCallback(readbuf);
-					      Read();
-					}
-				}));
+				      AutoClose();
+				      AutoOpen();
+				}
+				else
+				{
+				      ReadCallback(readbuf);
+				      Read();
+				}
+			}));
 	}
 	void AutoOpen()
 	{

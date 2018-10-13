@@ -28,6 +28,7 @@
 #define ODC_PLATFORM_H_
 
 #include <string>
+#include <algorithm>
 #include <signal.h>
 
 /// Dynamic library loading
