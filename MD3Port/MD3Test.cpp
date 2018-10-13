@@ -24,8 +24,10 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
+#ifdef _MSC_VER
 // Disable excessing data on stack warning for the test file only.
 #pragma warning(disable: 6262)
+#endif
 
 #include <array>
 #include <fstream>
@@ -70,7 +72,9 @@ extern std::vector<spdlog::sink_ptr> LogSinks;
 const char *conffilename1 = "MD3Config.conf";
 const char *conffilename2 = "MD3Config2.conf";
 
+#ifdef _MSC_VER
 #pragma region conffiles
+#endif
 // We actually have the conf file here to match the tests it is used in below. We write out to a file (overwrite) on each test so it can be read back in.
 const char *conffile1 = R"001(
 {
@@ -173,9 +177,13 @@ const char *conffile2 = R"002(
 
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })002";
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma region TEST_HELPERS
+#endif
 
 std::vector<spdlog::sink_ptr> LogSinks;
 
@@ -329,7 +337,9 @@ void Wait(asio::io_service &IOS, int seconds)
 	MD3OSPort2->SetIOS(&IOS);     \
 	MD3OSPort2->Build();
 
+#ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
+#endif
 
 namespace SimpleUnitTests
 {
@@ -416,7 +426,9 @@ TEST_CASE("Utility - Strand Queue")
 	t1.join(); // Wait for thread to end
 	t2.join();
 }
+#ifdef _MSC_VER
 #pragma region Block Tests
+#endif
 
 TEST_CASE("MD3Block - ClassConstructor1")
 {
@@ -993,12 +1005,16 @@ TEST_CASE("MD3Block - Fn52")
 	REQUIRE(b52stom.IsEndOfMessageBlock() == true);
 	REQUIRE(b52stom.CheckSumPasses());
 }
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 }
 
 namespace StationTests
 {
+#ifdef _MSC_VER
 #pragma region Station Tests
+#endif
 
 TEST_CASE("Station - BinaryEvent")
 {
@@ -2326,13 +2342,17 @@ TEST_CASE("Station - System Flag Scan Test")
 
 	TestTearDown();
 }
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 }
 
 namespace MasterTests
 {
 
+#ifdef _MSC_VER
 #pragma region Master Tests
+#endif
 TEST_CASE("Master - Analog")
 {
 	// Tests the decoding of return data in the format of Fn 5
@@ -3509,7 +3529,9 @@ TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
 	STOP_IOS();
 	TestTearDown();
 }
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 }
 
 

@@ -118,7 +118,7 @@ void MD3OutstationPort::Build()
 	if (pConnection == nullptr)
 	{
 		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-			std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
+				std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}
@@ -141,9 +141,13 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 	MD3Port::SendMD3Message(CompleteMD3Message);
 }
 
+#ifdef _MSC_VER
 #pragma region OpenDataConInteraction
+#endif
 
+#ifdef _MSC_VER
 #pragma region PerformEvents
+#endif
 
 // We are going to send a command to the opendatacon connector to do some kind of operation.
 // If there is a master on that connector it will then send the command on down to the "real" outstation.
@@ -185,10 +189,14 @@ CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool 
 	return cb_status;
 }
 
+#ifdef _MSC_VER
 #pragma endregion PerformEvents
+#endif
 
 
+#ifdef _MSC_VER
 #pragma region DataEvents
+#endif
 
 // We received a change in data from an Event (from the opendatacon Connector) now store it so that it can be produced when the Scada master polls us
 // for a group or individually on our TCP connection.
@@ -307,6 +315,10 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 
 
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma endregion OpenDataConInteraction
+#endif
