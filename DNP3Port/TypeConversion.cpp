@@ -776,48 +776,63 @@ template<> opendnp3::AnalogOutputStatus FromODC<opendnp3::AnalogOutputStatus>(co
 }
 template<> opendnp3::BinaryQuality FromODC<opendnp3::BinaryQuality>(const std::shared_ptr<const EventInfo> event)
 {
-	if(event->GetEventType() != EventType::BinaryQuality &&
-	   event->GetEventType() != EventType::Binary)
+	switch(event->GetEventType())
 	{
-		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+		case EventType::BinaryQuality:
+			return FromODC<opendnp3::BinaryQuality>(event->GetPayload<EventType::BinaryQuality>());
+		case EventType::Binary:
+			return FromODC<opendnp3::BinaryQuality>(event->GetQuality());
+		default:
+			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
-	return FromODC<opendnp3::BinaryQuality>(event->GetQuality());
 }
 template<> opendnp3::DoubleBitBinaryQuality FromODC<opendnp3::DoubleBitBinaryQuality>(const std::shared_ptr<const EventInfo> event)
 {
-	if(event->GetEventType() != EventType::DoubleBitBinaryQuality &&
-	   event->GetEventType() != EventType::DoubleBitBinary)
+	switch(event->GetEventType())
 	{
-		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+		case EventType::DoubleBitBinaryQuality:
+			return FromODC<opendnp3::DoubleBitBinaryQuality>(event->GetPayload<EventType::DoubleBitBinaryQuality>());
+		case EventType::DoubleBitBinary:
+			return FromODC<opendnp3::DoubleBitBinaryQuality>(event->GetQuality());
+		default:
+			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
-	return FromODC<opendnp3::DoubleBitBinaryQuality>(event->GetQuality());
 }
 template<> opendnp3::AnalogQuality FromODC<opendnp3::AnalogQuality>(const std::shared_ptr<const EventInfo> event)
 {
-	if(event->GetEventType() != EventType::AnalogQuality &&
-	   event->GetEventType() != EventType::Analog)
+	switch(event->GetEventType())
 	{
-		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+		case EventType::AnalogQuality:
+			return FromODC<opendnp3::AnalogQuality>(event->GetPayload<EventType::AnalogQuality>());
+		case EventType::Analog:
+			return FromODC<opendnp3::AnalogQuality>(event->GetQuality());
+		default:
+			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
-	return FromODC<opendnp3::AnalogQuality>(event->GetQuality());
 }
 template<> opendnp3::CounterQuality FromODC<opendnp3::CounterQuality>(const std::shared_ptr<const EventInfo> event)
 {
-	if(event->GetEventType() != EventType::CounterQuality &&
-	   event->GetEventType() != EventType::Counter)
+	switch(event->GetEventType())
 	{
-		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+		case EventType::CounterQuality:
+			return FromODC<opendnp3::CounterQuality>(event->GetPayload<EventType::CounterQuality>());
+		case EventType::Counter:
+			return FromODC<opendnp3::CounterQuality>(event->GetQuality());
+		default:
+			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
-	return FromODC<opendnp3::CounterQuality>(event->GetQuality());
 }
 template<> opendnp3::BinaryOutputStatusQuality FromODC<opendnp3::BinaryOutputStatusQuality>(const std::shared_ptr<const EventInfo> event)
 {
-	if(event->GetEventType() != EventType::BinaryOutputStatusQuality &&
-	   event->GetEventType() != EventType::BinaryOutputStatus)
+	switch(event->GetEventType())
 	{
-		throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+		case EventType::BinaryOutputStatusQuality:
+			return FromODC<opendnp3::BinaryOutputStatusQuality>(event->GetPayload<EventType::BinaryOutputStatusQuality>());
+		case EventType::BinaryOutputStatus:
+			return FromODC<opendnp3::BinaryOutputStatusQuality>(event->GetQuality());
+		default:
+			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
-	return FromODC<opendnp3::BinaryOutputStatusQuality>(event->GetQuality());
 }
 template<> opendnp3::ControlRelayOutputBlock FromODC<opendnp3::ControlRelayOutputBlock>(const std::shared_ptr<const EventInfo> event)
 {
