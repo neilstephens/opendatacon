@@ -192,7 +192,7 @@ public:
 	CBBinaryPoint() {}
 	CBBinaryPoint(const CBBinaryPoint &src): CBPoint(src),
 		Binary(src.Binary),
-		ModuleBinarySnapShot(src.ModuleBinarySnapShot),
+		MomentaryChangeStatus(src.MomentaryChangeStatus),
 		Changed(src.Changed),
 		PointType(src.PointType)
 	{}
@@ -215,21 +215,33 @@ public:
 	BinaryPointType GetPointType() const { return PointType; }
 
 	uint8_t GetBinary() { std::unique_lock<std::mutex> lck(PointMutex); return Binary; }
-	uint16_t GetModuleBinarySnapShot() { std::unique_lock<std::mutex> lck(PointMutex); return ModuleBinarySnapShot; }
 
 	bool GetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); return Changed; }
 	void SetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); Changed = true; }
 	bool GetAndResetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); bool res = Changed; Changed = false; return res; }
 
-	void SetBinary(const uint8_t &b, const CBTime &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; ChangedTime = ctime; Changed = (Binary != b); Binary = b; }
+	void GetBinaryAndMCFlagWithFlagReset(uint8_t &result, bool &MCS) { std::unique_lock<std::mutex> lck(PointMutex); result = Binary; MCS = MomentaryChangeStatus; Changed = false; MomentaryChangeStatus = false; }
+
+	void SetBinary(const uint8_t &b, const CBTime &ctime)
+	{
+		std::unique_lock<std::mutex> lck(PointMutex);
+		HasBeenSet = true;
+		ChangedTime = ctime;
+
+		if ((PointType == MCA)  && (Binary==1) && (b == 0)) MomentaryChangeStatus = true;   // Only set on 1-->0 transition
+		if ((PointType == MCB)  && (Binary == 0) && (b == 1)) MomentaryChangeStatus = true; // Only set on 0-->1 transition
+		if ((PointType == MCC) && (Changed) && (Binary != b)) MomentaryChangeStatus = true; // The normal changed flag was already set, and then we got another change.
+
+		Changed = (Binary != b);
+		Binary = b;
+	}
 	void SetChanged(const bool &c) { std::unique_lock<std::mutex> lck(PointMutex); Changed = c; }
-	void SetModuleBinarySnapShot(const uint16_t &bm) { std::unique_lock<std::mutex> lck(PointMutex); ModuleBinarySnapShot = bm; }
 
 protected:
 	// Only the values below will be changed in two places
 	uint8_t Binary = 0x01;
-	uint16_t ModuleBinarySnapShot = 0; // Used for the queue necessary to handle Fn11 time tagged events. Have to remember all 16 bits when the event happened
 	bool Changed = true;
+	bool MomentaryChangeStatus = false; // Used only for MCA, MCB and MCC types. Not valid for other types.
 	BinaryPointType PointType = DIG;
 };
 

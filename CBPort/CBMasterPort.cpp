@@ -543,29 +543,56 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 		MyPointConf->PointTable.ForEachMatchingBinaryPoint(group, payloadlocation, [&](CBBinaryPoint &pt)
 			{
 				// We have a matching point, set a flag to indicate we have a match, save and trigger an event
-				if (pt.GetPointType() == DIG)
+				switch (pt.GetPointType())
 				{
-				      uint8_t ch = pt.GetChannel();
-				      uint8_t bitvalue = (data >> (12 - ch)) & 0x0001;
+					case DIG:
+						{
+						      LOGDEBUG("MA - DIG Block Received");
 
-				// Only process if the value has changed
-				      if ((pt.GetBinary() != bitvalue) || (pt.GetHasBeenSet() == false))
-				      {
-				            pt.SetBinary(bitvalue, now); // Sets the has been set flag!
+						      uint8_t ch = pt.GetChannel();
+						      uint8_t bitvalue = (data >> (12 - ch)) & 0x0001;
 
-				            uint32_t ODCIndex = pt.GetIndex();
+						// Only process if the value has changed
+						      if ((pt.GetBinary() != bitvalue) || (pt.GetHasBeenSet() == false))
+						      {
+						            pt.SetBinary(bitvalue, now); // Sets the has been set flag!
 
-				            QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
-				            LOGDEBUG("Published Event - Binary Index " + std::to_string(ODCIndex) + " Value " + std::to_string(bitvalue));
-				            auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now));
-				            event->SetPayload<EventType::Binary>(bitvalue == 1);
-				            PublishEvent(event);
-					}
-				      FoundMatch = true;
+						            uint32_t ODCIndex = pt.GetIndex();
+
+						            QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
+						            LOGDEBUG("Published Event - Binary Index " + std::to_string(ODCIndex) + " Value " + std::to_string(bitvalue));
+						            auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now));
+						            event->SetPayload<EventType::Binary>(bitvalue == 1);
+						            PublishEvent(event);
+							}
+						      FoundMatch = true;
+						}
+						break;
+
+					case MCA:
+						{
+						      LOGDEBUG("MA - MCA Block Received");
+						}
+						break;
+
+					case MCB:
+						{
+						//TODO: MCB Type not implemented
+						      LOGERROR("MA - MCB Block Received - No Handling is Implemented");
+						}
+						break;
+
+					case MCC:
+						{
+						      LOGDEBUG("MA - MCC Block Received");
+						}
+						break;
+
+					default:
+
+						LOGERROR("We received an unhandled digital point type - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string());
+						break;
 				}
-				else
-					//TODO: Works only for DIG type, need other processing for other Digital types.
-					LOGERROR("We received an unhandled digital point type. Only deal with DIG type for now - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string());
 			});
 	}
 	if (!FoundMatch)

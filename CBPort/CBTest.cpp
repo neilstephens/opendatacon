@@ -118,7 +118,8 @@ const char *conffile1 = R"001(
 
 	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG"},
 					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
-					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCC"}],
+					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB"},
+					{"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC"}],
 
 	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
 					{"Index" : 1, "Group" : 3, "PayloadLocation": "3B","Channel" : 1, "Type":"ANA"},
@@ -626,6 +627,21 @@ TEST_CASE("CBBlock - ClassConstructor5")
 
 namespace StationTests
 {
+void SendBinaryEvent(std::unique_ptr<CBOutstationPort> &CBOSPort, int ODCIndex, bool val)
+{
+	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+	event->SetPayload<EventType::Binary>(std::move(val));
+
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			res = command_stat;
+		});
+
+	CBOSPort->Event(event, "TestHarness", pStatusCallback);
+	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+}
+
 TEST_CASE("Station - ScanRequest F0")
 {
 	// So we send a Scan F0 packet to the Outstation, it responds with the data in the point table.
@@ -658,7 +674,7 @@ TEST_CASE("Station - ScanRequest F0")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	std::string DesiredResult = BuildHexStringFromASCIIHexString("0937ffaa" // Echoed block plus data 1B
-		                                                       "03c8003e" // Data 2A and 2B
+		                                                       "a8080020" // Data 2A and 2B
 		                                                       "00080006"
 		                                                       "00080006"
 		                                                       "00080006"
@@ -699,13 +715,13 @@ TEST_CASE("Station - ScanRequest F0")
 
 	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
 	{
-		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
-
-		CBOSPort->Event(event, "TestHarness", pStatusCallback);
-
-		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+		SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0));
 	}
+
+	// MCA,MCB,MCC Set to starting values
+	SendBinaryEvent(CBOSPort, 12, true);
+	SendBinaryEvent(CBOSPort, 13, false);
+	SendBinaryEvent(CBOSPort, 14, true);
 
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
@@ -713,7 +729,7 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                           "01480028" // Data 2A and 2B
+		                                           "8808000c" // Data 2A and 2B
 		                                           "400a00b6"
 		                                           "402882b8"
 		                                           "405a032c"
@@ -723,10 +739,73 @@ TEST_CASE("Station - ScanRequest F0")
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
 
+	// Test the MC bit types.
+	// MCA - The change bit is set when the input changes from open to closed (1-->0). The status bit is 0 when the contact is CLOSED.
+	// MCB - The change bit is set when the input changes from closed to open (0-->1). The status bit is 0 when the contact is OPEN.
+	// MCC - The change bit is set when the input has gone through more than one change of state. The status bit is 0 when the contact is OPEN.
+
+	// {"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
+	// {"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB"},
+	// {"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC"}],
+
+	// Now make changes to trigger the change flags being set
+	SendBinaryEvent(CBOSPort, 12, false);
+	SendBinaryEvent(CBOSPort, 13, true);
+	SendBinaryEvent(CBOSPort, 14, false); // Cause more than one change.
+	SendBinaryEvent(CBOSPort, 14, true);
+
+	Response = "Not Set";
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// We are setting Channels 1,2,3. So should be the bits Change1, Status1, Change2, Status2, Change3, Status3.
+	// The 2A block was 0x880 Ch 1 = 1, Ch 2 = 0, Ch 3 = 1
+	// It becomes 0x780 Ch1 = 0 S1 =1, Ch2=1,S2 =1,Ch3=1,S3 =1
+	// Finally 0x800	ch1=1,ch2=0,ch3=0
+	DesiredResult = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
+		                                           "78080000" // Data 2A and 2B
+		                                           "400a00b6"
+		                                           "402882b8"
+		                                           "405a032c"
+		                                           "40780030"
+		                                           "55580013");
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response == DesiredResult);
+
+	// Now do the changes that do not trigger the change bits being set.
+	SendBinaryEvent(CBOSPort, 12, true);
+	SendBinaryEvent(CBOSPort, 13, false);
+	SendBinaryEvent(CBOSPort, 14, false); // ONly 1 change, need 2 to trigger
+
+	Response = "Not Set";
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// Should now get different data!
+	DesiredResult = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
+		                                           "80080022" // Data 2A and 2B
+		                                           "400a00b6"
+		                                           "402882b8"
+		                                           "405a032c"
+		                                           "40780030"
+		                                           "55580013");
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response == DesiredResult);
+
+	CBOSPort->Disable();
+
 	CBOSPort.release();
+
+	START_IOS(1);
+	Wait(IOS, 1);
+	STOP_IOS();
 
 	STANDARD_TEST_TEARDOWN();
 }
+
+
 
 TEST_CASE("Station - BinaryEvent")
 {
@@ -1019,8 +1098,6 @@ TEST_CASE("Master - Scan Request F0")
 		REQUIRE(res == ((ODCIndex + 1) % 2));
 	}
 
-	work.reset(); // Indicate all work is finished.
-
 	STOP_IOS();
 	CBOSPort.release();
 	CBMAPort.release();
@@ -1291,7 +1368,6 @@ TEST_CASE("RTU - Binary Scan TO CB311 ON 172.21.136.80:5001 CB 0x20")
 
       Wait(IOS, 2);
 
-      work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
       STANDARD_TEST_TEARDOWN();
@@ -1337,9 +1413,6 @@ TEST_CASE("RTU - GetScanned CB311 ON 172.21.8.111:5001 CB 0x20")
 
 
       Wait(IOS, 2); // We just run for a period and see if we get connected and scanned.
-
-
-      work.reset(); // Indicate all work is finished.
 
       STOP_IOS();
       STANDARD_TEST_TEARDOWN();

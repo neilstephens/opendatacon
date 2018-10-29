@@ -234,26 +234,38 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				      if (pt.GetBinary() == 1)
 				      {
 				                                                          // ch 1 to 12
-				            Payload |= ShiftLeftResult16Bits(1, 12 - ch); // Just have to OR, we know it was zero initially.
+				            Payload |= ShiftLeftResult16Bits(1, 12 - ch); // ch 1 TO 12, Just have to OR, we know it was zero initially.
 					}
 				}
-				else if ((pt.GetPointType() == MCA) || (pt.GetPointType() == MCC))
+				else if ((pt.GetPointType() == MCA) || (pt.GetPointType() == MCB) || (pt.GetPointType() == MCC))
 				{
-				// Set our bit and changed flag in the output. Data bit is first then change bit So bit 11 = data, bit 10 = change in 12 bit word - 11 highest bit.
-				      if (pt.GetBinary() == 1)
+				// These types are supposed to occupy 2 consecutive 12 bit blocks, channels 1 to 12.
+				// We can handle them as two separately defined blocks (but consecutive) channels 1 to 6.
+				//TODO: Will check for two consecutive MC blocks in the conf file loading??
+				// MCA - The change bit is set when the input changes from open to closed (1-->0). The status bit is 0 when the contact is CLOSED.
+				// MCB - The change bit is set when the input changes from closed to open (0-->1). The status bit is 0 when the contact is OPEN.
+				// MCC - The change bit is set when the input has gone through more than one change of state. The status bit is 0 when the contact is OPEN.
+				// We dont think about open or closed, we will just be getting a value of 1 or 0 from the real outstation, or a simulator. So we dont do inversion or anything like that.
+				// We do need to track the types of transision, and the point has a special field to do this.
+
+				      // Set our bit and MC changed flag in the output. Data bit is first then change bit So bit 11 = data, bit 10 = change in 12 bit word - 11 highest bit.
+				      uint8_t result;
+				      bool MCS;
+				      pt.GetBinaryAndMCFlagWithFlagReset(result, MCS);
+				      if (result == 1)
 				      {
-				// ch 1 to 6
-				            Payload |= ShiftLeftResult16Bits(1, 6 - ch * 2);
+				                                                                  // ch 1 to 6
+				            Payload |= ShiftLeftResult16Bits(1, 11 - (ch-1) * 2); // CH 1 to 6!!
 					}
-				      if (pt.GetAndResetChangedFlag() == 1)
+				      if (MCS)
 				      {
 				// ch 1 to 6
-				            Payload |= ShiftLeftResult16Bits(1, 6 - (ch * 2 - 1));
+				            Payload |= ShiftLeftResult16Bits(1, 11 - ((ch-1) * 2 - 1));
 					}
 				}
-				else if (pt.GetPointType() == MCB)
+				else
 				{
-				      LOGERROR("MCB Binary Point not handled - no valid value returned");
+				      LOGERROR("Unhandled Binary Point type - no valid value returned");
 				}
 				FoundMatch = true;
 			});

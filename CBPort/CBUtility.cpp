@@ -68,7 +68,7 @@ CBBinaryPoint& CBBinaryPoint::operator=(const CBBinaryPoint& src)
 		ChangedTime = src.ChangedTime;
 		HasBeenSet = src.HasBeenSet;
 		Binary = src.Binary;
-		ModuleBinarySnapShot = src.ModuleBinarySnapShot;
+		MomentaryChangeStatus = src.MomentaryChangeStatus;
 		Changed = src.Changed;
 		PointType = src.PointType;
 	}
