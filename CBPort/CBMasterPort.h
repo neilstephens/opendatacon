@@ -120,6 +120,7 @@ private:
 
 	bool ProcessScanRequestReturn(const CBMessage_t & CompleteCBMessage);
 	void ProccessScanPayload(uint16_t data, uint8_t group, PayloadLocationType payloadlocation);
+	void SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const CBTime &now);
 	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;

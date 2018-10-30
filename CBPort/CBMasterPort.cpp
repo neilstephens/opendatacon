@@ -542,6 +542,8 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	{
 		MyPointConf->PointTable.ForEachMatchingBinaryPoint(group, payloadlocation, [&](CBBinaryPoint &pt)
 			{
+				uint8_t ch = pt.GetChannel();
+
 				// We have a matching point, set a flag to indicate we have a match, save and trigger an event
 				switch (pt.GetPointType())
 				{
@@ -549,22 +551,10 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 						{
 						      LOGDEBUG("MA - DIG Block Received");
 
-						      uint8_t ch = pt.GetChannel();
 						      uint8_t bitvalue = (data >> (12 - ch)) & 0x0001;
 
-						// Only process if the value has changed
-						      if ((pt.GetBinary() != bitvalue) || (pt.GetHasBeenSet() == false))
-						      {
-						            pt.SetBinary(bitvalue, now); // Sets the has been set flag!
+						      SendBinaryEvent(pt, bitvalue, now);
 
-						            uint32_t ODCIndex = pt.GetIndex();
-
-						            QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
-						            LOGDEBUG("Published Event - Binary Index " + std::to_string(ODCIndex) + " Value " + std::to_string(bitvalue));
-						            auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now));
-						            event->SetPayload<EventType::Binary>(bitvalue == 1);
-						            PublishEvent(event);
-							}
 						      FoundMatch = true;
 						}
 						break;
@@ -572,24 +562,40 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 					case MCA:
 						{
 						      LOGDEBUG("MA - MCA Block Received");
+						// The Change state cannot be handled in ODC, it will be handled by the actual value changes
+						      uint8_t bitvalue = (data >> (11 - (ch - 1) * 2)) & 0x0001;
+
+						      SendBinaryEvent(pt, bitvalue, now);
+
+						      FoundMatch = true;
 						}
 						break;
 
 					case MCB:
 						{
-						//TODO: MCB Type not implemented
-						      LOGERROR("MA - MCB Block Received - No Handling is Implemented");
+						      LOGDEBUG("MA - MCB Block Received");
+						// The Change state cannot be handled in ODC, it will be handled by the actual value changes
+						      uint8_t bitvalue = (data >> (11 - (ch - 1) * 2)) & 0x0001;
+
+						      SendBinaryEvent(pt, bitvalue, now);
+
+						      FoundMatch = true;
 						}
 						break;
 
 					case MCC:
 						{
 						      LOGDEBUG("MA - MCC Block Received");
+						// The Change state cannot be handled in ODC, it will be handled by the actual value changes
+						      uint8_t bitvalue = (data >> (11 - (ch - 1) * 2)) & 0x0001;
+
+						      SendBinaryEvent(pt, bitvalue, now);
+
+						      FoundMatch = true;
 						}
 						break;
 
 					default:
-
 						LOGERROR("We received an unhandled digital point type - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string());
 						break;
 				}
@@ -609,6 +615,23 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	if (!FoundMatch)
 	{
 		LOGDEBUG("Failed to find a payload for: " + payloadlocation.to_string() + " Setting to zero");
+	}
+}
+
+void CBMasterPort::SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const CBTime &now)
+{
+	// Only process if the value has changed - otherwise have lots of needless events.
+	if ((pt.GetBinary() != bitvalue) || (pt.GetHasBeenSet() == false))
+	{
+		pt.SetBinary(bitvalue, now); // Sets the has been set flag!
+
+		uint32_t ODCIndex = pt.GetIndex();
+
+		QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
+		LOGDEBUG("Published Event - Binary Index " + std::to_string(ODCIndex) + " Value " + std::to_string(bitvalue));
+		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now));
+		event->SetPayload<EventType::Binary>(bitvalue == 1);
+		PublishEvent(event);
 	}
 }
 
