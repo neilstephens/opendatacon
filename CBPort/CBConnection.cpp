@@ -168,7 +168,7 @@ void CBConnection::RemoveMaster(uint64_t ChannelID, uint8_t TargetStationAddress
 		// If we have removed the last StateCallBack - then we are done - delete the connection.
 		if (pConnection->StateCallbackMap.size() == 0)
 		{
-			LOGDEBUG("Remove Master - Last Master Removed - Destroying the Connection - " + ChannelID);
+			LOGDEBUG("Remove Master - Last Master Removed - Destroying the Connection - {ChannelID}",ChannelID);
 			ConnectionMap[ChannelID].reset(); // Destroy the object
 			ConnectionMap.erase(ChannelID);   // Remove the map entry
 		}
@@ -182,7 +182,7 @@ bool CBConnection::GetConnection(uint64_t ChannelID, std::shared_ptr<CBConnectio
 
 	if (ConnectionMap.count(ChannelID) == 0)
 	{
-		LOGERROR("Connection Does not Exist - GetConnection - " + ChannelID);
+		LOGERROR("Connection Does not Exist - GetConnection - {ChannelID}",ChannelID);
 		return false;
 	}
 	// Check if the connection is expired

@@ -147,7 +147,9 @@ void CBMasterPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 	CBPort::SendCBMessage(CompleteCBMessage);
 }
 
+#ifdef _MSC_VER
 #pragma region MasterCommandQueue
+#endif
 
 // We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
 // There is a fixed timeout function (below) which will queue the next command if we timeout.
@@ -329,11 +331,11 @@ void CBMasterPort::ClearCBCommandQueue()
 			MasterCommandProtectedData.ProcessingCBCommand = false;
 		});
 }
-
+#ifdef _MSC_VER
 #pragma endregion
 
 #pragma region MessageProcessing
-
+#endif
 // After we have sent a command, this is where we will end up when the OutStation replies.
 // It is the callback for the ConnectionManager
 // If we get the wrong answer, we could ditch that command, and move on to the next one,
@@ -450,7 +452,9 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			      LOGERROR("PendingCommand Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
 					" Expecting " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			}
+			#ifdef _MSC_VER
 			#pragma warning(suppress: 26495)
+			#endif
 		});
 }
 
@@ -1155,7 +1159,9 @@ bool CBMasterPort::ProcessFlagScanReturn(const CBMessage_t& CompleteCBMessage)
       return (Header.GetFunctionCode() == SYSTEM_FLAG_SCAN);
 }
 */
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
 // We will be called at the appropriate time to trigger an Unconditional or Delta scan
 // For digital scans there are two formats we might use. Set in the conf file.
