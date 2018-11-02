@@ -215,6 +215,27 @@ bool CBPointTableAccess::GetCounterValueUsingODCIndex(const size_t index, uint16
 	}
 	return false;
 }
+bool CBPointTableAccess::SetCounterValueUsingODCIndex(const size_t index, const uint16_t meas)
+{
+	ODCAnalogCounterPointMapIterType ODCPointMapIter = CounterODCPointMap.find(index);
+	if (ODCPointMapIter != CounterODCPointMap.end())
+	{
+		ODCPointMapIter->second->SetAnalog(meas, CBNow());
+		return true;
+	}
+	return false;
+}
+bool CBPointTableAccess::ResetCounterValueUsingODCIndex(const size_t index)
+{
+	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	if (ODCPointMapIter != AnalogODCPointMap.end())
+	{
+		ODCPointMapIter->second->ResetAnalog(); // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
+		return true;
+	}
+	return false;
+}
+
 bool CBPointTableAccess::GetAnalogValueUsingODCIndex(const size_t index, uint16_t &res, bool &hasbeenset)
 {
 	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
