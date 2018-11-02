@@ -110,7 +110,7 @@ void CBMasterPort::Build()
 	MasterCommandStrand.reset(new asio::strand(*pIOS));
 
 	// Need a couple of things passed to the point table.
-	MyPointConf->PointTable.Build(IsOutStation, *pIOS);
+	MyPointConf->PointTable.Build(IsOutStation);
 
 	// Creates internally if necessary
 	CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP,MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
@@ -465,7 +465,7 @@ bool CBMasterPort::ProcessScanRequestReturn(const CBMessage_t& CompleteCBMessage
 {
 	uint8_t Group = CompleteCBMessage[0].GetGroup();
 
-	uint32_t NumberOfBlocks = CompleteCBMessage.size();
+	uint8_t NumberOfBlocks = numeric_cast<uint8_t>(CompleteCBMessage.size());
 
 	LOGDEBUG("Scan Data processing ");
 
@@ -476,7 +476,7 @@ bool CBMasterPort::ProcessScanRequestReturn(const CBMessage_t& CompleteCBMessage
 
 	ProccessScanPayload(CompleteCBMessage[0].GetB(), Group,  payloadlocation);
 
-	for (uint32_t blockindex = 1; blockindex < NumberOfBlocks; blockindex++)
+	for (uint8_t blockindex = 1; blockindex < NumberOfBlocks; blockindex++)
 	{
 		payloadlocation = PayloadLocationType(blockindex + 1, PayloadABType::PositionA);
 
@@ -491,7 +491,6 @@ bool CBMasterPort::ProcessScanRequestReturn(const CBMessage_t& CompleteCBMessage
 void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLocationType payloadlocation)
 {
 	bool FoundMatch = false;
-	uint16_t Payload = 0;
 	CBTime now = CBNow();
 
 	LOGDEBUG("MA - Group - "+ std::to_string(group) + "Processing Payload - " + payloadlocation.to_string() + " Value 0x" + to_hexstring(data));
@@ -1188,16 +1187,15 @@ void CBMasterPort::DoPoll(uint32_t PollID)
 		}
 		break;
 
-		case SystemFlagScan:
-		{
-			// Send a flag scan command to the OutStation, (Fn 52)
-			LOGDEBUG("Poll Issued a System Flag Scan PendingCommand");
-//			SendSystemFlagScanCommand(nullptr);
-		}
-		break;
+		//case SystemFlagScan:
+		//{
+		//TODO: Remaining Poll types for Conitel/Baker
+		//}
+		//break;
 
 		default:
 			LOGDEBUG("Poll will an unknown polltype : " + std::to_string(MyPointConf->PollGroups[PollID].polltype));
+			break;
 	}
 }
 void CBMasterPort::SendFn9TimeUpdate( SharedStatusCallback_t pStatusCallback)
@@ -1236,7 +1234,9 @@ void CBMasterPort::EnablePolling(bool on)
 }
 
 void CBMasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec, SharedStatusCallback_t pStatusCallback)
-{}
+{
+	//TODO: Time update request?
+}
 void CBMasterPort::SendScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback)
 {
 	CBBlockData sendcommandblock(MyConf->mAddrConf.OutstationAddr, group, FUNC_SCAN_DATA, 0, true);
@@ -1438,7 +1438,7 @@ void CBMasterPort::WriteObject(const int16_t &command, const uint32_t &index, co
 
 	assert((Channel >= 1) && (Channel <= 2));
 
-	uint16_t BData = command;
+	uint16_t BData = numeric_cast<uint16_t>(command);
 	uint8_t FunctionCode = FUNC_SETPOINT_A;
 
 	if (Channel == 2)
@@ -1458,27 +1458,27 @@ void CBMasterPort::WriteObject(const int16_t &command, const uint32_t &index, co
 
 void CBMasterPort::WriteObject(const int32_t & command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-	LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event " + std::to_string(index));
+	LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event - Index {ODCIndex}, Value {Command}",index,command);
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
 void CBMasterPort::WriteObject(const float& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
-	LOGERROR("On Master float Type is not implemented " + std::to_string(index));
+	LOGERROR("On Master float Type is not implemented - Index {ODCIndex}, Value {Command}",index,command);
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
 void CBMasterPort::WriteObject(const double& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 
-	LOGDEBUG("Master received unknown double ODC Event " + std::to_string(index));
+	LOGDEBUG("Master received unknown double ODC Event - Index {ODCIndex}, Value {Command}",index,command);
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
 void CBMasterPort::SendDigitalControlOnCommand(const uint8_t &StationAddress, const uint8_t &Group, const uint16_t &Channel, const SharedStatusCallback_t &pStatusCallback)
 {
 	assert((Channel >= 1) && (Channel <= 12));
-	uint16_t BData = 1 << (12 - Channel);
+	uint16_t BData = numeric_cast<uint16_t>(1 << (12 - Channel));
 
 	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_CLOSE, BData, true); // Trip is OPEN or OFF
 	QueueCBCommand(commandblock, nullptr);
@@ -1493,7 +1493,7 @@ void CBMasterPort::SendDigitalControlOnCommand(const uint8_t &StationAddress, co
 void CBMasterPort::SendDigitalControlOffCommand(const uint8_t &StationAddress, const uint8_t &Group, const uint16_t &Channel, const SharedStatusCallback_t &pStatusCallback)
 {
 	assert((Channel >= 1) && (Channel <= 12));
-	uint16_t BData = 1 << (12 - Channel);
+	uint16_t BData = numeric_cast<uint16_t>(1 << (12 - Channel));
 
 	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_TRIP, BData, true); // Trip is OPEN or OFF
 	QueueCBCommand(commandblock, nullptr);

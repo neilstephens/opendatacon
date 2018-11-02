@@ -33,10 +33,7 @@
 
 
 #include "CB.h"
-#include "CBPointConf.h"
-//#include "CBPortConf.h"
 #include "CBUtility.h"
-//#include "StrandProtectedQueue.h"
 
 using namespace odc;
 
@@ -45,7 +42,7 @@ class CBPointTableAccess
 {
 public:
 	CBPointTableAccess();
-	void Build(const bool isoutstation, asio::io_service & IOS);
+	void Build(const bool isoutstation);
 
 	// The add to point table functions add to both the ODC and MD3 Map.
 	// The Conitel Baker methods require that a
@@ -58,32 +55,14 @@ public:
 	bool AddStatusByteToCBMap(const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
 	void UpdateMaxPayload(const uint8_t & group, const PayloadLocationType & payloadlocation);
 
-//	bool GetCounterValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t & res, bool &hasbeenset);
-//	bool GetCounterValueAndChangeUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool &hasbeenset);
-//	bool SetCounterValueUsingCBIndex(const uint16_t module, const uint8_t channel, const uint16_t meas);
 	bool GetCounterValueUsingODCIndex(const size_t index, uint16_t & res, bool & hasbeenset);
 	bool SetCounterValueUsingODCIndex(const size_t index, const uint16_t meas);
 
-//	bool GetAnalogValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t & res, bool & hasbeenset);
-//	bool GetAnalogValueAndChangeUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool & hasbeenset);
-//	bool SetAnalogValueUsingCBIndex(const uint16_t module, const uint8_t channel, const uint16_t meas);
 	bool GetAnalogValueUsingODCIndex(const size_t index, uint16_t & res, bool & hasbeenset);
 	bool SetAnalogValueUsingODCIndex(const size_t index, const uint16_t meas);
 
 	bool ResetAnalogValueUsingODCIndex(const size_t index);
 	bool ResetCounterValueUsingODCIndex(const size_t index);
-
-//	bool GetCounterODCIndexUsingCBIndex(const uint8_t group, const uint8_t channel, size_t & res);
-//	bool GetAnalogODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t &res);
-//	bool GetBinaryODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t &res);
-
-	//TODO: Return actual quality, not hasbeenset
-//	bool GetBinaryQualityUsingCBIndex(const uint16_t module, const uint8_t channel, bool & hasbeenset);
-
-//	bool GetBinaryValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed);
-//	bool GetBinaryValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint8_t & res);
-//	bool SetBinaryValueUsingCBIndex(const uint16_t module, const uint8_t channel, const uint8_t meas, bool & valuechanged);
-//	bool GetBinaryChangedUsingCBIndex(const uint16_t module, const uint8_t channel, bool &changed);
 
 	bool GetBinaryValueUsingODCIndexAndResetChangedFlag(const size_t index, uint8_t &res, bool &changed, bool &hasbeenset);
 	bool SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, CBTime eventtime);
@@ -109,12 +88,6 @@ public:
 	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn);
 
 	void GetMaxPayload(uint8_t group, uint8_t &blockcount);
-
-//	std::vector<CBBinaryPoint> DumpTimeTaggedPointList();
-
-//	bool TimeTaggedDataAvailable();
-//	bool PeekNextTaggedEventPoint(CBBinaryPoint & pt);
-//	bool PopNextTaggedEventPoint();
 
 	void AddToDigitalEvents(CBBinaryPoint & inpt);
 	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t Group, bool & ModuleFailed);
@@ -148,9 +121,5 @@ protected:
 	std::map<uint8_t, uint8_t> MaxiumPayloadPerGroupMap; // Group 0 to 15, Max payload - a count of 1 to 16.
 
 	bool IsOutstation = true;
-
-	// Only used in outstation
-//	std::shared_ptr<StrandProtectedQueue<CBBinaryPoint>> pBinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events.
 };
-
 #endif

@@ -118,7 +118,7 @@ public:
 	void ResendLastCBMessage()
 	{
 		SendCBMessage(LastSentCBMessage);
-	};
+	}
 	void ProcessCBMessage(CBMessage_t &CompleteCBMessage);
 
 	// Response to PendingCommand Methods
@@ -126,8 +126,8 @@ public:
 	void FuncTripClose(CBBlockData & Header, PendingCommandType::CommandType pCommand);
 	void FuncSetAB(CBBlockData & Header, PendingCommandType::CommandType pCommand);
 	void ExecuteCommand(CBBlockData & Header);
-	void ExecuteBinaryControl(uint8_t group, int Channel, bool point_on);
-	void ExecuteAnalogControl(uint8_t group, int Channel, uint16_t data);
+	bool ExecuteBinaryControl(uint8_t group, uint8_t Channel, bool point_on);
+	bool ExecuteAnalogControl(uint8_t group, uint8_t Channel, uint16_t data);
 	void FuncMasterStationRequest(CBBlockData &Header, CBMessage_t &CompleteCBMessage);
 
 	void ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage);

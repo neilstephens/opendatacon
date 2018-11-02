@@ -41,7 +41,6 @@ int GetBitsSet(uint32_t data, int numberofbits)
 }
 int GetSetBit(uint32_t data, int numberofbits)
 {
-	int bitsset = 0;
 	for (uint8_t i = 0; i < numberofbits; i++)
 	{
 		if (((data >> i) & 0x001) == 1)
@@ -162,9 +161,9 @@ void to_hhmmssmmfromCBtime(CBTime _time, uint8_t &hh, uint8_t &mm, uint8_t &ss, 
 	std::tm* t = std::gmtime(&tp);
 	if (t != nullptr)
 	{
-		hh = t->tm_hour;
-		mm = t->tm_min;
-		ss = t->tm_sec;
+		hh = numeric_cast<uint8_t>(t->tm_hour);
+		mm = numeric_cast<uint8_t>(t->tm_min);
+		ss = numeric_cast<uint8_t>(t->tm_sec);
 	}
 }
 

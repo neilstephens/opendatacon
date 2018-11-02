@@ -31,13 +31,15 @@
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const bool isoutstation, asio::io_service& IOS)
+void CBPointTableAccess::Build(const bool isoutstation)
 {
 	IsOutstation = isoutstation;
 //	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<CBBinaryPoint>(IOS, 256));
 }
 
+#ifdef _MSC_VER
 #pragma region Add Read Points
+#endif
 
 bool CBPointTableAccess::AddCounterPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype)
 {
@@ -150,11 +152,11 @@ void CBPointTableAccess::UpdateMaxPayload(const uint8_t & group, const PayloadLo
 		MaxiumPayloadPerGroupMap[group] = payloadlocation.Packet;
 	}
 }
-
+#ifdef _MSC_VER
 #pragma endregion
 
 #pragma region Add Control Points
-
+#endif
 bool CBPointTableAccess::AddAnalogControlPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const AnalogCounterPointType &pointtype)
 {
 	uint16_t CBIndex = GetCBControlPointMapIndex(group, channel);
@@ -198,48 +200,10 @@ bool CBPointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, 
 	BinaryControlODCPointMap[index] = pt;
 	return true;
 }
-
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
-/*
-bool CBPointTableAccess::GetCounterValueUsingCBIndex(const uint16_t group, const uint8_t channel, uint16_t &res, bool &hasbeenset)
-{
-      uint16_t CBIndex = 0; // GetCBPointMapIndex(group, channel, payloadlocation);
-
-      CBAnalogCounterPointMapIterType CBPointMapIter = CounterCBPointMap.find(CBIndex);
-      if (CBPointMapIter != CounterCBPointMap.end())
-      {
-            res = CBPointMapIter->second->GetAnalogAndHasBeenSet(hasbeenset);
-            return true;
-      }
-      return false;
-}
-bool CBPointTableAccess::GetCounterValueAndChangeUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta, bool &hasbeenset)
-{
-      // Change being update the last read value
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBAnalogCounterPointMapIterType CBPointMapIter = CounterCBPointMap.find(CBIndex);
-      if (CBPointMapIter != CounterCBPointMap.end())
-      {
-            res = CBPointMapIter->second->GetAnalogAndDeltaAndHasBeenSet(delta,hasbeenset);
-            return true;
-      }
-      return false;
-}
-bool CBPointTableAccess::SetCounterValueUsingCBIndex(const uint16_t module, const uint8_t channel, const uint16_t meas)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBAnalogCounterPointMapIterType CBPointMapIter = CounterCBPointMap.find(CBIndex);
-      if (CBPointMapIter != CounterCBPointMap.end())
-      {
-            CBPointMapIter->second->SetAnalog(meas, CBNow());
-            return true;
-      }
-      return false;
-}
-*/
 bool CBPointTableAccess::GetCounterValueUsingODCIndex(const size_t index, uint16_t &res, bool &hasbeenset)
 {
 	ODCAnalogCounterPointMapIterType ODCPointMapIter = CounterODCPointMap.find(index);
@@ -251,91 +215,6 @@ bool CBPointTableAccess::GetCounterValueUsingODCIndex(const size_t index, uint16
 	}
 	return false;
 }
-/*
-bool CBPointTableAccess::GetCounterODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t &res)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBAnalogCounterPointMapIterType CBPointMapIter = CounterCBPointMap.find(CBIndex);
-      if (CBPointMapIter != CounterCBPointMap.end())
-      {
-            res = CBPointMapIter->second->GetIndex();
-            return true;
-      }
-      return false;
-}
-*/
-bool CBPointTableAccess::SetCounterValueUsingODCIndex(const size_t index, const uint16_t meas)
-{
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = CounterODCPointMap.find(index);
-	if (ODCPointMapIter != CounterODCPointMap.end())
-	{
-		ODCPointMapIter->second->SetAnalog(meas, CBNow());
-		return true;
-	}
-	return false;
-}
-bool CBPointTableAccess::ResetCounterValueUsingODCIndex(const size_t index)
-{
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
-	if (ODCPointMapIter != AnalogODCPointMap.end())
-	{
-		ODCPointMapIter->second->ResetAnalog(); // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
-		return true;
-	}
-	return false;
-}
-/*
-bool CBPointTableAccess::GetAnalogValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t &res, bool &hasbeenset)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBAnalogCounterPointMapIterType CBPointMapIter = AnalogCBPointMap.find(CBIndex);
-      if (CBPointMapIter != AnalogCBPointMap.end())
-      {
-            res = CBPointMapIter->second->GetAnalog();
-            hasbeenset = CBPointMapIter->second->GetHasBeenSet();
-            return true;
-      }
-      return false;
-}
-bool CBPointTableAccess::GetAnalogValueAndChangeUsingCBIndex(const uint16_t module, const uint8_t channel, uint16_t &res, int &delta, bool &hasbeenset)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBAnalogCounterPointMapIterType CBPointMapIter = AnalogCBPointMap.find(CBIndex);
-      if (CBPointMapIter != AnalogCBPointMap.end())
-      {
-            res = CBPointMapIter->second->GetAnalogAndDeltaAndHasBeenSet(delta, hasbeenset);
-            return true;
-      }
-      return false;
-}
-bool CBPointTableAccess::GetAnalogODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t &res)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBAnalogCounterPointMapIterType CBPointMapIter = AnalogCBPointMap.find(CBIndex);
-      if (CBPointMapIter != AnalogCBPointMap.end())
-      {
-            res = CBPointMapIter->second->GetIndex();
-            return true;
-      }
-      return false;
-}
-bool CBPointTableAccess::SetAnalogValueUsingCBIndex(const uint16_t module, const uint8_t channel, const uint16_t meas)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBAnalogCounterPointMapIterType CBPointMapIter = AnalogCBPointMap.find(CBIndex);
-      if (CBPointMapIter != AnalogCBPointMap.end())
-      {
-            CBPointMapIter->second->SetAnalog(meas, CBNow());
-            return true;
-      }
-      return false;
-}
-*/
 bool CBPointTableAccess::GetAnalogValueUsingODCIndex(const size_t index, uint16_t &res, bool &hasbeenset)
 {
 	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
@@ -367,95 +246,10 @@ bool CBPointTableAccess::ResetAnalogValueUsingODCIndex(const size_t index)
 	return false;
 }
 
-
+#ifdef _MSC_VER
 #pragma region Binary
-/*
-bool CBPointTableAccess::GetBinaryODCIndexUsingCBIndex(const uint16_t module, const uint8_t channel, size_t &index)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
+#endif
 
-      CBBinaryPointMapIterType CBPointMapIter = BinaryCBPointMap.find(CBIndex);
-      if (CBPointMapIter != BinaryCBPointMap.end())
-      {
-            index = CBPointMapIter->second->GetIndex();
-            return true;
-      }
-      return false;
-}
-bool CBPointTableAccess::GetBinaryQualityUsingCBIndex(const uint16_t module, const uint8_t channel, bool &hasbeenset)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBBinaryPointMapIterType CBPointMapIter = BinaryCBPointMap.find(CBIndex);
-      if (CBPointMapIter != BinaryCBPointMap.end())
-      {
-            hasbeenset = CBPointMapIter->second->GetHasBeenSet();
-            return true;
-      }
-      return false;
-}
-
-// Gets and Clears changed flag
-bool CBPointTableAccess::GetBinaryValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint8_t &res, bool &changed)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBBinaryPointMapIterType CBPointMapIter = BinaryCBPointMap.find(CBIndex);
-      if (CBPointMapIter != BinaryCBPointMap.end())
-      {
-            res = CBPointMapIter->second->GetBinary();
-            changed = CBPointMapIter->second->GetAndResetChangedFlag();
-            return true;
-      }
-      return false;
-}
-// Only gets value, does not clear changed flag
-bool CBPointTableAccess::GetBinaryValueUsingCBIndex(const uint16_t module, const uint8_t channel, uint8_t &res)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBBinaryPointMapIterType CBPointMapIter = BinaryCBPointMap.find(CBIndex);
-      if (CBPointMapIter != BinaryCBPointMap.end())
-      {
-            res = CBPointMapIter->second->GetBinary();
-            return true;
-      }
-      return false;
-}
-
-// Get the changed flag without resetting it
-bool CBPointTableAccess::GetBinaryChangedUsingCBIndex(const uint16_t module, const uint8_t channel, bool &changed)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBBinaryPointMapIterType CBPointMapIter = BinaryCBPointMap.find(CBIndex);
-      if (CBPointMapIter != BinaryCBPointMap.end())
-      {
-            changed = CBPointMapIter->second->GetChangedFlag();
-            return true;
-      }
-      return false;
-}
-
-bool CBPointTableAccess::SetBinaryValueUsingCBIndex(const uint16_t module, const uint8_t channel, const uint8_t meas, bool &valuechanged)
-{
-      uint16_t CBIndex = ShiftLeft8Result16Bits(module) | channel;
-
-      CBBinaryPointMapIterType CBPointMapIter = BinaryCBPointMap.find(CBIndex);
-      if (CBPointMapIter != BinaryCBPointMap.end())
-      {
-            //TODO: Put this functionality into the CBBinaryPoint class
-            // If it has been changed, or has never been set...
-            if ((CBPointMapIter->second->GetBinary() != meas) || (CBPointMapIter->second->GetHasBeenSet() == false))
-            {
-                  CBPointMapIter->second->SetBinary(meas, CBNow());
-                  valuechanged = true;
-            }
-            return true;
-      }
-      return false;
-}
-*/
 // Get value and reset changed flag..
 bool CBPointTableAccess::GetBinaryValueUsingODCIndexAndResetChangedFlag(const size_t index, uint8_t &res, bool &changed, bool &hasbeenset)
 {
@@ -484,63 +278,11 @@ bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const u
 	}
 	return false;
 }
-/*
-void CBPointTableAccess::AddToDigitalEvents(CBBinaryPoint &inpt)
-{
-      if (inpt.GetPointType() == MCA) // Only add if the point not configured for time tagged data
-      {
-            CBBinaryPoint pt = CBBinaryPoint(inpt);
-
-            // Have to collect all the bits in the module to which this point belongs into a uint16_t,
-            // just to support COS Fn 11 where the whole 16 bits are returned for a possibly single bit change.
-            // Do not effect the change flags which are needed for normal scanning
-            bool ModuleFailed = false;
-            uint16_t wordres = CollectModuleBitsIntoWord(pt.GetGroup(), ModuleFailed);
-
-            // Save it in the snapshot that is used for the Fn11 COS time tagged events.
-            pt.SetModuleBinarySnapShot(wordres);
-            // Will fail if full, which is the defined CB behaviour. Push takes a copy
-//		pBinaryTimeTaggedEventQueue->async_push(pt);
-      }
-}
-
-uint16_t CBPointTableAccess::CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t Group, bool &ModuleFailed)
-{
-      uint16_t wordres = 0;
-
-      for (uint8_t j = 0; j < 16; j++)
-      {
-            uint8_t bitres = 0;
-            bool changed = false; // We don't care about the returned value
-
-            if (GetBinaryValueUsingCBIndex(Group, j, bitres, changed)) // Reading this clears the changed bit
-            {
-                  //TODO: Check the bit order here of the binaries
-                  wordres |= static_cast<uint16_t>(bitres) << (15 - j);
-            }
-      }
-      return wordres;
-}
-uint16_t CBPointTableAccess::CollectModuleBitsIntoWord(const uint8_t Group, bool &ModuleFailed)
-{
-      uint16_t wordres = 0;
-
-      for (uint8_t j = 0; j < 16; j++)
-      {
-            uint8_t bitres = 0;
-
-            if (GetBinaryValueUsingCBIndex(Group, j, bitres)) // Reading this clears the changed bit
-            {
-                  //TODO: Check the bit order here of the binaries
-                  wordres |= static_cast<uint16_t>(bitres) << (15 - j);
-            }
-      }
-      return wordres;
-}
-*/
+#ifdef _MSC_VER
 #pragma endregion
 
 #pragma region Control
+#endif
 
 bool CBPointTableAccess::GetBinaryControlODCIndexUsingCBIndex(const uint8_t group, const uint8_t channel, size_t &index)
 {
@@ -629,34 +371,7 @@ bool CBPointTableAccess::SetAnalogControlValueUsingODCIndex(const size_t index, 
 	}
 	return false;
 }
-/*
-// Dumps the points out in a list, only used for UnitTests
-std::vector<CBBinaryPoint> CBPointTableAccess::DumpTimeTaggedPointList()
-{
-      CBBinaryPoint CurrentPoint;
-      std::vector<CBBinaryPoint> PointList(50);
 
-      while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint))
-      {
-            PointList.emplace_back(CurrentPoint);
-            pBinaryTimeTaggedEventQueue->sync_pop();
-      }
-
-      return PointList;
-}
-bool CBPointTableAccess::PeekNextTaggedEventPoint(CBBinaryPoint &pt)
-{
-      return pBinaryTimeTaggedEventQueue->sync_front(pt);
-}
-bool CBPointTableAccess::PopNextTaggedEventPoint()
-{
-      return pBinaryTimeTaggedEventQueue->sync_pop();
-}
-bool CBPointTableAccess::TimeTaggedDataAvailable()
-{
-      return !pBinaryTimeTaggedEventQueue->sync_empty();
-}
-*/
 uint16_t CBPointTableAccess::GetCBPointMapIndex(const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation)
 {
 	assert(group <= 0x0F);
@@ -754,4 +469,6 @@ void CBPointTableAccess::ForEachCounterPoint(std::function<void(CBAnalogCounterP
 		fn(*CBpt.second);
 	}
 }
+#ifdef _MSC_VER
 #pragma endregion
+#endif

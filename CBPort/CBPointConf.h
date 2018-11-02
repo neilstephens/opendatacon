@@ -46,6 +46,7 @@
 #include "CBUtility.h"
 #include "CBPointTableAccess.h"
 
+
 // Also I have concerns about blocking checks on futures, which would block one of the asio threads - we may only have 4!
 // This guys has some answers:
 // http://code-slim-jim.blogspot.com/2014/07/async-usage-of-futures-and-promises-in.html

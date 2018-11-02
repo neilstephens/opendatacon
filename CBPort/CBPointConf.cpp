@@ -185,7 +185,7 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 
 		LOGDEBUG("Conf processed - PollID - " + std::to_string(PollID) + " Rate " + std::to_string(pollrate) + " Type " + std::to_string(polltype) + " Group " + std::to_string(group) + " Force Unconditional PendingCommand " + std::to_string(ForceUnconditional));
 
-		PollGroups[PollID] = CBPollGroup(PollID, pollrate, polltype, group, ForceUnconditional);
+		PollGroups[PollID] = CBPollGroup(PollID, pollrate, polltype, numeric_cast<uint8_t>(group), ForceUnconditional);
 	}
 	LOGDEBUG("Conf processing - PollGroups - Finished");
 }
@@ -316,7 +316,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					else
 					{
 						// Only add the point if it passes
-						res = PointTable.AddBinaryPointToPointTable(index, group, currentchannel, payloadlocation, pointtype);
+						res = PointTable.AddBinaryPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, payloadlocation, pointtype);
 					}
 				}
 				else if (ptype == BinaryControl)
@@ -333,7 +333,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					else
 					{
 						// Only add the point if it passes
-						res = PointTable.AddBinaryControlPointToPointTable(index, group, currentchannel, pointtype);
+						res = PointTable.AddBinaryControlPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, pointtype);
 					}
 				}
 				else
@@ -390,7 +390,7 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 
 		if (!error)
 		{
-			if (PointTable.AddStatusByteToCBMap(group, channel, payloadlocation))
+			if (PointTable.AddStatusByteToCBMap(numeric_cast<uint8_t>(group), numeric_cast<uint8_t>(channel), payloadlocation))
 			{
 				// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
 				LOGDEBUG("Adding a Status Byte - Group: " + std::to_string(group) + " Channel: " + std::to_string(channel) + " Payload Location: " + payloadlocation.to_string());
@@ -508,7 +508,7 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 				else
 				{
 					// Only add the point if it passes
-					res = PointTable.AddAnalogPointToPointTable(index, group, channel, payloadlocation, pointtype);
+					res = PointTable.AddAnalogPointToPointTable(index, numeric_cast<uint8_t>(group), numeric_cast<uint8_t>(channel), payloadlocation, pointtype);
 				}
 			}
 			else if (ptype == Counter)
@@ -525,7 +525,7 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 				else
 				{
 					// Only add the point if it passes
-					res = PointTable.AddCounterPointToPointTable(index, group, channel, payloadlocation, pointtype);
+					res = PointTable.AddCounterPointToPointTable(index, numeric_cast<uint8_t>(group), numeric_cast<uint8_t>(channel), payloadlocation, pointtype);
 				}
 			}
 			else if (ptype == AnalogControl)
@@ -540,7 +540,7 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 				}
 				else
 				{
-					res = PointTable.AddAnalogControlPointToPointTable(index, group, channel, pointtype);
+					res = PointTable.AddAnalogControlPointToPointTable(index, numeric_cast<uint8_t>(group), numeric_cast<uint8_t>(channel), pointtype);
 				}
 			}
 			else
@@ -569,7 +569,7 @@ bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType&
 	// First character
 	if ((pl[0] >= '1') && (pl[0] <= '9'))
 	{
-		payloadlocation.Packet = (pl[0] - '0'); // 1 to 9
+		payloadlocation.Packet = numeric_cast<uint8_t>(pl[0] - '0'); // 1 to 9
 	}
 	else
 	{
@@ -581,7 +581,7 @@ bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType&
 	if ((pl[1] >= '0') && (pl[1] <= '6') && (pl[0] == '1'))
 	{
 		// Have a second number, the first must be '1'
-		payloadlocation.Packet = (pl[1] - '0' + 10);
+		payloadlocation.Packet = numeric_cast<uint8_t>(pl[1] - '0' + 10);
 	}
 	else if (pl[1] == 'A')
 	{

@@ -48,8 +48,8 @@ CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_ser
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort),
-	IsBakerDevice(isbakerdevice),
-	IsServer(aisServer)
+	IsServer(aisServer),
+	IsBakerDevice(isbakerdevice)
 {
 	pSockMan.reset(new TCPSocketManager<std::string>
 			(pIOS, IsServer, EndPoint, Port,

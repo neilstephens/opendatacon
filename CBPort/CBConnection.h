@@ -102,12 +102,12 @@ public:
 			// Convert the 10.12.145.240 into 4 bytes.
 			std::vector<std::string> tok = split(aEndPoint, '.');
 
-			result |= ((uint64_t)std::stoi(tok[0])) << (64 - 8);
-			result |= ((uint64_t)std::stoi(tok[1])) << (64 - 16);
-			result |= ((uint64_t)std::stoi(tok[2])) << (64 - 24);
-			result |= ((uint64_t)std::stoi(tok[3])) << (64 - 32);
+			result |= numeric_cast<uint64_t>(std::stoi(tok[0])) << (64 - 8);
+			result |= numeric_cast<uint64_t>(std::stoi(tok[1])) << (64 - 16);
+			result |= numeric_cast<uint64_t>(std::stoi(tok[2])) << (64 - 24);
+			result |= numeric_cast<uint64_t>(std::stoi(tok[3])) << (64 - 32);
 
-			result |= ((uint64_t)std::stoi(aPort)) << 8; // Assume less than  2^24.
+			result |= numeric_cast<uint64_t>(std::stoi(aPort)) << 8; // Assume less than  2^24.
 
 			result |= (aisServer ? 1 : 0);
 		}
@@ -135,8 +135,9 @@ private:
 	std::string InternalChannelID;
 
 	bool IsServer;
-	bool IsBakerDevice; // Swap Station and Group if it is a Baker device. Set in constructor
 	bool enabled = false;
+	bool IsBakerDevice; // Swap Station and Group if it is a Baker device. Set in constructor
+
 	CBMessage_t CBMessage;
 
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.

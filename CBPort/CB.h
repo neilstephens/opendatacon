@@ -142,7 +142,7 @@ public:
 		ChangedTime(src.ChangedTime),
 		HasBeenSet(src.HasBeenSet)
 	{}
-	virtual ~CBPoint() = 0; // Make the base class pure virtual
+	virtual ~CBPoint(); // Make the base class pure virtual
 
 	CBPoint& operator=(const CBPoint& src)
 	{
@@ -192,8 +192,8 @@ public:
 	CBBinaryPoint() {}
 	CBBinaryPoint(const CBBinaryPoint &src): CBPoint(src),
 		Binary(src.Binary),
-		MomentaryChangeStatus(src.MomentaryChangeStatus),
 		Changed(src.Changed),
+		MomentaryChangeStatus(src.MomentaryChangeStatus),
 		PointType(src.PointType)
 	{}
 	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype): CBPoint(index, group, channel, static_cast<CBTime>(0), payloadlocation),
@@ -284,16 +284,16 @@ public:
 	CBPollGroup():
 		ID(0),
 		pollrate(0),
-		polltype(Scan),
 		group(0),
+		polltype(Scan),
 		ForceUnconditional(false)
 	{ }
 
 	CBPollGroup(uint32_t ID_, uint32_t pollrate_, PollGroupType polltype_, uint8_t group_, bool forceunconditional):
 		ID(ID_),
 		pollrate(pollrate_),
-		polltype(polltype_),
 		group(group_),
+		polltype(polltype_),
 		ForceUnconditional(forceunconditional)
 	{ }
 

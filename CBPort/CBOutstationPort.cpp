@@ -106,7 +106,7 @@ void CBOutstationPort::Build()
 	uint64_t ChannelID = MyConf->mAddrConf.ChannelID();
 
 	// Need a couple of things passed to the point table.
-	MyPointConf->PointTable.Build(IsOutStation, *pIOS);
+	MyPointConf->PointTable.Build(IsOutStation);
 
 	// Creates internally if necessary
 	CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
@@ -131,11 +131,11 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 
 	LastSentCBMessage = CompleteCBMessage; // Take a copy of last message
 }
-
+#ifdef _MCS_VER
 #pragma region OpenDataConInteraction
 
 #pragma region PerformEvents
-
+#endif
 // We are going to send a command to the opendatacon connector to do some kind of operation.
 // If there is a master on that connector it will then send the command on down to the "real" outstation.
 // This method will be called in response to data appearing on our TCP connection.
@@ -174,12 +174,11 @@ CommandStatus CBOutstationPort::Perform(std::shared_ptr<EventInfo> event, bool w
 	}
 	return cb_status;
 }
-
+#ifdef _MSC_VER
 #pragma endregion PerformEvents
 
-
 #pragma region DataEvents
-
+#endif
 // We received a change in data from an Event (from the opendatacon Connector) now store it so that it can be produced when the Scada master polls us
 // for a group or individually on our TCP connection.
 // What we return here is not used in anyway that I can see.
@@ -295,7 +294,8 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 	}
 }
-
+#ifdef _MSC_VER
 #pragma endregion
 
 #pragma endregion OpenDataConInteraction
+#endif

@@ -25,7 +25,9 @@
 */
 
 // Disable excessing data on stack warning for the test file only.
+#ifdef _MSC_VER
 #pragma warning(disable: 6262)
+#endif
 
 #include <array>
 #include <fstream>
@@ -70,7 +72,9 @@ extern const char *conffile2;
 const char *conffilename1 = "CBConfig.conf";
 const char *conffilename2 = "CBConfig2.conf";
 
+#ifdef _MSC_VER
 #pragma region conffiles
+#endif
 // We actually have the conf file here to match the tests it is used in below. We write out to a file (overwrite) on each test so it can be read back in.
 const char *conffile1 = R"001(
 {
@@ -173,10 +177,11 @@ const char *conffile2 = R"002(
 
 })002";
 
+#ifdef _MSC_VER
 #pragma endregion
 
 #pragma region TEST_HELPERS
-
+#endif
 
 // Write out the conf file information about into a file so that it can be read back in by the code.
 void WriteConfFilesToCurrentWorkingDirectory()
@@ -272,7 +277,7 @@ void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
 	// We don\92t have to consider the timer going out of scope in this use case.
 	Timer_t timer(IOS);
 	timer.expires_from_now(std::chrono::seconds(seconds));
-	timer.async_wait([&IOS](asio::error_code err_code) // [=] all autos by copy, [&] all autos by ref
+	timer.async_wait([&IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
 		{
 			// If there was no more work, the asio::io_service will exit from the IOS.run() below.
 			// However something is keeping it running, so use the stop command to force the issue.
@@ -342,7 +347,9 @@ void Wait(asio::io_service &IOS, int seconds)
 	CBOSPort2->SetIOS(&IOS);     \
 	CBOSPort2->Build();
 
+#ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
+#endif
 
 namespace SimpleUnitTestsCB
 {
@@ -492,13 +499,13 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 
 	REQUIRE(CompleteCBMessage.size() == 2);
 
-	uint16_t B0 = CompleteCBMessage[0].GetB();
-	uint16_t A1 = CompleteCBMessage[1].GetA();
-	uint16_t B1 = CompleteCBMessage[1].GetB();
+	uint16_t B0Data = CompleteCBMessage[0].GetB();
+	uint16_t A1Data = CompleteCBMessage[1].GetA();
+	uint16_t B1Data = CompleteCBMessage[1].GetB();
 
-	REQUIRE(B0 == 0x0020);
-	REQUIRE(A1 == 0x0f04);
-	REQUIRE(B1 == 0x00fb);
+	REQUIRE(B0Data == 0x0020);
+	REQUIRE(A1Data == 0x0f04);
+	REQUIRE(B1Data == 0x00fb);
 	REQUIRE(CompleteCBMessage[0].IsEndOfMessageBlock() == false);
 	REQUIRE(CompleteCBMessage[1].IsEndOfMessageBlock() == true);
 
@@ -510,7 +517,9 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 */
 }
 
+#ifdef _MSC_VER
 #pragma region Block Tests
+#endif
 
 TEST_CASE("CBBlock - ClassConstructor1")
 {
@@ -622,7 +631,9 @@ TEST_CASE("CBBlock - ClassConstructor5")
 	REQUIRE(b.CheckBBitIsZero());
 }
 
+#ifdef _MSC_VER
 #pragma endregion Block Tests
+#endif
 }
 
 namespace StationTests
@@ -706,7 +717,7 @@ TEST_CASE("Station - ScanRequest F0")
 	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(std::move(1024 + ODCIndex));
+		event->SetPayload<EventType::Counter>(std::move(numeric_cast<unsigned int>(1024 + ODCIndex)));
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1045,25 +1056,25 @@ TEST_CASE("Master - Scan Request F0")
 	uint16_t res;
 
 	//ANA
-	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
+	for (size_t ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
 		CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		REQUIRE(res == (1024 + ODCIndex));
 	}
 	//ANA6
-	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
+	for (size_t ODCIndex = 3; ODCIndex < 5; ODCIndex++)
 	{
 		CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		REQUIRE(res == (1 + ODCIndex));
 	}
 	//Counters
-	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
+	for (size_t ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		CBMAPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		REQUIRE(res == (1024 + ODCIndex));
 	}
 
-	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+	for (size_t ODCIndex = 0; ODCIndex < 12; ODCIndex++)
 	{
 		bool changed;
 		uint8_t res;
@@ -1075,22 +1086,22 @@ TEST_CASE("Master - Scan Request F0")
 	// Need to give ASIO time to process them?
 	Wait(IOS, 1);
 
-	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
+	for (size_t ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
 		CBOSPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		REQUIRE(res == (1024 + ODCIndex));
 	}
-	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
+	for (size_t ODCIndex = 3; ODCIndex < 5; ODCIndex++)
 	{
 		CBOSPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		//		REQUIRE(res == (1+ODCIndex));
 	}
-	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
+	for (size_t ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		CBOSPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		REQUIRE(res == (1024 + ODCIndex));
 	}
-	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+	for (size_t ODCIndex = 0; ODCIndex < 12; ODCIndex++)
 	{
 		uint8_t res;
 		bool changed;

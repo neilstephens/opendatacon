@@ -358,7 +358,7 @@ protected:
 	void SetBCH()
 	{
 		uint8_t calc = CBBCH(data);
-		data = (data &  ~0x3E) | (calc << 1); // Do we need to cast to 32 bit?
+		data = numeric_cast<uint8_t>(data &  ~0x3Eu) | numeric_cast<uint8_t>(calc << 1); // Do we need to cast to 32 bit?
 	}
 
 	uint32_t data = 0;
