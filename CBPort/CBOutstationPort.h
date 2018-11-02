@@ -90,6 +90,8 @@ private:
 class PendingCommandType
 {
 public:
+	PendingCommandType() {}
+
 	enum CommandType { None, Trip, Close, SetA, SetB };
 
 	const CBTime CommandValidTimemsec = 10000; // PendingCommand valid for 10 seconds..
