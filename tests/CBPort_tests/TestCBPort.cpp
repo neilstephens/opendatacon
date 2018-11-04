@@ -23,7 +23,7 @@
 
 int main( int argc, char* argv[] )
 {
-	std::string libname = "MD3Port";
+	std::string libname = "CBPort";
 	std::string libfilename = GetLibFileName(libname);
 	auto pluginlib = LoadModule(libfilename.c_str());
 

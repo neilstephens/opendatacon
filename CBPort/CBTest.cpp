@@ -45,8 +45,6 @@
 #include "CBOutstationPort.h"
 #include "CBMasterPort.h"
 #include "CBUtility.h"
-#include "StrandProtectedQueue.h"
-//#include "ProducerConsumerQueue.h"
 
 
 #if defined(NONVSTESTING)
@@ -202,10 +200,10 @@ void WriteConfFilesToCurrentWorkingDirectory()
 void SetupLoggers()
 {
 	// So create the log sink first - can be more than one and add to a vector.
-	#ifdef WIN32
-	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
-	#else
+	#if defined(NONVSTESTING)
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	#else
+	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
 	#endif
 	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("testslog.txt", true);
 
@@ -444,50 +442,7 @@ TEST_CASE("Util - CBIndexTest")
 	CBIndex = CBPointTableAccess::GetCBPointMapIndex(group, channel, payloadlocation);
 	REQUIRE(CBIndex == 0xFCF1);
 }
-TEST_CASE("Utility - Strand Queue")
-{
-	asio::io_service IOS(2);
 
-	asio::io_service::work work(IOS); // Just to keep things from stopping..
-
-	std::thread t1([&]() {IOS.run(); });
-	std::thread t2([&]() {IOS.run(); });
-
-	StrandProtectedQueue<int> foo(IOS, 10);
-	foo.sync_push(21);
-	foo.sync_push(31);
-	foo.sync_push(41);
-
-	int res;
-	bool success = foo.sync_front(res);
-	REQUIRE(success);
-	REQUIRE(res == 21);
-	foo.sync_pop();
-
-	success = foo.sync_front(res);
-	REQUIRE(success);
-	REQUIRE(res == 31);
-	foo.sync_pop();
-
-	foo.sync_push(2 * res);
-	success = foo.sync_front(res);
-	foo.sync_pop();
-	REQUIRE(success);
-	REQUIRE(res == 41);
-
-	success = foo.sync_front(res);
-	foo.sync_pop();
-	REQUIRE(success);
-	REQUIRE(res == 31 * 2);
-
-	success = foo.sync_front(res);
-	REQUIRE(!success);
-
-	IOS.stop(); // Or work.reset(), if work was a pointer.!
-
-	t1.join(); // Wait for thread to end
-	t2.join();
-}
 TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 {
 	uint8_t address = 1;
