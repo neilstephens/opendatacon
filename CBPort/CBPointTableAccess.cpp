@@ -291,9 +291,22 @@ bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const u
 	{
 		ODCPointMapIter->second->SetBinary(meas, eventtime);
 
+		//TODO: Store SOE event to the SOE queue. If we receive a binary event that is older than the last one, it only goes in the SOE queue.
+		if (IsOutstation)
+			AddToDigitalEvents(*ODCPointMapIter->second); // Don't store if master - we just fire off ODC events.
+
 		return true;
 	}
 	return false;
+}
+void CBPointTableAccess::AddToDigitalEvents(CBBinaryPoint &inpt)
+{
+	// Check to see if this point is a SOE point?
+	if (inpt.GetPointType() == SOE) // Only add if the point is SOE
+	{
+		// Will fail if full,  Push takes a copy
+		pBinaryTimeTaggedEventQueue->async_push(inpt);
+	}
 }
 #ifdef _MSC_VER
 #pragma endregion

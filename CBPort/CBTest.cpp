@@ -51,7 +51,7 @@
 #include <catch.hpp>
 #else
 #include "spdlog/sinks/msvc_sink.h"
-#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
+#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer - but also has some problems not destructing objects correctly.
 #endif
 
 #define SUITE(name) "CBTests - " name
@@ -1131,7 +1131,7 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 {
 	// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
-	// Create two masters, and then see if they can share the TCP connection successfully.
+	// Create two masters, two stations, and then see if they can share the TCP connection successfully.
 	STANDARD_TEST_SETUP();
 	// Outstations are as for the conf files
 	TEST_CBOSPort(Json::nullValue);

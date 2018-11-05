@@ -34,6 +34,7 @@
 
 #include "CB.h"
 #include "CBUtility.h"
+#include "StrandProtectedQueue.h"
 
 using namespace odc;
 
@@ -90,8 +91,6 @@ public:
 	void GetMaxPayload(uint8_t group, uint8_t &blockcount);
 
 	void AddToDigitalEvents(CBBinaryPoint & inpt);
-	uint16_t CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t Group, bool & ModuleFailed);
-	uint16_t CollectModuleBitsIntoWord(const uint8_t Group, bool & ModuleFailed);
 
 	// Public only for testing
 	static uint16_t GetCBPointMapIndex(const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation); // Group/Payload/Channel
@@ -121,5 +120,6 @@ protected:
 	std::map<uint8_t, uint8_t> MaxiumPayloadPerGroupMap; // Group 0 to 15, Max payload - a count of 1 to 16.
 
 	bool IsOutstation = true;
+	std::shared_ptr<StrandProtectedQueue<CBBinaryPoint>> pBinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events.
 };
 #endif
