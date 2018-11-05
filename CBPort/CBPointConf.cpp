@@ -242,7 +242,6 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		}
 		else
 		{
-			//TODO: Check PendingCommand payload location
 			// For a control point, the payload location is always 1B - the command comes as one block only
 			ParsePayloadString("1B", payloadlocation);
 		}
@@ -325,7 +324,6 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					{
 						LOGERROR("A binary control can only have type CONTROL " + std::to_string(currentchannel));
 					}
-					//TODO: Trip and Close separate points or same point with different command - 12 or 24 channels?
 					else if ((currentchannel < 1) || (currentchannel > 12))
 					{
 						LOGERROR("A binary control channel must be between 1 and 12 " + std::to_string(currentchannel));

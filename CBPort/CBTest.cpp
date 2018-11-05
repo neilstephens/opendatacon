@@ -185,13 +185,15 @@ const char *conffile2 = R"002(
 void WriteConfFilesToCurrentWorkingDirectory()
 {
 	std::ofstream ofs(conffilename1);
-	if (!ofs) WARN("Could not open conffile1 for writing");
+	if (!ofs)
+		WARN("Could not open conffile1 for writing");
 
 	ofs << conffile1;
 	ofs.close();
 
 	std::ofstream ofs2(conffilename2);
-	if (!ofs2) WARN("Could not open conffile2 for writing");
+	if (!ofs2)
+		WARN("Could not open conffile2 for writing");
 
 	ofs2 << conffile2;
 	ofs.close();
@@ -219,40 +221,50 @@ void SetupLoggers()
 	odc::spdlog_register_logger(pODCLogger);
 
 }
-void WriteStartLoggingMessage()
+void WriteStartLoggingMessage(std::string TestName)
 {
-	std::string msg = "Logging for this test started..";
+	std::string msg = "Logging for '"+TestName+"' started..";
 
 	if (auto cblogger = odc::spdlog_get("CBPort"))
 		cblogger->info(msg);
 	else
 		std::cout << "Error CBPort Logger not operational";
 
-	if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->info(msg);
-	else
-		std::cout << "Error opendatacon Logger not operational";
+/*	if (auto odclogger = odc::spdlog_get("opendatacon"))
+            odclogger->info(msg);
+      else
+            std::cout << "Error opendatacon Logger not operational";
+            */
 }
-void TestSetup(bool writeconffiles = true)
+void TestSetup(std::string TestName, bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
 	SetupLoggers();
-	WriteStartLoggingMessage();
 	#endif
+	WriteStartLoggingMessage(TestName);
 
 	if (writeconffiles)
 		WriteConfFilesToCurrentWorkingDirectory();
 }
 void TestTearDown(void)
 {
-	#ifndef NONVSTESTING
 	if (auto cblogger = odc::spdlog_get("CBPort"))
 		cblogger->info("Test Finished");
+	#ifndef NONVSTESTING
 
-	//spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
+	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 	#endif
 }
-
+// Used for command line test setup
+void CommandLineLoggingSetup()
+{
+	SetupLoggers();
+	WriteStartLoggingMessage("All Tests");
+}
+void CommandLineLoggingCleanup()
+{
+	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
+}
 // A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
 // Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
 std::string BuildHexStringFromASCIIHexString(const std::string &as)
@@ -296,7 +308,7 @@ void StopIOSThread(asio::io_service &IOS, std::thread *runthread)
 	runthread->join(); // Wait for it to exit
 	delete runthread;
 }
-void Wait(asio::io_service &IOS, int seconds)
+void WaitIOS(asio::io_service &IOS, int seconds)
 {
 	Timer_t timer(IOS);
 	timer.expires_from_now(std::chrono::seconds(seconds));
@@ -306,8 +318,12 @@ void Wait(asio::io_service &IOS, int seconds)
 
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
-	TestSetup();\
+	TestSetup(Catch::getResultCapture().getCurrentTestName());\
 	asio::io_service IOS(4); // Max 4 threads
+
+// Used for tests that dont need IOS
+#define SIMPLE_TEST_SETUP()\
+	TestSetup(Catch::getResultCapture().getCurrentTestName());
 
 #define STANDARD_TEST_TEARDOWN()\
 	TestTearDown();\
@@ -353,15 +369,18 @@ namespace SimpleUnitTestsCB
 {
 TEST_CASE("Util - HexStringTest")
 {
+	SIMPLE_TEST_SETUP();
 	std::string ts = "c406400f0b00"  "0000fffe9000";
 	std::string w1 = { ToChar(0xc4),0x06,0x40,0x0f,0x0b,0x00 };
 	std::string w2 = { 0x00,0x00,ToChar(0xff),ToChar(0xfe),ToChar(0x90),0x00 };
 
 	std::string res = BuildHexStringFromASCIIHexString(ts);
 	REQUIRE(res == (w1 + w2));
+	STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Util - CBBCHTest")
 {
+	SIMPLE_TEST_SETUP();
 	CBBlockData res = CBBlockData(0x09200028);
 	REQUIRE(res.BCHPasses());
 
@@ -382,9 +401,11 @@ TEST_CASE("Util - CBBCHTest")
 
 	res = CBBlockData(0x08080029);
 	REQUIRE(res.BCHPasses());
+	STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Util - ParsePayloadString")
 {
+	SIMPLE_TEST_SETUP();
 	PayloadLocationType payloadlocation;
 
 	bool res = CBPointConf::ParsePayloadString("16B", payloadlocation);
@@ -399,6 +420,8 @@ TEST_CASE("Util - ParsePayloadString")
 	REQUIRE(payloadlocation.Packet == 16);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionA);
 
+	if (auto cblogger = odc::spdlog_get("CBPort")) cblogger->info("Ignore Next Three Errors");
+
 	res = CBPointConf::ParsePayloadString("1A", payloadlocation);
 	REQUIRE(payloadlocation.Packet == 1);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionA);
@@ -410,9 +433,11 @@ TEST_CASE("Util - ParsePayloadString")
 	res = CBPointConf::ParsePayloadString("123", payloadlocation);
 	REQUIRE(res == false);
 	REQUIRE(payloadlocation.Position == PayloadABType::Error);
+	STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Util - MakeChannelID")
 {
+	SIMPLE_TEST_SETUP();
 	std::string IP = "192.168.1.23";
 	std::string Port = "34567";
 	bool isaserver = true;
@@ -425,9 +450,11 @@ TEST_CASE("Util - MakeChannelID")
 	Port = "10000";
 	res = CBConnection::MakeChannelID(IP, Port, isaserver);
 	REQUIRE(res == 0x7f00000100271000);
+	STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Util - CBIndexTest")
 {
+	SIMPLE_TEST_SETUP();
 	uint8_t group = 1;
 	uint8_t channel = 1;
 	PayloadLocationType payloadlocation(1, PayloadABType::PositionA);
@@ -441,10 +468,12 @@ TEST_CASE("Util - CBIndexTest")
 	payloadlocation= PayloadLocationType(16, PayloadABType::PositionB);
 	CBIndex = CBPointTableAccess::GetCBPointMapIndex(group, channel, payloadlocation);
 	REQUIRE(CBIndex == 0xFCF1);
+	STANDARD_TEST_TEARDOWN();
 }
 
 TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 {
+	SIMPLE_TEST_SETUP();
 	uint8_t address = 1;
 	CBTime cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
 
@@ -463,13 +492,7 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 	REQUIRE(B1Data == 0x00fb);
 	REQUIRE(CompleteCBMessage[0].IsEndOfMessageBlock() == false);
 	REQUIRE(CompleteCBMessage[1].IsEndOfMessageBlock() == true);
-
-/*	uint16_t FirstDataB = ((hh >> 2) & 0x07) | 0x20;	// The 2 is the number of blocks.
-      auto firstblock = CBBlockData(StationAddress, Group, MASTER_SUB_FUNC_SEND_TIME_UPDATES, FirstDataB, false);
-
-      uint16_t DataA = ShiftLeftResult16Bits(hh & 0x02, 10) | ShiftLeftResult16Bits(mm & 0x3F, 4) | ((ss >> 2) & 0x0F);
-      uint16_t DataB = ShiftLeftResult16Bits(ss & 0x03, 10) | (msec & 0x3ff);
-*/
+	STANDARD_TEST_TEARDOWN();
 }
 
 #ifdef _MSC_VER
@@ -478,6 +501,7 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 
 TEST_CASE("CBBlock - ClassConstructor1")
 {
+	SIMPLE_TEST_SETUP();
 	CBBlockArray msg = { 0x09,0x20,0x00,0x28}; // From a packet capture - this is the address packet
 
 	CBBlockData b(msg);
@@ -490,10 +514,12 @@ TEST_CASE("CBBlock - ClassConstructor1")
 	REQUIRE(b.IsAddressBlock());
 	REQUIRE(b.BCHPasses());
 	REQUIRE(b.CheckBBitIsZero());
+	STANDARD_TEST_TEARDOWN();
 }
 
 TEST_CASE("CBBlock - ClassConstructor2")
 {
+	SIMPLE_TEST_SETUP();
 	CBBlockData b2("22290030");
 	REQUIRE(b2.GetData() == 0x22290030);
 	REQUIRE(b2.GetA() == 0x222);
@@ -511,10 +537,12 @@ TEST_CASE("CBBlock - ClassConstructor2")
 	REQUIRE(b3.IsDataBlock());
 	REQUIRE(b3.BCHPasses());
 	REQUIRE(b3.CheckBBitIsZero());
+	STANDARD_TEST_TEARDOWN();
 }
 
 TEST_CASE("CBBlock - ClassConstructor3")
 {
+	SIMPLE_TEST_SETUP();
 	uint8_t d[] = { 0x09, 0x20, 0x00,0x28 };
 	CBBlockData b(d[0], d[1], d[2], d[3]);
 
@@ -537,10 +565,12 @@ TEST_CASE("CBBlock - ClassConstructor3")
 	REQUIRE(c.IsAddressBlock());
 	REQUIRE(c.BCHPasses());
 	REQUIRE(c.CheckBBitIsZero());
+	STANDARD_TEST_TEARDOWN();
 }
 
 TEST_CASE("CBBlock - ClassConstructor4")
 {
+	SIMPLE_TEST_SETUP();
 	uint16_t AData = 0xF23;
 	uint16_t BData = 0x102;
 	bool lastblock = false;
@@ -553,10 +583,12 @@ TEST_CASE("CBBlock - ClassConstructor4")
 	REQUIRE(b.IsAddressBlock() == false);
 	REQUIRE(b.BCHPasses());
 	REQUIRE(b.CheckBBitIsZero());
+	STANDARD_TEST_TEARDOWN();
 }
 
 TEST_CASE("CBBlock - ClassConstructor5")
 {
+	SIMPLE_TEST_SETUP();
 	// Need to test the construction of an address block. What is B set to??
 	uint8_t StationAddress = 4;
 	uint8_t Group = 2;
@@ -584,6 +616,7 @@ TEST_CASE("CBBlock - ClassConstructor5")
 	REQUIRE(b.IsAddressBlock());
 	REQUIRE(b.BCHPasses());
 	REQUIRE(b.CheckBBitIsZero());
+	STANDARD_TEST_TEARDOWN();
 }
 
 #ifdef _MSC_VER
@@ -762,16 +795,8 @@ TEST_CASE("Station - ScanRequest F0")
 
 	CBOSPort->Disable();
 
-	CBOSPort.release();
-
-	START_IOS(1);
-	Wait(IOS, 1);
-	STOP_IOS();
-
 	STANDARD_TEST_TEARDOWN();
 }
-
-
 
 TEST_CASE("Station - BinaryEvent")
 {
@@ -810,7 +835,6 @@ TEST_CASE("Station - BinaryEvent")
 	REQUIRE((res == CommandStatus::UNDEFINED)); // The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
 	// Wait for some period to do something?? Check that the port is open and we can connect to it?
 
-	CBOSPort.release();
 	STANDARD_TEST_TEARDOWN();
 }
 
@@ -944,19 +968,16 @@ TEST_CASE("Station - CONTROL Commands")
 	REQUIRE(res16 == BData);
 	REQUIRE(hasbeenset == true);
 
-	CBOSPort.release();
 	STANDARD_TEST_TEARDOWN();
 }
 }
 
 namespace MasterTests
 {
-
 TEST_CASE("Master - Scan Request F0")
 {
 	// So here we send out an F0 command (so the Master is expecting it back)
 	// Then we decode the response from the point table group setup, and fire off the appropriate events.
-
 	STANDARD_TEST_SETUP();
 
 	TEST_CBMAPort(Json::nullValue);
@@ -981,7 +1002,7 @@ TEST_CASE("Master - Scan Request F0")
 	CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);
 	CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
 
-	Wait(IOS, 1);
+	WaitIOS(IOS, 1);
 
 	// We check the command, but it does not go anywhere, we inject the expected response below.
 	const std::string DesiredResponse = BuildHexStringFromASCIIHexString("09300025");
@@ -1004,7 +1025,7 @@ TEST_CASE("Master - Scan Request F0")
 	// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
 	CBMAPort->InjectSimulatedTCPMessage(write_buffer);
 
-	Wait(IOS, 5);
+	WaitIOS(IOS, 5);
 
 	// To check the result, see if the points in the master point list have been changed to the correct values.
 	bool hasbeenset;
@@ -1039,7 +1060,7 @@ TEST_CASE("Master - Scan Request F0")
 
 	// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 	// Need to give ASIO time to process them?
-	Wait(IOS, 1);
+	WaitIOS(IOS, 1);
 
 	for (size_t ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
@@ -1065,14 +1086,11 @@ TEST_CASE("Master - Scan Request F0")
 	}
 
 	STOP_IOS();
-	CBOSPort.release();
-	CBMAPort.release();
 	STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - F9 Time Test Using TCP")
 {
-	// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
-	// Create two masters, and then see if they can share the TCP connection successfully.
+	// Test the response to a TimeCommand
 	STANDARD_TEST_SETUP();
 	// Outstations are as for the conf files
 	TEST_CBOSPort(Json::nullValue);
@@ -1087,10 +1105,8 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 	CBOSPort->Enable();
 	CBMAPort->Enable();
 
-	// Allow everything to get setup.
-	Wait(IOS, 1);
+	WaitIOS(IOS, 1);
 
-	// Send a POM command by injecting an ODC event to the Master
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
 		{
@@ -1102,7 +1118,7 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 	CBMAPort->SendFn9TimeUpdate(pStatusCallback);
 
 	// Wait for it to go to the OutStation and Back again
-	Wait(IOS, 2);
+	WaitIOS(IOS, 4);
 
 	REQUIRE(res == CommandStatus::SUCCESS);
 
@@ -1110,9 +1126,6 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 	CBMAPort->Disable();
 
 	STOP_IOS();
-	CBOSPort.release();
-	CBMAPort.release();
-
 	STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
@@ -1142,7 +1155,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort2->Enable();
 
 	// Allow everything to get setup.
-	Wait(IOS, 2);
+	WaitIOS(IOS, 2);
 
 	// So to do this test, we are going to send an Event into the Master which will require it to send a POM command to the outstation.
 	// We should then have an Event triggered on the outstation caused by the POM. We need to capture this to check that it was the correct POM Event.
@@ -1168,7 +1181,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort->Event(event, "TestHarness", pStatusCallback);
 
 	// Wait for it to go to the OutStation and Back again
-	Wait(IOS, 4);
+	WaitIOS(IOS, 4);
 
 	REQUIRE(res == CommandStatus::SUCCESS);
 
@@ -1192,7 +1205,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort2->Event(event2, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
-	Wait(IOS, 3);
+	WaitIOS(IOS, 3);
 
 	REQUIRE(res2 == CommandStatus::SUCCESS);
 
@@ -1211,11 +1224,9 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort->Event(event3, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
-	Wait(IOS, 3);
+	WaitIOS(IOS, 3);
 
 	REQUIRE(res2 == CommandStatus::SUCCESS);
-
-
 
 	CBOSPort->Disable();
 	CBOSPort2->Disable();
@@ -1224,10 +1235,6 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort2->Disable();
 
 	STOP_IOS();
-	CBOSPort.release();
-	CBMAPort.release();
-	CBOSPort2.release();
-	CBMAPort2.release();
 	STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Master - Cause a Command Resend on Timeout Uisng TCP")

@@ -291,10 +291,6 @@ bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const u
 	{
 		ODCPointMapIter->second->SetBinary(meas, eventtime);
 
-		//TODO: We now need to add the change to the separate digital/binary event list
-//		if (IsOutstation)
-//			AddToDigitalEvents(*ODCPointMapIter->second); // Don't store if master - we just fire off ODC events.
-
 		return true;
 	}
 	return false;

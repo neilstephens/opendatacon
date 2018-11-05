@@ -72,10 +72,6 @@ void CBConnection::AddConnection(asio::io_service* apIOS, //pointer to an asio i
 	bool isbakerdevice,
 	uint16_t retry_time_ms)
 {
-	// This map is of weak pointers, so that if the Connection gets destroyed (it is a shared_ptr) the weak pointer will know that it no longer exists.
-	// This can occur as the map is a static object.
-	// It can then return a null_ptr. We need to make sure every call to GetConnection can cope with a null_ptr returned.
-
 	uint64_t ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
 	std::unique_lock<std::mutex> lck(CBConnection::MapMutex); // Access the Map

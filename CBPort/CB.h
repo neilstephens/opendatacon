@@ -29,7 +29,7 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-//#define NONVSTESTING
+#define NONVSTESTING
 
 #include <cstdint>
 #include <opendatacon/DataPort.h>
@@ -72,6 +72,8 @@
 	if (auto log = odc::spdlog_get("CBPort")) \
 		log->info(__VA_ARGS__);
 
+void CommandLineLoggingSetup();
+void CommandLineLoggingCleanup();
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;
@@ -106,8 +108,7 @@ public:
 	PayloadLocationType(): Packet(0),Position(PayloadABType::Error) {}
 	PayloadLocationType(uint8_t packet, PayloadABType position): Packet(packet), Position(position) {}
 
-	//TODO: Use Getter and Setters so we can range check.
-	uint8_t Packet; // Should be 1 to 16. 0 is an error - or unitialised.
+	uint8_t Packet; // Should be 1 to 16. 0 is an error - or un-initialised.
 	PayloadABType Position;
 	std::string to_string() const
 	{
@@ -117,7 +118,6 @@ public:
 
 class CBPoint // Abstract Class
 {
-	//TODO: Can we convert protection to strands??
 	//	NONE              = 0,
 	//	ONLINE            = 1<<0,
 	//	RESTART           = 1<<1,

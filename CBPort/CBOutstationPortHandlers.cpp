@@ -389,7 +389,7 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 	if (CBNow() > PendingCommand.ExpiryTime)
 	{
 		LOGDEBUG("Received an Execute Command, but the current command had expired");
-		//TODO: Should we reply in some way?
+		//TODO: "Received an Execute Command, but the current command had expired" - Correct?
 		return;
 	}
 

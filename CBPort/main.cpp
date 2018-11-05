@@ -71,7 +71,12 @@ extern "C" void delete_CBOutstationPort(CBOutstationPort* aCBOutstationPort_ptr)
 extern "C" int run_tests( int argc, char* argv[] )
 {
 	#ifdef NONVSTESTING
+	// Create loggers for tests here
+	CommandLineLoggingSetup();
+
 	return Catch::Session().run( argc, argv );
+	// And release here.
+	CommandLineLoggingCleanup();
 	#else
 	return 1;
 	#endif
