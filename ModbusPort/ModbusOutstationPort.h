@@ -29,7 +29,6 @@
 
 #include <unordered_map>
 
-#include <modbus/modbus.h>
 #include "ModbusPort.h"
 
 class ModbusOutstationPort: public ModbusPort
@@ -40,27 +39,14 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+	void Build() override;
 
-	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-
-	template<typename T> CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
-	template<typename T> CommandStatus PerformT(T& arCommand, uint16_t aIndex);
-	template<typename T> std::future<CommandStatus> EventT(T& meas, uint16_t index, const std::string& SenderName);
-
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 	void Connect();
 	void Disconnect();
 
 private:
-	void StateListener(ChannelState state);
-	modbus_t *mb;
 	modbus_mapping_t *mb_mapping;
 };
 

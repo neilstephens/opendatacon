@@ -23,11 +23,13 @@
  *  Created on: 29/07/2015
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-
-#include "SimPort.h"
-#include "SimPortConf.h"
+#include <memory>
 #include <random>
 #include <limits>
+#include <opendatacon/util.h>
+#include <opendatacon/IOTypes.h>
+#include "SimPort.h"
+#include "SimPortConf.h"
 
 inline unsigned int random_interval(const unsigned int& average_interval, rand_t& seed)
 {
@@ -38,8 +40,7 @@ inline unsigned int random_interval(const unsigned int& average_interval, rand_t
 
 //Implement DataPort interface
 SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
-	DataPort(Name, File, Overrides),
-	enabled(false)
+	DataPort(Name, File, Overrides)
 {
 	pConf.reset(new SimPortConf());
 	ProcessFile();
@@ -47,24 +48,24 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 void SimPort::Enable()
 {
 	pEnableDisableSync->post([&]()
-	                         {
-	                               if(!enabled)
-	                               {
-	                                     enabled = true;
-	                                     PortUp();
-						 }
-					 });
+		{
+			if(!enabled)
+			{
+			      enabled = true;
+			      PortUp();
+			}
+		});
 }
 void SimPort::Disable()
 {
 	pEnableDisableSync->post([&]()
-	                         {
-	                               if(enabled)
-	                               {
-	                                     enabled = false;
-	                                     PortDown();
-						 }
-					 });
+		{
+			if(enabled)
+			{
+			      enabled = false;
+			      PortDown();
+			}
+		});
 }
 
 void SimPort::PortUp()
@@ -75,8 +76,8 @@ void SimPort::PortUp()
 		if(pConf->AnalogUpdateIntervalms.count(index))
 		{
 			auto interval = pConf->AnalogUpdateIntervalms[index];
-			auto pMean = pConf->AnalogStartVals.count(index) ? std::make_shared<Analog>(pConf->AnalogStartVals[index]) : std::make_shared<Analog>();
-			auto std_dev = pConf->AnalogStdDevs.count(index) ? pConf->AnalogStdDevs[index] : (pMean->value ? (pConf->default_std_dev_factor*pMean->value) : 20);
+			auto mean = pConf->AnalogStartVals.count(index) ? pConf->AnalogStartVals[index] : 0;
+			auto std_dev = pConf->AnalogStdDevs.count(index) ? pConf->AnalogStdDevs[index] : (mean ? (pConf->default_std_dev_factor*mean) : 20);
 
 			pTimer_t pTimer(new Timer_t(*pIOS));
 			Timers.push_back(pTimer);
@@ -86,11 +87,11 @@ void SimPort::PortUp()
 
 			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 			pTimer->async_wait([=](asio::error_code err_code)
-			                   {
-							//FIXME: check err_code?
-							 if(enabled)
-								 SpawnEvent(pMean, std_dev, interval, index, pTimer, seed);
-						 });
+				{
+					//FIXME: check err_code?
+					if(enabled)
+						SpawnEvent(index, mean, std_dev, interval, pTimer, seed);
+				});
 		}
 	}
 	for(auto index : pConf->BinaryIndicies)
@@ -98,7 +99,7 @@ void SimPort::PortUp()
 		if(pConf->BinaryUpdateIntervalms.count(index))
 		{
 			auto interval = pConf->BinaryUpdateIntervalms[index];
-			auto pVal = pConf->BinaryStartVals.count(index) ? std::make_shared<Binary>(pConf->BinaryStartVals[index]) : std::make_shared<Binary>();
+			auto val = pConf->BinaryStartVals.count(index) ? pConf->BinaryStartVals[index] : false;
 
 			pTimer_t pTimer(new Timer_t(*pIOS));
 			Timers.push_back(pTimer);
@@ -108,11 +109,11 @@ void SimPort::PortUp()
 
 			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 			pTimer->async_wait([=](asio::error_code err_code)
-						 {
-							//FIXME: check err_code?
-							 if(enabled)
-								 SpawnEvent(pVal, interval, index, pTimer, seed);
-						 });
+				{
+					//FIXME: check err_code?
+					if(enabled)
+						SpawnEvent(index, val, interval, pTimer, seed);
+				});
 		}
 	}
 }
@@ -124,55 +125,52 @@ void SimPort::PortDown()
 	Timers.clear();
 }
 
-void SimPort::SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
+void SimPort::SpawnEvent(size_t index, double mean, double std_dev, unsigned int interval, pTimer_t pTimer, rand_t seed)
 {
 	//Restart the timer
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 
 	//Send an event out
 	//change value around mean
-	std::normal_distribution<double> distribution(pMean->value, std_dev);
-	PublishEvent(Analog(distribution(RandNumGenerator),
-				  pMean->quality,
-				  Timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())),
-			 index);
+	std::normal_distribution<double> distribution(mean, std_dev);
+	double val = distribution(RandNumGenerator);
+	auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
+	event->SetPayload<EventType::Analog>(std::move(val));
+	PublishEvent(event);
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
-	                   {
-					//FIXME: check err_code?
-					 if(enabled)
-						 SpawnEvent(pMean,std_dev,interval,index,pTimer,seed);
-					//else - break timer cycle
-				 });
+		{
+			//FIXME: check err_code?
+			if(enabled)
+				SpawnEvent(index,mean,std_dev,interval,pTimer,seed);
+			//else - break timer cycle
+		});
 }
 
-void SimPort::SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed)
+void SimPort::SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t pTimer, rand_t seed)
 {
 	//Restart the timer
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 
 	//Send an event out
-	//toggle value
-	pVal->value = !pVal->value;
-	pVal->time = Timestamp(std::chrono::duration_cast<std::chrono::milliseconds>
-				     (std::chrono::system_clock::now().time_since_epoch()).count());
-	//pass a copy, because we don't know when the ref will go out of scope
-	PublishEvent(Binary(*pVal), index);
+	auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
+	event->SetPayload<EventType::Binary>(std::move(val));
+	PublishEvent(event);
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
-				 {
-					//FIXME: check err_code?
-					 if(enabled)
-						 SpawnEvent(pVal,interval,index,pTimer,seed);
-					//else - break timer cycle
-				 });
+		{
+			//FIXME: check err_code?
+			if(enabled)
+				SpawnEvent(index,!val,interval,pTimer,seed);
+			//else - break timer cycle
+		});
 }
 
-void SimPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void SimPort::Build()
 {
-	pEnableDisableSync.reset(new asio::strand(*pIOS));
+	pEnableDisableSync = std::make_unique<asio::io_service::strand>(*pIOS);
 }
 
 void SimPort::ProcessElements(const Json::Value& JSONRoot)
@@ -194,9 +192,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Analogs[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -233,20 +231,20 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 					}
 					else if(start_val == "NAN" || start_val == "nan" || start_val == "NaN")
 					{
-						pConf->AnalogStartVals[index] = Analog(std::numeric_limits<double>::quiet_NaN(),static_cast<uint8_t>(AnalogQuality::ONLINE));
+						pConf->AnalogStartVals[index] = std::numeric_limits<double>::quiet_NaN();
 					}
 					else if(start_val == "INF" || start_val == "inf")
 					{
-						pConf->AnalogStartVals[index] = Analog(std::numeric_limits<double>::infinity(),static_cast<uint8_t>(AnalogQuality::ONLINE));
+						pConf->AnalogStartVals[index] = std::numeric_limits<double>::infinity();
 					}
 					else if(start_val == "-INF" || start_val == "-inf")
 					{
-						pConf->AnalogStartVals[index] = Analog(-std::numeric_limits<double>::infinity(),static_cast<uint8_t>(AnalogQuality::ONLINE));
+						pConf->AnalogStartVals[index] = -std::numeric_limits<double>::infinity();
 					}
 					else if(start_val == "X")
-						pConf->AnalogStartVals[index] = Analog(0,static_cast<uint8_t>(AnalogQuality::COMM_LOST));
+						pConf->AnalogStartVals[index] = 0; //TODO: implement quality - use std::pair, or build the EventInfo here
 					else
-						pConf->AnalogStartVals[index] = Analog(std::stod(start_val),static_cast<uint8_t>(AnalogQuality::ONLINE));
+						pConf->AnalogStartVals[index] = std::stod(start_val);
 				}
 				else if(pConf->AnalogStartVals.count(index))
 					pConf->AnalogStartVals.erase(index);
@@ -270,9 +268,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Binaries[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -305,9 +303,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							}
 					}
 					else if(start_val == "X")
-						pConf->BinaryStartVals[index] = Binary(false,static_cast<uint8_t>(BinaryQuality::COMM_LOST));
+						pConf->BinaryStartVals[index] = false; //TODO: implement quality - use std::pair, or build the EventInfo here
 					else
-						pConf->BinaryStartVals[index] = Binary(Binaries[n]["StartVal"].asBool(),static_cast<uint8_t>(BinaryQuality::ONLINE));
+						pConf->BinaryStartVals[index] = Binaries[n]["StartVal"].asBool();
 				}
 				else if(pConf->BinaryStartVals.count(index))
 					pConf->BinaryStartVals.erase(index);
@@ -331,9 +329,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<BinaryControls[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -368,36 +366,52 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 					{
 						if(!FeedbackBinaries[fbn].isMember("Index"))
 						{
-							std::cout<<"An 'Index' is required for Binary feedback : '"<<FeedbackBinaries[fbn].toStyledString()<<"'"<<std::endl;
+							if(auto log = odc::spdlog_get("SimPort"))
+								log->error("An 'Index' is required for Binary feedback : '{}'",FeedbackBinaries[fbn].toStyledString());
 							continue;
 						}
 
-						BinaryFeedback fb(FeedbackBinaries[fbn]["Index"].asUInt());
+						auto index = FeedbackBinaries[fbn]["Index"].asUInt();
+						auto on_qual = QualityFlags::ONLINE;
+						auto off_qual = QualityFlags::ONLINE;
+						bool on_val = true;
+						bool off_val = false;
+						auto mode = FeedbackMode::LATCH;
+
 						if(FeedbackBinaries[fbn].isMember("OnValue"))
 						{
 							if(FeedbackBinaries[fbn]["OnValue"].asString() == "X")
-								fb.on_value = Binary(false,static_cast<uint8_t>(BinaryQuality::COMM_LOST));
+								on_qual = QualityFlags::COMM_LOST;
 							else
-								fb.on_value = Binary(FeedbackBinaries[fbn]["OnValue"].asBool(),static_cast<uint8_t>(BinaryQuality::ONLINE));
+								on_val = FeedbackBinaries[fbn]["OnValue"].asBool();
 						}
 						if(FeedbackBinaries[fbn].isMember("OffValue"))
 						{
 							if(FeedbackBinaries[fbn]["OffValue"].asString() == "X")
-								fb.off_value = Binary(false,static_cast<uint8_t>(BinaryQuality::COMM_LOST));
+								off_qual = QualityFlags::COMM_LOST;
 							else
-								fb.off_value = Binary(FeedbackBinaries[fbn]["OffValue"].asBool(),static_cast<uint8_t>(BinaryQuality::ONLINE));
+								off_val = FeedbackBinaries[fbn]["OffValue"].asBool();
 
 						}
 						if(FeedbackBinaries[fbn].isMember("FeedbackMode"))
 						{
-							auto mode = FeedbackBinaries[fbn]["FeedbackMode"].asString();
-							if(mode == "PULSE")
-								fb.mode = FeedbackMode::PULSE;
-							else if(mode == "LATCH")
-								fb.mode = FeedbackMode::LATCH;
+							auto mode_str = FeedbackBinaries[fbn]["FeedbackMode"].asString();
+							if(mode_str == "PULSE")
+								mode = FeedbackMode::PULSE;
+							else if(mode_str == "LATCH")
+								mode = FeedbackMode::LATCH;
 							else
-								std::cout<<"Warning: unrecognised feedback mode: '"<<FeedbackBinaries[fbn].toStyledString()<<"'"<<std::endl;
+							{
+								if(auto log = odc::spdlog_get("SimPort"))
+									log->warn("Unrecognised feedback mode: '{}'",FeedbackBinaries[fbn].toStyledString());
+							}
 						}
+
+						auto on = std::make_shared<EventInfo>(EventType::Binary,index,Name,on_qual);
+						on->SetPayload<EventType::Binary>(std::move(on_val));
+						auto off = std::make_shared<EventInfo>(EventType::Binary,index,Name,off_qual);
+						off->SetPayload<EventType::Binary>(std::move(off_val));
+						BinaryFeedback fb(on,off,mode);
 						pConf->ControlFeedback[index].push_back(std::move(fb));
 					}
 				}
@@ -406,75 +420,16 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(pConf->ControlIndicies.begin(),pConf->ControlIndicies.end());
 	}
 }
-std::future<CommandStatus> SimPort::ConnectionEvent(ConnectState state, const std::string& SenderName)
-{
-	return CommandFutureSuccess();
-}
 
-//Implement Event handlers from IOHandler - All not supported because SimPort is just a source.
-
-// measurement events
-std::future<CommandStatus> SimPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName)
+void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-
-// change of quality Events
-std::future<CommandStatus> SimPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-// control events
-std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName)
-{
+	if(event->GetEventType() != EventType::ControlRelayOutputBlock)
+	{
+		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+		return;
+	}
+	auto index = event->GetIndex();
+	auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 	for(auto i : pConf->ControlIndicies)
 	{
@@ -484,9 +439,9 @@ std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arComma
 			{
 				for(auto& fb : pConf->ControlFeedback[i])
 				{
-					if(fb.mode == PULSE)
+					if(fb.mode == FeedbackMode::PULSE)
 					{
-						switch(arCommand.functionCode)
+						switch(command.functionCode)
 						{
 							case ControlCode::PULSE_ON:
 							case ControlCode::LATCH_ON:
@@ -494,58 +449,46 @@ std::future<CommandStatus> SimPort::Event(const ControlRelayOutputBlock& arComma
 							case ControlCode::CLOSE_PULSE_ON:
 							case ControlCode::TRIP_PULSE_ON:
 							{
-								PublishEvent(fb.on_value,fb.binary_index);
+								PublishEvent(fb.on_value);
 								pTimer_t pTimer(new Timer_t(*pIOS));
-								pTimer->expires_from_now(std::chrono::milliseconds(arCommand.onTimeMS));
+								pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
 								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
-											 {
-												//FIXME: check err_code?
-												PublishEvent(fb.off_value,fb.binary_index);
-											 });
+									{
+										//FIXME: check err_code?
+										PublishEvent(fb.off_value);
+									});
 								//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
 								break;
 							}
 							default:
-								return CommandFutureNotSupported();
+								(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+								return;
 						}
 					}
 					else
 					{
-						switch(arCommand.functionCode)
+						switch(command.functionCode)
 						{
 							case ControlCode::LATCH_ON:
 							case ControlCode::CLOSE_PULSE_ON:
-								PublishEvent(fb.on_value,fb.binary_index);
+								PublishEvent(fb.on_value);
 								break;
 							case ControlCode::LATCH_OFF:
 							case ControlCode::TRIP_PULSE_ON:
-								PublishEvent(fb.off_value,fb.binary_index);
+								PublishEvent(fb.off_value);
 								break;
 							default:
-								return CommandFutureNotSupported();
+								(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+								return;
 						}
 					}
 				}
+				(*pStatusCallback)(CommandStatus::SUCCESS);
+				return;
 			}
-			return CommandFutureSuccess();
+			(*pStatusCallback)(CommandStatus::UNDEFINED);
+			return;
 		}
 	}
-	return CommandFutureNotSupported();
+	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
-std::future<CommandStatus> SimPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-std::future<CommandStatus> SimPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName)
-{
-	return CommandFutureNotSupported();
-}
-

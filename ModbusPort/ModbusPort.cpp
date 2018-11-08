@@ -23,9 +23,9 @@
  *  Created on: 16/10/2014
  *      Author: Alan Murray
  */
-#include "ModbusPort.h"
 
-std::unordered_map<std::string, asiodnp3::IChannel*> ModbusPort::TCPChannels;
+#include <opendatacon/util.h>
+#include "ModbusPort.h"
 
 ModbusPort::ModbusPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -55,7 +55,10 @@ void ModbusPort::ProcessElements(const Json::Value& JSONRoot)
 		else if(JSONRoot["Parity"].asString() == "NONE")
 			static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.Parity = SerialParity::NONE;
 		else
-			std::cout << "Warning: Invalid Modbus port parity: " << JSONRoot["Parity"].asString() << ", should be EVEN, ODD, or NONE."<< std::endl;
+		{
+			if(auto log = odc::spdlog_get("ModbusPort"))
+				log->warn("Invalid Modbus port parity: {}, should be EVEN, ODD, or NONE.", JSONRoot["Parity"].asString());
+		}
 	}
 	if(JSONRoot.isMember("DataBits"))
 		static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.DataBits = JSONRoot["DataBits"].asUInt();

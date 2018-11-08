@@ -21,7 +21,6 @@
  */
 #include <catch.hpp>
 
-#include "DNP3MasterPort.h"
 #include "PortLoader.h"
 
 #define SUITE(name) "DNP3MasterPortTestSuite - " name
@@ -29,10 +28,12 @@
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
-		fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+		newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 		REQUIRE(newMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
+		asio::io_service ios;
+		MPUT->SetIOS(&ios);
 		MPUT->Enable();
 		MPUT->Disable();
 
@@ -40,10 +41,12 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	}
 	/// Test the destruction of an enabled port
 	{
-		fptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
+		newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 		REQUIRE(newMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
+		asio::io_service ios;
+		MPUT->SetIOS(&ios);
 		MPUT->Enable();
 
 		delete MPUT;

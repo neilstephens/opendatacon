@@ -17,12 +17,27 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
-/**
+/*
+ * DNP3Log2spdlog.h
+ *
+ *  Created on: 2018-06-19
+ *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-#include <catch.hpp>
+#ifndef DNP3Log2spdlog_H
+#define DNP3Log2spdlog_H
 
+#include <openpal/logging/ILogHandler.h>
+#include <chrono>
+#include <opendatacon/TCPSocketManager.h>
+#include <spdlog/spdlog.h>
 
-#define SUITE(name) "DummyTestSuite - " name
+class DNP3Log2spdlog: public openpal::ILogHandler
+{
+public:
+	DNP3Log2spdlog();
+	void Log( const openpal::LogEntry& arEntry ) override;
+private:
+	spdlog::level::level_enum FilterToLevel(const openpal::LogFilters& filters);
+};
 
-TEST_CASE(SUITE("Dummy"))
-{}
+#endif // DNP3Log2spdlog_H

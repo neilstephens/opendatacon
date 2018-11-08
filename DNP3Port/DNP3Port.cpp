@@ -23,12 +23,20 @@
  *  Created on: 18/07/2014
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-#include "DNP3Port.h"
-#include <iostream>
-#include "DNP3PortConf.h"
-#include <openpal/logging/LogLevels.h>
 
-std::unordered_map<std::string, asiodnp3::IChannel*> DNP3Port::Channels;
+
+#include <openpal/logging/LogLevels.h>
+#include <opendnp3/gen/Parity.h>
+#include <opendatacon/util.h>
+#include "DNP3Port.h"
+#include "DNP3PortConf.h"
+#include "ChannelStateSubscriber.h"
+
+std::shared_ptr<asiodnp3::DNP3Manager> DNP3Port::IOMgr()
+{
+	static auto mgr = std::make_shared<asiodnp3::DNP3Manager>(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>());
+	return mgr;
+}
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -45,9 +53,9 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 }
 
 // Called by OpenDNP3 Thread Pool
-void DNP3Port::StateListener(ChannelState state)
+void DNP3Port::StateListener(opendnp3::ChannelState state)
 {
-	if(state != ChannelState::OPEN)
+	if(state != opendnp3::ChannelState::OPEN)
 	{
 		channel_dead = true;
 		OnLinkDown();
@@ -81,8 +89,28 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
 
+	if(JSONRoot.isMember("LOG_LEVEL"))
+	{
+		auto& LOG_LEVEL = static_cast<DNP3PortConf*>(pConf.get())->LOG_LEVEL;
+		std::string value = JSONRoot["LOG_LEVEL"].asString();
+		if(value == "ALL")
+			LOG_LEVEL = opendnp3::levels::ALL;
+		else if(value == "ALL_COMMS")
+			LOG_LEVEL = opendnp3::levels::ALL_COMMS;
+		else if(value == "NORMAL")
+			LOG_LEVEL = opendnp3::levels::NORMAL;
+		else if(value == "NOTHING")
+			LOG_LEVEL = opendnp3::levels::NOTHING;
+		else
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->warn("Invalid LOG_LEVEL setting: '{}' - defaulting to 'NORMAL' log level.", value);
+		}
+	}
+
 	if(JSONRoot.isMember("IP") && JSONRoot.isMember("SerialDevice"))
-		std::cout<<"Warning: DNP3 port serial device AND IP address specified - IP overrides"<<std::endl;
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->warn("Serial device AND IP address specified - IP wins");
 
 	if(JSONRoot.isMember("SerialDevice"))
 	{
@@ -94,28 +122,34 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		if(JSONRoot.isMember("Parity"))
 		{
 			if(JSONRoot["Parity"].asString() == "EVEN")
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::EVEN;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = opendnp3::Parity::Even;
 			else if(JSONRoot["Parity"].asString() == "ODD")
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::ODD;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = opendnp3::Parity::Odd;
 			else if(JSONRoot["Parity"].asString() == "NONE")
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = asiopal::ParityType::NONE;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = opendnp3::Parity::None;
 			else
-				std::cout << "Warning: Invalid serial parity: " << JSONRoot["Parity"].asString() << ", should be EVEN, ODD, or NONE."<< std::endl;
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->warn("Invalid serial parity: {}, should be EVEN, ODD, or NONE.", JSONRoot["Parity"].asString());
+			}
 		}
 		if(JSONRoot.isMember("DataBits"))
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.dataBits = JSONRoot["DataBits"].asUInt();
 		if(JSONRoot.isMember("StopBits"))
 		{
 			if(JSONRoot["StopBits"].asFloat() == 0)
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::NONE;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = opendnp3::StopBits::None;
 			else if(JSONRoot["StopBits"].asFloat() == 1)
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::ONE;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = opendnp3::StopBits::One;
 			else if(JSONRoot["StopBits"].asFloat() == 1.5)
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::ONE_POINT_FIVE;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = opendnp3::StopBits::OnePointFive;
 			else if(JSONRoot["StopBits"].asFloat() == 2)
-				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = asiopal::StopBits::TWO;
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = opendnp3::StopBits::Two;
 			else
-				std::cout << "Warning: Invalid serial stop bits: " << JSONRoot["StopBits"].asFloat() << ", should be 0, 1, 1.5, or 2"<< std::endl;
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->warn("Invalid serial stop bits: {}, should be 0, 1, 1.5, or 2", JSONRoot["StopBits"].asFloat());
+			}
 		}
 	}
 
@@ -137,7 +171,10 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		else if(JSONRoot["TCPClientServer"].asString() == "DEFAULT")
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::DEFAULT;
 		else
-			std::cout << "Warning: Invalid TCP client/server type: " << JSONRoot["TCPClientServer"].asString() << ", should be CLIENT, SERVER, or DEFAULT."<< std::endl;
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->warn("Invalid TCP client/server type: {}, should be CLIENT, SERVER, or DEFAULT.", JSONRoot["TCPClientServer"].asString());
+		}
 	}
 
 	if(JSONRoot.isMember("OutstationAddr"))
@@ -155,13 +192,37 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		else if(JSONRoot["ServerType"].asString() == "MANUAL")
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::MANUAL;
 		else
-			std::cout<<"Invalid DNP3 Port server type: '"<<JSONRoot["ServerType"].asString()<<"'."<<std::endl;
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->warn("Invalid DNP3 Port server type: '{}'.", JSONRoot["ServerType"].asString());
+		}
 	}
 
 }
 
-asiodnp3::IChannel* DNP3Port::GetChannel(IOManager& IOMgr)
+class ChannelListener: public asiodnp3::IChannelListener
 {
+public:
+	ChannelListener(const std::string& ChanID_, DNP3Port* pPort_):
+		ChanID(ChanID_),
+		pPort(pPort_)
+	{
+		ChannelStateSubscriber::Subscribe(pPort,ChanID);
+	}
+	//Receive callbacks for state transitions on the channels from opendnp3
+	void OnStateChange(opendnp3::ChannelState state) override
+	{
+		ChannelStateSubscriber::StateListener(ChanID,state);
+	}
+private:
+	std::string ChanID;
+	DNP3Port* pPort;
+};
+
+std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
+{
+	static std::unordered_map<std::string, std::shared_ptr<asiodnp3::IChannel>> Channels;
+
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	std::string ChannelID;
@@ -180,41 +241,40 @@ asiodnp3::IChannel* DNP3Port::GetChannel(IOManager& IOMgr)
 	//create a new channel if needed
 	if(!Channels.count(ChannelID))
 	{
+		auto listener = std::make_shared<ChannelListener>(ChannelID,this);
 		if(isSerial)
 		{
-			Channels[ChannelID] = IOMgr.AddSerial(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-									    opendnp3::ChannelRetry(
-										    openpal::TimeDuration::Milliseconds(500),
-										    openpal::TimeDuration::Milliseconds(5000)),
-									    pConf->mAddrConf.SerialSettings);
+			Channels[ChannelID] = IOMgr()->AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+				asiopal::ChannelRetry(
+					openpal::TimeDuration::Milliseconds(500),
+					openpal::TimeDuration::Milliseconds(5000)),
+				pConf->mAddrConf.SerialSettings,listener);
 		}
 		else
 		{
 			switch (ClientOrServer())
 			{
 				case TCPClientServer::SERVER:
-					Channels[ChannelID] = IOMgr.AddTCPServer(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-												 opendnp3::ChannelRetry(
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMinms),
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPListenRetryPeriodMaxms)),
-												 pConf->mAddrConf.IP,
-												 pConf->mAddrConf.Port);
+					Channels[ChannelID] = IOMgr()->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					pConf->pPointConf->ServerAcceptMode,
+					pConf->mAddrConf.IP,
+					pConf->mAddrConf.Port,listener);
 					break;
 
 				case TCPClientServer::CLIENT:
-					Channels[ChannelID] = IOMgr.AddTCPClient(ChannelID.c_str(), LOG_LEVEL.GetBitfield(),
-												 opendnp3::ChannelRetry(
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-													 openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
-												 pConf->mAddrConf.IP,
-												 "0.0.0.0",
-												 pConf->mAddrConf.Port);
+					Channels[ChannelID] = IOMgr()->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					asiopal::ChannelRetry(
+						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
+						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
+					pConf->mAddrConf.IP,
+					"0.0.0.0",
+					pConf->mAddrConf.Port,listener);
 					break;
 
 				default:
-					std::string msg = Name + ": Can't determine if TCP socket is client or server";
-					auto log_entry = openpal::LogEntry("DNP3Port", openpal::logflags::ERR,"", msg.c_str(), -1);
-					pLoggers->Log(log_entry);
+					const std::string msg(Name + ": Can't determine if TCP socket is client or server");
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->error(msg);
 					throw std::runtime_error(msg);
 			}
 		}

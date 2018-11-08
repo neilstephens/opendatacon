@@ -24,7 +24,7 @@
 #include <opendatacon/Version.h>
 struct ODCArgs
 {
-	ODCArgs(int argc, char* argv[]) :
+	ODCArgs(int argc, char* argv[]):
 		cmd("High performance asynchronous data concentrator", ' ', ODC_VERSION_STRING),
 		ConfigFileArg("c", "config", "Configuration file, specified as an absolute path or relative to the working directory.", false, "opendatacon.conf", "string"),
 		PathArg("p", "path", "Working directory path, all configuration files and log files are relative to this path.", false, "", "string"),

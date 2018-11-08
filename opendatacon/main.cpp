@@ -25,23 +25,16 @@
  */
 
 /*TODO:
- *    -fix logging:
- *          -cmd to change log level on the fly (part of config cmds: see below)
  *    -add config change commands
- *          -implement BuildOrRebuild properly for changed configs
  *          -cmd to apply config item from command line
  *          -cmd to load config from file
  *          -save config to file
- *    -add maintenance commands:
- *          -enable/disable/restart ports/connectors/connections
- *    -remove the need for two threadpools?
- *          -Mod to DNP3Manager to use existing io_service?
  *    -add a network interface to the console
  *	-more dataports to implement:
  *		-C37.118
  *		-NMEA 2k / CANv2
  *		-NMEA 0183
- *		-XMLoHTML (inc. Gridlab-D)
+ *		-Gridlab-D
  *		-JSONoHTML
  */
 
@@ -61,8 +54,6 @@ int main(int argc, char* argv[])
 	// because exceptions will be thrown for problems.
 	try
 	{
-		static std::unique_ptr<DataConcentrator> TheDataConcentrator(nullptr);
-
 		// Turn command line arguments into easy to query struct
 		ODCArgs Args(argc, argv);
 
@@ -107,10 +98,10 @@ int main(int argc, char* argv[])
 		}
 
 		// Construct and build opendatacon object
-		std::cout << "This is opendatacon version " << ODC_VERSION_STRING << std::endl;
-		std::cout << "Loading configuration... "<< std::endl;
-		TheDataConcentrator = std::make_unique<DataConcentrator>(Args.ConfigFileArg.getValue());
-		TheDataConcentrator->BuildOrRebuild();
+		//	static shared ptr to use in signal handler
+		static auto TheDataConcentrator = std::make_shared<DataConcentrator>(Args.ConfigFileArg.getValue());
+
+		TheDataConcentrator->Build();
 
 		// Configure signal handlers
 		auto shutdown_func = [] (int signum)
@@ -134,27 +125,65 @@ int main(int argc, char* argv[])
 		}
 
 		// Start opendatacon, returns after a clean shutdown
-		TheDataConcentrator->Run();
+		auto run_thread = std::thread([=](){TheDataConcentrator->Run();});
 
-		std::string msg("opendatacon version '" ODC_VERSION_STRING "' shutdown cleanly.");
-		std::cout << msg << std::endl;
-		ret_val = 0;
+		while(!TheDataConcentrator->isShuttingDown())
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		//Shutting down - give some time for clean shutdown
+		unsigned int i=0;
+		while(!TheDataConcentrator->isShutDown() && i++ < 20)
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		std::string msg("opendatacon version '" ODC_VERSION_STRING);
+		if(TheDataConcentrator->isShutDown())
+		{
+			run_thread.join();
+			msg += "' shutdown cleanly.";
+			ret_val = 0;
+			TheDataConcentrator.reset();
+		}
+		else
+		{
+			run_thread.detach();
+			msg += "' shutdown timed out.";
+			ret_val = 1;
+		}
+
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->critical(msg);
+		else
+			std::cout << msg << std::endl;
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
 	{
 		std::string msg = "Command line error: " + e.error() +" for arg " + e.argId();
-		std::cerr << msg << std::endl;
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->critical(msg);
+		else
+			std::cerr << msg << std::endl;
 		ret_val = 1;
 	}
 	catch (std::exception& e) // catch opendatacon runtime exceptions
 	{
 		std::string msg = std::string("Caught exception: ") + e.what();
-		std::cerr << msg << std::endl;
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->critical(msg);
+		else
+			std::cerr << msg << std::endl;
 		ret_val = 1;
 	}
 
 	if(pidfile != "")
-		std::remove(pidfile.c_str());
+	{
+		if(std::remove(pidfile.c_str()))
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->info("PID file removed");
+	}
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->flush();
+
+	odc::spdlog_shutdown();
 	return ret_val;
 }

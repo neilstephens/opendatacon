@@ -1,0 +1,90 @@
+#!/usr/bin/perl
+
+#	opendatacon
+ #
+ #	Copyright (c) 2014:
+ #
+ #		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+ #		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+ #
+ #	Licensed under the Apache License, Version 2.0 (the "License");
+ #	you may not use this file except in compliance with the License.
+ #	You may obtain a copy of the License at
+ #
+ #		http://www.apache.org/licenses/LICENSE-2.0
+ #
+ #	Unless required by applicable law or agreed to in writing, software
+ #	distributed under the License is distributed on an "AS IS" BASIS,
+ #	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ #	See the License for the specific language governing permissions and
+ #	limitations under the License.
+ #
+
+ #
+ # pre-commit
+ #
+ #  Created on: 2018-06-18
+ #      Author: Neil Stephens <dearknarl@gmail.com>
+ #
+ # Runs uncrustify on pre-commit image c++ files.
+ # If check fails:
+ #	-bails out commit and writes an uncrustified version of the file
+ # 	-recommends not to use --no-verify
+ # 	-mentions ' *INDENT-OFF*' and ' *INDENT-ON*' guard comments
+
+use strict;
+use warnings;
+
+my $against;
+if(system("git rev-parse --verify HEAD >/dev/null 2>&1"))
+{
+	# Initial commit: diff against an empty tree object
+	$against="4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+}
+else
+{
+	$against="HEAD";
+}
+
+#clean up after previous bailed commits
+my $old_temp_files = `git status --porcelain`;
+while ($old_temp_files =~ /\?\? (\S+\.nocrust)/gs)
+{
+	`rm $1`;
+} 
+
+#Get files included in commit (not deletes)
+my $diff = `git diff-index --cached --name-only --diff-filter=ACMR $against --`;
+my @files = split(/^/, $diff);
+chomp @files;
+
+my $return = 0;#success
+my @failed_files = ();
+foreach my $filename (@files)
+{
+	if($filename =~ /\.cpp$|\.h$/i)
+	{
+		#use git show to pipe staged image of file (not the working tree copy - might differ)
+		my $result = `git show :$filename | uncrustify -c uncrustify.cfg --check -l CPP 2>&1`;
+		unless($result =~ /PASS/)
+		{
+			push @failed_files, $filename;
+			$return = 1;#fail
+			if(system("git show :$filename | uncrustify -c uncrustify.cfg -l CPP -o $filename.nocrust"))
+			{
+				print "Failed to write uncrustified changes: $!\n";
+			}
+		}
+	}
+}
+
+if($return == 1)
+{
+	print "\nUncrustify formatting check failed on:\n\t";
+	print join("\n\t", @failed_files)."\n";
+	print "\nWriting new formatting to <filename>.nocrust\n";
+	print "\nEither:\n\t-merge the new formatting,\n\t-use git commit --no-verify (NOT RECOMMENDED),\n\t-Use comments containing '*INDENT-OFF*' and '*INDENT-ON*',\n\t\tto disable processing of parts of the source file\n\t\t(NOT RECOMMENDED, but better than --no-verify)\n";
+}
+
+exit($return);
+

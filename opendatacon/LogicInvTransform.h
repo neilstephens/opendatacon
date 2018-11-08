@@ -30,6 +30,7 @@
 
 #include <opendatacon/util.h>
 #include <opendatacon/Transform.h>
+#include <opendatacon/IOTypes.h>
 
 class LogicInvTransform: public Transform
 {
@@ -38,25 +39,19 @@ public:
 		Transform(params)
 	{}
 
-	//pass through events that inversion doesn't apply to
-	bool Event(DoubleBitBinary& meas, uint16_t& index) override{return true;}
-	bool Event(Counter& meas, uint16_t& index) override{return true;}
-	bool Event(FrozenCounter& meas, uint16_t& index) override{return true;}
-	bool Event(AnalogOutputStatus& meas, uint16_t& index) override{return true;}
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) override{return true;}
-	bool Event(AnalogOutputInt16& arCommand, uint16_t index) override{return true;}
-	bool Event(AnalogOutputInt32& arCommand, uint16_t index) override{return true;}
-	bool Event(AnalogOutputFloat32& arCommand, uint16_t index) override{return true;}
-	bool Event(AnalogOutputDouble64& arCommand, uint16_t index) override{return true;}
-	bool Event(Analog& meas, uint16_t& index) override{return true;}
-
-	//apply inversion to these events
-	bool Event(BinaryOutputStatus& meas, uint16_t& index) override{return EventT(meas);}
-	bool Event(Binary& meas, uint16_t& index) override{return EventT(meas);}
-
-	template<typename T> bool EventT(T& meas)
+	bool Event(std::shared_ptr<EventInfo> event) override
 	{
-		meas.value = !(meas.value);
+		switch(event->GetEventType())
+		{
+			case EventType::BinaryOutputStatus:
+				event->SetPayload<EventType::BinaryOutputStatus>(!event->GetPayload<EventType::BinaryOutputStatus>());
+				break;
+			case EventType::Binary:
+				event->SetPayload<EventType::Binary>(!event->GetPayload<EventType::Binary>());
+				break;
+			default:
+				break;
+		}
 		return true;
 	}
 

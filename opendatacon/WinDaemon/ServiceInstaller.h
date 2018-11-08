@@ -40,12 +40,12 @@
 //   in the standard output stream for users to diagnose the problem.
 //
 void InstallService(PWSTR pszServiceName,
-                    PWSTR pszDisplayName,
-                    DWORD dwStartType,
-                    PWSTR pszDependencies,
-                    PWSTR pszAccount,
-                    PWSTR pszPassword,
-                    PWSTR pszArgs);
+	PWSTR pszDisplayName,
+	DWORD dwStartType,
+	PWSTR pszDependencies,
+	PWSTR pszAccount,
+	PWSTR pszPassword,
+	PWSTR pszArgs);
 
 
 //

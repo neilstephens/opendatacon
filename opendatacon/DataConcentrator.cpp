@@ -26,109 +26,221 @@
 
 #include <thread>
 #include <opendatacon/asio.h>
-#include <asiodnp3/ConsoleLogger.h>
-#include <opendnp3/LogLevels.h>
 
+#include <spdlog/spdlog.h>
+#include <spdlog/async.h>
+#include <spdlog/sinks/ostream_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+
+#include <opendatacon/util.h>
 #include <opendatacon/Version.h>
-
 #include "DataConcentrator.h"
 #include "NullPort.h"
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
-	IOMgr(std::thread::hardware_concurrency()),
 	IOS(std::thread::hardware_concurrency()),
 	ios_working(new asio::io_service::work(IOS)),
-	LOG_LEVEL(opendnp3::levels::NORMAL),
-	FileLog("datacon_log"),
-	TCPLog()
+	shutting_down(false),
+	shut_down(false),
+	pTCPostream(nullptr)
 {
 	// Enable loading of libraries
 	InitLibaryLoading();
 
 	//Version
-	this->AddCommand("version", [this](const ParamCollection &params) { //"Print version information"
-	                       Json::Value result;
-	                       result["version"] = ODC_VERSION_STRING;
-	                       return result;
-			     },"Return the version information of opendatacon.");
-
-	//fire up some worker threads
-	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		std::thread([&](){IOS.run();}).detach();
-
-	AdvancedLoggers.emplace("Console Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(asiodnp3::ConsoleLogger::Instance(),LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
-	AdvancedLoggers.at("Console Log")->AddIngoreAlways(".*"); //silence all console messages by default
-	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("Console Log").get());
-
-	AdvancedLoggers.emplace("File Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(FileLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
-	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("File Log").get());
-
-	AdvancedLoggers.emplace("TCP Log", std::unique_ptr<AdvancedLogger,void(*)(AdvancedLogger*)>(new AdvancedLogger(TCPLog,LOG_LEVEL),[](AdvancedLogger* pAL){delete pAL;}));
-	IOMgr.AddLogSubscriber(*AdvancedLoggers.at("TCP Log").get());
+	this->AddCommand("version", [this](const ParamCollection &params) //"Print version information"
+		{
+			Json::Value result;
+			result["version"] = ODC_VERSION_STRING;
+			return result;
+		},"Return the version information of opendatacon.");
 
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
 
+	if(Interfaces.empty() && DataPorts.empty() && DataConnectors.empty())
+		throw std::runtime_error("No objects to manage");
+
 	for(auto& interface : Interfaces)
 	{
 		interface.second->AddCommand("shutdown",[this](std::stringstream& ss)
-									{
-										std::thread([this](){this->Shutdown();}).detach();
-									}
-							,"Shutdown opendatacon");
-		interface.second->AddCommand("version",[] (std::stringstream& ss){
-		                                   std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;
-						     },"Print version information");
+			{
+				std::thread([this](){this->Shutdown();}).detach();
+			}
+			,"Shutdown opendatacon");
+		interface.second->AddCommand("version",[] (std::stringstream& ss)
+			{
+				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;
+			},"Print version information");
+		interface.second->AddCommand("set_loglevel",[this] (std::stringstream& ss)
+			{
+				this->SetLogLevel(ss);
+			},"Set the threshold for logging");
 
 		interface.second->AddResponder("OpenDataCon", *this);
 		interface.second->AddResponder("DataPorts", DataPorts);
 		interface.second->AddResponder("DataConnectors", DataConnectors);
-		interface.second->AddResponder("Loggers", AdvancedLoggers);
 		interface.second->AddResponder("Plugins", Interfaces);
 	}
 	for(auto& port : DataPorts)
-	{
-		port.second->AddLogSubscriber(AdvancedLoggers.at("Console Log").get());
-		port.second->AddLogSubscriber(AdvancedLoggers.at("File Log").get());
-		port.second->AddLogSubscriber(AdvancedLoggers.at("TCP Log").get());
 		port.second->SetIOS(&IOS);
-		port.second->SetLogLevel(LOG_LEVEL);
-	}
 	for(auto& conn : DataConnectors)
-	{
-		conn.second->AddLogSubscriber(AdvancedLoggers.at("Console Log").get());
-		conn.second->AddLogSubscriber(AdvancedLoggers.at("File Log").get());
-		conn.second->AddLogSubscriber(AdvancedLoggers.at("TCP Log").get());
 		conn.second->SetIOS(&IOS);
-		conn.second->SetLogLevel(LOG_LEVEL);
-	}
 }
 
 DataConcentrator::~DataConcentrator()
-{}
+{
+	//In case of exception - ie. if we're destructed while still running
+	//dump (detach) any threads
+	//the threads would be already joined and cleared on normal shutdown
+	for (auto& thread : threads)
+		thread.detach();
+	threads.clear();
+}
+
+void DataConcentrator::SetLogLevel(std::stringstream& ss)
+{
+	std::string sinkname;
+	std::string level_str;
+	if(ss>>sinkname && ss>>level_str)
+	{
+		for(auto& sink : LogSinksMap)
+		{
+			if(sink.first == sinkname)
+			{
+				auto new_level = spdlog::level::from_str(level_str);
+				if(new_level == spdlog::level::off && level_str != "off")
+				{
+					std::cout << "Invalid log level. Options are:" << std::endl;
+					for(uint8_t i = 0; i < 7; i++)
+						std::cout << spdlog::level::level_names[i] << std::endl;
+					return;
+				}
+				else
+				{
+					sink.second->set_level(new_level);
+					return;
+				}
+			}
+		}
+	}
+	std::cout << "Usage: set loglevel <sinkname> <level>" << std::endl;
+	std::cout << "Sinks:" << std::endl;
+	for(auto& sink : LogSinksMap)
+		std::cout << sink.first << std::endl;
+	std::cout << std::endl << "Levels:" << std::endl;
+	for(uint8_t i = 0; i < 7; i++)
+		std::cout << spdlog::level::level_names[i] << std::endl;
+}
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
-	if(!JSONRoot.isObject()) return;
+	if(!JSONRoot.isObject())
+		throw std::runtime_error("No valid JSON config object");
+
+	//setup log sinks
+	auto log_size_kb = JSONRoot.isMember("LogFileSizekB") ? JSONRoot["LogFileSizekB"].asUInt() : 5*1024;
+	auto log_num = JSONRoot.isMember("NumLogFiles") ? JSONRoot["NumLogFiles"].asUInt() : 5;
+	auto log_name = JSONRoot.isMember("LogName") ? JSONRoot["LogName"].asString() : "opendatacon_log";
+
+	//TODO: document these config options
+	auto log_level_name = JSONRoot.isMember("LogLevel") ? JSONRoot["LogLevel"].asString() : "info";
+	auto console_level_name = JSONRoot.isMember("ConsoleLevel") ? JSONRoot["ConsoleLevel"].asString() : "err";
+
+	//these return level::off if no match
+	auto log_level = spdlog::level::from_str(log_level_name);
+	auto console_level = spdlog::level::from_str(console_level_name);
+
+	//check for no match and set defaults
+	if(log_level == spdlog::level::off && log_level_name != "off")
+		log_level = spdlog::level::info;
+	if(console_level == spdlog::level::off && console_level_name != "off")
+		console_level = spdlog::level::err;
+	try
+	{
+		auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_name, log_size_kb*1024, log_num);
+		auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+		file->set_level(log_level);
+		console->set_level(console_level);
+
+		LogSinksMap["file"] = file;
+		LogSinksVec.push_back(file);
+		LogSinksMap["console"] = console;
+		LogSinksVec.push_back(console);
+
+		//TODO: document these config options
+		if(JSONRoot.isMember("TCPLog"))
+		{
+			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(LogSinksVec), end(LogSinksVec));
+
+			auto TCPLogJSON = JSONRoot["TCPLog"];
+			if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
+			{
+				temp_logger->error("Invalid TCPLog config: need at least IP, Port, TCPClientServer: \n'{}\n' : ignoring", TCPLogJSON.toStyledString());
+			}
+			else
+			{
+				bool isServer = true;
+
+				if(TCPLogJSON["TCPClientServer"].asString() == "CLIENT")
+					isServer = false;
+				else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
+					temp_logger->error("Invalid TCPLog TCPClientServer setting '{}'. Choose CLIENT or SERVER. Defaulting to SERVER.", TCPLogJSON["TCPClientServer"].asString());
+
+				TCPbuf.Init(&IOS,isServer,TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString());
+				pTCPostream = std::make_unique<std::ostream>(&TCPbuf);
+			}
+		}
+
+		if(pTCPostream)
+		{
+			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostream.get());
+			tcp->set_level(log_level);
+			LogSinksMap["tcp"] = tcp;
+			LogSinksVec.push_back(tcp);
+		}
+		odc::spdlog_init_thread_pool(4096,3);
+		auto pMainLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinksVec), end(LogSinksVec),
+			odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+		pMainLogger->set_level(spdlog::level::trace);
+		odc::spdlog_register_logger(pMainLogger);
+	}
+	catch (const spdlog::spdlog_ex& ex)
+	{
+		throw std::runtime_error("Main logger initialization failed: " + std::string(ex.what()));
+	}
+
+	auto log = odc::spdlog_get("opendatacon");
+	if(!log)
+		throw std::runtime_error("Failed to fetch main logger registration");
+
+	log->critical("This is opendatacon version '{}'", ODC_VERSION_STRING);
+	log->critical("Log level set to {}", spdlog::level::level_names[log_level]);
+	log->critical("Console level set to {}", spdlog::level::level_names[console_level]);
+	log->info("Loading configuration... ");
 
 	//Configure the user interface
 	if(JSONRoot.isMember("Plugins"))
 	{
+		log->info("Loading Plugins... ");
+
 		const Json::Value Plugins = JSONRoot["Plugins"];
 
 		for(Json::Value::ArrayIndex n = 0; n < Plugins.size(); ++n)
 		{
 			if(!Plugins[n].isMember("Type") || !Plugins[n].isMember("Name") || !Plugins[n].isMember("ConfFilename"))
 			{
-				std::cout << "Warning: invalid plugin config: need at least Type, Name, ConfFilename: \n'" << Plugins[n].toStyledString() << "\n' : ignoring" << std::endl;
+				log->error("Invalid plugin config: need at least Type, Name, ConfFilename: \n'{}\n' : ignoring", Plugins[n].toStyledString());
 				continue;
 			}
 
 			auto PluginName = Plugins[n]["Name"].asString();
 			if(Interfaces.count(PluginName) > 0)
 			{
-				std::cout << PluginName << " Warning: ignoring duplicate plugin name." << std::endl;
+				log->error("Ignoring duplicate plugin name '{}'.", PluginName);
 				continue;
 			}
 
@@ -136,21 +248,22 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			std::string libname;
 			if(Plugins[n].isMember("Library"))
 			{
-				libname = GetLibFileName(Plugins[n]["Library"].asString());
+				libname = Plugins[n]["Library"].asString();
 			}
 			//Otherwise use the naming convention lib<Type>Plugin.so to find the default lib that implements a type of plugin
 			else
 			{
-				libname = GetLibFileName(Plugins[n]["Type"].asString());
+				libname = Plugins[n]["Type"].asString();
 			}
+			std::string libfilename = GetLibFileName(libname);
 
 			//try to load the lib
-			auto* pluginlib = LoadModule(libname);
+			auto* pluginlib = LoadModule(libfilename);
 
 			if(pluginlib == nullptr)
 			{
-				std::cout << PluginName << " Info: dynamic library load failed '" << libname << "' skipping plugin..." << std::endl;
-				std::cout << PluginName << " Error: failed to load plugin, skipping..." << std::endl;
+				log->error("{}",LastSystemError());
+				log->error("{} : Dynamic library '{}' load failed skipping plugin...", PluginName, libfilename);
 				continue;
 			}
 
@@ -160,72 +273,35 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			auto new_plugin_func = (IUI*(*)(std::string, std::string, const Json::Value))LoadSymbol(pluginlib, new_funcname);
 
 			std::string delete_funcname = "delete_"+Plugins[n]["Type"].asString()+"Plugin";
-			auto delete_plugin_func = (void(*)(IUI*))LoadSymbol(pluginlib, delete_funcname);
+			auto delete_plugin_func = (void (*)(IUI*))LoadSymbol(pluginlib, delete_funcname);
 
 			if(new_plugin_func == nullptr)
-			{
-				std::cout << PluginName << " Info: failed to load symbol '" << new_funcname << "' from library '" << libname << "' - " << LastSystemError() << std::endl;
-			}
+				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", PluginName, new_funcname, libfilename, LastSystemError());
 			if(delete_plugin_func == nullptr)
-			{
-				std::cout << PluginName << " Info: failed to load symbol '" << delete_funcname << "' from library '" << libname << "' - " << LastSystemError() << std::endl;
-			}
+				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", PluginName, delete_funcname, libfilename, LastSystemError());
 			if(new_plugin_func == nullptr || delete_plugin_func == nullptr)
 			{
-				std::cout << PluginName << " Error: failed to load plugin, skipping..." << std::endl;
+				log->error("{} : Failed to load plugin, skipping...", PluginName);
 				continue;
 			}
+			//Create a logger if we haven't already
+			if(!odc::spdlog_get(libname))
+			{
+				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
+					odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+				pLibLogger->set_level(spdlog::level::trace);
+				odc::spdlog_register_logger(pLibLogger);
+			}
+
+			auto plugin_cleanup = [=](IUI* plugin)
+						    {
+							    delete_plugin_func(plugin);
+							    UnLoadModule(pluginlib);
+						    };
 
 			//call the creation function and wrap the returned pointer to a new plugin
-			Interfaces.emplace(PluginName, std::unique_ptr<IUI,void(*)(IUI*)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), delete_plugin_func));
+			Interfaces.emplace(PluginName, std::unique_ptr<IUI,decltype(plugin_cleanup)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), plugin_cleanup));
 		}
-	}
-
-	if(JSONRoot.isMember("LogFileSizekB"))
-		FileLog.SetLogFileSizekB(JSONRoot["LogFileSizekB"].asUInt());
-
-	if(JSONRoot.isMember("NumLogFiles"))
-		FileLog.SetNumLogFiles(JSONRoot["NumLogFiles"].asUInt());
-
-	if(JSONRoot.isMember("LogName"))
-		FileLog.SetLogName(JSONRoot["LogName"].asString());
-
-	//TODO: document this
-	if(JSONRoot.isMember("TCPLog"))
-	{
-		auto TCPLogJSON = JSONRoot["TCPLog"];
-		if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
-		{
-			std::cout<<"Warning: invalid TCPLog config: need at least IP, Port, TCPClientServer: \n'"<<TCPLogJSON.toStyledString()<<"\n' : ignoring"<<std::endl;
-		}
-		else
-		{
-			bool isClient = false;
-
-			if(TCPLogJSON["TCPClientServer"].asString() == "CLIENT")
-				isClient = true;
-			else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
-				std::cout<<"Warning: invalid TCPLog TCPClientServer setting. Choose CLIENT or SERVER. Defaulting to SERVER."<<std::endl;
-
-			TCPLog.Startup(TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString(),&IOS,isClient);
-		}
-	}
-
-	if(JSONRoot.isMember("LOG_LEVEL"))
-	{
-		std::string value = JSONRoot["LOG_LEVEL"].asString();
-		if(value == "ALL")
-			LOG_LEVEL = opendnp3::levels::ALL;
-		else if(value == "ALL_COMMS")
-			LOG_LEVEL = opendnp3::levels::ALL_COMMS;
-		else if(value == "NORMAL")
-			LOG_LEVEL = opendnp3::levels::NORMAL;
-		else if(value == "NOTHING")
-			LOG_LEVEL = opendnp3::levels::NOTHING;
-		else
-			std::cout << "Warning: invalid LOG_LEVEL setting: '" << value << "' : ignoring and using 'NORMAL' log level." << std::endl;
-		AdvancedLoggers.at("File Log")->SetLogLevel(LOG_LEVEL);
-		AdvancedLoggers.at("Console Log")->SetLogLevel(LOG_LEVEL);
 	}
 
 	if(JSONRoot.isMember("Ports"))
@@ -236,12 +312,12 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		{
 			if(!Ports[n].isMember("Type") || !Ports[n].isMember("Name") || !Ports[n].isMember("ConfFilename"))
 			{
-				std::cout<<"Warning: invalid port config: need at least Type, Name, ConfFilename: \n'"<<Ports[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+				log->error("Invalid port config: need at least Type, Name, ConfFilename: \n'{}\n' : ignoring", Ports[n].toStyledString());
 				continue;
 			}
 			if(DataPorts.count(Ports[n]["Name"].asString()))
 			{
-				std::cout<<"Warning: Duplicate Port Name; ignoring:\n'"<<Ports[n].toStyledString()<<"\n'"<<std::endl;
+				log->error("Duplicate Port Name; ignoring:\n'{}\n'", Ports[n].toStyledString());
 				continue;
 			}
 
@@ -251,16 +327,16 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				if(Ports[n]["InitState"].asString() == "ENABLED")
 				{
 					set_init_mode = [](IOHandler* aIOH)
-					{
-						aIOH->InitState = InitState_t::ENABLED;
-					};
+							    {
+								    aIOH->InitState = InitState_t::ENABLED;
+							    };
 				}
 				else if(Ports[n]["InitState"].asString() == "DISABLED")
 				{
 					set_init_mode = [](IOHandler* aIOH)
-					{
-						aIOH->InitState = InitState_t::DISABLED;
-					};
+							    {
+								    aIOH->InitState = InitState_t::DISABLED;
+							    };
 				}
 				else if(Ports[n]["InitState"].asString() == "DELAYED")
 				{
@@ -271,13 +347,13 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 					}
 					else
 					{
-						std::cout<<"Warning: invalid port config: missing 'EnableDelayms': \n'"<<Ports[n].toStyledString()<<"\n' : defaulting to 0"<<std::endl;
+						log->error("Invalid Port config: Missing 'EnableDelayms':'\n{}\n' : defaulting to 0", Ports[n].toStyledString());
 					}
 					set_init_mode = [=](IOHandler* aIOH)
-					{
-						aIOH->InitState = InitState_t::DELAYED;
-						aIOH->EnableDelayms = delay;
-					};
+							    {
+								    aIOH->InitState = InitState_t::DELAYED;
+								    aIOH->EnableDelayms = delay;
+							    };
 				}
 			}
 			else
@@ -287,7 +363,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			if(Ports[n]["Type"].asString() == "Null")
 			{
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
@@ -296,21 +372,23 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			std::string libname;
 			if(Ports[n].isMember("Library"))
 			{
-				libname = GetLibFileName(Ports[n]["Library"].asString());
+				libname = Ports[n]["Library"].asString();
 			}
 			//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
 			else
 			{
-				libname = GetLibFileName(Ports[n]["Type"].asString()+"Port");
+				libname = Ports[n]["Type"].asString()+"Port";
 			}
+			std::string libfilename(GetLibFileName(libname));
 
 			//try to load the lib
-			auto* portlib = LoadModule(libname);
+			auto* portlib = LoadModule(libfilename);
 
 			if(portlib == nullptr)
 			{
-				std::cout << "Warning: failed to load library '"<<libname<<"' mapping to null port..."<<std::endl;
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				log->error("{}",LastSystemError());
+				log->error("Failed to load library '{}' mapping {} to NullPort...", libfilename, Ports[n]["Name"].asString());
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
@@ -318,29 +396,41 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of DataPort
 			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-			auto new_port_func = (DataPort*(*)(std::string, std::string, const Json::Value))LoadSymbol(portlib, new_funcname);
+			auto new_port_func = (DataPort*(*)(const std::string&, const std::string&, const Json::Value&))LoadSymbol(portlib, new_funcname);
 
 			std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
-			auto delete_port_func = (void(*)(DataPort*))LoadSymbol(portlib, delete_funcname);
+			auto delete_port_func = (void (*)(DataPort*))LoadSymbol(portlib, delete_funcname);
 
 			if(new_port_func == nullptr)
-			{
-				std::cout << "Warning: failed to load symbol '"<<new_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"'"<<std::endl;
-			}
+				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", Ports[n]["Name"].asString(), new_funcname, libfilename, LastSystemError());
 			if(delete_port_func == nullptr)
-			{
-				std::cout << "Warning: failed to load symbol '"<<delete_funcname<<"' for port type '"<<Ports[n]["Type"].asString()<<"'"<<std::endl;
-			}
+				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", Ports[n]["Name"].asString(), delete_funcname, libfilename, LastSystemError());
+
 			if(new_port_func == nullptr || delete_port_func == nullptr)
 			{
-				std::cout<<"Mapping '"<<Ports[n]["Type"].asString()<<"' to null port..."<<std::endl;
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				log->error("{} : Failed to load port, mapping to NullPort...", Ports[n]["Name"].asString());
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
 
+			//Create a logger if we haven't already
+			if(!odc::spdlog_get(libname))
+			{
+				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
+					odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+				pLibLogger->set_level(spdlog::level::trace);
+				odc::spdlog_register_logger(pLibLogger);
+			}
+
+			auto port_cleanup = [=](DataPort* port)
+						  {
+							  delete_port_func(port);
+							  UnLoadModule(portlib);
+						  };
+
 			//call the creation function and wrap the returned pointer to a new port
-			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void(*)(DataPort*)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), delete_port_func));
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,decltype(port_cleanup)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 		}
 	}
@@ -349,19 +439,25 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 	{
 		const Json::Value Connectors = JSONRoot["Connectors"];
 
+		//make a logger for use by Connectors
+		auto pConnLogger = std::make_shared<spdlog::async_logger>("Connectors", begin(LogSinksVec), end(LogSinksVec),
+			odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+		pConnLogger->set_level(spdlog::level::trace);
+		odc::spdlog_register_logger(pConnLogger);
+
 		for(Json::Value::ArrayIndex n = 0; n < Connectors.size(); ++n)
 		{
 			if(!Connectors[n].isMember("Name") || !Connectors[n].isMember("ConfFilename"))
 			{
-				std::cout<<"Warning: invalid Connector config: need at least Name, ConfFilename: \n'"<<Connectors[n].toStyledString()<<"\n' : ignoring"<<std::endl;
+				log->error("Invalid Connector config: need at least Name, ConfFilename: \n'{}\n' : ignoring", Connectors[n].toStyledString());
 				continue;
 			}
 			if(DataConnectors.count(Connectors[n]["Name"].asString()))
 			{
-				std::cout<<"Warning: Duplicate Connector Name; ignoring:\n'"<<Connectors[n].toStyledString()<<"\n'"<<std::endl;
+				log->error("Duplicate Connector Name; ignoring:\n'{}\n'", Connectors[n].toStyledString());
 				continue;
 			}
-			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void(*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
+			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void (*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
 			if(Connectors[n].isMember("InitState"))
 			{
 				if(Connectors[n]["InitState"].asString() == "ENABLED")
@@ -381,7 +477,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 					}
 					else
 					{
-						std::cout<<"Warning: invalid Connector config: missing 'EnableDelayms': \n'"<<Connectors[n].toStyledString()<<"\n' : defaulting to 0"<<std::endl;
+						log->error("Invalid Connector config: Missing 'EnableDelayms':'\n{}\n' : defaulting to 0", Connectors[n].toStyledString());
 					}
 					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::DELAYED;
 					DataConnectors.at(Connectors[n]["Name"].asString())->EnableDelayms = delay;
@@ -390,91 +486,108 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 }
-void DataConcentrator::BuildOrRebuild()
+void DataConcentrator::Build()
 {
-	std::cout << "Initialising Interfaces" << std::endl;
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Initialising Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
-		Name_n_UI.second->BuildOrRebuild();
+		Name_n_UI.second->Build();
 	}
-	std::cout << "Initialising DataPorts" << std::endl;
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Initialising DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
-		Name_n_Port.second->BuildOrRebuild(IOMgr,LOG_LEVEL);
+		Name_n_Port.second->Build();
 	}
-	std::cout << "Initialising DataConnectors" << std::endl;
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Initialising DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
-		Name_n_Conn.second->BuildOrRebuild(IOMgr,LOG_LEVEL);
+		Name_n_Conn.second->Build();
 	}
 }
 void DataConcentrator::Run()
 {
-	std::cout << "Enabling DataConnectors... " << std::endl;
+	if (auto log = odc::spdlog_get("opendatacon"))
+		log->info("Starting worker threads...");
+	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
+		threads.emplace_back([&]() {IOS.run(); });
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Enabling DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		if(Name_n_Conn.second->InitState == InitState_t::ENABLED)
 		{
 			IOS.post([&]()
-				   {
-					   Name_n_Conn.second->Enable();
-				   });
+				{
+					Name_n_Conn.second->Enable();
+				});
 		}
 		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
 		{
 			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(IOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
 			pTimer->async_wait([pTimer,this,&Name_n_Conn](asio::error_code err_code)
-						 {
-							//FIXME: check err_code?
-							 Name_n_Conn.second->Enable();
-						 });
+				{
+					//FIXME: check err_code?
+					Name_n_Conn.second->Enable();
+				});
 		}
 	}
-	std::cout << "Enabling DataPorts... " << std::endl;
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Enabling DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
 		if(Name_n_Port.second->InitState == InitState_t::ENABLED)
 		{
 			IOS.post([&]()
-				   {
-					   Name_n_Port.second->Enable();
-				   });
+				{
+					Name_n_Port.second->Enable();
+				});
 		}
 		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
 		{
 			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(IOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
 			pTimer->async_wait([pTimer,this,&Name_n_Port](asio::error_code err_code)
-						 {
-							//FIXME: check err_code?
-							 Name_n_Port.second->Enable();
-						 });
+				{
+					//FIXME: check err_code?
+					Name_n_Port.second->Enable();
+				});
 		}
 	}
-	std::cout << "Enabling Interfaces... " << std::endl;
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Enabling Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
 		IOS.post([&]()
-			   {
-				   Name_n_UI.second->Enable();
-			   });
+			{
+				Name_n_UI.second->Enable();
+			});
 	}
 
-	std::cout << "Up and running." << std::endl;
-	IOS.run();
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Up and running.");
 
-	std::cout << "Destoying Interfaces... " << std::endl;
+	IOS.run();
+	for(auto& thread : threads)
+		thread.join();
+	threads.clear();
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Destoying Interfaces...");
 	Interfaces.clear();
 
-	std::cout << "Destoying DataConnectors... " << std::endl;
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Destoying DataConnectors...");
 	DataConnectors.clear();
 
-	std::cout << "Destoying DataPorts... " << std::endl;
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Destoying DataPorts...");
 	DataPorts.clear();
-
-	std::cout << "Shutting down DNP3 manager... " << std::endl;
-	IOMgr.Shutdown();
+	shut_down = true;
 }
 
 void DataConcentrator::Shutdown()
@@ -482,24 +595,40 @@ void DataConcentrator::Shutdown()
 	//Shutdown gets called from various places (signal handling, user interface(s))
 	//ensure we only act once
 	std::call_once(shutdown_flag, [this]()
-	{
-		std::cout << "Disabling user interfaces... " << std::endl;
-		for(auto& Name_n_UI : Interfaces)
 		{
-			Name_n_UI.second->Disable();
-		}
-		std::cout << "Disabling data connectors... " << std::endl;
-		for(auto& Name_n_Conn : DataConnectors)
-		{
-			Name_n_Conn.second->Disable();
-		}
-		std::cout << "Disabling data ports... " << std::endl;
-		for(auto& Name_n_Port : DataPorts)
-		{
-			Name_n_Port.second->Disable();
-		}
-		TCPLog.Shutdown();
-		std::cout << "Finishing asynchronous tasks... " << std::endl;
-		ios_working.reset();
-	});
+			shutting_down = true;
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->info("Disabling Interfaces...");
+			for(auto& Name_n_UI : Interfaces)
+			{
+			      Name_n_UI.second->Disable();
+			}
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->info("Disabling DataConnectors...");
+			for(auto& Name_n_Conn : DataConnectors)
+			{
+			      Name_n_Conn.second->Disable();
+			}
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->info("Disabling DataPorts...");
+			for(auto& Name_n_Port : DataPorts)
+			{
+			      Name_n_Port.second->Disable();
+			}
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->flush();
+			TCPbuf.DeInit();
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->info("Finishing asynchronous tasks...");
+			ios_working.reset();
+		});
+}
+
+bool DataConcentrator::isShuttingDown()
+{
+	return shutting_down;
+}
+bool DataConcentrator::isShutDown()
+{
+	return shut_down;
 }

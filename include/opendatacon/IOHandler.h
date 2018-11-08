@@ -27,19 +27,19 @@
 #ifndef IOHANDLER_H_
 #define IOHANDLER_H_
 
-#include <future>
+#include <functional>
 #include <unordered_map>
 #include <map>
+#include <atomic>
 #include <opendatacon/asio.h>
-#include <asiopal/LogFanoutHandler.h>
 #include <opendatacon/IOTypes.h>
 
 namespace odc
 {
-	
-enum ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 
-typedef enum { ENABLED, DISABLED, DELAYED } InitState_t;
+enum class  InitState_t { ENABLED, DISABLED, DELAYED };
+
+typedef std::shared_ptr<std::function<void (CommandStatus status)>> SharedStatusCallback_t;
 
 class IOHandler
 {
@@ -47,99 +47,60 @@ public:
 	IOHandler(const std::string& aName);
 	virtual ~IOHandler(){}
 
-	static std::future<CommandStatus> CommandFutureSuccess()
-	{
-		auto Promise = std::promise<CommandStatus>();
-		Promise.set_value(CommandStatus::SUCCESS);
-		return Promise.get_future();
-	}
-
-	static std::future<CommandStatus> CommandFutureUndefined()
-	{
-		auto Promise = std::promise<CommandStatus>();
-		Promise.set_value(CommandStatus::UNDEFINED);
-		return Promise.get_future();
-	}
-
-	static std::future<CommandStatus> CommandFutureNotSupported()
-	{
-		auto Promise = std::promise<CommandStatus>();
-		Promise.set_value(CommandStatus::NOT_SUPPORTED);
-		return Promise.get_future();
-	}
-
-	//Create an overloaded Event function for every type of event
-
-	// measurement events
-	virtual std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) = 0;
-
-	// change of quality events
-	virtual std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) = 0;
-
-	// control events
-	virtual std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) = 0;
-	virtual std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) = 0;
-
 	//Connection events:
-	virtual std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) = 0;
+	virtual void Event(ConnectState state, const std::string& SenderName) = 0;
+
+	//Event events
+	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
 	virtual void Enable()=0;
 	virtual void Disable()=0;
 
 	void Subscribe(IOHandler* pIOHandler, std::string aName);
-	void AddLogSubscriber(openpal::ILogHandler* logger);
-	void SetLogLevel(openpal::LogFilters LOG_LEVEL);
 	void SetIOS(asio::io_service* ios_ptr);
 
-	std::string Name;
-	std::unique_ptr<asiopal::LogFanoutHandler> pLoggers;
-	openpal::LogFilters LOG_LEVEL;
-	asio::io_service* pIOS;
-	bool enabled;
+	inline const std::string& GetName(){return Name;}
+	inline const bool Enabled(){return enabled;}
 	InitState_t InitState;
 	uint16_t EnableDelayms;
 
 	static std::unordered_map<std::string, IOHandler*>& GetIOHandlers();
 
 protected:
+	std::string Name;
+	asio::io_service* pIOS;
+	std::atomic_bool enabled;
+
 	bool InDemand();
 	std::map<std::string,bool> connection_demands;
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
-	
-	template<class T>
-	void PublishEvent(const T& meas, uint16_t index) {
-		for(auto IOHandler_pair: Subscribers)
-		{
-			IOHandler_pair.second->Event(meas, index, Name);
-		}
-	}
-	
-	template<class T>
-	std::vector<std::future<CommandStatus> > PublishCommand(const T& meas, uint16_t index) {
-		std::vector<std::future<CommandStatus> > future_results;
 
+	inline void PublishEvent(ConnectState state)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::ConnectState,0,Name);
+		event->SetPayload<EventType::ConnectState>(std::move(state));
+		PublishEvent(event);
+	}
+
+	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	{
+		if(event->GetEventType() == EventType::ConnectState)
+		{
+			//call the special connection Event() function separately,
+			//	so it can keep track of upsteam demand
+			for(auto IOHandler_pair: Subscribers)
+			{
+				IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);
+			}
+		}
+		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(auto IOHandler_pair: Subscribers)
 		{
-			future_results.push_back(IOHandler_pair.second->Event(meas, index, Name));
+			IOHandler_pair.second->Event(event, Name, multi_callback);
 		}
-		
-		return future_results;
 	}
+
+	SharedStatusCallback_t SyncMultiCallback (const size_t cb_number, SharedStatusCallback_t pStatusCallback);
 
 private:
 	std::unordered_map<std::string,IOHandler*> Subscribers;
@@ -147,7 +108,7 @@ private:
 	// Important that this is private - for inter process memory management
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;
 };
-	
+
 }
 
 #endif /* IOHANDLER_H_ */

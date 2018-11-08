@@ -28,9 +28,7 @@
 #define ModbusCLIENTPORT_H_
 
 #include <queue>
-#include <opendnp3/master/ISOEHandler.h>
 
-#include <modbus/modbus.h>
 #include "ModbusPort.h"
 #include <opendatacon/ASIOScheduler.h>
 
@@ -73,7 +71,6 @@ class ModbusMasterPort: public ModbusPort
 public:
 	ModbusMasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		ModbusPort(aName, aConfFilename, aConfOverrides),
-		mb(nullptr),
 		modbus_read_buffer(nullptr),
 		modbus_read_buffer_size(0)
 	{}
@@ -83,33 +80,28 @@ public:
 	// Implement ModbusPort
 	void Enable() override;
 	void Disable() override;
-	void Connect();
+	void Connect(modbus_t *mb);
 	void Disconnect();
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) override;
+	void Build() override;
 
-	// Implement some IOHandler - parent ModbusPort implements the rest to return NOT_SUPPORTED
-	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) override;
-	template<typename T> std::future<CommandStatus> EventT(T& arCommand, uint16_t index, const std::string& SenderName);
-
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 private:
-	template<class T>
-	CommandStatus WriteObject(const T& command, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const ControlRelayOutputBlock& output, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const int16_t output, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const int32_t output, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const double output, uint16_t index);
+	CommandStatus WriteObject(modbus_t* mb, const float output, uint16_t index);
 
-	void DoPoll(uint32_t pollgroup);
+	void DoPoll(uint32_t pollgroup, modbus_t *mb);
 
 private:
 	void HandleError(int errnum, const std::string& source);
 	CommandStatus HandleWriteError(int errnum, const std::string& source);
 
-	ModbusReadGroup<Binary>* GetRange(uint16_t index);
+	template<EventType t>
+	ModbusReadGroup* GetRange(uint16_t index);
 
-	modbus_t *mb;
 	void* modbus_read_buffer;
 	size_t modbus_read_buffer_size;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

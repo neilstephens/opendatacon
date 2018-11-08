@@ -21,16 +21,8 @@ project(ConsoleUI)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
-include_directories(
-	../include
-	../JSON
-	${ASIO_HOME}/include
-)
-
-link_directories("${DNP3_HOME}/lib")
-
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC asiopal)
+target_link_libraries(${PROJECT_NAME} ODC)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)

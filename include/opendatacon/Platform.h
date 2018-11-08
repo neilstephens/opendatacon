@@ -42,7 +42,13 @@ const std::string DYNLIBEXT = ".dll";
 
 inline HMODULE LoadModule(const std::string& a)
 {
+	//LoadLibrary is ref counted so you can call FreeLibrary the same number of times to unload
 	return LoadLibraryExA(a.c_str(), 0, DWORD(0));
+}
+inline BOOL WINAPI UnLoadModule(HMODULE handle)
+{
+	//LoadLibrary is ref counted so you can call FreeLibrary the same number of times to unload
+	return FreeLibrary(handle);
 }
 
 inline FARPROC LoadSymbol(HMODULE a, const std::string& b)
@@ -65,13 +71,13 @@ inline std::string LastSystemError()
 	DWORD dw = GetLastError();
 
 	auto res = FormatMessageA(
-	      FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-	      NULL,
-	      dw,
-	      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-	      (LPSTR)&lpMsgBuf,
-	      0,
-	      NULL);
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		dw,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPSTR)&lpMsgBuf,
+		0,
+		NULL);
 	std::string message;
 	if (res > 0)
 	{
@@ -99,8 +105,13 @@ const std::string DYNLIBEXT = ".so";
 
 inline void* LoadModule(const std::string& a)
 {
-	//TODO: use RTLD_NOLOAD to check if a library is already loaded before loading
+	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
 	return dlopen(a.c_str(), RTLD_LAZY);
+}
+inline int UnLoadModule(void* handle)
+{
+	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
+	return dlclose(handle);
 }
 inline void* LoadSymbol(void* a, const std::string& b)
 {

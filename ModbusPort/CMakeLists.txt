@@ -28,14 +28,6 @@ else()
 	set(MODBUS_HOME "/usr" CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
 endif()
 
-include_directories(
-	../include
-	../JSON
-	${DNP3_HOME}/include
-	${ASIO_HOME}/include
-	${MODBUS_HOME}/include
-)
-
 #find modbus library
 find_library(MODBUS_LIB NAMES modbus libmodbus
 	PATHS ${MODBUS_HOME}/lib NO_DEFAULT_PATH
@@ -50,18 +42,13 @@ mark_as_advanced(FORCE MODBUS_LIB)
 #include in install/packaging
 option(PACKAGE_LIBMODBUS "Package libmodbus in c-pack installer" ON)
 if(PACKAGE_LIBMODBUS)
-	get_filename_component(_resolvedFile "${MODBUS_LIB}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${MODBUS_LIB})
-		#not a link - just install file
-		install(FILES "${MODBUS_LIB}" DESTINATION ${INSTALLDIR_LIBS})
-	else()
-		#is a link -install link and file
-		install(FILES "${MODBUS_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
-	endif()
+	file_w_symlinks(file_w_links "${MODBUS_LIB}")
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS})
 endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC modbus_target ${openpal_libs} ${opendnp3_libs})
+target_include_directories(${PROJECT_NAME} PRIVATE "${MODBUS_HOME}/include")
+target_link_libraries(${PROJECT_NAME} ODC modbus_target)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

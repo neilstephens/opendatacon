@@ -29,12 +29,11 @@
 
 #include "DataPortConf.h"
 #include "IOHandler.h"
-#include "IOManager.h"
 #include "ConfigParser.h"
 #include "IUIResponder.h"
 
-namespace odc {
-typedef opendnp3::ChannelState ChannelState;
+namespace odc
+{
 
 class DataPort: public IOHandler, public ConfigParser
 {
@@ -44,22 +43,17 @@ public:
 		ConfigParser(aConfFilename, aConfOverrides),
 		pConf(nullptr)
 	{}
-	~DataPort() override{}
+	~DataPort() override {}
 
 	void Enable() override =0;
 	void Disable() override =0;
-	virtual void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)=0;
+	virtual void Build()=0;
 	void ProcessElements(const Json::Value& JSONRoot) override =0;
 
-	std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) final
+	void Event(ConnectState state, const std::string& SenderName) final
 	{
-		if(MuxConnectionEvents(state, SenderName))
-			return ConnectionEvent(state, SenderName);
-		else
-			return IOHandler::CommandFutureUndefined();
+		MuxConnectionEvents(state, SenderName);
 	}
-
-	virtual std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) = 0;
 
 	virtual const Json::Value GetStatistics() const
 	{

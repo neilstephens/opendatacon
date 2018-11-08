@@ -24,8 +24,10 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <opendnp3/LogLevels.h>
+#include <memory>
 #include <chrono>
+#include <opendatacon/util.h>
+#include <opendatacon/IOTypes.h>
 #include "JSONPort.h"
 
 using namespace odc;
@@ -54,9 +56,8 @@ void JSONPort::Enable()
 	}
 	catch(std::exception& e)
 	{
-		std::string msg = "Problem opening connection: "+Name+": "+e.what();
-		auto log_entry = openpal::LogEntry("JSONClientPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = odc::spdlog_get("JSONPort"))
+			log->error("{}: Problem opening connection:: {}", Name, e.what());
 		return;
 	}
 }
@@ -73,18 +74,22 @@ void JSONPort::Disable()
 void JSONPort::SocketStateHandler(bool state)
 {
 	std::string msg;
+	ConnectState conn_state;
 	if(state)
 	{
-		PublishEvent(ConnectState::CONNECTED, 0);
 		msg = Name+": Connection established.";
+		conn_state = ConnectState::CONNECTED;
 	}
 	else
 	{
-		PublishEvent(ConnectState::DISCONNECTED, 0);
 		msg = Name+": Connection closed.";
+		conn_state = ConnectState::DISCONNECTED;
 	}
-	auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::INFO,"", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
+	if(auto log = odc::spdlog_get("JSONPort"))
+		log->info(msg);
+
+	//Send an event out
+	PublishEvent(std::move(conn_state));
 }
 
 void JSONPort::ProcessElements(const Json::Value& JSONRoot)
@@ -106,17 +111,17 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 		static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
 }
 
-void JSONPort::BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL)
+void JSONPort::Build()
 {
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	//TODO: use event buffer size once socket manager supports it
-	pSockMan.reset(new TCPSocketManager<std::string>
-			   (pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
-			    std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
-			    std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
-			    true,
-			    pConf->retry_time_ms));
+	pSockMan = std::make_unique<TCPSocketManager<std::string>>
+		           (pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
+		           std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
+		           std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
+		           1000,
+		           true,
+		           pConf->retry_time_ms);
 }
 
 void JSONPort::ReadCompletionHandler(buf_t& readbuf)
@@ -142,7 +147,8 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 			{
 				braced.clear(); //discard because it must be outside matched braces
 				count_close_braces = count_open_braces = 0;
-				//TODO: log warning/info about malformed JSON being discarded
+				if(auto log = odc::spdlog_get("JSONPort"))
+					log->warn("Malformed JSON recieved: unmatched closing brace.");
 			}
 		}
 		braced.push_back(ch);
@@ -157,56 +163,6 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 	//put back the leftovers
 	for(auto ch : braced)
 		readbuf.sputc(ch);
-}
-
-void JSONPort::AsyncFuturesPoll(std::vector<std::future<CommandStatus>>&& future_results, size_t index, std::shared_ptr<Timer_t> pTimer, double poll_time_ms, double backoff_factor)
-{
-	bool ready = true;
-	bool success = true;
-	//for(auto& future_result : future_results)
-	while(future_results.size())
-	{
-		auto& future_result = future_results.back();
-		if(future_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
-		{
-			ready = false;
-			break;
-		}
-		auto result = future_result.get();
-		future_results.pop_back();
-		//first one that isn't a success, we break
-		if(result != CommandStatus::SUCCESS)
-		{
-			success = false;
-			break;
-		}
-	}
-	if(ready)
-	{
-		Json::Value result;
-		result["Command"]["Index"] =(Json::UInt64) index;
-		result["Command"]["Status"] = success ? "SUCCESS" : (future_results.size()==1 ? "FAIL" : "UNDEFINED");
-
-		auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
-		//TODO: make this writer reusable (class member)
-		//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
-		Json::StreamWriterBuilder wbuilder;
-		if(!pConf->style_output)
-			wbuilder["indentation"] = "";
-		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
-
-		std::ostringstream oss;
-		pWriter->write(result, &oss); oss<<std::endl;
-		pSockMan->Write(oss.str());
-	}
-	else
-	{
-		pTimer->expires_from_now(std::chrono::milliseconds((unsigned int)poll_time_ms));
-		pTimer->async_wait([=,future_results=std::move(future_results)](asio::error_code err_code) mutable
-					 {
-						AsyncFuturesPoll(std::move(future_results), index, pTimer, backoff_factor*poll_time_ms, backoff_factor);
-					 });
-	}
 }
 
 //At this point we have a whole (hopefully JSON) object - ie. {.*}
@@ -231,17 +187,34 @@ void JSONPort::ProcessBraced(const std::string& braced)
 		//little functor to traverse any paths, starting at the root
 		//pass a JSON array of nodes representing the path (that's how we store our point config after all)
 		auto TraversePath = [&JSONRoot](const Json::Value& nodes)
-		{
-			//val will traverse any paths, starting at the root
-			auto val = JSONRoot;
-			//traverse
-			for(unsigned int n = 0; n < nodes.size(); ++n)
-				if((val = val[nodes[n].asCString()]).isNull())
-					break;
-			return val;
-		};
+					  {
+						  //val will traverse any paths, starting at the root
+						  auto val = JSONRoot;
+						  //traverse
+						  for(unsigned int n = 0; n < nodes.size(); ++n)
+							  if((val = val[nodes[n].asCString()]).isNull())
+								  break;
+						  return val;
+					  };
 
-		Json::Value timestamp_val = TraversePath(pConf->pPointConf->TimestampPath);
+		msSinceEpoch_t timestamp = 0;
+		if(!pConf->pPointConf->TimestampPath.isNull())
+		{
+			try
+			{
+				timestamp = TraversePath(pConf->pPointConf->TimestampPath).asUInt64();
+				if(timestamp == 0)
+					throw std::runtime_error("Null timestamp");
+			}
+			catch(std::runtime_error e)
+			{
+				if(auto log = odc::spdlog_get("JSONPort"))
+					log->error("Error decoding timestamp as Uint64: '{}'",e.what());
+			}
+		}
+
+		//vector to store any events we find contained in this Json object
+		std::vector<std::shared_ptr<EventInfo>> events;
 
 		for(auto& point_pair : pConf->pPointConf->Analogs)
 		{
@@ -249,22 +222,33 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			//if the path existed, load up the point
 			if(!val.isNull())
 			{
+				auto event = std::make_shared<EventInfo>(EventType::Analog,point_pair.first,Name,QualityFlags::ONLINE,timestamp);
 				if(val.isNumeric())
-					LoadT(Analog(val.asDouble(),static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
+					event->SetPayload<EventType::Analog>(val.asDouble());
 				else if(val.isString())
 				{
 					double value;
 					try
 					{
 						value = std::stod(val.asString());
+						event->SetPayload<EventType::Analog>(std::move(value));
 					}
 					catch(std::exception&)
 					{
-						LoadT(Analog(0,static_cast<uint8_t>(AnalogQuality::COMM_LOST)),point_pair.first, timestamp_val);
-						continue;
+						if(auto log = odc::spdlog_get("JSONPort"))
+							log->error("Error decoding Analog from string '{}', for index {}",val.asString(),point_pair.first);
+						event->SetPayload<EventType::Analog>(0);
+						event->SetQuality(QualityFlags::OVERRANGE);
 					}
-					LoadT(Analog(value,static_cast<uint8_t>(AnalogQuality::ONLINE)),point_pair.first, timestamp_val);
 				}
+				else
+				{
+					if(auto log = odc::spdlog_get("JSONPort"))
+						log->error("Error decoding Analog for index {}",point_pair.first);
+					event->SetPayload<EventType::Analog>(0);
+					event->SetQuality(QualityFlags::OVERRANGE);
+				}
+				events.push_back(event);
 			}
 		}
 
@@ -274,13 +258,14 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			//if the path existed, load up the point
 			if(!val.isNull())
 			{
-				bool true_val = false; BinaryQuality qual = BinaryQuality::ONLINE;
+				auto event = std::make_shared<EventInfo>(EventType::Binary,point_pair.first,Name,QualityFlags::ONLINE,timestamp);
+				bool true_val = false;
 				if(point_pair.second.isMember("TrueVal"))
 				{
 					true_val = (val == point_pair.second["TrueVal"]);
 					if(point_pair.second.isMember("FalseVal"))
 						if (!true_val && (val != point_pair.second["FalseVal"]))
-							qual = BinaryQuality::COMM_LOST;
+							event->SetQuality(QualityFlags::COMM_LOST);
 				}
 				else if(point_pair.second.isMember("FalseVal"))
 					true_val = !(val == point_pair.second["FalseVal"]);
@@ -290,14 +275,22 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				{
 					true_val = (val.asString() == "true");
 					if(!true_val && (val.asString() != "false"))
-						qual = BinaryQuality::COMM_LOST;
+						event->SetQuality(QualityFlags::COMM_LOST);
 				}
 				else
-					qual = BinaryQuality::COMM_LOST;
+					event->SetQuality(QualityFlags::COMM_LOST);
 
-				LoadT(Binary(true_val,static_cast<uint8_t>(qual)),point_pair.first,timestamp_val);
+				event->SetPayload<EventType::Binary>(std::move(true_val));
+				events.push_back(event);
 			}
 		}
+
+		//Publish any analog and binary events from above
+		for(auto& event : events)
+		{
+			PublishEvent(event);
+		}
+		//We'll publish any controls separately below, because they each have a callback
 
 		for(auto& point_pair : pConf->pPointConf->Controls)
 		{
@@ -307,50 +300,53 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			//if the path existed, get the value and send the control
 			if(!val.isNull())
 			{
-				ControlRelayOutputBlock command(ControlCode::PULSE_ON); //default pulse if nothing else specified
+				auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,point_pair.first,Name,QualityFlags::NONE,timestamp);
+
+				ControlRelayOutputBlock command;
+				command.functionCode = ControlCode::PULSE_ON; //default pulse if nothing else specified
 
 				//work out control code to send
 				if(point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
 				{
-					auto check_val = [&](std::string truename, std::string falsename)->bool
-					{
-						bool ret = true;
-						if(point_pair.second.isMember(truename))
-						{
-							ret = (val == point_pair.second[truename]);
-							if(point_pair.second.isMember(falsename))
-								if (!ret && (val != point_pair.second[falsename]))
-									throw std::runtime_error("unexpected control value");
-						}
-						else if(point_pair.second.isMember(falsename))
-							ret = !(val == point_pair.second[falsename]);
-						else if(val.isNumeric() || val.isBool())
-							ret = val.asBool();
-						else if(val.isString()) //Guess some sensible default on/off/trip/close values
-						{
-							//TODO: replace with regex?
-							ret = (val.asString() == "true" ||
-								 val.asString() == "True" ||
-								 val.asString() == "TRUE" ||
-								 val.asString() == "on" ||
-								 val.asString() == "On" ||
-								 val.asString() == "ON" ||
-								 val.asString() == "close" ||
-								 val.asString() == "Close" ||
-								 val.asString() == "CLOSE");
-							if(!ret && (val.asString() != "false" &&
-									val.asString() != "False" &&
-									val.asString() != "FALSE" &&
-									val.asString() != "off" &&
-									val.asString() != "Off" &&
-									val.asString() != "OFF" &&
-									val.asString() != "trip" &&
-									val.asString() != "Trip" &&
-									val.asString() != "TRIP"))
-								throw std::runtime_error("unexpected control value");
-						}
-						return ret;
-					};
+					auto check_val = [&](std::string truename, std::string falsename) -> bool
+							     {
+								     bool ret = true;
+								     if(point_pair.second.isMember(truename))
+								     {
+									     ret = (val == point_pair.second[truename]);
+									     if(point_pair.second.isMember(falsename))
+										     if (!ret && (val != point_pair.second[falsename]))
+											     throw std::runtime_error("Unexpected control value");
+								     }
+								     else if(point_pair.second.isMember(falsename))
+									     ret = !(val == point_pair.second[falsename]);
+								     else if(val.isNumeric() || val.isBool())
+									     ret = val.asBool();
+								     else if(val.isString()) //Guess some sensible default on/off/trip/close values
+								     {
+									     //TODO: replace with regex?
+									     ret = (val.asString() == "true" ||
+									            val.asString() == "True" ||
+									            val.asString() == "TRUE" ||
+									            val.asString() == "on" ||
+									            val.asString() == "On" ||
+									            val.asString() == "ON" ||
+									            val.asString() == "close" ||
+									            val.asString() == "Close" ||
+									            val.asString() == "CLOSE");
+									     if(!ret && (val.asString() != "false" &&
+									                 val.asString() != "False" &&
+									                 val.asString() != "FALSE" &&
+									                 val.asString() != "off" &&
+									                 val.asString() != "Off" &&
+									                 val.asString() != "OFF" &&
+									                 val.asString() != "trip" &&
+									                 val.asString() != "Trip" &&
+									                 val.asString() != "TRIP"))
+										     throw std::runtime_error("Unexpected control value");
+								     }
+								     return ret;
+							     };
 
 					auto cm = point_pair.second["ControlMode"].asString();
 					if(cm == "LATCH")
@@ -362,7 +358,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						}
 						catch(std::runtime_error e)
 						{
-							//TODO: log warning
+							if(auto log = odc::spdlog_get("JSONPort"))
+								log->error("'{}', for index {}",e.what(),point_pair.first);
 							continue;
 						}
 						if(on)
@@ -379,7 +376,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						}
 						catch(std::runtime_error e)
 						{
-							//TODO: log warning
+							if(auto log = odc::spdlog_get("JSONPort"))
+								log->error("'{}', for index {}",e.what(),point_pair.first);
 							continue;
 						}
 						if(trip)
@@ -389,7 +387,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					}
 					else if(cm != "PULSE")
 					{
-						//TODO: log warning
+						if(auto log = odc::spdlog_get("JSONPort"))
+							log->error("Unrecongnised ControlMode '{}', recieved for index {}",cm,point_pair.first);
 						continue;
 					}
 				}
@@ -400,114 +399,91 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				if(point_pair.second.isMember("OffTimems"))
 					command.offTimeMS = point_pair.second["OffTimems"].asUInt();
 
-				auto future_results = PublishCommand(command,point_pair.first);
+				auto pStatusCallback =
+					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
+						{
+							Json::Value result;
+							result["Command"]["Index"] = point_pair.first;
 
-				auto pTimer =std::make_shared<Timer_t>(*pIOS);
-				pTimer->expires_from_now(std::chrono::milliseconds(10)); //TODO: expose pole time in config
-				pTimer->async_wait([=,future_results=std::move(future_results)](asio::error_code err_code) mutable
-							 {
-								if(!err_code)
-									AsyncFuturesPoll(std::move(future_results), point_pair.first, pTimer, 20, 2);
-								else
-								{
-									Json::Value result;
-									result["Command"]["Index"] = point_pair.first;
-									result["Command"]["Status"] = "UNDEFINED";
+							if(command_stat == CommandStatus::SUCCESS)
+								result["Command"]["Status"] = "SUCCESS";
+							else
+								result["Command"]["Status"] = "UNDEFINED";
 
-									//TODO: make this writer reusable (class member)
-									//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
-									Json::StreamWriterBuilder wbuilder;
-									if(!pConf->style_output)
-										wbuilder["indentation"] = "";
-									std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+							//TODO: make this writer reusable (class member)
+							//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+							Json::StreamWriterBuilder wbuilder;
+							if(!pConf->style_output)
+								wbuilder["indentation"] = "";
+							std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
 
-									std::ostringstream oss;
-									pWriter->write(result, &oss); oss<<std::endl;
-									pSockMan->Write(oss.str());
-								}
-							 });
+							std::ostringstream oss;
+							pWriter->write(result, &oss); oss<<std::endl;
+							pSockMan->Write(oss.str());
+						});
+				event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(command));
+				PublishEvent(event,pStatusCallback);
 			}
 		}
 	}
 	else
 	{
-		std::string msg = "Error parsing JSON string: '"+braced+"' : '"+err_str+"'";
-		auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::WARN,"", msg.c_str(), -1);
-		pLoggers->Log(log_entry);
+		if(auto log = odc::spdlog_get("JSONPort"))
+			log->warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
 	}
 }
-template<typename T>
-inline void JSONPort::LoadT(T meas, uint16_t index, Json::Value timestamp_val)
-{
-	std::string msg = "Measurement Event '"+std::string(typeid(meas).name())+"'";
-	auto log_entry = openpal::LogEntry("JSONPort", openpal::logflags::DBG,"", msg.c_str(), -1);
-	pLoggers->Log(log_entry);
 
-	if(!timestamp_val.isNull() && timestamp_val.isUInt64())
-	{
-		meas = T(meas.value, meas.quality, Timestamp(timestamp_val.asUInt64()));
-	}
-
-	PublishEvent(meas, index);
-}
-
-
-//Unsupported types - return as such
-std::future<CommandStatus> JSONPort::Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const Counter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-
-std::future<CommandStatus> JSONPort::Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::ConnectionEvent(ConnectState state, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-
-std::future<CommandStatus> JSONPort::Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-std::future<CommandStatus> JSONPort::Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) { return IOHandler::CommandFutureNotSupported(); }
-
-//Supported types - call templates
-std::future<CommandStatus> JSONPort::Event(const Binary& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
-std::future<CommandStatus> JSONPort::Event(const Analog& meas, uint16_t index, const std::string& SenderName){return EventT(meas,index,SenderName);}
-std::future<CommandStatus> JSONPort::Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
-std::future<CommandStatus> JSONPort::Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName){return EventQ(qual,index,SenderName);}
-
-//Templates for supported types
-template<typename T>
-inline std::future<CommandStatus> JSONPort::EventQ(const T& meas, uint16_t index, const std::string& SenderName)
-{
-	return IOHandler::CommandFutureUndefined();
-}
-
-template<typename T>
-inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index, const std::string& SenderName)
+void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
 	{
-		return IOHandler::CommandFutureUndefined();
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
 	}
+
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	auto ToJSON = [pConf,index,&meas,&SenderName](std::map<uint16_t, Json::Value>& PointMap)->Json::Value
+	auto i = event->GetIndex();
+	auto q = ToString(event->GetQuality());
+	auto t = event->GetTimestamp();
+	auto& sp = event->GetSourcePort();
+	auto& s = SenderName;
+	Json::Value output;
+	switch(event->GetEventType())
 	{
-		if(PointMap.count(index))
+		case EventType::Analog:
 		{
-			Json::Value output = pConf->pPointConf->pJOT->Instantiate(meas, index, PointMap[index]["Name"].asString(),SenderName);
-			return output;
+			auto v = event->GetPayload<EventType::Analog>();
+			auto& m = pConf->pPointConf->Analogs;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : Json::Value::nullSingleton());
+			break;
 		}
-		return Json::Value::nullSingleton();
-	};
-	auto output = std::is_same<T,Analog>::value ? ToJSON(pConf->pPointConf->Analogs) :
-			  std::is_same<T,Binary>::value ? ToJSON(pConf->pPointConf->Binaries) :
-										  Json::Value::nullSingleton();
+		case EventType::Binary:
+		{
+			auto v = event->GetPayload<EventType::Binary>();
+			auto& m = pConf->pPointConf->Binaries;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		case EventType::ControlRelayOutputBlock:
+		{
+			auto v = std::string(event->GetPayload<EventType::ControlRelayOutputBlock>());
+			auto& m = pConf->pPointConf->Controls;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		default:
+			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+			return;
+	}
+
 	if(output.isNull())
-		return IOHandler::CommandFutureNotSupported();
+	{
+		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+		return;
+	}
 
 	//TODO: make this writer reusable (class member)
 	//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
@@ -520,5 +496,5 @@ inline std::future<CommandStatus> JSONPort::EventT(const T& meas, uint16_t index
 	pWriter->write(output, &oss); oss<<std::endl;
 	pSockMan->Write(oss.str());
 
-	return IOHandler::CommandFutureSuccess();
+	(*pStatusCallback)(CommandStatus::SUCCESS);
 }

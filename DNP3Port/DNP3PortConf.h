@@ -27,11 +27,14 @@
 #ifndef DNP3OUTSTATIONPORTCONF_H_
 #define DNP3OUTSTATIONPORTCONF_H_
 
+#include <opendnp3/LogLevels.h>
 #include <opendatacon/DataPort.h>
+#include <asiopal/SerialTypes.h>
+#include <openpal/logging/LogFilters.h>
 #include "DNP3PointConf.h"
 
-enum TCPClientServer {CLIENT,SERVER,DEFAULT};
-enum server_type_t {ONDEMAND,PERSISTENT,MANUAL};
+enum class TCPClientServer {CLIENT,SERVER,DEFAULT};
+enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 struct DNP3AddrConf
 {
 	//Serial
@@ -61,13 +64,15 @@ struct DNP3AddrConf
 class DNP3PortConf: public DataPortConf
 {
 public:
-	DNP3PortConf(const std::string& FileName, const Json::Value& ConfOverrides)
+	DNP3PortConf(const std::string& FileName, const Json::Value& ConfOverrides):
+		LOG_LEVEL(opendnp3::levels::NORMAL)
 	{
-		pPointConf.reset(new DNP3PointConf(FileName, ConfOverrides));
+		pPointConf = std::make_unique<DNP3PointConf>(FileName, ConfOverrides);
 	}
 
 	std::unique_ptr<DNP3PointConf> pPointConf;
 	DNP3AddrConf mAddrConf;
+	openpal::LogFilters LOG_LEVEL;
 };
 
 #endif /* DNP3OUTSTATIONPORTCONF_H_ */

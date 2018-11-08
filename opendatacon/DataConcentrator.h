@@ -38,12 +38,11 @@
 #include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/ConfigParser.h>
+#include <opendatacon/TCPstringbuf.h>
+#include <spdlog/spdlog.h>
+#include <opendatacon/util.h>
 
 #include "DataConnector.h"
-#include "AdvancedLogger.h"
-#include "LogToFile.h"
-#include "LogToTCP.h"
-#include "LogCollection.h"
 
 #include <opendatacon/IUI.h>
 
@@ -54,25 +53,32 @@ public:
 	~DataConcentrator() override;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
-	void BuildOrRebuild();
+	void Build();
 	void Run();
 	void Shutdown();
+	bool isShuttingDown();
+	bool isShutDown();
 
 private:
 	DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
-	LogCollection AdvancedLoggers;
 	InterfaceCollection Interfaces;
 
-	IOManager IOMgr;
 	asio::io_service IOS;
 	std::unique_ptr<asio::io_service::work> ios_working;
 	std::once_flag shutdown_flag;
+	std::atomic_bool shutting_down;
+	std::atomic_bool shut_down;
 
-	openpal::LogFilters LOG_LEVEL;
-	LogToFile FileLog;                             //Prints all messages to a rolling set of log files.
-	LogToTCP TCPLog;
-	asiopal::LogFanoutHandler FanoutHandler;
+	//ostream for spdlog logging sink
+	TCPstringbuf TCPbuf;
+	std::unique_ptr<std::ostream> pTCPostream;
+
+	std::map<std::string,spdlog::sink_ptr> LogSinksMap;
+	std::vector<spdlog::sink_ptr> LogSinksVec;
+	void SetLogLevel(std::stringstream& ss);
+
+	std::vector<std::thread> threads;
 };
 
 #endif /* DATACONCENTRATOR_H_ */

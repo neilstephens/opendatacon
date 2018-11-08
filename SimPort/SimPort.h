@@ -40,51 +40,21 @@ public:
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
 	void Enable() final;
 	void Disable() final;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL) final;
+	void Build() final;
 	void ProcessElements(const Json::Value& JSONRoot) final;
-	std::future<CommandStatus> ConnectionEvent(ConnectState state, const std::string& SenderName) final;
 
-	//so the compiler won't warn we're hiding the base class overload we still want to use
-	using DataPort::Event;
-
-	//Implement Event handlers from IOHandler
-
-	// measurement events
-	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) final;
-
-	// change of quality events
-	std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) final;
-
-	// control events
-	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) final;
-	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) final;
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 
 private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	typedef std::shared_ptr<Timer_t> pTimer_t;
 	std::vector<pTimer_t> Timers;
-	void SpawnEvent(std::shared_ptr<Analog> pMean, double std_dev, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed);
-	void SpawnEvent(std::shared_ptr<Binary> pVal, unsigned int interval, size_t index, pTimer_t pTimer, rand_t seed);
+	void SpawnEvent(size_t index, double mean, double std_dev, unsigned int interval, pTimer_t pTimer, rand_t seed);
+	void SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t pTimer, rand_t seed);
 	void PortUp();
 	void PortDown();
 
-	std::unique_ptr<asio::strand> pEnableDisableSync;
-	bool enabled;
+	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	std::mt19937 RandNumGenerator;
 };
 

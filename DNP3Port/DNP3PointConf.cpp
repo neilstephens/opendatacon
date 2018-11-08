@@ -29,7 +29,7 @@
 #include <opendnp3/app/ClassField.h>
 #include "DNP3PointConf.h"
 #include "OpenDNP3Helpers.h"
-#include <iostream> // TODO: remove include, should be met using logging mechanism
+#include <opendatacon/util.h>
 
 
 DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides):
@@ -40,16 +40,18 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	LinkKeepAlivems(10000),
 	LinkUseConfirms(false),
 	// Common application stack configuration
+	ServerAcceptMode(opendnp3::ServerAcceptMode::CloseNew),
+	TCPConnectRetryPeriodMinms(500),
+	TCPConnectRetryPeriodMaxms(30000),
 	EnableUnsol(true),
 	UnsolClass1(false),
 	UnsolClass2(false),
 	UnsolClass3(false),
 	// Master Station configuration
-	TCPConnectRetryPeriodMinms(500),
-	TCPConnectRetryPeriodMaxms(30000),
 	MasterResponseTimeoutms(5000), /// Application layer response timeout
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	DoUnsolOnStartup(true),
+	SetQualityOnLinkStatus(true),
 	/// Which classes should be requested in a startup integrity scan
 	StartupIntegrityClass0(true),
 	StartupIntegrityClass1(true),
@@ -67,8 +69,6 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	OverrideControlCode(opendnp3::ControlCode::UNDEFINED),
 	DoAssignClassOnStartup(false),
 	// Outstation configuration
-	TCPListenRetryPeriodMinms(0),
-	TCPListenRetryPeriodMaxms(5000),
 	MaxControlsPerRequest(16),
 	MaxTxFragSize(2048),
 	SelectTimeoutms(10000),
@@ -76,14 +76,14 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	UnsolConfirmTimeoutms(5000),
 	WaitForCommandResponses(false),
 	// Default Static Variations
-	StaticBinaryResponse(opendnp3::Binary::StaticVariation::Group1Var1),
-	StaticAnalogResponse(opendnp3::Analog::StaticVariation::Group30Var5),
-	StaticCounterResponse(opendnp3::Counter::StaticVariation::Group20Var1),
+	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var1),
+	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
+	StaticCounterResponse(opendnp3::StaticCounterVariation::Group20Var1),
 	// Default Event Variations
-	EventBinaryResponse(opendnp3::Binary::EventVariation::Group2Var1),
-	EventAnalogResponse(opendnp3::Analog::EventVariation::Group32Var5),
-	EventCounterResponse(opendnp3::Counter::EventVariation::Group22Var1),
-	TimestampOverride(ZERO),
+	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
+	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
+	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
+	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
 	MaxBinaryEvents(1000),
 	MaxAnalogEvents(1000),
@@ -92,23 +92,15 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	ProcessFile();
 }
 
-uint8_t DNP3PointConf::GetUnsolClassMask()
+opendnp3::ClassField DNP3PointConf::GetUnsolClassMask()
 {
-	uint8_t class_mask = 0;
-	class_mask += (UnsolClass1 ? opendnp3::ClassField::CLASS_1 : 0);
-	class_mask += (UnsolClass2 ? opendnp3::ClassField::CLASS_2 : 0);
-	class_mask += (UnsolClass3 ? opendnp3::ClassField::CLASS_3 : 0);
-	return class_mask;
+	return opendnp3::ClassField(true,UnsolClass1,UnsolClass2,UnsolClass3);
 }
 
-uint8_t DNP3PointConf::GetStartupIntegrityClassMask()
+opendnp3::ClassField DNP3PointConf::GetStartupIntegrityClassMask()
 {
-	uint8_t class_mask = 0;
-	class_mask += (StartupIntegrityClass0 ? opendnp3::ClassField::CLASS_0 : 0);
-	class_mask += (StartupIntegrityClass1 ? opendnp3::ClassField::CLASS_1 : 0);
-	class_mask += (StartupIntegrityClass2 ? opendnp3::ClassField::CLASS_2 : 0);
-	class_mask += (StartupIntegrityClass3 ? opendnp3::ClassField::CLASS_3 : 0);
-	return class_mask;
+	return opendnp3::ClassField(StartupIntegrityClass0,StartupIntegrityClass1,
+		StartupIntegrityClass2,StartupIntegrityClass3);
 }
 
 opendnp3::PointClass GetClass(Json::Value JPoint)
@@ -133,7 +125,8 @@ opendnp3::PointClass GetClass(Json::Value JPoint)
 					clazz = opendnp3::PointClass::Class3;
 					break;
 				default:
-					std::cout<<"Invalid class for Point: '"<<JPoint.toStyledString()<<"'"<<std::endl;
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->error("Invalid class for Point: '{}'", JPoint.toStyledString());
 					break;
 			}
 		}
@@ -155,9 +148,24 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("LinkUseConfirms"))
 		LinkUseConfirms = JSONRoot["LinkUseConfirms"].asBool();
 	if (JSONRoot.isMember("UseConfirms"))
-		std::cout << "Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '" << JSONRoot["UseConfirms"].toStyledString() << "'" << std::endl;
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->error("Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '{}'", JSONRoot["UseConfirms"].toStyledString());
 
 	// Common application configuration
+	if (JSONRoot.isMember("ServerAcceptMode"))
+	{
+		if(JSONRoot["TCPConnectRetryPeriodMinms"].asString() == "CloseNew")
+			ServerAcceptMode = opendnp3::ServerAcceptMode::CloseNew;
+		else if(JSONRoot["TCPConnectRetryPeriodMinms"].asString() == "CloseExisting")
+			ServerAcceptMode = opendnp3::ServerAcceptMode::CloseExisting;
+		else
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->error("Invalid ServerAcceptMode : '{}'", JSONRoot["ServerAcceptMode"].asString());
+	}
+	if (JSONRoot.isMember("TCPConnectRetryPeriodMinms"))
+		TCPConnectRetryPeriodMinms = JSONRoot["TCPConnectRetryPeriodMinms"].asUInt();
+	if (JSONRoot.isMember("TCPConnectRetryPeriodMaxms"))
+		TCPConnectRetryPeriodMaxms = JSONRoot["TCPConnectRetryPeriodMaxms"].asUInt();
 	if (JSONRoot.isMember("EnableUnsol"))
 		EnableUnsol = JSONRoot["EnableUnsol"].asBool();
 	if (JSONRoot.isMember("UnsolClass1"))
@@ -168,16 +176,14 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolClass3 = JSONRoot["UnsolClass3"].asBool();
 
 	// Master Station configuration
-	if (JSONRoot.isMember("TCPConnectRetryPeriodMinms"))
-		TCPConnectRetryPeriodMinms = JSONRoot["TCPConnectRetryPeriodMinms"].asUInt();
-	if (JSONRoot.isMember("TCPConnectRetryPeriodMaxms"))
-		TCPConnectRetryPeriodMaxms = JSONRoot["TCPConnectRetryPeriodMaxms"].asUInt();
 	if (JSONRoot.isMember("MasterResponseTimeoutms"))
 		MasterResponseTimeoutms = JSONRoot["MasterResponseTimeoutms"].asUInt();
 	if (JSONRoot.isMember("MasterRespondTimeSync"))
 		MasterRespondTimeSync = JSONRoot["MasterRespondTimeSync"].asBool();
 	if (JSONRoot.isMember("DoUnsolOnStartup"))
 		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
+	if (JSONRoot.isMember("SetQualityOnLinkStatus"))
+		SetQualityOnLinkStatus = JSONRoot["SetQualityOnLinkStatus"].asBool();
 
 	/// Which classes should be requested in a startup integrity scan
 	if (JSONRoot.isMember("StartupIntegrityClass0"))
@@ -197,31 +203,29 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();
 
 	// Comms Point Configuration
-	if (!JSONRoot.isMember("CommsPoint") || !JSONRoot["CommsPoint"].isMember("Index"))
-		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
-	else
+	if (JSONRoot.isMember("CommsPoint"))
 	{
-		mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
-		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
+		if(JSONRoot["CommsPoint"].isMember("Index") && JSONRoot["CommsPoint"].isMember("FailValue"))
+		{
+			mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+			mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->error("CommsPoint an 'Index' and a 'FailValue'.");
+		}
 	}
 
 	// Master Station scanning configuration
 	if (JSONRoot.isMember("IntegrityScanRatems"))
 		IntegrityScanRatems = JSONRoot["IntegrityScanRatems"].asUInt();
-	if (JSONRoot.isMember("IntegrityScanRateSec"))
-		std::cout << "Use of 'IntegrityScanRateSec' is deprecated, use 'IntegrityScanRatems' instead : '" << JSONRoot["IntegrityScanRateSec"].toStyledString() << "'" << std::endl;
 	if (JSONRoot.isMember("EventClass1ScanRatems"))
 		EventClass1ScanRatems = JSONRoot["EventClass1ScanRatems"].asUInt();
-	if (JSONRoot.isMember("EventClass1ScanRateSec"))
-		std::cout << "Use of 'EventClass1ScanRateSec' is deprecated, use 'EventClass1ScanRatems' instead : '" << JSONRoot["EventClass1ScanRateSec"].toStyledString() << "'" << std::endl;
 	if (JSONRoot.isMember("EventClass2ScanRatems"))
 		EventClass2ScanRatems = JSONRoot["EventClass2ScanRatems"].asUInt();
-	if (JSONRoot.isMember("EventClass2ScanRateSec"))
-		std::cout << "Use of 'EventClass2ScanRateSec' is deprecated, use 'EventClass2ScanRatems' instead : '" << JSONRoot["EventClass2ScanRateSec"].toStyledString() << "'" << std::endl;
 	if (JSONRoot.isMember("EventClass3ScanRatems"))
 		EventClass3ScanRatems = JSONRoot["EventClass3ScanRatems"].asUInt();
-	if (JSONRoot.isMember("EventClass3ScanRateSec"))
-		std::cout << "Use of 'EventClass3ScanRateSec' is deprecated, use 'EventClass3ScanRatems' instead : '" << JSONRoot["EventClass3ScanRateSec"].toStyledString() << "'" << std::endl;
 
 	if (JSONRoot.isMember("DoAssignClassOnStartup"))
 		DoAssignClassOnStartup = JSONRoot["DoAssignClassOnStartup"].asBool();
@@ -247,10 +251,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	// Outstation configuration
-	if (JSONRoot.isMember("TCPListenRetryPeriodMinms"))
-		TCPListenRetryPeriodMinms = JSONRoot["TCPListenRetryPeriodMinms"].asUInt();
-	if (JSONRoot.isMember("TCPListenRetryPeriodMaxms"))
-		TCPListenRetryPeriodMaxms = JSONRoot["TCPListenRetryPeriodMaxms"].asUInt();
 	if (JSONRoot.isMember("MaxControlsPerRequest"))
 		MaxControlsPerRequest = JSONRoot["MaxControlsPerRequest"].asUInt();
 	if (JSONRoot.isMember("MaxTxFragSize"))
@@ -290,7 +290,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		else if (JSONRoot["TimestampOverride"].asString() == "NEVER")
 			TimestampOverride = DNP3PointConf::TimestampOverride_t::NEVER;
 		else
-			std::cout << "Invalid TimestampOverride: " << JSONRoot["TimestampOverride"].asString() << ", should be ALWAYS, ZERO, or NEVER - defaulting to ZERO" << std::endl;
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->error("Invalid TimestampOverride: {}, should be ALWAYS, ZERO, or NEVER - defaulting to ZERO", JSONRoot["TimestampOverride"].asString());
+		}
 	}
 
 	// Event buffer limits
@@ -322,9 +325,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Analogs[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -342,7 +345,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					EventAnalogResponses[index] = StringToEventAnalogResponse(Analogs[n]["EventAnalogResponse"].asString());
 				else
 					EventAnalogResponses[index] = EventAnalogResponse;
-				
+
 				AnalogDeadbands[index] = deadband;
 
 				if(!exists)
@@ -391,9 +394,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<Binaries[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{
@@ -412,7 +415,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					EventBinaryResponses[index] = StringToEventBinaryResponse(Binaries[n]["EventBinaryResponse"].asString());
 				else
 					EventBinaryResponses[index] = EventBinaryResponse;
-				
+
 				if(!exists)
 					BinaryIndicies.push_back(index);
 
@@ -459,9 +462,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			else
 			{
-				std::cout<<"A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '"<<BinaryControls[n].toStyledString()<<"'"<<std::endl;
-				start = 1;
-				stop = 0;
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
+				continue;
 			}
 			for(auto index = start; index <= stop; index++)
 			{

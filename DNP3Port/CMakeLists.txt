@@ -21,16 +21,104 @@ project(DNP3Port)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
-include_directories(
-	../include
-	../JSON
-	${DNP3_HOME}/include
-	${ASIO_HOME}/include
-)
+# Locate opendnp3
+option(USE_DNP3_SUBMODULE "Use git submodule to download and build opendnp3 libraries" ON)
+set(DNP3_HOME_INSTRUCTIONS "Choose the location of opendnp3: where it was installed - there should be lib and include directories within")
+if(USE_DNP3_SUBMODULE)
+	set(DNP3_SOURCE "${CMAKE_SOURCE_DIR}/submodules/dnp3")
+	set(DNP3_BUILD "${CMAKE_BINARY_DIR}/submodules/dnp3")
+	mark_as_advanced(FORCE DNP3_SOURCE)
+	mark_as_advanced(FORCE DNP3_BUILD)
+	set(DNP3_HOME "${DNP3_BUILD}/install" CACHE PATH ${DNP3_HOME_INSTRUCTIONS} FORCE)
+	set(
+		DNP3_CMAKE_OPTS
+			-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+			-DCMAKE_INSTALL_PREFIX=${DNP3_HOME}/
+			-DCMAKE_DEBUG_POSTFIX=${CMAKE_DEBUG_POSTFIX}
+			-DASIO_HOME=${ASIO_HOME}/include
+			-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+			-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+		CACHE STRING "cmake options to use when building DNP3 submodule"
+	)
+	if(NOT EXISTS "${DNP3_SOURCE}/.git")
+		execute_process(COMMAND git submodule update --init -- submodules/dnp3
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	endif()
+	if(NOT EXISTS "${DNP3_BUILD}")
+		file(MAKE_DIRECTORY "${DNP3_BUILD}")
+	endif()
+	if(DEFINED ${CMAKE_GENERATOR_PLATFORM})
+		set(PLATFORM_OPT "-A${CMAKE_GENERATOR_PLATFORM}")
+	else()
+		set(PLATFORM_OPT "")
+	endif()
+	execute_process(
+		COMMAND ${CMAKE_COMMAND} ${DNP3_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} ${DNP3_SOURCE}
+		WORKING_DIRECTORY "${DNP3_BUILD}"
+		RESULT_VARIABLE EXEC_RESULT
+	)
+	if(EXEC_RESULT)
+		message( FATAL_ERROR "Failed to run cmake for DNP3 submodule, exiting")
+	endif()
+	set(CONFIGS "${CMAKE_BUILD_TYPE}")
+	if("${CMAKE_CONFIGURATION_TYPES}" MATCHES ".*Rel.*")
+		list(APPEND CONFIGS "Release")
+	endif()
+	if("${CMAKE_CONFIGURATION_TYPES}" MATCHES ".*Deb.*")
+		list(APPEND CONFIGS "Debug")
+	endif()
+	foreach(CONF ${CONFIGS})
+		message("Building DNP3 dependency")
+		execute_process(
+			COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config ${CONF} --target install
+			WORKING_DIRECTORY "${DNP3_BUILD}"
+			RESULT_VARIABLE EXEC_RESULT
+		)
+		if(EXEC_RESULT)
+			message( FATAL_ERROR "Failed to build DNP3 submodule, exiting")
+		endif()
+	endforeach()
+	add_custom_target( build_dnp3
+		WORKING_DIRECTORY "${DNP3_BUILD}"
+		COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config $<CONFIG> --target install
+	)
+else()
+	if(DEFINED DNP3_HOME)
+		set(DNP3_HOME ${DNP3_HOME} CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
+	else()
+		set(DNP3_HOME "/usr/local" CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
+	endif()
+endif()
 
-#TODO add as module - can't atm, due to tests linking directly instead of dynamic loading
+foreach( component openpal opendnp3 asiopal asiodnp3 )
+	# Look for regular libraries
+	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+	add_library(${component}_target UNKNOWN IMPORTED)
+	set_property(TARGET ${component}_target PROPERTY IMPORTED_LOCATION "${${component}_lib}")
+	# Look for debug libraries
+	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+	add_library(${component}_dtarget UNKNOWN IMPORTED)
+	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
+	#set a variable to use for linking
+	set(${component}_libs debug ${component}_dtarget optimized ${component}_target )
+
+	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
+	mark_as_advanced(FORCE ${component}_lib ${component}_dlib)
+
+	#include in install/packaging
+	file_w_symlinks(file_w_links "${${component}_lib}") #resolve symlinks
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
+	file_w_symlinks(file_w_links "${${component}_dlib}") #resolve symlinks
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
+
+endforeach()
+
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC ${asiopal_libs} ${openpal_libs} ${asiodnp3_libs} ${opendnp3_libs})
+if(TARGET build_dnp3)
+	add_dependencies(${PROJECT_NAME} build_dnp3)
+endif()
+target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_HOME}/include")
+target_link_libraries(${PROJECT_NAME} ODC ${asiodnp3_libs} ${asiopal_libs} ${opendnp3_libs} ${openpal_libs})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

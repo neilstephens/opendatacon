@@ -85,7 +85,7 @@ const std::string GetFile(const std::string& rUrl)
 }
 
 int ReturnFile(struct MHD_Connection *connection,
-               const char *url)
+	const char *url)
 {
 	struct stat buf;
 	FILE *file;
@@ -99,16 +99,16 @@ int ReturnFile(struct MHD_Connection *connection,
 	if (file == nullptr)
 	{
 		response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
-		                                           (void *)EMPTY_PAGE,
-		                                           MHD_RESPMEM_PERSISTENT);
+			(void *)EMPTY_PAGE,
+			MHD_RESPMEM_PERSISTENT);
 		ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
 		MHD_destroy_response(response);
 	}
 	else
 	{
 		response = MHD_create_response_from_callback(buf.st_size, 32 * 1024, /* 32k PAGE_NOT_FOUND size */
-		                                             &file_reader, file,
-		                                             &file_free_callback);
+			&file_reader, file,
+			&file_free_callback);
 		if (response == nullptr)
 		{
 			fclose(file);
@@ -131,8 +131,8 @@ int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr)
 	 MHD_RESPMEM_MUST_COPY
 	 */
 	response = MHD_create_response_from_buffer(strlen(jsoncstr),
-	                                           (void *)jsoncstr,
-	                                           MHD_RESPMEM_MUST_COPY);
+		(void *)jsoncstr,
+		MHD_RESPMEM_MUST_COPY);
 	MHD_add_response_header (response, "Content-Type", MimeTypeMap.at("json").c_str());
 	ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
 	MHD_destroy_response(response);
@@ -202,15 +202,15 @@ std::string post_unescape(const char *val)
 
 static int
 iterate_post (void *coninfo_cls,
-              enum MHD_ValueKind kind, //MHD_POSTDATA_KIND
-              const char *key,         // POST KEY
-              const char *filename,
-              const char *content_type,
-              const char *transfer_encoding,
-              const char *data, // POST VALUE
-              uint64_t off,
-              size_t size // POST VALUE LENGTH
-              )
+	enum MHD_ValueKind kind, //MHD_POSTDATA_KIND
+	const char *key,         // POST KEY
+	const char *filename,
+	const char *content_type,
+	const char *transfer_encoding,
+	const char *data, // POST VALUE
+	uint64_t off,
+	size_t size // POST VALUE LENGTH
+	)
 {
 	struct connection_info_struct* con_info = (connection_info_struct*) coninfo_cls;
 
@@ -223,8 +223,8 @@ iterate_post (void *coninfo_cls,
 }
 
 void request_completed(void *cls, struct MHD_Connection *connection,
-                       void **con_cls,
-                       enum MHD_RequestTerminationCode toe)
+	void **con_cls,
+	enum MHD_RequestTerminationCode toe)
 {
 	struct connection_info_struct *con_info = (connection_info_struct*)*con_cls;
 
@@ -236,13 +236,13 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 }
 
 int CreateNewRequest(void *cls,
-                     struct MHD_Connection *connection,
-                     const char *url,
-                     const char *method,
-                     const char *version,
-                     const char *upload_data,
-                     size_t *upload_data_size,
-                     void **con_cls)
+	struct MHD_Connection *connection,
+	const char *url,
+	const char *method,
+	const char *version,
+	const char *upload_data,
+	size_t *upload_data_size,
+	void **con_cls)
 {
 	struct connection_info_struct *con_info;
 

@@ -26,23 +26,26 @@ else()
 	file(GLOB DAEMON_SRC_LIST POSIXDaemon/*.cpp POSIXDaemon/*.h)
 endif()
 
+option(USE_TCLAP_SUBMODULE "Use git submodule to download tclap header library" ON)
+
 set(TCLAP_HOME_INSTRUCTIONS "Choose the location of tclap header library: where it was installed - there should be an include directory within")
-if(DEFINED TCLAP_HOME)
-	set(TCLAP_HOME ${TCLAP_HOME} CACHE PATH ${TCLAP_HOME_INSTRUCTIONS})
+if(USE_TCLAP_SUBMODULE)
+	set(TCLAP_HOME "${CMAKE_SOURCE_DIR}/submodules/tclap" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS} FORCE)
+	if(NOT EXISTS "${TCLAP_HOME}/.git")
+		execute_process(COMMAND git submodule update --init -- submodules/tclap
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	endif()
 else()
-	set(TCLAP_HOME "/usr/local" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS})
+	if(DEFINED TCLAP_HOME)
+		set(TCLAP_HOME ${TCLAP_HOME} CACHE PATH ${TCLAP_HOME_INSTRUCTIONS})
+	else()
+		set(TCLAP_HOME "/usr" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS})
+	endif()
 endif()
 
-include_directories(
-	"../include"
-	"../JSON"
-	"${DNP3_HOME}/include"
-	"${ASIO_HOME}/include"
-	"${TCLAP_HOME}/include"
-)
-
 add_executable(${PROJECT_NAME} ${SRC_LIST} ${DAEMON_SRC_LIST})
-target_link_libraries(${PROJECT_NAME} ODC JSON ${asiopal_libs} ${openpal_libs} ${asiodnp3_libs} ${opendnp3_libs} ${DL})
+target_include_directories(${PROJECT_NAME} PRIVATE "${TCLAP_HOME}/include")
+target_link_libraries(${PROJECT_NAME} ODC ${DL})
 
 install(DIRECTORY "../include/opendatacon" DESTINATION ${INSTALLDIR_INCLUDES})
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})

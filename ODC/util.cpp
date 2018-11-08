@@ -29,6 +29,39 @@
 
 using namespace std;
 
+namespace odc
+{
+
+void spdlog_init_thread_pool(size_t q_size, size_t thread_count)
+{
+	spdlog::init_thread_pool(q_size, thread_count);
+}
+
+std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool()
+{
+	return spdlog::thread_pool();
+}
+
+void spdlog_register_logger(std::shared_ptr<spdlog::logger> logger)
+{
+	return spdlog::register_logger(logger);
+}
+
+std::shared_ptr<spdlog::logger> spdlog_get(const std::string &name)
+{
+	return spdlog::get(name);
+}
+
+void spdlog_drop(const std::string &name)
+{
+	spdlog::drop(name);
+}
+
+void spdlog_shutdown()
+{
+	spdlog::shutdown();
+}
+
 bool getline_noncomment(istream& is, string& line)
 {
 	//chew up blank lines and comments
@@ -93,4 +126,4 @@ bool extract_delimited_string(const std::string& delims, istream& ist, string& e
 	return false;
 }
 
-
+}

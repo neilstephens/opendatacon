@@ -28,7 +28,6 @@
 #define DATACONNECTOR_H_
 
 #include <opendatacon/IOHandler.h>
-#include <opendatacon/IOManager.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/Transform.h>
 
@@ -38,31 +37,11 @@ class DataConnector: public IOHandler, public ConfigParser
 {
 public:
 	DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
-	~DataConnector() override{}
+	~DataConnector() override {}
 
-	std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const DoubleBitBinary& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const Counter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const FrozenCounter& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const BinaryOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputStatus& meas, uint16_t index, const std::string& SenderName) override;
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const DoubleBitBinaryQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const CounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const FrozenCounterQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const BinaryOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputStatusQuality qual, uint16_t index, const std::string& SenderName) override;
-
-	std::future<CommandStatus> Event(const ControlRelayOutputBlock& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt16& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputInt32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputFloat32& arCommand, uint16_t index, const std::string& SenderName) override;
-	std::future<CommandStatus> Event(const AnalogOutputDouble64& arCommand, uint16_t index, const std::string& SenderName) override;
-
-	std::future<CommandStatus> Event(ConnectState state, uint16_t index, const std::string& SenderName) override;
+	void Event(ConnectState state, const std::string& SenderName) override;
 
 	virtual const Json::Value GetStatistics() const
 	{
@@ -76,15 +55,14 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-	void BuildOrRebuild(IOManager& IOMgr, openpal::LogFilters& LOG_LEVEL);
+	void Build();
 
 protected:
 	void ProcessElements(const Json::Value& JSONRoot) override;
-	template<typename T> std::future<CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
 
 	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*> > Connections;
 	std::multimap<std::string,std::string> SenderConnectionsLookup;
-	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform, void(*)(Transform*)> > > ConnectionTransforms;
+	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform, std::function<void(Transform*)>> > > ConnectionTransforms;
 };
 
 #endif /* DATACONNECTOR_H_ */

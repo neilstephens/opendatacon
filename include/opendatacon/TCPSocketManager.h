@@ -25,7 +25,6 @@
  */
 
 //TODO: probably move the code into a cpp in ODC library
-//TODO: write buffer limit
 
 //Helper class for managing access to a TCP socket, either as server or client
 //Usage:
@@ -45,7 +44,8 @@
 #include <functional>
 
 
-namespace odc {
+namespace odc
+{
 
 typedef asio::basic_streambuf<std::allocator<char>> buf_t;
 
@@ -80,14 +80,16 @@ class TCPSocketManager
 {
 public:
 	TCPSocketManager
-	(asio::io_service* apIOS,					//pointer to an asio io_service
-	 bool aisServer,							//Whether to act as a server or client
-	 const std::string& aEndPoint,				//IP addr or hostname (to connect to if client, or bind to if server)
-	 const std::string& aPort,					//Port to connect to if client, or listen on if server
-	 const std::function<void(buf_t&)>& aReadCallback,	//Handler for data read off socket
-	 const std::function<void(bool)>& aStateCallback,	//Handler for communicating the connection state of the socket
-	 bool aauto_reopen = false,					//Keeps the socket open (retry on error), unless you explicitly Close() it
-	 uint16_t aretry_time_ms = 0):				//You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
+		(asio::io_service* apIOS,                         //pointer to an asio io_service
+		bool aisServer,                                   //Whether to act as a server or client
+		const std::string& aEndPoint,                     //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                         //Port to connect to if client, or listen on if server
+		const std::function<void(buf_t&)>& aReadCallback, //Handler for data read off socket
+		const std::function<void(bool)>& aStateCallback,  //Handler for communicating the connection state of the socket
+		const size_t abuffer_limit                        //
+		      = std::numeric_limits<size_t>::max(),       //maximum number of writes to buffer
+		bool aauto_reopen = false,                        //Keeps the socket open (retry on error), unless you explicitly Close() it
+		uint16_t aretry_time_ms = 0):                     //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
 		isConnected(false),
 		manuallyClosed(true),
 		pIOS(apIOS),
@@ -95,10 +97,11 @@ public:
 		ReadCallback(aReadCallback),
 		StateCallback(aStateCallback),
 		Sock(*pIOS),
-		ReadStrand(asio::strand(*pIOS)),
-		WriteStrand(asio::strand(*pIOS)),
-		SockStrand(asio::strand(*pIOS)),
+		ReadStrand(asio::io_service::strand(*pIOS)),
+		WriteStrand(asio::io_service::strand(*pIOS)),
+		SockStrand(asio::io_service::strand(*pIOS)),
 		RetryTimer(*pIOS),
+		buffer_limit(abuffer_limit),
 		auto_reopen(aauto_reopen),
 		retry_time_ms(aretry_time_ms),
 		ramp_time_ms(0),
@@ -109,38 +112,38 @@ public:
 	void Open()
 	{
 		SockStrand.post([this]()
-		{
-			manuallyClosed = false;
-			if(isConnected)
-				return;
-			if(isServer)
 			{
-				pAcceptor.reset(new asio::ip::tcp::acceptor(*pIOS, *EndpointIterator));
-				pAcceptor->async_accept(Sock,[this](asio::error_code err_code)
+				manuallyClosed = false;
+				if(isConnected)
+					return;
+				if(isServer)
 				{
-					ConnectCompletionHandler(err_code);
-					pAcceptor.reset();
-				});
-			}
-			else
-			{
-				Sock.async_connect(*EndpointIterator,[this](asio::error_code err_code)
+				      pAcceptor = std::make_unique<asio::ip::tcp::acceptor>(*pIOS, *EndpointIterator);
+				      pAcceptor->async_accept(Sock,[this](asio::error_code err_code)
+						{
+							ConnectCompletionHandler(err_code);
+							pAcceptor.reset();
+						});
+				}
+				else
 				{
-					ConnectCompletionHandler(err_code);
-				});
-			}
-		});
+				      Sock.async_connect(*EndpointIterator,[this](asio::error_code err_code)
+						{
+							ConnectCompletionHandler(err_code);
+						});
+				}
+			});
 	}
 	void Close()
 	{
 		SockStrand.post([this]()
-		{
-			manuallyClosed = true;
-			ramp_time_ms = 0;
-			RetryTimer.cancel();
-			pAcceptor.reset();
-			AutoClose();
-		});
+			{
+				manuallyClosed = true;
+				ramp_time_ms = 0;
+				RetryTimer.cancel();
+				pAcceptor.reset();
+				AutoClose();
+			});
 	}
 
 	template <typename T>
@@ -150,27 +153,31 @@ public:
 		auto buf = shared_const_buffer<T>(std::make_shared<T>(std::move(aContainer)));
 
 		SockStrand.post([this,buf]()
-		{
-			if(!isConnected)
 			{
-				WriteStrand.post([this,buf]()
+				if(!isConnected)
 				{
-					writebufs.push_back(buf);
-				});
-				return;
-			}
-
-			asio::async_write(Sock,buf,asio::transfer_all(),WriteStrand.wrap([this,buf](asio::error_code err_code, std::size_t n)
-			{
-				if(err_code)
-				{
-					writebufs.push_back(buf);
-					AutoClose();
-					AutoOpen();
-					return;
+				      WriteStrand.post([this,buf]()
+						{
+							writebufs.push_back(buf);
+							if(writebufs.size() > buffer_limit)
+								writebufs.erase(writebufs.begin());
+						});
+				      return;
 				}
-			}));
-		});
+
+				asio::async_write(Sock,buf,asio::transfer_all(),WriteStrand.wrap([this,buf](asio::error_code err_code, std::size_t n)
+						{
+							if(err_code)
+							{
+							      writebufs.push_back(buf);
+							      if(writebufs.size() > buffer_limit)
+									writebufs.erase(writebufs.begin());
+							      AutoClose();
+							      AutoOpen();
+							      return;
+							}
+						}));
+			});
 	}
 
 	~TCPSocketManager()
@@ -191,14 +198,16 @@ private:
 	asio::basic_stream_socket<asio::ip::tcp> Sock;
 
 	//Strand to sync access to read buffer
-	asio::strand ReadStrand;
+	asio::io_service::strand ReadStrand;
 	//Strand to sync access to write buffers
-	asio::strand WriteStrand;
+	asio::io_service::strand WriteStrand;
 	//Strand to sync access to socket state
-	asio::strand SockStrand;
+	asio::io_service::strand SockStrand;
 
 	//for timing open-retries
 	asio::basic_waitable_timer<std::chrono::steady_clock> RetryTimer;
+
+	size_t buffer_limit;
 
 	//Auto open funtionality - see constructor for description
 	bool auto_reopen;
@@ -219,87 +228,87 @@ private:
 		}
 
 		SockStrand.post([this]()
-		{
-			isConnected = true;
-			StateCallback(isConnected);
-			ramp_time_ms = 0;
-			//if there's anything in the buffer sequence, write it
-			WriteStrand.post([this]()
 			{
-				if(writebufs.size() > 0)
-				{
-					auto n = asio::write(Sock,writebufs,asio::transfer_all());
-					if(n == 0)
+				isConnected = true;
+				StateCallback(isConnected);
+				ramp_time_ms = 0;
+				//if there's anything in the buffer sequence, write it
+				WriteStrand.post([this]()
 					{
-						AutoClose();
-						AutoOpen();
-						return;
-					}
-					writebufs.clear();
-				}
+						if(writebufs.size() > 0)
+						{
+						      auto n = asio::write(Sock,writebufs,asio::transfer_all());
+						      if(n == 0)
+						      {
+						            AutoClose();
+						            AutoOpen();
+						            return;
+							}
+						      writebufs.clear();
+						}
+					});
+				Read();
 			});
-			Read();
-		});
 	}
 	void Read()
 	{
 		asio::async_read(Sock, readbuf, asio::transfer_at_least(1), ReadStrand.wrap([this](asio::error_code err_code, std::size_t n)
-		{
-			if(err_code)
-			{
-				AutoClose();
-				AutoOpen();
-			}
-			else
-			{
-				ReadCallback(readbuf);
-				Read();
-			}
-		}));
+				{
+					if(err_code)
+					{
+					      AutoClose();
+					      AutoOpen();
+					}
+					else
+					{
+					      ReadCallback(readbuf);
+					      Read();
+					}
+				}));
 	}
 	void AutoOpen()
 	{
 		SockStrand.post([this]()
-		{
-			if(!auto_reopen || manuallyClosed)
-				return;
+			{
+				if(!auto_reopen || manuallyClosed)
+					return;
 
-			if(retry_time_ms != 0)
-			{
-				ramp_time_ms = retry_time_ms;
-			}
-
-			if(ramp_time_ms == 0)
-			{
-				ramp_time_ms = 125;
-				Open();
-			}
-			else
-			{
-				RetryTimer.expires_from_now(std::chrono::milliseconds(ramp_time_ms));
-				RetryTimer.async_wait([this](asio::error_code err_code)
+				if(retry_time_ms != 0)
 				{
-					if (err_code != asio::error::operation_aborted)
-					{
-						ramp_time_ms *= 2;
-						Open();
-					}
-				});
-			}
-		});
+				      ramp_time_ms = retry_time_ms;
+				}
+
+				if(ramp_time_ms == 0)
+				{
+				      ramp_time_ms = 125;
+				      Open();
+				}
+				else
+				{
+				      RetryTimer.expires_from_now(std::chrono::milliseconds(ramp_time_ms));
+				      RetryTimer.async_wait([this](asio::error_code err_code)
+						{
+							if (err_code != asio::error::operation_aborted)
+							{
+							      ramp_time_ms *= 2;
+							      Open();
+							}
+						});
+				}
+			});
 	}
 	void AutoClose()
 	{
 		SockStrand.post([this]()
-		{
-			if(!isConnected)
 			{
-				return;
-			}
-			Sock.close();
-			isConnected = false;
-			StateCallback(isConnected);
-		});
+				if(!isConnected)
+				{
+				      return;
+				}
+				Sock.close();
+				isConnected = false;
+				StateCallback(isConnected);
+			});
 	}
 };
 

@@ -22,7 +22,9 @@
 
 #include "PortLoader.h"
 
-fptr GetPortCreator(std::string libname, std::string objname)
+//TODO: refactor this to be able to unload the library too
+
+void* GetPortFunc(const std::string& libname, const std::string& objname, bool destroy)
 {
 	//Looks for a specific library (for libs that implement more than one class)
 	std::string libfilename = GetLibFileName(libname);
@@ -32,20 +34,34 @@ fptr GetPortCreator(std::string libname, std::string objname)
 
 	if (pluginlib == nullptr)
 	{
-		std::cout << libname << " Info: dynamic library load failed '" << libfilename << "' :"<< LastSystemError()<< std::endl;
+		std::cerr << libname << " Info: dynamic library load failed '" << libfilename << "' :"<< LastSystemError()<< std::endl;
 		return nullptr;
 	}
 
-	//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
-	//it should return a pointer to a heap allocated instance of a descendant of DataPort
-	std::string new_funcname = "new_" + objname + "Port";
-	fptr new_plugin_func = (fptr)LoadSymbol(pluginlib, new_funcname.c_str());
+	std::string funcname;
+	if(destroy)
+		funcname = "delete_";
+	else
+		funcname = "new_";
 
-	if (new_plugin_func == nullptr)
+	funcname += objname + "Port";
+	void* port_func = LoadSymbol(pluginlib, funcname.c_str());
+
+	if (port_func == nullptr)
 	{
-		std::cout << libname << " Info: failed to load symbol '" << new_funcname << "' in library '" << libfilename << "' - " << LastSystemError() << std::endl;
-		std::cout << libname << " Error: failed to load plugin, skipping..." << std::endl;
+		std::cerr << libname << " Info: failed to load symbol '" << funcname << "' in library '" << libfilename << "' - " << LastSystemError() << std::endl;
 		return nullptr;
 	}
-	return new_plugin_func;
+	return port_func;
 }
+
+newptr GetPortCreator(const std::string& libname, const std::string& objname)
+{
+	return (newptr)GetPortFunc(libname,objname);
+}
+
+delptr GetPortDestroyer(const std::string& libname, const std::string& objname)
+{
+	return (delptr)GetPortFunc(libname,objname,true);
+}
+

@@ -29,8 +29,8 @@
 
 #include <atomic>
 #include <opendatacon/Transform.h>
-#include <asiopal/UTCTimeSource.h>
 #include <unordered_map>
+#include <opendatacon/util.h>
 
 class RateLimitTransform: public Transform
 {
@@ -74,30 +74,28 @@ public:
 			else
 				rateStats->updatePeriodMultiplier = 10;
 
-			rateStats->nextUpdatems = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch + rateStats->updatePeriodms;
+			rateStats->nextUpdatems = msSinceEpoch() + rateStats->updatePeriodms;
 		}
 	}
 
-	bool Event(Binary& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(Analog& meas, uint16_t& index) override {return CheckPass(meas);}
-	bool Event(DoubleBitBinary& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(Counter& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(FrozenCounter& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(BinaryOutputStatus& meas, uint16_t& index) override { return CheckPass(meas); }
-	bool Event(AnalogOutputStatus& meas, uint16_t& index) override { return CheckPass(meas); }
-
-	bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) override{return true;}
-	bool Event(AnalogOutputInt16& arCommand, uint16_t index) override{return true;}
-	bool Event(AnalogOutputInt32& arCommand, uint16_t index) override{return true;}
-	bool Event(AnalogOutputFloat32& arCommand, uint16_t index) override{return true;}
-	bool Event(AnalogOutputDouble64& arCommand, uint16_t index) override{return true;}
-
 private:
-	template<class T>
-	bool CheckPass(T& meas)
+	bool Event(std::shared_ptr<EventInfo> event) override
 	{
+		switch(event->GetEventType())
+		{
+			case EventType::Binary:
+			case EventType::Analog:
+			case EventType::DoubleBitBinary:
+			case EventType::Counter:
+			case EventType::FrozenCounter:
+			case EventType::BinaryOutputStatus:
+			case EventType::AnalogOutputStatus:
+				break;
+			default:
+				return true;
+		}
 		// check if rollover of update count period
-		auto eventTime = asiopal::UTCTimeSource::Instance().Now().msSinceEpoch;
+		auto eventTime = msSinceEpoch();
 
 		// see if we need to subtract updates from the update counter
 		// as this section isn't atomic this might overshoot and subtract too many updates from the counter
@@ -138,8 +136,8 @@ private:
 		uint16_t updatePeriodMultiplier; // how many update periods can be saved up for a burst of updates
 
 		/// Runtime variables
-		std::atomic_int_fast32_t outputRate;      // current update count over the last second
-		std::atomic_int_fast32_t inputRate;       // current input update rate
+		std::atomic_uint_fast32_t outputRate;     // current update count over the last second
+		std::atomic_uint_fast32_t inputRate;      // current input update rate
 		std::atomic_uint_fast64_t droppedUpdates; // number of dropped updates
 		std::atomic_uint_fast64_t nextUpdatems;   // last time that updates were subtracted from the update count
 

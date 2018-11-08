@@ -28,12 +28,6 @@ else()
 	set(MICROHTTPD_HOME "/usr" CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
 endif()
 
-include_directories(
-	../include
-	../JSON
-	${MICROHTTPD_HOME}/include
-)
-
 #import the microhttpd lib
 find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
 	PATHS ${MICROHTTPD_HOME}/lib
@@ -48,20 +42,13 @@ mark_as_advanced(FORCE HTTPD_LIB)
 #include in install/packaging
 option(PACKAGE_LIBMICROHTTPD "Package libmicrohttpd in c-pack installer" ON)
 if(PACKAGE_LIBMICROHTTPD)
-	get_filename_component(_resolvedFile "${HTTPD_LIB}" REALPATH) #check for symolic link
-	if(${_resolvedFile} STREQUAL ${HTTPD_LIB})
-		#not a link - just install file
-		install(FILES "${HTTPD_LIB}" DESTINATION ${INSTALLDIR_LIBS})
-	else()
-		#is a link -install link and file
-		install(FILES "${HTTPD_LIB}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS})
-	endif()
+	file_w_symlinks(file_w_links "${HTTPD_LIB}")
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS})
 endif()
 
-link_directories("${DNP3_HOME}/lib")
-
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC httpd_target asiopal)
+target_include_directories(${PROJECT_NAME} PRIVATE "${MICROHTTPD_HOME}/include")
+target_link_libraries(${PROJECT_NAME} ODC httpd_target)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
