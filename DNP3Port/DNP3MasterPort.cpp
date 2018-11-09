@@ -103,10 +103,10 @@ void DNP3MasterPort::CommsRideThroughTimer(bool cancel)
 	static bool RideThroughInProgress = false;
 	static asio::basic_waitable_timer<std::chrono::steady_clock> aCommsRideThroughTimer(*pIOS);
 
-	//TODO: remove indent guards when uncrustify bug fixed
-	/* *INDENT-OFF* */
 	TimerAccessStrand.post([cancel,this]()
 		{
+			//TODO: remove indent guards when uncrustify bug fixed
+			/* *INDENT-OFF* */
 			if(cancel)
 			{
 				if(RideThroughInProgress)
@@ -115,6 +115,7 @@ void DNP3MasterPort::CommsRideThroughTimer(bool cancel)
 				SetCommsGood();
 				return;
 			}
+			/* *INDENT-ON* */
 			if(RideThroughInProgress)
 				return;
 
@@ -128,7 +129,6 @@ void DNP3MasterPort::CommsRideThroughTimer(bool cancel)
 						RideThroughInProgress = false;
 					}));
 		});
-	/* *INDENT-ON* */
 }
 
 void DNP3MasterPort::SetCommsGood()
