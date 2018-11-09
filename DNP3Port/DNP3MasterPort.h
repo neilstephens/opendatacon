@@ -101,6 +101,10 @@ private:
 	std::atomic_bool stack_enabled;
 	bool assign_class_sent;
 	std::shared_ptr<asiodnp3::IMasterScan> IntegrityScan;
+
+	void SetCommsGood();
+	void SetCommsFailed();
+	void CommsRideThroughTimer(bool cancel = false);
 	void LinkStatusListener(opendnp3::LinkStatus status);
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){}

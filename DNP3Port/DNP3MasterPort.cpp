@@ -81,10 +81,59 @@ void DNP3MasterPort::Disable()
 
 void DNP3MasterPort::PortUp()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: PortUp() called.", Name);
+
+	//cancel the timer if we were riding through
+	CommsRideThroughTimer(true);
+}
+
+void DNP3MasterPort::PortDown()
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: PortDown() called.", Name);
+
+	//start the ride through timer
+	CommsRideThroughTimer();
+}
+
+void DNP3MasterPort::CommsRideThroughTimer(bool cancel)
+{
+	static asio::strand TimerAccessStrand(*pIOS);
+	static bool RideThroughInProgress = false;
+	static asio::basic_waitable_timer<std::chrono::steady_clock> aCommsRideThroughTimer(*pIOS);
+
+	//TODO: remove indent guards when uncrustify bug fixed
+	/* *INDENT-OFF* */
+	TimerAccessStrand.post([cancel,this]()
+		{
+			if(cancel)
+			{
+				if(RideThroughInProgress)
+					aCommsRideThroughTimer.cancel();
+				RideThroughInProgress = false;
+				SetCommsGood();
+				return;
+			}
+			if(RideThroughInProgress)
+				return;
+
+			RideThroughInProgress = true;
+			auto timeout = static_cast<DNP3PortConf*>(this->pConf.get())->pPointConf->CommsPointRideThroughTimems;
+			aCommsRideThroughTimer.expires_from_now(std::chrono::milliseconds(timeout));
+			aCommsRideThroughTimer.async_wait(TimerAccessStrand.wrap([this](asio::error_code err)
+					{
+						if(RideThroughInProgress)
+							SetCommsFailed();
+						RideThroughInProgress = false;
+					}));
+		});
+	/* *INDENT-ON* */
+}
+
+void DNP3MasterPort::SetCommsGood()
+{
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
@@ -99,12 +148,9 @@ void DNP3MasterPort::PortUp()
 	}
 }
 
-void DNP3MasterPort::PortDown()
+void DNP3MasterPort::SetCommsFailed()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: PortDown() called.", Name);
 
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
