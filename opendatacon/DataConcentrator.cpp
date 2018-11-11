@@ -32,6 +32,7 @@
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/rotating_file_sink.h>
+#include <opendatacon/asio_syslog_spdlog_sink.h>
 
 #include <opendatacon/util.h>
 #include <opendatacon/Version.h>
@@ -170,6 +171,32 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		LogSinksVec.push_back(file);
 		LogSinksMap["console"] = console;
 		LogSinksVec.push_back(console);
+
+		//TODO: document these config options
+		if(JSONRoot.isMember("SyslogLog"))
+		{
+			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(LogSinksVec), end(LogSinksVec));
+
+			auto SyslogJSON = JSONRoot["SyslogLog"];
+			if(!SyslogJSON.isMember("Host"))
+			{
+				temp_logger->error("Invalid SyslogLog config: need at least 'Host': \n'{}\n' : ignoring", SyslogJSON.toStyledString());
+			}
+			else
+			{
+				auto host = SyslogJSON["Host"].asString();
+				auto port = SyslogJSON.isMember("Port") ? SyslogJSON["Port"].asString() : "514";
+				auto local_host = SyslogJSON.isMember("LocalHost") ? SyslogJSON["LocalHost"].asString() : "-";
+				auto app = SyslogJSON.isMember("AppName") ? SyslogJSON["AppName"].asString() : "opendatacon";
+				auto category = SyslogJSON.isMember("MsgCategory") ? SyslogJSON["MsgCategory"].asString() : "-";
+
+				auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink>(
+					IOS,host,port,1,local_host,app,category);
+				syslog_sink->set_level(log_level);
+				LogSinksMap["syslog"] = syslog_sink;
+				LogSinksVec.push_back(syslog_sink);
+			}
+		}
 
 		//TODO: document these config options
 		if(JSONRoot.isMember("TCPLog"))
