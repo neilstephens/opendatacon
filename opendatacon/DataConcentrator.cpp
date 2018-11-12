@@ -73,7 +73,10 @@ DataConcentrator::DataConcentrator(std::string FileName):
 			,"Shutdown opendatacon");
 		interface.second->AddCommand("version",[] (std::stringstream& ss)
 			{
-				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl;
+				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
+				         <<"Submodules:"<<std::endl
+				         <<"\t"<<ODC_VERSION_SUBMODULES<<std::endl;
+
 			},"Print version information");
 		interface.second->AddCommand("set_loglevel",[this] (std::stringstream& ss)
 			{
