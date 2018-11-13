@@ -51,7 +51,7 @@ if(GIT_FOUND)
 	STRING(REGEX REPLACE "Entering 'submodules/" "" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
 	STRING(REGEX REPLACE "'\r?\n" ": " GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
 	STRING(REGEX REPLACE "\r?\n" "\\\\n\\\\t" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
-	message("submodule versions: \n${GIT_DESCRIBE_SUBS}")
+	#message("submodule versions: \n${GIT_DESCRIBE_SUBS}")
 
 	if(DEFINED CURRENT_CONFIG) #true at build-time
 		set(build_config_file "${BINARY_DIR}/current_build_config")
