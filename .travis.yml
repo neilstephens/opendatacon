@@ -3,7 +3,8 @@ compiler: gcc
 dist: bionic
 
 install: 
-  - sudo apt install -qq libmodbus5 libmodbus-dev libmicrohttpd12 libmicrohttpd-dev cmake
+  - sudo apt update
+  - sudo apt install -qq libmodbus5 libmodbus-dev libmicrohttpd12 libmicrohttpd-dev
 
 script: 
   - mkdir build && cd build && cmake -DFULL=ON ..
