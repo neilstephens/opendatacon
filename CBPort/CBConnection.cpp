@@ -36,8 +36,28 @@
 
 using namespace odc;
 
-std::unordered_map<uint64_t, std::shared_ptr<CBConnection>> CBConnection::ConnectionMap;
+std::unordered_map<std::string, std::shared_ptr<CBConnection>> CBConnection::ConnectionMap;
 std::mutex CBConnection::MapMutex; // Control access
+
+
+ConnectionTokenType::~ConnectionTokenType()
+{
+	// If we are the last connectiontoken for this connection (usecount == 2 , the Map and us) - delete the connection.
+	if (pConnection)
+	{
+		if (pConnection.use_count() <= 2)
+		{
+			LOGDEBUG("Use Count On ConnectionTok Shared_ptr down to 2 - Destroying the Map Connection - {}", ChannelID);
+			pConnection->RemoveConnectionFromMap();
+			// Now release our shared_ptr - the last one..The CBConnection destructor should now be called.
+			pConnection.reset();
+		}
+		else
+		{
+			LOGDEBUG("Use Count On Connection Shared_ptr at {cnt} - The Map Connection Stays - {}", pConnection.use_count(), ChannelID);
+		}
+	}
+}
 
 CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_service
 	bool aisServer,                                //Whether to act as a server or client
@@ -59,138 +79,138 @@ CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_ser
 			true,
 			retry_time_ms));
 
-	InternalChannelID = MakeStringChannelID(aEndPoint, aPort, aisServer);
+	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
 
 	LOGDEBUG("Opened an CBConnection object " + InternalChannelID + " As a " + (IsServer ? "Server" : "Client") + (IsBakerDevice ? " Baker Device" : " Conitel Device"));
 }
 
-void CBConnection::AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
-	bool aisServer,                                     //Whether to act as a server or client
-	const std::string& aEndPoint,                       //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                           //Port to connect to if client, or listen on if server
+// Static Method
+ConnectionTokenType CBConnection::AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
+	bool aisServer,                                                    //Whether to act as a server or client
+	const std::string& aEndPoint,                                      //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                                          //Port to connect to if client, or listen on if server
 	bool isbakerdevice,
 	uint16_t retry_time_ms)
 {
-	uint64_t ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
+	std::string ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
-	std::unique_lock<std::mutex> lck(CBConnection::MapMutex); // Access the Map
+	std::unique_lock<std::mutex> lck(CBConnection::MapMutex); // Access the Map - only here and in the destructor do we do this.
 
 	// Only add if does not exist
 	if (ConnectionMap.count(ChannelID) == 0)
 	{
-		auto pConnection = std::make_shared<CBConnection>(apIOS, aisServer, aEndPoint, aPort, isbakerdevice, retry_time_ms);
+		// If we give each connectiontoken a shared_ptr to the connection, then in the Connectiontoken destructors,
+		// when the use_count is 2 (the map and the connectiontoken), then it is time to destroy the connection.
 
-		ConnectionMap[ChannelID] = pConnection;
+		ConnectionMap[ChannelID] = std::make_shared<CBConnection>(apIOS, aisServer, aEndPoint, aPort, isbakerdevice, retry_time_ms);
 	}
 	else
-		LOGDEBUG("Connection already exists, using that connection - {}",ChannelID);
+		LOGDEBUG("ConnectionTok already exists, using that connection - {}",ChannelID);
+
+	return ConnectionTokenType(ChannelID, ConnectionMap[ChannelID]); // the use count on the Connection Map shared_ptr will go up by one.
 }
 
-void CBConnection::AddOutstation(uint64_t ChannelID, uint8_t StationAddress, // For message routing, OutStation identification
+void CBConnection::AddOutstation(const ConnectionTokenType &ConnectionTok, uint8_t StationAddress, // For message routing, OutStation identification
 	const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
 	const std::function<void(bool)> aStateCallback,
 	bool isbakerdevice)
 {
-	std::shared_ptr<CBConnection> pConnection;
-	if (CBConnection::GetConnection(ChannelID, pConnection))
+	if (auto pConnection = ConnectionTok.pConnection)
 	{
 		if (isbakerdevice != pConnection->IsBakerDevice)
 		{
 			if (pConnection->IsBakerDevice)
 			{
-				LOGERROR("Tried to add a Conitel outstation to a Baker Connection");
+				LOGERROR("Tried to add a Conitel outstation to a Baker ConnectionTok");
 			}
 			else
 			{
-				LOGERROR("Tried to add a Baker outstation to a Conitel Connection");
+				LOGERROR("Tried to add a Baker outstation to a Conitel ConnectionTok");
 			}
 		}
 		// Save the callbacks to two maps for the multidrop stations on this connection for quick access
 		pConnection->ReadCallbackMap[StationAddress] = aReadCallback; // Will overwrite if duplicate
 		pConnection->StateCallbackMap[StationAddress] = aStateCallback;
 	}
+	else
+	{
+		LOGERROR("Tried to add an Outstation when the connection was no longer valid");
+	}
 }
-void CBConnection::RemoveOutstation(uint64_t ChannelID, uint8_t StationAddress)
+//Static Method
+void CBConnection::RemoveOutstation(const ConnectionTokenType &ConnectionTok, uint8_t StationAddress)
 {
-	std::shared_ptr<CBConnection> pConnection;
-	if (CBConnection::GetConnection(ChannelID, pConnection))
+	if (auto pConnection = ConnectionTok.pConnection)
 	{
 		pConnection->ReadCallbackMap.erase(StationAddress);
 		pConnection->StateCallbackMap.erase(StationAddress);
-
-		// If we have removed the last StateCallBack - then we are done - delete the connection.
-		if (pConnection->StateCallbackMap.size() == 0)
-		{
-			LOGDEBUG("Remove OutStation - Last OutStation Removed - Destroying the Connection - {}",ChannelID);
-			ConnectionMap[ChannelID].reset(); // Destroy the object
-			ConnectionMap.erase(ChannelID);   // Remove the map entry
-		}
+	}
+	else
+	{
+		LOGERROR("Tried to remove an Outstation when the connection was no longer valid");
 	}
 }
 
-void CBConnection::AddMaster(uint64_t ChannelID, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
+void CBConnection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
 	const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
 	const std::function<void(bool)> aStateCallback,
 	bool isbakerdevice)
 {
-	std::shared_ptr<CBConnection> pConnection;
-	if (CBConnection::GetConnection(ChannelID, pConnection))
+	if (auto pConnection = ConnectionTok.pConnection)
 	{
 		if (isbakerdevice != pConnection->IsBakerDevice)
 		{
 			if (pConnection->IsBakerDevice)
 			{
-				LOGERROR("Tried to add a Conitel Master to a Baker Connection");
+				LOGERROR("Tried to add a Conitel Master to a Baker ConnectionTok");
 			}
 			else
 			{
-				LOGERROR("Tried to add a Baker Master to a Conitel Connection");
+				LOGERROR("Tried to add a Baker Master to a Conitel ConnectionTok");
 			}
 		}
 		// Save the callbacks to two maps for the multidrop stations on this connection for quick access
 		pConnection->ReadCallbackMap[TargetStationAddress] = aReadCallback; // Will overwrite if duplicate
 		pConnection->StateCallbackMap[TargetStationAddress] = aStateCallback;
 	}
+	else
+	{
+		LOGERROR("Tried to add a Master when the connection was no longer valid");
+	}
 }
-void CBConnection::RemoveMaster(uint64_t ChannelID, uint8_t TargetStationAddress)
+// Static Method
+void CBConnection::RemoveMaster(const ConnectionTokenType &ConnectionTok, uint8_t TargetStationAddress)
 {
-	std::shared_ptr<CBConnection> pConnection;
-	if (CBConnection::GetConnection(ChannelID, pConnection))
+	if (auto pConnection = ConnectionTok.pConnection)
 	{
 		pConnection->ReadCallbackMap.erase(TargetStationAddress);
 		pConnection->StateCallbackMap.erase(TargetStationAddress);
-
-		// If we have removed the last StateCallBack - then we are done - delete the connection.
-		if (pConnection->StateCallbackMap.size() == 0)
-		{
-			LOGDEBUG("Remove Master - Last Master Removed - Destroying the Connection - {ChannelID}",ChannelID);
-			ConnectionMap[ChannelID].reset(); // Destroy the object
-			ConnectionMap.erase(ChannelID);   // Remove the map entry
-		}
 	}
-}
-
-bool CBConnection::GetConnection(uint64_t ChannelID, std::shared_ptr<CBConnection> &pConnection)
-{
-	// Check if the entry exists without adding to the map..
-	std::unique_lock<std::mutex> lck(CBConnection::MapMutex);
-
-	if (ConnectionMap.count(ChannelID) == 0)
+	else
 	{
-		LOGERROR("Connection Does not Exist - GetConnection - {ChannelID}",ChannelID);
-		return false;
+		LOGERROR("Tried to remove a Master when the connection was no longer valid");
 	}
-	// Check if the connection is expired
-	pConnection = ConnectionMap[ChannelID];
-	return true;
 }
 
-void CBConnection::Open(uint64_t ChannelID)
+// Use this method only to shut down a connection and destroy it. Only used internally
+void CBConnection::RemoveConnectionFromMap()
 {
-	std::shared_ptr<CBConnection> pConnection;
-	if (CBConnection::GetConnection(ChannelID, pConnection))
+	std::unique_lock<std::mutex> lck(CBConnection::MapMutex);
+	ConnectionMap.erase(InternalChannelID); // Remove the map entry shared ptr - so that shared ptr no longer points to us.
+}
+
+// Static Method
+void CBConnection::Open(const ConnectionTokenType &ConnectionTok)
+{
+	if (auto pConnection = ConnectionTok.pConnection)
+	{
 		pConnection->Open();
+	}
+	else
+	{
+		LOGERROR("Tried to open a connection when the connection was no longer valid");
+	}
 }
 
 void CBConnection::Open()
@@ -204,7 +224,7 @@ void CBConnection::Open()
 
 		pSockMan->Open();
 		enabled = true;
-		LOGDEBUG("Connection Opened: " + InternalChannelID);
+		LOGDEBUG("ConnectionTok Opened: " + InternalChannelID);
 	}
 	catch (std::exception& e)
 	{
@@ -212,11 +232,17 @@ void CBConnection::Open()
 		return;
 	}
 }
-void CBConnection::Close(uint64_t ChannelID)
+// Static Method
+void CBConnection::Close(const ConnectionTokenType &ConnectionTok)
 {
-	std::shared_ptr<CBConnection> pConnection;
-	if (CBConnection::GetConnection(ChannelID,pConnection))
+	if (auto pConnection = ConnectionTok.pConnection)
+	{
 		pConnection->Close();
+	}
+	else
+	{
+		LOGERROR("Tried to close a connection when the connection was no longer valid");
+	}
 }
 
 void CBConnection::Close()
@@ -224,19 +250,25 @@ void CBConnection::Close()
 	if (!enabled) return;
 	enabled = false;
 
-	if (pSockMan.get() == nullptr)
+	if (!pSockMan) // Could be empty if a connection was never added (opened)
 		return;
 	pSockMan->Close();
 
-	LOGDEBUG("Connection Closed: " + InternalChannelID);
+	LOGDEBUG("ConnectionTok Closed: " + InternalChannelID);
 }
 
 CBConnection::~CBConnection()
 {
 	Close();
+
+	if (!pSockMan) // Could be empty if a connection was never added (opened)
+		return;
+
+	pSockMan.reset(); // Release our object - should be done anyway when the shared_ptr is destructed, but just to make sure...
 }
 
-void CBConnection::Write(uint64_t ChannelID,const CBMessage_t &CompleteCBMessage)
+// Static method
+void CBConnection::Write(const ConnectionTokenType &ConnectionTok,const CBMessage_t &CompleteCBMessage)
 {
 	if (CompleteCBMessage.size() == 0)
 	{
@@ -245,8 +277,7 @@ void CBConnection::Write(uint64_t ChannelID,const CBMessage_t &CompleteCBMessage
 	}
 	// Turn the blocks into a binary string.
 
-	std::shared_ptr<CBConnection> pConnection;
-	if (CBConnection::GetConnection(ChannelID, pConnection))
+	if (auto pConnection = ConnectionTok.pConnection)
 	{
 		std::string CBMessageString;
 
@@ -276,13 +307,22 @@ void CBConnection::Write(uint64_t ChannelID,const CBMessage_t &CompleteCBMessage
 			pConnection->Write(CBMessageString);
 		}
 	}
+	else
+	{
+		LOGERROR("Tried to write to a connection when the connection was no longer valid");
+	}
 }
-
-void CBConnection::SetSendTCPDataFn(uint64_t ChannelID, std::function<void(std::string)> f)
+//Static method
+void CBConnection::SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, std::function<void(std::string)> f)
 {
-	std::shared_ptr<CBConnection> pConnection;
-	if (CBConnection::GetConnection(ChannelID, pConnection))
+	if (auto pConnection = ConnectionTok.pConnection)
+	{
 		pConnection->SendTCPDataFn = f;
+	}
+	else
+	{
+		LOGERROR("Tried to setsendTCPdataFn when the connection was no longer valid");
+	}
 }
 
 // We don't need to know who is doing the writing. Just pass to the socket
@@ -290,13 +330,18 @@ void CBConnection::Write(std::string &msg)
 {
 	pSockMan->Write(std::string(msg)); // Strange, it requires the std::string() constructor to be passed otherwise the templating fails.
 }
-
-void CBConnection::InjectSimulatedTCPMessage(uint64_t ChannelID, buf_t&readbuf)
+//Static method
+void CBConnection::InjectSimulatedTCPMessage(const ConnectionTokenType &ConnectionTok, buf_t&readbuf)
 {
 	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
-	std::shared_ptr<CBConnection> pConnection;
-	if (CBConnection::GetConnection(ChannelID, pConnection))
+	if (auto pConnection = ConnectionTok.pConnection)
+	{
 		pConnection->ReadCompletionHandler(readbuf);
+	}
+	else
+	{
+		LOGERROR("Tried to InjectSimulatedTCPMessage when the connection was no longer valid");
+	}
 }
 
 // We need one read completion handler hooked to each address/port combination. This method is re-entrant,
@@ -409,7 +454,7 @@ void CBConnection::RouteCBMessage(CBMessage_t &CompleteCBMessage)
 
 void CBConnection::SocketStateHandler(bool state)
 {
-	LOGDEBUG("Connection changed state " + InternalChannelID + " As a " + (state ? "Open" : "Close"));
+	LOGDEBUG("ConnectionTok changed state " + InternalChannelID + " As a " + (state ? "Open" : "Close"));
 
 	// Call all the OutStation State Callbacks
 	for (auto it = StateCallbackMap.begin(); it != StateCallbackMap.end(); ++it)

@@ -59,7 +59,7 @@ CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string 
 CBOutstationPort::~CBOutstationPort()
 {
 	Disable();
-	CBConnection::RemoveOutstation(MyConf->mAddrConf.ChannelID(),MyConf->mAddrConf.OutstationAddr);
+	CBConnection::RemoveOutstation(pConnection,MyConf->mAddrConf.OutstationAddr);
 }
 
 void CBOutstationPort::Enable()
@@ -67,7 +67,7 @@ void CBOutstationPort::Enable()
 	if (enabled) return;
 	try
 	{
-		CBConnection::Open(MyConf->mAddrConf.ChannelID()); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+		CBConnection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 		enabled = true;
 	}
 	catch (std::exception& e)
@@ -81,7 +81,7 @@ void CBOutstationPort::Disable()
 	if (!enabled) return;
 	enabled = false;
 
-	CBConnection::Close(MyConf->mAddrConf.ChannelID()); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+	CBConnection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
 
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
@@ -91,31 +91,29 @@ void CBOutstationPort::SocketStateHandler(bool state)
 	if (state)
 	{
 		PublishEvent(ConnectState::CONNECTED);
-		msg = Name + ": Connection established.";
+		msg = Name + ": pConnection established.";
 	}
 	else
 	{
 		PublishEvent(ConnectState::DISCONNECTED);
-		msg = Name + ": Connection closed.";
+		msg = Name + ": pConnection closed.";
 	}
 	LOGINFO(msg);
 }
 
 void CBOutstationPort::Build()
 {
-	uint64_t ChannelID = MyConf->mAddrConf.ChannelID();
-
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(IsOutStation);
 
 	// Creates internally if necessary
-	CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
+	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
 
 	std::function<void(CBMessage_t &CBMessage)> aReadCallback = std::bind(&CBOutstationPort::ProcessCBMessage, this, std::placeholders::_1);
 	std::function<void(bool)> aStateCallback = std::bind(&CBOutstationPort::SocketStateHandler, this, std::placeholders::_1);
 
-	CBConnection::AddOutstation(ChannelID,MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback, MyPointConf->IsBakerDevice);
+	CBConnection::AddOutstation(pConnection,MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback, MyPointConf->IsBakerDevice);
 }
 
 void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)

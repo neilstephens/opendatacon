@@ -65,15 +65,15 @@ struct CBAddrConf
 		OutstationAddr(1),
 		TCPConnectRetryPeriodms(500)
 	{}
-	uint64_t ChannelID()
+	std::string ChannelID()
 	{
-		if (channelid == 0)
+		if (channelid == "")
 			channelid = CBConnection::MakeChannelID(IP, Port, (ClientServer == SERVER));
 		return channelid;
 	}
 
 private:
-	uint64_t channelid = 0;
+	std::string channelid = "";
 };
 
 class CBPortConf: public DataPortConf

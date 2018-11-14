@@ -48,7 +48,7 @@ CBMasterPort::CBMasterPort(const std::string &aName, const std::string &aConfFil
 CBMasterPort::~CBMasterPort()
 {
 	Disable();
-	CBConnection::RemoveMaster(MyConf->mAddrConf.ChannelID(),MyConf->mAddrConf.OutstationAddr);
+	CBConnection::RemoveMaster(pConnection,MyConf->mAddrConf.OutstationAddr);
 }
 
 void CBMasterPort::Enable()
@@ -56,7 +56,7 @@ void CBMasterPort::Enable()
 	if (enabled) return;
 	try
 	{
-		CBConnection::Open(MyConf->mAddrConf.ChannelID()); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+		CBConnection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 
 		enabled = true;
 	}
@@ -71,7 +71,7 @@ void CBMasterPort::Disable()
 	if (!enabled) return;
 	enabled = false;
 
-	CBConnection::Close(MyConf->mAddrConf.ChannelID()); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+	CBConnection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
 
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
@@ -82,7 +82,7 @@ void CBMasterPort::SocketStateHandler(bool state)
 	{
 		PollScheduler->Start();
 		PublishEvent(std::move(ConnectState::CONNECTED));
-		msg = Name + ": Connection established.";
+		msg = Name + ": pConnection established.";
 		ResetDigitalCommandSequenceNumber(); // Outstation when it sees this will send all digital values as if on power up.
 	}
 	else
@@ -94,15 +94,13 @@ void CBMasterPort::SocketStateHandler(bool state)
 		ClearCBCommandQueue(); // Remove all waiting commands and callbacks
 
 		PublishEvent(std::move(ConnectState::DISCONNECTED));
-		msg = Name + ": Connection closed.";
+		msg = Name + ": pConnection closed.";
 	}
 	LOGINFO(msg);
 }
 
 void CBMasterPort::Build()
 {
-	uint64_t ChannelID = MyConf->mAddrConf.ChannelID();
-
 	if (PollScheduler == nullptr)
 		PollScheduler.reset(new ASIOScheduler(*pIOS));
 
@@ -112,10 +110,10 @@ void CBMasterPort::Build()
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(IsOutStation);
 
-	// Creates internally if necessary
-	CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP,MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
+	// Creates internally if necessary, returns a token for the connection
+	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP,MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
-	CBConnection::AddMaster(ChannelID,MyConf->mAddrConf.OutstationAddr,
+	CBConnection::AddMaster(pConnection,MyConf->mAddrConf.OutstationAddr,
 		std::bind(&CBMasterPort::ProcessCBMessage, this, std::placeholders::_1),
 		std::bind(&CBMasterPort::SocketStateHandler, this, std::placeholders::_1),
 		MyPointConf->IsBakerDevice);
@@ -232,7 +230,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				MasterCommandProtectedData.ProcessingCBCommand = true;
 
 				//TODO: Do we resend the original command, or do we ask the RTU to send us the last response again???
-				// It depends if you think that the outbound message got there - if so ask for the reponse again. If not, send the command again....
+				// It depends if you think that the outbound message got there - if so ask for the response again. If not, send the command again....
 				// If you want a resend command and not send the same command again, allow the following line.
 				// DoResendCommand = true;
 
@@ -351,7 +349,6 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 	// Cant just use by reference, complete message and header will go out of scope...
 	MasterCommandStrand->dispatch([&, CompleteCBMessage]()
 		{
-
 			if (CompleteCBMessage.size() == 0)
 			{
 			      LOGERROR("Received a Master to Station message with zero length!!! ");
@@ -599,7 +596,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 						break;
 
 					default:
-						LOGERROR("We received an unhandled digital point type - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string());
+						LOGERROR("We received an un-handled digital point type - Group " + std::to_string(group) + " Payload Location " + payloadlocation.to_string());
 						break;
 				}
 			});

@@ -34,7 +34,6 @@
 #include <unordered_map>
 #include "CB.h"
 #include "CBUtility.h"
-// #include "CBPort.h"
 
 /*
 This class is used to manage and share a TCPSocket for CB OutStations
@@ -49,8 +48,30 @@ using namespace odc;
 
 class CBPort;
 
+// We want to pass this token into the static CBConnection methods, so that the use of the connection pointer is contained
+class ConnectionTokenType
+{
+	friend class CBConnection; // So the connection class can access the Connection pointer.
+public:
+	ConnectionTokenType():
+		ChannelID(""),
+		pConnection()
+	{}
+	ConnectionTokenType(std::string channelid, std::weak_ptr<CBConnection> connection):
+		ChannelID(channelid),
+		pConnection(connection)
+	{}
+	~ConnectionTokenType();
+
+	std::string ChannelID;
+private:
+	std::shared_ptr<CBConnection> pConnection;
+};
+
 class CBConnection
 {
+	friend class ConnectionTokenType;
+
 public:
 	CBConnection
 		(asio::io_service* apIOS,     //pointer to an asio io_service
@@ -61,72 +82,46 @@ public:
 		uint16_t retry_time_ms = 0);
 
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
-	static void AddOutstation(uint64_t ChannelID,
+	static void AddOutstation(const ConnectionTokenType &pConnection,
 		uint8_t StationAddress, // For message routing, OutStation identification
 		const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
 		const std::function<void(bool)> aStateCallback,
 		bool isbakerdevice); // Check that we dont have different devices on the one connection!
 
-	static void RemoveOutstation(uint64_t ChannelID, uint8_t StationAddress);
+	static void RemoveOutstation(const ConnectionTokenType &ConnectionTok, uint8_t StationAddress);
 
-	static void AddMaster(uint64_t ChannelID,
+	static void AddMaster(const ConnectionTokenType &ConnectionTok,
 		uint8_t TargetStationAddress,
 		const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
 		const std::function<void(bool)> aStateCallback,
 		bool isbakerdevice); // Check that we dont have different devices on the one connection!
 
-	static void RemoveMaster(uint64_t ChannelID,uint8_t TargetStationAddress);
+	static void RemoveMaster(const ConnectionTokenType &ConnectionTok,uint8_t TargetStationAddress);
 
-	static void AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
-		bool aisServer,                              //Whether to act as a server or client
-		const std::string& aEndPoint,                //IP addr or hostname (to connect to if client, or bind to if server)
-		const std::string& aPort,                    //Port to connect to if client, or listen on if server
+	static ConnectionTokenType AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
+		bool aisServer,                                             //Whether to act as a server or client
+		const std::string& aEndPoint,                               //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                                   //Port to connect to if client, or listen on if server
 		bool isbakerdevice,
 		uint16_t retry_time_ms = 0);
 
-	static void Open(uint64_t ChannelID);
+	static void Open(const ConnectionTokenType &ConnectionTok);
 
-	static void Close(uint64_t ChannelID);
+	static void Close(const ConnectionTokenType &ConnectionTok);
 
-	static std::string MakeStringChannelID(std::string aEndPoint, std::string aPort, bool aisServer)
+	static std::string MakeChannelID(std::string aEndPoint, std::string aPort, bool aisServer)
 	{
 		return aEndPoint + ":" + aPort + ":" + std::to_string(aisServer);
-	}
-	static uint64_t MakeChannelID(std::string aEndPoint, std::string aPort, bool aisServer)
-	{
-		// Top 32 bits is the IP address, the next 24 the port, the bottom 8 the isaserver flag.
-		uint64_t result = 0;
-
-		try
-		{
-			// Convert the 10.12.145.240 into 4 bytes.
-			std::vector<std::string> tok = split(aEndPoint, '.');
-
-			result |= numeric_cast<uint64_t>(std::stoi(tok[0])) << (64 - 8);
-			result |= numeric_cast<uint64_t>(std::stoi(tok[1])) << (64 - 16);
-			result |= numeric_cast<uint64_t>(std::stoi(tok[2])) << (64 - 24);
-			result |= numeric_cast<uint64_t>(std::stoi(tok[3])) << (64 - 32);
-
-			result |= numeric_cast<uint64_t>(std::stoi(aPort)) << 8; // Assume less than  2^24.
-
-			result |= (aisServer ? 1 : 0);
-		}
-		catch(std::exception& e)
-		{
-			// We dont want to fail here, just log an error
-			LOGERROR("Failed trying to Parse the V4 IP Address " + aEndPoint+ " Error "+e.what());
-		}
-		return result;
 	}
 
 	~CBConnection();
 
 	// Will do Baker/Conitel swap if needed
-	static void Write(uint64_t ChannelID, const CBMessage_t &CompleteCBMessage);
+	static void Write(const ConnectionTokenType &ConnectionTok, const CBMessage_t &CompleteCBMessage);
 
-	static void InjectSimulatedTCPMessage(uint64_t ChannelID, buf_t&readbuf);
+	static void InjectSimulatedTCPMessage(const ConnectionTokenType &ConnectionTok, buf_t&readbuf);
 
-	static void SetSendTCPDataFn(uint64_t ChannelID, std::function<void(std::string)> f);
+	static void SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, std::function<void(std::string)> f);
 
 private:
 	asio::io_service* pIOS;
@@ -150,16 +145,15 @@ private:
 	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 
 	// A list of CBConnections, so that we can find if one for out port/address combination already exists.
-	static std::unordered_map<uint64_t, std::shared_ptr<CBConnection>> ConnectionMap;
-	static std::mutex MapMutex; // Control access
+	static std::unordered_map<std::string, std::shared_ptr<CBConnection>> ConnectionMap;
+	static std::mutex MapMutex; // Control access to the map - add connection and remove connection.
 
+	void RemoveConnectionFromMap(); // Called by ConnectionToken destructor
 	void Open();
 	void Close();
 	void Write(std::string &msg);
 	void RouteCBMessage(CBMessage_t &CompleteCBMessage);
 	void SocketStateHandler(bool state);
-	// Two static methods to manage the map of connections. Can only have one for an address/port combination.
-	static bool GetConnection(uint64_t ChannelID, std::shared_ptr<CBConnection> &pConnection);
 
 	// We need one read completion handler hooked to each address/port combination. This method is re-entrant,
 	// We do some basic CB block identification and processing, enough to give us complete blocks and StationAddresses

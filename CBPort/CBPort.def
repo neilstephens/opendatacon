@@ -19,8 +19,8 @@
  ;
 LIBRARY CBPort
 EXPORTS
-;	new_CBMasterPort
-;	new_CBOutstationPort
-;	delete_CBMasterPort
-;	delete_CBOutstationPort
+	new_CBMasterPort
+	new_CBOutstationPort
+	delete_CBMasterPort
+	delete_CBOutstationPort
 	run_tests

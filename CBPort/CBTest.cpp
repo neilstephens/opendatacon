@@ -134,7 +134,7 @@ const char *conffile1 = R"001(
 					{"Index" : 6, "Group" : 3, "PayloadLocation": "5B","Channel" : 1, "Type":"ACC12"},
 					{"Index" : 7, "Group" : 3, "PayloadLocation": "6A","Channel" : 1, "Type":"ACC24"}],
 
-	// CONTROL up to 12 bits per group address, Channel 1 to 12. Simulator used dual points one for trip one for close.
+	// CONTROL up to 12 bits per group address, Channel 1 to 12. Python simulator used dual points one for trip one for close.
 	"BinaryControls" : [{"Index": 1,  "Group" : 4, "Channel" : 1, "Type" : "CONTROL"},
                         {"Range" : {"Start" : 10, "Stop" : 21}, "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
 
@@ -442,14 +442,14 @@ TEST_CASE("Util - MakeChannelID")
 	std::string Port = "34567";
 	bool isaserver = true;
 
-	uint64_t res = CBConnection::MakeChannelID(IP, Port, isaserver);
-	REQUIRE(res == 0xc0a8011700870701);
+	std::string res = CBConnection::MakeChannelID(IP, Port, isaserver);
+	REQUIRE(res == "192.168.1.23:34567:1");
 
 	isaserver = false;
 	IP = "127.0.0.1";
 	Port = "10000";
 	res = CBConnection::MakeChannelID(IP, Port, isaserver);
-	REQUIRE(res == 0x7f00000100271000);
+	REQUIRE(res == "127.0.0.1:10000:0");
 	STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Util - CBIndexTest")

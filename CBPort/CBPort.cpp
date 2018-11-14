@@ -102,14 +102,14 @@ uint8_t CBPort::Limit(uint8_t val, uint8_t max)
 
 void CBPort::SetSendTCPDataFn(std::function<void(std::string)> Send)
 {
-	CBConnection::SetSendTCPDataFn(MyConf->mAddrConf.ChannelID(),Send);
+	CBConnection::SetSendTCPDataFn(pConnection,Send);
 }
 
 // Test only method for simulating input from the TCP Connection.
 void CBPort::InjectSimulatedTCPMessage(buf_t&readbuf)
 {
 	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
-	CBConnection::InjectSimulatedTCPMessage(MyConf->mAddrConf.ChannelID(),readbuf);
+	CBConnection::InjectSimulatedTCPMessage(pConnection,readbuf);
 }
 
 // The only method that sends to the TCP Socket
@@ -120,7 +120,7 @@ void CBPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 		LOGERROR("Tried to send an empty message to the TCP Port");
 		return;
 	}
-	CBConnection::Write(MyConf->mAddrConf.ChannelID(),CompleteCBMessage);
+	CBConnection::Write(pConnection,CompleteCBMessage);
 }
 // This message is constructed by the Master and the RTU in response.
 void CBPort::BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t & CompleteCBMessage)

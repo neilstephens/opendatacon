@@ -37,11 +37,8 @@
 #include "CBPortConf.h"
 #include "CBUtility.h"
 #include "CBConnection.h"
-//#include "StrandProtectedQueue.h"
 
 using namespace odc;
-
-class CBConnection;
 
 class CBPort: public DataPort
 {
@@ -75,7 +72,7 @@ protected:
 
 	int Limit(int val, int max);
 	uint8_t Limit(uint8_t val, uint8_t max);
-
+	ConnectionTokenType pConnection;
 };
 
 #endif
