@@ -38,14 +38,18 @@
 // extern std::shared_ptr<spdlog::logger> md3logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
 
 // Hide some of the code to make Logging cleaner
-#define LOGDEBUG(msg) \
-	if (auto log = odc::spdlog_get("MD3Port")) log->debug(msg);
-#define LOGERROR(msg) \
-	if (auto log = odc::spdlog_get("MD3Port")) log->error(msg);
-#define LOGWARN(msg) \
-	if (auto log = odc::spdlog_get("MD3Port")) log->warn(msg);
-#define LOGINFO(msg) \
-	if (auto log = odc::spdlog_get("MD3Port")) log->info(msg);
+#define LOGDEBUG(...) \
+	if (auto log = odc::spdlog_get("MD3Port")) \
+		log->debug(__VA_ARGS__);
+#define LOGERROR(...) \
+	if (auto log = odc::spdlog_get("MD3Port")) \
+		log->error(__VA_ARGS__);
+#define LOGWARN(...) \
+	if (auto log = odc::spdlog_get("MD3Port"))  \
+		log->warn(__VA_ARGS__);
+#define LOGINFO(...) \
+	if (auto log = odc::spdlog_get("MD3Port")) \
+		log->info(__VA_ARGS__);
 
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

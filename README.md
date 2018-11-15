@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=develop)](https://travis-ci.com/neilstephens/opendatacon)
+
 ## Table of contents
 
 * [Introduction](#introduction)

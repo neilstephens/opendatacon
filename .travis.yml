@@ -1,0 +1,16 @@
+language: cpp
+compiler: gcc
+dist: xenial
+
+install: 
+  - sudo apt update
+  - sudo apt install -qq libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev
+
+script: 
+  - mkdir build && cd build && cmake -DFULL=ON ..
+  - make
+  - make package
+  - build/ODC_tests
+  # - build/DNP3Port_tests #opendnp3 bug makes this hang at the moment
+  - build/MD3Port_tests
+  

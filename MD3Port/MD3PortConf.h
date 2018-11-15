@@ -49,7 +49,7 @@ struct MD3AddrConf
 {
 	//IP
 	std::string IP;
-	uint16_t Port;
+	std::string Port;
 	TCPClientServer ClientServer;
 
 	//Common
@@ -59,14 +59,14 @@ struct MD3AddrConf
 	// Default address values can minimally set IP.
 	MD3AddrConf():
 		IP("127.0.0.1"),
-		Port(20000),
+		Port("20000"),
 		ClientServer(TCPClientServer::DEFAULT),
 		OutstationAddr(1),
 		TCPConnectRetryPeriodms(500)
 	{}
 	std::string ChannelID()
 	{
-		return IP + ":" + std::to_string(Port) + ":" + std::to_string(ClientServer);
+		return IP + ":" + Port + ":" + std::to_string(ClientServer);
 	}
 };
 

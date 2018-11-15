@@ -48,7 +48,7 @@ MD3MasterPort::MD3MasterPort(const std::string &aName, const std::string &aConfF
 MD3MasterPort::~MD3MasterPort()
 {
 	Disable();
-	pConnection->RemoveMaster(MyConf->mAddrConf.OutstationAddr);
+	MD3Connection::RemoveMaster(pConnection,MyConf->mAddrConf.OutstationAddr);
 	// The pConnection will be closed by this point, so is not holding any resources, and will be freed on program close when the static list is destroyed.
 }
 
@@ -57,10 +57,7 @@ void MD3MasterPort::Enable()
 	if (enabled) return;
 	try
 	{
-		if (pConnection.get() == nullptr)
-			throw std::runtime_error("Connection manager uninitialised");
-
-		pConnection->Open(); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+		MD3Connection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 
 		enabled = true;
 	}
@@ -75,9 +72,7 @@ void MD3MasterPort::Disable()
 	if (!enabled) return;
 	enabled = false;
 
-	if (pConnection.get() == nullptr)
-		return;
-	pConnection->Close(); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+	MD3Connection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
 
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
@@ -119,17 +114,11 @@ void MD3MasterPort::Build()
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(IsOutStation, MyPointConf->NewDigitalCommands, *pIOS);
 
-	pConnection = MD3Connection::GetConnection(ChannelID); //Static method
+	// Creates internally if necessary, returns a token for the connection
+	pConnection = MD3Connection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
-	if (pConnection == nullptr)
-	{
-		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-			std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
-		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
-	}
-
-	pConnection->AddMaster(MyConf->mAddrConf.OutstationAddr,
+	MD3Connection::AddMaster(pConnection, MyConf->mAddrConf.OutstationAddr,
 		std::bind(&MD3MasterPort::ProcessMD3Message, this, std::placeholders::_1),
 		std::bind(&MD3MasterPort::SocketStateHandler, this, std::placeholders::_1));
 
@@ -160,7 +149,9 @@ void MD3MasterPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 	MD3Port::SendMD3Message(CompleteMD3Message);
 }
 
+#ifdef _MSC_VER
 #pragma region MasterCommandQueue
+#endif
 
 // We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
 // There is a fixed timeout function (below) which will queue the next command if we timeout.
@@ -329,9 +320,13 @@ void MD3MasterPort::ClearMD3CommandQueue()
 		});
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma region MessageProcessing
+#endif
 
 // After we have sent a command, this is where we will end up when the OutStation replies.
 // It is the callback for the ConnectionManager
@@ -518,7 +513,9 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			      LOGERROR("Command Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
 					" Expecting " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			}
+			#ifdef _MSC_VER
 			#pragma warning(suppress: 26495)
+			#endif
 		});
 }
 
@@ -1114,7 +1111,9 @@ bool MD3MasterPort::ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3M
 	return (Header.GetFunctionCode() == SYSTEM_FLAG_SCAN);
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
 // We will be called at the appropriate time to trigger an Unconditional or Delta scan
 // For digital scans there are two formats we might use. Set in the conf file.

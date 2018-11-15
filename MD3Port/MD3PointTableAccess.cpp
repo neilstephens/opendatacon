@@ -38,7 +38,9 @@ void MD3PointTableAccess::Build(const bool isoutstation, const bool newdigitalco
 	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<MD3BinaryPoint>(IOS, 256));
 }
 
+#ifdef _MSC_VER
 #pragma region Analog-Counter
+#endif
 
 bool MD3PointTableAccess::AddCounterPointToPointTable(const size_t &index, const uint8_t &moduleaddress, const uint8_t &channel, const uint32_t &pollgroup)
 {
@@ -297,9 +299,13 @@ bool MD3PointTableAccess::ResetAnalogValueUsingODCIndex(const size_t index)
 	return false;
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma region Binary
+#endif
 
 bool MD3PointTableAccess::GetBinaryODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t &index)
 {
@@ -469,9 +475,13 @@ uint16_t MD3PointTableAccess::CollectModuleBitsIntoWord(const uint8_t ModuleAddr
 }
 
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma region Control
+#endif
 
 bool MD3PointTableAccess::GetBinaryControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t &index)
 {
@@ -558,4 +568,6 @@ void MD3PointTableAccess::ForEachCounterPoint(std::function<void(MD3AnalogCounte
 		fn(*md3pt.second);
 	}
 }
+#ifdef _MSC_VER
 #pragma endregion
+#endif

@@ -28,18 +28,30 @@ if(GIT_FOUND)
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
 	message(" Git describe: ${GIT_DESCRIBE}")
-	string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)(-RC[0-9]+)?-[0-9]+-([^-]+)-?([^-]*)$" GIT_REPO_MATCH ${GIT_DESCRIBE})
+	string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)(-RC[0-9]+)?-([0-9]+)-([^-]+)-?([^-]*)$" GIT_REPO_MATCH ${GIT_DESCRIBE})
 	#message("Matched version: ${CMAKE_MATCH_1} ${CMAKE_MATCH_2} ${CMAKE_MATCH_3} ${CMAKE_MATCH_4}")
 
 	set(ODC_MAJOR_VERSION ${CMAKE_MATCH_1})
 	set(ODC_MINOR_VERSION ${CMAKE_MATCH_2})
 	set(ODC_MICRO_VERSION ${CMAKE_MATCH_3})
 	set(ODC_RC_VERSION ${CMAKE_MATCH_4})
+	set(ODC_AHEAD_VERSION ${CMAKE_MATCH_5})
 	set(ODC_VERSION "${ODC_MAJOR_VERSION}.${ODC_MINOR_VERSION}.${ODC_MICRO_VERSION}${ODC_RC_VERSION}")
 
-	set(GIT_REPO_COMMIT ${CMAKE_MATCH_5})
-	set(GIT_REPO_DIRTY ${CMAKE_MATCH_6})
-	message("-- opendatacon version: ${ODC_VERSION} ${GIT_REPO_COMMIT} ${GIT_REPO_DIRTY}")
+	set(GIT_REPO_COMMIT ${CMAKE_MATCH_6})
+	set(GIT_REPO_DIRTY ${CMAKE_MATCH_7})
+	message("-- opendatacon version: ${ODC_VERSION} ${GIT_REPO_COMMIT}(${ODC_AHEAD_VERSION} ahead) ${GIT_REPO_DIRTY}")
+
+	execute_process(
+		COMMAND git submodule foreach git describe --long --dirty --tags
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_DESCRIBE_SUBS
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	STRING(REGEX REPLACE "Entering 'submodules/" "" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
+	STRING(REGEX REPLACE "'\r?\n" ": " GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
+	STRING(REGEX REPLACE "\r?\n" "\\\\n\\\\t" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
+	#message("submodule versions: \n${GIT_DESCRIBE_SUBS}")
 
 	if(DEFINED CURRENT_CONFIG) #true at build-time
 		set(build_config_file "${BINARY_DIR}/current_build_config")

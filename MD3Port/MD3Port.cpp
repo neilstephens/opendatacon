@@ -30,8 +30,7 @@
 #include "MD3PortConf.h"
 
 MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
-	DataPort(aName, aConfFilename, aConfOverrides),
-	pConnection(nullptr)
+	DataPort(aName, aConfFilename, aConfOverrides)
 {
 	//TODO: Do we have to create our own logger instance? Or just assume will be run on linux...
 	//md3logger = spdlog::get("MD3Port"); // Only gets the opendatacon logger in Linux at the moment!
@@ -74,7 +73,7 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	if (JSONRoot.isMember("Port"))
-		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.Port = numeric_cast<uint16_t>(JSONRoot["Port"].asUInt());
+		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asString();
 
 	if (JSONRoot.isMember("TCPClientServer"))
 	{
@@ -105,17 +104,16 @@ uint8_t MD3Port::Limit(uint8_t val, uint8_t max)
 	return val > max ? max : val;
 }
 
-
 void MD3Port::SetSendTCPDataFn(std::function<void(std::string)> Send)
 {
-	SendTCPDataFn = Send;
+	MD3Connection::SetSendTCPDataFn(pConnection, Send);
 }
 
 // Test only method for simulating input from the TCP Connection.
 void MD3Port::InjectSimulatedTCPMessage(buf_t&readbuf)
 {
 	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
-	pConnection->ReadCompletionHandler(readbuf);
+	MD3Connection::InjectSimulatedTCPMessage(pConnection, readbuf);
 }
 
 // The only method that sends to the TCP Socket
@@ -126,19 +124,6 @@ void MD3Port::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 		LOGERROR("Tried to send an empty message to the TCP Port");
 		return;
 	}
-	// Turn the blocks into a binary string.
-	std::string MD3MessageString;
-	for (auto blk : CompleteMD3Message)
-	{
-		MD3MessageString += blk.ToBinaryString();
-	}
 
-	// This is a pointer to a function, so that we can hook it for testing. Otherwise calls the pSockMan Write templated function
-	// Small overhead to allow for testing - Is there a better way? - could not hook the pSockMan->Write function and/or another passed in function due to differences between a method and a lambda
-	if (SendTCPDataFn != nullptr)
-		SendTCPDataFn(MD3MessageString);
-	else
-	{
-		pConnection->Write(MD3MessageString);
-	}
+	MD3Connection::Write(pConnection, CompleteMD3Message);
 }

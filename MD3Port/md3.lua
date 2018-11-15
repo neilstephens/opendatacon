@@ -99,9 +99,9 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	end
 		
 	-- Check the CRC of the 1st block only
-	if (CheckMD3CRC(buffer(0,1):uint(),buffer(1,1):uint(),buffer(2,1):uint(),buffer(3,1):uint(),buffer(4,1):uint()) == false) then	
-		return 0	-- Checksum failed...
-	end
+	--if (CheckMD3CRC(buffer(0,1):uint(),buffer(1,1):uint(),buffer(2,1):uint(),buffer(3,1):uint(),buffer(4,1):uint()) == false) then	
+	--	return 0	-- Checksum failed...
+	--end
 	
 	if ( functionname == nil) then
 		functionname = "Unknown MD3 Function"	-- Not an MD3 Packet
@@ -119,9 +119,12 @@ function md3_proto.dissector(buffer,pinfo,tree)
 		stationleaf.append_text(" - WARNING EXTENDED ADDRESS NOT DECODED");
 	end
 	local ismaster = true;
+	local extra_info = " - Master"
 	if (buffer(0,1):bitfield(0,1) == 1) then
 		ismaster = false;
+		extra_info = " - Slave"
 	end
+	pinfo.cols.info = functionname .. extra_info
 	
 	subtree:add(f.mtos, ismaster)
 	
@@ -130,8 +133,19 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	
 	subtree:add("Data Length : " ..  pktlen)
 	
-	-- change to spit this out in blocks of 6, spaces on each byte
-	subtree:add(f.data, buffer())
+	local datatree = subtree:add(f.data, buffer())
+	
+	-- spit out in blocks of 6, spaces on each byte
+	local block = 0
+	for i = 0,pktlen-1,6 
+	do
+		local crc_check = " - CRC PASS"
+		if (CheckMD3CRC(buffer(i,1):uint(),buffer(i+1,1):uint(),buffer(i+2,1):uint(),buffer(i+3,1):uint(),buffer(i+4,1):uint()) == false) then	
+			crc_check = " - CRC FAIL"	-- Checksum failed...
+		end
+		datatree:add("Block(" .. block .. ")", buffer:bytes(i,6):tohex(false,' ')..crc_check)
+		block = block+1 
+	end
 	
 	-- If not our protocol, we should return 0. If it is ours, return nothing.
 end
