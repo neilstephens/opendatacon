@@ -57,7 +57,7 @@ public:
 		ChannelID(""),
 		pConnection()
 	{}
-	ConnectionTokenType(std::string channelid, std::weak_ptr<CBConnection> connection):
+	ConnectionTokenType(std::string channelid, std::shared_ptr<CBConnection> connection):
 		ChannelID(channelid),
 		pConnection(connection)
 	{}

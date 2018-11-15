@@ -31,10 +31,10 @@
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const bool isoutstation)
+void CBPointTableAccess::Build(const bool isoutstation, asio::io_service & IOS)
 {
 	IsOutstation = isoutstation;
-//	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<CBBinaryPoint>(IOS, 256));
+	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<CBBinaryPoint>(IOS, 256));
 }
 
 #ifdef _MSC_VER
@@ -92,7 +92,7 @@ bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const u
 	return true;
 }
 
-bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const BinaryPointType &pointtype)
+bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const BinaryPointType &pointtype, bool issoe)
 {
 	// So we need to access the Conitel data by Group/PayLoadLocation/Channel
 	// When we get a scan, we need to get everything for a given group, payload by payload 1B,2A,2B and then for binary all matching channels.
@@ -119,7 +119,7 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 	else
 	{
 		LOGDEBUG("Adding Binary Point at CBIndex - " + to_hexstring(CBIndex));
-		auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype);
+		auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype, issoe);
 		BinaryCBPointMap[CBIndex] = pt;
 		BinaryODCPointMap[index] = pt;
 	}
@@ -195,7 +195,7 @@ bool CBPointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, 
 		return false;
 	}
 
-	auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, PayloadLocationType(1,PayloadABType::PositionB), pointtype);
+	auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, PayloadLocationType(1,PayloadABType::PositionB), pointtype, false);
 	BinaryControlCBPointMap[CBIndex] = pt;
 	BinaryControlODCPointMap[index] = pt;
 	return true;
@@ -284,28 +284,33 @@ bool CBPointTableAccess::GetBinaryValueUsingODCIndexAndResetChangedFlag(const si
 	}
 	return false;
 }
-bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, CBTime eventtime)
+bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, const CBTime eventtime)
 {
 	ODCBinaryPointMapIterType ODCPointMapIter = BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryODCPointMap.end())
 	{
-		ODCPointMapIter->second->SetBinary(meas, eventtime);
+		// Store SOE event to the SOE queue. If we receive a binary event that is older than the last one, it only goes in the SOE queue.
+		if (ODCPointMapIter->second->GetIsSOE() && IsOutstation)
+			AddToDigitalEvents(*ODCPointMapIter->second, meas, eventtime); // Don't store if master - we just fire off ODC events.
 
-		//TODO: Store SOE event to the SOE queue. If we receive a binary event that is older than the last one, it only goes in the SOE queue.
-		if (IsOutstation)
-			AddToDigitalEvents(*ODCPointMapIter->second); // Don't store if master - we just fire off ODC events.
-
+		// Now check that the data we want to set is actually newer than the current point information. i.e. dont go backwards!
+		if (eventtime > ODCPointMapIter->second->GetChangedTime())
+		{
+			ODCPointMapIter->second->SetBinary(meas, eventtime);
+		}
 		return true;
 	}
 	return false;
 }
-void CBPointTableAccess::AddToDigitalEvents(CBBinaryPoint &inpt)
+void CBPointTableAccess::AddToDigitalEvents(const CBBinaryPoint &inpt, const uint8_t meas, const CBTime eventtime)
 {
-	// Check to see if this point is a SOE point?
-	if (inpt.GetPointType() == SOE) // Only add if the point is SOE
+	if (inpt.GetIsSOE()) // Only add if the point is SOE
 	{
-		// Will fail if full,  Push takes a copy
-		pBinaryTimeTaggedEventQueue->async_push(inpt);
+		// The push will fail by dumping the point if full,
+		// We need to copy the point and set the value and time, as the current "point" may be a newer one and we dont want to modify it.
+		CBBinaryPoint pt = inpt;
+		pt.SetBinary(meas, eventtime);
+		pBinaryTimeTaggedEventQueue->async_push(pt);
 	}
 }
 #ifdef _MSC_VER

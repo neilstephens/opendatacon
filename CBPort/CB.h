@@ -92,7 +92,7 @@ OT numeric_cast(const ST value)
 }
 
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
-enum BinaryPointType { DIG, MCA, MCB, MCC, BINCONTROL, SOE }; // Inputs and outputs
+enum BinaryPointType { DIG, MCA, MCB, MCC, BINCONTROL }; // Inputs and outputs
 enum AnalogCounterPointType { ANA, ANA6, ACC12, ACC24, ANACONTROL };
 enum PollGroupType { Scan, TimeSetCommand, SystemFlagScan };
 
@@ -194,17 +194,21 @@ public:
 		Binary(src.Binary),
 		Changed(src.Changed),
 		MomentaryChangeStatus(src.MomentaryChangeStatus),
-		PointType(src.PointType)
+		PointType(src.PointType),
+		SOEPoint(src.SOEPoint)
 	{}
-	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype): CBPoint(index, group, channel, static_cast<CBTime>(0), payloadlocation),
-		PointType(pointtype)
+	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype, bool soepoint):
+		CBPoint(index, group, channel, static_cast<CBTime>(0), payloadlocation),
+		PointType(pointtype),
+		SOEPoint(soepoint)
 	{}
 
-	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype, uint8_t binval, bool changed, CBTime changedtime):
+	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype, uint8_t binval, bool changed, CBTime changedtime, bool soepoint):
 		CBPoint(index, group, channel, changedtime, payloadlocation),
 		Binary(binval),
 		Changed(changed),
-		PointType(pointtype)
+		PointType(pointtype),
+		SOEPoint(soepoint)
 	{}
 
 	~CBBinaryPoint();
@@ -221,6 +225,7 @@ public:
 	bool GetAndResetChangedFlag() { std::unique_lock<std::mutex> lck(PointMutex); bool res = Changed; Changed = false; return res; }
 
 	void GetBinaryAndMCFlagWithFlagReset(uint8_t &result, bool &MCS) { std::unique_lock<std::mutex> lck(PointMutex); result = Binary; MCS = MomentaryChangeStatus; Changed = false; MomentaryChangeStatus = false; }
+	bool GetIsSOE() const { return SOEPoint;  }
 
 	void SetBinary(const uint8_t &b, const CBTime &ctime)
 	{
@@ -243,6 +248,7 @@ protected:
 	bool Changed = true;
 	bool MomentaryChangeStatus = false; // Used only for MCA, MCB and MCC types. Not valid for other types.
 	BinaryPointType PointType = DIG;
+	bool SOEPoint = false;
 };
 
 class CBAnalogCounterPoint: public CBPoint

@@ -209,6 +209,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		uint32_t channel = 0;
 		BinaryPointType pointtype = DIG;
 		std::string pointtypestring = "";
+		bool IsSOE = false;
 		PayloadLocationType payloadlocation;
 
 		if (JSONNode[n].isMember("Index"))
@@ -237,6 +238,15 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			else
 			{
 				LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
+				error = true;
+			}
+			if (JSONNode[n].isMember("SOE"))
+			{
+				IsSOE = JSONNode[n]["SOE"].asBool();
+			}
+			else
+			{
+				LOGERROR("A point needs a \"SOE\" : " + JSONNode[n].toStyledString());
 				error = true;
 			}
 		}
@@ -315,7 +325,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					else
 					{
 						// Only add the point if it passes
-						res = PointTable.AddBinaryPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, payloadlocation, pointtype);
+						res = PointTable.AddBinaryPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, payloadlocation, pointtype, IsSOE);
 					}
 				}
 				else if (ptype == BinaryControl)

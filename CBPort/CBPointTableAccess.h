@@ -43,11 +43,11 @@ class CBPointTableAccess
 {
 public:
 	CBPointTableAccess();
-	void Build(const bool isoutstation);
+	void Build(const bool isoutstation, asio::io_service & IOS);
 
 	// The add to point table functions add to both the ODC and MD3 Map.
 	// The Conitel Baker methods require that a
-	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel,  const PayloadLocationType &payloadlocation, const BinaryPointType & pointtype);
+	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation, const BinaryPointType & pointtype, bool issoe);
 	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel,  const BinaryPointType & pointtype );
 	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
 	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
@@ -68,10 +68,12 @@ public:
 	bool GetBinaryValueUsingODCIndexAndResetChangedFlag(const size_t index, uint8_t &res, bool &changed, bool &hasbeenset);
 	bool SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, CBTime eventtime);
 
+	void AddToDigitalEvents(const CBBinaryPoint & inpt, const uint8_t meas, const CBTime eventtime);
+
 	bool GetBinaryControlODCIndexUsingCBIndex(const uint8_t group, const uint8_t channel, size_t & index);
 	bool GetBinaryControlCBIndexUsingODCIndex(const size_t index, uint8_t &group, uint8_t & channel);
 	bool GetBinaryControlValueUsingODCIndex(const size_t index, uint8_t &res, bool &hasbeenset);
-	bool SetBinaryControlValueUsingODCIndex(const size_t index, const uint8_t meas, CBTime eventtime);
+	bool SetBinaryControlValueUsingODCIndex(const size_t index, const uint8_t meas, const CBTime eventtime);
 
 	bool GetAnalogControlODCIndexUsingCBIndex(const uint8_t group, const uint8_t channel, size_t & index);
 	bool GetAnalogControlCBIndexUsingODCIndex(const size_t index, uint8_t & group, uint8_t & channel);
@@ -89,8 +91,6 @@ public:
 	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn);
 
 	void GetMaxPayload(uint8_t group, uint8_t &blockcount);
-
-	void AddToDigitalEvents(CBBinaryPoint & inpt);
 
 	// Public only for testing
 	static uint16_t GetCBPointMapIndex(const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation); // Group/Payload/Channel
