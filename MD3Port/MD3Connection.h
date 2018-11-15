@@ -34,7 +34,6 @@
 #include <unordered_map>
 #include "MD3.h"
 #include "MD3Utility.h"
-#include "MD3Port.h"
 
 /*
 This class is used to manage and share a TCPSocket for MD3 OutStations
@@ -47,10 +46,30 @@ The MD3Connection class manages a static list of its own instances, so the OutSt
 
 using namespace odc;
 
-class MD3Port;
+// We want to pass this token into the static CBConnection methods, so that the use of the connection pointer is contained
+class ConnectionTokenType
+{
+	friend class MD3Connection; // So the connection class can access the Connection pointer.
+public:
+	ConnectionTokenType():
+		ChannelID(""),
+		pConnection()
+	{}
+	ConnectionTokenType(std::string channelid, std::shared_ptr<MD3Connection> connection):
+		ChannelID(channelid),
+		pConnection(connection)
+	{}
+	~ConnectionTokenType();
+
+	std::string ChannelID;
+private:
+	std::shared_ptr<MD3Connection> pConnection;
+};
 
 class MD3Connection
 {
+	friend class ConnectionTokenType;
+
 public:
 	MD3Connection
 		(asio::io_service* apIOS,     //pointer to an asio io_service
@@ -60,39 +79,42 @@ public:
 		uint16_t retry_time_ms = 0);
 
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
-	void AddOutstation(uint8_t StationAddress, // For message routing, OutStation identification
+	static void AddOutstation(const ConnectionTokenType &ConnectionTok,
+		uint8_t StationAddress, // For message routing, OutStation identification
 		const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
-		const std::function<void(bool)> aStateCallback);
+		const std::function<void(bool)> aStateCallback); // Check that we dont have different devices on the one connection!
 
-	void RemoveOutstation(uint8_t StationAddress);
+	static void RemoveOutstation(const ConnectionTokenType &ConnectionTok, uint8_t StationAddress);
 
-	void AddMaster(uint8_t TargetStationAddress,
+	static void AddMaster(const ConnectionTokenType &ConnectionTok,
+		uint8_t TargetStationAddress,
 		const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
-		const std::function<void(bool)> aStateCallback);
+		const std::function<void(bool)> aStateCallback); // Check that we dont have different devices on the one connection!
 
-	void RemoveMaster(uint8_t TargetStationAddress);
+	static void RemoveMaster(const ConnectionTokenType &ConnectionTok,uint8_t TargetStationAddress);
 
-	// Two static methods to manage the map of connections. Can only have one for an address/port combination.
-	static std::shared_ptr<MD3Connection> GetConnection(std::string ChannelID);
+	static ConnectionTokenType AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
+		bool aisServer,                                             //Whether to act as a server or client
+		const std::string& aEndPoint,                               //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                                   //Port to connect to if client, or listen on if server
+		uint16_t retry_time_ms = 0);
 
-	static void AddConnection(std::string ChannelID, std::shared_ptr<MD3Connection> pConnection);
+	static void Open(const ConnectionTokenType &ConnectionTok);
 
-	void Open();
+	static void Close(const ConnectionTokenType &ConnectionTok);
 
-	void Close();
+	static std::string MakeChannelID(std::string aEndPoint, std::string aPort, bool aisServer)
+	{
+		return aEndPoint + ":" + aPort + ":" + std::to_string(aisServer);
+	}
 
 	~MD3Connection();
 
-	// We dont need to know who is doing the writing. Just pass to the socket
-	void Write(std::string &msg);
+	static void Write(const ConnectionTokenType &ConnectionTok, const MD3Message_t &CompleteMD3Message);
 
-	// We need one read completion handler hooked to each address/port combination. This method is re-entrant,
-	// We do some basic MD3 block identification and processing, enough to give us complete blocks and StationAddresses
-	void ReadCompletionHandler(buf_t& readbuf);
+	static void InjectSimulatedTCPMessage(const ConnectionTokenType &ConnectionTok, buf_t&readbuf);
 
-	void RouteMD3Message(MD3Message_t &CompleteMD3Message);
-
-	void SocketStateHandler(bool state);
+	static void SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, std::function<void(std::string)> f);
 
 private:
 	asio::io_service* pIOS;
@@ -104,14 +126,30 @@ private:
 	std::atomic_bool enabled = false;
 	MD3Message_t MD3Message;
 
+	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
+	std::function<void(std::string)> SendTCPDataFn = nullptr; // nullptr normally. Set to hook function for testing
+
 	// Need maps for these two...
 	std::unordered_map<uint8_t, std::function<void(MD3Message_t &MD3Message)>> ReadCallbackMap;
 	std::unordered_map<uint8_t, std::function<void(bool)>> StateCallbackMap;
 
 	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 
-	// A list of MD3Connections, so that we can find if one for out port/address combination already exists.
-	static std::unordered_map<std::string, std::weak_ptr<MD3Connection>> ConnectionMap;
+	// A list of CBConnections, so that we can find if one for out port/address combination already exists.
+	static std::unordered_map<std::string, std::shared_ptr<MD3Connection>> ConnectionMap;
+	static std::mutex MapMutex; // Control access to the map - add connection and remove connection.
+
+	void RemoveConnectionFromMap(); // Called by ConnectionToken destructor
+	void Open();
+	void Close();
+	void Write(std::string &msg);
+	void RouteMD3Message(MD3Message_t &CompleteCBMessage);
+	void SocketStateHandler(bool state);
+
+	// We need one read completion handler hooked to each address/port combination. This method is re-entrant,
+	// We do some basic CB block identification and processing, enough to give us complete blocks and StationAddresses
+	void ReadCompletionHandler(buf_t& readbuf);
+
 };
 #endif
 

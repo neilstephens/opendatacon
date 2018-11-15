@@ -58,7 +58,7 @@ MD3OutstationPort::MD3OutstationPort(const std::string & aName, const std::strin
 MD3OutstationPort::~MD3OutstationPort()
 {
 	Disable();
-	pConnection->RemoveOutstation(MyConf->mAddrConf.OutstationAddr);
+	MD3Connection::RemoveOutstation(pConnection,MyConf->mAddrConf.OutstationAddr);
 	// The pConnection will be closed by this point, so is not holding any resources, and will be freed on program close when the static list is destroyed.
 }
 
@@ -67,10 +67,7 @@ void MD3OutstationPort::Enable()
 	if (enabled) return;
 	try
 	{
-		if (pConnection.get() == nullptr)
-			throw std::runtime_error("Connection manager uninitialised");
-
-		pConnection->Open(); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+		MD3Connection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 		enabled = true;
 	}
 	catch (std::exception& e)
@@ -84,9 +81,7 @@ void MD3OutstationPort::Disable()
 	if (!enabled) return;
 	enabled = false;
 
-	if (pConnection.get() == nullptr)
-		return;
-	pConnection->Close(); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+	MD3Connection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
 
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
@@ -113,20 +108,12 @@ void MD3OutstationPort::Build()
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(IsOutStation, MyPointConf->NewDigitalCommands, *pIOS);
 
-	pConnection = MD3Connection::GetConnection(ChannelID); //Static method
-
-	if (pConnection == nullptr)
-	{
-		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-				std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
-
-		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
-	}
+	pConnection = MD3Connection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
 	std::function<void(MD3Message_t &MD3Message)> aReadCallback = std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1);
 	std::function<void(bool)> aStateCallback = std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1);
 
-	pConnection->AddOutstation(MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback );
+	MD3Connection::AddOutstation(pConnection, MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback);
 }
 
 void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
@@ -154,7 +141,7 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 // This method will be called in response to data appearing on our TCP connection.
 // Remember there can be multiple responders!
 //
-//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we dont get stuck here.
+//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we dont get stuck here.
 
 CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
 {
@@ -273,7 +260,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			if (state == ConnectState::CONNECTED)
 			{
 				LOGDEBUG("Upstream (other side of ODC) port enabled - So a Master will send us events - and we can send what we have over ODC ");
-				// We dont know the state of the upstream data, so send event information for all points.
+				// We dont know the state of the upstream data, so send event information for all points.
 
 			}
 			else if (state == ConnectState::DISCONNECTED)
