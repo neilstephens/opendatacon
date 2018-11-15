@@ -101,7 +101,7 @@ private:
 	std::string ChannelID;
 
 	bool isServer;
-	bool enabled = false;
+	std::atomic_bool enabled = false;
 	MD3Message_t MD3Message;
 
 	// Need maps for these two...

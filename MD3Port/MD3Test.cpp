@@ -30,6 +30,8 @@
 #include <array>
 #include <fstream>
 #include <cassert>
+#include <spdlog/sinks/basic_file_sink.h>
+
 
 #define COMPILE_TESTS
 
@@ -49,6 +51,7 @@
 #ifdef NONVSTESTING
 #include <catch.hpp>
 #else
+#include "spdlog/sinks/msvc_sink.h"
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
@@ -169,7 +172,7 @@ const char *conffile2 = R"002(
 
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
 
-	"BinaryControls" : [{"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "PointType" : "DOMOUTPUT"}],
+	"BinaryControls" : [{"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "PointType" : "POMOUTPUT"}],
 
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })002";
@@ -198,24 +201,21 @@ void WriteConfFilesToCurrentWorkingDirectory()
 void SetupLoggers()
 {
 	// So create the log sink first - can be more than one and add to a vector.
-	#ifdef WIN32
-	// Add a sink to the TestLogger?
+	#ifdef NONVSTESTING
+	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	#else
+	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
 	#endif
-	auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	console->set_level(spdlog::level::debug);
-	LogSinks.push_back(console);
+	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("testslog.txt", true);
 
-	// Then create the logger (async - as used in ODC) then connect to all sinks.
-	auto pLibLogger = std::make_shared<spdlog::async_logger>("MD3Port", begin(LogSinks), end(LogSinks),
-		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
+	auto pLibLogger = std::make_shared<spdlog::logger>("MD3Port", begin(sinks), end(sinks));
 	pLibLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
-	auto pODCLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
-		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-
+	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
 	pODCLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pODCLogger);
 
@@ -318,6 +318,11 @@ void Wait(asio::io_service &IOS, int seconds)
 	auto MD3MAPort = std::make_unique<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
 	MD3MAPort->SetIOS(&IOS);      \
 	MD3MAPort->Build();
+
+#define TEST_MD3MAPort2(overridejson)\
+	auto MD3MAPort2 = std::make_unique<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
+	MD3MAPort2->SetIOS(&IOS);      \
+	MD3MAPort2->Build();
 
 #define TEST_MD3OSPort(overridejson)      \
 	auto MD3OSPort = std::make_unique<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
@@ -2160,7 +2165,7 @@ TEST_CASE("Station - Multi-drop TCP Test")
 
 	START_IOS(1);
 
-	// The two MD3Ports will share a connection, only the first to enable will open it.
+	// The two MD3Ports will share a connection, only the first to enable will open it. Two different conf files.
 	TEST_MD3OSPort(Json::nullValue);
 	TEST_MD3OSPort2(Json::nullValue);
 
@@ -3429,82 +3434,92 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 	STOP_IOS();
 	TestTearDown();
 }
-TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
+TEST_CASE("Master - POM Multi-drop Test Using TCP")
 {
 	// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
-
+	// Create two masters, and then see if they can share the TCP connection successfully.
 	STANDARD_TEST_SETUP();
+	// Outstations are as for the conf files
 	TEST_MD3OSPort(Json::nullValue);
 	TEST_MD3OSPort2(Json::nullValue);
+
+	// The masters need to be TCP Clients - should be only change necessary.
+	Json::Value MAportoverride;
+	MAportoverride["TCPClientServer"] = "CLIENT";
+	TEST_MD3MAPort(MAportoverride);
+
+	Json::Value MAportoverride2;
+	MAportoverride2["TCPClientServer"] = "CLIENT";
+	TEST_MD3MAPort2(MAportoverride2);
+
 
 	START_IOS(1);
 
 	MD3OSPort->Enable();
 	MD3OSPort2->Enable();
+	MD3MAPort->Enable();
+	MD3MAPort2->Enable();
 
-	std::vector<std::string> ResponseVec;
-	auto ResponseCallback = [&](buf_t& readbuf)
-					{
-						size_t bufsize = readbuf.size();
-						std::string S(bufsize, 0);
-
-						for (size_t i = 0; i < bufsize; i++)
-						{
-							S[i] = static_cast<char>(readbuf.sgetc());
-							readbuf.consume(1);
-						}
-						ResponseVec.push_back(S); // Store so we can check
-					};
-
-	bool socketisopen = false;
-	auto SocketStateHandler = [&socketisopen](bool state)
-					  {
-						  socketisopen = state;
-					  };
-
-	// An outstation is a server by default (Master connects to it...)
-	// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
-	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
-	pSockMan.reset(new TCPSocketManager<std::string>
-			(&IOS, false, "127.0.0.1", "10000",
-			ResponseCallback,
-			SocketStateHandler,
-			std::numeric_limits<size_t>::max(),
-			true,
-			500));
-	pSockMan->Open();
-
+	// Allow everything to get setup.
 	Wait(IOS, 3);
-	REQUIRE(socketisopen); // Should be set in a callback.
 
-	// Send the Command - results in an async write
-	//  Station 0x7C
-	MD3BlockFn16MtoS commandblock(0x7C, true);
-	pSockMan->Write(commandblock.ToBinaryString());
+	// So to do this test, we are going to send an Event into the Master which will require it to send a POM command to the outstation.
+	// We should then have an Event triggered on the outstation caused by the POM. We need to capture this to check that it was the correct POM Event.
 
-	Wait(IOS, 1);
+	// Send a POM command by injecting an ODC event to the Master
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
+			res = command_stat;
+		});
 
-	//  Station 0x7D
-	MD3BlockFn16MtoS commandblock2(0x7D, true);
-	pSockMan->Write(commandblock2.ToBinaryString());
+	bool point_on = true;
+	uint16_t ODCIndex = 116;
 
-	Wait(IOS, 5); // Allow async processes to run.
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+	val.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
 
-	// Need to handle multiple responses...
-	// Deal with the last response first...
-	REQUIRE(ResponseVec.size() == 2);
+	auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
-	REQUIRE(ResponseVec.back() == BuildHexStringFromASCIIHexString("fd0f01027c00")); // OK Command
-	ResponseVec.pop_back();
+	// Send an ODC DigitalOutput command to the Master.
+	MD3MAPort->Event(event, "TestHarness", pStatusCallback);
 
-	REQUIRE(ResponseVec.back() == BuildHexStringFromASCIIHexString("fc0f01034600")); // OK Command
-	ResponseVec.pop_back();
+	// Wait for it to go to the OutStation and Back again
+	Wait(IOS, 3);
 
-	REQUIRE(ResponseVec.empty());
+	REQUIRE(res == CommandStatus::SUCCESS);
 
-	pSockMan->Close();
+	// Now do the other Master/Outstation combination.
+	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
+			res2 = command_stat;
+		});
+
+	ODCIndex = 16;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val2;
+	val2.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event2 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event2->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val2));
+
+	// Send an ODC DigitalOutput command to the Master.
+	MD3MAPort2->Event(event2, "TestHarness2", pStatusCallback2);
+
+	// Wait for it to go to the OutStation and Back again
+	Wait(IOS, 3);
+
+	REQUIRE(res2 == CommandStatus::SUCCESS);
+
 	MD3OSPort->Disable();
 	MD3OSPort2->Disable();
+
+	MD3MAPort->Disable();
+	MD3MAPort2->Disable();
 
 	STOP_IOS();
 	TestTearDown();
