@@ -124,7 +124,7 @@ void MD3MasterPort::Build()
 	if (pConnection == nullptr)
 	{
 		pConnection.reset(new MD3Connection(pIOS, IsServer(), MyConf->mAddrConf.IP,
-			std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
+				std::to_string(MyConf->mAddrConf.Port), MyConf->mAddrConf.TCPConnectRetryPeriodms)); // Retry period cannot be different for multidrop outstations
 
 		MD3Connection::AddConnection(ChannelID, pConnection); //Static method
 	}
@@ -160,7 +160,9 @@ void MD3MasterPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 	MD3Port::SendMD3Message(CompleteMD3Message);
 }
 
+#ifdef _MSC_VER
 #pragma region MasterCommandQueue
+#endif
 
 // We can only send one command at a time (until we have a timeout or success), so queue them up so we process them in order.
 // There is a fixed timeout function (below) which will queue the next command if we timeout.
@@ -329,9 +331,13 @@ void MD3MasterPort::ClearMD3CommandQueue()
 		});
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma region MessageProcessing
+#endif
 
 // After we have sent a command, this is where we will end up when the OutStation replies.
 // It is the callback for the ConnectionManager
@@ -518,7 +524,9 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			      LOGERROR("Command Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
 					" Expecting " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			}
+			#ifdef _MSC_VER
 			#pragma warning(suppress: 26495)
+			#endif
 		});
 }
 
@@ -1114,7 +1122,9 @@ bool MD3MasterPort::ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3M
 	return (Header.GetFunctionCode() == SYSTEM_FLAG_SCAN);
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
 // We will be called at the appropriate time to trigger an Unconditional or Delta scan
 // For digital scans there are two formats we might use. Set in the conf file.

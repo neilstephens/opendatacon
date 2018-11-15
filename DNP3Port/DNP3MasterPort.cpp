@@ -81,13 +81,65 @@ void DNP3MasterPort::Disable()
 
 void DNP3MasterPort::PortUp()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: PortUp() called.", Name);
+
+	//cancel the timer if we were riding through
+	CommsRideThroughTimer(true);
+}
+
+void DNP3MasterPort::PortDown()
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: PortDown() called.", Name);
+
+	//start the ride through timer
+	CommsRideThroughTimer();
+}
+
+void DNP3MasterPort::CommsRideThroughTimer(bool cancel)
+{
+	static asio::strand TimerAccessStrand(*pIOS);
+	static bool RideThroughInProgress = false;
+	static asio::basic_waitable_timer<std::chrono::steady_clock> aCommsRideThroughTimer(*pIOS);
+
+	TimerAccessStrand.post([cancel,this]()
+		{
+			//TODO: remove indent guards when uncrustify bug fixed
+			/* *INDENT-OFF* */
+			if(cancel)
+			{
+				if(RideThroughInProgress)
+					aCommsRideThroughTimer.cancel();
+				RideThroughInProgress = false;
+				SetCommsGood();
+				return;
+			}
+			/* *INDENT-ON* */
+			if(RideThroughInProgress)
+				return;
+
+			RideThroughInProgress = true;
+			auto timeout = static_cast<DNP3PortConf*>(this->pConf.get())->pPointConf->CommsPointRideThroughTimems;
+			aCommsRideThroughTimer.expires_from_now(std::chrono::milliseconds(timeout));
+			aCommsRideThroughTimer.async_wait(TimerAccessStrand.wrap([this](asio::error_code err)
+					{
+						if(RideThroughInProgress)
+							SetCommsFailed();
+						RideThroughInProgress = false;
+					}));
+		});
+}
+
+void DNP3MasterPort::SetCommsGood()
+{
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Updating comms state point to good.", Name);
+			log->debug("{}: Updating comms point (good).", Name);
 
 		auto commsUpEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
@@ -96,7 +148,7 @@ void DNP3MasterPort::PortUp()
 	}
 }
 
-void DNP3MasterPort::PortDown()
+void DNP3MasterPort::SetCommsFailed()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -123,7 +175,7 @@ void DNP3MasterPort::PortDown()
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Setting comms point to failed.", Name);
+			log->debug("{}: Updating comms point (failed).", Name);
 
 		auto commsDownEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
@@ -137,9 +189,12 @@ void DNP3MasterPort::PortDown()
 void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	this->status = status;
+
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
+
 	if(link_dead && !channel_dead) //must be on link up
 	{
-
 		link_dead = false;
 		// Update the comms state point and qualities
 		PortUp();
@@ -150,6 +205,8 @@ void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 // Called when a keep alive message (request link status) receives no response
 void DNP3MasterPort::OnKeepAliveFailure()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: KeepAliveFailure() called.", Name);
 	this->OnLinkDown();
 }
 void DNP3MasterPort::OnLinkDown()
@@ -180,6 +237,9 @@ void DNP3MasterPort::OnLinkDown()
 // Called when a keep alive message receives a valid response
 void DNP3MasterPort::OnKeepAliveSuccess()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: KeepAliveSuccess() called.", Name);
+
 	if(link_dead)
 	{
 		link_dead = false;
@@ -340,7 +400,6 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			pIOS->post([&]()
 				{
 					DisableStack();
-					PortDown();
 				});
 		}
 

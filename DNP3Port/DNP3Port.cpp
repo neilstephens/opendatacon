@@ -55,6 +55,9 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 // Called by OpenDNP3 Thread Pool
 void DNP3Port::StateListener(opendnp3::ChannelState state)
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: ChannelState {}.", Name, opendnp3::ChannelStateToString(state));
+
 	if(state != opendnp3::ChannelState::OPEN)
 	{
 		channel_dead = true;

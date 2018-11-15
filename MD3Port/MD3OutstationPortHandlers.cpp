@@ -236,7 +236,9 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 	}
 }
 
+#ifdef _MSC_VER
 #pragma region Worker Methods
+#endif
 
 // This method is passed to the SystemFlags variable to do the necessary calculation
 // Access through SystemFlags.GetDigitalChangedFlag()
@@ -252,9 +254,13 @@ bool MD3OutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
 	return MyPointConf->PointTable.TimeTaggedDataAvailable();
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma region ANALOG and COUNTER
+#endif
 // Function 5
 void MD3OutstationPort::DoAnalogUnconditional(MD3BlockFormatted &Header)
 {
@@ -451,9 +457,13 @@ void MD3OutstationPort::SendAnalogNoChange(uint8_t StationAddress, uint8_t Modul
 	SendMD3Message(ResponseMD3Message);
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma region DIGITAL
+#endif
 // Function 7
 void MD3OutstationPort::DoDigitalUnconditionalObs(MD3BlockFormatted &Header)
 {
@@ -1097,9 +1107,13 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 }
 
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma region CONTROL
+#endif
 
 void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 {
@@ -1390,9 +1404,13 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &Com
 	}
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
 
+#ifdef _MSC_VER
 #pragma region SYSTEM
+#endif
 
 // Function 40 - SYSTEM_SIGNON_CONTROL
 // The response is what we have received with the direction bit changed. If the address is zero, we send our address.
@@ -1622,4 +1640,6 @@ void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
 	SendMD3Message(ResponseMD3Message);
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif

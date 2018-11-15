@@ -52,6 +52,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	DoUnsolOnStartup(true),
 	SetQualityOnLinkStatus(true),
+	CommsPointRideThroughTimems(0),
 	/// Which classes should be requested in a startup integrity scan
 	StartupIntegrityClass0(true),
 	StartupIntegrityClass1(true),
@@ -203,12 +204,20 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();
 
 	// Comms Point Configuration
-	if (!JSONRoot.isMember("CommsPoint") || !JSONRoot["CommsPoint"].isMember("Index"))
-		mCommsPoint.first = opendnp3::Binary(false, static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
-	else
+	if (JSONRoot.isMember("CommsPoint"))
 	{
-		mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
-		mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
+		if(JSONRoot["CommsPoint"].isMember("Index") && JSONRoot["CommsPoint"].isMember("FailValue"))
+		{
+			mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+			mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->error("CommsPoint an 'Index' and a 'FailValue'.");
+		}
+		if(JSONRoot["CommsPoint"].isMember("RideThroughTimems"))
+			CommsPointRideThroughTimems = JSONRoot["CommsPoint"]["RideThroughTimems"].asUInt();
 	}
 
 	// Master Station scanning configuration

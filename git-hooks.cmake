@@ -33,8 +33,7 @@ if(GIT_FOUND)
 
 	#git version 2.9 can use a different hooks location
 	if((${CMAKE_MATCH_1} GREATER 2) OR
-		((${CMAKE_MATCH_1} EQUAL 2) AND
-		((${CMAKE_MATCH_9} GREATER 9) OR (${CMAKE_MATCH_1} EQUAL 9))))
+		((${CMAKE_MATCH_1} EQUAL 2) AND (${CMAKE_MATCH_2} GREATER 8)))
 		message("Setting hooks directory")
 		execute_process(
 			COMMAND git config core.hooksPath git-hooks
@@ -44,4 +43,15 @@ if(GIT_FOUND)
 		message("Copying hook scripts")
 		configure_file ("${CMAKE_SOURCE_DIR}/git-hooks/pre-commit" "${CMAKE_SOURCE_DIR}/.git/hooks/pre-commit" COPYONLY)
 	endif()
+
+	#git version 2.14 can keep submodules updated
+	if((${CMAKE_MATCH_1} GREATER 2) OR
+		((${CMAKE_MATCH_1} EQUAL 2) AND (${CMAKE_MATCH_2} GREATER 13)))
+		message("Setting submodule recurse")
+		execute_process(
+			COMMAND git config submodule.recurse true
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		)
+	endif()
+
 endif()

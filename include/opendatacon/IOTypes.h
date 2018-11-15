@@ -283,7 +283,7 @@ class EventInfo
 {
 public:
 	EventInfo(EventType tp, size_t ind = 0, const std::string& source = "",
-		QualityFlags qual = (QualityFlags::ONLINE | QualityFlags::RESTART),
+		QualityFlags qual = QualityFlags::ONLINE,
 		msSinceEpoch_t time = msSinceEpoch()):
 		Index(ind),
 		Timestamp(time),
