@@ -1,5 +1,19 @@
 language: cpp
-compiler: gcc
+
+os:
+  - linux
+  - osx
+
+compiler:
+  - gcc
+  - clang
+
+branches:
+  only:
+    - develop
+    - master
+    - /^release\/.*$/
+
 dist: xenial
 
 install: 
@@ -9,8 +23,8 @@ install:
 script: 
   - mkdir build && cd build && cmake -DFULL=ON ..
   - make
-  - make package
+  #- make package #can turn this on when we do a deploy step
   - build/ODC_tests
-  # - build/DNP3Port_tests #opendnp3 bug makes this hang at the moment
+  #- build/DNP3Port_tests #opendnp3 bug makes this hang at the moment
   - build/MD3Port_tests
   
