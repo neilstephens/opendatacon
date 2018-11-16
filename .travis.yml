@@ -16,9 +16,18 @@ branches:
 
 dist: xenial
 
-install: 
-  - sudo apt update
-  - sudo apt install -qq libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev
+addons:
+  apt:
+    packages:
+      - libmodbus5
+      - libmodbus-dev
+      - libmicrohttpd10
+      - libmicrohttpd-dev
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libmodbus libmodbus-dev libmicrohttpd libmicrohttpd-dev; fi
 
 script: 
   - mkdir build && cd build && cmake -DFULL=ON ..
