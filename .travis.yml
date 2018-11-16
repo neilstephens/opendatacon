@@ -16,6 +16,13 @@ branches:
 
 dist: xenial
 
+matrix:
+  exclude:
+    - os: osx
+      compiler: gcc
+  allow_failures:
+    - os: osx
+
 addons:
   apt:
     packages:
