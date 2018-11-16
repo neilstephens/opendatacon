@@ -30,7 +30,7 @@ endif()
 
 #find modbus library
 find_library(MODBUS_LIB NAMES modbus libmodbus
-	PATHS ${MODBUS_HOME}/lib NO_DEFAULT_PATH
+	PATHS ${MODBUS_HOME}/lib ${MODBUS_HOME}/local/lib NO_DEFAULT_PATH
 	PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
 	NO_CMAKE_FIND_ROOT_PATH)
 add_library(modbus_target UNKNOWN IMPORTED)
