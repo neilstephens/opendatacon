@@ -32,6 +32,8 @@
 #include <array>
 #include <fstream>
 #include <cassert>
+#include <thread>
+#include <chrono>
 
 #define COMPILE_TESTS
 
@@ -118,10 +120,10 @@ const char *conffile1 = R"001(
 	// ACC12 - 1 to a payload,
 	// ACC24 - takes two payloads.
 
-	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG", "SOE" : true},
-					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA", "SOE" : false},
+	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG", "SOE" : true, "SOEIndex" : 0},
+					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA", "SOE" : true, "SOEIndex" : 20},
 					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB", "SOE" : false},
-					{"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC", "SOE" : false}],
+					{"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC" }],
 
 	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
 					{"Index" : 1, "Group" : 3, "PayloadLocation": "3B","Channel" : 1, "Type":"ANA"},
@@ -168,7 +170,7 @@ const char *conffile2 = R"002(
 	"CBCommandTimeoutmsec" : 4000,
 	"CBCommandRetries" : 1,
 
-	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 0, "PointType" : "DIG", "SOE" : false}],
+	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 0, "PointType" : "DIG"}],
 
 	// CONTROL up to 12 bits per group address, Channel 1 to 12. Simulator used dual points one for trip one for close.
 	"BinaryControls" : [{"Index": 20,  "Group" : 5, "Channel" : 1, "Type" : "CONTROL"}]
@@ -751,6 +753,7 @@ TEST_CASE("Station - ScanRequest F0")
 	SendBinaryEvent(CBOSPort, 12, false);
 	SendBinaryEvent(CBOSPort, 13, true);
 	SendBinaryEvent(CBOSPort, 14, false); // Cause more than one change.
+	std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	SendBinaryEvent(CBOSPort, 14, true);
 
 	Response = "Not Set";
@@ -775,7 +778,7 @@ TEST_CASE("Station - ScanRequest F0")
 	// Now do the changes that do not trigger the change bits being set.
 	SendBinaryEvent(CBOSPort, 12, true);
 	SendBinaryEvent(CBOSPort, 13, false);
-	SendBinaryEvent(CBOSPort, 14, false); // ONly 1 change, need 2 to trigger
+	SendBinaryEvent(CBOSPort, 14, false); // Only 1 change, need 2 to trigger
 
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();

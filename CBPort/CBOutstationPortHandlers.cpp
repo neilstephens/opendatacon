@@ -97,7 +97,7 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			break;
 
 		case FUNC_SEND_NEW_SOE:
-			NotImplemented = true;
+			FuncSendSOEResponse(Header, CompleteCBMessage);
 			break;
 		case FUNC_REPEAT_SOE:
 			// Resend the last SOE message
@@ -576,6 +576,18 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 	}
 }
 
+void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage)
+{
+	LOGDEBUG("OS - SendSOEResponse - FnA - Code {}", Header.GetGroup());
+	(Header, CompleteCBMessage);
+	CBBinaryPoint CurrentPoint;
+	uint64_t LastPointmsec = 0;
+	bool CanSend = true;
+
+	while (MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint)) // Don't pop until we are happy...
+	{}
+
+}
 // We do not update the time, just send back our current time - assume UTC time of day in milliseconds since 1970 (CBTime()).
 void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage)
 {

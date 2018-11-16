@@ -195,20 +195,24 @@ public:
 		Changed(src.Changed),
 		MomentaryChangeStatus(src.MomentaryChangeStatus),
 		PointType(src.PointType),
-		SOEPoint(src.SOEPoint)
+		SOEPoint(src.SOEPoint),
+		SOEIndex(src.SOEIndex)
 	{}
-	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype, bool soepoint):
+	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype, bool soepoint, uint8_t soeindex):
 		CBPoint(index, group, channel, static_cast<CBTime>(0), payloadlocation),
 		PointType(pointtype),
-		SOEPoint(soepoint)
+		SOEPoint(soepoint),
+		SOEIndex(soeindex)
 	{}
 
-	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype, uint8_t binval, bool changed, CBTime changedtime, bool soepoint):
+	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype,
+		uint8_t binval, bool changed, CBTime changedtime, bool soepoint, uint8_t soeindex):
 		CBPoint(index, group, channel, changedtime, payloadlocation),
 		Binary(binval),
 		Changed(changed),
 		PointType(pointtype),
-		SOEPoint(soepoint)
+		SOEPoint(soepoint),
+		SOEIndex(soeindex)
 	{}
 
 	~CBBinaryPoint();
@@ -226,6 +230,7 @@ public:
 
 	void GetBinaryAndMCFlagWithFlagReset(uint8_t &result, bool &MCS) { std::unique_lock<std::mutex> lck(PointMutex); result = Binary; MCS = MomentaryChangeStatus; Changed = false; MomentaryChangeStatus = false; }
 	bool GetIsSOE() const { return SOEPoint;  }
+	uint8_t GetSOEIndex() const { return SOEIndex; }
 
 	void SetBinary(const uint8_t &b, const CBTime &ctime)
 	{
@@ -249,6 +254,7 @@ protected:
 	bool MomentaryChangeStatus = false; // Used only for MCA, MCB and MCC types. Not valid for other types.
 	BinaryPointType PointType = DIG;
 	bool SOEPoint = false;
+	uint8_t SOEIndex = 0; // From 0 to 120 (7 bits), per group. The Bottom 3 bits of the group
 };
 
 class CBAnalogCounterPoint: public CBPoint

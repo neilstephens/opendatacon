@@ -92,7 +92,7 @@ bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const u
 	return true;
 }
 
-bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const BinaryPointType &pointtype, bool issoe)
+bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const BinaryPointType &pointtype, bool issoe, uint8_t soeindex)
 {
 	// So we need to access the Conitel data by Group/PayLoadLocation/Channel
 	// When we get a scan, we need to get everything for a given group, payload by payload 1B,2A,2B and then for binary all matching channels.
@@ -119,7 +119,7 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 	else
 	{
 		LOGDEBUG("Adding Binary Point at CBIndex - " + to_hexstring(CBIndex));
-		auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype, issoe);
+		auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype, issoe, soeindex);
 		BinaryCBPointMap[CBIndex] = pt;
 		BinaryODCPointMap[index] = pt;
 	}
@@ -195,7 +195,7 @@ bool CBPointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, 
 		return false;
 	}
 
-	auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, PayloadLocationType(1,PayloadABType::PositionB), pointtype, false);
+	auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, PayloadLocationType(1,PayloadABType::PositionB), pointtype, false,0);
 	BinaryControlCBPointMap[CBIndex] = pt;
 	BinaryControlODCPointMap[index] = pt;
 	return true;
@@ -293,11 +293,13 @@ bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const u
 		if (ODCPointMapIter->second->GetIsSOE() && IsOutstation)
 			AddToDigitalEvents(*ODCPointMapIter->second, meas, eventtime); // Don't store if master - we just fire off ODC events.
 
-		// Now check that the data we want to set is actually newer than the current point information. i.e. dont go backwards!
+		// Now check that the data we want to set is actually newer than (or equal to) the current point information. i.e. dont go backwards!
 		if (eventtime > ODCPointMapIter->second->GetChangedTime())
 		{
 			ODCPointMapIter->second->SetBinary(meas, eventtime);
 		}
+		//	else
+		//		LOGDEBUG("Received a SetBinaryValue command that is older than the current binary data {}, {}", ODCPointMapIter->second->GetChangedTime(), eventtime);
 		return true;
 	}
 	return false;
@@ -312,6 +314,18 @@ void CBPointTableAccess::AddToDigitalEvents(const CBBinaryPoint &inpt, const uin
 		pt.SetBinary(meas, eventtime);
 		pBinaryTimeTaggedEventQueue->async_push(pt);
 	}
+}
+bool CBPointTableAccess::PeekNextTaggedEventPoint(CBBinaryPoint &pt)
+{
+	return pBinaryTimeTaggedEventQueue->sync_front(pt);
+}
+bool CBPointTableAccess::PopNextTaggedEventPoint()
+{
+	return pBinaryTimeTaggedEventQueue->sync_pop();
+}
+bool CBPointTableAccess::TimeTaggedDataAvailable()
+{
+	return !pBinaryTimeTaggedEventQueue->sync_empty();
 }
 #ifdef _MSC_VER
 #pragma endregion

@@ -47,10 +47,10 @@ public:
 
 	// The add to point table functions add to both the ODC and MD3 Map.
 	// The Conitel Baker methods require that a
-	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation, const BinaryPointType & pointtype, bool issoe);
 	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel,  const BinaryPointType & pointtype );
 	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
 	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
+	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation, const BinaryPointType & pointtype, bool issoe, uint8_t soeindex);
 	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const AnalogCounterPointType &pointtype);
 
 	bool AddStatusByteToCBMap(const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
@@ -69,6 +69,9 @@ public:
 	bool SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, CBTime eventtime);
 
 	void AddToDigitalEvents(const CBBinaryPoint & inpt, const uint8_t meas, const CBTime eventtime);
+	bool PeekNextTaggedEventPoint(CBBinaryPoint &pt);
+	bool PopNextTaggedEventPoint();
+	bool TimeTaggedDataAvailable();
 
 	bool GetBinaryControlODCIndexUsingCBIndex(const uint8_t group, const uint8_t channel, size_t & index);
 	bool GetBinaryControlCBIndexUsingODCIndex(const size_t index, uint8_t &group, uint8_t & channel);

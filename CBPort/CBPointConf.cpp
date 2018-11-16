@@ -210,6 +210,8 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		BinaryPointType pointtype = DIG;
 		std::string pointtypestring = "";
 		bool IsSOE = false;
+		uint8_t SOEIndex = 0;
+
 		PayloadLocationType payloadlocation;
 
 		if (JSONNode[n].isMember("Index"))
@@ -240,14 +242,27 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 				LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
 				error = true;
 			}
+
 			if (JSONNode[n].isMember("SOE"))
 			{
 				IsSOE = JSONNode[n]["SOE"].asBool();
-			}
-			else
-			{
-				LOGERROR("A point needs a \"SOE\" : " + JSONNode[n].toStyledString());
-				error = true;
+				if (IsSOE)
+				{
+					if (JSONNode[n].isMember("SOEIndex"))
+					{
+						SOEIndex = JSONNode[n]["SOEIndex"].asUInt();
+						if (SOEIndex > 120)
+						{
+							LOGERROR("\"SOEIndex\" must be 0 to 120 : " + JSONNode[n].toStyledString());
+							error = true;
+						}
+					}
+					else
+					{
+						LOGERROR("A point needs a \"SOEIndex\" if SOE is true : " + JSONNode[n].toStyledString());
+						error = true;
+					}
+				}
 			}
 		}
 		else
@@ -325,7 +340,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					else
 					{
 						// Only add the point if it passes
-						res = PointTable.AddBinaryPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, payloadlocation, pointtype, IsSOE);
+						res = PointTable.AddBinaryPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, payloadlocation, pointtype, IsSOE, SOEIndex);
 					}
 				}
 				else if (ptype == BinaryControl)
@@ -352,6 +367,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
 					LOGDEBUG(BinaryName+" Adding a Binary - Index: "+std::to_string(index)+" Group: "+ std::to_string(group) + " Channel: " + std::to_string(currentchannel) + " Point Type: "+ pointtypestring +" Payload Location: "+payloadlocation.to_string());
 				}
+				SOEIndex++;
 			}
 		}
 	}

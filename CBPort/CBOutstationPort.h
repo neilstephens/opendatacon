@@ -131,6 +131,7 @@ public:
 	bool ExecuteBinaryControl(uint8_t group, uint8_t Channel, bool point_on);
 	bool ExecuteAnalogControl(uint8_t group, uint8_t Channel, uint16_t data);
 	void FuncMasterStationRequest(CBBlockData &Header, CBMessage_t &CompleteCBMessage);
+	void FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage);
 
 	void ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage);
 	void EchoReceivedHeaderToMaster(CBBlockData & Header);

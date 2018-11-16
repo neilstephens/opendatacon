@@ -218,7 +218,6 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		}
 		case EventType::Binary:
 		{
-			// CB only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for CB
 			CBTime now = CBNow(); // msec since epoch.
 			CBTime eventtime = event->GetTimestamp();
 			uint8_t meas = event->GetPayload<EventType::Binary>();
