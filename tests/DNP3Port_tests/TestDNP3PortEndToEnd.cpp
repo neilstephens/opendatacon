@@ -28,6 +28,8 @@
 
 TEST_CASE(SUITE("TCP link"))
 {
+	asio::io_service ios;
+
 	//make an outstation port
 	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 	REQUIRE(newOutstation);
@@ -55,7 +57,6 @@ TEST_CASE(SUITE("TCP link"))
 	MPUT->Build();
 
 	//turn them on
-	asio::io_service ios;
 	OPUT->SetIOS(&ios);
 	MPUT->SetIOS(&ios);
 	OPUT->Enable();
@@ -102,6 +103,8 @@ TEST_CASE(SUITE("Serial link"))
 		return;
 	}
 
+	asio::io_service ios;
+
 	//make an outstation port
 	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 	REQUIRE(newOutstation);
@@ -132,7 +135,6 @@ TEST_CASE(SUITE("Serial link"))
 	MPUT->Build();
 
 	//turn them on
-	asio::io_service ios;
 	auto work = std::make_unique<asio::io_service::work>(ios);
 	OPUT->SetIOS(&ios);
 	MPUT->SetIOS(&ios);

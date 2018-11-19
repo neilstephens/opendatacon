@@ -28,27 +28,35 @@
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
+		asio::io_service ios;
+
 		newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 		REQUIRE(newOutstation);
+		delptr deleteOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+		REQUIRE(deleteOutstation);
+
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
-		asio::io_service ios;
 		OPUT->SetIOS(&ios);
 		OPUT->Enable();
 		OPUT->Disable();
 
-		delete OPUT;
+		deleteOutstation(OPUT);
 	}
 	/// Test the destruction of an enabled port
 	{
+		asio::io_service ios;
+
 		newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
 		REQUIRE(newOutstation);
+		delptr deleteOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+		REQUIRE(deleteOutstation);
+
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
-		asio::io_service ios;
 		OPUT->SetIOS(&ios);
 		OPUT->Enable();
 
-		delete OPUT;
+		deleteOutstation(OPUT);
 	}
 }
