@@ -29,6 +29,7 @@ install:
 cache:
 - C:\libmodbus\
 - C:\libmicrohttpd\
+- C:\projects\opendatacon\submodules
 before_build:
 - cmd: cd C:\projects\opendatacon
 - cmd: cmake . -Bbuild-win32 -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows32 -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
