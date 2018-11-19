@@ -43,6 +43,9 @@ public:
 
 TEST_CASE(SUITE("StatusCallback"))
 {
+	asio::io_service ios;
+	asio::io_service::work work(ios);
+
 	/*
 	 * Send events from one port to 7 other ports
 	 *	- 3 ports via separate connector IOHandlers - check port (de)multiplexing
@@ -91,9 +94,6 @@ TEST_CASE(SUITE("StatusCallback"))
 	DataConnector Conn3("Conn3","",Conn3Conf);
 	DataConnector Conn4("Conn4","",Conn4Conf);
 	DataConnector* Conns[4] = {&Conn1,&Conn2,&Conn3,&Conn4};
-
-	asio::io_service ios;
-	asio::io_service::work work(ios);
 
 	Source.SetIOS(&ios);
 	for(auto& p : Sinks)

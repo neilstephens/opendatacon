@@ -1,7 +1,6 @@
 language: cpp
 
 os:
-  - linux
   - osx
 
 compiler:
@@ -10,26 +9,7 @@ compiler:
 
 branches:
   only:
-    - develop
-    - master
-    - /^release\/.*$/
-
-dist: xenial
-
-matrix:
-  exclude:
-    - os: osx
-      compiler: gcc
-  allow_failures:
-    - os: osx
-
-addons:
-  apt:
-    packages:
-      - libmodbus5
-      - libmodbus-dev
-      - libmicrohttpd10
-      - libmicrohttpd-dev
+    - osx_test_debug
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
