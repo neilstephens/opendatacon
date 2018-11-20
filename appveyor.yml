@@ -22,7 +22,7 @@ matrix:
   - platform: x64
     cpu_bits: "64"
     cmake_generator: "build-win64"
-    cmake_platform: "win64æ
+    cmake_platform: "win64"
  
 clone_folder: C:\projects\opendatacon
 environment:
