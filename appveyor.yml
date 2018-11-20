@@ -39,6 +39,6 @@ before_build:
 build_script:
 - cmd: msbuild build-win32\opendatacon_suite.sln /p:Configuration=Release /p:Platform=Win32
 test_script:
-- cmd: build-win32\ODC_tests
-#- cmd: build\DNP3Port_tests #opendnp3 bug makes this hang at the moment
-- cmd: build-win32\MD3Port_tests
+- cmd: build-win32\Release\ODC_tests.exe
+#- cmd: build-win32\Release\DNP3Port_tests.exe #opendnp3 bug makes this hang at the moment
+- cmd: build-win32\Release\MD3Port_tests.exe
