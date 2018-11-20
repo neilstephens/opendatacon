@@ -40,8 +40,8 @@ install:
       Move-Item .\libmodbus C:\libmodbus\libmodbus
     }
 - ps: >-
-    If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.17-w32)){
-      Start-FileDownload "https://www.dropbox.com/s/13t92f57wie4wnb/libmicrohttpd-0.9.17-w32.zip?dl=1" -FileName libmicrohttpd-0.9.17-w32.zip
+    If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-w32)){
+      Start-FileDownload "https://ftp.yzu.edu.tw/pub/gnu/libmicrohttpd/libmicrohttpd-0.9.17-w32.zip" -FileName libmicrohttpd-0.9.17-w32.zip
       7z x -y libmicrohttpd-0.9.17-w32.zip
       New-Item C:\libmicrohttpd -ItemType Directory
       Move-Item .\libmicrohttpd-0.9.17-w32 C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
@@ -53,7 +53,7 @@ cache:
 
 before_build:
 - cmd: cd C:\projects\opendatacon
-- cmd: cmake . -B%cmake_generator% -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-%cpu_bits%
+- cmd: cmake . -B%cmake_generator% -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
