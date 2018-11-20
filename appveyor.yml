@@ -15,20 +15,19 @@ configuration:
  - Debug
 
 environment:
-    matrix:
-      - platform: x86
-        cpu_bits: 32
-        cmake_generator: build-win32
-        cmake_platform: win32
-      - platform: x64
-        cpu_bits: 64
-        cmake_generator: build-win64
-        cmake_platform: win64
- 
-clone_folder: C:\projects\opendatacon
-environment:
   MICROHTTPD_HOME: C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
   MODBUS_HOME: C:\libmodbus\libmodbus\windows32
+  matrix:
+    - platform: x86
+      cpu_bits: 32
+      cmake_generator: build-win32
+      cmake_platform: win32
+    - platform: x64
+      cpu_bits: 64
+      cmake_generator: build-win64
+      cmake_platform: win64
+ 
+clone_folder: C:\projects\opendatacon
   
 init:
     
