@@ -53,12 +53,12 @@ cache:
 
 before_build:
 - cmd: cd C:\projects\opendatacon
-- cmd: cmake . -B%cmake_generator% -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%
+- cmd: cmake . -B%cmake_generator% -A %platform% -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
 build_script:
-- cmd: msbuild %cmake_generator%\opendatacon_suite.sln /p:Configuration=%configuration% /p:Platform=%cmake_platform%
+- cmd: msbuild %cmake_generator%\opendatacon_suite.sln /p:Configuration=%configuration% /p:Platform=%platform%
 test_script:
 - cmd: '%cmake_generator%\%configuration%\ODC_tests.exe'
 #- cmd: '%cmake_generator%\%configuration%\DNP3Port_tests.exe' #opendnp3 bug makes this hang at the moment
