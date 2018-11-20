@@ -48,6 +48,8 @@ DNP3MasterPort::~DNP3MasterPort()
 
 void DNP3MasterPort::Enable()
 {
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
 	if(enabled)
 		return;
 	if(nullptr == pMaster)
@@ -56,10 +58,11 @@ void DNP3MasterPort::Enable()
 			log->error("{}: DNP3 stack not initialised.", Name);
 		return;
 	}
+	if(!pCommsRideThroughTimer)
+		pCommsRideThroughTimer = std::make_unique<CommsRideThroughTimer>(*pIOS,pConf->pPointConf->CommsPointRideThroughTimems,[this](){SetCommsGood();},[this](){SetCommsFailed();});
 
 	enabled = true;
 
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
 		EnableStack();
 
@@ -85,7 +88,7 @@ void DNP3MasterPort::PortUp()
 		log->debug("{}: PortUp() called.", Name);
 
 	//cancel the timer if we were riding through
-	CommsRideThroughTimer(true);
+	pCommsRideThroughTimer->Cancel();
 }
 
 void DNP3MasterPort::PortDown()
@@ -93,42 +96,8 @@ void DNP3MasterPort::PortDown()
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: PortDown() called.", Name);
 
-	//start the ride through timer
-	CommsRideThroughTimer();
-}
-
-void DNP3MasterPort::CommsRideThroughTimer(bool cancel)
-{
-	static asio::strand TimerAccessStrand(*pIOS);
-	static bool RideThroughInProgress = false;
-	static asio::basic_waitable_timer<std::chrono::steady_clock> aCommsRideThroughTimer(*pIOS);
-
-	TimerAccessStrand.post([cancel,this]()
-		{
-			//TODO: remove indent guards when uncrustify bug fixed
-			/* *INDENT-OFF* */
-			if(cancel)
-			{
-				if(RideThroughInProgress)
-					aCommsRideThroughTimer.cancel();
-				RideThroughInProgress = false;
-				SetCommsGood();
-				return;
-			}
-			/* *INDENT-ON* */
-			if(RideThroughInProgress)
-				return;
-
-			RideThroughInProgress = true;
-			auto timeout = static_cast<DNP3PortConf*>(this->pConf.get())->pPointConf->CommsPointRideThroughTimems;
-			aCommsRideThroughTimer.expires_from_now(std::chrono::milliseconds(timeout));
-			aCommsRideThroughTimer.async_wait(TimerAccessStrand.wrap([this](asio::error_code err)
-					{
-						if(RideThroughInProgress)
-							SetCommsFailed();
-						RideThroughInProgress = false;
-					}));
-		});
+	//trigger the ride through timer
+	pCommsRideThroughTimer->Trigger();
 }
 
 void DNP3MasterPort::SetCommsGood()

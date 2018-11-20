@@ -29,6 +29,8 @@
 TEST_CASE(SUITE("TCP link"))
 {
 	asio::io_service ios;
+	auto work = std::make_unique<asio::io_service::work>(ios);
+	std::thread t([&](){ios.run();});
 
 	//make an outstation port
 	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
@@ -86,6 +88,8 @@ TEST_CASE(SUITE("TCP link"))
 	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
+	work.reset();
+	t.join();
 	MPUT.reset();
 	OPUT.reset();
 }
@@ -104,6 +108,8 @@ TEST_CASE(SUITE("Serial link"))
 	}
 
 	asio::io_service ios;
+	auto work = std::make_unique<asio::io_service::work>(ios);
+	std::thread t([&](){ios.run();});
 
 	//make an outstation port
 	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
@@ -135,7 +141,6 @@ TEST_CASE(SUITE("Serial link"))
 	MPUT->Build();
 
 	//turn them on
-	auto work = std::make_unique<asio::io_service::work>(ios);
 	OPUT->SetIOS(&ios);
 	MPUT->SetIOS(&ios);
 	OPUT->Enable();
@@ -166,6 +171,7 @@ TEST_CASE(SUITE("Serial link"))
 	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
 	work.reset();
+	t.join();
 	MPUT.reset();
 	OPUT.reset();
 }

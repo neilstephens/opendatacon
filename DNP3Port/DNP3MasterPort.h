@@ -33,6 +33,7 @@
 #include <opendnp3/app/parsing/ICollection.h>
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
+#include "CommsRideThroughTimer.h"
 
 class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
 {
@@ -41,7 +42,9 @@ public:
 		DNP3Port(aName, aConfFilename, aConfOverrides),
 		pMaster(nullptr),
 		stack_enabled(false),
-		assign_class_sent(false)
+		assign_class_sent(false),
+		IntegrityScan(nullptr),
+		pCommsRideThroughTimer(nullptr)
 	{}
 	~DNP3MasterPort() override;
 
@@ -101,10 +104,10 @@ private:
 	std::atomic_bool stack_enabled;
 	bool assign_class_sent;
 	std::shared_ptr<asiodnp3::IMasterScan> IntegrityScan;
+	std::unique_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
 	void SetCommsGood();
 	void SetCommsFailed();
-	void CommsRideThroughTimer(bool cancel = false);
 	void LinkStatusListener(opendnp3::LinkStatus status);
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){}
