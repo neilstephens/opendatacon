@@ -5,12 +5,32 @@ branches:
 #  - master
 #  - /^release\/.*$/
 os: Visual Studio 2017
-configuration: Release
-platform: x86
+
+
+#---------------------------------#
+#       build configuration       #
+#---------------------------------#
+configuration:
+ - Release
+ - Debug
+
+matrix:
+  - platform: x86
+    cpu_bits: "32"
+    cmake_generator: "build-win32"
+    cmake_platform: "win32"
+  - platform: x64
+    cpu_bits: "64"
+    cmake_generator: "build-win64"
+    cmake_platform: "win64æ
+ 
 clone_folder: C:\projects\opendatacon
 environment:
   MICROHTTPD_HOME: C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
   MODBUS_HOME: C:\libmodbus\libmodbus\windows32
+  
+init:
+    
 install:
 - ps: >-
     If (-not (Test-Path C:\libmodbus\libmodbus)){
@@ -20,25 +40,26 @@ install:
       Move-Item .\libmodbus C:\libmodbus\libmodbus
     }
 - ps: >-
-    If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.17-w32)){
-      Start-FileDownload "https://www.dropbox.com/s/13t92f57wie4wnb/libmicrohttpd-0.9.17-w32.zip?dl=1" -FileName libmicrohttpd-0.9.17-w32.zip
-      7z x -y libmicrohttpd-0.9.17-w32.zip
+    If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-w32)){
+      Start-FileDownload "https://ftp.yzu.edu.tw/pub/gnu/libmicrohttpd/libmicrohttpd-0.9.17-w32.zip" -FileName libmicrohttpd-w32.zip
+      7z x -y libmicrohttpd-w32.zip
       New-Item C:\libmicrohttpd -ItemType Directory
-      Move-Item .\libmicrohttpd-0.9.17-w32 C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
+      Move-Item .\libmicrohttpd-w32 C:\libmicrohttpd\libmicrohttpd-w32
     }
 cache:
 - C:\libmodbus\
 - C:\libmicrohttpd\
 - C:\projects\opendatacon\submodules
+
 before_build:
 - cmd: cd C:\projects\opendatacon
-- cmd: cmake . -Bbuild-win32 -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows32 -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
+- cmd: cmake . -B%cmake_generator% -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-%cpu_bits%
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
 build_script:
-- cmd: msbuild build-win32\opendatacon_suite.sln /p:Configuration=Release /p:Platform=Win32
+- cmd: msbuild %cmake_generator%\opendatacon_suite.sln /p:Configuration=%configuration% /p:Platform=%cmake_platform%
 test_script:
-- cmd: build-win32\Release\ODC_tests.exe
-#- cmd: build-win32\Release\DNP3Port_tests.exe #opendnp3 bug makes this hang at the moment
-- cmd: build-win32\Release\MD3Port_tests.exe
+- cmd: %cmake_generator%\%configuration%\ODC_tests.exe
+#- cmd: %cmake_generator%\%configuration%\DNP3Port_tests.exe #opendnp3 bug makes this hang at the moment
+- cmd: %cmake_generator%\%configuration%\MD3Port_tests.exe
