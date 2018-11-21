@@ -1,4 +1,4 @@
-version: 0.4.0.{build}
+version: {build}
 branches:
   only:
   - develop
@@ -58,7 +58,7 @@ before_build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
 build_script:
-- cmd: msbuild %cmake_generator%\opendatacon_suite.sln /p:Configuration=%configuration% /p:Platform=%platform%
+- cmd: cmake --build --config %configuration%
 test_script:
 - cmd: '%cmake_generator%\%configuration%\ODC_tests.exe'
 #- cmd: '%cmake_generator%\%configuration%\DNP3Port_tests.exe' #opendnp3 bug makes this hang at the moment
