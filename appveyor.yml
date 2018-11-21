@@ -1,4 +1,4 @@
-version: {build}
+version: AppVeyorBuild-{build}
 branches:
   only:
   - develop
@@ -53,7 +53,7 @@ cache:
 
 before_build:
 - cmd: cd C:\projects\opendatacon
-- cmd: cmake . -B%cmake_generator% -A %platform% -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%
+- cmd: cmake . -B%cmake_generator% -A%platform% -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
