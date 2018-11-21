@@ -18,7 +18,7 @@ environment:
   MICROHTTPD_HOME: C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
   MODBUS_HOME: C:\libmodbus\libmodbus\windows32
   matrix:
-    - platform: x86
+    - platform: Win32
       cpu_bits: 32
       cmake_builddir: build-win32
     - platform: x64
@@ -51,7 +51,13 @@ cache:
 
 before_build:
 - cmd: cd C:\projects\opendatacon
-- cmd: cmake . -B%cmake_builddir% -G"Visual Studio 15 2017" -A%platform% -DFULL=ON -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%
+- ps: >-
+        If ($env:Platform -Match "64") {
+            $env:FEATURES="-DTESTS=ON -DDNP3PORT=ON -DJSONPORT=ON -DMODBUSPORT=ON -DSIMPORT=ON -DMD3PORT=ON -DCONSOLEUI=ON"
+        } Else {
+            $env:FEATURES="-DFULL=ON"
+        }
+- cmd: cmake . -B%cmake_builddir% -G"Visual Studio 15 2017" -A%platform% %FEATURES% -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
