@@ -1,7 +1,7 @@
 
 | Travis CI Linux/OSX gcc/clang builds | Appveyor CI Windows build |
 |--------------------------------------|---------------------------|
-|[![Travis Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=develop)](https://travis-ci.com/neilstephens/opendatacon)|[![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/github/nstephens/opendatacon)](https://ci.appveyor.com/project/neilstephens/opendatacon)|
+|[![Travis Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=develop)](https://travis-ci.com/neilstephens/opendatacon)|[![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/dafc9t0xb3qrqj4d?svg=true)](https://ci.appveyor.com/project/neilstephens/opendatacon)|
 
 ## Table of contents
 
