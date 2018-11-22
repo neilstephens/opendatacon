@@ -19,11 +19,9 @@ environment:
   MODBUS_HOME: C:\libmodbus\libmodbus\windows32
   matrix:
     - platform: Win32
-      cmake_platform: Win32
       cpu_bits: 32
       cmake_builddir: build-win32
-    - platform: Win64
-      cmake_platform: x64
+    - platform: x64
       cpu_bits: 64
       cmake_builddir: build-win64
  
@@ -59,7 +57,7 @@ before_build:
         } Else {
             $env:FEATURES="-DFULL=ON"
         }
-- cmd: cmake . -B%cmake_builddir% -G"Visual Studio 15 2017" -A%cmake_platform% %FEATURES% -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%
+- cmd: cmake . -B%cmake_builddir% -G"Visual Studio 15 2017" -A%platform% %FEATURES% -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
