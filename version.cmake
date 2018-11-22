@@ -53,7 +53,7 @@ if(GIT_FOUND)
 	STRING(REGEX REPLACE "\r?\n" "\\\\n\\\\t" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
 	#message("submodule versions: \n${GIT_DESCRIBE_SUBS}")
 
-	if(DEFINED CURRENT_CONFIG) #true at build-time
+	if(CURRENT_CONFIG) #true at build-time
 		set(build_config_file "${BINARY_DIR}/current_build_config")
 		message("writing ${build_config_file}: ${CURRENT_CONFIG}")
 		file(WRITE ${build_config_file} "-${CURRENT_CONFIG}")
