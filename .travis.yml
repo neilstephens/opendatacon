@@ -20,6 +20,7 @@ branches:
     - develop
     - master
     - /^release\/.*$/
+    - /^[0-9]+\.[0-9]+\.[0-9]+.*$/
 
 dist: xenial
 
@@ -56,6 +57,7 @@ deploy:
     secure: "SXeW3Kv7T9H9QC35HQ537yEUfEcwcSR8rgF7O3yk/EJELHBRDNKnB9zpecz0fjmql2Z0PIWvYyOzFp2hTusFkZgzygIOXRRAxUFwqYQtqw88U3xM939t2Lg4ih3OmuziVujqW6A9vvABO3Nf2F12T4t/NkmxVa70P64FE4Xw1cR4CoKhoZBMUVv/WZsAk7vTIdte3N4yDQ9lwA1La02wX72WRMZORSRVPiFPGvmmlqVrq4T0+38NmlHXK57NcToCNhSZh00wKhi0yxu+5BrQEzWkZzfj+vlN6bnRcsW2SINXpAVbx88oXbqjwIk8beFJDoFQZD5CZlwmFo03PKdC1F2ioEmJ8n/TmZqAc8XMTfDPkPW5YDGcGcJC1iaj7aHxVBzNF5hQenQmn3I5fAoQ8IayvpeWnWZJasJ9cC+uFUk8dKS2kdT6cKpnF4TWi2Phq2Iei5vkPo6iYzFxCta7ZxXAUa/Xiy6JEHWNRyrIpRGc82uvNmmB2F5s6mlw6Qs+qn/SmIp+y8i6Z8hsYYFs1jNeE+OKCLNH1DhsgnUNwhfxZ/da4xLo2kiYV38unORZfgQa6/r0ccEoDmRSYAsMgePwUFq6gBfEQazA0j7A2dTdq2dMmff+8x09YYSArZq7E+k5ThNEoXmrGyzD2Ptb9GfnXBBoKC2dCJ2egVe0gxg="
   file_glob: true
   file: "${FILE_TO_UPLOAD}"
+  name: "opendatacon ${TRAVIS_TAG}"
   skip_cleanup: true
   on:
     tags: true
