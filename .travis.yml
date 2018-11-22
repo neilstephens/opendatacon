@@ -1,5 +1,8 @@
 language: cpp
 
+git:
+  depth: false #shallow clone causes problem with tags
+
 os:
   - linux
   - osx

@@ -43,7 +43,7 @@ install:
       New-Item C:\libmicrohttpd -ItemType Directory
       Move-Item .\libmicrohttpd-0.9.17-w32 C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
     }
-    If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.37-w64)){
+    If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.17-w64)){
       Start-FileDownload "https://drive.google.com/uc?export=download&id=1Xfl5iwGOjm2Ggb_nwWJcNzjM05Bl9irT" -FileName libmicrohttpd-0.9.37-w64.zip
       7z x -y libmicrohttpd-0.9.37-w64.zip
       Move-Item .\libmicrohttpd-0.9.37-w64 C:\libmicrohttpd\libmicrohttpd-0.9.17-w64
