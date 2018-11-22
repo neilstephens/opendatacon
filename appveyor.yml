@@ -75,7 +75,7 @@ test_script:
 - cmd: '%cmake_builddir%\%configuration%\MD3Port_tests.exe'
 
 artifacts:
-  - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.*
+  - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
     name: Releases
 
 deploy:
