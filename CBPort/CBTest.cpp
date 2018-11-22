@@ -85,7 +85,7 @@ const char *conffile1 = R"001(
 	"LinkNumRetry": 4,
 
 	//-------Point conf--------#
-	// We have two modes for the digital/binary commands. Can be one or the other - not both!
+	// Conitel/baker switch
 	"IsBakerDevice" : false,
 
 	// If a binary event time stamp is outside 30 minutes of current time, replace the timestamp
@@ -99,19 +99,18 @@ const char *conffile1 = R"001(
 	"CBCommandTimeoutmsec" : 3000,
 	"CBCommandRetries" : 1,
 
-	// Master only PollGroups
-
+	// Master only PollGroups - ignored by outstation
 	"PollGroups" : [{"ID" : 1, "PollRate" : 10000, "Group" : 1, "PollType" : "Scan"}],
 
 	// The payload location can be 1B, 2A, 2B
-	// Where there is a 24 bit result (MCA,MCB,MCC,ACC24) the next payload location will automatically be used. Do not put something else in there!
+	// Where there is a 24 bit result (ACC24) the next payload location will automatically be used. Do not put something else in there!
 	// The point table will build a group list with all the data it has to collect for a given group number.
-	// The problem is that a point could actually be in two (or more) groups...
 	// We can only use range for Binary and Control. For analog each one has to be defined singularly
+	// SOE point definitions are optional. If missing - not an SOE point.
 
 	// Digital IN
 	// DIG - 12 bits to a Payload, Channel(bit) 1 to 12. On a range, the Channel is the first Channel in the range.
-	// MCA,MCB,MCC - 12 bits and takes two payloads (as soon as you have 1 bit, you have two payloads.
+	// MCA,MCB,MCC - 6 bits and for one payload
 
 	// Analog IN
 	// ANA - 1 Channel to a payload,
@@ -146,9 +145,6 @@ const char *conffile1 = R"001(
 	"RemoteStatus" : [{"Group":3, "Channel" : 1, "PayloadLocation": "7A"}]
 
 })001";
-/*
-
-      "AnalogControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Group" : 39, "Channel" : 0}]*/
 
 // We actually have the conf file here to match the tests it is used in below. We write out to a file (overwrite) on each test so it can be read back in.
 const char *conffile2 = R"002(
@@ -496,6 +492,38 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 	REQUIRE(CompleteCBMessage[1].IsEndOfMessageBlock() == true);
 	STANDARD_TEST_TEARDOWN();
 }
+TEST_CASE("Util - SOEEventFormat")
+{
+	SIMPLE_TEST_SETUP();
+	SOEEventFormat S;
+
+	CBTime cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
+
+	S.Group = 5;     // 3 bits b101
+	S.Number = 0x41; // 7 bits b1000001 - 0x41
+	S.ValueBit = true;
+	S.QualityBit = false;
+	S.TimeFormatBit = true; // Long format
+
+	S.Hour = 0x11;         // 5 bits	b10001 - 0x11
+	S.Minute = 0x21;       // 6 bits b10 0001 - 0x21
+	S.Second = 0x21;       // 6 bits b10 0001 - 0x21
+	S.Millisecond = 0x201; // 10 bits b10 0000 0001 - 0x201
+	S.LastEventFlag = false;
+
+	uint64_t res = S.GetFormattedData();
+
+	REQUIRE(res == 0xB06C618601000000);
+
+	S.TimeFormatBit = false; // Short format
+	S.LastEventFlag = true;
+
+	res = S.GetFormattedData();
+
+	REQUIRE(res == 0xb064300c00000000);
+
+	STANDARD_TEST_TEARDOWN();
+}
 
 #ifdef _MSC_VER
 #pragma region Block Tests
@@ -628,9 +656,9 @@ TEST_CASE("CBBlock - ClassConstructor5")
 
 namespace StationTests
 {
-void SendBinaryEvent(std::unique_ptr<CBOutstationPort> &CBOSPort, int ODCIndex, bool val)
+void SendBinaryEvent(std::unique_ptr<CBOutstationPort> &CBOSPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
 {
-	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual, time);
 	event->SetPayload<EventType::Binary>(std::move(val));
 
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
@@ -652,7 +680,6 @@ TEST_CASE("Station - ScanRequest F0")
 
 	CBOSPort->Enable();
 
-	// Request Analog Unconditional, Station 9 Module 0x20, 16 Channels
 	uint8_t station = 9;
 	uint8_t group = 3;
 	CBBlockData commandblock(station, group, FUNC_SCAN_DATA, 0, true);
@@ -670,10 +697,11 @@ TEST_CASE("Station - ScanRequest F0")
 	std::string Response = "Not Set";
 	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
 
-	// Send the Analog Unconditional command in as if came from TCP channel
+	// Send the commasnd in as if came from TCP channel
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
+	// Check the command is formatted correctly
 	std::string DesiredResult = BuildHexStringFromASCIIHexString("0937ffaa" // Echoed block plus data 1B
 		                                                       "a8080020" // Data 2A and 2B
 		                                                       "00080006"
@@ -801,6 +829,97 @@ TEST_CASE("Station - ScanRequest F0")
 	STANDARD_TEST_TEARDOWN();
 }
 
+TEST_CASE("Station - SOERequest F10")
+{
+	// So we send a SOE Request F10 packet to the Outstation, it responds with the data in the SOE Queue/List.
+	STANDARD_TEST_SETUP();
+	TEST_CBOSPort(Json::nullValue);
+
+	CBOSPort->Enable();
+
+	// Request SOE Data
+	uint8_t station = 9;
+	uint8_t group = 3;
+	CBBlockData commandblock(station, group, FUNC_SEND_NEW_SOE, 0, true);
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+
+
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			res = command_stat;
+		});
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+
+	// Send the command in as if came from TCP channel
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// Check that we got nothing back ? No Events yet?
+	std::string DesiredResult = BuildHexStringFromASCIIHexString("a930002d"); // Echoed block plus
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response == DesiredResult);
+
+
+	// Call the Event functions to put some SOE data into the queue ODC Binaries 0 to 12 will capture SOE data.
+	// For testing we need to fix the time so that we dont get changing data on every pass.
+	msSinceEpoch_t time = 0x0000016734934659; // 21/11/2018 3:42pm  msSinceEpoch();
+
+	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+	{
+		SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0), QualityFlags::ONLINE, time++);
+	}
+	SendBinaryEvent(CBOSPort,0, true, QualityFlags::ONLINE, time++);
+	SendBinaryEvent(CBOSPort, 0, false, QualityFlags::ONLINE, time++);
+	SendBinaryEvent(CBOSPort, 0, true, QualityFlags::ONLINE, time++);
+	SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
+
+
+	// Send the SOE Scan command again.
+	Response = "Not Set";
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// Now we should get back the SOE queued events.
+	DesiredResult = BuildHexStringFromASCIIHexString("a933012d192c9536006c981e602a541458c864b292c800868328c01a000ad180860b25b09789061e193e002408380c2a30093138c868323ec9981028000ffe34");
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response == DesiredResult);
+
+
+	// Now send the SOE resend command and make sure we get the same result.
+	commandblock = CBBlockData(station, group, FUNC_REPEAT_SOE, 0, true);
+
+	Response = "Not Set";
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response == DesiredResult);
+
+
+
+	// Check if the lastmessagebit is set, if so request the remaining events - we happen to know it it is, so ask for them.
+	commandblock = CBBlockData(station, group, FUNC_SEND_NEW_SOE, 0, true);
+
+	Response = "Not Set";
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	DesiredResult = BuildHexStringFromASCIIHexString("a933002d193c953a106a1822600a6a12b0c86486937820ba8328c01a000bfe12");
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response == DesiredResult);
+
+	CBOSPort->Disable();
+
+	STANDARD_TEST_TEARDOWN();
+}
 TEST_CASE("Station - BinaryEvent")
 {
 	STANDARD_TEST_SETUP();

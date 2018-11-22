@@ -368,4 +368,74 @@ typedef std::vector<CBBlockData> CBMessage_t;
 
 std::string CBMessageAsString(const CBMessage_t& CompleteCBMessage);
 
+// SOE Data Packet Definitions.
+const uint8_t SOELongBitLength = 44;
+const uint8_t SOEShortBitLength = 33;
+
+inline bool TestBit(const uint64_t &data, const uint8_t bitindex)
+{
+	uint64_t testbit = numeric_cast<uint64_t>(1) << bitindex;
+	return ((data & testbit) == testbit);
+}
+
+class SOEEventFormat // Use the Bits uint64_t to get at the resulting packed bits. - bit order???
+{
+public:
+	// 1 - 3 bits group #, 7 bits point number, Status(value) bit, Quality Bit(unused), Time Bit - changes what comes next
+	// T==1 Time - 27 bits, Hour (0-23, 5 bits), Minute (0-59, 6 bits), Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
+	// T==0 Hours and Minutes same as previous event, 16 bits - Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
+	// Last bit L, when set indicates last record.
+	// So the data can be 13+27+1 bits = 41 bits, or 13+16+1 = 30 bits.
+
+	uint8_t Group;  // 3 bits - 0 - 7
+	uint8_t Number; // 7 bits - 0 - 120
+	bool ValueBit;
+	bool QualityBit;
+	bool TimeFormatBit; // True ,1 Long Format
+	// (13 bits)
+
+	uint8_t Hour;         // 5 bits, 0-23
+	uint8_t Minute;       // 6 bits, 0-59
+	uint8_t Second;       // 6 bits, 0-59
+	uint16_t Millisecond; // 10 bits,  0-999
+	// (27 or 16 bits for the time section)
+
+	bool LastEventFlag; // Set when no more events are available
+	// 41 or 30 bits
+
+	uint64_t GetFormattedData()
+	{
+		// We will format this from the Most Significant Bit down, so the lower bits are not used.
+		uint32_t res1 = ShiftLeftResult32Bits(Group, 32 - 3) | ShiftLeftResult32Bits(Number, 32 - 7 - 3) | ShiftLeftResult32Bits(ValueBit, 32 - 7 - 3 - 1) |
+		                ShiftLeftResult32Bits(QualityBit, 32 - 7 - 3 - 1 - 1) | ShiftLeftResult32Bits(TimeFormatBit, 32 - 7 - 3 - 1 - 1 - 1);
+
+		uint64_t res = numeric_cast<uint64_t>(res1) << 32;
+
+		uint32_t res2 = 0;
+		if (TimeFormatBit)
+		{
+			res2 = ShiftLeftResult32Bits(Hour, 32 - 5) | ShiftLeftResult32Bits(Minute, 32 - 5 - 6) | ShiftLeftResult32Bits(Second, 32 - 5 - 6 - 6)
+			       | ShiftLeftResult32Bits(Millisecond, 32 - 5 - 6 - 6 - 10) | ShiftLeftResult32Bits(LastEventFlag, 32 - 5 - 6 - 6 - 10 - 1);
+		}
+		else
+		{
+			res2 = ShiftLeftResult32Bits(Second, 32 - 6) | ShiftLeftResult32Bits(Millisecond, 32 - 6 - 10) | ShiftLeftResult32Bits(LastEventFlag, 32 - 6 - 10 - 1);
+		}
+		res |= numeric_cast<uint64_t>(res2) << (32 - 7 - 3 - 1 - 1 - 1);
+
+		return res;
+	}
+	uint8_t GetResultBitLength()
+	{
+		if (TimeFormatBit)
+		{
+			return 41;
+		}
+		else
+		{
+			return 31;
+		}
+	}
+};
+
 #endif

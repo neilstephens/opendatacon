@@ -131,6 +131,7 @@ public:
 	bool ExecuteBinaryControl(uint8_t group, uint8_t Channel, bool point_on);
 	bool ExecuteAnalogControl(uint8_t group, uint8_t Channel, uint16_t data);
 	void FuncMasterStationRequest(CBBlockData &Header, CBMessage_t &CompleteCBMessage);
+	void FuncReSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage);
 	void FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage);
 
 	void ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage);
@@ -155,6 +156,8 @@ private:
 	void SocketStateHandler(bool state);
 
 	CBMessage_t LastSentCBMessage;
+	CBMessage_t LastSentSOEMessage; // For SOE specific resend commands.
+
 	PendingCommandType PendingCommands[15]; // Store a potential pending command for each group.
 };
 

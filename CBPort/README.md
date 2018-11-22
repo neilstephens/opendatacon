@@ -131,10 +131,12 @@ Starting with an example configuration:
 	"PollGroups" : [{"ID" : 1, "PollRate" : 10000, "Group" : 3, "PollType" : "Scan"}],
 
 	//-------Point conf--------#
+	// Index is the ODC Index. All other fields in the point conf are Conitel/Baker fields.
 	// The payload location can be 1B, 2A, 2B
 	// Where there is a 24 bit result (ACC24) the next payload location will automatically be used. Do not put something else in there!
 	// The point table will build a group list with all the data it has to collect for a given group number.
 	// We can only use range for Binary and Control. For analog each one has to be defined singularly
+	// SOE point definitions are optional. If missing - not an SOE point.
 
 	// Digital IN
 	// DIG - 12 bits to a Payload, Channel(bit) 1 to 12. On a range, the Channel is the first Channel in the range.

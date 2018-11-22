@@ -312,6 +312,8 @@ void CBPointTableAccess::AddToDigitalEvents(const CBBinaryPoint &inpt, const uin
 		// We need to copy the point and set the value and time, as the current "point" may be a newer one and we dont want to modify it.
 		CBBinaryPoint pt = inpt;
 		pt.SetBinary(meas, eventtime);
+
+		//TODO: WE MIGHT NEED the push to actually be a sorted insert based on the time. Depends on how the Master will deal with SOE data...
 		pBinaryTimeTaggedEventQueue->async_push(pt);
 	}
 }
