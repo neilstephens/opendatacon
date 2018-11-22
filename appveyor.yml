@@ -12,15 +12,15 @@ os: Visual Studio 2017
 #---------------------------------#
 configuration:
   - Release
-  #- Debug
+  - Debug
 
 environment:
   MICROHTTPD_HOME: C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
   MODBUS_HOME: C:\libmodbus\libmodbus\windows32
   matrix:
-    #- platform: Win32
-      #cpu_bits: 32
-      #cmake_builddir: build-win32
+    - platform: Win32
+      cpu_bits: 32
+      cmake_builddir: build-win32
     - platform: x64
       cpu_bits: 64
       cmake_builddir: build-win64
@@ -37,12 +37,16 @@ install:
       New-Item C:\libmodbus -ItemType Directory
       Move-Item .\libmodbus C:\libmodbus\libmodbus
     }
-- ps: >-
     If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.17-w32)){
       Start-FileDownload "https://www.dropbox.com/s/13t92f57wie4wnb/libmicrohttpd-0.9.17-w32.zip?dl=1" -FileName libmicrohttpd-0.9.17-w32.zip
       7z x -y libmicrohttpd-0.9.17-w32.zip
       New-Item C:\libmicrohttpd -ItemType Directory
       Move-Item .\libmicrohttpd-0.9.17-w32 C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
+    }
+    If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.37-w64)){
+      Start-FileDownload "https://drive.google.com/uc?export=download&id=1Xfl5iwGOjm2Ggb_nwWJcNzjM05Bl9irT" -FileName libmicrohttpd-0.9.37-w64.zip
+      7z x -y libmicrohttpd-0.9.37-w64.zip
+      Move-Item .\libmicrohttpd-0.9.37-w64 C:\libmicrohttpd\libmicrohttpd-0.9.17-w64
     }
 cache:
 - C:\libmodbus\
@@ -52,19 +56,33 @@ before_build:
 - cmd: cd C:\projects\opendatacon
 - ps: >-
         If ($env:Platform -Match "64") {
-            $env:FEATURES="-DTESTS=ON -DDNP3PORT=ON -DJSONPORT=ON -DMODBUSPORT=ON -DSIMPORT=ON -DMD3PORT=ON -DCONSOLEUI=ON"
             $env:GEN_PLAT=" Win64"
         } Else {
-            $env:FEATURES="-DFULL=ON"
             $env:GEN_PLAT=""
         }
-- cmd: 'cmake . -B%cmake_builddir% -G"Visual Studio 15 2017%GEN_PLAT%" %FEATURES% -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%'
+- cmd: 'cmake . -B%cmake_builddir% -G"Visual Studio 15 2017%GEN_PLAT%" -DFULL=ON -DCMAKE_CONFIGURATION_TYPES=%configuration% -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%'
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
 build_script:
 - cmd: cmake --build %cmake_builddir% --config %configuration%
+- cmd: cmake --build %cmake_builddir% --config %configuration% --target PACKAGE
 test_script:
 - cmd: '%cmake_builddir%\%configuration%\ODC_tests.exe'
 #- cmd: '%cmake_builddir%\%configuration%\DNP3Port_tests.exe' #opendnp3 bug makes this hang at the moment
 - cmd: '%cmake_builddir%\%configuration%\MD3Port_tests.exe'
+
+artifacts:
+  - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.*
+    name: Releases
+
+deploy:
+  provider: GitHub
+  auth_token:
+    secure: MuDZnJV9gGH51bmihPpcFDEyAVC3bU9BPaciSz48OI3sZfe1j4Y7BaMLV4qJqwIC
+  draft: false
+  prerelease: false
+  on:
+    appveyor_repo_tag: true
+
+
