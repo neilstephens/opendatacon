@@ -11,16 +11,16 @@ os: Visual Studio 2017
 #       build configuration       #
 #---------------------------------#
 configuration:
- - Release
- - Debug
+  - Release
+  #- Debug
 
 environment:
   MICROHTTPD_HOME: C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
   MODBUS_HOME: C:\libmodbus\libmodbus\windows32
   matrix:
-    - platform: Win32
-      cpu_bits: 32
-      cmake_builddir: build-win32
+    #- platform: Win32
+      #cpu_bits: 32
+      #cmake_builddir: build-win32
     - platform: x64
       cpu_bits: 64
       cmake_builddir: build-win64
