@@ -27,7 +27,7 @@ dist: xenial
 matrix:
   exclude:
     - os: osx
-      compiler: gcc
+      compiler: clang #Travis docs say on osx gcc is an alias for clang anyway
 
 addons:
   apt:
@@ -51,11 +51,12 @@ script:
 deploy:
   provider: releases
   api_key:
-    secure: "SXeW3Kv7T9H9QC35HQ537yEUfEcwcSR8rgF7O3yk/EJELHBRDNKnB9zpecz0fjmql2Z0PIWvYyOzFp2hTusFkZgzygIOXRRAxUFwqYQtqw88U3xM939t2Lg4ih3OmuziVujqW6A9vvABO3Nf2F12T4t/NkmxVa70P64FE4Xw1cR4CoKhoZBMUVv/WZsAk7vTIdte3N4yDQ9lwA1La02wX72WRMZORSRVPiFPGvmmlqVrq4T0+38NmlHXK57NcToCNhSZh00wKhi0yxu+5BrQEzWkZzfj+vlN6bnRcsW2SINXpAVbx88oXbqjwIk8beFJDoFQZD5CZlwmFo03PKdC1F2ioEmJ8n/TmZqAc8XMTfDPkPW5YDGcGcJC1iaj7aHxVBzNF5hQenQmn3I5fAoQ8IayvpeWnWZJasJ9cC+uFUk8dKS2kdT6cKpnF4TWi2Phq2Iei5vkPo6iYzFxCta7ZxXAUa/Xiy6JEHWNRyrIpRGc82uvNmmB2F5s6mlw6Qs+qn/SmIp+y8i6Z8hsYYFs1jNeE+OKCLNH1DhsgnUNwhfxZ/da4xLo2kiYV38unORZfgQa6/r0ccEoDmRSYAsMgePwUFq6gBfEQazA0j7A2dTdq2dMmff+8x09YYSArZq7E+k5ThNEoXmrGyzD2Ptb9GfnXBBoKC2dCJ2egVe0gxg="
+    secure: "gXal83bNkvvf1GZp+yt9OWY+PzNIf8Q5fG0p1S4E9aHakrPjWZ7L283cOjjBY5QlX0dLHYSAulqg8NrBH+1K7RzJ9Ig0s0ay2FixolotjQgQwA3oo3nBR5LvWTvp8l6f9IQwM8y7WA3MvFwwq8Wpq8NbMVR9fRiPKOGIqtCxd7bNhASl5BI4bS4ebrXX4PVox5mpxu2kQTlN7GUo5G6l8fFRh4yeDe4iWOzhO1gUmOJLZlbEwhUHcTYhZrJy4riNgc8dv6INUuGmaqQNdqIhxA5f0xKivn+eYATYBs61S7XqP+vxvZt8rvZVd//CDxLxkaoyD7wS4w6CWQUni10Fommv0WT6KN3YD6nC9Z1bv/NLbM1KC1j5CyN/laSmpxSuycVbJoKaJ0SjXqQa1I4jMrLPRA/zLOhfYwNr5TnBsCbf/fLWp7cDBsqABIrO54W+3CVXwks+O7QQFk3M0fWTMntVSHmCVFPkMxLgUOsI1HpcXYdZd8GQQkF6oKEhnEwzgCL9jePWFwTBpwP+PkWePkRMetZmq03QWvNfqZja/gNKvxEz8DTAVdnQFuxd+5bWZH1gT29FuFvTqPpnD9i4Wu2HmazjVoq88am4JbgI5I7UXdDIiiLHGKgrO44VHSwP6vxNkTQ5QRexHtXQARe+qUovRl8lJOwYyN21P+EfcPg="
   file_glob: true
   file: opendatacon-*.*.*-*-*-*-*-*.sh
   name: "opendatacon ${TRAVIS_TAG}"
   skip_cleanup: true
   on:
     tags: true
+    compiler: gcc
   
