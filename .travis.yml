@@ -8,6 +8,10 @@ compiler:
   - gcc
   - clang
 
+env:
+  - BUILD_CONFIG=Release
+  - BUILD_CONFIG=Debug
+
 branches:
   only:
     - develop
@@ -33,7 +37,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libmodbus libmicrohttpd; fi
 
 script: 
-  - mkdir build && cd build && cmake -DFULL=ON ..
+  - mkdir build && cd build && cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG ..
   - make
   - make package
   - build/ODC_tests
