@@ -128,9 +128,9 @@ std::string to_timestringfromMD3time(MD3Time _time)
 	std::tm* t = std::localtime(&tp);
 	if (t != nullptr)
 	{
-		std::ostringstream oss;
-		oss << std::put_time(t, "%c %z"); // Local time format, with offset from UTC
-		return oss.str();
+		char timestr[100];
+		std::strftime(timestr,100,"%c %z",t); // Local time format, with offset from UTC
+		return std::string(timestr);
 	}
 	return "Time Conversion Problem";
 }
@@ -138,9 +138,9 @@ int tz_offset()
 {
 	time_t when = std::time(nullptr);
 	auto const tm = *std::localtime(&when);
-	std::ostringstream os;
-	os << std::put_time(&tm, "%z");
-	std::string s = os.str();
+	char tzoffstr[6];
+	std::strftime(tzoffstr,6,"%z",&tm);
+	std::string s(tzoffstr);
 	int h = std::stoi(s.substr(0, 3), nullptr, 10);
 	int m = std::stoi(s[0] + s.substr(3), nullptr, 10);
 
