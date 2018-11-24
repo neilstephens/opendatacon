@@ -55,7 +55,7 @@ install:
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew install libmodbus libmicrohttpd
-    elif [ -z "$DOCKER_BUILD" ];
+    elif [ -z "$DOCKER_BUILD" ]; then
       sudo apt install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev
     fi
   - |
