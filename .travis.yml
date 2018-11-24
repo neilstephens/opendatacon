@@ -2,6 +2,10 @@ language: cpp
 
 git:
   depth: false #shallow clone causes problem with tags
+  
+addons:
+  apt:
+    update: true
 
 os:
   - linux
@@ -19,24 +23,12 @@ matrix:
   include: #extra matrix entries for docker builds
     #Rpi Release
     - env: BUILD_CONFIG=Release DOCKER_BUILD=Rpi
-      sudo: required
       services:
         - docker
-      addons:
-        apt:
-          packages:
-            - qemu-user
-            - qemu-user-static
     #Rpi Debug
     - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
-      sudo: required
       services:
         - docker
-      addons:
-        apt:
-          packages:
-            - qemu-user
-            - qemu-user-static
   exclude:
     #Travis docs say on osx gcc is an alias for clang anyway
     - os: osx
