@@ -14,6 +14,33 @@ compiler:
 env:
   - BUILD_CONFIG=Release
   - BUILD_CONFIG=Debug
+  
+matrix:
+  include: #extra matrix entries for docker builds
+    #Rpi Release
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=Rpi
+      sudo: required
+      services:
+        - docker
+      addons:
+        apt:
+          packages:
+            - qemu-user
+            - qemu-user-static
+    #Rpi Debug
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
+      sudo: required
+      services:
+        - docker
+      addons:
+        apt:
+          packages:
+            - qemu-user
+            - qemu-user-static
+  exclude:
+    #Travis docs say on osx gcc is an alias for clang anyway
+    - os: osx
+      compiler: clang
 
 branches:
   only:
@@ -24,29 +51,30 @@ branches:
 
 dist: xenial
 
-matrix:
-  exclude:
-    - os: osx
-      compiler: clang #Travis docs say on osx gcc is an alias for clang anyway
-
-addons:
-  apt:
-    packages:
-      - libmodbus5
-      - libmodbus-dev
-      - libmicrohttpd10
-      - libmicrohttpd-dev
-
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libmodbus libmicrohttpd; fi
+install:
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew install libmodbus libmicrohttpd
+    elif [ -z "$DOCKER_BUILD" ];
+      sudo apt install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev
+    fi
+  - |
+    if [ "$DOCKER_BUILD" == "Rpi" ]; then
+      sudo apt install -y qemu-user qemu-user-static
+      docker pull resin/rpi-raspbian
+      DOCK=$(docker run -d -v $(pwd):/tmp/opendatacon -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static resin/rpi-raspbian:latest)
+      export RUN="docker exec --interactive --workdir /tmp/opendatacon $DOCK"
+      export STOP="docker stop $DOCK"
+    fi
 
 script: 
-  - mkdir build && cd build && cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG ..
-  - make
-  - make package
-  - build/ODC_tests
-  #- build/DNP3Port_tests #opendnp3 bug makes this hang at the moment
-  - build/MD3Port_tests
+  - $RUN mkdir build && cd build && cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG ..
+  - $RUN make
+  - $RUN make package
+  - $RUN build/ODC_tests
+  #- $RUN build/DNP3Port_tests #opendnp3 bug makes this hang at the moment
+  - $RUN build/MD3Port_tests
+  - $STOP
 
 deploy:
   provider: releases
