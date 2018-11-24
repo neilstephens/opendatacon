@@ -55,12 +55,13 @@ install:
       sudo apt install -y qemu-user qemu-user-static
       docker pull resin/rpi-raspbian
       DOCK=$(docker run -d -v $(pwd):/tmp/opendatacon -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static resin/rpi-raspbian:latest)
-      export RUN="docker exec --interactive --workdir /tmp/opendatacon $DOCK"
+      export RUN="docker exec --interactive --workdir /tmp/opendatacon/build $DOCK"
       export STOP="docker stop $DOCK"
     fi
 
 script: 
-  - $RUN mkdir build && cd build && cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG ..
+  - mkdir build && cd build
+  - $RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG ..
   - $RUN make
   - $RUN make package
   - $RUN build/ODC_tests
