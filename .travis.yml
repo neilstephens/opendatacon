@@ -59,7 +59,6 @@ install:
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev"
       mkdir sysroot
       docker cp $DOCK:/usr sysroot/
-      ls -R sysroot
       export RPI_SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /tmp/build $DOCK"
       export STOP="docker stop $DOCK"
