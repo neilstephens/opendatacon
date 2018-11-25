@@ -59,6 +59,7 @@ install:
       docker exec -i $DOCK sh -c "apt update && apt install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev"
       mkdir sysroot
       docker cp $DOCK:/usr sysroot/
+      export RPI_SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /tmp/build $DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake"
