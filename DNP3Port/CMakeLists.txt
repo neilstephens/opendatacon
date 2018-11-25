@@ -93,6 +93,12 @@ else()
 	endif()
 endif()
 
+#find dnp3 headers
+find_path(DNP3_INCLUDE_PATH opendnp3/LogLevels.h
+	PATHS ${DNP3_HOME}/include ${DNP3_HOME}/local/include
+	NO_DEFAULT_PATH)
+mark_as_advanced(FORCE DNP3_INCLUDE_PATH)
+
 foreach( component openpal opendnp3 asiopal asiodnp3 )
 	# Look for regular libraries
 	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH)
@@ -120,7 +126,7 @@ add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 if(TARGET build_dnp3)
 	add_dependencies(${PROJECT_NAME} build_dnp3)
 endif()
-target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_HOME}/include")
+target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_INCLUDE_PATH}")
 target_link_libraries(${PROJECT_NAME} ODC ${asiodnp3_libs} ${asiopal_libs} ${opendnp3_libs} ${openpal_libs})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
