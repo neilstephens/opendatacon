@@ -1695,7 +1695,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	MD3Time timebase = static_cast<uint64_t>(RBlock.GetData()) * 1000; //MD3Time msec since Epoch.
 	LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
-	REQUIRE(timebase == 0x0000016338b6d400);
+	REQUIRE(timebase == 0x0000016338b6d400ULL);
 
 	// Then 4 COS blocks.
 	BlockString = Response.substr(18, 6);
