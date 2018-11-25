@@ -160,7 +160,7 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --no-gnu-unique")
 	endif()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
-	option(STATIC_LIBSTDC++ "Link libstdc++ statically" OFF)
+	option(STATIC_LIBSTDC++ "Link libstdc++ statically" ON)
 	if(STATIC_LIBSTDC++)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
 	endif()

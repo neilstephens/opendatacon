@@ -45,6 +45,7 @@ dist: xenial
 
 install:
   - mkdir build && cd build
+  - mkdir install && export INSTALL_PREFIX=$(pwd)/install
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew install libmodbus libmicrohttpd
@@ -55,7 +56,7 @@ install:
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
       sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
       docker pull resin/rpi-raspbian
-      DOCK=$(docker run -d -v $(pwd):/tmp/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti resin/rpi-raspbian:latest)
+      DOCK=$(docker run -d -v $(pwd):/tmp/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev"
       mkdir sysroot
       docker cp $DOCK:/usr sysroot/
@@ -66,12 +67,13 @@ install:
     fi
 
 script: 
-  - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG $TOOLCHAIN_OPT ..
+  - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT ..
   - make
   - make package
-  - $RUN build/ODC_tests
-  #- $RUN build/DNP3Port_tests #opendnp3 bug makes this hang at the moment
-  - $RUN build/MD3Port_tests
+  - make install
+  - $RUN install/bin/ODC_tests
+  #- $RUN install/bin/DNP3Port_tests #opendnp3 bug makes this hang at the moment
+  - $RUN install/bin/MD3Port_tests
   - $STOP
 
 deploy:
