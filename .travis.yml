@@ -44,6 +44,7 @@ branches:
 dist: xenial
 
 install:
+  - mkdir build && cd build
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew install libmodbus libmicrohttpd
@@ -52,19 +53,21 @@ install:
     fi
   - |
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
-      sudo apt install -y qemu-user qemu-user-static
+      sudo apt install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
       docker pull resin/rpi-raspbian
-      DOCK=$(docker run -d -v $(pwd):/tmp/opendatacon -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti resin/rpi-raspbian:latest)
-      export RUN="docker exec --interactive --workdir /tmp/opendatacon/build $DOCK"
-      docker exec -i $DOCK sh -c "apt update && apt install -y git g++ build-essential cmake libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev"
+      DOCK=$(docker run -d -v $(pwd):/tmp/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti resin/rpi-raspbian:latest)
+      docker exec -i $DOCK sh -c "apt update && apt install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev"
+      mkdir sysroot
+      docker cp $DOCK:/usr sysroot/
+      export RUN="docker exec --interactive --workdir /tmp/build $DOCK"
       export STOP="docker stop $DOCK"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake"
     fi
 
 script: 
-  - mkdir build && cd build
-  - $RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG ..
-  - $RUN make
-  - $RUN make package
+  - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG $TOOLCHAIN_OPT ..
+  - make
+  - make package
   - $RUN build/ODC_tests
   #- $RUN build/DNP3Port_tests #opendnp3 bug makes this hang at the moment
   - $RUN build/MD3Port_tests
