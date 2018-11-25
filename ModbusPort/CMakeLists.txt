@@ -35,6 +35,7 @@ find_path(MODBUS_INCLUDE_PATH modbus/modbus.h
 mark_as_advanced(FORCE MODBUS_INCLUDE_PATH)
 
 #find modbus library
+message("Looking for modbus lib arch ${CMAKE_LIBRARY_ARCHITECTURE}")
 find_library(MODBUS_LIB NAMES modbus libmodbus
 	PATHS ${MODBUS_HOME}/lib ${MODBUS_HOME}/local/lib
 	PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
