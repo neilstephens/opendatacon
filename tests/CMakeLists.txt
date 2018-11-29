@@ -19,3 +19,4 @@
  # 
 add_subdirectory(ODC_tests)
 add_subdirectory(DNP3Port_tests)
+add_subdirectory(MD3Port_tests)

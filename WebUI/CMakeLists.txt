@@ -28,11 +28,17 @@ else()
 	set(MICROHTTPD_HOME "/usr" CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
 endif()
 
+#find microhttpd headers
+find_path(HTTPD_INCLUDE_PATH microhttpd.h
+	PATHS ${MICROHTTPD_HOME}/include ${MICROHTTPD_HOME}/local/include
+	NO_DEFAULT_PATH)
+mark_as_advanced(FORCE HTTPD_INCLUDE_PATH)
+
 #import the microhttpd lib
 find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
-	PATHS ${MICROHTTPD_HOME}/lib
+	PATHS ${MICROHTTPD_HOME}/lib ${MICROHTTPD_HOME}/local/lib
 	PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
-	NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+	NO_DEFAULT_PATH)
 add_library(httpd_target UNKNOWN IMPORTED)
 set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
 
@@ -47,7 +53,7 @@ if(PACKAGE_LIBMICROHTTPD)
 endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_include_directories(${PROJECT_NAME} PRIVATE "${MICROHTTPD_HOME}/include")
+target_include_directories(${PROJECT_NAME} PRIVATE "${HTTPD_INCLUDE_PATH}")
 target_link_libraries(${PROJECT_NAME} ODC httpd_target)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})

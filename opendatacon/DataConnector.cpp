@@ -151,6 +151,9 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				}
 				auto libfilename = GetLibFileName(libname);
 
+				if (auto log = spdlog::get("Connectors"))
+					log->debug("Attempting to load library: {}, {}", libname, libfilename);
+
 				//try to load the lib
 				auto* txlib = LoadModule(libfilename.c_str());
 

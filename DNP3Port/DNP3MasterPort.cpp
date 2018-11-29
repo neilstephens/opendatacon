@@ -48,6 +48,8 @@ DNP3MasterPort::~DNP3MasterPort()
 
 void DNP3MasterPort::Enable()
 {
+	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
 	if(enabled)
 		return;
 	if(nullptr == pMaster)
@@ -56,10 +58,11 @@ void DNP3MasterPort::Enable()
 			log->error("{}: DNP3 stack not initialised.", Name);
 		return;
 	}
+	if(!pCommsRideThroughTimer)
+		pCommsRideThroughTimer = std::make_unique<CommsRideThroughTimer>(*pIOS,pConf->pPointConf->CommsPointRideThroughTimems,[this](){SetCommsGood();},[this](){SetCommsFailed();});
 
 	enabled = true;
 
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
 		EnableStack();
 
@@ -81,13 +84,31 @@ void DNP3MasterPort::Disable()
 
 void DNP3MasterPort::PortUp()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: PortUp() called.", Name);
+
+	//cancel the timer if we were riding through
+	pCommsRideThroughTimer->Cancel();
+}
+
+void DNP3MasterPort::PortDown()
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: PortDown() called.", Name);
+
+	//trigger the ride through timer
+	pCommsRideThroughTimer->Trigger();
+}
+
+void DNP3MasterPort::SetCommsGood()
+{
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Updating comms state point to good.", Name);
+			log->debug("{}: Updating comms point (good).", Name);
 
 		auto commsUpEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
@@ -96,7 +117,7 @@ void DNP3MasterPort::PortUp()
 	}
 }
 
-void DNP3MasterPort::PortDown()
+void DNP3MasterPort::SetCommsFailed()
 {
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -123,7 +144,7 @@ void DNP3MasterPort::PortDown()
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Setting comms point to failed.", Name);
+			log->debug("{}: Updating comms point (failed).", Name);
 
 		auto commsDownEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
@@ -137,9 +158,12 @@ void DNP3MasterPort::PortDown()
 void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	this->status = status;
+
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
+
 	if(link_dead && !channel_dead) //must be on link up
 	{
-
 		link_dead = false;
 		// Update the comms state point and qualities
 		PortUp();
@@ -150,6 +174,8 @@ void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 // Called when a keep alive message (request link status) receives no response
 void DNP3MasterPort::OnKeepAliveFailure()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: KeepAliveFailure() called.", Name);
 	this->OnLinkDown();
 }
 void DNP3MasterPort::OnLinkDown()
@@ -180,6 +206,9 @@ void DNP3MasterPort::OnLinkDown()
 // Called when a keep alive message receives a valid response
 void DNP3MasterPort::OnKeepAliveSuccess()
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: KeepAliveSuccess() called.", Name);
+
 	if(link_dead)
 	{
 		link_dead = false;

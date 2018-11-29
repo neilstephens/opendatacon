@@ -1,25 +1,37 @@
-version: 0.4.0.{build}
+version: AppVeyorBuild-{build}
 branches:
   only:
   - develop
-os: Visual Studio 2013
-configuration: Develop
-platform: x86
-clone_folder: C:\projects\opendatacon
+  - master
+  - /^release\/.*$/
+  - /^[0-9]+\.[0-9]+\.[0-9]+.*$/
+  
+os: Visual Studio 2017
+
+
+#---------------------------------#
+#       build configuration       #
+#---------------------------------#
+configuration:
+  - Release
+  - Debug
+
 environment:
-  DNP3_HOME: C:\dnp3\dnp3-2.0.x-win32
-  TCLAP_HOME: C:\tclap\tclap-1.2.1
-  ASIO_HOME: C:\asio\asio-1.10.6
   MICROHTTPD_HOME: C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
   MODBUS_HOME: C:\libmodbus\libmodbus\windows32
+  matrix:
+    - platform: Win32
+      cpu_bits: 32
+      cmake_builddir: build-win32
+    - platform: x64
+      cpu_bits: 64
+      cmake_builddir: build-win64
+ 
+clone_folder: C:\projects\opendatacon
+  
+init:
+    
 install:
-- ps: >-
-    If (-not (Test-Path C:\dnp3\dnp3-2.0.x-win32)){
-      Start-FileDownload "https://www.dropbox.com/s/oex7hf1r1tg4kte/dnp3-2.0.x-win32.zip?dl=1" -FileName dnp3-2.0.x-win32.zip
-      7z x -y dnp3-2.0.x-win32.zip
-      New-Item C:\dnp3 -ItemType Directory
-      Move-Item .\dnp3-2.0.x-win32 C:\dnp3\dnp3-2.0.x-win32
-    }
 - ps: >-
     If (-not (Test-Path C:\libmodbus\libmodbus)){
       Start-FileDownload "https://www.dropbox.com/s/iqf95y9x1x4ol36/libmodbus.zip?dl=1" -FileName libmodbus.zip
@@ -27,35 +39,55 @@ install:
       New-Item C:\libmodbus -ItemType Directory
       Move-Item .\libmodbus C:\libmodbus\libmodbus
     }
-- ps: >-
     If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.17-w32)){
       Start-FileDownload "https://www.dropbox.com/s/13t92f57wie4wnb/libmicrohttpd-0.9.17-w32.zip?dl=1" -FileName libmicrohttpd-0.9.17-w32.zip
       7z x -y libmicrohttpd-0.9.17-w32.zip
       New-Item C:\libmicrohttpd -ItemType Directory
       Move-Item .\libmicrohttpd-0.9.17-w32 C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
     }
-- ps: >-
-    If (-not (Test-Path C:\tclap\tclap-1.2.1)){
-      Start-FileDownload "http://downloads.sourceforge.net/project/tclap/tclap-1.2.1.tar.gz" -FileName tclap-1.2.1.tar.gz
-      7z x -y tclap-1.2.1.tar.gz
-      7z x -y tclap-1.2.1.tar
-      New-Item C:\tclap -ItemType Directory
-      Move-Item .\tclap-1.2.1 C:\tclap\tclap-1.2.1
-    }
-- ps: >-
-    if (-not (Test-Path C:\asio\asio-1.10.6)){
-      Start-FileDownload "https://github.com/chriskohlhoff/asio/archive/asio-1-10-6.zip" -FileName asio-1-10-6.zip
-      7z x -y asio-1-10-6.zip
-      New-Item C:\asio -ItemType Directory
-      Move-Item .\asio-asio-1-10-6\asio C:\asio\asio-1.10.6
+    If (-not (Test-Path C:\libmicrohttpd\libmicrohttpd-0.9.17-w64)){
+      Start-FileDownload "https://drive.google.com/uc?export=download&id=1Xfl5iwGOjm2Ggb_nwWJcNzjM05Bl9irT" -FileName libmicrohttpd-0.9.37-w64.zip
+      7z x -y libmicrohttpd-0.9.37-w64.zip
+      Move-Item .\libmicrohttpd-0.9.37-w64 C:\libmicrohttpd\libmicrohttpd-0.9.17-w64
     }
 cache:
-- C:\dnp3\
-- C:\asio\
-- C:\tclap\
 - C:\libmodbus\
 - C:\libmicrohttpd\
-build_script:
+
+before_build:
 - cmd: cd C:\projects\opendatacon
-- cmd: cmake . -Bbuild-win32 -DFULL=ON -DASIO_HOME=C:\asio\asio-1.10.6 -DDNP3_HOME=C:\dnp3\dnp3-2.0.x-win32 -DMODBUS_HOME=c:\libmodbus\libmodbus\windows32 -DTCLAP_HOME=C:\tclap\tclap-1.2.1 -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w32
-- cmd: msbuild build-win32\opendatacon_suite.sln /p:Configuration=Release /p:Platform=Win32
+- ps: >-
+        If ($env:Platform -Match "64") {
+            $env:GEN_PLAT=" Win64"
+        } Else {
+            $env:GEN_PLAT=""
+        }
+- cmd: 'cmake . -B%cmake_builddir% -G"Visual Studio 15 2017%GEN_PLAT%" -DFULL=ON -DCMAKE_CONFIGURATION_TYPES=%configuration% -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%'
+#build:
+#  parallel: true                  # enable MSBuild parallel builds
+#  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
+build_script:
+- cmd: cmake --build %cmake_builddir% --config %configuration%
+- cmd: cmake --build %cmake_builddir% --config %configuration% --target PACKAGE
+test_script:
+- cmd: '%cmake_builddir%\%configuration%\ODC_tests.exe'
+#- cmd: '%cmake_builddir%\%configuration%\DNP3Port_tests.exe' #opendnp3 bug makes this hang at the moment
+- cmd: '%cmake_builddir%\%configuration%\MD3Port_tests.exe'
+
+artifacts:
+  - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
+    name: Releases
+
+deploy:
+  release: 'opendatacon $(APPVEYOR_REPO_TAG_NAME)'
+  description: ''
+  provider: GitHub
+  auth_token:
+    secure: MuDZnJV9gGH51bmihPpcFDEyAVC3bU9BPaciSz48OI3sZfe1j4Y7BaMLV4qJqwIC
+  draft: false
+  prerelease: false
+  tag: $(APPVEYOR_REPO_TAG_NAME)
+  on:
+    appveyor_repo_tag: true
+
+

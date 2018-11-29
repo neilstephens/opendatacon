@@ -29,9 +29,9 @@
 #define __opendatacon__MhdWrapper__
 
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstring>
+#include <cstdio>
 #include <sys/stat.h>
 #include <functional>
 #include <iostream>

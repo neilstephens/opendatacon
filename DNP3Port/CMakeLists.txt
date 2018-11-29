@@ -49,9 +49,12 @@ if(USE_DNP3_SUBMODULE)
 	endif()
 	if(DEFINED ${CMAKE_GENERATOR_PLATFORM})
 		set(PLATFORM_OPT "-A${CMAKE_GENERATOR_PLATFORM}")
+	elseif(DEFINED ${CMAKE_VS_PLATFORM_NAME})
+		set(PLATFORM_OPT "-A${CMAKE_VS_PLATFORM_NAME}")
 	else()
 		set(PLATFORM_OPT "")
 	endif()
+	message("${CMAKE_COMMAND} ${DNP3_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} ${DNP3_SOURCE}")
 	execute_process(
 		COMMAND ${CMAKE_COMMAND} ${DNP3_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} ${DNP3_SOURCE}
 		WORKING_DIRECTORY "${DNP3_BUILD}"
@@ -86,17 +89,23 @@ else()
 	if(DEFINED DNP3_HOME)
 		set(DNP3_HOME ${DNP3_HOME} CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
 	else()
-		set(DNP3_HOME "/usr/local" CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
+		set(DNP3_HOME "/usr" CACHE PATH ${DNP3_HOME_INSTRUCTIONS})
 	endif()
 endif()
 
+#find dnp3 headers
+find_path(DNP3_INCLUDE_PATH opendnp3/LogLevels.h
+	PATHS ${DNP3_HOME}/include ${DNP3_HOME}/local/include
+	NO_DEFAULT_PATH)
+mark_as_advanced(FORCE DNP3_INCLUDE_PATH)
+
 foreach( component openpal opendnp3 asiopal asiodnp3 )
 	# Look for regular libraries
-	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH)
 	add_library(${component}_target UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_target PROPERTY IMPORTED_LOCATION "${${component}_lib}")
 	# Look for debug libraries
-	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH)
 	add_library(${component}_dtarget UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
 	#set a variable to use for linking
@@ -117,7 +126,7 @@ add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 if(TARGET build_dnp3)
 	add_dependencies(${PROJECT_NAME} build_dnp3)
 endif()
-target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_HOME}/include")
+target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_INCLUDE_PATH}")
 target_link_libraries(${PROJECT_NAME} ODC ${asiodnp3_libs} ${asiopal_libs} ${opendnp3_libs} ${openpal_libs})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})

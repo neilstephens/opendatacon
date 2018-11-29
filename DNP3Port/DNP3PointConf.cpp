@@ -52,6 +52,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	DoUnsolOnStartup(true),
 	SetQualityOnLinkStatus(true),
+	CommsPointRideThroughTimems(0),
 	/// Which classes should be requested in a startup integrity scan
 	StartupIntegrityClass0(true),
 	StartupIntegrityClass1(true),
@@ -215,6 +216,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			if(auto log = odc::spdlog_get("DNP3Port"))
 				log->error("CommsPoint an 'Index' and a 'FailValue'.");
 		}
+		if(JSONRoot["CommsPoint"].isMember("RideThroughTimems"))
+			CommsPointRideThroughTimems = JSONRoot["CommsPoint"]["RideThroughTimems"].asUInt();
 	}
 
 	// Master Station scanning configuration

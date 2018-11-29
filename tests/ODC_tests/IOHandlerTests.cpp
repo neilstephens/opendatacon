@@ -33,7 +33,7 @@ public:
 	PublicPublishNullPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		NullPort(aName, aConfFilename, aConfOverrides)
 	{}
-	void PublicPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	void PublicPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}))
 	{
 		PublishEvent(event,pStatusCallback);
 	}
@@ -49,6 +49,9 @@ TEST_CASE(SUITE("StatusCallback"))
 	 *	- 4 ports via single connector - check connector (de)multiplexing
 	 * verify the status callback
 	 */
+
+	asio::io_service ios;
+	asio::io_service::work work(ios);
 
 	PublicPublishNullPort Source("Null1","",Json::Value::nullSingleton());
 	NullPort Null2("Null2","",Json::Value::nullSingleton());
@@ -91,9 +94,6 @@ TEST_CASE(SUITE("StatusCallback"))
 	DataConnector Conn3("Conn3","",Conn3Conf);
 	DataConnector Conn4("Conn4","",Conn4Conf);
 	DataConnector* Conns[4] = {&Conn1,&Conn2,&Conn3,&Conn4};
-
-	asio::io_service ios;
-	asio::io_service::work work(ios);
 
 	Source.SetIOS(&ios);
 	for(auto& p : Sinks)

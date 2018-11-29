@@ -23,6 +23,8 @@
  *  Created on: 16/10/2014
  *      Author: Alan Murray
  */
+// This is a fix for a VS bug
+#define NOMINMAX
 
 #include <iostream>
 #include <regex>

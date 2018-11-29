@@ -28,11 +28,17 @@ else()
 	set(MODBUS_HOME "/usr" CACHE PATH ${MODBUS_HOME_INSTRUCTIONS})
 endif()
 
+#find modbus headers
+find_path(MODBUS_INCLUDE_PATH modbus/modbus.h
+	PATHS ${MODBUS_HOME}/include ${MODBUS_HOME}/local/include
+	NO_DEFAULT_PATH)
+mark_as_advanced(FORCE MODBUS_INCLUDE_PATH)
+
 #find modbus library
 find_library(MODBUS_LIB NAMES modbus libmodbus
-	PATHS ${MODBUS_HOME}/lib NO_DEFAULT_PATH
+	PATHS ${MODBUS_HOME}/lib ${MODBUS_HOME}/local/lib
 	PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
-	NO_CMAKE_FIND_ROOT_PATH)
+	NO_DEFAULT_PATH)
 add_library(modbus_target UNKNOWN IMPORTED)
 set_property(TARGET modbus_target PROPERTY IMPORTED_LOCATION "${MODBUS_LIB}")
 
@@ -47,7 +53,7 @@ if(PACKAGE_LIBMODBUS)
 endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_include_directories(${PROJECT_NAME} PRIVATE "${MODBUS_HOME}/include")
+target_include_directories(${PROJECT_NAME} PRIVATE "${MODBUS_INCLUDE_PATH}")
 target_link_libraries(${PROJECT_NAME} ODC modbus_target)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})

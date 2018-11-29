@@ -82,7 +82,7 @@ protected:
 		PublishEvent(event);
 	}
 
-	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([](CommandStatus status){}))
+	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}))
 	{
 		if(event->GetEventType() == EventType::ConnectState)
 		{
