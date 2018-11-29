@@ -67,7 +67,7 @@ install:
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew install libmodbus libmicrohttpd
-      export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
+      #export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     elif [ -z "$DOCKER_BUILD" ]; then
       sudo apt-get install -y libmodbus-dev libmicrohttpd-dev
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
