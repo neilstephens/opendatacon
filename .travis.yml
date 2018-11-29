@@ -63,20 +63,20 @@ dist: xenial
 
 install:
   - mkdir -p build/install && cd build
-  - export INSTALL_PREFIX="$(pwd)/install"
+  - export INSTALL_PREFIX=$(pwd)/install
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew install libmodbus libmicrohttpd
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     elif [ -z "$DOCKER_BUILD" ]; then
-      sudo apt-get install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev
+      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     fi
   - |
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
       sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
-      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev"
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev"
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       export SYSROOT=$(pwd)/sysroot/
@@ -110,7 +110,7 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo dpkg --add-architecture i386
       sudo apt-get update
-      sudo apt-get install -y libstdc++-5-dev:i386 libmodbus5:i386 libmodbus-dev:i386 libmicrohttpd10:i386 libmicrohttpd-dev:i386
+      sudo apt-get install -y libstdc++-5-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
