@@ -110,7 +110,7 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo dpkg --add-architecture i386
       sudo apt-get update
-      sudo apt-get install -y libstdc++-5-dev:i386 libmodbus5:i386 libmodbus-dev libmicrohttpd10:i386 libmicrohttpd-dev
+      sudo apt-get install -y libstdc++-5-dev:i386 libmodbus5:i386 libmodbus-dev:i386 libmicrohttpd10:i386 libmicrohttpd-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
