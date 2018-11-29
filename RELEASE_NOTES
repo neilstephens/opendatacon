@@ -1,4 +1,9 @@
-opendatacon version 0.5.1
+opendatacon version 1.1.0
+
+1.1.0
+	- MD3Port
+	- Refined build system
+	- CI build and deploy  
 
 1.0.0
 	- Fixed long-standing defect where command status delays would block calling strand
