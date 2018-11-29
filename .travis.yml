@@ -94,11 +94,11 @@ install:
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm
         yum install -y libmicrohttpd-devel
       '
-      pip install gdown
+      sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
-      export EL6_CC=x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
-      export EL6_CXX=x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
+      export EL6_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
+      export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
       mkdir sysroot
       docker cp $DOCK:/usr sysroot/
       export SYSROOT=$(pwd)/sysroot/
@@ -108,6 +108,7 @@ install:
     fi
   - |
     if [ "$DOCKER_BUILD" == "i686" ]; then
+      sudo apt-get update
       sudo apt-get install -y g++-i686-linux-gnu
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev"
