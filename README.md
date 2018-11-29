@@ -1,7 +1,8 @@
 
-| Travis CI Linux/OSX gcc/clang builds | Appveyor CI Windows build |
-|--------------------------------------|---------------------------|
-|[![Travis Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=develop)](https://travis-ci.com/neilstephens/opendatacon)|[![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/dafc9t0xb3qrqj4d?svg=true)](https://ci.appveyor.com/project/neilstephens/opendatacon)|
+| Branch  | Travis CI Linux/OSX x86/x64/arm gcc/clang builds | Appveyor CI x86/x64 Windows build |
+|---------|--------------------------------------------------|-----------------------------------|
+| develop |[![Travis Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=develop)](https://travis-ci.com/neilstephens/opendatacon)|[![Build status](https://ci.appveyor.com/api/projects/status/dafc9t0xb3qrqj4d/branch/develop?svg=true)](https://ci.appveyor.com/project/neilstephens/opendatacon/branch/develop)|
+| master  |[![Travis Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=master)](https://travis-ci.com/neilstephens/opendatacon)|[![Build status](https://ci.appveyor.com/api/projects/status/dafc9t0xb3qrqj4d/branch/master?svg=true)](https://ci.appveyor.com/project/neilstephens/opendatacon/branch/develop)|
 
 ## Table of contents
 
