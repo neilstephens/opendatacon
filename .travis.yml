@@ -1,3 +1,5 @@
+#TODO: add socat dep for when dnp3 tests work
+
 language: cpp
 
 git:
@@ -29,6 +31,22 @@ matrix:
     - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
       services:
         - docker
+    #OEL6 Release
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
+      services:
+        - docker
+    #OEL6 Debug
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
+      services:
+        - docker
+    #i686 Release
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=i686
+      services:
+        - docker
+    #i686 Debug
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=i686
+      services:
+        - docker
   exclude:
     #Travis docs say on osx gcc is an alias for clang anyway
     - os: osx
@@ -44,30 +62,65 @@ branches:
 dist: xenial
 
 install:
-  - mkdir build && cd build
-  - mkdir install && export INSTALL_PREFIX=$(pwd)/install
+  - mkdir -p build/install && cd build
+  - export INSTALL_PREFIX="$(pwd)/install"
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew install libmodbus libmicrohttpd
+      export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     elif [ -z "$DOCKER_BUILD" ]; then
       sudo apt-get install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev
+      export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     fi
   - |
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
       sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
-      docker pull resin/rpi-raspbian
-      DOCK=$(docker run -d -v $(pwd):/tmp/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
+      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev"
       mkdir sysroot
       docker cp $DOCK:/usr sysroot/
-      export RPI_SYSROOT=$(pwd)/sysroot/
-      export RUN="docker exec --interactive --workdir /tmp/build $DOCK"
+      export SYSROOT=$(pwd)/sysroot/
+      export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake"
     fi
+  - |
+    if [ "$DOCKER_BUILD" == "OEL" ]; then
+      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti library/oraclelinux:6.6)
+      docker exec -i $DOCK sh -c '
+        curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm
+        curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
+        rpm -i libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
+        rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm
+        yum install -y libmicrohttpd-devel
+      '
+      pip install gdown
+      gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
+      tar xzf x86_64-RHEL65-linux-gnu.tar.gz
+      export EL6_CC=x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
+      export EL6_CXX=x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
+      mkdir sysroot
+      docker cp $DOCK:/usr sysroot/
+      export SYSROOT=$(pwd)/sysroot/
+      export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
+      export STOP="docker stop $DOCK"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake"
+    fi
+  - |
+    if [ "$DOCKER_BUILD" == "i686" ]; then
+      sudo apt-get install -y g++-i686-linux-gnu
+      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus5 libmodbus-dev libmicrohttpd10 libmicrohttpd-dev"
+      mkdir sysroot
+      docker cp $DOCK:/usr sysroot/
+      export SYSROOT=$(pwd)/sysroot/
+      export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
+      export STOP="docker stop $DOCK"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i686-toolchain.cmake"
+    fi
 
-script: 
-  - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT ..
+script:
+  - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT ..
   - make
   - make package
   - make install

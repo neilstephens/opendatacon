@@ -31,10 +31,6 @@ set(CPACK_PACKAGE_VERSION_MINOR ${ODC_MINOR_VERSION})
 set(CPACK_PACKAGE_VERSION_PATCH ${ODC_MICRO_VERSION})
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 
-string(REGEX MATCH "/([^/]*)(-)" TOOLCHAIN_MATCH ${CMAKE_TOOLCHAIN_FILE} "")
-set(cross_detect "${CMAKE_MATCH_2}${CMAKE_MATCH_1}")
-string(REGEX MATCH "(-m32)" BITNESS_MATCH ${CMAKE_CXX_FLAGS} "")
-set(bit_detect ${CMAKE_MATCH_1})
 if(DEFINED ${CMAKE_GENERATOR_PLATFORM})
 	set(bit_detect "-${CMAKE_GENERATOR_PLATFORM}")
 elseif(DEFINED ${CMAKE_VS_PLATFORM_NAME})
@@ -58,7 +54,7 @@ else()
 	set(build_type "")
 endif()
 
-set(CPACK_PACKAGE_FILE_NAME "opendatacon-${GIT_DESCRIBE}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}${bit_detect}${cross_detect}${build_type}")
+set(CPACK_PACKAGE_FILE_NAME "opendatacon-${GIT_DESCRIBE}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_VERSION}${build_type}")
 message("CPack package filename base: ${CPACK_PACKAGE_FILE_NAME}")
 
 # Mac OSX bundle specific variables
