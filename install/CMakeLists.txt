@@ -31,17 +31,20 @@ set(CPACK_PACKAGE_VERSION_MINOR ${ODC_MINOR_VERSION})
 set(CPACK_PACKAGE_VERSION_PATCH ${ODC_MICRO_VERSION})
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 
+set(BUILD_ARCH ${CMAKE_SYSTEM_PROCESSOR})
+
 if(DEFINED ${CMAKE_GENERATOR_PLATFORM})
-	set(bit_detect "-${CMAKE_GENERATOR_PLATFORM}")
+	set(BUILD_ARCH ${CMAKE_GENERATOR_PLATFORM})
 elseif(DEFINED ${CMAKE_VS_PLATFORM_NAME})
-	set(bit_detect "-${CMAKE_VS_PLATFORM_NAME}")
+	set(BUILD_ARCH ${CMAKE_VS_PLATFORM_NAME})
 elseif(CMAKE_GENERATOR MATCHES "^Visual Studio(.*)$")
 	if(CMAKE_MATCH_1 MATCHES "^.*Win64$")
-		set(bit_detect "-x64")
+		set(BUILD_ARCH "x64")
 	else()
-		set(bit_detect "-x86")
+		set(BUILD_ARCH "x86")
 	endif()
 endif()
+
 if(EXISTS "${CMAKE_BINARY_DIR}/current_build_config")
 	message("Reading build config from temp file ${CMAKE_BINARY_DIR}/current_build_config")
 	file(READ "${CMAKE_BINARY_DIR}/current_build_config" build_type)
@@ -54,7 +57,7 @@ else()
 	set(build_type "")
 endif()
 
-set(CPACK_PACKAGE_FILE_NAME "opendatacon-${GIT_DESCRIBE}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_VERSION}${build_type}")
+set(CPACK_PACKAGE_FILE_NAME "opendatacon-${GIT_DESCRIBE}-${CMAKE_SYSTEM_NAME}-${BUILD_ARCH}-${CMAKE_SYSTEM_VERSION}${build_type}")
 message("CPack package filename base: ${CPACK_PACKAGE_FILE_NAME}")
 
 # Mac OSX bundle specific variables
