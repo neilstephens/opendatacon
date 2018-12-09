@@ -411,10 +411,10 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 					break;
 
 				case FUNC_SEND_NEW_SOE:
-					NotImplemented = true;
+					success = ProcessSOEScanRequestReturn(CompleteCBMessage); // Fn - 10
 					break;
 				case FUNC_REPEAT_SOE:
-					NotImplemented = true;
+					success = ProcessSOEScanRequestReturn(CompleteCBMessage); // Fn - 10
 					break;
 				case FUNC_UNIT_RAISE_LOWER:
 					NotImplemented = true;
@@ -635,6 +635,36 @@ void CBMasterPort::SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const 
 	}
 }
 
+bool CBMasterPort::ProcessSOEScanRequestReturn(const CBMessage_t& CompleteCBMessage)
+{
+	uint8_t Group = CompleteCBMessage[0].GetGroup();
+
+	uint8_t NumberOfBlocks = numeric_cast<uint8_t>(CompleteCBMessage.size());
+
+	LOGDEBUG("SOE Scan Data processing - Blocks {}",NumberOfBlocks);
+
+	// For each of the payloads, we trigger an event, which the OutStation will put into its SOE Queue only if it is an "old" event.
+	// Have to do a bunch of payload unpacking to get to the data.
+
+
+	/*auto payloadlocation = PayloadLocationType(1, PayloadABType::PositionB);
+
+	ProccessScanPayload(CompleteCBMessage[0].GetB(), Group, payloadlocation);
+
+	for (uint8_t blockindex = 1; blockindex < NumberOfBlocks; blockindex++)
+	{
+	      payloadlocation = PayloadLocationType(blockindex + 1, PayloadABType::PositionA);
+
+	      ProccessScanPayload(CompleteCBMessage[blockindex].GetA(), Group, payloadlocation);
+
+	      payloadlocation = PayloadLocationType(blockindex + 1, PayloadABType::PositionB);
+
+	      ProccessScanPayload(CompleteCBMessage[blockindex].GetB(), Group, payloadlocation);
+	}*/
+	return true;
+}
+
+
 // Checks what we got back against what we sent. We know the function code and address have been checked.
 bool CBMasterPort::CheckResponseHeaderMatch(const CBBlockData& ReceivedHeader, const CBBlockData& SentHeader)
 {
@@ -670,7 +700,7 @@ void CBMasterPort::DoPoll(uint32_t PollID)
 		{
 			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
 			uint8_t Group = MyPointConf->PollGroups[PollID].group;
-			SendScanCommand(Group, nullptr);
+			SendF0ScanCommand(Group, nullptr);
 		}
 		break;
 
@@ -678,6 +708,14 @@ void CBMasterPort::DoPoll(uint32_t PollID)
 		{
 			// Send a time set command to the OutStation
 			SendFn9TimeUpdate(nullptr);
+			LOGDEBUG("Poll Issued a TimeDate PendingCommand");
+		}
+		break;
+		case  SOEScan:
+		{
+			// Send a time set command to the OutStation
+			uint8_t Group = MyPointConf->PollGroups[PollID].group;
+			SendFn10SOEScanCommand(Group, nullptr);
 			LOGDEBUG("Poll Issued a TimeDate PendingCommand");
 		}
 		break;
@@ -693,15 +731,6 @@ void CBMasterPort::DoPoll(uint32_t PollID)
 			break;
 	}
 }
-void CBMasterPort::SendFn9TimeUpdate( SharedStatusCallback_t pStatusCallback)
-{
-	CBMessage_t CompleteCBMessage;
-
-	CBPort::BuildUpdateTimeMessage(MyConf->mAddrConf.OutstationAddr, CBNow(), CompleteCBMessage);
-
-	QueueCBCommand(CompleteCBMessage, pStatusCallback);
-}
-
 
 void CBMasterPort::ResetDigitalCommandSequenceNumber()
 {
@@ -728,16 +757,25 @@ void CBMasterPort::EnablePolling(bool on)
 		PollScheduler->Stop();
 }
 
-void CBMasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec, SharedStatusCallback_t pStatusCallback)
-{
-	//TODO: Time update request?
-}
-void CBMasterPort::SendScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback)
+void CBMasterPort::SendF0ScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback)
 {
 	CBBlockData sendcommandblock(MyConf->mAddrConf.OutstationAddr, group, FUNC_SCAN_DATA, 0, true);
 	QueueCBCommand(sendcommandblock, pStatusCallback);
 }
+void CBMasterPort::SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback)
+{
+	CBMessage_t CompleteCBMessage;
 
+	CBPort::BuildUpdateTimeMessage(MyConf->mAddrConf.OutstationAddr, CBNow(), CompleteCBMessage);
+
+	QueueCBCommand(CompleteCBMessage, pStatusCallback);
+}
+
+void CBMasterPort::SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback)
+{
+	CBBlockData sendcommandblock(MyConf->mAddrConf.OutstationAddr, group, FUNC_SEND_NEW_SOE, 0, true);
+	QueueCBCommand(sendcommandblock, pStatusCallback);
+}
 void CBMasterPort::SetAllPointsQualityToCommsLost()
 {
 	LOGDEBUG("CB Master setting quality to comms lost");

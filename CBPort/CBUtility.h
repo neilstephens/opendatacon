@@ -239,7 +239,6 @@ public:
 		uint8_t FunctionCode = GetFunctionCode();
 		uint16_t AData = ShiftLeftResult16Bits(FunctionCode & 0x0F, 8) | ShiftLeftResult16Bits(StationAddress & 0x0F, 4) | (Group & 0x0F);
 		SetA(AData);
-		SetBCH();
 	}
 	void MarkAsEndOfMessageBlock()
 	{
@@ -269,6 +268,7 @@ public:
 	void SetA(uint16_t A)
 	{
 		data = (data & ~ShiftLeftResult32Bits(0xFFF, 20)) | ShiftLeftResult32Bits(A & 0x0FFF,20);
+		SetBCH();
 	}
 	uint16_t GetB() const
 	{
@@ -277,6 +277,7 @@ public:
 	void SetB(uint16_t B)
 	{
 		data = (data & ~ShiftLeftResult32Bits(0xFFF, 7)) | ShiftLeftResult32Bits(B & 0x0FFF, 7);
+		SetBCH();
 	}
 	uint8_t GetBCH() const
 	{

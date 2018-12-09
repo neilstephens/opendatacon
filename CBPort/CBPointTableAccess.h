@@ -72,6 +72,7 @@ public:
 	bool PeekNextTaggedEventPoint(CBBinaryPoint &pt);
 	bool PopNextTaggedEventPoint();
 	bool TimeTaggedDataAvailable();
+	std::vector<CBBinaryPoint> DumpTimeTaggedPointList();
 
 	bool GetBinaryControlODCIndexUsingCBIndex(const uint8_t group, const uint8_t channel, size_t & index);
 	bool GetBinaryControlCBIndexUsingODCIndex(const size_t index, uint8_t &group, uint8_t & channel);

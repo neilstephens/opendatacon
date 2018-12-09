@@ -88,19 +88,19 @@ public:
 	void QueueCBCommand(const CBBlockData & SingleBlockCBMessage, SharedStatusCallback_t pStatusCallback); // Handle the many single block command messages better
 	void PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c);
 
-	//*** PUBLIC for unit tests only
-	void DoPoll(uint32_t payloadlocation);
-	void SendFn9TimeUpdate( SharedStatusCallback_t pStatusCallback);
-
 	void ResetDigitalCommandSequenceNumber();
 	uint8_t GetAndIncrementDigitalCommandSequenceNumber(); // Thread protected
 
 	void EnablePolling(bool on); // Enabled by default
-	void SendTimeDateChangeCommand(const uint64_t & currenttimeinmsec, SharedStatusCallback_t pStatusCallback);
-	void SendScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
 
 	void SendDigitalControlOnCommand(const uint8_t & StationAddress, const uint8_t & Group, const uint16_t & outputbits, const SharedStatusCallback_t &pStatusCallback);
 	void SendDigitalControlOffCommand(const uint8_t & StationAddress, const uint8_t & Group, const uint16_t & outputbit, const SharedStatusCallback_t & pStatusCallback);
+
+	//*** PUBLIC for unit tests only
+	void DoPoll(uint32_t payloadlocation);
+	void SendF0ScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
+	void SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback);
+	void SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
 
 	// Testing use only
 	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
@@ -121,6 +121,7 @@ private:
 	bool ProcessScanRequestReturn(const CBMessage_t & CompleteCBMessage);
 	void ProccessScanPayload(uint16_t data, uint8_t group, PayloadLocationType payloadlocation);
 	void SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const CBTime &now);
+	bool ProcessSOEScanRequestReturn(const CBMessage_t & CompleteCBMessage);
 	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;

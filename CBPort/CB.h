@@ -94,7 +94,7 @@ OT numeric_cast(const ST value)
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
 enum BinaryPointType { DIG, MCA, MCB, MCC, BINCONTROL }; // Inputs and outputs
 enum AnalogCounterPointType { ANA, ANA6, ACC12, ACC24, ANACONTROL };
-enum PollGroupType { Scan, TimeSetCommand, SystemFlagScan };
+enum PollGroupType { Scan, TimeSetCommand, SOEScan, SystemFlagScan };
 
 #define MISSINGVALUE 0 // If we have a missing point or have no data, substitute this. MD3 it was 0x8000
 

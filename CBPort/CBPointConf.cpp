@@ -176,6 +176,10 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		{
 			polltype = SystemFlagScan;
 		}
+		if (iequals(JSONNode[n]["PollType"].asString(), "SOEScan"))
+		{
+			polltype = SOEScan;
+		}
 
 		bool ForceUnconditional = false;
 		if (JSONNode[n].isMember("ForceUnconditional"))

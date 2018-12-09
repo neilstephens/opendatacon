@@ -329,6 +329,20 @@ bool CBPointTableAccess::TimeTaggedDataAvailable()
 {
 	return !pBinaryTimeTaggedEventQueue->sync_empty();
 }
+// Dumps the points out in a list, only used for UnitTests
+std::vector<CBBinaryPoint> CBPointTableAccess::DumpTimeTaggedPointList()
+{
+	CBBinaryPoint CurrentPoint;
+	std::vector<CBBinaryPoint> PointList(50);
+
+	while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint))
+	{
+		PointList.emplace_back(CurrentPoint);
+		pBinaryTimeTaggedEventQueue->sync_pop();
+	}
+
+	return PointList;
+}
 #ifdef _MSC_VER
 #pragma endregion
 

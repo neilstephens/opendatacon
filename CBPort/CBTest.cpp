@@ -100,7 +100,8 @@ const char *conffile1 = R"001(
 	"CBCommandRetries" : 1,
 
 	// Master only PollGroups - ignored by outstation
-	"PollGroups" : [{"ID" : 1, "PollRate" : 10000, "Group" : 1, "PollType" : "Scan"}],
+	"PollGroups" : [{"ID" : 1, "PollRate" : 10000, "Group" : 3, "PollType" : "Scan"},
+					{"ID" : 2, "PollRate" : 20000, "Group" : 3, "PollType" : "SOEScan"}],
 
 	// The payload location can be 1B, 2A, 2B
 	// Where there is a 24 bit result (ACC24) the next payload location will automatically be used. Do not put something else in there!
@@ -265,7 +266,7 @@ void CommandLineLoggingCleanup()
 }
 // A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
 // Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
-std::string BuildHexStringFromASCIIHexString(const std::string &as)
+std::string BuildBinaryStringFromASCIIHexString(const std::string &as)
 {
 	assert(as.size() % 2 == 0); // Must be even length
 
@@ -372,7 +373,7 @@ TEST_CASE("Util - HexStringTest")
 	std::string w1 = { ToChar(0xc4),0x06,0x40,0x0f,0x0b,0x00 };
 	std::string w2 = { 0x00,0x00,ToChar(0xff),ToChar(0xfe),ToChar(0x90),0x00 };
 
-	std::string res = BuildHexStringFromASCIIHexString(ts);
+	std::string res = BuildBinaryStringFromASCIIHexString(ts);
 	REQUIRE(res == (w1 + w2));
 	STANDARD_TEST_TEARDOWN();
 }
@@ -702,13 +703,13 @@ TEST_CASE("Station - ScanRequest F0")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Check the command is formatted correctly
-	std::string DesiredResult = BuildHexStringFromASCIIHexString("0937ffaa" // Echoed block plus data 1B
-		                                                       "a8080020" // Data 2A and 2B
-		                                                       "00080006"
-		                                                       "00080006"
-		                                                       "00080006"
-		                                                       "00080006"
-		                                                       "55580013");
+	std::string DesiredResult = BuildBinaryStringFromASCIIHexString("0937ffaa" // Echoed block plus data 1B
+		                                                          "a8080020" // Data 2A and 2B
+		                                                          "00080006"
+		                                                          "00080006"
+		                                                          "00080006"
+		                                                          "00080006"
+		                                                          "55580013");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -757,13 +758,13 @@ TEST_CASE("Station - ScanRequest F0")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Should now get different data!
-	DesiredResult = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                           "8808000c" // Data 2A and 2B
-		                                           "400a00b6"
-		                                           "402882b8"
-		                                           "405a032c"
-		                                           "40780030"
-		                                           "55580013");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
+		                                              "8808000c" // Data 2A and 2B
+		                                              "400a00b6"
+		                                              "402882b8"
+		                                              "405a032c"
+		                                              "40780030"
+		                                              "55580013");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -792,13 +793,13 @@ TEST_CASE("Station - ScanRequest F0")
 	// The 2A block was 0x880 Ch 1 = 1, Ch 2 = 0, Ch 3 = 1
 	// It becomes 0x780 Ch1 = 0 S1 =1, Ch2=1,S2 =1,Ch3=1,S3 =1
 	// Finally 0x800	ch1=1,ch2=0,ch3=0
-	DesiredResult = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                           "78080000" // Data 2A and 2B
-		                                           "400a00b6"
-		                                           "402882b8"
-		                                           "405a032c"
-		                                           "40780030"
-		                                           "55580013");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
+		                                              "78080000" // Data 2A and 2B
+		                                              "400a00b6"
+		                                              "402882b8"
+		                                              "405a032c"
+		                                              "40780030"
+		                                              "55580013");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -813,13 +814,13 @@ TEST_CASE("Station - ScanRequest F0")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Should now get different data!
-	DesiredResult = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                           "80080022" // Data 2A and 2B
-		                                           "400a00b6"
-		                                           "402882b8"
-		                                           "405a032c"
-		                                           "40780030"
-		                                           "55580013");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
+		                                              "80080022" // Data 2A and 2B
+		                                              "400a00b6"
+		                                              "402882b8"
+		                                              "405a032c"
+		                                              "40780030"
+		                                              "55580013");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -860,7 +861,7 @@ TEST_CASE("Station - SOERequest F10")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Check that we got nothing back ? No Events yet?
-	std::string DesiredResult = BuildHexStringFromASCIIHexString("a930002d"); // Echoed block plus
+	std::string DesiredResult = BuildBinaryStringFromASCIIHexString("a930002d"); // Echoed block plus
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -886,7 +887,7 @@ TEST_CASE("Station - SOERequest F10")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Now we should get back the SOE queued events.
-	DesiredResult = BuildHexStringFromASCIIHexString("a933012d192c9536006c981e602a541458c864b292c800868328c01a000ad180860b25b09789061e193e002408380c2a30093138c868323ec9981028000ffe34");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010d192c9536006c981e602a541458c864b292c800868328c01a000ad180860b25b09789061e193e002408380c2a30093138c868323ec9981028000ffe34");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -903,8 +904,6 @@ TEST_CASE("Station - SOERequest F10")
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
 
-
-
 	// Check if the lastmessagebit is set, if so request the remaining events - we happen to know it it is, so ask for them.
 	commandblock = CBBlockData(station, group, FUNC_SEND_NEW_SOE, 0, true);
 
@@ -912,7 +911,7 @@ TEST_CASE("Station - SOERequest F10")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildHexStringFromASCIIHexString("a933002d193c953a106a1822600a6a12b0c86486937820ba8328c01a000bfe12");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a9330025193c953a106a1822600a6a12b0c86486937820ba8328c01a000bfe12");
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
 
@@ -983,7 +982,7 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	std::string DesiredResult = BuildHexStringFromASCIIHexString("493000a3");
+	std::string DesiredResult = BuildBinaryStringFromASCIIHexString("493000a3");
 
 	REQUIRE(Response == DesiredResult); // OK PendingCommand
 
@@ -1002,7 +1001,7 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildHexStringFromASCIIHexString("19300033");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("19300033");
 
 	REQUIRE(Response == DesiredResult);
 
@@ -1023,7 +1022,7 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildHexStringFromASCIIHexString("2930009d");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("2930009d");
 
 	REQUIRE(Response == DesiredResult); // OK PendingCommand
 
@@ -1041,7 +1040,7 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildHexStringFromASCIIHexString("19300033");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("19300033");
 
 	REQUIRE(Response == DesiredResult); // OK PendingCommand
 
@@ -1062,7 +1061,7 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildHexStringFromASCIIHexString("3935552d");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("3935552d");
 
 	REQUIRE(Response == DesiredResult); // OK PendingCommand
 
@@ -1080,7 +1079,7 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildHexStringFromASCIIHexString("19300033");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("19300033");
 
 	REQUIRE(Response == DesiredResult); // OK PendingCommand
 
@@ -1096,6 +1095,21 @@ TEST_CASE("Station - CONTROL Commands")
 
 namespace MasterTests
 {
+void SendBinaryEvent(std::unique_ptr<CBOutstationPort> &CBOSPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
+{
+	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual, time);
+	event->SetPayload<EventType::Binary>(std::move(val));
+
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			res = command_stat;
+		});
+
+	CBOSPort->Event(event, "TestHarness", pStatusCallback);
+	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+}
+
 TEST_CASE("Master - Scan Request F0")
 {
 	// So here we send out an F0 command (so the Master is expecting it back)
@@ -1127,7 +1141,7 @@ TEST_CASE("Master - Scan Request F0")
 	WaitIOS(IOS, 1);
 
 	// We check the command, but it does not go anywhere, we inject the expected response below.
-	const std::string DesiredResponse = BuildHexStringFromASCIIHexString("09300025");
+	const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("09300025");
 	REQUIRE(Response == DesiredResponse);
 
 	// We now inject the expected response to the command above.
@@ -1135,13 +1149,13 @@ TEST_CASE("Master - Scan Request F0")
 	std::ostream output(&write_buffer);
 
 	// From the outstation test above!!
-	std::string Payload = BuildHexStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                                 "01480028" // Data 2A and 2B
-		                                                 "400a00b6"
-		                                                 "402882b8"
-		                                                 "405a032c"
-		                                                 "40780030"
-		                                                 "55580013");
+	std::string Payload = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
+		                                                    "01480028" // Data 2A and 2B
+		                                                    "400a00b6"
+		                                                    "402882b8"
+		                                                    "405a032c"
+		                                                    "40780030"
+		                                                    "55580013");
 	output << Payload;
 
 	// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
@@ -1205,6 +1219,86 @@ TEST_CASE("Master - Scan Request F0")
 		bool changed;
 		CBOSPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res, changed, hasbeenset);
 		REQUIRE(res == ((ODCIndex + 1) % 2));
+	}
+
+	STOP_IOS();
+	STANDARD_TEST_TEARDOWN();
+}
+TEST_CASE("Master - SOE Request F10")
+{
+	// So we have cross coupled Master/OutStation as if they were linked through ODC. We then send out a SOEScan command from the master, and feed it
+	// actual data generated by our code from the Station test above.
+	// The Master will then decode this data, and fire events off to the linked OutStation. We can then look at the OutStation Event Queue to see
+	// if everything worked correctly.
+
+	STANDARD_TEST_SETUP();
+
+	Json::Value MAportoverride;
+
+	TEST_CBMAPort(MAportoverride);
+
+	Json::Value OSportoverride;
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10001); // So the two ports dont actually connect to each other!! Not what we are testing here.
+	OSportoverride["StandAloneOutstation"] = false;
+	TEST_CBOSPort(OSportoverride);
+
+	START_IOS(1);
+
+	// The subscriber is just another port. CBOSPort is registering to get CBPort messages.
+	// Usually is a cross subscription, where each subscribes to the other.
+	CBMAPort->Subscribe(CBOSPort.get(), "TestLink");
+	CBOSPort->Subscribe(CBMAPort.get(), "TestLink");
+
+	CBOSPort->Enable();
+	CBMAPort->Enable();
+
+	CBMAPort->EnablePolling(false); // Don't want the timer triggering this. We will call manually.
+
+	// Hook the output functions
+	std::string OSResponse = "Not Set";
+	CBOSPort->SetSendTCPDataFn([&OSResponse](std::string CBMessage) { OSResponse = CBMessage; });
+
+	std::string MAResponse = "Not Set";
+	CBMAPort->SetSendTCPDataFn([&MAResponse](std::string CBMessage) { MAResponse = CBMessage; });
+
+	asio::streambuf OSwrite_buffer;
+	std::ostream OSoutput(&OSwrite_buffer);
+
+	asio::streambuf MAwrite_buffer;
+	std::ostream MAoutput(&MAwrite_buffer);
+
+	INFO("Test actual returned data for F10 SOE Scan");
+	{
+		MAResponse = "Not Set";
+
+		// Send an SOE Scan Command from the Master
+		uint8_t Group = 3;
+		CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
+
+		WaitIOS(IOS, 2);
+
+		// Check that the command was formatted correctly.
+		const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("a930002d");
+		REQUIRE(MAResponse == DesiredResponse);
+
+		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a9330025193c953a106a1822600a6a12b0c86486937820ba8328c01a000bfe12");
+		MAoutput << CommandResponse;
+		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
+
+		WaitIOS(IOS, 3);
+
+		// We should now have data available...
+		REQUIRE(CBOSPort->GetPointTable()->TimeTaggedDataAvailable() == true); // Uses a strand queue with wait for result...
+
+		// Get the list of time tagged events, and check...
+		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
+		REQUIRE(PointList.size() == 0x5f);
+		REQUIRE(PointList[50].GetIndex() == 0);
+		//		  REQUIRE(PointList[50].ChangedTime == 0x00000164ee106081);
+
+		REQUIRE(PointList[80].GetIndex() == 0x1e);
+		REQUIRE(PointList[80].GetBinary() == 0);
+		//		  REQUIRE(PointList[80].ChangedTime == 0x00000164ee1e751c);
 	}
 
 	STOP_IOS();
@@ -1359,8 +1453,68 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
 }
-TEST_CASE("Master - Cause a Command Resend on Timeout Uisng TCP")
-{}
+TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master and Outstation")
+{
+	STANDARD_TEST_SETUP();
+	// Outstations are as for the conf files
+	TEST_CBOSPort(Json::nullValue);
+
+	// The master needs to be a TCP Client - should be only change necessary.
+	Json::Value MAportoverride;
+	MAportoverride["TCPClientServer"] = "CLIENT";
+	TEST_CBMAPort(MAportoverride);
+
+	START_IOS(1);
+	CBMAPort->Subscribe(CBOSPort.get(), "TestLink"); // The subscriber is just another port. CBOSPort is registering to get CBPort messages.
+
+	CBOSPort->Enable();
+	CBMAPort->Enable();
+
+	// Allow everything to get setup.
+	WaitIOS(IOS, 2);
+
+	std::string Response = "Not Set";
+	CBMAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+
+	// Master sends a scan command
+	CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);
+	CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
+
+	WaitIOS(IOS, 1);
+
+	// We check the command, but it does not go anywhere, we would normally (in testing) inject the expected response below.
+	const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("09300025");
+	REQUIRE(Response == DesiredResponse);
+
+	// Instead of injecting the expected response, we don't send anything, which should result in a timeout.
+	// That timeout should then result in the point quality being set to COMMS_LOST??
+
+	// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
+	// Need to give ASIO time to process them
+	WaitIOS(IOS, 10);
+
+	// To check the result, the quality of the points will be set to comms_lost
+	uint16_t res = 0;
+	bool hasbeenset;
+	size_t ODCIndex = 0;
+	/*
+
+	TODO: Finish test for comms lost and quality flag setting also go back and check MD3.
+
+	CBOSPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
+	REQUIRE(res == 0x8000);
+
+	CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
+	REQUIRE(res == 0x8000);
+
+	*/
+	CBOSPort->Disable();
+
+	CBMAPort->Disable();
+
+	STOP_IOS();
+	STANDARD_TEST_TEARDOWN();
+}
 }
 
 
