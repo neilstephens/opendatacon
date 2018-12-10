@@ -602,7 +602,6 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & C
 	}
 	else
 	{
-		// TODO: The SOE data needs to be in time order - may need to add sorting to the TimeTaggedEventList
 		// The SOE data is built into a stream of bits (that may not be block aligned) and then it is stuffed 12 bits at a time into the available Payload locations - up to 31.
 		// First section format:
 		// 1 - 3 bits group #, 7 bits point number, Status(value) bit, Quality Bit (unused), Time Bit - changes what comes next
@@ -612,10 +611,8 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & C
 		// So the data can be 13+27+1 bits = 41 bits, or 13+16+1 = 30 bits.
 
 		// The maximum number of bits we can send is 12 * 31 = 372.
-
-		const uint32_t MaxBits = 12 * 31;
 		uint32_t UsedBits = 0;
-		std::array<bool, MaxBits> BitArray;
+		std::array<bool, MaxSOEBits> BitArray;
 
 		CBTime LastPointTime = 0;
 
@@ -659,7 +656,7 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & C
 			uint8_t numberofbits = PackedEvent.GetResultBitLength();
 
 			// Do we have room in the bit vector to add the data?
-			if (UsedBits + numberofbits < MaxBits)
+			if (UsedBits + numberofbits < MaxSOEBits)
 			{
 				// We can fit this data - proceed
 				uint64_t res = PackedEvent.GetFormattedData();
@@ -696,15 +693,18 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & C
 		// We now have the payloads ready to load into Conitel packets.
 
 		// We must have at least one payload! If, not it would be zero, which is what we would send back if there was none, so we get there either way.
-		Header.SetB(PayloadArray[0]);
-		ResponseCBMessage.push_back(Header);
+		CBBlockData ReturnHeader(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PayloadArray[0]);
+
+		ResponseCBMessage.push_back(ReturnHeader);
 
 		uint8_t block = 1;
 		while (block < BlockCount)
 		{
 			CBBlockData Block(PayloadArray[block++], PayloadArray[block++]); // Could possibly go past the 31 blocks, so we make sure there is one extra zero filled block.
+
 			ResponseCBMessage.push_back(Block);
 		}
+		ResponseCBMessage.back().MarkAsEndOfMessageBlock();
 	}
 	if (ResponseCBMessage.size() > 16)
 		LOGERROR("Too many packets in ResponseCBMessage in Outstation SOE Response - fatal error");

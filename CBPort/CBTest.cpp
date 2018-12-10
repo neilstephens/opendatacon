@@ -516,12 +516,53 @@ TEST_CASE("Util - SOEEventFormat")
 
 	REQUIRE(res == 0xB06C618601000000);
 
+	// Now test our BitArray handling.
+	std::array<bool, MaxSOEBits> BitArray;
+	for (int i = 0; i < 64; i++)
+		BitArray[i] = ((res >> (63 - i)) & 0x01) == 0x01;
+
+	uint8_t newstartbit = 0;
+	SOEEventFormat SOE(BitArray, 0, newstartbit); // Build a new SOE record from the BitArray
+
+	REQUIRE(newstartbit == 41);
+	REQUIRE(SOE.GetResultBitLength() == 41); // Should be long...
+	REQUIRE(SOE.GetFormattedData() == 0xB06C618601000000);
+	REQUIRE(SOE.Group == 5);
+	REQUIRE(SOE.Number == 0x41);
+	REQUIRE(SOE.ValueBit == true);
+	REQUIRE(SOE.TimeFormatBit == true);
+	REQUIRE(SOE.Hour == 0x11);
+	REQUIRE(SOE.Minute == 0x21);
+	REQUIRE(SOE.Second == 0x21);
+	REQUIRE(SOE.Millisecond == 0x201);
+	REQUIRE(SOE.LastEventFlag == false);
+
+
 	S.TimeFormatBit = false; // Short format
 	S.LastEventFlag = true;
 
 	res = S.GetFormattedData();
 
 	REQUIRE(res == 0xb064300c00000000);
+
+	// Now test our BitArray handling.
+	std::array<bool, MaxSOEBits> BitArray2;
+	for (int i = 0;  i < 64; i++)
+		BitArray2[i] = ((res >> (63 - i)) & 0x01) == 0x01;
+
+	newstartbit = 0;
+	SOEEventFormat SOE2(BitArray2, 0, newstartbit); // Build a new SOE record from the BitArray
+
+	REQUIRE(newstartbit == 30);
+	REQUIRE(SOE2.GetResultBitLength() == 30); // Should be short...
+	REQUIRE(SOE2.GetFormattedData() == 0xb064300c00000000);
+	REQUIRE(SOE2.Group == 5);
+	REQUIRE(SOE2.Number == 0x41);
+	REQUIRE(SOE2.ValueBit == true);
+	REQUIRE(SOE2.TimeFormatBit == false);
+	REQUIRE(SOE2.Second == 0x21);
+	REQUIRE(SOE2.Millisecond == 0x201);
+	REQUIRE(SOE2.LastEventFlag == true);
 
 	STANDARD_TEST_TEARDOWN();
 }
@@ -887,7 +928,7 @@ TEST_CASE("Station - SOERequest F10")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Now we should get back the SOE queued events.
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010d192c9536006c981e602a541458c864b292c800868328c01a000ad180860b25b09789061e193e002408380c2a30093138c868323ec9981028000ffe34");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c192c9536006c981ec04a5434b308c9324b08032a192e0232006e9828c04a5c16f308c9204c08033a193e023e00689838c04a64263308c9824dc8033f");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -911,7 +952,8 @@ TEST_CASE("Station - SOERequest F10")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a9330025193c953a106a1822600a6a12b0c86486937820ba8328c01a000bfe12");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c193c953a006a980ec04a6c047308c9904ee8833f");
+
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
 
@@ -1281,11 +1323,11 @@ TEST_CASE("Master - SOE Request F10")
 		const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("a930002d");
 		REQUIRE(MAResponse == DesiredResponse);
 
-		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a9330025193c953a106a1822600a6a12b0c86486937820ba8328c01a000bfe12");
+		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a933010c192c9536006c981ec04a5434b308c9324b08032a192e0232006e9828c04a5c16f308c9204c08033a193e023e00689838c04a64263308c9824dc8033f");
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(IOS, 3);
+		WaitIOS(IOS, 50); // Should be 3
 
 		// We should now have data available...
 		REQUIRE(CBOSPort->GetPointTable()->TimeTaggedDataAvailable() == true); // Uses a strand queue with wait for result...
@@ -1494,10 +1536,11 @@ TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master an
 	WaitIOS(IOS, 10);
 
 	// To check the result, the quality of the points will be set to comms_lost
+	/*
 	uint16_t res = 0;
 	bool hasbeenset;
 	size_t ODCIndex = 0;
-	/*
+
 
 	TODO: Finish test for comms lost and quality flag setting also go back and check MD3.
 

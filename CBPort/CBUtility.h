@@ -379,6 +379,9 @@ inline bool TestBit(const uint64_t &data, const uint8_t bitindex)
 	return ((data & testbit) == testbit);
 }
 
+// The maximum number of bits we can send is 12 * 31 = 372.
+const uint32_t MaxSOEBits = 12 * 31;
+
 class SOEEventFormat // Use the Bits uint64_t to get at the resulting packed bits. - bit order???
 {
 public:
@@ -387,7 +390,44 @@ public:
 	// T==0 Hours and Minutes same as previous event, 16 bits - Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
 	// Last bit L, when set indicates last record.
 	// So the data can be 13+27+1 bits = 41 bits, or 13+16+1 = 30 bits.
+	SOEEventFormat() {};
+	// Use the bitarray to construct an event, return the start of the next event in the bitarray.
+	SOEEventFormat(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t &newstartbit)
+	{
+		try
+		{
+			Group = GetBits8(BitArray, startbit, 3);
+			startbit += 3;
+			Number = GetBits8(BitArray, startbit, 7);
+			startbit += 7;
 
+			ValueBit = BitArray[startbit++];
+			QualityBit = BitArray[startbit++];
+			TimeFormatBit = BitArray[startbit++];
+
+			if (TimeFormatBit) // Long format
+			{
+				Hour = GetBits8(BitArray, startbit, 5);
+				startbit += 5;
+				Minute = GetBits8(BitArray, startbit, 6);
+				startbit += 6;
+			}
+			Second = GetBits8(BitArray, startbit, 6);
+			startbit += 6;
+			Millisecond = GetBits16(BitArray, startbit, 10);
+			startbit += 10;
+
+			LastEventFlag = BitArray[startbit++];
+
+			newstartbit = startbit;
+		}
+		catch (const std::exception& e)
+		{
+			// If we fail, return newstartbit = 0 (as this is not possible if we succeed)
+			newstartbit = 0;
+			LOGERROR("SOEEventFormat constructor failed, probably array index exceeded. {}", e.what());
+		}
+	}
 	uint8_t Group;  // 3 bits - 0 - 7
 	uint8_t Number; // 7 bits - 0 - 120
 	bool ValueBit;
@@ -401,9 +441,44 @@ public:
 	uint16_t Millisecond; // 10 bits,  0-999
 	// (27 or 16 bits for the time section)
 
+	CBTime GetTotalMsecTime()
+	{
+		return (((numeric_cast<CBTime>(Hour) * 60ul + numeric_cast<CBTime>(Minute)) * 60ul + numeric_cast<CBTime>(Second)) * 1000ul + numeric_cast<CBTime>(Millisecond));
+	}
+
 	bool LastEventFlag; // Set when no more events are available
 	// 41 or 30 bits
 
+	uint8_t GetBits8(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t numberofbits)
+	{
+		assert(numberofbits <= 8);
+		assert(numberofbits != 0);
+
+		uint8_t res = 0;
+		for (uint8_t i = startbit; i < (startbit+numberofbits); i++ )
+		{
+			res <<= 1; // Shift left by one bit
+
+			if (BitArray[i]) // Do we set this bit?
+				res |= 0x01;
+		}
+		return res;
+	}
+	uint16_t GetBits16(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t numberofbits)
+	{
+		assert(numberofbits <= 16);
+		assert(numberofbits != 0);
+
+		uint16_t res = 0;
+		for (uint8_t i = startbit;  i < (startbit + numberofbits); i++)
+		{
+			res <<= 1; // Shift left by one bit
+
+			if (BitArray[i]) // Do we set this bit?
+				res |= 0x01;
+		}
+		return res;
+	}
 	uint64_t GetFormattedData()
 	{
 		// We will format this from the Most Significant Bit down, so the lower bits are not used.
@@ -434,7 +509,7 @@ public:
 		}
 		else
 		{
-			return 31;
+			return 30;
 		}
 	}
 };

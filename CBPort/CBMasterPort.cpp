@@ -637,33 +637,113 @@ void CBMasterPort::SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const 
 
 bool CBMasterPort::ProcessSOEScanRequestReturn(const CBMessage_t& CompleteCBMessage)
 {
-	uint8_t Group = CompleteCBMessage[0].GetGroup();
+	LOGDEBUG("SOE Scan Data processing - Blocks {}", CompleteCBMessage.size());
 
-	uint8_t NumberOfBlocks = numeric_cast<uint8_t>(CompleteCBMessage.size());
+	uint32_t UsedBits = 0;
+	std::array<bool, MaxSOEBits> BitArray;
 
-	LOGDEBUG("SOE Scan Data processing - Blocks {}",NumberOfBlocks);
+	if (!ConvertSOEMessageToBitArray(CompleteCBMessage, BitArray, UsedBits))
+		return false;
 
-	// For each of the payloads, we trigger an event, which the OutStation will put into its SOE Queue only if it is an "old" event.
-	// Have to do a bunch of payload unpacking to get to the data.
+	CBTime LastTime = 0; // The time records in the SOE records are deltas from the previous record.
 
+	// Convert the BitArray to SOE events, and call our lambda for each
+	ForEachSOEEventInBitArray(BitArray, UsedBits, [&](SOEEventFormat &soeevnt)
+		{
+			// Now use the data in the SOE Event to fire off an ODC event..
+			// Find the Point in our database...using SOE Group and Number
+			uint8_t Group = soeevnt.Group;
+			uint8_t SOENumber = soeevnt.Number;
 
-	/*auto payloadlocation = PayloadLocationType(1, PayloadABType::PositionB);
+			size_t ODCIndex = 0;
 
-	ProccessScanPayload(CompleteCBMessage[0].GetB(), Group, payloadlocation);
+			if (MyPointConf->PointTable.GetBinaryODCIndexUsingSOE(Group, SOENumber, ODCIndex))
+			{
+			      uint8_t bitvalue = soeevnt.ValueBit;
 
-	for (uint8_t blockindex = 1; blockindex < NumberOfBlocks; blockindex++)
-	{
-	      payloadlocation = PayloadLocationType(blockindex + 1, PayloadABType::PositionA);
+			      CBTime changedtime = LastTime + soeevnt.GetTotalMsecTime();
+			      LastTime = changedtime;
 
-	      ProccessScanPayload(CompleteCBMessage[blockindex].GetA(), Group, payloadlocation);
+			      QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
+			      LOGDEBUG("Published Binary SOE Event - Binary Index " + std::to_string(ODCIndex) + " Value " + std::to_string(bitvalue));
+			      auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(changedtime));
+			      event->SetPayload<EventType::Binary>(bitvalue == 1);
+			      PublishEvent(event);
+			}
+			else
+			{
+			      LOGERROR("Received an Binary SOE Event Record, but we dont have a matching point definition... Group {}, Number {}", Group, SOENumber);
+			}
+		});
 
-	      payloadlocation = PayloadLocationType(blockindex + 1, PayloadABType::PositionB);
-
-	      ProccessScanPayload(CompleteCBMessage[blockindex].GetB(), Group, payloadlocation);
-	}*/
 	return true;
 }
 
+bool CBMasterPort::ConvertSOEMessageToBitArray(const CBMessage_t& CompleteCBMessage, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits )
+{
+	uint8_t NumberOfBlocks = numeric_cast<uint8_t>(CompleteCBMessage.size());
+
+	if (NumberOfBlocks == 1)
+	{
+		LOGERROR("Only Received one SOE Message Block, insufficient data, minimum of 2 required");
+		return false;
+	}
+
+	// The SOE data is built into a stream of bits (that may not be block aligned) and then it is stuffed 12 bits at a time into the available Payload locations - up to 31.
+	// First section format:
+	// 1 - 3 bits group #, 7 bits point number, Status(value) bit, Quality Bit (unused), Time Bit - changes what comes next
+	// T==1 Time - 27 bits, Hour (0-23, 5 bits), Minute (0-59, 6 bits), Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
+	// T==0 Hours and Minutes same as previous event, 16 bits - Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
+	// Last bit L, when set indicates last record.
+	// So the data can be 13+27+1 bits = 41 bits, or 13+16+1 = 30 bits.
+
+	// The maximum number of bits we can send is 12 * 31 = 372.
+
+	// Take each of the payload 12 bit blocks, and combine them into a bit array. Block 0 Payload A is group address and other data. Start at block B
+	UsedBits = 0;
+
+	for (uint8_t blocknum = 0; blocknum < NumberOfBlocks; blocknum++)
+	{
+		if (blocknum != 0)
+		{
+			uint16_t payloadA = CompleteCBMessage[blocknum].GetA();
+			for (int i = 11; i >= 0; i--)
+			{
+				BitArray[UsedBits++] = TestBit(payloadA, i);
+			}
+		}
+
+		uint16_t payloadB = CompleteCBMessage[blocknum].GetB();
+		for (int i = 11; i >= 0; i--)
+		{
+			BitArray[UsedBits++] = TestBit(payloadB, i);
+		}
+	}
+	return true;
+}
+
+void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits, std::function<void(SOEEventFormat &soeevnt)> fn)
+{
+	// We now have the data in the bit array, now we have to decode into the SOE blocks - 30 or 41 bits long.
+	uint8_t startbit = 0;
+	uint8_t newstartbit = 0;
+	do
+	{
+		// Create the Event, it will tell us how many bits it consumed. newstartbit == 0 means it failed.
+		startbit = newstartbit;
+		SOEEventFormat Event(BitArray, startbit, newstartbit);
+
+		if (newstartbit != 0)
+		{
+			fn(Event);
+		}
+		else
+		{
+			LOGERROR("The SOEEventFormat bitarray parser failed.. StartBit {}, NewStartBit {}", startbit, newstartbit);
+			return;
+		}
+	} while (newstartbit < UsedBits);
+}
 
 // Checks what we got back against what we sent. We know the function code and address have been checked.
 bool CBMasterPort::CheckResponseHeaderMatch(const CBBlockData& ReceivedHeader, const CBBlockData& SentHeader)
