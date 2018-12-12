@@ -587,8 +587,7 @@ void CBOutstationPort::FuncReSendSOEResponse(CBBlockData & Header, CBMessage_t &
 void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage)
 {
 	LOGDEBUG("OS - SendSOEResponse - FnA - Code {}", Header.GetGroup());
-	CBBinaryPoint CurrentPoint;
-	uint64_t LastPointmsec = 0;
+
 	bool CanSend = true;
 
 	CBMessage_t ResponseCBMessage;
@@ -602,115 +601,139 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & C
 	}
 	else
 	{
-		// The SOE data is built into a stream of bits (that may not be block aligned) and then it is stuffed 12 bits at a time into the available Payload locations - up to 31.
-		// First section format:
-		// 1 - 3 bits group #, 7 bits point number, Status(value) bit, Quality Bit (unused), Time Bit - changes what comes next
-		// T==1 Time - 27 bits, Hour (0-23, 5 bits), Minute (0-59, 6 bits), Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
-		// T==0 Hours and Minutes same as previous event, 16 bits - Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
-		// Last bit L, when set indicates last record.
-		// So the data can be 13+27+1 bits = 41 bits, or 13+16+1 = 30 bits.
-
 		// The maximum number of bits we can send is 12 * 31 = 372.
 		uint32_t UsedBits = 0;
 		std::array<bool, MaxSOEBits> BitArray;
 
-		CBTime LastPointTime = 0;
+		BuildPackedEventBitArray(Header.GetGroup(),BitArray, UsedBits);
 
-		while (true)
-		{
-			// There must be at least one SOE available to get to here.
-			if (!MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint)) // Don't pop until we are happy...
-			{
-				// We have run out of data, so break out of the loop, but first we need to set the last event flag in the previous packet--this is the last bit in the vector
-				// SET LAST EVENT FLAG
-				BitArray[UsedBits-1] = true; // This index is safe as to get to here there must have been at least one SOE processed.
-				break;
-			}
-
-			// We keep trying to add data until there is none left, or the data will not fit into our bit array.
-
-			SOEEventFormat PackedEvent;
-			PackedEvent.Group = Header.GetGroup();
-			PackedEvent.Number = CurrentPoint.GetSOEIndex();
-			PackedEvent.ValueBit = CurrentPoint.GetBinary() ? 1 : 0;
-			PackedEvent.QualityBit = 0;
-			CBTime TimeDeltamsec = CurrentPoint.GetChangedTime() - LastPointTime;
-
-			LastPointTime = CurrentPoint.GetChangedTime();
-
-			PackedEvent.TimeFormatBit = TimeDeltamsec > (1000 * 60) ? 1 : 0;
-
-			CBTime Days = CurrentPoint.GetChangedTime() / 1000 / 60 / 60 / 24;
-			CBTime Hour = CurrentPoint.GetChangedTime() / 1000 / 60 / 60 % 24;
-			CBTime Remainder = CurrentPoint.GetChangedTime() - (1000 * 60 * 60 * Hour) - (1000 * 60 * 60 * 24 * Days);
-
-			PackedEvent.Hour = numeric_cast<uint8_t>(Hour);
-			PackedEvent.Minute = Remainder / 1000 / 60 % 60;
-			PackedEvent.Second = Remainder / 1000 % 60;
-			PackedEvent.Millisecond = Remainder % 1000;
-
-			PackedEvent.LastEventFlag = false; // Might be changed on the loop exit, if there is nothing left in the SOE queue.
-
-			// Now stuff the bits (41 or 30) into our bit array.
-
-			uint8_t numberofbits = PackedEvent.GetResultBitLength();
-
-			// Do we have room in the bit vector to add the data?
-			if (UsedBits + numberofbits < MaxSOEBits)
-			{
-				// We can fit this data - proceed
-				uint64_t res = PackedEvent.GetFormattedData();
-
-				for (uint8_t i = 0; i < numberofbits; i++) // 41 or 30 depending on TimeFormatBit
-				{
-					BitArray[UsedBits++] = TestBit(res,63-i);
-				}
-				// Pop the event so we can move onto the next one
-				MyPointConf->PointTable.PopNextTaggedEventPoint();
-			}
-			else
-			{
-				// We have run out of space, break out. Dont change the LastEventFlag bit in the last packet, as there are still events in the SOE queue.
-				break; // Exit the while loop.
-			}
-		}
-
-		// Using an array of uint16_t to store up to 31 x 12 bit blocks of data.
+		// Using an vector of uint16_t to store up to 31 x 12 bit blocks of data.
 		// Store the data in the bottom 12 bits of the 16 bit word.
-		uint16_t PayloadArray[31+1] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
-		uint8_t BlockCount = UsedBits / 12 + ((UsedBits % 12 == 0) ? 0 : 1);
+		std::vector<uint16_t> PayloadWords;
 
-		for (int block = 0; block < BlockCount; block++)
-		{
-			uint16_t payload = 0;
-			for (int i = 0; i < 12; i++)
-			{
-				payload |= ShiftLeftResult16Bits(BitArray[block * 12 + i], 11 - i);
-			}
-			PayloadArray[block] = payload;
-		}
+		ConvertBitArrayToPayloadWords(UsedBits, BitArray, PayloadWords);
 
 		// We now have the payloads ready to load into Conitel packets.
-
-		// We must have at least one payload! If, not it would be zero, which is what we would send back if there was none, so we get there either way.
-		CBBlockData ReturnHeader(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PayloadArray[0]);
-
-		ResponseCBMessage.push_back(ReturnHeader);
-
-		uint8_t block = 1;
-		while (block < BlockCount)
-		{
-			CBBlockData Block(PayloadArray[block++], PayloadArray[block++]); // Could possibly go past the 31 blocks, so we make sure there is one extra zero filled block.
-
-			ResponseCBMessage.push_back(Block);
-		}
-		ResponseCBMessage.back().MarkAsEndOfMessageBlock();
+		ConvertPayloadWordsToCBMessage(Header, PayloadWords, ResponseCBMessage);
 	}
 	if (ResponseCBMessage.size() > 16)
 		LOGERROR("Too many packets in ResponseCBMessage in Outstation SOE Response - fatal error");
 
 	LastSentSOEMessage = ResponseCBMessage;
 	SendCBMessage(ResponseCBMessage);
+}
+void CBOutstationPort::ConvertPayloadWordsToCBMessage(CBBlockData & Header, std::vector<uint16_t> &PayloadWords, CBMessage_t &ResponseCBMessage)
+{
+	// We must have at least one payload! If, not it would be zero, which is what we would send back if there was none, so we get there either way.
+	uint16_t BPayload = 0;
+	if (PayloadWords.size()!= 0) // Might need a zero filled padding block...
+		BPayload = PayloadWords[0];
+
+	CBBlockData ReturnHeader(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), BPayload);
+
+	ResponseCBMessage.push_back(ReturnHeader);
+
+	uint8_t block = 1;
+	while (block < PayloadWords.size())
+	{
+		uint16_t APayload = PayloadWords[block++];
+		uint16_t BPayload = 0;
+
+		if (block != PayloadWords.size()) // Might need a zero filled padding block...
+			BPayload = PayloadWords[block++];
+
+		CBBlockData Block(APayload, BPayload);
+
+		ResponseCBMessage.push_back(Block);
+	}
+	ResponseCBMessage.back().MarkAsEndOfMessageBlock();
+}
+void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, std::array<bool, MaxSOEBits> &BitArray, std::vector<uint16_t> &PayloadWords)
+{
+	uint8_t BlockCount = UsedBits / 12 + ((UsedBits % 12 == 0) ? 0 : 1);
+	for (int block = 0; block < BlockCount; block++)
+	{
+		uint16_t payload = 0;
+		for (int i = 0; i < 12; i++)
+		{
+			payload |= ShiftLeftResult16Bits(BitArray[block * 12 + i], 11 - i);
+		}
+		PayloadWords[block] = payload;
+	}
+}
+void CBOutstationPort::BuildPackedEventBitArray(uint8_t Group, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits)
+{
+	// The SOE data is built into a stream of bits (that may not be block aligned) and then it is stuffed 12 bits at a time into the available Payload locations - up to 31.
+	// First section format:
+	// 1 - 3 bits group #, 7 bits point number, Status(value) bit, Quality Bit (unused), Time Bit - changes what comes next
+	// T==1 Time - 27 bits, Hour (0-23, 5 bits), Minute (0-59, 6 bits), Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
+	// T==0 Hours and Minutes same as previous event, 16 bits - Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
+	// Last bit L, when set indicates last record.
+	// So the data can be 13+27+1 bits = 41 bits, or 13+16+1 = 30 bits.
+
+	CBBinaryPoint CurrentPoint;
+	uint64_t LastPointmsec = 0;
+	CBTime LastPointTime;
+
+	while (true)
+	{
+		// There must be at least one SOE available to get to here.
+		//TODO: Check - we might have to maintain more than one tagged event queue - may need one per group!
+		if (!MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint)) // Don't pop until we are happy...
+		{
+			// We have run out of data, so break out of the loop, but first we need to set the last event flag in the previous packet--this is the last bit in the vector
+			// SET LAST EVENT FLAG
+			BitArray[UsedBits - 1] = true; // This index is safe as to get to here there must have been at least one SOE processed.
+			break;
+		}
+
+		// We keep trying to add data until there is none left, or the data will not fit into our bit array.
+
+		SOEEventFormat PackedEvent;
+		PackedEvent.Group = Group;
+		PackedEvent.Number = CurrentPoint.GetSOEIndex();
+		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? 1 : 0;
+		PackedEvent.QualityBit = 0;
+		CBTime TimeDeltamsec = CurrentPoint.GetChangedTime() - LastPointTime;
+
+		LastPointTime = CurrentPoint.GetChangedTime();
+
+		PackedEvent.TimeFormatBit = TimeDeltamsec > (1000 * 60) ? 1 : 0;
+
+		CBTime Days = CurrentPoint.GetChangedTime() / 1000 / 60 / 60 / 24;
+		CBTime Hour = CurrentPoint.GetChangedTime() / 1000 / 60 / 60 % 24;
+		CBTime Remainder = CurrentPoint.GetChangedTime() - (1000 * 60 * 60 * Hour) - (1000 * 60 * 60 * 24 * Days);
+
+		PackedEvent.Hour = numeric_cast<uint8_t>(Hour);
+		PackedEvent.Minute = Remainder / 1000 / 60 % 60;
+		PackedEvent.Second = Remainder / 1000 % 60;
+		PackedEvent.Millisecond = Remainder % 1000;
+
+		PackedEvent.LastEventFlag = false; // Might be changed on the loop exit, if there is nothing left in the SOE queue.
+
+		// Now stuff the bits (41 or 30) into our bit array.
+
+		uint8_t numberofbits = PackedEvent.GetResultBitLength();
+
+		// Do we have room in the bit vector to add the data?
+		if (UsedBits + numberofbits < MaxSOEBits)
+		{
+			// We can fit this data - proceed
+			uint64_t res = PackedEvent.GetFormattedData();
+
+			for (uint8_t i = 0; i < numberofbits; i++) // 41 or 30 depending on TimeFormatBit
+			{
+				BitArray[UsedBits++] = TestBit(res, 63 - i);
+			}
+			// Pop the event so we can move onto the next one
+			MyPointConf->PointTable.PopNextTaggedEventPoint();
+		}
+		else
+		{
+			// We have run out of space, break out. Dont change the LastEventFlag bit in the last packet, as there are still events in the SOE queue.
+			break; // Exit the while loop.
+		}
+	}
 }
 // We do not update the time, just send back our current time - assume UTC time of day in milliseconds since 1970 (CBTime()).
 void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage)

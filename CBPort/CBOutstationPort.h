@@ -134,6 +134,12 @@ public:
 	void FuncReSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage);
 	void FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage);
 
+	void ConvertPayloadWordsToCBMessage(CBBlockData & Header, std::vector<uint16_t> &PayloadWords, CBMessage_t &ResponseCBMessage);
+
+	void ConvertBitArrayToPayloadWords(const uint32_t UsedBits, std::array<bool, MaxSOEBits> &BitArray, std::vector<uint16_t> &PayloadWords);
+
+	void BuildPackedEventBitArray(uint8_t Group, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits);
+
 	void ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage);
 	void EchoReceivedHeaderToMaster(CBBlockData & Header);
 
