@@ -87,6 +87,7 @@ void DNP3MasterPort::PortUp()
 			IOHandler_pair.second->Event(commsUpEvent, pConf->pPointConf->mCommsPoint.second, this->Name);
 		}
 	}
+	IntegrityScan.Demand();
 }
 
 void DNP3MasterPort::PortDown()
