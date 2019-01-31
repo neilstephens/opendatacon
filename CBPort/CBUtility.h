@@ -391,8 +391,11 @@ public:
 	// Last bit L, when set indicates last record.
 	// So the data can be 13+27+1 bits = 41 bits, or 13+16+1 = 30 bits.
 	SOEEventFormat() {};
+
 	// Use the bitarray to construct an event, return the start of the next event in the bitarray.
-	SOEEventFormat(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t &newstartbit)
+	// The bitarray data may give us a short timed event (only sec and msec received) in this case add the passed in LastEventTime to the seconds/msec value
+	// And change the TimeFormatBit to indicate that the Hours/Minutes are valid.
+	SOEEventFormat(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t &newstartbit, CBTime LastEventTime)
 	{
 		try
 		{
@@ -417,6 +420,13 @@ public:
 			Millisecond = GetBits16(BitArray, startbit, 10);
 			startbit += 10;
 
+			if (!TimeFormatBit) // Short Format, so add the LastEventTime to the delta we have (seconds+mseconds)
+			{
+				bool FirstEvent = (LastEventTime == 0); // Can only be zero for our first event...
+				// Add the LastEventTime to the Second/Millisecond values
+				LastEventTime += (Millisecond + Second * 1000);
+				SetTimeFields(LastEventTime, FirstEvent);
+			}
 			LastEventFlag = BitArray[startbit++];
 
 			newstartbit = startbit;
@@ -428,26 +438,51 @@ public:
 			LOGERROR("SOEEventFormat constructor failed, probably array index exceeded. {}", e.what());
 		}
 	}
-	uint8_t Group;  // 3 bits - 0 - 7
-	uint8_t Number; // 7 bits - 0 - 120
-	bool ValueBit;
-	bool QualityBit;
-	bool TimeFormatBit; // True ,1 Long Format
+	uint8_t Group = 0;  // 3 bits - 0 - 7
+	uint8_t Number = 0; // 7 bits - 0 - 120
+	bool ValueBit = false;
+	bool QualityBit = false;
+	bool TimeFormatBit = true; // True ,1 Long Format
 	// (13 bits)
 
-	uint8_t Hour;         // 5 bits, 0-23
-	uint8_t Minute;       // 6 bits, 0-59
-	uint8_t Second;       // 6 bits, 0-59
-	uint16_t Millisecond; // 10 bits,  0-999
+	uint8_t Hour = 0;         // 5 bits, 0-23
+	uint8_t Minute = 0;       // 6 bits, 0-59
+	uint8_t Second = 0;       // 6 bits, 0-59
+	uint16_t Millisecond = 0; // 10 bits,  0-999
 	// (27 or 16 bits for the time section)
 
+	bool LastEventFlag; // Set when no more events are available
+	// 41 or 30 bits
+
+	void SetTimeFields(CBTime TimeDelta, bool FirstEvent)
+	{
+		if ((TimeDelta > 1000 * 60) || FirstEvent)
+		{
+			// Set full time, with TimeFormatBit == true
+			TimeFormatBit = true;
+
+			CBTime Days = TimeDelta / 1000 / 60 / 60 / 24; // Days is not used...handle just in case
+			CBTime LongHour = TimeDelta / 1000 / 60 / 60 % 24;
+			CBTime Remainder = TimeDelta - (1000 * 60 * 60 * LongHour) - (1000 * 60 * 60 * 24 * Days);
+
+			Hour = numeric_cast<uint8_t>(LongHour);
+			Minute = Remainder / 1000 / 60 % 60;
+			Second = Remainder / 1000 % 60;
+			Millisecond = Remainder % 1000;
+		}
+		else
+		{
+			// Set delta time, with TimeFormatBit == false
+			TimeFormatBit = false;
+
+			Second = TimeDelta / 1000 % 60;
+			Millisecond = TimeDelta % 1000;
+		}
+	}
 	CBTime GetTotalMsecTime()
 	{
 		return (((numeric_cast<CBTime>(Hour) * 60ul + numeric_cast<CBTime>(Minute)) * 60ul + numeric_cast<CBTime>(Second)) * 1000ul + numeric_cast<CBTime>(Millisecond));
 	}
-
-	bool LastEventFlag; // Set when no more events are available
-	// 41 or 30 bits
 
 	uint8_t GetBits8(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t numberofbits)
 	{

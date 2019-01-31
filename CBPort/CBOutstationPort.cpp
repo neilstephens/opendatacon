@@ -222,7 +222,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 			CBTime eventtime = event->GetTimestamp();
 			uint8_t meas = event->GetPayload<EventType::Binary>();
 
-			LOGDEBUG("OS - Received Event - Binary - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(meas));
+			LOGDEBUG("OS - Received Event - Binary - Index " + std::to_string(ODCIndex) + " Bit Value " + std::to_string(meas));
 
 			// Check that the passed time is within 30 minutes of the actual time, if not use the current time
 			if (MyPointConf->OverrideOldTimeStamps)

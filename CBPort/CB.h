@@ -82,6 +82,26 @@ typedef uint64_t CBTime; // msec since epoch, utc, most time functions are uint6
 
 CBTime CBNow();
 
+const CBTime CBTimeOneDay = 1000 * 60 * 60 * 24;
+const CBTime CBTimeOneHour = 1000 * 60 * 60;
+
+// Give us the time for the start of the current day in CBTime (msec since epoch)
+inline CBTime GetDayStartTime(CBTime time)
+{
+	CBTime Days = time / CBTimeOneDay;
+	return (Days * CBTimeOneDay); // msec*sec*min*hours
+}
+// Give us the time of day value in msec
+inline CBTime GetTimeOfDayOnly(CBTime time)
+{
+	return time - GetDayStartTime(time);
+}
+
+// Get the hour value for the current time value 0-23
+inline CBTime GetHour(CBTime time)
+{
+	return time / CBTimeOneHour % 24;
+}
 // We use for signed/unsigned conversions, where we know we will not have problems.
 // Static casting all over the place still produces a lot of gcc warning messages.
 // Also we can put checks in here if required.

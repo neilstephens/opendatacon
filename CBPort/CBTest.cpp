@@ -522,7 +522,7 @@ TEST_CASE("Util - SOEEventFormat")
 		BitArray[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
 	uint8_t newstartbit = 0;
-	SOEEventFormat SOE(BitArray, 0, newstartbit); // Build a new SOE record from the BitArray
+	SOEEventFormat SOE(BitArray, 0, newstartbit,0); // Build a new SOE record from the BitArray
 
 	REQUIRE(newstartbit == 41);
 	REQUIRE(SOE.GetResultBitLength() == 41); // Should be long...
@@ -551,15 +551,15 @@ TEST_CASE("Util - SOEEventFormat")
 		BitArray2[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
 	newstartbit = 0;
-	SOEEventFormat SOE2(BitArray2, 0, newstartbit); // Build a new SOE record from the BitArray
+	SOEEventFormat SOE2(BitArray2, 0, newstartbit,0); // Build a new SOE record from the BitArray
 
 	REQUIRE(newstartbit == 30);
-	REQUIRE(SOE2.GetResultBitLength() == 30); // Should be short...
-	REQUIRE(SOE2.GetFormattedData() == 0xb064300c00000000);
+	REQUIRE(SOE2.GetResultBitLength() == 41); // Always long
+	REQUIRE(SOE2.GetFormattedData() == 0xb068008601800000);
 	REQUIRE(SOE2.Group == 5);
 	REQUIRE(SOE2.Number == 0x41);
 	REQUIRE(SOE2.ValueBit == true);
-	REQUIRE(SOE2.TimeFormatBit == false);
+	REQUIRE(SOE2.TimeFormatBit == true);
 	REQUIRE(SOE2.Second == 0x21);
 	REQUIRE(SOE2.Millisecond == 0x201);
 	REQUIRE(SOE2.LastEventFlag == true);
@@ -650,6 +650,25 @@ TEST_CASE("CBBlock - ClassConstructor4")
 	CBBlockData b(AData, BData, lastblock);
 
 	REQUIRE(b.GetA() == AData);
+	REQUIRE(b.GetB() == BData);
+	REQUIRE(b.IsEndOfMessageBlock() == lastblock);
+	REQUIRE(b.IsAddressBlock() == false);
+	REQUIRE(b.BCHPasses());
+	REQUIRE(b.CheckBBitIsZero());
+
+	AData = 0x023;
+
+	b.SetA(AData);
+	REQUIRE(b.GetA() == AData);
+	REQUIRE(b.GetB() == BData);
+	REQUIRE(b.IsEndOfMessageBlock() == lastblock);
+	REQUIRE(b.IsAddressBlock() == false);
+	REQUIRE(b.BCHPasses());
+	REQUIRE(b.CheckBBitIsZero());
+
+	BData = 0xF01;
+
+	b.SetB(BData);
 	REQUIRE(b.GetB() == BData);
 	REQUIRE(b.IsEndOfMessageBlock() == lastblock);
 	REQUIRE(b.IsAddressBlock() == false);
@@ -928,7 +947,9 @@ TEST_CASE("Station - SOERequest F10")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Now we should get back the SOE queued events.
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c192c9536006c981ec04a5434b308c9324b08032a192e0232006e9828c04a5c16f308c9204c08033a193e023e00689838c04a64263308c9824dc8033f");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293080016004e023c000898100008021cc048000013080032004e023c000898100008021cc048000013080032004e023c000898100008660d");
+	//										"a933010c92a8c932930803244a8e0226192d9836006a580cc048c908d30803364b8e0238192f9800006a603cc048c99c130803004c8e02281939981c006a6e31");
+	// OLD VALUE???							"a933010c192c9536006c981ec04a5434b308c9324b08032a192e0232006e9828c04a5c16f308c9204c08033a193e023e00689838c04a64263308c9824dc8033f");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -952,7 +973,9 @@ TEST_CASE("Station - SOERequest F10")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c193c953a006a980ec04a6c047308c9904ee8833f");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c92a8c9a653080020004e023c0008981010086733");
+	//												"a933010c92a8c9a6530803124d8e0236193b982a106a7723");
+	//	OLD VALUE									"a933010c193c953a006a980ec04a6c047308c9904ee8833f");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -1323,24 +1346,30 @@ TEST_CASE("Master - SOE Request F10")
 		const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("a930002d");
 		REQUIRE(MAResponse == DesiredResponse);
 
-		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a933010c192c9536006c981ec04a5434b308c9324b08032a192e0232006e9828c04a5c16f308c9204c08033a193e023e00689838c04a64263308c9824dc8033f");
+		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293080016004e023c000898100008021cc048000013080032004e023c000898100008021cc048000013080032004e023c000898100008660d");
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(IOS, 50); // Should be 3
+		WaitIOS(IOS, 4); // Should be 3
 
 		// We should now have data available...
+		// Should match what we created in the Station test - the day part of the times will match, that actual day will not - we add the current day to get a "full" time
+		// msSinceEpoch_t time = 0x0000016734934659; // 21/11/2018 3:42pm  msSinceEpoch();
 		REQUIRE(CBOSPort->GetPointTable()->TimeTaggedDataAvailable() == true); // Uses a strand queue with wait for result...
 
 		// Get the list of time tagged events, and check...
 		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
-		REQUIRE(PointList.size() == 0x5f);
-		REQUIRE(PointList[50].GetIndex() == 0);
-		//		  REQUIRE(PointList[50].ChangedTime == 0x00000164ee106081);
+		REQUIRE(PointList.size() == 0x3a);
+		REQUIRE(PointList[0].GetIndex() == 0);
 
-		REQUIRE(PointList[80].GetIndex() == 0x1e);
-		REQUIRE(PointList[80].GetBinary() == 0);
-		//		  REQUIRE(PointList[80].ChangedTime == 0x00000164ee1e751c);
+		CBTime ChangedTime = GetTimeOfDayOnly(PointList[0].GetChangedTime());
+		REQUIRE(ChangedTime == 0x00000164ee106081);
+
+		REQUIRE(PointList[0x30].GetIndex() == 0x1e);
+		REQUIRE(PointList[0x30].GetBinary() == 0);
+
+		ChangedTime = GetTimeOfDayOnly(PointList[0x30].GetChangedTime());
+		REQUIRE(ChangedTime == 0x00000164ee106081);
 	}
 
 	STOP_IOS();

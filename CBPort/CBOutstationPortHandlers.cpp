@@ -610,6 +610,7 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & C
 		// Using an vector of uint16_t to store up to 31 x 12 bit blocks of data.
 		// Store the data in the bottom 12 bits of the 16 bit word.
 		std::vector<uint16_t> PayloadWords;
+		PayloadWords.reserve(32); // To stop reallocations when we know max size.
 
 		ConvertBitArrayToPayloadWords(UsedBits, BitArray, PayloadWords);
 
@@ -658,7 +659,7 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 		{
 			payload |= ShiftLeftResult16Bits(BitArray[block * 12 + i], 11 - i);
 		}
-		PayloadWords[block] = payload;
+		PayloadWords.push_back(payload);
 	}
 }
 void CBOutstationPort::BuildPackedEventBitArray(uint8_t Group, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits)
@@ -672,8 +673,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t Group, std::array<bool, 
 	// So the data can be 13+27+1 bits = 41 bits, or 13+16+1 = 30 bits.
 
 	CBBinaryPoint CurrentPoint;
-	uint64_t LastPointmsec = 0;
-	CBTime LastPointTime;
+	CBTime LastPointTime = 0;
 
 	while (true)
 	{
@@ -688,27 +688,29 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t Group, std::array<bool, 
 		}
 
 		// We keep trying to add data until there is none left, or the data will not fit into our bit array.
-
+		// The time field is the delta between the previous event (if there is one) and the current event (in msec)
 		SOEEventFormat PackedEvent;
 		PackedEvent.Group = Group;
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
 		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? 1 : 0;
 		PackedEvent.QualityBit = 0;
-		CBTime TimeDeltamsec = CurrentPoint.GetChangedTime() - LastPointTime;
+		CBTime TimeDelta = CurrentPoint.GetChangedTime() - LastPointTime;
 
+		bool FirstEvent = (LastPointTime == 0);
 		LastPointTime = CurrentPoint.GetChangedTime();
 
-		PackedEvent.TimeFormatBit = TimeDeltamsec > (1000 * 60) ? 1 : 0;
+		PackedEvent.SetTimeFields(TimeDelta, FirstEvent);
+		/*PackedEvent.TimeFormatBit = TimeDelta > (1000 * 60) ? 1 : 0;
 
-		CBTime Days = CurrentPoint.GetChangedTime() / 1000 / 60 / 60 / 24;
-		CBTime Hour = CurrentPoint.GetChangedTime() / 1000 / 60 / 60 % 24;
-		CBTime Remainder = CurrentPoint.GetChangedTime() - (1000 * 60 * 60 * Hour) - (1000 * 60 * 60 * 24 * Days);
+		CBTime Days = TimeDelta / 1000 / 60 / 60 / 24;	// Days is not used...
+		CBTime Hour = TimeDelta / 1000 / 60 / 60 % 24;
+		CBTime Remainder = TimeDelta - (1000 * 60 * 60 * Hour) - (1000 * 60 * 60 * 24 * Days);
 
 		PackedEvent.Hour = numeric_cast<uint8_t>(Hour);
 		PackedEvent.Minute = Remainder / 1000 / 60 % 60;
 		PackedEvent.Second = Remainder / 1000 % 60;
 		PackedEvent.Millisecond = Remainder % 1000;
-
+		*/
 		PackedEvent.LastEventFlag = false; // Might be changed on the loop exit, if there is nothing left in the SOE queue.
 
 		// Now stuff the bits (41 or 30) into our bit array.

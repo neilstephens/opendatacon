@@ -645,8 +645,6 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBMessage_t& CompleteCBMess
 	if (!ConvertSOEMessageToBitArray(CompleteCBMessage, BitArray, UsedBits))
 		return false;
 
-	CBTime LastTime = 0; // The time records in the SOE records are deltas from the previous record.
-
 	// Convert the BitArray to SOE events, and call our lambda for each
 	ForEachSOEEventInBitArray(BitArray, UsedBits, [&](SOEEventFormat &soeevnt)
 		{
@@ -661,11 +659,26 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBMessage_t& CompleteCBMess
 			{
 			      uint8_t bitvalue = soeevnt.ValueBit;
 
-			      CBTime changedtime = LastTime + soeevnt.GetTotalMsecTime();
-			      LastTime = changedtime;
+			// In the processing loop that calls us, we have converted the (possibly) delta time records to full h:m:s:msec records.
+			// We just then need to add the current day to the value to make an ODC compatible time...
+
+			      // Deal with midnight roll over in the SOE CB Time records
+			// The SOE Event Hour should be <= to the current hour - i.e. the event was in the past.
+			// If it is not, it must be a midnight rollover. i.e. Event Hour == 23, Current Hour == 0
+			// So if this occurs, the day must have been yesterday...
+
+			      CBTime Now = CBNow();
+
+			      if (GetHour(Now) > soeevnt.Hour)
+			      {
+			// The Event hour is in the future relative to the current hour, so it must have been yesterday...
+			// Subtract 1 day from the Now time, then we should be good.
+			            Now = Now - CBTimeOneDay;
+				}
+			      CBTime changedtime = GetDayStartTime(Now) + soeevnt.GetTotalMsecTime();
 
 			      QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
-			      LOGDEBUG("Published Binary SOE Event - Binary Index " + std::to_string(ODCIndex) + " Value " + std::to_string(bitvalue));
+			      LOGDEBUG("Published Binary SOE Event - Binary Index " + std::to_string(ODCIndex) + " Bit Value " + std::to_string(bitvalue));
 			      auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(changedtime));
 			      event->SetPayload<EventType::Binary>(bitvalue == 1);
 			      PublishEvent(event);
@@ -727,11 +740,14 @@ void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits> &BitAr
 	// We now have the data in the bit array, now we have to decode into the SOE blocks - 30 or 41 bits long.
 	uint8_t startbit = 0;
 	uint8_t newstartbit = 0;
+	CBTime LastEventTime = 0; // msec representing the last hour/min/sec/msec value received from an event.
+	// First event must have all 4 values. Subsequent events may only be seconds/msec
 	do
 	{
 		// Create the Event, it will tell us how many bits it consumed. newstartbit == 0 means it failed.
 		startbit = newstartbit;
-		SOEEventFormat Event(BitArray, startbit, newstartbit);
+		SOEEventFormat Event(BitArray, startbit, newstartbit, LastEventTime); // Will always expand to a full time (h:M;S;ms) for every record.
+		LastEventTime = Event.GetTotalMsecTime();
 
 		if (newstartbit != 0)
 		{
