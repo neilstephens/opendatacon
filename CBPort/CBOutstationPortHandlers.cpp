@@ -700,17 +700,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t Group, std::array<bool, 
 		LastPointTime = CurrentPoint.GetChangedTime();
 
 		PackedEvent.SetTimeFields(TimeDelta, FirstEvent);
-		/*PackedEvent.TimeFormatBit = TimeDelta > (1000 * 60) ? 1 : 0;
 
-		CBTime Days = TimeDelta / 1000 / 60 / 60 / 24;	// Days is not used...
-		CBTime Hour = TimeDelta / 1000 / 60 / 60 % 24;
-		CBTime Remainder = TimeDelta - (1000 * 60 * 60 * Hour) - (1000 * 60 * 60 * 24 * Days);
-
-		PackedEvent.Hour = numeric_cast<uint8_t>(Hour);
-		PackedEvent.Minute = Remainder / 1000 / 60 % 60;
-		PackedEvent.Second = Remainder / 1000 % 60;
-		PackedEvent.Millisecond = Remainder % 1000;
-		*/
 		PackedEvent.LastEventFlag = false; // Might be changed on the loop exit, if there is nothing left in the SOE queue.
 
 		// Now stuff the bits (41 or 30) into our bit array.

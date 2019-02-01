@@ -323,14 +323,15 @@ bool CBPointTableAccess::GetBinaryODCIndexUsingSOE(const uint8_t group, const ui
 }
 void CBPointTableAccess::AddToDigitalEvents(const CBBinaryPoint &inpt, const uint8_t meas, const CBTime eventtime)
 {
-	if (inpt.GetIsSOE()) // Only add if the point is SOE
+	if (inpt.GetIsSOE()) // Only add if the point is SOE - have already checked this once!
 	{
 		// The push will fail by dumping the point if full,
 		// We need to copy the point and set the value and time, as the current "point" may be a newer one and we dont want to modify it.
 		CBBinaryPoint pt = inpt;
 		pt.SetBinary(meas, eventtime);
 
-		//TODO: WE MIGHT NEED the push to actually be a sorted insert based on the time. Depends on how the Master will deal with SOE data...
+		LOGDEBUG("Outstation Added Binary Event to SOE Queue - ODCIndex {}, Value {}", pt.GetIndex(), pt.GetBinary());
+
 		pBinaryTimeTaggedEventQueue->async_push(pt);
 	}
 }
@@ -350,7 +351,8 @@ bool CBPointTableAccess::TimeTaggedDataAvailable()
 std::vector<CBBinaryPoint> CBPointTableAccess::DumpTimeTaggedPointList()
 {
 	CBBinaryPoint CurrentPoint;
-	std::vector<CBBinaryPoint> PointList(50);
+	std::vector<CBBinaryPoint> PointList;
+	PointList.reserve(50);
 
 	while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint))
 	{

@@ -941,6 +941,9 @@ TEST_CASE("Station - SOERequest F10")
 	SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
 
 
+	// Check that the SOE Queue contains what we expect it to:
+	REQUIRE(CBOSPort->GetPointTable()->TimeTaggedDataAvailable() == true); // Uses a strand queue with wait for result...
+
 	// Send the SOE Scan command again.
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
@@ -1353,23 +1356,37 @@ TEST_CASE("Master - SOE Request F10")
 		WaitIOS(IOS, 4); // Should be 3
 
 		// We should now have data available...
-		// Should match what we created in the Station test - the day part of the times will match, that actual day will not - we add the current day to get a "full" time
+		// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
+		// It should match what we created in the Station test - the day part of the times will match, that actual day will not - we add the current day to get a "full" time
 		// msSinceEpoch_t time = 0x0000016734934659; // 21/11/2018 3:42pm  msSinceEpoch();
+		// This is what generated the SOE data.
+		/*
+		      for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+		      {
+		            SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0), QualityFlags::ONLINE, time++);
+		      }
+		      SendBinaryEvent(CBOSPort,0, true, QualityFlags::ONLINE, time++);
+		      SendBinaryEvent(CBOSPort, 0, false, QualityFlags::ONLINE, time++);
+		      SendBinaryEvent(CBOSPort, 0, true, QualityFlags::ONLINE, time++);
+		      SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
+		*/
+
 		REQUIRE(CBOSPort->GetPointTable()->TimeTaggedDataAvailable() == true); // Uses a strand queue with wait for result...
 
 		// Get the list of time tagged events, and check...
 		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
-		REQUIRE(PointList.size() == 0x3a);
-		REQUIRE(PointList[0].GetIndex() == 0);
+		REQUIRE(PointList.size() == 0x10);
+		REQUIRE(PointList[0x0].GetIndex() == 0);
+		REQUIRE(PointList[0x0].GetBinary() == 1);
 
-		CBTime ChangedTime = GetTimeOfDayOnly(PointList[0].GetChangedTime());
-		REQUIRE(ChangedTime == 0x00000164ee106081);
+		CBTime ChangedTime = GetTimeOfDayOnly(PointList[0x0].GetChangedTime());
+		REQUIRE(ChangedTime == 0x102465a);
 
-		REQUIRE(PointList[0x30].GetIndex() == 0x1e);
-		REQUIRE(PointList[0x30].GetBinary() == 0);
+		REQUIRE(PointList[0xF].GetIndex() == 0); // Check this...
+		REQUIRE(PointList[0xF].GetBinary() == 1);
 
-		ChangedTime = GetTimeOfDayOnly(PointList[0x30].GetChangedTime());
-		REQUIRE(ChangedTime == 0x00000164ee106081);
+		ChangedTime = GetTimeOfDayOnly(PointList[0xF].GetChangedTime());
+		REQUIRE(ChangedTime == (0x102465a + 1));
 	}
 
 	STOP_IOS();
