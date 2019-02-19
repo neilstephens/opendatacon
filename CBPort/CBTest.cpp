@@ -687,6 +687,9 @@ TEST_CASE("CBBlock - ClassConstructor5")
 	uint16_t BData = 0x040;
 	bool lastblock = false;
 
+	//a206a51e9
+	CBBlockData bt(2, 0, 0x0a, 0xa206a51e9>> 7, false);
+
 	CBBlockData b(StationAddress, Group, FunctionCode, BData, lastblock);
 	REQUIRE(b.GetStationAddress() == StationAddress);
 	REQUIRE(b.GetGroup() == Group);
@@ -1349,7 +1352,8 @@ TEST_CASE("Master - SOE Request F10")
 		const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("a930002d");
 		REQUIRE(MAResponse == DesiredResponse);
 
-		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293080016004e023c000898100008021cc048000013080032004e023c000898100008021cc048000013080032004e023c000898100008660d");
+		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a206a51e994aa2aa5808002d"); // Packet Capture data Station 2 Group 0
+		// Sim data "a933010c92a8c93293080016004e023c000898100008021cc048000013080032004e023c000898100008021cc048000013080032004e023c000898100008660d");
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 

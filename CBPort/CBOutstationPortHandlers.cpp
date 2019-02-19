@@ -86,7 +86,7 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			FuncSetAB(Header, PendingCommandType::CommandType::SetB);
 			break;
 
-		case FUNC_RESET: // Not in documentation....
+		case FUNC_RESET: // Not sure....
 			NotImplemented = true;
 			break;
 
@@ -183,8 +183,8 @@ void CBOutstationPort::BuildScanRequestResponseData(uint8_t Group, std::vector<u
 	MyPointConf->PointTable.GetMaxPayload(Group, MaxBlockNum);
 
 	// Block 1B will always need a value. 1A is always emtpy - used for group/station/function
-	PayloadLocationType payloadlocationA(1, PayloadABType::PositionB);
-	BlockValues.push_back(GetPayload(Group, payloadlocationA)); // Returns 0 if payload value cannot be found and logs a message
+	PayloadLocationType payloadlocationB(1, PayloadABType::PositionB);
+	BlockValues.push_back(GetPayload(Group, payloadlocationB)); // Returns 0 if payload value cannot be found and logs a message
 
 	for (uint8_t blocknumber = 2; blocknumber <= MaxBlockNum; blocknumber++)
 	{
