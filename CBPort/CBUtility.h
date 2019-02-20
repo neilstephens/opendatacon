@@ -395,11 +395,20 @@ public:
 	// Use the bitarray to construct an event, return the start of the next event in the bitarray.
 	// The bitarray data may give us a short timed event (only sec and msec received) in this case add the passed in LastEventTime to the seconds/msec value
 	// And change the TimeFormatBit to indicate that the Hours/Minutes are valid.
-	SOEEventFormat(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t &newstartbit, CBTime LastEventTime)
+	SOEEventFormat(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t usedbits, uint8_t &newstartbit, CBTime LastEventTime, bool &success)
 	{
+		success = false;
+
+		// Check there is enough data for at least the short version of the packet.
+		if ((startbit + 30) > usedbits)
+		{
+			LOGDEBUG("SOEEventFormat constructor failed, only {} bits of data available", usedbits - startbit);
+			return;
+		}
+
 		try
 		{
-			Group = GetBits8(BitArray, startbit, 3);
+			Group = GetBits8(BitArray, startbit, 3); // Bottom 3 bits of SCAN group - significant? Different to SOE Group?
 			startbit += 3;
 			Number = GetBits8(BitArray, startbit, 7);
 			startbit += 7;
@@ -410,6 +419,12 @@ public:
 
 			if (TimeFormatBit) // Long format
 			{
+				// Check there is enough data for the long version of the packet.
+				if ((startbit + 41) > usedbits)
+				{
+					LOGDEBUG("SOEEventFormat constructor failed in long version, only {} bits of data available", usedbits - startbit);
+					return;
+				}
 				Hour = GetBits8(BitArray, startbit, 5);
 				startbit += 5;
 				Minute = GetBits8(BitArray, startbit, 6);
@@ -430,11 +445,10 @@ public:
 			LastEventFlag = BitArray[startbit++];
 
 			newstartbit = startbit;
+			success = true;
 		}
 		catch (const std::exception& e)
 		{
-			// If we fail, return newstartbit = 0 (as this is not possible if we succeed)
-			newstartbit = 0;
 			LOGERROR("SOEEventFormat constructor failed, probably array index exceeded. {}", e.what());
 		}
 	}

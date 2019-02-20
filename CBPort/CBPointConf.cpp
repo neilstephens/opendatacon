@@ -40,7 +40,7 @@ using namespace odc;
 CBPointConf::CBPointConf(const std::string & FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides)
 {
-	LOGDEBUG("Conf processing file - "+FileName);
+	LOGDEBUG("Conf processing file - {}",FileName);
 	ProcessFile(); // This should call process elements below?
 }
 
@@ -99,32 +99,32 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("IsBakerDevice"))
 	{
 		IsBakerDevice = JSONRoot["IsBakerDevice"].asBool();
-		LOGDEBUG("Conf processed - IsBakerDevice - " + std::to_string(IsBakerDevice));
+		LOGDEBUG("Conf processed - IsBakerDevice - {}", std::to_string(IsBakerDevice));
 	}
 	if (JSONRoot.isMember("OverrideOldTimeStamps"))
 	{
 		OverrideOldTimeStamps = JSONRoot["OverrideOldTimeStamps"].asBool();
-		LOGDEBUG("Conf processed - OverrideOldTimeStamps - " + std::to_string(OverrideOldTimeStamps));
+		LOGDEBUG("Conf processed - OverrideOldTimeStamps - {}", std::to_string(OverrideOldTimeStamps));
 	}
 	if (JSONRoot.isMember("UpdateAnalogCounterTimeStamps"))
 	{
 		OverrideOldTimeStamps = JSONRoot["UpdateAnalogCounterTimeStamps"].asBool();
-		LOGDEBUG("Conf processed - UpdateAnalogCounterTimeStamps - " + std::to_string(UpdateAnalogCounterTimeStamps));
+		LOGDEBUG("Conf processed - UpdateAnalogCounterTimeStamps - {}", std::to_string(UpdateAnalogCounterTimeStamps));
 	}
 	if (JSONRoot.isMember("StandAloneOutstation"))
 	{
 		StandAloneOutstation = JSONRoot["StandAloneOutstation"].asBool();
-		LOGDEBUG("Conf processed - StandAloneOutstation - " + std::to_string(StandAloneOutstation));
+		LOGDEBUG("Conf processed - StandAloneOutstation - {}", std::to_string(StandAloneOutstation));
 	}
 	if (JSONRoot.isMember("CBCommandTimeoutmsec"))
 	{
 		CBCommandTimeoutmsec = JSONRoot["CBCommandTimeoutmsec"].asUInt();
-		LOGDEBUG("Conf processed - CBCommandTimeoutmsec - " + std::to_string(CBCommandTimeoutmsec));
+		LOGDEBUG("Conf processed - CBCommandTimeoutmsec - {}", std::to_string(CBCommandTimeoutmsec));
 	}
 	if (JSONRoot.isMember("CBCommandRetries"))
 	{
 		CBCommandRetries = JSONRoot["CBCommandRetries"].asUInt();
-		LOGDEBUG("Conf processed - CBCommandRetries - " + std::to_string(CBCommandRetries));
+		LOGDEBUG("Conf processed - CBCommandRetries - {}", std::to_string(CBCommandRetries));
 	}
 	LOGDEBUG("End Conf processing");
 }
@@ -187,7 +187,7 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 			ForceUnconditional = JSONNode[n]["ForceUnconditional"].asBool();
 		}
 
-		LOGDEBUG("Conf processed - PollID - " + std::to_string(PollID) + " Rate " + std::to_string(pollrate) + " Type " + std::to_string(polltype) + " Group " + std::to_string(group) + " Force Unconditional PendingCommand " + std::to_string(ForceUnconditional));
+		LOGDEBUG("Conf processed - PollID - {} Rate {} Type {} Group {} Force Unconditional PendingCommand {}",std::to_string(PollID), std::to_string(pollrate),std::to_string(polltype), std::to_string(group), std::to_string(ForceUnconditional));
 
 		PollGroups[PollID] = CBPollGroup(PollID, pollrate, polltype, numeric_cast<uint8_t>(group), ForceUnconditional);
 	}
@@ -440,7 +440,7 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 	if (ptype == AnalogControl)
 		Name = "AnalogControl";
 
-	LOGDEBUG("Conf processing - "+Name);
+	LOGDEBUG("Conf processing - {}",Name);
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
 		bool error = false;

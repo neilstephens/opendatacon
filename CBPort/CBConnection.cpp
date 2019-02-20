@@ -54,7 +54,7 @@ ConnectionTokenType::~ConnectionTokenType()
 		}
 		else
 		{
-			LOGDEBUG("Use Count On Connection Shared_ptr at {cnt} - The Map Connection Stays - {}", pConnection.use_count(), ChannelID);
+			LOGDEBUG("Use Count On Connection Shared_ptr at {} - The Map Connection Stays - {}", pConnection.use_count(), ChannelID);
 		}
 	}
 }
@@ -82,7 +82,7 @@ CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_ser
 	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
 
-	LOGDEBUG("Opened an CBConnection object " + InternalChannelID + " As a " + (IsServer ? "Server" : "Client") + (IsBakerDevice ? " Baker Device" : " Conitel Device"));
+	LOGDEBUG("Opened an CBConnection object {} As a {} - {}",InternalChannelID, (IsServer ? "Server" : "Client"), (IsBakerDevice ? " Baker Device" : " Conitel Device"));
 }
 
 // Static Method
@@ -224,11 +224,11 @@ void CBConnection::Open()
 
 		pSockMan->Open();
 		enabled = true;
-		LOGDEBUG("ConnectionTok Opened: " + InternalChannelID);
+		LOGDEBUG("ConnectionTok Opened: {}", InternalChannelID);
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Problem opening connection : " + InternalChannelID + " - " + e.what());
+		LOGERROR("Problem opening connection :{} - {}",InternalChannelID, e.what());
 		return;
 	}
 }
@@ -254,7 +254,7 @@ void CBConnection::Close()
 		return;
 	pSockMan->Close();
 
-	LOGDEBUG("ConnectionTok Closed: " + InternalChannelID);
+	LOGDEBUG("ConnectionTok Closed: {}", InternalChannelID);
 }
 
 CBConnection::~CBConnection()
@@ -378,18 +378,18 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 				// We know we are looking for the first block if CBMessage is empty.
 				if (CBMessage.size() != 0)
 				{
-					LOGDEBUG("Received a start block when we have not got to an end block - discarding data blocks - " + std::to_string(CBMessage.size()));
+					LOGDEBUG("Received a start block when we have not got to an end block - discarding data blocks - {}", std::to_string(CBMessage.size()));
 					CBMessage.clear();
 				}
 				CBMessage.push_back(CBblock); // Takes a copy of the block
 			}
 			else if (CBMessage.size() == 0)
 			{
-				LOGDEBUG("Received a non start block when we are waiting for a start block - discarding data - " + CBblock.ToString());
+				LOGDEBUG("Received a non start block when we are waiting for a start block - discarding data - {}", CBblock.ToString());
 			}
 			else if (CBMessage.size() >= MAX_BLOCK_COUNT)
 			{
-				LOGDEBUG("Received more than 16 blocks in a single CB message - discarding data - " + CBblock.ToString());
+				LOGDEBUG("Received more than 16 blocks in a single CB message - discarding data - {}", CBblock.ToString());
 				CBMessage.clear(); // Empty message block queue
 			}
 			else
@@ -416,7 +416,7 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 	if (readbuf.size() > 0)
 	{
 		size_t bytesleft = readbuf.size();
-		LOGDEBUG("Had data left over after reading blocks - " + std::to_string(bytesleft) + " bytes");
+		LOGDEBUG("Had data left over after reading blocks - {} bytes", std::to_string(bytesleft) );
 		readbuf.consume(readbuf.size());
 	}
 }
@@ -435,26 +435,26 @@ void CBConnection::RouteCBMessage(CBMessage_t &CompleteCBMessage)
 	{
 		// If zero, route to all outstations!
 		// Most zero station address functions do not send a response
-		LOGDEBUG("Received a zero station address routing to all outstations - " + CBMessageAsString(CompleteCBMessage));
+		LOGDEBUG("Received a zero station address routing to all outstations - {}", CBMessageAsString(CompleteCBMessage));
 		for (auto it = ReadCallbackMap.begin(); it != ReadCallbackMap.end(); ++it)
 			it->second(CompleteCBMessage);
 	}
 	else if (ReadCallbackMap.count(StationAddress) != 0)
 	{
 		// We have found a matching outstation, do read callback
-		LOGDEBUG("Routing Message to station - " +std::to_string(StationAddress)+" Message - " + CBMessageAsString(CompleteCBMessage));
+		LOGDEBUG("Routing Message to station - {} Message - {}",std::to_string(StationAddress),CBMessageAsString(CompleteCBMessage));
 		ReadCallbackMap.at(StationAddress)(CompleteCBMessage);
 	}
 	else
 	{
 		// NO match
-		LOGDEBUG("Received non-matching outstation address - " + std::to_string(StationAddress) + " Message - " + CBMessageAsString(CompleteCBMessage));
+		LOGDEBUG("Received non-matching outstation address - {} Message - {}", std::to_string(StationAddress), CBMessageAsString(CompleteCBMessage));
 	}
 }
 
 void CBConnection::SocketStateHandler(bool state)
 {
-	LOGDEBUG("ConnectionTok changed state " + InternalChannelID + " As a " + (state ? "Open" : "Close"));
+	LOGDEBUG("ConnectionTok changed state {} As a {}", InternalChannelID , (state ? "Open" : "Close"));
 
 	// Call all the OutStation State Callbacks
 	for (auto it = StateCallbackMap.begin(); it != StateCallbackMap.end(); ++it)

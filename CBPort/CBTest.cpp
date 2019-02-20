@@ -522,7 +522,8 @@ TEST_CASE("Util - SOEEventFormat")
 		BitArray[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
 	uint8_t newstartbit = 0;
-	SOEEventFormat SOE(BitArray, 0, newstartbit,0); // Build a new SOE record from the BitArray
+	bool Success = false;
+	SOEEventFormat SOE(BitArray, 0, 64,newstartbit,0, Success); // Build a new SOE record from the BitArray
 
 	REQUIRE(newstartbit == 41);
 	REQUIRE(SOE.GetResultBitLength() == 41); // Should be long...
@@ -536,6 +537,7 @@ TEST_CASE("Util - SOEEventFormat")
 	REQUIRE(SOE.Second == 0x21);
 	REQUIRE(SOE.Millisecond == 0x201);
 	REQUIRE(SOE.LastEventFlag == false);
+	REQUIRE(Success);
 
 
 	S.TimeFormatBit = false; // Short format
@@ -551,7 +553,7 @@ TEST_CASE("Util - SOEEventFormat")
 		BitArray2[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
 	newstartbit = 0;
-	SOEEventFormat SOE2(BitArray2, 0, newstartbit,0); // Build a new SOE record from the BitArray
+	SOEEventFormat SOE2(BitArray2, 0, 64, newstartbit,0, Success); // Build a new SOE record from the BitArray
 
 	REQUIRE(newstartbit == 30);
 	REQUIRE(SOE2.GetResultBitLength() == 41); // Always long
@@ -563,7 +565,7 @@ TEST_CASE("Util - SOEEventFormat")
 	REQUIRE(SOE2.Second == 0x21);
 	REQUIRE(SOE2.Millisecond == 0x201);
 	REQUIRE(SOE2.LastEventFlag == true);
-
+	REQUIRE(Success);
 	STANDARD_TEST_TEARDOWN();
 }
 
@@ -1352,8 +1354,7 @@ TEST_CASE("Master - SOE Request F10")
 		const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("a930002d");
 		REQUIRE(MAResponse == DesiredResponse);
 
-		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a206a51e994aa2aa5808002d"); // Packet Capture data Station 2 Group 0
-		// Sim data "a933010c92a8c93293080016004e023c000898100008021cc048000013080032004e023c000898100008021cc048000013080032004e023c000898100008660d");
+		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293080016004e023c000898100008021cc048000013080032004e023c000898100008021cc048000013080032004e023c000898100008660d");
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
@@ -1391,6 +1392,78 @@ TEST_CASE("Master - SOE Request F10")
 
 		ChangedTime = GetTimeOfDayOnly(PointList[0xF].GetChangedTime());
 		REQUIRE(ChangedTime == (0x102465a + 1));
+	}
+
+	STOP_IOS();
+	STANDARD_TEST_TEARDOWN();
+}
+TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
+{
+	// Create a multi drop situation where all Stations are defined, then we read SOE TCP messages from a file that the master will receive, use the first
+	// block to work out the command that was sent to get this data, send that command through the master (and dump it) then feed in our packet captured
+	// data to the master for processing.
+	// We wont have defined all the groups/points so will generate errors, but we can test the framing/decoding.
+	// The input data is a text file with hex strings one message per line.
+
+	STANDARD_TEST_SETUP();
+
+	START_IOS(1);
+
+	std::unique_ptr<CBMasterPort> CBMAPort[16];
+
+	for (int StationAddress = 0; StationAddress < 16; StationAddress++)
+	{
+		Json::Value MAportoverride;
+
+		MAportoverride["OutstationAddr"] = static_cast<Json::UInt>(StationAddress);
+
+		CBMAPort[StationAddress].reset( new CBMasterPort("Station Master "+std::to_string(StationAddress), conffilename1, MAportoverride));
+
+		CBMAPort[StationAddress]->SetIOS(&IOS);
+		CBMAPort[StationAddress]->Build();
+
+		CBMAPort[StationAddress]->Enable();
+		CBMAPort[StationAddress]->EnablePolling(false); // Don't want the timer triggering this. We will call manually.
+	}
+
+	// Hook the output function
+	//std::string MAResponse = "Not Set";
+	//CBMAPort->SetSendTCPDataFn([&MAResponse](std::string CBMessage) { MAResponse = CBMessage; });
+
+	asio::streambuf MAwrite_buffer;
+	std::ostream MAoutput(&MAwrite_buffer);
+
+	std::array<std::string, 5> Commands =
+	{
+		BuildBinaryStringFromASCIIHexString("ab07a438ce1a30acf7aa8a882f28000d"),
+		BuildBinaryStringFromASCIIHexString("a206a51e994aa2aa5808002d"),
+		BuildBinaryStringFromASCIIHexString("a406b62cce1dfa2c8808000d"),
+		BuildBinaryStringFromASCIIHexString("a406b62ccc7a821e66bb8b2a02a80009"),
+		BuildBinaryStringFromASCIIHexString("ab07a438d48d349467aa963624e8001b")
+	};
+
+	for (auto CommandResponse : Commands)
+	{
+		// Send an SOE Scan Command from the Master
+		uint8_t Station = CommandResponse[0] & 0x0F;
+		uint8_t Group = (CommandResponse[1] >> 4) & 0x0F;
+
+		// We need to have 16 Masters Defined and send the command on the appropriate Master..
+		CBMAPort[Station]->SendFn10SOEScanCommand(Group, nullptr);
+
+		WaitIOS(IOS, 2);
+
+		// Just ignore the command sent by the Master - need to send it so it is expecting a response.
+
+		// Now inject the SOE Response from the outstation
+		MAoutput << CommandResponse;
+		CBMAPort[Station]->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
+
+		WaitIOS(IOS, 2);
+
+		// We can just look at the logging output to see if we got any framing errors or other unexpected issues.
+		// We could create a config file for each station that had every group/point in the SOE streamconfigured so that we could then process them through to
+		// ODC events.
 	}
 
 	STOP_IOS();
@@ -1472,7 +1545,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on CONTROL command result : " + std::to_string(static_cast<int>(command_stat)));
+			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
 			res = command_stat;
 		});
 
@@ -1497,7 +1570,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on CONTROL command result : " + std::to_string(static_cast<int>(command_stat)));
+			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
 			res2 = command_stat;
 		});
 
@@ -1692,7 +1765,7 @@ TEST_CASE("RTU - Binary Scan TO CB311 ON 172.21.136.80:5001 CB 0x20")
       CommandStatus res = CommandStatus::NOT_AUTHORIZED;
       auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
             {
-                  LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
+                  LOGDEBUG("Callback on POM command result : {}", std::to_string(static_cast<int>(command_stat)));
                   res = command_stat;
             });
 

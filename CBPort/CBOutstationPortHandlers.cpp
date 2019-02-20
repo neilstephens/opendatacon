@@ -277,14 +277,14 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 		MyPointConf->PointTable.ForEachMatchingStatusByte(Group, payloadlocation, [&](void)
 			{
 				// We have a matching status byte, set a flag to indicate we have a match.
-				LOGDEBUG("Got a Status Byte request at : " + std::to_string(Group) + " - " + payloadlocation.to_string());
+				LOGDEBUG("Got a Status Byte request at :{} - {}",std::to_string(Group) ,payloadlocation.to_string());
 				Payload = 0x555; //TODO: Have to populate the status byte
 				FoundMatch = true;
 			});
 	}
 	if (!FoundMatch)
 	{
-		LOGDEBUG("Failed to find a payload for: " + payloadlocation.to_string() + " Setting to zero");
+		LOGDEBUG("Failed to find a payload for: {} Setting to zero",payloadlocation.to_string() );
 	}
 	return Payload;
 }
@@ -409,7 +409,7 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 			if (SetBit != -1)
 				success = ExecuteBinaryControl(Header.GetGroup(), numeric_cast<uint8_t>(SetBit+1), point_on);
 			else
-				LOGERROR("Recevied a Trip command, but no bit was set in the data {data}",PendingCommand.Data);
+				LOGERROR("Recevied a Trip command, but no bit was set in the data {}",PendingCommand.Data);
 		}
 		break;
 
@@ -422,7 +422,7 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 			if (SetBit != -1)
 				success = ExecuteBinaryControl(Header.GetGroup(), numeric_cast<uint8_t>(SetBit+1), point_on);
 			else
-				LOGERROR("Recevied a Close command, but no bit was set in the data {data}",PendingCommand.Data);
+				LOGERROR("Recevied a Close command, but no bit was set in the data {}",PendingCommand.Data);
 		}
 		break;
 
@@ -443,7 +443,7 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 	PendingCommand.Command = PendingCommandType::CommandType::None;
 
 	//There is no way to respond using the bool success to indicate sucess or failure
-	LOGDEBUG("We failed in the execute command, but have no way to send back this error {success]",success);
+	LOGDEBUG("We failed in the execute command, but have no way to send back this error {}",success);
 
 	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), 0, true);
 	CBMessage_t ResponseCBMessage;
