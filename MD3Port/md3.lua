@@ -16,16 +16,19 @@ functionnames = {[5] =  "Analog Unconditional",
 				[20] = "Input Point Control",
 				[21] = "Raise Lower Type Control",
 				[23] = "AOM Type Control",
+				[27] = "Change of State (COS) Report",
 				[30] = "Control or Scan Request Rejected",
 				[31] = "Counter Scan",
-				[35] = "*Floating Point Unconditional",
-				[36] = "*Floating Point Delta",
-				[37] = "*Floating Point No Change",
+				[35] = "Floating Point Unconditional",
+				[36] = "Floating Point Delta",
+				[37] = "Floating Point No Change",
+				[38] = "Floating Point O/P Command",
+				[39] = "Floating Point COS / Time-tagged Scan",
 				[40] = "System SIGNON Control",
 				[41] = "System SIGNOFF Control", 
 				[42] = "System RESRART Control", 
 				[43] = "System SET DATE AND TIME Control",
-				[44] = "*TimeZone Offset",
+				[44] = "System SET DATE AND TIME Control w TimeZone Offset",
 				[50] = "file download",
 				[51] = "file upload",
 				[52] = "System Flag Scan",
@@ -57,7 +60,8 @@ local f = md3_proto.fields
 -- Need to use ProtoFields for the Station, MtoS, Function and Data so that we can then display them as columns, which then means we can export to excel.
 f.md3function = ProtoField.uint8 ("md3.function",  "Function", base.DEC) 
 f.station  = ProtoField.uint8 ("md3.station",  "Station", base.HEX) 
-f.mtos = ProtoField.bool ("md3.mtos", "MasterCommand") 
+f.mtos = ProtoField.bool ("md3.mtos", "MasterCommand")
+f.module = ProtoField.uint8 ("md3.module",  "Module Addr", base.HEX) 
 f.taggedcount = ProtoField.uint8 ("md3.taggedcount",  "TaggedCount", base.HEX) 
 f.data = ProtoField.bytes  ("md3.data", "Data")
 
@@ -87,6 +91,10 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	if ((pktlen % 6) ~= 0) then
 	debug("Exited md3 dissector - not mod 6");
 		return 0	-- Not an MD3 Packet, must be *6
+	end
+	
+	if (buffer(4,1):bitfield(0,1) ~= 0) then
+		return 0 --not the first block (format blk) of an MD3 message: probably TCP framing issue
 	end
 	if (buffer(5,1):uint() ~= 0) then
 		return 0	-- Not an MD3 Packet, padding byte must be zero
@@ -119,19 +127,42 @@ function md3_proto.dissector(buffer,pinfo,tree)
 		stationleaf.append_text(" - WARNING EXTENDED ADDRESS NOT DECODED");
 	end
 	local ismaster = true;
+	local extra_info = " - Master"
 	if (buffer(0,1):bitfield(0,1) == 1) then
 		ismaster = false;
+		extra_info = " - Slave"
 	end
+	pinfo.cols.info = functionname .. extra_info
 	
 	subtree:add(f.mtos, ismaster)
+	
+	subtree:add(f.module, buffer(2,1):uint())
 	
 	-- This only applies to Fn 11 digital COS, but I need it for Excel analysis. Coment out if not using.
 	--subtree:add(f.taggedcount, buffer(2,1):bitfield(0,4))
 	
 	subtree:add("Data Length : " ..  pktlen)
 	
-	-- change to spit this out in blocks of 6, spaces on each byte
-	subtree:add(f.data, buffer())
+	local datatree = subtree:add(f.data, buffer())
+	
+	-- spit out in blocks of 6, spaces on each byte
+	local block = 0
+	for i = 0,pktlen-1,6 
+	do
+		local fmt_bit = " - "
+		if (buffer(4,1):bitfield(0,1) == 0) then
+			fmt_bit = fmt_bit.."FMT"
+		end
+		if (buffer(4,1):bitfield(1,1) == 1) then
+			fmt_bit = fmt_bit.."|EOM"
+		end
+		local crc_check = " - CRC PASS"
+		if (CheckMD3CRC(buffer(i,1):uint(),buffer(i+1,1):uint(),buffer(i+2,1):uint(),buffer(i+3,1):uint(),buffer(i+4,1):uint()) == false) then	
+			crc_check = " - CRC FAIL"	-- Checksum failed...
+		end
+		datatree:add("Block(" .. block .. ")", buffer:bytes(i,6):tohex(false,' ')..fmt_bit..crc_check..)
+		block = block+1 
+	end
 	
 	-- If not our protocol, we should return 0. If it is ours, return nothing.
 end
@@ -147,3 +178,5 @@ tcp_table:add(5005,md3_proto)
 tcp_table:add(5006,md3_proto)
 tcp_table:add(5007,md3_proto)
 tcp_table:add(5008,md3_proto)
+tcp_table:add(5009,md3_proto)
+tcp_table:add(5010,md3_proto)
