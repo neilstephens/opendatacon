@@ -70,6 +70,8 @@ CBBinaryPoint& CBBinaryPoint::operator=(const CBBinaryPoint& src)
 		MomentaryChangeStatus = src.MomentaryChangeStatus;
 		Changed = src.Changed;
 		PointType = src.PointType;
+		SOEPoint = src.SOEPoint;
+		SOEIndex = src.SOEIndex;
 	}
 	return *this;
 }

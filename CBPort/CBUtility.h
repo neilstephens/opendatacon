@@ -498,13 +498,13 @@ public:
 		return (((numeric_cast<CBTime>(Hour) * 60ul + numeric_cast<CBTime>(Minute)) * 60ul + numeric_cast<CBTime>(Second)) * 1000ul + numeric_cast<CBTime>(Millisecond));
 	}
 
-	uint8_t GetBits8(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t numberofbits)
+	uint8_t GetBits8(std::array<bool, MaxSOEBits> BitArray, uint32_t startbit, uint32_t numberofbits)
 	{
 		assert(numberofbits <= 8);
 		assert(numberofbits != 0);
 
 		uint8_t res = 0;
-		for (uint8_t i = startbit; i < (startbit+numberofbits); i++ )
+		for (uint32_t i = startbit; i < (startbit+numberofbits); i++ )
 		{
 			res <<= 1; // Shift left by one bit
 
@@ -513,13 +513,13 @@ public:
 		}
 		return res;
 	}
-	uint16_t GetBits16(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t numberofbits)
+	uint16_t GetBits16(std::array<bool, MaxSOEBits> BitArray, uint32_t startbit, uint32_t numberofbits)
 	{
 		assert(numberofbits <= 16);
 		assert(numberofbits != 0);
 
 		uint16_t res = 0;
-		for (uint8_t i = startbit;  i < (startbit + numberofbits); i++)
+		for (uint32_t i = startbit;  i < (startbit + numberofbits); i++)
 		{
 			res <<= 1; // Shift left by one bit
 

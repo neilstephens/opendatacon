@@ -952,9 +952,7 @@ TEST_CASE("Station - SOERequest F10")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Now we should get back the SOE queued events.
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293080016004e023c000898100008021cc048000013080032004e023c000898100008021cc048000013080032004e023c000898100008660d");
-	//										"a933010c92a8c932930803244a8e0226192d9836006a580cc048c908d30803364b8e0238192f9800006a603cc048c99c130803004c8e02281939981c006a6e31");
-	// OLD VALUE???							"a933010c192c9536006c981ec04a5434b308c9324b08032a192e0232006e9828c04a5c16f308c9204c08033a193e023e00689838c04a64263308c9824dc8033f");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -978,9 +976,7 @@ TEST_CASE("Station - SOERequest F10")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c92a8c9a653080020004e023c0008981010086733");
-	//												"a933010c92a8c9a6530803124d8e0236193b982a106a7723");
-	//	OLD VALUE									"a933010c193c953a006a980ec04a6c047308c9904ee8833f");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c92a8c9a653080020004e023c0008993890086717");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -1351,11 +1347,12 @@ TEST_CASE("Master - SOE Request F10")
 		const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("a930002d");
 		REQUIRE(MAResponse == DesiredResponse);
 
-		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293080016004e023c000898100008021cc048000013080032004e023c000898100008021cc048000013080032004e023c000898100008660d");
+		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
+
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(IOS,3);
+		WaitIOS(IOS,4);
 
 		// We should now have data available...
 		// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
@@ -1376,21 +1373,28 @@ TEST_CASE("Master - SOE Request F10")
 		REQUIRE(CBOSPort->GetPointTable()->TimeTaggedDataAvailable() == true); // Uses a strand queue with wait for result...
 
 		// Get the list of time tagged events, and check...
+		// There are 16 events in the original conversation, but only 12 fit in the 31 payload locations. Would normally send another command to get the rest of the events.
+		// The last record flag bit in the last record is not set, indicating more messages.
+
 		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
-		REQUIRE(PointList.size() == 0x10);
-		//TODO This should be 16, but only getting 8 - is this a packet size limitation - need to step through code again that creates the packet.
+		REQUIRE(PointList.size() == 0x0C);
 
 		REQUIRE(PointList[0x0].GetIndex() == 0);
 		REQUIRE(PointList[0x0].GetBinary() == 1);
 
 		CBTime ChangedTime = GetTimeOfDayOnly(PointList[0x0].GetChangedTime());
-		REQUIRE(ChangedTime == 0x102465a);
+		REQUIRE(ChangedTime == 0x1024659);
 
-		REQUIRE(PointList[0xF].GetIndex() == 0); // Check this...
-		REQUIRE(PointList[0xF].GetBinary() == 1);
+		REQUIRE(PointList[0x01].GetIndex() == 1);
+		REQUIRE(PointList[0x01].GetSOEIndex() == 1);
+		REQUIRE(PointList[0x01].GetBinary() == 0);
 
-		ChangedTime = GetTimeOfDayOnly(PointList[0xF].GetChangedTime());
-		REQUIRE(ChangedTime == (0x102465a + 1));
+		ChangedTime = GetTimeOfDayOnly(PointList[0x01].GetChangedTime());
+		REQUIRE(ChangedTime == 0x1024659+1);
+
+		REQUIRE(PointList[0xb].GetIndex() == 0xb);
+		REQUIRE(PointList[0xb].GetSOEIndex() == 0xb);
+		REQUIRE(PointList[0xb].GetBinary() == 0);
 	}
 
 	STOP_IOS();

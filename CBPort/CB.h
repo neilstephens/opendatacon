@@ -219,7 +219,11 @@ public:
 		PointType(src.PointType),
 		SOEPoint(src.SOEPoint),
 		SOEIndex(src.SOEIndex)
+		// Any additions here make sure the operator= method is updated as well!!!
 	{}
+	// Needed for the templated Queue
+	CBBinaryPoint& operator=(const CBBinaryPoint& src);
+
 	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype, bool soepoint, uint8_t soeindex):
 		CBPoint(index, group, channel, static_cast<CBTime>(0), payloadlocation),
 		PointType(pointtype),
@@ -237,10 +241,8 @@ public:
 		SOEIndex(soeindex)
 	{}
 
-	~CBBinaryPoint();
 
-	// Needed for the templated Queue
-	CBBinaryPoint& operator=(const CBBinaryPoint& src);
+	~CBBinaryPoint();
 
 	BinaryPointType GetPointType() const { return PointType; }
 

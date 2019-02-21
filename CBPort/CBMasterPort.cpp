@@ -678,7 +678,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBMessage_t& CompleteCBMess
 			      CBTime changedtime = GetDayStartTime(Now) + soeevnt.GetTotalMsecTime();
 
 			      QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
-			      LOGDEBUG("Published Binary SOE Event - Binary Index {} Bit Value {}",std::to_string(ODCIndex),std::to_string(bitvalue));
+			      LOGDEBUG("Published Binary SOE Event - SOE Group {}, SOE Index {} ODC Index {} Bit Value {}",Group, SOENumber,ODCIndex,bitvalue);
 			      auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(changedtime));
 			      event->SetPayload<EventType::Binary>(bitvalue == 1);
 			      PublishEvent(event);
@@ -771,7 +771,7 @@ void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits> &BitAr
 			// Less than 24 bits is ok, it was just necessary padding.
 			return;
 		}
-	} while (newstartbit < UsedBits);
+	} while ((newstartbit+30) < UsedBits); // Only keep going if there is space for another message.
 }
 
 // Checks what we got back against what we sent. We know the function code and address have been checked.
@@ -796,8 +796,6 @@ bool CBMasterPort::CheckResponseHeaderMatch(const CBBlockData& ReceivedHeader, c
 #pragma endregion
 #endif
 
-// We will be called at the appropriate time to trigger an Unconditional or Delta scan
-// For digital scans there are two formats we might use. Set in the conf file.
 void CBMasterPort::DoPoll(uint32_t PollID)
 {
 	if (!enabled) return;
@@ -807,7 +805,7 @@ void CBMasterPort::DoPoll(uint32_t PollID)
 	{
 		case Scan:
 		{
-			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
+			// We will scan a single Group. Payload can be up to 31 payload blocks.
 			uint8_t Group = MyPointConf->PollGroups[PollID].group;
 			SendF0ScanCommand(Group, nullptr);
 		}
@@ -817,7 +815,7 @@ void CBMasterPort::DoPoll(uint32_t PollID)
 		{
 			// Send a time set command to the OutStation
 			SendFn9TimeUpdate(nullptr);
-			LOGDEBUG("Poll Issued a TimeDate PendingCommand");
+			LOGDEBUG("Poll Issued a TimeDate Update Command");
 		}
 		break;
 		case  SOEScan:
@@ -825,7 +823,7 @@ void CBMasterPort::DoPoll(uint32_t PollID)
 			// Send a time set command to the OutStation
 			uint8_t Group = MyPointConf->PollGroups[PollID].group;
 			SendFn10SOEScanCommand(Group, nullptr);
-			LOGDEBUG("Poll Issued a TimeDate PendingCommand");
+			LOGDEBUG("Poll Issued a SOE Scan Command");
 		}
 		break;
 
