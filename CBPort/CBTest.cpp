@@ -521,7 +521,7 @@ TEST_CASE("Util - SOEEventFormat")
 	for (int i = 0; i < 64; i++)
 		BitArray[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
-	uint8_t newstartbit = 0;
+	uint32_t newstartbit = 0;
 	bool Success = false;
 	SOEEventFormat SOE(BitArray, 0, 64,newstartbit,0, Success); // Build a new SOE record from the BitArray
 
@@ -688,9 +688,6 @@ TEST_CASE("CBBlock - ClassConstructor5")
 	uint8_t FunctionCode = 5;
 	uint16_t BData = 0x040;
 	bool lastblock = false;
-
-	//a206a51e9
-	CBBlockData bt(2, 0, 0x0a, 0xa206a51e9>> 7, false);
 
 	CBBlockData b(StationAddress, Group, FunctionCode, BData, lastblock);
 	REQUIRE(b.GetStationAddress() == StationAddress);
@@ -1358,7 +1355,7 @@ TEST_CASE("Master - SOE Request F10")
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(IOS, 4); // Should be 3
+		WaitIOS(IOS,3);
 
 		// We should now have data available...
 		// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
@@ -1381,6 +1378,8 @@ TEST_CASE("Master - SOE Request F10")
 		// Get the list of time tagged events, and check...
 		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
 		REQUIRE(PointList.size() == 0x10);
+		//TODO This should be 16, but only getting 8 - is this a packet size limitation - need to step through code again that creates the packet.
+
 		REQUIRE(PointList[0x0].GetIndex() == 0);
 		REQUIRE(PointList[0x0].GetBinary() == 1);
 
@@ -1462,7 +1461,7 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 		WaitIOS(IOS, 2);
 
 		// We can just look at the logging output to see if we got any framing errors or other unexpected issues.
-		// We could create a config file for each station that had every group/point in the SOE streamconfigured so that we could then process them through to
+		// We could create a config file for each station that had every group/point in the SOE stream configured so that we could then process them through to
 		// ODC events.
 	}
 

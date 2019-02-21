@@ -395,7 +395,7 @@ public:
 	// Use the bitarray to construct an event, return the start of the next event in the bitarray.
 	// The bitarray data may give us a short timed event (only sec and msec received) in this case add the passed in LastEventTime to the seconds/msec value
 	// And change the TimeFormatBit to indicate that the Hours/Minutes are valid.
-	SOEEventFormat(std::array<bool, MaxSOEBits> BitArray, uint8_t startbit, uint8_t usedbits, uint8_t &newstartbit, CBTime LastEventTime, bool &success)
+	SOEEventFormat(std::array<bool, MaxSOEBits> BitArray, uint32_t startbit, uint32_t usedbits, uint32_t &newstartbit, CBTime LastEventTime, bool &success)
 	{
 		success = false;
 

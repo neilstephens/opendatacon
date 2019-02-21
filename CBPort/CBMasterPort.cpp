@@ -738,8 +738,8 @@ bool CBMasterPort::ConvertSOEMessageToBitArray(const CBMessage_t& CompleteCBMess
 void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits, std::function<void(SOEEventFormat &soeevnt)> fn)
 {
 	// We now have the data in the bit array, now we have to decode into the SOE blocks - 30 or 41 bits long.
-	uint8_t startbit = 0;
-	uint8_t newstartbit = 0;
+	uint32_t startbit = 0;
+	uint32_t newstartbit = 0;
 	CBTime LastEventTime = 0; // msec representing the last hour/min/sec/msec value received from an event.
 	// First event must have all 4 values. Subsequent events may only be seconds/msec
 	do
@@ -749,7 +749,7 @@ void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits> &BitAr
 
 		// Returns IsLastRecord flag, also if  we sucessfully got an Event from the bit stream.
 		bool Success = false;
-		SOEEventFormat Event(BitArray, startbit, UsedBits, newstartbit, LastEventTime, Success); // Will always expand to a full time (h:M;S;ms) for every record.
+		SOEEventFormat Event(BitArray, startbit, UsedBits, newstartbit, LastEventTime, Success); // Will always expand to a full time (h:M:S:ms) for every record.
 		LastEventTime = Event.GetTotalMsecTime();
 
 		if (Success)
@@ -763,7 +763,7 @@ void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits> &BitAr
 		}
 		if (Event.LastEventFlag)
 		{
-			uint8_t RemainingBits = UsedBits - newstartbit;
+			uint32_t RemainingBits = UsedBits - newstartbit;
 			if (RemainingBits > 24)
 			{
 				LOGDEBUG("SOEEventFormat We have more than 2 sections of data remaining after last SOE Event. {} bits of data available", RemainingBits);
