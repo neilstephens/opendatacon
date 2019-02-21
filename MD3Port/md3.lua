@@ -150,33 +150,42 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	for i = 0,pktlen-1,6 
 	do
 		local fmt_bit = " - "
-		if (buffer(4,1):bitfield(0,1) == 0) then
+		if (buffer(i+4,1):bitfield(0,1) == 0) then
 			fmt_bit = fmt_bit.."FMT"
 		end
-		if (buffer(4,1):bitfield(1,1) == 1) then
+		if (buffer(i+4,1):bitfield(1,1) == 1) then
 			fmt_bit = fmt_bit.."|EOM"
 		end
 		local crc_check = " - CRC PASS"
 		if (CheckMD3CRC(buffer(i,1):uint(),buffer(i+1,1):uint(),buffer(i+2,1):uint(),buffer(i+3,1):uint(),buffer(i+4,1):uint()) == false) then	
 			crc_check = " - CRC FAIL"	-- Checksum failed...
 		end
-		datatree:add("Block(" .. block .. ")", buffer:bytes(i,6):tohex(false,' ')..fmt_bit..crc_check..)
+		datatree:add("Block(" .. block .. ")", buffer:bytes(i,6):tohex(false,' ')..fmt_bit..crc_check)
 		block = block+1 
 	end
 	
 	-- If not our protocol, we should return 0. If it is ours, return nothing.
+	--mark the conversation as md3 - this is just for when we're called as a heuristic
+	pinfo.conversation = md3_proto
 end
+
+--register as a heuristic dissector
+--TODO: move the heuristics out of the dissection function, into a separate one
+md3_proto:register_heuristic("tcp",md3_proto.dissector)
+
+-- OR register for specific ports:
+
 -- load the tcp.port table
-local tcp_table = DissectorTable.get("tcp.port")
+--local tcp_table = DissectorTable.get("tcp.port")
 -- register our protocol to handle tcp port 5001
 -- Add the other ports we use...
-tcp_table:add(5001,md3_proto)
-tcp_table:add(5002,md3_proto)
-tcp_table:add(5003,md3_proto)
-tcp_table:add(5004,md3_proto)
-tcp_table:add(5005,md3_proto)
-tcp_table:add(5006,md3_proto)
-tcp_table:add(5007,md3_proto)
-tcp_table:add(5008,md3_proto)
-tcp_table:add(5009,md3_proto)
-tcp_table:add(5010,md3_proto)
+--tcp_table:add(5001,md3_proto)
+--tcp_table:add(5002,md3_proto)
+--tcp_table:add(5003,md3_proto)
+--tcp_table:add(5004,md3_proto)
+--tcp_table:add(5005,md3_proto)
+--tcp_table:add(5006,md3_proto)
+--tcp_table:add(5007,md3_proto)
+--tcp_table:add(5008,md3_proto)
+--tcp_table:add(5009,md3_proto)
+--tcp_table:add(5010,md3_proto)
