@@ -46,7 +46,7 @@ The CBConnection class manages a static list of its own instances, so the OutSta
 
 using namespace odc;
 
-class CBPort;
+class CBConnection;
 
 // We want to pass this token into the static CBConnection methods, so that the use of the connection pointer is contained
 class ConnectionTokenType

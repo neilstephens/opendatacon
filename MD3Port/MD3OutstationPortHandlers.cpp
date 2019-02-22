@@ -1395,9 +1395,9 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS &Header, MD3Message
 		// An all station command we do not respond to.
 		return;
 	}
-	/*
-	//TODO: Need some extra definitions to support defining the point, and will need a custom ODC point to manage the data the comes with this action.
 
+	//TODO: Need some extra definitions to support defining the input control point, and will need a custom ODC point to manage the data the comes with this action.
+	/*
 	// Check that the control point is defined, otherwise return a fail.
 	size_t ODCIndex = 0;
 	failed = MyPointConf->PointTable.GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), ODCIndex) ? failed : true;

@@ -858,7 +858,7 @@ public:
 		assert((ControlSelection & 0x0F) == ControlSelection);
 		assert((ChannelSelection & 0x0F) == ChannelSelection);
 
-		data = CombineFormattedBytes(mastertostation, StationAddress, INPUT_POINT_CONTROL, ModuleAddress, ((ControlSelection << 4) & 0xF0) | ChannelSelection & 0x0f);
+		data = CombineFormattedBytes(mastertostation, StationAddress, INPUT_POINT_CONTROL, ModuleAddress, (((ControlSelection << 4) & 0xF0) | (ChannelSelection & 0x0f)));
 
 		SetEndByte(FormattedBlock, lastblock);
 	}

@@ -46,6 +46,8 @@ The MD3Connection class manages a static list of its own instances, so the OutSt
 
 using namespace odc;
 
+class MD3Connection;
+
 // We want to pass this token into the static CBConnection methods, so that the use of the connection pointer is contained
 class ConnectionTokenType
 {
