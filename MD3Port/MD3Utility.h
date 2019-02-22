@@ -145,11 +145,11 @@ public:
 		data = CombineDataBytes(c1, c2, c3, c4);
 		SetEndByte(DataBlock, lastblock);
 	}
-	uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
+	static uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
 	{
 		return ShiftLeftResult32Bits(b1, 24) | ShiftLeftResult32Bits(b2,16) | ShiftLeftResult32Bits(b3,8) | numeric_cast<uint32_t>(b4);
 	}
-	uint32_t CombineDataBytes(const char c1, const char c2, const char c3, const char c4)
+	static uint32_t CombineDataBytes(const char c1, const char c2, const char c3, const char c4)
 	{
 		return CombineDataBytes(numeric_cast<uint8_t>(c1), numeric_cast<uint8_t>(c2), numeric_cast<uint8_t>(c3), numeric_cast<uint8_t>(c4));
 	}
@@ -187,7 +187,7 @@ public:
 		uint8_t calc = MD3CRC(data);
 		return MD3CRCCompare(calc, endbyte);
 	}
-	// Index 0 to 4 as you would expect
+	// Index 0 to 3, 0 is MSB not LSB
 	uint8_t GetByte(int b) const
 	{
 		assert((b >= 0) && (b < 4));
@@ -283,10 +283,10 @@ public:
 		SetEndByte(FormattedBlock, lastblock);
 	}
 
-	uint32_t CombineFormattedBytes(bool mastertostation, uint8_t StationAddress, uint8_t functioncode, uint8_t moduleaddress, uint8_t b4)
+	static uint32_t CombineFormattedBytes(bool mastertostation, uint8_t StationAddress, uint8_t functioncode, uint8_t moduleaddress, uint8_t b4)
 	{
 		uint8_t direction = mastertostation ? 0x00 : 0x80;
-		return CombineDataBytes(direction | StationAddress, functioncode, moduleaddress, b4);
+		return CombineDataBytes(direction | (StationAddress & 0x7f), functioncode, moduleaddress, b4);
 	}
 
 	// Apply to formatted blocks only!
@@ -835,6 +835,95 @@ public:
 		uint8_t checkdata = (SecondBlock.GetFirstWord() & 0x0FF) + ((SecondBlock.GetFirstWord() >> 8) & 0x0FF);
 		if (checkdata != SecondBlock.GetByte(2))
 			return false;
+
+		return true;
+	}
+};
+// Input point Control
+class MD3BlockFn20MtoS: public MD3BlockFormatted
+{
+public:
+	explicit MD3BlockFn20MtoS(const MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+
+	MD3BlockFn20MtoS(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t ControlSelection, uint8_t ChannelSelection)
+	{
+		bool lastblock = false;
+		bool mastertostation = true;
+
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
+		assert((ControlSelection & 0x0F) == ControlSelection);
+		assert((ChannelSelection & 0x0F) == ChannelSelection);
+
+		data = CombineFormattedBytes(mastertostation, StationAddress, INPUT_POINT_CONTROL, ModuleAddress, ((ControlSelection << 4) & 0xF0) | ChannelSelection & 0x0f);
+
+		SetEndByte(FormattedBlock, lastblock);
+	}
+	uint8_t GetChannel() const
+	{
+		return (data & 0x0FF);
+	}
+	uint8_t GetModuleAddress() const
+	{
+		return (data >> 8) & 0x0FF;
+	}
+	uint8_t GetControlSelection() const
+	{
+		return (data >> 4) & 0x0F;
+	}
+	uint8_t GetChannelSelection() const
+	{
+		return data & 0x0F;
+	}
+	// The second block in the message only contains a different format of the information in the first
+	MD3BlockData GenerateSecondBlock(bool IsLastPacket) const
+	{
+		bool mastertostation = true;
+		uint8_t SelectionByte = GetControlSelection() << 4 | GetChannelSelection();
+		uint32_t seconddata = CombineFormattedBytes(mastertostation, ~GetStationAddress(), ~GetModuleAddress(), uint8_t(~SelectionByte),SelectionByte); // The last byte here is indicated as reserved, but this value seems to be ok.
+
+		MD3BlockData sb(seconddata, IsLastPacket);
+		return sb;
+	}
+	// The Third block is optional depending on what you are planning to do.
+	MD3BlockData GenerateThirdBlock(uint16_t OutputData) const
+	{
+		uint32_t thirddata = ShiftLeftResult32Bits(OutputData & 0x0FFF, 16) | (~OutputData & 0x0FFF);
+
+		MD3BlockData sb(thirddata, true); // Last Block
+		return sb;
+	}
+
+	// Checks that the value and its complement match - so we can use the value. If not there has been a problem.
+	bool VerifyThirdBlock(MD3BlockData &ThirdBlock) const
+	{
+		return (ThirdBlock.GetFirstWord() & 0x0FFF) == (~ThirdBlock.GetSecondWord() & 0x0FFF);
+	}
+	uint16_t GetOutputFromThirdBlock(MD3BlockData &ThirdBlock) const
+	{
+		return ThirdBlock.GetFirstWord() & 0x0FFF;
+	}
+
+	// Check the second block against the first (this one) to see if we have a valid command
+	bool VerifyAgainstSecondBlock(MD3BlockData &SecondBlock) const
+	{
+		// Check that the complements and the originals match
+
+		if (GetStationAddress() != (~SecondBlock.GetByte(0) & 0x07F)) // Is the station address correct?
+			return false;
+
+		if (GetModuleAddress() != (~SecondBlock.GetByte(1) & 0x0FF)) // Is the module address correct?
+			return false;
+
+		if ((GetChannelSelection() & 0x0f) != (~SecondBlock.GetByte(2) & 0x0F)) // Is the channel selection correct?
+			return false;
+
+		if ((GetControlSelection() & 0x0f) != (~(SecondBlock.GetByte(2) >> 4) & 0x0F)) // Is the control selection correct?
+			return false;
+		// Last byte we dont care - it is reserved.
 
 		return true;
 	}

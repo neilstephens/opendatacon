@@ -29,7 +29,7 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-//#define NONVSTESTING
+#define NONVSTESTING
 
 // regex to find long winded LOG commands LOGDEBUG.*\+.*$
 

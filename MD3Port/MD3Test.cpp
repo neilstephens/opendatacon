@@ -118,13 +118,19 @@ const char *conffile1 = R"001(
 	// You will get errors if the wrong type of points are assigned to the wrong poll group
 	// The force unconditional parameter will force the code to NOT use delta commands during polling.
 	// The TimeSetCommand is used to send time set commands to the OutStation
+	// The "TimeTaggedDigital" flag if true, asks for COS records in addition to "Normal" digital values in the scan (using Fn11)
+	// When we scan digitals, we do a scan for each module. The logic of scanning multiple modules gets a little tricky.
+	// The digital scans (what is scanned) is worked out from the Binary point definition. The first module address,
+	// the total number of modules which are part of the Fn11 and 12 commands
 
 	"PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary", "TimeTaggedDigital" : true },
 					{"PollRate" : 20000, "ID" : 2, "PointType" : "Analog", "ForceUnconditional" : false },
 					{"PollRate" : 60000, "ID" : 3, "PointType" : "TimeSetCommand"},
 					{"PollRate" : 60000, "ID" : 4, "PointType" : "Binary",  "TimeTaggedDigital" : false },
 					{"PollRate" : 180000, "ID" : 5, "PointType" : "SystemFlagScan"},
-					{"PollRate" : 60000, "ID" : 6, "PointType" : "NewTimeSetCommand"}],
+					{"PollRate" : 60000, "ID" : 6, "PointType" : "NewTimeSetCommand"},
+					{"PollRate" : 60000, "ID" : 7, "PointType" : "Counter"},
+					{"PollRate" : 60000, "ID" : 8, "PointType" : "Counter"}],
 
 	// We expect the binary modules to be consecutive - MD3 Addressing - (or consecutive groups for scanning), the scanning is then simpler
 	"Binaries" : [{"Index": 80,  "Module" : 33, "Offset" : 0, "PointType" : "BASICINPUT"},
@@ -140,8 +146,8 @@ const char *conffile1 = R"001(
 						{"Range" : {"Start" : 100, "Stop" : 115}, "Module" : 37, "Offset" : 0, "PointType" : "DOMOUTPUT"},
 						{"Range" : {"Start" : 116, "Stop" : 123}, "Module" : 38, "Offset" : 0, "PointType" : "POMOUTPUT"}],
 
-	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},
-					{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}],
+	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0, "PollGroup" : 7},
+					{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0, "PollGroup" : 8}],
 
 	"AnalogControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Module" : 39, "Offset" : 0}]
 })001";
@@ -861,6 +867,36 @@ TEST_CASE("MD3Block - Fn16")
 	REQUIRE(b16b.CheckSumPasses());
 	REQUIRE(b16b.IsValid());
 	REQUIRE(b16b.GetNoCounterReset() == false);
+}
+
+TEST_CASE("MD3Block - Fn20")
+{
+	// Master from packet capture -> 1e140c951e0061f36a95960000200fdff600
+
+	// Decode the captured packet to get the values and then rebuild it again!
+	MD3BlockData FirstPacket("1e140c951e00");
+	MD3BlockFn20MtoS commandblocktest(FirstPacket);
+
+	uint8_t StationAddress = commandblocktest.GetStationAddress();     // 0x7C;
+	uint8_t ModuleAddress = commandblocktest.GetModuleAddress();       //10;
+	uint8_t ControlSelection = commandblocktest.GetControlSelection(); //9;
+	uint8_t ChannelSelection = commandblocktest.GetChannelSelection(); //5;
+
+	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ControlSelection, ChannelSelection);
+
+	std::string DesiredResult = BuildHexStringFromASCIIHexString("1e140c951e00");
+	std::string ActualResult = commandblock.ToBinaryString();
+	REQUIRE(DesiredResult == ActualResult);
+
+	MD3BlockData datablock1 = commandblock.GenerateSecondBlock(false); // Not last block
+	DesiredResult = BuildHexStringFromASCIIHexString("61f36a959600");
+	ActualResult = datablock1.ToBinaryString();
+	REQUIRE(DesiredResult == ActualResult);
+
+	MD3BlockData datablock2 = commandblock.GenerateThirdBlock(0x20); // Control value is 0x20 (32)
+	DesiredResult = BuildHexStringFromASCIIHexString("00200fdff600");
+	ActualResult = datablock2.ToBinaryString();
+	REQUIRE(DesiredResult == ActualResult);
 }
 TEST_CASE("MD3Block - Fn23")
 {
@@ -1993,6 +2029,49 @@ TEST_CASE("Station - DOMControlFn19")
 	const std::string DesiredResult3 = BuildHexStringFromASCIIHexString("fc1e245b4200");
 
 	REQUIRE(Response == DesiredResult3); // Control/Scan Rejected Command
+
+	TestTearDown();
+}
+
+TEST_CASE("Station - InputPointControlFn20") //TODO: Input Point Control
+{
+	// One of the few multi-block commands - the request can be 2 or 3 blocks
+	// This is an example from where 32 is written out to an RTU to cause an auto reclose - in a local control routine
+	// Master -> 1e140c951e0061f36a95960000200fdff600
+	// RTU Response -> 9e0f0c054a00
+
+	STANDARD_TEST_SETUP();
+	TEST_MD3OSPort(Json::nullValue);
+
+	MD3OSPort->Enable();
+
+	//  Station 0x7C
+	uint8_t StationAddress = 0x7C;
+	uint8_t ModuleAddress = 39;
+	uint8_t ControlSelection = 9;
+	uint8_t ChannelSelection = 5;
+	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ControlSelection, ChannelSelection);
+
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+	output << commandblock.ToBinaryString();
+
+	MD3BlockData datablock1 = commandblock.GenerateSecondBlock(false); // Not last block
+	output << datablock1.ToBinaryString();
+
+	MD3BlockData datablock2 = commandblock.GenerateThirdBlock(0x20); // Control value is 32
+	output << datablock2.ToBinaryString();
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+
+	// Send the Command
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f27956600");
+
+	REQUIRE(Response == DesiredResult); // OK Command
 
 	TestTearDown();
 }

@@ -130,7 +130,7 @@ enum MD3_FUNCTION_CODE
 
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
 enum BinaryPointType { BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT };
-enum PollGroupType { BinaryPoints, AnalogPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
+enum PollGroupType { BinaryPoints, AnalogPoints, CounterPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
 
 #define EOMBIT 0x40
 #define FOMBIT 0x80

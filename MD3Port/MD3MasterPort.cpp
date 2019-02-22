@@ -1167,6 +1167,49 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 		}
 		break;
 
+		case CounterPoints: //TODO: Analog Poll - Handle Counters
+		{
+			ModuleMapType::iterator mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+
+			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
+			uint8_t ModuleAddress = mait->first;
+			uint8_t Channels = numeric_cast<uint8_t>(mait->second);
+
+			if (MyPointConf->PollGroups[pollgroup].ModuleAddresses.size() > 1)
+			{
+				LOGERROR("Counter Poll group " + std::to_string(pollgroup) + " is configured for more than one MD3 address. Please create another poll group.");
+			}
+
+			// We need to do an analog unconditional on start up, until all the points have a valid value - even 0x8000 for does not exist.
+			// To do this we check the hasbeenset flag, which will be false on start up, and also set to false on comms lost event - kind of like a quality.
+			bool UnconditionalCommandRequired = false;
+			for (uint8_t idx = 0; idx < Channels; idx++)
+			{
+				uint16_t wordres;
+				bool hasbeenset;
+				bool res = MyPointConf->PointTable.GetAnalogValueUsingMD3Index(ModuleAddress, idx, wordres, hasbeenset);
+				if (res && !hasbeenset)
+					UnconditionalCommandRequired = true;
+			}
+
+			if (UnconditionalCommandRequired || MyPointConf->PollGroups[pollgroup].ForceUnconditional)
+			{
+				// Use Unconditional Request Fn 5
+				LOGDEBUG("Poll Issued a Analog Unconditional Command for Counter Values");
+
+				MD3BlockFormatted commandblock(MyConf->mAddrConf.OutstationAddr, true, ANALOG_UNCONDITIONAL, ModuleAddress, Channels, true);
+				QueueMD3Command(commandblock, nullptr);
+			}
+			else
+			{
+				LOGDEBUG("Poll Issued a Analog Delta Command for Counter Values");
+				// Use a delta command Fn 6
+				MD3BlockFormatted commandblock(MyConf->mAddrConf.OutstationAddr, true, ANALOG_DELTA_SCAN, ModuleAddress, Channels, true);
+				QueueMD3Command(commandblock, nullptr);
+			}
+		}
+		break;
+
 		case BinaryPoints:
 		{
 			if (MyPointConf->NewDigitalCommands) // Old are 7,8,9,10 - New are 11 and 12
@@ -1179,8 +1222,8 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 
 				// Request Digital Unconditional
 				uint8_t ModuleAddress = FirstModule->first;
-				// We expect the digital modules to be consecutive, or of there is a gap this will still work.
-				uint8_t Modules = numeric_cast<uint8_t>(MyPointConf->PollGroups[pollgroup].ModuleAddresses.size()); // Most modules we can get in one command - NOT channels!
+				// We expect the digital modules to be consecutive, or if there is a gap this will still work.
+				uint8_t Modules = numeric_cast<uint8_t>(MyPointConf->PollGroups[pollgroup].ModuleAddresses.size()); // Most modules we can get in one command - NOT channels 0 to 15!
 
 				bool UnconditionalCommandRequired = false;
 				for (uint8_t m = 0; m < Modules; m++)
@@ -1195,7 +1238,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 				}
 				MD3BlockFormatted commandblock;
 
-				// Also need to check if we already have all the values that this command would ask for..if not send unconditional.
+				// Also need to check if we already have a value for every point that this command would ask for..if not send unconditional.
 				if (UnconditionalCommandRequired || MyPointConf->PollGroups[pollgroup].ForceUnconditional)
 				{
 					// Use Unconditional Request Fn 12
@@ -1210,7 +1253,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 
 					uint8_t TaggedEventCount = 0; // Assuming no timetagged points initially.
 
-					// If we have timetagged points in the system, then we need to ask for them to be returned.
+					// If this poll is marked as timetagged, then we need to ask for them to be returned.
 					if (MyPointConf->PollGroups[pollgroup].TimeTaggedDigital == true)
 						TaggedEventCount = 15; // The most we can ask for
 
@@ -1237,7 +1280,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 				else
 				{
 					// Use a delta command Fn 8
-					LOGDEBUG("Poll Issued a Digital Delta (old) Command");
+					LOGERROR("UNIMPLEMENTED - Poll Issued a Digital Delta (old) Command");
 				}
 			}
 		}
@@ -1274,7 +1317,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 		break;
 
 		default:
-			LOGDEBUG("Poll will an unknown polltype : " + std::to_string(MyPointConf->PollGroups[pollgroup].polltype));
+			LOGDEBUG("Poll with an unknown polltype : " + std::to_string(MyPointConf->PollGroups[pollgroup].polltype));
 	}
 }
 
