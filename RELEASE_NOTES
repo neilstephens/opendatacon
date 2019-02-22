@@ -1,4 +1,12 @@
-opendatacon version 0.5.1
+opendatacon version 1.1.1
+
+1.1.1
+	- Fix Windows packages - some dlls weren't bundled properly, and x86 named wrong 
+
+1.1.0
+	- MD3Port
+	- Refined build system
+	- CI build and deploy  
 
 1.0.0
 	- Fixed long-standing defect where command status delays would block calling strand

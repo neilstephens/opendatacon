@@ -1,54 +1,78 @@
-[![Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=develop)](https://travis-ci.com/neilstephens/opendatacon)
+
+| Branch  | Travis CI Linux/OSX x86/x64/arm gcc/clang builds | Appveyor CI x86/x64 Windows build |
+|---------|--------------------------------------------------|-----------------------------------|
+| develop |[![Travis Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=develop)](https://travis-ci.com/neilstephens/opendatacon)|[![Build status](https://ci.appveyor.com/api/projects/status/dafc9t0xb3qrqj4d/branch/develop?svg=true)](https://ci.appveyor.com/project/neilstephens/opendatacon/branch/develop)|
+| master  |[![Travis Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=master)](https://travis-ci.com/neilstephens/opendatacon)|[![Build status](https://ci.appveyor.com/api/projects/status/dafc9t0xb3qrqj4d/branch/master?svg=true)](https://ci.appveyor.com/project/neilstephens/opendatacon/branch/develop)|
 
 ## Table of contents
 
 * [Introduction](#introduction)
-    * [Core features](#core-features)
-    * [Building and Installing](#build-install)
-    * [Basic components](#basic-components)
-      * [Ports](#ports)
-      * [Connectors](#connectors)
-        * [Connections](#connections)
-        * [Transforms](#transforms)
-      * [Extensibility](#extensibility)
-    * [Internal data structure](#internal-data-structure)
-    * [Configuration files and syntax](#configuration-files-and-syntax)
-      * [Main configuration](#main-configuration)
-        * [Keys](#keys)
-      * [Port configuration](#port-configuration)
-        * [Keys](#keys-1)
-      * [Connector configuration](#connector-configuration)
-        * [Keys](#keys-2)
-        * [Config file keys](#config-file-keys)
-      * [Connection configuration](#connection-configuration)
-        * [Keys](#keys-3)
-      * [Transform configuration](#transform-configuration)
-        * [Keys](#keys-4)
-          * [IndexOffset "Parameters"](#indexoffset-parameters)
-          * [Threshold "Parameters"](#threshold-parameters)
-          * [Rand "Parameters"](#rand-parameters)
-    * [Extensions](#extensions)
-      * [DNP3 Port Library](#dnp3-port-library)
-        * [Features](#features)
-        * [Configuration](#configuration)
-          * [DNP3 Master](#dnp3-master)
-            * [Example](#example)
-            * [Config file keys](#config-file-keys-1)
-          * [DNP3 Outstation](#dnp3-outstation)
-            * [Example](#example-1)
-            * [Config file keys](#config-file-keys-2)
-          * [Common keys to DNP3 Master and Outstation](#common-keys-to-dnp3-master-and-outstation)
-      * [JSON Port Library](#json-port-library)
-        * [Features](#features-1)
-        * [Configuration](#configuration-1)
-          * [JSON Client](#json-client)
-            * [Example](#example-2)
-            * [Config file keys](#config-file-keys-3)
-        * [Elasticsearch](#elasticsearch)
-    * [API](#api)
-      * [Port](#port)
-      * [Transform](#transform)
-      * [User interface](#user-interface)
+* [Core features](#core-features)
+* [Building and Installing](#build-install)
+* [Basic components](#basic-components)
+    * [Ports](#ports)
+    * [Connectors](#connectors)
+    * [Connections](#connections)
+    * [Transforms](#transforms)
+    * [Extensibility](#extensibility)
+* [Internal data structure](#internal-data-structure)
+* [Configuration files and syntax](#configuration-files-and-syntax)
+    * [Main configuration](#main-configuration)
+    * [Keys](#keys)
+    * [Port configuration](#port-configuration)
+    * [Keys](#keys-1)
+    * [Connector configuration](#connector-configuration)
+    * [Keys](#keys-2)
+    * [Config file keys](#config-file-keys)
+    * [Connection configuration](#connection-configuration)
+    * [Keys](#keys-3)
+    * [Transform configuration](#transform-configuration)
+    * [Keys](#keys-4)
+        * [IndexOffset "Parameters"](#indexoffset-parameters)
+        * [Threshold "Parameters"](#threshold-parameters)
+        * [Rand "Parameters"](#rand-parameters)
+* [Extensions](#extensions)
+    * [DNP3 Port Library](#dnp3-port-library)
+    * [Features](#features)
+    * [Configuration](#configuration)
+        * [DNP3 Master](#dnp3-master)
+        * [Example](#example)
+        * [Config file keys](#config-file-keys-1)
+        * [DNP3 Outstation](#dnp3-outstation)
+        * [Example](#example-1)
+        * [Config file keys](#config-file-keys-2)
+        * [Common keys to DNP3 Master and Outstation](#common-keys-to-dnp3-master-and-outstation)
+    * [JSON Port Library](#json-port-library)
+    * [Features](#features-1)
+    * [Configuration](#configuration-1)
+        * [JSON Client](#json-client)
+        * [Example](#example-2)
+        * [Config file keys](#config-file-keys-3)
+    * [Elasticsearch](#elasticsearch)
+* [API](#api)
+    * [Port](#port)
+    * [Transform](#transform)
+    * [User interface](#user-interface)
+
+## Quickstart
+
+### Pre-built packages
+
+* Download an installer from the [Releases](https://github.com/neilstephens/opendatacon/releases) page.
+    * Look for the following in the package name to choose the right package - (OS)-(Arch)-(OS_ver):
+        * OS: Operating System - either Linux, Darwin (for OSX), or Windows
+        * Arch: Architecture - processor family, bits and/or extensions - x86/i386, x64/x86_64/AMD64, arm(hf|el) etc.
+        * OS_ver: target platform details - this doesn't have to match your system exactly because most dependencies are bundled.
+            * el6: for Linux systems with older system libraries (glibc), like RHEL/CentOS/OEL 6
+            * rpi: Raspbian linux
+            * version numbers for OSX and Windows system/SDK.
+
+* Windows builds require the the [x86 MSVC redistributable](https://aka.ms/vs/15/release/VC_redist.x86.exe) or [x64 MSVC redistributable](https://aka.ms/vs/15/release/VC_redist.x64.exe)
+
+* Run the installer, accept the license conditions, choose where to install
+
+* Optionally install as a windows service (--help on the commandline and look for -i)
+* Optionally install the included init.d script (in the init dir where you installed) using your linux distro's tools
 
 ## Introduction
 
@@ -76,33 +100,47 @@ opendatacon uses the CMake build system.
 
 ### Dependencies
 
-Core dependencies include:
+Core dependencies are set up as git submodules and the default cmake config will auto download and use:
 
-*   automatak opendnp3: https://www.automatak.com/opendnp3/
-*   ASIO: http://think-async.com/
-*   TCLAP: http://tclap.sourceforge.net/
+* ASIO: http://think-async.com/
+* TCLAP: https://github.com/eile/tclap
+* spdlog: https://github.com/gabime/spdlog
 
 Plugin specific dependencies:
 
-*   WebUI: libmicrohttpd https://www.gnu.org/software/libmicrohttpd/
-*   ModbusPort: libmodbus http://libmodbus.org/
+* DNP3Port: automatak opendnp3: https://www.automatak.com/opendnp3/
+    * default cmake config will auto download and build
+* WebUI: libmicrohttpd https://www.gnu.org/software/libmicrohttpd/
+    * available in most linux repos (try install libmicrohttpd-dev or libmicrohttpd-devel)
+    * download and build yourself for windows - or search the net for binaries
+* ModbusPort: libmodbus http://libmodbus.org/
+    * available in most linux repos (try install libmodbus-dev or libmodbus-devel)
+    * download and build yourself for windows - or search the net for binaries
 
 ### CMake options
 
 #### Optional components
 
+*   FULL - build all the optional components
 *   TEST - build the optional test suite
 *   WEBUI - build the optional Web user interface plugin
 *   CONSOLEUI - build the optional console user interface plugin
 *   DNP3PORT - build the optional DNP3 protocol ports
-*   JSONPORT - build the optional JSON stream port
+*   JSONPORT - build the optional JSON stream ports
 *   MODBUSPORT - build the optional modbus protocol ports
 *   SIMPORT - build the optional simulated input/output port
-*   FULL - build all the optional components
-*   STATIC_LIBSTDC++ - optionally link in libstdc++ statically
+*   MD3PORT - build the optional MD3 protocol ports
+
+#### Other options
+
+*   STATIC_LIBSTDC++ - link in libstdc++ statically
 *   PACKAGE_LIBSTDC++ - optionally include libstdc++ shared library in installation package
+*   PACKAGE_LIBMODBUS - include in the installation package 
+*   PACKAGE_LIBMICROHTTPD - include in the installation package
 
 #### Dependency search locations
+
+If you don't want cmake to download/build for you, or you have manually installed in weird locations:
 
 *   DNP3_HOME
 *   ASIO_HOME

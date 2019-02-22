@@ -28,27 +28,31 @@
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	{
+		asio::io_service ios;
 		newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 		REQUIRE(newMaster);
+		delptr deleteMaster = GetPortDestroyer("DNP3Port", "DNP3Master");
+		REQUIRE(deleteMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
-		asio::io_service ios;
 		MPUT->SetIOS(&ios);
 		MPUT->Enable();
 		MPUT->Disable();
 
-		delete MPUT;
+		deleteMaster(MPUT);
 	}
 	/// Test the destruction of an enabled port
 	{
+		asio::io_service ios;
 		newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
 		REQUIRE(newMaster);
+		delptr deleteMaster = GetPortDestroyer("DNP3Port", "DNP3Master");
+		REQUIRE(deleteMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
-		asio::io_service ios;
 		MPUT->SetIOS(&ios);
 		MPUT->Enable();
 
-		delete MPUT;
+		deleteMaster(MPUT);
 	}
 }
