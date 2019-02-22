@@ -465,7 +465,7 @@ public:
 	uint16_t Millisecond = 0; // 10 bits,  0-999
 	// (27 or 16 bits for the time section)
 
-	bool LastEventFlag; // Set when no more events are available
+	bool LastEventFlag = false; // Set when no more events are available
 	// 41 or 30 bits
 
 	void SetTimeFields(CBTime TimeDelta, bool FirstEvent)

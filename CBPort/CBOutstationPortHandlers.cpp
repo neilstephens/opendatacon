@@ -588,8 +588,6 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & C
 {
 	LOGDEBUG("OS - SendSOEResponse - FnA - Code {}", Header.GetGroup());
 
-	bool CanSend = true;
-
 	CBMessage_t ResponseCBMessage;
 
 	if (!MyPointConf->PointTable.TimeTaggedDataAvailable())

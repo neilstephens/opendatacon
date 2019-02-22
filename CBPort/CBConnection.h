@@ -130,7 +130,7 @@ private:
 	std::string InternalChannelID;
 
 	bool IsServer;
-	std::atomic_bool enabled = false;
+	std::atomic_bool enabled{ false };
 	bool IsBakerDevice; // Swap Station and Group if it is a Baker device. Set in constructor
 
 	CBMessage_t CBMessage;

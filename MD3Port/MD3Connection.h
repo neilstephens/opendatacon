@@ -125,7 +125,7 @@ private:
 	std::string ChannelID;
 
 	bool isServer;
-	std::atomic_bool enabled = false;
+	std::atomic_bool enabled{ false };
 	MD3Message_t MD3Message;
 
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.

@@ -54,7 +54,7 @@ ConnectionTokenType::~ConnectionTokenType()
 		}
 		else
 		{
-			LOGDEBUG("Use Count On Connection Shared_ptr at {cnt} - The Map Connection Stays - {}", pConnection.use_count(), ChannelID);
+			LOGDEBUG("Use Count On Connection Shared_ptr at {} - The Map Connection Stays - {}", pConnection.use_count(), ChannelID);
 		}
 	}
 }
