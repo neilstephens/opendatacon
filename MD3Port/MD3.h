@@ -35,8 +35,6 @@
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 
-// extern std::shared_ptr<spdlog::logger> md3logger; // Looking up using spdlog::get() can be slow, so do it once in constructor
-
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("MD3Port")) \

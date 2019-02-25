@@ -101,7 +101,9 @@ const char *conffile1 = R"001(
 
 	// Master only PollGroups - ignored by outstation
 	"PollGroups" : [{"ID" : 1, "PollRate" : 10000, "Group" : 3, "PollType" : "Scan"},
-					{"ID" : 2, "PollRate" : 20000, "Group" : 3, "PollType" : "SOEScan"}],
+					{"ID" : 2, "PollRate" : 20000, "Group" : 3, "PollType" : "SOEScan"},
+					{"ID" : 3, "PollRate" : 120000, "PollType" : "TimeSetCommand"}],
+
 
 	// The payload location can be 1B, 2A, 2B
 	// Where there is a 24 bit result (ACC24) the next payload location will automatically be used. Do not put something else in there!
@@ -111,18 +113,19 @@ const char *conffile1 = R"001(
 
 	// Digital IN
 	// DIG - 12 bits to a Payload, Channel(bit) 1 to 12. On a range, the Channel is the first Channel in the range.
-	// MCA,MCB,MCC - 6 bits and for one payload
+	// MCA,MCB,MCC - 6 bits fit in one payload
 
 	// Analog IN
-	// ANA - 1 Channel to a payload,
+	// ANA - 1 Channel per payload
+	// ANA6 - 2 Channels per payload
 
 	// Counter IN
 	// ACC12 - 1 to a payload,
 	// ACC24 - takes two payloads.
 
-	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG", "SOE" : true, "SOEIndex" : 0},
-					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA", "SOE" : true, "SOEIndex" : 20},
-					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB", "SOE" : false},
+	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG", "SOE" : {"Group": 5, "Index" : 0} },
+					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
+					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB"},
 					{"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC" }],
 
 	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
@@ -140,6 +143,7 @@ const char *conffile1 = R"001(
 	"BinaryControls" : [{"Index": 1,  "Group" : 4, "Channel" : 1, "Type" : "CONTROL"},
                         {"Range" : {"Start" : 10, "Stop" : 21}, "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
 
+	// Setpoint A/B maps from Channel 1 == A, Channel 2 == B
 	"AnalogControls" : [{"Index": 1,  "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
 
 	// Special definition, so we know where to find the Remote Status Data in the scanned group.
@@ -247,8 +251,7 @@ void TestSetup(std::string TestName, bool writeconffiles = true)
 }
 void TestTearDown(void)
 {
-	if (auto cblogger = odc::spdlog_get("CBPort"))
-		cblogger->info("Test Finished");
+	LOGINFO("Test Finished");
 	#ifndef NONVSTESTING
 
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
@@ -418,8 +421,7 @@ TEST_CASE("Util - ParsePayloadString")
 	res = CBPointConf::ParsePayloadString("16A", payloadlocation);
 	REQUIRE(payloadlocation.Packet == 16);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionA);
-
-	if (auto cblogger = odc::spdlog_get("CBPort")) cblogger->info("Ignore Next Three Errors");
+	LOGINFO("Ignore Next Three LOGGGED Errors");
 
 	res = CBPointConf::ParsePayloadString("1A", payloadlocation);
 	REQUIRE(payloadlocation.Packet == 1);
@@ -900,9 +902,11 @@ TEST_CASE("Station - SOERequest F10")
 
 	CBOSPort->Enable();
 
+	START_IOS(1);
+
 	// Request SOE Data
 	uint8_t station = 9;
-	uint8_t group = 3;
+	uint8_t group = 5;
 	CBBlockData commandblock(station, group, FUNC_SEND_NEW_SOE, 0, true);
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
@@ -920,10 +924,12 @@ TEST_CASE("Station - SOERequest F10")
 
 	// Send the command in as if came from TCP channel
 	output << commandblock.ToBinaryString();
-	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // But need to let IOS run as we are using an async queue..
+
+	WaitIOS(IOS, 1);
 
 	// Check that we got nothing back ? No Events yet?
-	std::string DesiredResult = BuildBinaryStringFromASCIIHexString("a930002d"); // Echoed block plus
+	std::string DesiredResult = BuildBinaryStringFromASCIIHexString("a9500005"); // Echoed block plus
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -942,17 +948,21 @@ TEST_CASE("Station - SOERequest F10")
 	SendBinaryEvent(CBOSPort, 0, true, QualityFlags::ONLINE, time++);
 	SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
 
+	WaitIOS(IOS, 1);
 
 	// Check that the SOE Queue contains what we expect it to:
-	REQUIRE(CBOSPort->GetPointTable()->TimeTaggedDataAvailable() == true); // Uses a strand queue with wait for result...
+	bool SOEdataavailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable(group);
+	REQUIRE( SOEdataavailable); // Uses a strand queue with wait for result...
 
 	// Send the SOE Scan command again.
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
+	WaitIOS(IOS, 1);
+
 	// Now we should get back the SOE queued events.
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -965,6 +975,7 @@ TEST_CASE("Station - SOERequest F10")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
+	WaitIOS(IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -976,12 +987,16 @@ TEST_CASE("Station - SOERequest F10")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a933010c92a8c9a653080020004e023c0008993890086717");
+	WaitIOS(IOS, 1);
+
+	DesiredResult = BuildBinaryStringFromASCIIHexString("a953012492a8c9a653080020004e023c000ffe35");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
 
 	CBOSPort->Disable();
+
+	STOP_IOS();
 
 	STANDARD_TEST_TEARDOWN();
 }
@@ -1338,16 +1353,16 @@ TEST_CASE("Master - SOE Request F10")
 		MAResponse = "Not Set";
 
 		// Send an SOE Scan Command from the Master
-		uint8_t Group = 3;
+		uint8_t Group = 5;
 		CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
 
 		WaitIOS(IOS, 2);
 
 		// Check that the command was formatted correctly.
-		const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("a930002d");
+		const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("a9500005");
 		REQUIRE(MAResponse == DesiredResponse);
 
-		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a933010c92a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
+		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
 
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
@@ -1370,13 +1385,14 @@ TEST_CASE("Master - SOE Request F10")
 		      SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
 		*/
 
-		REQUIRE(CBOSPort->GetPointTable()->TimeTaggedDataAvailable() == true); // Uses a strand queue with wait for result...
+		bool DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable(Group);
+		REQUIRE(DataAvailable); // Uses a strand queue with wait for result...
 
 		// Get the list of time tagged events, and check...
 		// There are 16 events in the original conversation, but only 12 fit in the 31 payload locations. Would normally send another command to get the rest of the events.
 		// The last record flag bit in the last record is not set, indicating more messages.
 
-		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
+		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList(Group);
 		REQUIRE(PointList.size() == 0x0C);
 
 		REQUIRE(PointList[0x0].GetIndex() == 0);

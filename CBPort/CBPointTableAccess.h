@@ -50,7 +50,7 @@ public:
 	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel,  const BinaryPointType & pointtype );
 	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
 	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
-	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation, const BinaryPointType & pointtype, bool issoe, uint8_t soeindex);
+	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation, const BinaryPointType & pointtype, bool issoe, uint8_t soeindex, uint8_t soegroup);
 	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const AnalogCounterPointType &pointtype);
 
 	bool AddStatusByteToCBMap(const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
@@ -68,13 +68,13 @@ public:
 	bool GetBinaryValueUsingODCIndexAndResetChangedFlag(const size_t index, uint8_t &res, bool &changed, bool &hasbeenset);
 	bool SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, CBTime eventtime);
 
-	bool GetBinaryODCIndexUsingSOE(const uint8_t group, const uint8_t number, size_t & index);
+	bool GetBinaryODCIndexUsingSOE(const uint8_t soegroup, const uint8_t number, size_t & index);
 
 	void AddToDigitalEvents(const CBBinaryPoint & inpt, const uint8_t meas, const CBTime eventtime);
-	bool PeekNextTaggedEventPoint(CBBinaryPoint &pt);
-	bool PopNextTaggedEventPoint();
-	bool TimeTaggedDataAvailable();
-	std::vector<CBBinaryPoint> DumpTimeTaggedPointList();
+	bool PeekNextTaggedEventPoint(uint8_t SOEGroup, CBBinaryPoint &pt);
+	bool PopNextTaggedEventPoint(uint8_t SOEGroup);
+	bool TimeTaggedDataAvailable(uint8_t SOEGroup);
+	std::vector<CBBinaryPoint> DumpTimeTaggedPointList(uint8_t SOEGroup);
 
 	bool GetBinaryControlODCIndexUsingCBIndex(const uint8_t group, const uint8_t channel, size_t & index);
 	bool GetBinaryControlCBIndexUsingODCIndex(const size_t index, uint8_t &group, uint8_t & channel);
@@ -92,7 +92,7 @@ public:
 	void ForEachCounterPoint(std::function<void(CBAnalogCounterPoint&pt)> fn);
 
 	void ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBBinaryPoint&pt)> fn);
-	void ForMatchingBinaryPoint(const uint8_t & group, const uint8_t & soeindex, std::function<void(CBBinaryPoint&pt)> fn);
+	void ForMatchingBinaryPoint(const uint8_t & soegroup, const uint8_t & soeindex, std::function<void(CBBinaryPoint&pt)> fn);
 	void ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
 	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
 	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn);
@@ -101,7 +101,7 @@ public:
 
 	// Public only for testing
 	static uint16_t GetCBPointMapIndex(const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation); // Group/Payload/Channel
-	static uint16_t GetSOEPointMapIndex(const uint8_t & group, const uint8_t & soeindex);
+	static uint16_t GetSOEPointMapIndex(const uint8_t & soegroup, const uint8_t & soeindex);
 	static uint16_t GetCBControlPointMapIndex(const uint8_t & group, const uint8_t & channel);
 protected:
 
@@ -129,6 +129,6 @@ protected:
 	std::map<uint8_t, uint8_t> MaxiumPayloadPerGroupMap; // Group 0 to 15, Max payload - a count of 1 to 16.
 
 	bool IsOutstation = true;
-	std::shared_ptr<StrandProtectedQueue<CBBinaryPoint>> pBinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events.
+	std::shared_ptr<StrandProtectedQueue<CBBinaryPoint>> pBinaryTimeTaggedEventGroupQueue[16]; // Separate queues for time tagged binary events, one per group.
 };
 #endif

@@ -215,6 +215,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		std::string pointtypestring = "";
 		bool IsSOE = false;
 		uint8_t SOEIndex = 0;
+		uint8_t SOEGroup = 0;
 
 		PayloadLocationType payloadlocation;
 
@@ -245,28 +246,6 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			{
 				LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
 				error = true;
-			}
-
-			if (JSONNode[n].isMember("SOE"))
-			{
-				IsSOE = JSONNode[n]["SOE"].asBool();
-				if (IsSOE)
-				{
-					if (JSONNode[n].isMember("SOEIndex"))
-					{
-						SOEIndex = JSONNode[n]["SOEIndex"].asUInt();
-						if (SOEIndex > 120)
-						{
-							LOGERROR("\"SOEIndex\" must be 0 to 120 : " + JSONNode[n].toStyledString());
-							error = true;
-						}
-					}
-					else
-					{
-						LOGERROR("A point needs a \"SOEIndex\" if SOE is true : " + JSONNode[n].toStyledString());
-						error = true;
-					}
-				}
 			}
 		}
 		else
@@ -318,6 +297,33 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			error = true;
 		}
 
+		if (pointtype == DIG) // Dont do SOE for MCx or CONTROL!
+		{
+			if (JSONNode[n].isMember("SOE"))
+			{
+				if (JSONNode[n]["SOE"].isMember("Group") && JSONNode[n]["SOE"].isMember("Index"))
+				{
+					IsSOE = true;
+					SOEIndex = JSONNode[n]["SOE"]["Index"].asUInt();
+					SOEGroup = JSONNode[n]["SOE"]["Group"].asUInt();
+					if (SOEIndex > 120)
+					{
+						LOGERROR("\"SOEIndex\" must be 0 to 120 : " + JSONNode[n].toStyledString());
+						error = true;
+					}
+					if (SOEIndex > 15)
+					{
+						LOGERROR("\"SOEGroup\" must be 0 to 15 : " + JSONNode[n].toStyledString());
+						error = true;
+					}
+				}
+				else
+				{
+					LOGERROR(BinaryName + " If SOE exists, it needs an \"Index\" and a \"Group\" : " + JSONNode[n].toStyledString());
+					error = true;
+				}
+			}
+		}
 		if (!error)
 		{
 			for (uint32_t index = start; index <= stop; index++)
@@ -344,7 +350,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					else
 					{
 						// Only add the point if it passes
-						res = PointTable.AddBinaryPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, payloadlocation, pointtype, IsSOE, SOEIndex);
+						res = PointTable.AddBinaryPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, payloadlocation, pointtype, IsSOE, SOEIndex, SOEGroup);
 					}
 				}
 				else if (ptype == BinaryControl)

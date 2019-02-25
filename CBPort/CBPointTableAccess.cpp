@@ -34,7 +34,10 @@ CBPointTableAccess::CBPointTableAccess()
 void CBPointTableAccess::Build(const bool isoutstation, asio::io_service & IOS)
 {
 	IsOutstation = isoutstation;
-	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<CBBinaryPoint>(IOS, 256));
+	// Setup 16 TimeTagged event queues, never will we use all of them, Group 0 is most used.
+	// The size (500) does not consume memory, just sets an upper limit to the number of items in the queue.
+	for (int i = 0; i < 16; i++)
+		pBinaryTimeTaggedEventGroupQueue[i].reset(new StrandProtectedQueue<CBBinaryPoint>(IOS, 500));
 }
 
 #ifdef _MSC_VER
@@ -92,7 +95,7 @@ bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const u
 	return true;
 }
 
-bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const BinaryPointType &pointtype, bool issoe, uint8_t soenumber)
+bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const BinaryPointType &pointtype, bool issoe, uint8_t soeindex, uint8_t soegroup)
 {
 	// So we need to access the Conitel data by Group/PayLoadLocation/Channel
 	// When we get a scan, we need to get everything for a given group, payload by payload 1B,2A,2B and then for binary all matching channels.
@@ -119,14 +122,14 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 	else
 	{
 		LOGDEBUG("Adding Binary Point at CBIndex - " + to_hexstring(CBIndex));
-		auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype, issoe, soenumber);
+		auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, payloadlocation, pointtype, issoe, soeindex, soegroup);
 		BinaryCBPointMap[CBIndex] = pt;
 		BinaryODCPointMap[index] = pt;
 
 		if (issoe)
 		{
-			uint16_t SOEIndex = GetSOEPointMapIndex(group, soenumber);
-			BinarySOEPointMap[SOEIndex] = pt;
+			uint16_t SOEMapIndex = GetSOEPointMapIndex(soegroup, soeindex);
+			BinarySOEPointMap[SOEMapIndex] = pt;
 		}
 	}
 	return true;
@@ -201,7 +204,7 @@ bool CBPointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, 
 		return false;
 	}
 
-	auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, PayloadLocationType(1,PayloadABType::PositionB), pointtype, false,0);
+	auto pt = std::make_shared<CBBinaryPoint>(index, group, channel, PayloadLocationType(1,PayloadABType::PositionB), pointtype, false,0,0);
 	BinaryControlCBPointMap[CBIndex] = pt;
 	BinaryControlODCPointMap[index] = pt;
 	return true;
@@ -310,10 +313,10 @@ bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const u
 	}
 	return false;
 }
-bool CBPointTableAccess::GetBinaryODCIndexUsingSOE(const uint8_t group, const uint8_t number, size_t &index)
+bool CBPointTableAccess::GetBinaryODCIndexUsingSOE(const uint8_t soegroup, const uint8_t soeindex, size_t &index)
 {
-	uint16_t SOEIndex = GetSOEPointMapIndex(group, number);
-	CBBinaryPointMapIterType SOEPointMapIter = BinarySOEPointMap.find(SOEIndex);
+	uint16_t SOEMapIndex = GetSOEPointMapIndex(soegroup, soeindex);
+	CBBinaryPointMapIterType SOEPointMapIter = BinarySOEPointMap.find(SOEMapIndex);
 	if (SOEPointMapIter != BinarySOEPointMap.end())
 	{
 		index = SOEPointMapIter->second->GetIndex();
@@ -331,33 +334,34 @@ void CBPointTableAccess::AddToDigitalEvents(const CBBinaryPoint &inpt, const uin
 		pt.SetBinary(meas, eventtime);
 
 		LOGDEBUG("Outstation Added Binary Event to SOE Queue - ODCIndex {}, Value {}", pt.GetIndex(), pt.GetBinary());
+		uint8_t SOEGroup = pt.GetSOEGroup();
 
-		pBinaryTimeTaggedEventQueue->async_push(pt);
+		pBinaryTimeTaggedEventGroupQueue[SOEGroup & 0x0f]->async_push(pt);
 	}
 }
-bool CBPointTableAccess::PeekNextTaggedEventPoint(CBBinaryPoint &pt)
+bool CBPointTableAccess::PeekNextTaggedEventPoint(uint8_t SOEGroup, CBBinaryPoint &pt)
 {
-	return pBinaryTimeTaggedEventQueue->sync_front(pt);
+	return pBinaryTimeTaggedEventGroupQueue[SOEGroup & 0x0f]->sync_front(pt);
 }
-bool CBPointTableAccess::PopNextTaggedEventPoint()
+bool CBPointTableAccess::PopNextTaggedEventPoint(uint8_t SOEGroup )
 {
-	return pBinaryTimeTaggedEventQueue->sync_pop();
+	return pBinaryTimeTaggedEventGroupQueue[SOEGroup & 0x0f]->sync_pop();
 }
-bool CBPointTableAccess::TimeTaggedDataAvailable()
+bool CBPointTableAccess::TimeTaggedDataAvailable(uint8_t SOEGroup )
 {
-	return !pBinaryTimeTaggedEventQueue->sync_empty();
+	return !pBinaryTimeTaggedEventGroupQueue[SOEGroup & 0x0f]->sync_empty();
 }
 // Dumps the points out in a list, only used for UnitTests
-std::vector<CBBinaryPoint> CBPointTableAccess::DumpTimeTaggedPointList()
+std::vector<CBBinaryPoint> CBPointTableAccess::DumpTimeTaggedPointList(uint8_t SOEGroup )
 {
 	CBBinaryPoint CurrentPoint;
 	std::vector<CBBinaryPoint> PointList;
 	PointList.reserve(50);
 
-	while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint))
+	while (pBinaryTimeTaggedEventGroupQueue[SOEGroup & 0x0f]->sync_front(CurrentPoint))
 	{
 		PointList.emplace_back(CurrentPoint);
-		pBinaryTimeTaggedEventQueue->sync_pop();
+		pBinaryTimeTaggedEventGroupQueue[SOEGroup & 0x0f]->sync_pop();
 	}
 
 	return PointList;
@@ -467,13 +471,13 @@ uint16_t CBPointTableAccess::GetCBPointMapIndex(const uint8_t & group, const uin
 	uint16_t CBIndex = ShiftLeftResult16Bits(group, 12) | ShiftLeftResult16Bits(channel, 8) | ShiftLeftResult16Bits(payloadlocation.Packet-1, 4) | (payloadlocation.Position == PayloadABType::PositionA ? 0 : 1);
 	return CBIndex;
 }
-uint16_t CBPointTableAccess::GetSOEPointMapIndex(const uint8_t & group, const uint8_t & soenumber)
+uint16_t CBPointTableAccess::GetSOEPointMapIndex(const uint8_t & soegroup, const uint8_t & soeindex)
 {
-	assert(group <= 0x0F);
-	assert(soenumber <= 120);
+	assert(soegroup <= 0x0F);
+	assert(soeindex <= 120);
 
 	// Top 4 bits group (0-15), Next 4 bits channel (1-12), next 4 bits payload packet number (0-15), next 4 bits 0(A) or 1(B)
-	uint16_t SOEIndex = (ShiftLeftResult16Bits(group, 12) | soenumber);
+	uint16_t SOEIndex = (ShiftLeftResult16Bits(soegroup, 12) | soeindex);
 	return SOEIndex;
 }
 
@@ -500,13 +504,13 @@ void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const
 		}
 	}
 }
-void CBPointTableAccess::ForMatchingBinaryPoint(const uint8_t & group, const uint8_t & soenumber, std::function<void(CBBinaryPoint &pt)> fn)
+void CBPointTableAccess::ForMatchingBinaryPoint(const uint8_t & soegroup, const uint8_t & soenumber, std::function<void(CBBinaryPoint &pt)> fn)
 {
-	uint16_t SOEIndex = GetSOEPointMapIndex(group, soenumber);
-	if (BinarySOEPointMap.count(SOEIndex) != 0)
+	uint16_t SOEMapIndex = GetSOEPointMapIndex(soegroup, soenumber);
+	if (BinarySOEPointMap.count(SOEMapIndex) != 0)
 	{
 		// We have a match - call our function with the point as a parameter.
-		fn(*BinarySOEPointMap[SOEIndex]);
+		fn(*BinarySOEPointMap[SOEMapIndex]);
 	}
 }
 void CBPointTableAccess::ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint &pt)> fn)

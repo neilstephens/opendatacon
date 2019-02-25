@@ -72,6 +72,7 @@ CBBinaryPoint& CBBinaryPoint::operator=(const CBBinaryPoint& src)
 		PointType = src.PointType;
 		SOEPoint = src.SOEPoint;
 		SOEIndex = src.SOEIndex;
+		SOEGroup = src.SOEGroup;
 	}
 	return *this;
 }

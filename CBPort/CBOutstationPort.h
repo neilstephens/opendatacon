@@ -131,8 +131,8 @@ public:
 	bool ExecuteBinaryControl(uint8_t group, uint8_t Channel, bool point_on);
 	bool ExecuteAnalogControl(uint8_t group, uint8_t Channel, uint16_t data);
 	void FuncMasterStationRequest(CBBlockData &Header, CBMessage_t &CompleteCBMessage);
-	void FuncReSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage);
-	void FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage);
+	void FuncReSendSOEResponse(CBBlockData & Header);
+	void FuncSendSOEResponse(CBBlockData & Header);
 
 	void ConvertPayloadWordsToCBMessage(CBBlockData & Header, std::vector<uint16_t> &PayloadWords, CBMessage_t &ResponseCBMessage);
 

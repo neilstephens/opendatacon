@@ -51,7 +51,7 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 	bool NotImplemented = false;
 
 	// All are included to allow better error reporting.
-	// The Python simulator only implements the commands below, which will be our first target:
+	// The Python simulator only implements the commands below:
 	//  '0': 'scan data',
 	//	'1' : 'execute',
 	//	'2' : 'trip/close',
@@ -97,12 +97,12 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			break;
 
 		case FUNC_SEND_NEW_SOE:
-			FuncSendSOEResponse(Header, CompleteCBMessage);
+			FuncSendSOEResponse(Header);
 			break;
 
 		case FUNC_REPEAT_SOE:
 			// Resend the last SOE message
-			FuncReSendSOEResponse(Header, CompleteCBMessage);
+			FuncReSendSOEResponse(Header);
 			break;
 		case FUNC_UNIT_RAISE_LOWER:
 			NotImplemented = true;
@@ -451,6 +451,7 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 	SendCBMessage(ResponseCBMessage);
 }
 
+// Called when we get a Conitel Execute Command on an already setup trip/close command.
 bool CBOutstationPort::ExecuteBinaryControl(uint8_t group, uint8_t channel, bool point_on)
 {
 	size_t ODCIndex = 0;
@@ -577,20 +578,21 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 	}
 }
 
-void CBOutstationPort::FuncReSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage)
+void CBOutstationPort::FuncReSendSOEResponse(CBBlockData & Header)
 {
 	LOGDEBUG("OS - ReSendSOEResponse - FnB - Code {}", Header.GetGroup());
 
 	SendCBMessage(LastSentSOEMessage);
 }
 
-void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header, CBMessage_t & CompleteCBMessage)
+void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 {
 	LOGDEBUG("OS - SendSOEResponse - FnA - Code {}", Header.GetGroup());
 
 	CBMessage_t ResponseCBMessage;
+	uint8_t SOEGroup = Header.GetGroup();
 
-	if (!MyPointConf->PointTable.TimeTaggedDataAvailable())
+	if (!MyPointConf->PointTable.TimeTaggedDataAvailable(SOEGroup))
 	{
 		// Format empty response
 		// TODO: Not clear in the spec what an empty SOE response is, however I am going to assume that a full echo of the inbound packet is the empty response.
@@ -660,7 +662,7 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 		PayloadWords.push_back(payload);
 	}
 }
-void CBOutstationPort::BuildPackedEventBitArray(uint8_t Group, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits)
+void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits)
 {
 	// The SOE data is built into a stream of bits (that may not be block aligned) and then it is stuffed 12 bits at a time into the available Payload locations - up to 31.
 	// First section format:
@@ -677,7 +679,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t Group, std::array<bool, 
 	{
 		// There must be at least one SOE available to get to here.
 		//TODO: Check - we might have to maintain more than one tagged event queue - may need one per group!
-		if (!MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint)) // Don't pop until we are happy...
+		if (!MyPointConf->PointTable.PeekNextTaggedEventPoint(SOEGroup,CurrentPoint)) // Don't pop until we are happy...
 		{
 			// We have run out of data, so break out of the loop, but first we need to set the last event flag in the previous packet--this is the last bit in the vector
 			// SET LAST EVENT FLAG
@@ -688,7 +690,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t Group, std::array<bool, 
 		// We keep trying to add data until there is none left, or the data will not fit into our bit array.
 		// The time field is the delta between the previous event (if there is one) and the current event (in msec)
 		SOEEventFormat PackedEvent;
-		PackedEvent.Group = Group;
+		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; //TODO: Bottom three bits of the point group,  not the SOE Group! Pretty sure this is correct - from captures.
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
 		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? 1 : 0;
 		PackedEvent.QualityBit = 0;
@@ -716,7 +718,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t Group, std::array<bool, 
 				BitArray[UsedBits++] = TestBit(res, 63 - i);
 			}
 			// Pop the event so we can move onto the next one
-			MyPointConf->PointTable.PopNextTaggedEventPoint();
+			MyPointConf->PointTable.PopNextTaggedEventPoint(SOEGroup);
 		}
 		else
 		{
