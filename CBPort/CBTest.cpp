@@ -277,11 +277,28 @@ std::string BuildBinaryStringFromASCIIHexString(const std::string &as)
 	auto res = std::string(as.size() / 2, 0);
 
 	// Take chars in chunks of 2 and convert to a hex equivalent
-	for (uint32_t i = 0; i < (as.size() / 2); i++)
+	for (size_t i = 0; i < (as.size() / 2); i++)
 	{
 		auto hexpair = as.substr(i * 2, 2);
 		res[i] = static_cast<char>(std::stol(hexpair, nullptr, 16));
 	}
+	return res;
+}
+// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
+// Takes a binary string, and produces an ascii hex string in the format of "FF120D567200"g
+std::string BuildASCIIHexStringfromBinaryString(const std::string &bs)
+{
+	// Create, we know how big it will be
+	auto res = std::string(bs.size() * 2, 0);
+
+	constexpr char hexmap[] = { '0', '1', '2', '3', '4', '5', '6', '7','8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+	for (size_t i = 0; i < bs.size(); i++)
+	{
+		res[2 * i] = hexmap[(bs[i] & 0xF0) >> 4];
+		res[2 * i + 1] = hexmap[bs[i] & 0x0F];
+	}
+
 	return res;
 }
 void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
@@ -857,16 +874,16 @@ TEST_CASE("Station - ScanRequest F0")
 	// The 2A block was 0x880 Ch 1 = 1, Ch 2 = 0, Ch 3 = 1
 	// It becomes 0x780 Ch1 = 0 S1 =1, Ch2=1,S2 =1,Ch3=1,S3 =1
 	// Finally 0x800	ch1=1,ch2=0,ch3=0
-	DesiredResult = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                              "78080000" // Data 2A and 2B
-		                                              "400a00b6"
-		                                              "402882b8"
-		                                              "405a032c"
-		                                              "40780030"
-		                                              "55580013");
+	DesiredResult = "09355516" // Echoed block plus data 1B
+	                "78080000" // Data 2A and 2B
+	                "400a00b6"
+	                "402882b8"
+	                "405a032c"
+	                "40780030"
+	                "55580013";
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == DesiredResult);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 	// Now do the changes that do not trigger the change bits being set.
 	SendBinaryEvent(CBOSPort, 12, true);
@@ -929,10 +946,8 @@ TEST_CASE("Station - SOERequest F10")
 	WaitIOS(IOS, 1);
 
 	// Check that we got nothing back ? No Events yet?
-	std::string DesiredResult = BuildBinaryStringFromASCIIHexString("a9500005"); // Echoed block plus
-
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == DesiredResult);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a9500005"); // Echoed block plus
 
 
 	// Call the Event functions to put some SOE data into the queue ODC Binaries 0 to 12 will capture SOE data.
@@ -962,10 +977,8 @@ TEST_CASE("Station - SOERequest F10")
 	WaitIOS(IOS, 1);
 
 	// Now we should get back the SOE queued events.
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
-
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == DesiredResult);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
 
 
 	// Now send the SOE resend command and make sure we get the same result.
@@ -978,7 +991,7 @@ TEST_CASE("Station - SOERequest F10")
 	WaitIOS(IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == DesiredResult);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
 
 	// Check if the lastmessagebit is set, if so request the remaining events - we happen to know it it is, so ask for them.
 	commandblock = CBBlockData(station, group, FUNC_SEND_NEW_SOE, 0, true);
@@ -989,10 +1002,9 @@ TEST_CASE("Station - SOERequest F10")
 
 	WaitIOS(IOS, 1);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("a953012492a8c9a653080020004e023c000ffe35");
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == DesiredResult);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c9a653080020004e023c000ffe35");
 
 	CBOSPort->Disable();
 
@@ -1200,7 +1212,7 @@ TEST_CASE("Master - Scan Request F0")
 	TEST_CBMAPort(Json::nullValue);
 
 	Json::Value portoverride;
-	portoverride["Port"] = static_cast<Json::UInt64>(1001);
+	portoverride["Port"] = static_cast<Json::UInt64>(10001);
 	TEST_CBOSPort(portoverride);
 
 	START_IOS(1);

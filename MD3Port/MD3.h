@@ -31,6 +31,8 @@
 // If we are using VS and its test framework, don't define this.
 #define NONVSTESTING
 
+// regex to find long winded LOG commands \{a[1-5]\}
+
 #include <cstdint>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
