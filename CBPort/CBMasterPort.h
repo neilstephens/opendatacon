@@ -121,7 +121,7 @@ private:
 	bool ProcessScanRequestReturn(const CBMessage_t & CompleteCBMessage);
 	void ProccessScanPayload(uint16_t data, uint8_t group, PayloadLocationType payloadlocation);
 	void SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const CBTime &now);
-	bool ProcessSOEScanRequestReturn(const CBMessage_t & CompleteCBMessage);
+	bool ProcessSOEScanRequestReturn(const CBBlockData & ReceivedHeader, const CBMessage_t & CompleteCBMessage);
 	bool ConvertSOEMessageToBitArray(const CBMessage_t & CompleteCBMessage, std::array<bool, MaxSOEBits>& BitArray, uint32_t & UsedBits);
 	void ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits>& BitArray, uint32_t &UsedBits, std::function<void(SOEEventFormat&soeevt)> fn);
 	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);

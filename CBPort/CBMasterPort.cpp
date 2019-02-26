@@ -411,10 +411,10 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 					break;
 
 				case FUNC_SEND_NEW_SOE:
-					success = ProcessSOEScanRequestReturn(CompleteCBMessage); // Fn - 10
+					success = ProcessSOEScanRequestReturn(Header, CompleteCBMessage); // Fn - 10
 					break;
 				case FUNC_REPEAT_SOE:
-					success = ProcessSOEScanRequestReturn(CompleteCBMessage); // Fn - 10
+					success = ProcessSOEScanRequestReturn(Header, CompleteCBMessage); // Fn - 10
 					break;
 				case FUNC_UNIT_RAISE_LOWER:
 					NotImplemented = true;
@@ -635,7 +635,7 @@ void CBMasterPort::SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const 
 	}
 }
 
-bool CBMasterPort::ProcessSOEScanRequestReturn(const CBMessage_t& CompleteCBMessage)
+bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData & ReceivedHeader, const CBMessage_t& CompleteCBMessage)
 {
 	LOGDEBUG("SOE Scan Data processing - Blocks {}", CompleteCBMessage.size());
 
@@ -645,12 +645,14 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBMessage_t& CompleteCBMess
 	if (!ConvertSOEMessageToBitArray(CompleteCBMessage, BitArray, UsedBits))
 		return false;
 
+	uint8_t SOEGroup = ReceivedHeader.GetGroup(); // The Group in the SOE events is its scan group. Go figure.
+
 	// Convert the BitArray to SOE events, and call our lambda for each
 	ForEachSOEEventInBitArray(BitArray, UsedBits, [&](SOEEventFormat &soeevnt)
 		{
 			// Now use the data in the SOE Event to fire off an ODC event..
 			// Find the Point in our database...using SOE Group and Number
-			uint8_t SOEGroup = soeevnt.Group;
+			// uint8_t ScanGroup = soeevnt.Group;
 			uint8_t SOEIndex = soeevnt.Number;
 
 			size_t ODCIndex = 0;

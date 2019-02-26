@@ -1367,7 +1367,7 @@ TEST_CASE("Master - SOE Request F10")
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(IOS,4);
+		WaitIOS(IOS,3);
 
 		// We should now have data available...
 		// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
