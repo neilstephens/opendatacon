@@ -784,16 +784,16 @@ TEST_CASE("Station - ScanRequest F0")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Check the command is formatted correctly
-	std::string DesiredResult = BuildBinaryStringFromASCIIHexString("0937ffaa" // Echoed block plus data 1B
-		                                                          "a8080020" // Data 2A and 2B
-		                                                          "00080006"
-		                                                          "00080006"
-		                                                          "00080006"
-		                                                          "00080006"
-		                                                          "55580013");
+	std::string DesiredResult = "0937ffaa" // Echoed block plus data 1B
+	                            "a8080020" // Data 2A and 2B
+	                            "00080006"
+	                            "00080006"
+	                            "00080006"
+	                            "00080006"
+	                            "55580013";
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == DesiredResult);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 
 	// Call the Event functions to set the CB table data to what we are expecting to get back.
@@ -839,16 +839,16 @@ TEST_CASE("Station - ScanRequest F0")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Should now get different data!
-	DesiredResult = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                              "8808000c" // Data 2A and 2B
-		                                              "400a00b6"
-		                                              "402882b8"
-		                                              "405a032c"
-		                                              "40780030"
-		                                              "55580013");
+	DesiredResult = "09355516" // Echoed block plus data 1B
+	                "8808000c" // Data 2A and 2B
+	                "400a00b6"
+	                "402882b8"
+	                "405a032c"
+	                "40780030"
+	                "55580013";
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == DesiredResult);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 	// Test the MC bit types.
 	// MCA - The change bit is set when the input changes from open to closed (1-->0). The status bit is 0 when the contact is CLOSED.
@@ -895,16 +895,16 @@ TEST_CASE("Station - ScanRequest F0")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// Should now get different data!
-	DesiredResult = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                              "80080022" // Data 2A and 2B
-		                                              "400a00b6"
-		                                              "402882b8"
-		                                              "405a032c"
-		                                              "40780030"
-		                                              "55580013");
+	DesiredResult = "09355516" // Echoed block plus data 1B
+	                "80080022" // Data 2A and 2B
+	                "400a00b6"
+	                "402882b8"
+	                "405a032c"
+	                "40780030"
+	                "55580013";
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == DesiredResult);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 	CBOSPort->Disable();
 
@@ -1075,9 +1075,9 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	std::string DesiredResult = BuildBinaryStringFromASCIIHexString("493000a3");
+	std::string DesiredResult = "493000a3";
 
-	REQUIRE(Response == DesiredResult); // OK PendingCommand
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult); // OK PendingCommand
 
 	// Access the pending command in the OutStation, and check it is set to what we think it should be.
 	PendingCommandType pc = CBOSPort->GetPendingCommand(group);
@@ -1094,9 +1094,9 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("19300033");
+	DesiredResult = "19300033";
 
-	REQUIRE(Response == DesiredResult);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 	uint8_t res;
 	bool hasbeenset;
@@ -1115,9 +1115,9 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("2930009d");
+	DesiredResult = "2930009d";
 
-	REQUIRE(Response == DesiredResult); // OK PendingCommand
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult); // OK PendingCommand
 
 	PendingCommandType pc2 = CBOSPort->GetPendingCommand(group);
 	REQUIRE(pc2.Command == PendingCommandType::CommandType::Trip);
@@ -1133,9 +1133,9 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("19300033");
+	DesiredResult = "19300033";
 
-	REQUIRE(Response == DesiredResult); // OK PendingCommand
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult); // OK PendingCommand
 
 	CBOSPort->GetPointTable()->GetBinaryControlValueUsingODCIndex(ODCIndex, res, hasbeenset);
 	REQUIRE(res == 0);
@@ -1154,9 +1154,9 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("3935552d");
+	DesiredResult = "3935552d";
 
-	REQUIRE(Response == DesiredResult); // OK PendingCommand
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult); // OK PendingCommand
 
 	PendingCommandType pc3 = CBOSPort->GetPendingCommand(group);
 	REQUIRE(pc3.Command == PendingCommandType::CommandType::SetA);
@@ -1172,9 +1172,9 @@ TEST_CASE("Station - CONTROL Commands")
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	DesiredResult = BuildBinaryStringFromASCIIHexString("19300033");
+	DesiredResult = "19300033";
 
-	REQUIRE(Response == DesiredResult); // OK PendingCommand
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult); // OK PendingCommand
 
 	uint16_t res16 = 0;
 	ODCIndex = 1;
@@ -1234,8 +1234,8 @@ TEST_CASE("Master - Scan Request F0")
 	WaitIOS(IOS, 1);
 
 	// We check the command, but it does not go anywhere, we inject the expected response below.
-	const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("09300025");
-	REQUIRE(Response == DesiredResponse);
+	const std::string DesiredResult = "09300025";
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 	// We now inject the expected response to the command above.
 	asio::streambuf write_buffer;
@@ -1371,8 +1371,8 @@ TEST_CASE("Master - SOE Request F10")
 		WaitIOS(IOS, 2);
 
 		// Check that the command was formatted correctly.
-		const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("a9500005");
-		REQUIRE(MAResponse == DesiredResponse);
+		const std::string DesiredResult = "a9500005";
+		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == DesiredResult);
 
 		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
 
@@ -1679,8 +1679,8 @@ TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master an
 	WaitIOS(IOS, 1);
 
 	// We check the command, but it does not go anywhere, we would normally (in testing) inject the expected response below.
-	const std::string DesiredResponse = BuildBinaryStringFromASCIIHexString("09300025");
-	REQUIRE(Response == DesiredResponse);
+	const std::string DesiredResult = "09300025";
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 	// Instead of injecting the expected response, we don't send anything, which should result in a timeout.
 	// That timeout should then result in the point quality being set to COMMS_LOST??
