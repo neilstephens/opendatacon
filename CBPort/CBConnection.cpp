@@ -362,7 +362,7 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 			readbuf.consume(1);
 		}
 
-		auto CBblock = CBBlockData(d); // Supposed to be a 6 byte array..
+		auto CBblock = CBBlockData(d); // Supposed to be a 4 byte array..
 
 		if (CBblock.BCHPasses())
 		{

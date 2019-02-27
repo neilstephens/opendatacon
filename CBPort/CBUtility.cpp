@@ -125,17 +125,6 @@ bool iequals(const std::string& a, const std::string& b)
 		});
 }
 
-std::string CBMessageAsString(const CBMessage_t& CompleteCBMessage)
-{
-	std::string res = "";
-	// Output a human readable string containing the CB Data Blocks.
-	for (auto block : CompleteCBMessage)
-	{
-		res += block.ToString() + " ";
-	}
-	return res;
-}
-
 CBTime CBNow()
 {
 	// To get the time to pass through ODC events. CB Uses UTC time in commands - as you would expect.
@@ -181,4 +170,63 @@ int tz_offset()
 	int m = std::stoi(s[0] + s.substr(3), nullptr, 10);
 
 	return h * 60 + m;
+}
+// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
+// Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
+std::string BuildBinaryStringFromASCIIHexString(const std::string &as)
+{
+	assert(as.size() % 2 == 0); // Must be even length
+
+	// Create, we know how big it will be
+	auto res = std::string(as.size() / 2, 0);
+
+	// Take chars in chunks of 2 and convert to a hex equivalent
+	for (size_t i = 0; i < (as.size() / 2); i++)
+	{
+		auto hexpair = as.substr(i * 2, 2);
+		res[i] = static_cast<char>(std::stol(hexpair, nullptr, 16));
+	}
+	return res;
+}
+// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
+// Takes a binary string, and produces an ascii hex string in the format of "FF120D567200"g
+std::string BuildASCIIHexStringfromBinaryString(const std::string &bs)
+{
+	// Create, we know how big it will be
+	auto res = std::string(bs.size() * 2, 0);
+
+	constexpr char hexmap[] = { '0', '1', '2', '3', '4', '5', '6', '7','8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+	for (size_t i = 0; i < bs.size(); i++)
+	{
+		res[2 * i] = hexmap[(bs[i] & 0xF0) >> 4];
+		res[2 * i + 1] = hexmap[bs[i] & 0x0F];
+	}
+
+	return res;
+}
+std::string BuildASCIIHexStringfromCBMessage(const CBMessage_t & CBMessage)
+{
+	// Create, we know how big it will be
+	auto res = std::string(CBMessage.size() * 4, 0);
+
+	constexpr char hexmap[] = { '0', '1', '2', '3', '4', '5', '6', '7','8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+	for (size_t i = 0; i < CBMessage.size(); i++)
+	{
+		for (int j = 0; j < 4; j++)
+			res[4 * i + j] = hexmap[CBMessage[i].GetByte(j) & 0x0F];
+	}
+
+	return res;
+}
+std::string CBMessageAsString(const CBMessage_t& CompleteCBMessage)
+{
+	std::string res = "";
+	// Output a human readable string containing the CB Data Blocks.
+	for (auto block : CompleteCBMessage)
+	{
+		res += block.ToString() + " ";
+	}
+	return res;
 }

@@ -104,6 +104,8 @@ int GetSetBit(uint32_t data, int numberofbits);
 
 std::vector<std::string> split(const std::string& s, char delimiter);
 
+
+
 template <class T>
 std::string to_hexstring(T val)
 {
@@ -367,6 +369,15 @@ protected:
 
 typedef std::vector<CBBlockData> CBMessage_t;
 
+// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
+// Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
+std::string BuildBinaryStringFromASCIIHexString(const std::string &as);
+
+// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
+// Takes a binary string, and produces an ascii hex string in the format of "FF120D567200"
+std::string BuildASCIIHexStringfromBinaryString(const std::string &bs);
+
+std::string BuildASCIIHexStringfromCBMessage(const CBMessage_t & CBMessage);
 std::string CBMessageAsString(const CBMessage_t& CompleteCBMessage);
 
 // SOE Data Packet Definitions.

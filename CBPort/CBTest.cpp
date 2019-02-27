@@ -229,7 +229,10 @@ void WriteStartLoggingMessage(std::string TestName)
 	std::string msg = "Logging for '"+TestName+"' started..";
 
 	if (auto cblogger = odc::spdlog_get("CBPort"))
+	{
+		cblogger->info("------------------");
 		cblogger->info(msg);
+	}
 	else
 		std::cout << "Error CBPort Logger not operational";
 
@@ -267,40 +270,7 @@ void CommandLineLoggingCleanup()
 {
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
-// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
-// Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
-std::string BuildBinaryStringFromASCIIHexString(const std::string &as)
-{
-	assert(as.size() % 2 == 0); // Must be even length
 
-	// Create, we know how big it will be
-	auto res = std::string(as.size() / 2, 0);
-
-	// Take chars in chunks of 2 and convert to a hex equivalent
-	for (size_t i = 0; i < (as.size() / 2); i++)
-	{
-		auto hexpair = as.substr(i * 2, 2);
-		res[i] = static_cast<char>(std::stol(hexpair, nullptr, 16));
-	}
-	return res;
-}
-// A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
-// Takes a binary string, and produces an ascii hex string in the format of "FF120D567200"g
-std::string BuildASCIIHexStringfromBinaryString(const std::string &bs)
-{
-	// Create, we know how big it will be
-	auto res = std::string(bs.size() * 2, 0);
-
-	constexpr char hexmap[] = { '0', '1', '2', '3', '4', '5', '6', '7','8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-
-	for (size_t i = 0; i < bs.size(); i++)
-	{
-		res[2 * i] = hexmap[(bs[i] & 0xF0) >> 4];
-		res[2 * i + 1] = hexmap[bs[i] & 0x0F];
-	}
-
-	return res;
-}
 void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
 {
 	// We don\92t have to consider the timer going out of scope in this use case.
@@ -760,6 +730,8 @@ TEST_CASE("Station - ScanRequest F0")
 	STANDARD_TEST_SETUP();
 	TEST_CBOSPort(Json::nullValue);
 
+	START_IOS(2);
+
 	CBOSPort->Enable();
 
 	uint8_t station = 9;
@@ -782,6 +754,8 @@ TEST_CASE("Station - ScanRequest F0")
 	// Send the commasnd in as if came from TCP channel
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	WaitIOS(IOS, 1);
 
 	// Check the command is formatted correctly
 	std::string DesiredResult = "0937ffaa" // Echoed block plus data 1B
@@ -829,6 +803,8 @@ TEST_CASE("Station - ScanRequest F0")
 		SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0));
 	}
 
+	WaitIOS(IOS, 1);
+
 	// MCA,MCB,MCC Set to starting values
 	SendBinaryEvent(CBOSPort, 12, true);
 	SendBinaryEvent(CBOSPort, 13, false);
@@ -846,8 +822,8 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "55580013";
+	WaitIOS(IOS, 1);
 
-	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 	// Test the MC bit types.
@@ -881,6 +857,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "55580013";
+	WaitIOS(IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -902,6 +879,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "55580013";
+	WaitIOS(IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -963,7 +941,7 @@ TEST_CASE("Station - SOERequest F10")
 	SendBinaryEvent(CBOSPort, 0, true, QualityFlags::ONLINE, time++);
 	SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
 
-	WaitIOS(IOS, 1);
+	WaitIOS(IOS, 2);
 
 	// Check that the SOE Queue contains what we expect it to:
 	bool SOEdataavailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable(group);
@@ -974,7 +952,7 @@ TEST_CASE("Station - SOERequest F10")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	WaitIOS(IOS, 1);
+	WaitIOS(IOS, 2);
 
 	// Now we should get back the SOE queued events.
 	// No need to delay to process result, all done in the InjectCommand at call time.

@@ -136,20 +136,17 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
-		if (!JSONNode[n].isMember("Group"))
-		{
-			LOGERROR("Poll group missing Group : "+JSONNode[n].toStyledString() );
-			continue;
-		}
+		bool error = false;
+
 		if (!JSONNode[n].isMember("ID"))
 		{
 			LOGERROR("Poll group missing ID : " + JSONNode[n].toStyledString());
-			continue;
+			error = true;
 		}
 		if (!JSONNode[n].isMember("PollRate"))
 		{
 			LOGERROR("Poll group missing PollRate : "+ JSONNode[n].toStyledString());
-			continue;
+			error = true;
 		}
 
 		uint32_t PollID = JSONNode[n]["ID"].asUInt();
@@ -159,7 +156,7 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		if (PollGroups.count(PollID) > 0)
 		{
 			LOGERROR("Duplicate poll group ignored : "+ JSONNode[n].toStyledString());
-			continue;
+			error = true;
 		}
 
 		PollGroupType polltype = Scan; // Scan
@@ -168,17 +165,29 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		{
 			polltype = Scan;
 		}
-		if (iequals(JSONNode[n]["PollType"].asString(), "TimeSetCommand"))
+		else if (iequals(JSONNode[n]["PollType"].asString(), "TimeSetCommand"))
 		{
 			polltype = TimeSetCommand;
 		}
-		if (iequals(JSONNode[n]["PollType"].asString(), "SystemFlagScan"))
+		else if (iequals(JSONNode[n]["PollType"].asString(), "SystemFlagScan"))
 		{
 			polltype = SystemFlagScan;
 		}
-		if (iequals(JSONNode[n]["PollType"].asString(), "SOEScan"))
+		else if (iequals(JSONNode[n]["PollType"].asString(), "SOEScan"))
 		{
 			polltype = SOEScan;
+		}
+		else
+		{
+			LOGERROR("Poll scantype missing : " + JSONNode[n].toStyledString());
+			error = true;
+		}
+
+		if (!JSONNode[n].isMember("Group") && (polltype != TimeSetCommand) && (polltype != SystemFlagScan))
+		{
+			// Dont need a group for the time set command, or flag scan
+			LOGERROR("Poll group missing Group : " + JSONNode[n].toStyledString());
+			error = true;
 		}
 
 		bool ForceUnconditional = false;
@@ -187,9 +196,16 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 			ForceUnconditional = JSONNode[n]["ForceUnconditional"].asBool();
 		}
 
-		LOGDEBUG("Conf processed - PollID - {} Rate {} Type {} Group {} Force Unconditional PendingCommand {}",std::to_string(PollID), std::to_string(pollrate),std::to_string(polltype), std::to_string(group), std::to_string(ForceUnconditional));
+		if (!error)
+		{
+			LOGDEBUG("Conf processed - PollID - {} Rate {} Type {} Group {} Force Unconditional PendingCommand {}", std::to_string(PollID), std::to_string(pollrate), std::to_string(polltype), std::to_string(group), std::to_string(ForceUnconditional));
 
-		PollGroups[PollID] = CBPollGroup(PollID, pollrate, polltype, numeric_cast<uint8_t>(group), ForceUnconditional);
+			PollGroups[PollID] = CBPollGroup(PollID, pollrate, polltype, numeric_cast<uint8_t>(group), ForceUnconditional);
+		}
+		else
+		{
+			LOGDEBUG("Poll JSON entry missing information - ignoring this entry {}", JSONNode.toStyledString());
+		}
 	}
 	LOGDEBUG("Conf processing - PollGroups - Finished");
 }

@@ -605,7 +605,14 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 		uint32_t UsedBits = 0;
 		std::array<bool, MaxSOEBits> BitArray;
 
-		BuildPackedEventBitArray(Header.GetGroup(),BitArray, UsedBits);
+		BuildPackedEventBitArray(Header.GetGroup(), BitArray, UsedBits);
+
+		std::string ress = "";
+		for (auto bitt:BitArray)
+		{
+			ress += to_hexstring(bitt);
+		}
+		LOGDEBUG("Station F10 BitArray {}", ress);
 
 		// Using an vector of uint16_t to store up to 31 x 12 bit blocks of data.
 		// Store the data in the bottom 12 bits of the 16 bit word.
@@ -614,11 +621,21 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 
 		ConvertBitArrayToPayloadWords(UsedBits, BitArray, PayloadWords);
 
+		std::string res = "";
+		// Output a human readable string containing the CB Data Blocks.
+		for (auto block : PayloadWords)
+		{
+			res += to_hexstring(block) + " ";
+		}
+		LOGDEBUG("Station F10 Payload Words {}", res);
+
 		// We now have the payloads ready to load into Conitel packets.
 		ConvertPayloadWordsToCBMessage(Header, PayloadWords, ResponseCBMessage);
 	}
 	if (ResponseCBMessage.size() > 16)
 		LOGERROR("Too many packets in ResponseCBMessage in Outstation SOE Response - fatal error");
+
+	LOGDEBUG("Station F10 Response Packet {}", BuildASCIIHexStringfromCBMessage(ResponseCBMessage));
 
 	LastSentSOEMessage = ResponseCBMessage;
 	SendCBMessage(ResponseCBMessage);
@@ -712,6 +729,8 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 		{
 			// We can fit this data - proceed
 			uint64_t res = PackedEvent.GetFormattedData();
+
+			LOGDEBUG("---PackedEventData {}", to_hexstring(res));
 
 			for (uint8_t i = 0; i < numberofbits; i++) // 41 or 30 depending on TimeFormatBit
 			{
