@@ -6,6 +6,7 @@
 
 ## Table of contents
 
+* [Quickstart](#quickstart)
 * [Introduction](#introduction)
 * [Core features](#core-features)
 * [Building and Installing](#build-install)

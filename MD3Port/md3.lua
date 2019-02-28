@@ -16,16 +16,19 @@ functionnames = {[5] =  "Analog Unconditional",
 				[20] = "Input Point Control",
 				[21] = "Raise Lower Type Control",
 				[23] = "AOM Type Control",
+				[27] = "Change of State (COS) Report",
 				[30] = "Control or Scan Request Rejected",
 				[31] = "Counter Scan",
-				[35] = "*Floating Point Unconditional",
-				[36] = "*Floating Point Delta",
-				[37] = "*Floating Point No Change",
+				[35] = "Floating Point Unconditional",
+				[36] = "Floating Point Delta",
+				[37] = "Floating Point No Change",
+				[38] = "Floating Point O/P Command",
+				[39] = "Floating Point COS / Time-tagged Scan",
 				[40] = "System SIGNON Control",
 				[41] = "System SIGNOFF Control", 
 				[42] = "System RESRART Control", 
 				[43] = "System SET DATE AND TIME Control",
-				[44] = "*TimeZone Offset",
+				[44] = "System SET DATE AND TIME Control w TimeZone Offset",
 				[50] = "file download",
 				[51] = "file upload",
 				[52] = "System Flag Scan",
@@ -57,7 +60,8 @@ local f = md3_proto.fields
 -- Need to use ProtoFields for the Station, MtoS, Function and Data so that we can then display them as columns, which then means we can export to excel.
 f.md3function = ProtoField.uint8 ("md3.function",  "Function", base.DEC) 
 f.station  = ProtoField.uint8 ("md3.station",  "Station", base.HEX) 
-f.mtos = ProtoField.bool ("md3.mtos", "MasterCommand") 
+f.mtos = ProtoField.bool ("md3.mtos", "MasterCommand")
+f.module = ProtoField.uint8 ("md3.module",  "Module Addr", base.HEX) 
 f.taggedcount = ProtoField.uint8 ("md3.taggedcount",  "TaggedCount", base.HEX) 
 f.data = ProtoField.bytes  ("md3.data", "Data")
 
@@ -88,6 +92,10 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	debug("Exited md3 dissector - not mod 6");
 		return 0	-- Not an MD3 Packet, must be *6
 	end
+	
+	if (buffer(4,1):bitfield(0,1) ~= 0) then
+		return 0 --not the first block (format blk) of an MD3 message: probably TCP framing issue
+	end
 	if (buffer(5,1):uint() ~= 0) then
 		return 0	-- Not an MD3 Packet, padding byte must be zero
 	end
@@ -99,9 +107,9 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	end
 		
 	-- Check the CRC of the 1st block only
-	--if (CheckMD3CRC(buffer(0,1):uint(),buffer(1,1):uint(),buffer(2,1):uint(),buffer(3,1):uint(),buffer(4,1):uint()) == false) then	
-	--	return 0	-- Checksum failed...
-	--end
+	if (CheckMD3CRC(buffer(0,1):uint(),buffer(1,1):uint(),buffer(2,1):uint(),buffer(3,1):uint(),buffer(4,1):uint()) == false) then	
+		return 0	-- Checksum failed...
+	end
 	
 	if ( functionname == nil) then
 		functionname = "Unknown MD3 Function"	-- Not an MD3 Packet
@@ -128,6 +136,8 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	
 	subtree:add(f.mtos, ismaster)
 	
+	subtree:add(f.module, buffer(2,1):uint())
+	
 	-- This only applies to Fn 11 digital COS, but I need it for Excel analysis. Coment out if not using.
 	--subtree:add(f.taggedcount, buffer(2,1):bitfield(0,4))
 	
@@ -139,25 +149,43 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	local block = 0
 	for i = 0,pktlen-1,6 
 	do
+		local fmt_bit = " - "
+		if (buffer(i+4,1):bitfield(0,1) == 0) then
+			fmt_bit = fmt_bit.."FMT"
+		end
+		if (buffer(i+4,1):bitfield(1,1) == 1) then
+			fmt_bit = fmt_bit.."|EOM"
+		end
 		local crc_check = " - CRC PASS"
 		if (CheckMD3CRC(buffer(i,1):uint(),buffer(i+1,1):uint(),buffer(i+2,1):uint(),buffer(i+3,1):uint(),buffer(i+4,1):uint()) == false) then	
 			crc_check = " - CRC FAIL"	-- Checksum failed...
 		end
-		datatree:add("Block(" .. block .. ")", buffer:bytes(i,6):tohex(false,' ')..crc_check)
+		datatree:add("Block(" .. block .. ")", buffer:bytes(i,6):tohex(false,' ')..fmt_bit..crc_check)
 		block = block+1 
 	end
 	
 	-- If not our protocol, we should return 0. If it is ours, return nothing.
+	--mark the conversation as md3 - this is just for when we're called as a heuristic
+	pinfo.conversation = md3_proto
 end
+
+--register as a heuristic dissector
+--TODO: move the heuristics out of the dissection function, into a separate one
+md3_proto:register_heuristic("tcp",md3_proto.dissector)
+
+-- OR register for specific ports:
+
 -- load the tcp.port table
-local tcp_table = DissectorTable.get("tcp.port")
+--local tcp_table = DissectorTable.get("tcp.port")
 -- register our protocol to handle tcp port 5001
 -- Add the other ports we use...
-tcp_table:add(5001,md3_proto)
-tcp_table:add(5002,md3_proto)
-tcp_table:add(5003,md3_proto)
-tcp_table:add(5004,md3_proto)
-tcp_table:add(5005,md3_proto)
-tcp_table:add(5006,md3_proto)
-tcp_table:add(5007,md3_proto)
-tcp_table:add(5008,md3_proto)
+--tcp_table:add(5001,md3_proto)
+--tcp_table:add(5002,md3_proto)
+--tcp_table:add(5003,md3_proto)
+--tcp_table:add(5004,md3_proto)
+--tcp_table:add(5005,md3_proto)
+--tcp_table:add(5006,md3_proto)
+--tcp_table:add(5007,md3_proto)
+--tcp_table:add(5008,md3_proto)
+--tcp_table:add(5009,md3_proto)
+--tcp_table:add(5010,md3_proto)
