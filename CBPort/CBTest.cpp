@@ -453,7 +453,7 @@ TEST_CASE("Util - CBIndexTest")
 
 	group = 15;
 	channel = 12;
-	payloadlocation= PayloadLocationType(16, PayloadABType::PositionB);
+	payloadlocation = PayloadLocationType(16, PayloadABType::PositionB);
 	CBIndex = CBPointTableAccess::GetCBPointMapIndex(group, channel, payloadlocation);
 	REQUIRE(CBIndex == 0xFCF1);
 	STANDARD_TEST_TEARDOWN();
@@ -512,7 +512,7 @@ TEST_CASE("Util - SOEEventFormat")
 
 	uint32_t newstartbit = 0;
 	bool Success = false;
-	SOEEventFormat SOE(BitArray, 0, 64,newstartbit,0, Success); // Build a new SOE record from the BitArray
+	SOEEventFormat SOE(BitArray, 0, 64, newstartbit, 0, Success); // Build a new SOE record from the BitArray
 
 	REQUIRE(newstartbit == 41);
 	REQUIRE(SOE.GetResultBitLength() == 41); // Should be long...
@@ -538,11 +538,11 @@ TEST_CASE("Util - SOEEventFormat")
 
 	// Now test our BitArray handling.
 	std::array<bool, MaxSOEBits> BitArray2;
-	for (int i = 0;  i < 64; i++)
+	for (int i = 0; i < 64; i++)
 		BitArray2[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
 	newstartbit = 0;
-	SOEEventFormat SOE2(BitArray2, 0, 64, newstartbit,0, Success); // Build a new SOE record from the BitArray
+	SOEEventFormat SOE2(BitArray2, 0, 64, newstartbit, 0, Success); // Build a new SOE record from the BitArray
 
 	REQUIRE(newstartbit == 30);
 	REQUIRE(SOE2.GetResultBitLength() == 41); // Always long
@@ -557,6 +557,7 @@ TEST_CASE("Util - SOEEventFormat")
 	REQUIRE(Success);
 	STANDARD_TEST_TEARDOWN();
 }
+
 
 #ifdef _MSC_VER
 #pragma region Block Tests
@@ -956,7 +957,7 @@ TEST_CASE("Station - SOERequest F10")
 
 	// Now we should get back the SOE queued events.
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
 
 
 	// Now send the SOE resend command and make sure we get the same result.
@@ -969,7 +970,7 @@ TEST_CASE("Station - SOERequest F10")
 	WaitIOS(IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
 
 	// Check if the lastmessagebit is set, if so request the remaining events - we happen to know it it is, so ask for them.
 	commandblock = CBBlockData(station, group, FUNC_SEND_NEW_SOE, 0, true);
@@ -982,7 +983,7 @@ TEST_CASE("Station - SOERequest F10")
 
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c9a653080020004e023c000ffe35");
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c9a653080020004e023c0008c005");
 
 	CBOSPort->Disable();
 
@@ -1352,7 +1353,7 @@ TEST_CASE("Master - SOE Request F10")
 		const std::string DesiredResult = "a9500005";
 		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == DesiredResult);
 
-		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460086633");
+		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
 
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput

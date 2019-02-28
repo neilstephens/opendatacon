@@ -674,7 +674,7 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 		uint16_t payload = 0;
 		for (int i = 0; i < 12; i++)
 		{
-			payload |= ShiftLeftResult16Bits(BitArray[block * 12 + i], 11 - i);
+			payload |= ShiftLeftResult16Bits(BitArray[block * 12 + i] ? 1 : 0, 11 - i);
 		}
 		PayloadWords.push_back(payload);
 	}
@@ -720,22 +720,9 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 
 		PackedEvent.LastEventFlag = false; // Might be changed on the loop exit, if there is nothing left in the SOE queue.
 
-		// Now stuff the bits (41 or 30) into our bit array.
-
-		uint8_t numberofbits = PackedEvent.GetResultBitLength();
-
-		// Do we have room in the bit vector to add the data?
-		if (UsedBits + numberofbits < MaxSOEBits)
+		// Now stuff the bits (41 or 30) into our bit array, at the end of the current data.
+		if (PackedEvent.AddDataToBitArray(BitArray,UsedBits))
 		{
-			// We can fit this data - proceed
-			uint64_t res = PackedEvent.GetFormattedData();
-
-			LOGDEBUG("---PackedEventData {}", to_hexstring(res));
-
-			for (uint8_t i = 0; i < numberofbits; i++) // 41 or 30 depending on TimeFormatBit
-			{
-				BitArray[UsedBits++] = TestBit(res, 63 - i);
-			}
 			// Pop the event so we can move onto the next one
 			MyPointConf->PointTable.PopNextTaggedEventPoint(SOEGroup);
 		}
@@ -745,6 +732,10 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 			break; // Exit the while loop.
 		}
 	}
+
+	// We must zero any remaining bits in the array. The payload packing later makes an assumption about this!
+	for (int i = UsedBits; i < MaxSOEBits; i++)
+		BitArray[i] = false;
 }
 // We do not update the time, just send back our current time - assume UTC time of day in milliseconds since 1970 (CBTime()).
 void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage)

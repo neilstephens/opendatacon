@@ -386,7 +386,7 @@ const uint8_t SOEShortBitLength = 33;
 
 inline bool TestBit(const uint64_t &data, const uint8_t bitindex)
 {
-	uint64_t testbit = numeric_cast<uint64_t>(1) << bitindex;
+	uint64_t testbit = uint64_t(1) << bitindex;
 	return ((data & testbit) == testbit);
 }
 
@@ -463,6 +463,7 @@ public:
 			LOGERROR("SOEEventFormat constructor failed, probably array index exceeded. {}", e.what());
 		}
 	}
+
 	uint8_t Group = 0;  // 3 bits - 0 - 7
 	uint8_t Number = 0; // 7 bits - 0 - 120
 	bool ValueBit = false;
@@ -571,6 +572,24 @@ public:
 		{
 			return 30;
 		}
+	}
+	bool AddDataToBitArray(std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits)
+	{
+		uint8_t numberofbits = GetResultBitLength();
+
+		// Do we have room in the bit vector to add the data?
+		if (UsedBits + numberofbits >= MaxSOEBits)
+			return false;
+
+		// We can fit this data - proceed
+		uint64_t bitdata = GetFormattedData();
+		LOGDEBUG("---PackedEventData {}", to_hexstring(bitdata));
+
+		for (uint8_t i = 0; i < numberofbits; i++) // 41 or 30 depending on TimeFormatBit
+		{
+			BitArray[UsedBits++] = TestBit(bitdata, 63 - i);
+		}
+		return true;
 	}
 };
 
