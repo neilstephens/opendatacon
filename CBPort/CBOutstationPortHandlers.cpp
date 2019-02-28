@@ -607,13 +607,6 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 
 		BuildPackedEventBitArray(Header.GetGroup(), BitArray, UsedBits);
 
-		std::string ress = "";
-		for (auto bitt:BitArray)
-		{
-			ress += to_hexstring(bitt);
-		}
-		LOGDEBUG("Station F10 BitArray {}", ress);
-
 		// Using an vector of uint16_t to store up to 31 x 12 bit blocks of data.
 		// Store the data in the bottom 12 bits of the 16 bit word.
 		std::vector<uint16_t> PayloadWords;
@@ -621,21 +614,13 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 
 		ConvertBitArrayToPayloadWords(UsedBits, BitArray, PayloadWords);
 
-		std::string res = "";
-		// Output a human readable string containing the CB Data Blocks.
-		for (auto block : PayloadWords)
-		{
-			res += to_hexstring(block) + " ";
-		}
-		LOGDEBUG("Station F10 Payload Words {}", res);
-
 		// We now have the payloads ready to load into Conitel packets.
 		ConvertPayloadWordsToCBMessage(Header, PayloadWords, ResponseCBMessage);
 	}
 	if (ResponseCBMessage.size() > 16)
 		LOGERROR("Too many packets in ResponseCBMessage in Outstation SOE Response - fatal error");
 
-	LOGDEBUG("Station F10 Response Packet {}", BuildASCIIHexStringfromCBMessage(ResponseCBMessage));
+	//LOGDEBUG("Station F10 Response Packet {}", BuildASCIIHexStringfromCBMessage(ResponseCBMessage));
 
 	LastSentSOEMessage = ResponseCBMessage;
 	SendCBMessage(ResponseCBMessage);
@@ -657,7 +642,7 @@ void CBOutstationPort::ConvertPayloadWordsToCBMessage(CBBlockData & Header, std:
 		uint16_t APayload = PayloadWords[block++];
 		uint16_t BPayload = 0;
 
-		if (block != PayloadWords.size()) // Might need a zero filled padding block...
+		if (block < PayloadWords.size()) // Only Set B Block value if it exists
 			BPayload = PayloadWords[block++];
 
 		CBBlockData Block(APayload, BPayload);
@@ -669,12 +654,23 @@ void CBOutstationPort::ConvertPayloadWordsToCBMessage(CBBlockData & Header, std:
 void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, std::array<bool, MaxSOEBits> &BitArray, std::vector<uint16_t> &PayloadWords)
 {
 	uint8_t BlockCount = UsedBits / 12 + ((UsedBits % 12 == 0) ? 0 : 1);
+	if (BlockCount > 31)
+	{
+		LOGERROR("ConvertBitArrayToPayloadWords - blockcount exceeded 31!! {}", BlockCount);
+		BlockCount = 31;
+	}
 	for (int block = 0; block < BlockCount; block++)
 	{
 		uint16_t payload = 0;
 		for (int i = 0; i < 12; i++)
 		{
-			payload |= ShiftLeftResult16Bits(BitArray[block * 12 + i] ? 1 : 0, 11 - i);
+			int bitindex = block * 12 + i;
+			if (bitindex >= MaxSOEBits)
+			{
+				LOGERROR("ConvertBitArrayToPayloadWords - bit index exceeded {}!! {}", MaxSOEBits, bitindex);
+				break; // Dont do any more bits!
+			}
+			payload |= ShiftLeftResult16Bits(BitArray[bitindex] ? 1 : 0, 11 - i);
 		}
 		PayloadWords.push_back(payload);
 	}
@@ -695,12 +691,15 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 	while (true)
 	{
 		// There must be at least one SOE available to get to here.
-		//TODO: Check - we might have to maintain more than one tagged event queue - may need one per group!
+
 		if (!MyPointConf->PointTable.PeekNextTaggedEventPoint(SOEGroup,CurrentPoint)) // Don't pop until we are happy...
 		{
 			// We have run out of data, so break out of the loop, but first we need to set the last event flag in the previous packet--this is the last bit in the vector
 			// SET LAST EVENT FLAG
-			BitArray[UsedBits - 1] = true; // This index is safe as to get to here there must have been at least one SOE processed.
+			if (UsedBits <= MaxSOEBits)
+				BitArray[UsedBits - 1] = true; // This index is safe as to get to here there must have been at least one SOE processed.
+			else
+				LOGERROR("BuildPackedEventBitArray UsedBits Exceeded MaxSOEBits");
 			break;
 		}
 
