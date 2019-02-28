@@ -887,6 +887,7 @@ TEST_CASE("Station - ScanRequest F0")
 
 	CBOSPort->Disable();
 
+	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
 }
 
