@@ -115,6 +115,7 @@ uint8_t CBBCH(const uint32_t data)
 	return numeric_cast<uint8_t>(bch & 0x0ff);
 }
 
+// Case insensitive equals
 bool iequals(const std::string& a, const std::string& b)
 {
 	return std::equal(a.begin(), a.end(),
@@ -134,14 +135,14 @@ CBTime CBNow()
 // Create an ASCII string version of the time from the CB time - which is msec since epoch.
 std::string to_timestringfromCBtime(CBTime _time)
 {
-	time_t tp = _time/1000; // time_t is normally seconds since epoch. We deal in msec!
+	time_t tp = _time / 1000; // time_t is normally seconds since epoch. We deal in msec!
 
 	std::tm* t = std::localtime(&tp);
 	if (t != nullptr)
 	{
-		std::ostringstream oss;
-		oss << std::put_time(t, "%c %z"); // Local time format, with offset from UTC
-		return oss.str();
+		char timestr[100];
+		std::strftime(timestr, 100, "%c %z", t); // Local time format, with offset from UTC
+		return std::string(timestr);
 	}
 	return "Time Conversion Problem";
 }
@@ -163,9 +164,9 @@ int tz_offset()
 {
 	time_t when = std::time(nullptr);
 	auto const tm = *std::localtime(&when);
-	std::ostringstream os;
-	os << std::put_time(&tm, "%z");
-	std::string s = os.str();
+	char tzoffstr[6];
+	std::strftime(tzoffstr, 6, "%z", &tm);
+	std::string s(tzoffstr);
 	int h = std::stoi(s.substr(0, 3), nullptr, 10);
 	int m = std::stoi(s[0] + s.substr(3), nullptr, 10);
 

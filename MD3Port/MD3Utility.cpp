@@ -93,6 +93,7 @@ uint8_t MD3CRC(const uint32_t data)
 	return CRCChar;
 }
 
+// Case insensitive equals
 bool iequals(const std::string& a, const std::string& b)
 {
 	return std::equal(a.begin(), a.end(),
