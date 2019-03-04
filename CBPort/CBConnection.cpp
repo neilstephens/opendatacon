@@ -344,27 +344,28 @@ void CBConnection::InjectSimulatedTCPMessage(const ConnectionTokenType &Connecti
 	}
 }
 
-// We need one read completion handler hooked to each address/port combination. This method is re-entrant,
+// We need one read completion handler hooked to each address/port combination.
 // We do some basic CB block identification and processing, enough to give us complete blocks and StationAddresses
+// The TCPSocketManager class ensures that this callback is not called again with more data until it is complete.
+// Does not make sense for it to do anything else on a TCP stream which must (should) be sequentially processed.
 void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 {
-	// We are currently assuming a whole complete packet will turn up in one unit. If not it will be difficult to do the packet decoding and multi-drop routing.
-	// CB only has addressing information in the first block of the packet.
-	// We should have a multiple of 6 bytes. 5 data bytes and one padding byte for every CB block, then possibly multiple blocks
+	// We need to treat the TCP data as a stream, just like a serial stream. The first block (4 bytes) is probably the start block, but we cannot assume this.
+	// Also we could get more than one message in a TCP block so need to handle this correctly.
+	// We will build a CBMessage until we get the end condition. If we get a new start block, we will have to dump anything in the CBMessage and start again.
+
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
 
-	while (readbuf.size() >= CBBlockArraySize)
+	static CBBlockData CBblock; // This remains across multiple calls to this method. Starts empty.
+
+	while (readbuf.size() > 0)
 	{
-		CBBlockArray d;
-		for (size_t i = 0; i < CBBlockArraySize; i++)
-		{
-			d[i] = static_cast<uint8_t>(readbuf.sgetc());
-			readbuf.consume(1);
-		}
+		// Add another byte to our 4 byte block.
 
-		auto CBblock = CBBlockData(d); // Supposed to be a 4 byte array..
+		CBblock.AddByteToBlock(static_cast<uint8_t>(readbuf.sgetc()));
+		readbuf.consume(1);
 
-		if (CBblock.BCHPasses())
+		if (CBblock.IsValidBlock()) // Check checksum and B bit.
 		{
 			if (CBblock.IsAddressBlock())
 			{
@@ -378,7 +379,7 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 				// We know we are looking for the first block if CBMessage is empty.
 				if (CBMessage.size() != 0)
 				{
-					LOGDEBUG("Received a start block when we have not got to an end block - discarding data blocks - {}", std::to_string(CBMessage.size()));
+					LOGDEBUG("Received a start block {} when we have not got to an end block - discarding data blocks - {} and storing this start block", CBblock.ToString(), std::to_string(CBMessage.size()));
 					CBMessage.clear();
 				}
 				CBMessage.push_back(CBblock); // Takes a copy of the block
@@ -405,19 +406,14 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 				RouteCBMessage(CBMessage);
 				CBMessage.clear(); // Empty message block queue
 			}
+
+			// We have got a valid block, so empty the collection block so we can get the next one.
+			CBblock.Clear();
 		}
 		else
 		{
-			LOGERROR("Checksum failure on received CB block - " + CBblock.ToString());
+			// The block was not valid, we will push another byte in (and one out) and try again (think shifting 4 byte window)
 		}
-	}
-
-	// Check for and consume any not 6 byte block data - should never happen...
-	if (readbuf.size() > 0)
-	{
-		size_t bytesleft = readbuf.size();
-		LOGDEBUG("Had data left over after reading blocks - {} bytes", std::to_string(bytesleft) );
-		readbuf.consume(readbuf.size());
 	}
 }
 void CBConnection::RouteCBMessage(CBMessage_t &CompleteCBMessage)

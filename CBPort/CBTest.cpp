@@ -701,6 +701,68 @@ TEST_CASE("CBBlock - ClassConstructor5")
 	REQUIRE(b.CheckBBitIsZero());
 	STANDARD_TEST_TEARDOWN();
 }
+TEST_CASE("CBBlock - BlockBuilding")
+{
+	SIMPLE_TEST_SETUP();
+
+	CBBlockData b;
+
+	// From a packet capture - this is the address packet
+	// Test the block building code.
+	b.AddByteToBlock(0x09);
+	b.AddByteToBlock(0x20);
+	b.AddByteToBlock(0x00);
+	b.AddByteToBlock(0x28);
+
+	REQUIRE(b.GetStationAddress() == 9);
+	REQUIRE(b.GetGroup() == 2);
+	REQUIRE(b.GetFunctionCode() == 0);
+	REQUIRE(b.GetB() == 0);
+	REQUIRE(b.IsEndOfMessageBlock() == false);
+	REQUIRE(b.IsAddressBlock());
+	REQUIRE(b.IsValidBlock());
+
+	// Now add some more bytes, check that they block is invalid until we should have a valid block again...
+	b.AddByteToBlock(0x09);
+	REQUIRE(!b.IsValidBlock());
+
+	b.AddByteToBlock(0x09);
+	REQUIRE(!b.IsValidBlock());
+
+	b.AddByteToBlock(0x20);
+	REQUIRE(!b.IsValidBlock());
+
+	b.AddByteToBlock(0x00);
+	REQUIRE(!b.IsValidBlock());
+
+	b.AddByteToBlock(0x28);
+
+	REQUIRE(b.GetStationAddress() == 9);
+	REQUIRE(b.GetGroup() == 2);
+	REQUIRE(b.GetFunctionCode() == 0);
+	REQUIRE(b.GetB() == 0);
+	REQUIRE(b.IsEndOfMessageBlock() == false);
+	REQUIRE(b.IsAddressBlock());
+	REQUIRE(b.IsValidBlock());
+
+	b.Clear();
+	b.AddByteToBlock(0x09);
+	b.AddByteToBlock(0x20);
+	b.AddByteToBlock(0x00);
+	b.AddByteToBlock(0x28);
+
+	REQUIRE(b.GetStationAddress() == 9);
+	REQUIRE(b.GetGroup() == 2);
+	REQUIRE(b.GetFunctionCode() == 0);
+	REQUIRE(b.GetB() == 0);
+	REQUIRE(b.IsEndOfMessageBlock() == false);
+	REQUIRE(b.IsAddressBlock());
+	REQUIRE(b.IsValidBlock());
+
+
+	STANDARD_TEST_TEARDOWN();
+}
+
 
 #ifdef _MSC_VER
 #pragma endregion Block Tests
@@ -1354,7 +1416,10 @@ TEST_CASE("Master - SOE Request F10")
 		const std::string DesiredResult = "a9500005";
 		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == DesiredResult);
 
-		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
+		// Add some junk to the front to test the TCP Framing code. Then send an almost complete message (which will be dumped), then send the actual message.
+		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("024670")+
+		                              BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a0200089884")+
+		                              BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
 
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput

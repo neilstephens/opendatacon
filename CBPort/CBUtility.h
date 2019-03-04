@@ -159,12 +159,14 @@ class CBBlockData
 public:
 	enum blocktype {AddressBlock, DataBlock};
 
+	// Empty/Zero constructor
 	CBBlockData() {}
 
 	// We have received 4 bytes (a block on a stream now we need to decode it) it may not be valid!
 	explicit CBBlockData(const CBBlockArray _data)
 	{
 		data = CombineDataBytes(_data[0],_data[1],_data[2],_data[3]);
+		builddataindex = 4;
 	}
 	explicit CBBlockData(const std::string &hexdata)
 	{
@@ -180,10 +182,12 @@ public:
 			}
 
 			data = CombineDataBytes(res[0],res[1],res[2],res[3]);
+			builddataindex = 4;
 		}
 		else if (hexdata.size() == 4)
 		{
 			data = CombineDataBytes(hexdata[0],hexdata[1],hexdata[2],hexdata[3]);
+			builddataindex = 4;
 		}
 		else
 		{
@@ -196,14 +200,17 @@ public:
 	explicit CBBlockData(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
 	{
 		data = CombineDataBytes(b1, b2, b3, b4);
+		builddataindex = 4;
 	}
 	explicit CBBlockData(const char c1, const char c2, const char c3, const char c4)
 	{
 		data = CombineDataBytes(c1, c2, c3, c4);
+		builddataindex = 4;
 	}
 	explicit CBBlockData(const uint32_t _data)
 	{
 		data = _data;
+		builddataindex = 4;
 	}
 	// Most used constructor
 	explicit CBBlockData(const uint16_t AData, const uint16_t BData, bool lastblock = false)
@@ -217,6 +224,7 @@ public:
 		// BBit is always zero...
 		if (lastblock) MarkAsEndOfMessageBlock();
 		SetBCH();
+		builddataindex = 4;
 	}
 	// Address block constructor
 	explicit CBBlockData(const uint8_t StationAddress, const uint8_t Group, const uint8_t FunctionCode, const uint16_t BData, bool lastblock = false)
@@ -230,6 +238,7 @@ public:
 		// BBit is always zero...
 		if (lastblock) MarkAsEndOfMessageBlock();
 		SetBCH();
+		builddataindex = 4;
 	}
 
 	void DoBakerConitelSwap()
@@ -337,6 +346,33 @@ public:
 		return oss.str();
 	}
 
+	// Used to build a 4 byte block from the TCP stream so we can test if it is a valid CB Block. If the block is already full, push out one byte to make room for a new one.
+	void AddByteToBlock(uint8_t b)
+	{
+		if (builddataindex < 4)
+		{
+			// We do not have a full block yet, so add
+			int shiftcount = 8 * (3 - builddataindex++);
+			data |= ShiftLeftResult32Bits(b,shiftcount);
+		}
+		else
+		{
+			// We have a full block, so push out one byte then add the new one.
+			data = ShiftLeftResult32Bits(data, 8);
+			data |= ShiftLeftResult32Bits(b, 0); // No shift but convert to 32 bit.
+		}
+	}
+	bool IsValidBlock()
+	{
+		// Test everything we can to verify this is a CB block of data.
+		return CheckBBitIsZero() && BCHPasses() && (builddataindex == 4);
+	}
+	void Clear()
+	{
+		data = 0;
+		builddataindex = 0;
+	}
+
 protected:
 	uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
 	{
@@ -365,6 +401,7 @@ protected:
 	}
 
 	uint32_t data = 0;
+	uint32_t builddataindex = 0; // Used in TCP framingblock building only.
 };
 
 typedef std::vector<CBBlockData> CBMessage_t;
