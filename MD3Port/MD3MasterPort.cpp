@@ -813,8 +813,8 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 	LOGDEBUG("Digital Scan (new) processing EventCnt : "+std::to_string(EventCnt)+" ModuleCnt : "+std::to_string(ModuleCount)+" Sequence Number : " + std::to_string(SeqNum));
 	LOGDEBUG("Digital Scan Data " + MD3MessageAsString(CompleteMD3Message));
 
-	//TODO: We may have to reorder the processing of the "now" module data, and the time tagged data, so that the ODC events go through in chronological order,
-	//TODO: Run a test on MOSAIC to see what it does with out of order binary events...
+	// COS means that we could send out of order ODC Binary events. We dont need to worry about this.
+	// The outstation will not process an event that is "older" than the last event it received. (It will store it in the COS queue.
 
 	// Now take the returned values and store them into the points
 	// Process any module data (if any)

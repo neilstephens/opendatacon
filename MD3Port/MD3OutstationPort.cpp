@@ -187,7 +187,6 @@ CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool 
 
 // We received a change in data from an Event (from the opendatacon Connector) now store it so that it can be produced when the Scada master polls us
 // for a group or individually on our TCP connection.
-// What we return here is not used in anyway that I can see.
 void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
@@ -226,6 +225,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		case EventType::Binary:
 		{
 			// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
+			// If an event for a point comes in that is older than the last event, we put it into the COS queue, but dont change the actual current value.
 			MD3Time now = MD3Now(); // msec since epoch.
 			MD3Time eventtime = event->GetTimestamp();
 			uint8_t meas = event->GetPayload<EventType::Binary>();

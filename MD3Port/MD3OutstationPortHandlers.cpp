@@ -40,30 +40,6 @@
 #include "MD3OutstationPort.h"
 
 
-/*func, count, name Analysis of traffic results
-
-11 , 138125            Digital COS Time Tagged - Done
-12 , 45678              Digital Unconditional - Done
-13 , 3710363          Analog No Change Reply - Done
-14 , 32040              Digital No Change Reply - Done
-15 , 20165              Control Request OK - Done
-16 , 2                       Freeze And Reset - Done
-17 , 53                    POM Type Control - Done
-19 , 2                      DOM Type Control - Done - Cant find example in the data
-21 , 1                      Raise Lower Type Control - This is reserved for future use...
-23 , 1                       AOM Type Control - No valid example.. yet
-30 , 135                  Control or Scan Request Rejected - Done
-31 , 1                      Counter Scan - Done - checksum passes
-40 , 1                       System SIGNON Control  - Done - but failed checksum so probably not used
-43 , 23274              System SET DATE AND TIME Control - Done
-5 , 380836              Analog Unconditional - Done
-52 , 6120                System Flag Scan - Done
-6 , 7041839            Analog Delta Scan - Done
-7 , 14                      Obsolete Digital Unconditional - Done
-8 , 1                         Digital Delta Scan - Done
-9 , 10                       HRER List Scan - Done
-*/
-
 // The list of codes in use
 /*
 ANALOG_UNCONDITIONAL = 5,	// HAS MODULE INFORMATION ATTACHED
@@ -724,7 +700,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	//
 	// If we get another scan message (and nothing else changes) we will send the next block of changes and so on.
 
-	LOGDEBUG("OS - DoDigitalScan - Fn11");
+	LOGDEBUG("OS - DoDigitalScan - Fn11 includes COS");
 
 	MD3Message_t ResponseMD3Message;
 

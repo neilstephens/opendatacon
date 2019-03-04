@@ -408,7 +408,12 @@ bool MD3PointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const 
 	ODCBinaryPointMapIterType ODCPointMapIter = BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryODCPointMap.end())
 	{
-		ODCPointMapIter->second->SetBinary(meas, eventtime);
+		// Check that the data we want to set is actually newer than (or equal to) the current point information. i.e. dont go backwards!
+		// This is so COS Data does not mess up the current value, which would probably be newer than the COS data.
+		if (eventtime > ODCPointMapIter->second->GetChangedTime())
+		{
+			ODCPointMapIter->second->SetBinary(meas, eventtime);
+		}
 
 		// We now need to add the change to the separate digital/binary event list
 		if (IsOutstation)
