@@ -324,18 +324,16 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 	// We should have a multiple of 6 bytes. 5 data bytes and one padding byte for every MD3 block, then possibly multiple blocks
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
 
-	while (readbuf.size() >= MD3BlockArraySize)
+	static MD3BlockData md3block; // This remains across multiple calls to this method. Starts empty.
+
+	while (readbuf.size() > 0)
 	{
-		MD3BlockArray d;
-		for (size_t i = 0; i < MD3BlockArraySize; i++)
-		{
-			d[i] = static_cast<uint8_t>(readbuf.sgetc());
-			readbuf.consume(1);
-		}
+		// Add another byte to our 4 byte block.
 
-		auto md3block = MD3BlockData(d); // Supposed to be a 6 byte array..
+		md3block.AddByteToBlock(static_cast<uint8_t>(readbuf.sgetc()));
+		readbuf.consume(1);
 
-		if (md3block.CheckSumPasses())
+		if (md3block.IsValidBlock()) // Check checksum padding byte and number of chars we have stuffed into the block
 		{
 			if (md3block.IsFormattedBlock())
 			{
@@ -365,19 +363,14 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 				RouteMD3Message(MD3Message);
 				MD3Message.clear(); // Empty message block queue
 			}
+
+			// We have got a valid block, so empty the collection block so we can get the next one.
+			md3block.Clear();
 		}
 		else
 		{
-			LOGERROR("Checksum failure on received MD3 block - " + md3block.ToString());
+			// The block was not valid, we will push another byte in (and one out) and try again (think shifting 4 byte window)
 		}
-	}
-
-	// Check for and consume any not 6 byte block data - should never happen...
-	if (readbuf.size() > 0)
-	{
-		size_t bytesleft = readbuf.size();
-		LOGDEBUG("Had data left over after reading blocks - " + std::to_string(bytesleft) + " bytes");
-		readbuf.consume(readbuf.size());
 	}
 }
 void MD3Connection::RouteMD3Message(MD3Message_t &CompleteMD3Message)

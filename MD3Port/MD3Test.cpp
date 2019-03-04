@@ -715,6 +715,68 @@ TEST_CASE("MD3Block - ClassConstructor5")
 	REQUIRE(!b.IsFormattedBlock());
 	REQUIRE(b.CheckSumPasses());
 }
+TEST_CASE("MD3Block - BlockBuilding")
+{
+	MD3BlockData db;
+
+	// From a packet capture - 0x7C,0x05,0x20,0x0F,0x52, 0x00
+	// Test the block building code.
+	db.AddByteToBlock(0x7c);
+	db.AddByteToBlock(0x05);
+	db.AddByteToBlock(0x20);
+	db.AddByteToBlock(0x0f);
+	db.AddByteToBlock(0x52);
+	db.AddByteToBlock(0x00);
+
+	REQUIRE(db.IsValidBlock());
+
+	uint8_t stationaddress = 124;
+	bool mastertostation = true;
+	MD3_FUNCTION_CODE functioncode = ANALOG_UNCONDITIONAL;
+	uint8_t moduleaddress = 0x20;
+	uint8_t channels = 16;
+	bool lastblock = true;
+	bool APL = false;
+	bool RSF = false;
+	bool HRP = false;
+	bool DCP = false;
+
+	MD3BlockFormatted b(db);
+
+	REQUIRE(b.GetStationAddress() == stationaddress);
+	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
+	REQUIRE(b.GetModuleAddress() == moduleaddress);
+	REQUIRE(b.GetFunctionCode() == functioncode);
+	REQUIRE(b.GetChannels() == channels);
+	REQUIRE(b.IsEndOfMessageBlock() == lastblock);
+	REQUIRE(b.IsFormattedBlock());
+	REQUIRE(b.GetAPL() == APL);
+	REQUIRE(b.GetRSF() == RSF);
+	REQUIRE(b.GetHRP() == HRP);
+	REQUIRE(b.GetDCP() == DCP);
+	REQUIRE(b.CheckSumPasses());
+
+
+	// Now add some more bytes, check that they block is invalid until we should have a valid block again...
+	db.AddByteToBlock(0x7c);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x05);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x20);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x0f);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x52);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x00);
+
+	REQUIRE(db.IsValidBlock());
+}
 TEST_CASE("MD3Block - Fn9")
 {
 	MD3BlockFn9 b9(0x20, true, 3, 100, false, true);
@@ -2483,14 +2545,15 @@ TEST_CASE("Master - Analog")
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
 
-		const std::string Payload = BuildHexStringFromASCIIHexString("100011018400" // Channel 0 and 1
-			                                                       "12021303b700" // Channel 2 and 3 etc
-			                                                       "14041505b900"
-			                                                       "160617078a00"
-			                                                       "18081909a500"
-			                                                       "1A0A1B0B9600"
-			                                                       "1C0C1D0D9800"
-			                                                       "1E0E1F0Feb00");
+		std::string Payload = BuildHexStringFromASCIIHexString("100011018400" // Channel 0 and 1
+			                                                 "12021303b700" // Channel 2 and 3 etc
+			                                                 "14041505b900"
+			                                                 "160617078a00"
+			                                                 "18081909a500"
+			                                                 "1A0A1B0B9600"
+			                                                 "1C0C1D0D9800"
+			                                                 "1E0E1F0Feb00");
+		Payload = "stuff" + Payload + "more stuff"; // To test TCP Framing...
 		output << Payload;
 
 		// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...

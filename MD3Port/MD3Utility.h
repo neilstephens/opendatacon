@@ -99,6 +99,7 @@ public:
 	{
 		data = CombineDataBytes(_data[0],_data[1],_data[2],_data[3]);
 		endbyte = _data[4];
+		builddataindex = 6;
 	}
 	explicit MD3BlockData(const std::string &hexdata)
 	{
@@ -116,12 +117,16 @@ public:
 			data = CombineDataBytes(res[0],res[1],res[2],res[3]);
 			endbyte = numeric_cast<uint8_t>(res[4]);
 			assert(res[5] == 0x00); // Sixth byte should always be zero.
+			builddataindex = 6;
+
 		}
 		else if (hexdata.size() == 6)
 		{
 			data = CombineDataBytes(hexdata[0],hexdata[1],hexdata[2],hexdata[3]);
 			endbyte = numeric_cast<uint8_t>(hexdata[4]);
 			assert(hexdata[5] == 0x00); // Sixth byte should always be zero.
+			builddataindex = 6;
+
 		}
 		else
 		{
@@ -133,6 +138,7 @@ public:
 	{
 		data = static_cast<uint32_t>(firstword) << 16 | static_cast<uint32_t>(secondword);
 		SetEndByte(DataBlock, lastblock);
+		builddataindex = 6;
 	}
 
 	explicit MD3BlockData(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4, bool lastblock = false)
@@ -145,20 +151,20 @@ public:
 		data = CombineDataBytes(c1, c2, c3, c4);
 		SetEndByte(DataBlock, lastblock);
 	}
-	static uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
-	{
-		return ShiftLeftResult32Bits(b1, 24) | ShiftLeftResult32Bits(b2,16) | ShiftLeftResult32Bits(b3,8) | numeric_cast<uint32_t>(b4);
-	}
-	static uint32_t CombineDataBytes(const char c1, const char c2, const char c3, const char c4)
-	{
-		return CombineDataBytes(numeric_cast<uint8_t>(c1), numeric_cast<uint8_t>(c2), numeric_cast<uint8_t>(c3), numeric_cast<uint8_t>(c4));
-	}
 	explicit MD3BlockData(const uint32_t _data, bool lastblock = false)
 	{
 		data = _data;
 		SetEndByte(DataBlock, lastblock);
 	}
 
+	static uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
+	{
+		return ShiftLeftResult32Bits(b1, 24) | ShiftLeftResult32Bits(b2, 16) | ShiftLeftResult32Bits(b3, 8) | numeric_cast<uint32_t>(b4);
+	}
+	static uint32_t CombineDataBytes(const char c1, const char c2, const char c3, const char c4)
+	{
+		return CombineDataBytes(numeric_cast<uint8_t>(c1), numeric_cast<uint8_t>(c2), numeric_cast<uint8_t>(c3), numeric_cast<uint8_t>(c4));
+	}
 	void SetEndByte(blocktype blockt, bool lastblock)
 	{
 		endbyte = MD3CRC(data); // Max 6 bits returned
@@ -167,6 +173,7 @@ public:
 			endbyte |= FOMBIT; // NOT a formatted block, must be 1
 
 		endbyte |= lastblock ? EOMBIT : 0x00;
+		builddataindex = 6; // Just to mark it as full. Only used for rx'd block assembly.
 	}
 
 	bool IsEndOfMessageBlock() const
@@ -238,9 +245,54 @@ public:
 		return oss.str();
 	}
 
+	// Used to build a 6 byte block from the TCP stream so we can test if it is a valid MD3B Block. If the block is already full, push out one byte to make room for a new one.
+	void AddByteToBlock(uint8_t b)
+	{
+		if (builddataindex < 4)
+		{
+			// We do not have a full block yet, so add
+			int shiftcount = 8 * (3 - builddataindex++);
+			data |= ShiftLeftResult32Bits(b, shiftcount);
+		}
+		else if (builddataindex == 4)
+		{
+			// The CRC/EOM data
+			endbyte = b;
+			builddataindex++;
+		}
+		else if (builddataindex == 5)
+		{
+			// The Paddign Byte
+			paddingbyte = b;
+			builddataindex++;
+		}
+		else if (builddataindex > 5)
+		{
+			// We have a full block, so push out one byte then add the new one. Have to shift things in the 3 storage locations..bit cumbersome
+			data = ShiftLeftResult32Bits(data, 8);
+			data |= ShiftLeftResult32Bits(endbyte, 0); // No shift but convert to 32 bit.
+			endbyte = paddingbyte;
+			paddingbyte = b;
+		}
+	}
+	bool IsValidBlock()
+	{
+		// Test everything we can to verify this is a CB block of data.
+		return CheckSumPasses() && (builddataindex == 6) && (paddingbyte == 0);
+	}
+	void Clear()
+	{
+		data = 0;
+		endbyte = 0;
+		paddingbyte = 0;
+		builddataindex = 0;
+	}
+
 protected:
 	uint32_t data = 0;
 	uint8_t endbyte = 0;
+	uint8_t paddingbyte = 0;     // Should always be 0!
+	uint32_t builddataindex = 0; // Used in TCP framingblock building only.
 };
 
 typedef std::vector<MD3BlockData> MD3Message_t;
