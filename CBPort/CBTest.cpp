@@ -759,7 +759,6 @@ TEST_CASE("CBBlock - BlockBuilding")
 	REQUIRE(b.IsAddressBlock());
 	REQUIRE(b.IsValidBlock());
 
-
 	STANDARD_TEST_TEARDOWN();
 }
 
