@@ -659,12 +659,12 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 		LOGERROR("ConvertBitArrayToPayloadWords - blockcount exceeded 31!! {}", BlockCount);
 		BlockCount = 31;
 	}
-	for (int block = 0; block < BlockCount; block++)
+	for (uint8_t block = 0; block < BlockCount; block++)
 	{
 		uint16_t payload = 0;
-		for (int i = 0; i < 12; i++)
+		for (size_t i = 0; i < 12; i++)
 		{
-			int bitindex = block * 12 + i;
+			size_t bitindex = block * 12 + i;
 			if (bitindex >= MaxSOEBits)
 			{
 				LOGERROR("ConvertBitArrayToPayloadWords - bit index exceeded {}!! {}", MaxSOEBits, bitindex);
@@ -733,7 +733,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 	}
 
 	// We must zero any remaining bits in the array. The payload packing later makes an assumption about this!
-	for (int i = UsedBits; i < MaxSOEBits; i++)
+	for (uint32_t i = UsedBits; i < MaxSOEBits; i++)
 		BitArray[i] = false;
 }
 // We do not update the time, just send back our current time - assume UTC time of day in milliseconds since 1970 (CBTime()).
