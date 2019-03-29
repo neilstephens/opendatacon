@@ -18,14 +18,14 @@
  *	limitations under the License.
  */
 /*
- * MD3Port.h
+ * CBPort.h
  *
- *  Created on: 1/2/2018
+ *  Created on: 12/09/2018
  *      Author: Scott Ellis <scott.ellis@novatex.com.au> - derived from DNP3 version
  */
 
-#ifndef MD3PORT_H_
-#define MD3PORT_H_
+#ifndef CBPORT_H_
+#define CBPORT_H_
 
 #include <unordered_map>
 #include <vector>
@@ -33,18 +33,17 @@
 
 #include <opendatacon/DataPort.h>
 
-#include "MD3.h"
-#include "MD3PortConf.h"
-#include "MD3Utility.h"
-#include "MD3Connection.h"
-#include "StrandProtectedQueue.h"
+#include "CB.h"
+#include "CBPortConf.h"
+#include "CBUtility.h"
+#include "CBConnection.h"
 
 using namespace odc;
 
-class MD3Port: public DataPort
+class CBPort: public DataPort
 {
 public:
-	MD3Port(const std::string& aName, const std::string & aConfFilename, const Json::Value &aConfOverrides);
+	CBPort(const std::string& aName, const std::string & aConfFilename, const Json::Value &aConfOverrides);
 
 	void ProcessElements(const Json::Value& JSONRoot) final;
 
@@ -55,9 +54,10 @@ public:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
 	// Public only for UnitTesting
-	virtual void SendMD3Message(const MD3Message_t& CompleteMD3Message);
+	virtual void SendCBMessage(const CBMessage_t& CompleteCBMessage);
+	static void BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t & CompleteCBMessage);
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
-	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the MD3Connection.
+	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the CBConnection.
 
 protected:
 
@@ -67,14 +67,11 @@ protected:
 	bool IsOutStation = true;
 
 	// Worker functions to try and clean up the code...
-	MD3PortConf *MyConf;
-	std::shared_ptr<MD3PointConf> MyPointConf;
+	CBPortConf *MyConf;
+	std::shared_ptr<CBPointConf> MyPointConf;
 
 	int Limit(int val, int max);
 	uint8_t Limit(uint8_t val, uint8_t max);
-
-	// We need to support multi-drop in both the OutStation and the Master.
-	// We have a separate OutStation or Master for each OutStation, but they could be sharing a TCP connection, then routing the traffic based on MD3 Station Address.
 	ConnectionTokenType pConnection;
 };
 

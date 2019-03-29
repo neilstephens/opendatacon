@@ -40,30 +40,6 @@
 #include "MD3OutstationPort.h"
 
 
-/*func, count, name Analysis of traffic results
-
-11 , 138125            Digital COS Time Tagged - Done
-12 , 45678              Digital Unconditional - Done
-13 , 3710363          Analog No Change Reply - Done
-14 , 32040              Digital No Change Reply - Done
-15 , 20165              Control Request OK - Done
-16 , 2                       Freeze And Reset - Done
-17 , 53                    POM Type Control - Done
-19 , 2                      DOM Type Control - Done - Cant find example in the data
-21 , 1                      Raise Lower Type Control - This is reserved for future use...
-23 , 1                       AOM Type Control - No valid example.. yet
-30 , 135                  Control or Scan Request Rejected - Done
-31 , 1                      Counter Scan - Done - checksum passes
-40 , 1                       System SIGNON Control  - Done - but failed checksum so probably not used
-43 , 23274              System SET DATE AND TIME Control - Done
-5 , 380836              Analog Unconditional - Done
-52 , 6120                System Flag Scan - Done
-6 , 7041839            Analog Delta Scan - Done
-7 , 14                      Obsolete Digital Unconditional - Done
-8 , 1                         Digital Delta Scan - Done
-9 , 10                       HRER List Scan - Done
-*/
-
 // The list of codes in use
 /*
 ANALOG_UNCONDITIONAL = 5,	// HAS MODULE INFORMATION ATTACHED
@@ -173,7 +149,12 @@ void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 			DoDOMControl(static_cast<MD3BlockFn19MtoS&>(Header), CompleteMD3Message);
 			break;
 		case INPUT_POINT_CONTROL:
-			NotImplemented = true;
+			// Can be a size of 2 or 3
+			ExpectedMessageSize = CompleteMD3Message.size();
+			if ((ExpectedMessageSize == 2) || (ExpectedMessageSize == 3))
+				DoInputPointControl(static_cast<MD3BlockFn20MtoS&>(Header), CompleteMD3Message);
+			else
+				ExpectedMessageSize = 1;
 			break;
 		case RAISE_LOWER_TYPE_CONTROL:
 			NotImplemented = true;
@@ -719,7 +700,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 	//
 	// If we get another scan message (and nothing else changes) we will send the next block of changes and so on.
 
-	LOGDEBUG("OS - DoDigitalScan - Fn11");
+	LOGDEBUG("OS - DoDigitalScan - Fn11 includes COS");
 
 	MD3Message_t ResponseMD3Message;
 
@@ -1351,6 +1332,73 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 	}
 }
 
+
+// AOM is ANALOG output control.
+void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS &Header, MD3Message_t &CompleteMD3Message)
+{
+	// We have two blocks incoming, not just one.
+	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
+	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
+
+	LOGDEBUG("OS - DoInputPointControl");
+
+	bool failed = false;
+
+	// Check all the things we can
+	if (!((CompleteMD3Message.size() == 2) || (CompleteMD3Message.size() == 3)))
+	{
+		// If we did not get two or three blocks, then send back a command rejected message.
+		failed = true;
+	}
+
+	if (!Header.VerifyAgainstSecondBlock(CompleteMD3Message[1]))
+	{
+		// Message verification failed - something was corrupted
+		failed = true;
+	}
+
+	if (CompleteMD3Message.size() == 3)
+	{
+		if (!Header.VerifyThirdBlock(CompleteMD3Message[2]))
+		{
+			// Message verification failed - something was corrupted
+			failed = true;
+		}
+	}
+
+	if (Header.GetStationAddress() == 0)
+	{
+		// An all station command we do not respond to.
+		return;
+	}
+
+	//TODO: Need some extra definitions to support defining the input control point, and will need a custom ODC point to manage the data the comes with this action.
+	/*
+	// Check that the control point is defined, otherwise return a fail.
+	size_t ODCIndex = 0;
+	failed = MyPointConf->PointTable.GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), ODCIndex) ? failed : true;
+
+	uint16_t output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
+
+	EventTypePayload<EventType::AnalogOutputInt16>::type val;
+	val.first = numeric_cast<int16_t>(output);
+
+	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
+	event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
+	*/
+	LOGERROR("Input Point Control NOT COMPLETE in OutStation");
+
+	if (!failed ) // && (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS))
+	{
+		SendControlOK(Header);
+	}
+	else
+	{
+		SendControlOrScanRejected(Header);
+	}
+}
+
 // AOM is ANALOG output control.
 void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
@@ -1520,7 +1568,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &Co
 // Function 44
 void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t &CompleteMD3Message)
 {
-	// We have two blocks incoming, not just one.
+	// We have three blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
 	// We have to pass the command to  ODC, then set-up a lambda to handle the sending of the response - when we get it.
 

@@ -4,7 +4,7 @@ language: cpp
 
 git:
   depth: false #shallow clone causes problem with tags
-  
+
 addons:
   apt:
     update: true
@@ -20,7 +20,7 @@ compiler:
 env:
   - BUILD_CONFIG=Release
   - BUILD_CONFIG=Debug
-  
+
 matrix:
   include: #extra matrix entries for docker builds
     #Rpi Release
@@ -56,6 +56,7 @@ branches:
   only:
     - develop
     - master
+    - ConitelBakerAddition
     - /^release\/.*$/
     - /^[0-9]+\.[0-9]+\.[0-9]+.*$/
 
@@ -98,7 +99,7 @@ install:
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
       export EL6_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
-      export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
+      export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       export SYSROOT=$(pwd)/sysroot/
@@ -125,6 +126,7 @@ script:
   - $RUN install/bin/ODC_tests
   #- $RUN install/bin/DNP3Port_tests #opendnp3 bug makes this hang at the moment
   - $RUN install/bin/MD3Port_tests
+  - $RUN install/bin/CBPort_tests
   - $STOP
 
 deploy:
@@ -138,4 +140,4 @@ deploy:
   on:
     tags: true
     compiler: gcc
-  
+

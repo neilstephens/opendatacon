@@ -18,14 +18,14 @@
 *	limitations under the License.
 */
 /*
-* MD3OutStationPort.h
+* CBOutStationPort.h
 *
-*  Created on: 01/04/2018
+*  Created on: 12/09/2018
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
 /* The out station port is connected to the Overall System Scada master, so the master thinks it is talking to an outstation.
- This code then fires off events to the connector, which the connected master port(s) (of some type DNP3/ModBus/MD3) will turn back into scada commands and send out to the "real" Outstation.
+ This code then fires off events to the connector, which the connected master port(s) (of some type DNP3/ModBus/CB) will turn back into scada commands and send out to the "real" Outstation.
  So it makes sense to connect the SIM (which generates data) to a DNP3 Outstation which will feed the data back to the SCADA master.
  So an Event to an outstation will be data that needs to be sent up to the scada master.
  An event from an outstation will be a master control signal to turn something on or off.
@@ -35,39 +35,39 @@
 #include <regex>
 #include <chrono>
 
-#include "MD3.h"
-#include "MD3Utility.h"
-#include "MD3OutstationPort.h"
+#include "CB.h"
+#include "CBUtility.h"
+#include "CBOutstationPort.h"
 
 
-MD3OutstationPort::MD3OutstationPort(const std::string & aName, const std::string &aConfFilename, const Json::Value & aConfOverrides):
-	MD3Port(aName, aConfFilename, aConfOverrides)
+CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string &aConfFilename, const Json::Value & aConfOverrides):
+	CBPort(aName, aConfFilename, aConfOverrides)
 {
-	// Don't load conf here, do it in MD3Port
+	// Don't load conf here, do it in CBPort
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
 
-	SystemFlags.SetDigitalChangedFlagCalculationMethod(std::bind(&MD3OutstationPort::DigitalChangedFlagCalculationMethod, this));
-	SystemFlags.SetTimeTaggedDataAvailableFlagCalculationMethod(std::bind(&MD3OutstationPort::TimeTaggedDataAvailableFlagCalculationMethod, this));
+	//TODO: Do we need these flags for Conitel/Baker
+	SystemFlags.SetDigitalChangedFlagCalculationMethod(std::bind(&CBOutstationPort::DigitalChangedFlagCalculationMethod, this));
+	SystemFlags.SetTimeTaggedDataAvailableFlagCalculationMethod(std::bind(&CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod, this));
 
 	IsOutStation = true;
 
-	LOGDEBUG("MD3Outstation Constructor - " + aName + " - " + aConfFilename + " Overrides - " + over);
+	LOGDEBUG("CBOutstation Constructor - {} - {}  Overrides - {}", aName,aConfFilename,over);
 }
 
-MD3OutstationPort::~MD3OutstationPort()
+CBOutstationPort::~CBOutstationPort()
 {
 	Disable();
-	MD3Connection::RemoveOutstation(pConnection,MyConf->mAddrConf.OutstationAddr);
-	// The pConnection will be closed by this point, so is not holding any resources, and will be freed on program close when the static list is destroyed.
+	CBConnection::RemoveOutstation(pConnection,MyConf->mAddrConf.OutstationAddr);
 }
 
-void MD3OutstationPort::Enable()
+void CBOutstationPort::Enable()
 {
 	if (enabled) return;
 	try
 	{
-		MD3Connection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+		CBConnection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 		enabled = true;
 	}
 	catch (std::exception& e)
@@ -76,74 +76,71 @@ void MD3OutstationPort::Enable()
 		return;
 	}
 }
-void MD3OutstationPort::Disable()
+void CBOutstationPort::Disable()
 {
 	if (!enabled) return;
 	enabled = false;
 
-	MD3Connection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+	CBConnection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
 
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
-void MD3OutstationPort::SocketStateHandler(bool state)
+void CBOutstationPort::SocketStateHandler(bool state)
 {
 	std::string msg;
 	if (state)
 	{
 		PublishEvent(ConnectState::CONNECTED);
-		msg = Name + ": Connection established.";
+		msg = Name + ": pConnection established.";
 	}
 	else
 	{
 		PublishEvent(ConnectState::DISCONNECTED);
-		msg = Name + ": Connection closed.";
+		msg = Name + ": pConnection closed.";
 	}
 	LOGINFO(msg);
 }
 
-void MD3OutstationPort::Build()
+void CBOutstationPort::Build()
 {
-	std::string ChannelID = MyConf->mAddrConf.ChannelID();
-
 	// Need a couple of things passed to the point table.
-	MyPointConf->PointTable.Build(IsOutStation, MyPointConf->NewDigitalCommands, *pIOS);
+	MyPointConf->PointTable.Build(IsOutStation, *pIOS);
 
-	pConnection = MD3Connection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
+	// Creates internally if necessary
+	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
-	std::function<void(MD3Message_t &MD3Message)> aReadCallback = std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1);
-	std::function<void(bool)> aStateCallback = std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1);
 
-	MD3Connection::AddOutstation(pConnection, MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback);
+	std::function<void(CBMessage_t &CBMessage)> aReadCallback = std::bind(&CBOutstationPort::ProcessCBMessage, this, std::placeholders::_1);
+	std::function<void(bool)> aStateCallback = std::bind(&CBOutstationPort::SocketStateHandler, this, std::placeholders::_1);
+
+	CBConnection::AddOutstation(pConnection,MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback, MyPointConf->IsBakerDevice);
 }
 
-void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
+void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 {
-	if (CompleteMD3Message.size() == 0)
+	if (CompleteCBMessage.size() == 0)
 	{
 		LOGERROR("OS - Tried to send an empty message to the TCP Port");
 		return;
 	}
-	LOGDEBUG("OS - Sending Message - " + MD3MessageAsString(CompleteMD3Message));
+	LOGDEBUG("OS - Sending Message - {}", CBMessageAsString(CompleteCBMessage));
 	// Done this way just to get context into log messages.
-	MD3Port::SendMD3Message(CompleteMD3Message);
+	CBPort::SendCBMessage(CompleteCBMessage);
+
+	LastSentCBMessage = CompleteCBMessage; // Take a copy of last message
 }
-
-#ifdef _MSC_VER
+#ifdef _MCS_VER
 #pragma region OpenDataConInteraction
-#endif
 
-#ifdef _MSC_VER
 #pragma region PerformEvents
 #endif
-
 // We are going to send a command to the opendatacon connector to do some kind of operation.
 // If there is a master on that connector it will then send the command on down to the "real" outstation.
 // This method will be called in response to data appearing on our TCP connection.
 // Remember there can be multiple responders!
 //
-//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we dont get stuck here.
 
-CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
+CommandStatus CBOutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;
@@ -175,19 +172,15 @@ CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool 
 	}
 	return cb_status;
 }
-
 #ifdef _MSC_VER
 #pragma endregion PerformEvents
-#endif
 
-
-#ifdef _MSC_VER
 #pragma region DataEvents
 #endif
-
 // We received a change in data from an Event (from the opendatacon Connector) now store it so that it can be produced when the Scada master polls us
 // for a group or individually on our TCP connection.
-void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+// What we return here is not used in anyway that I can see.
+void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
 	{
@@ -200,9 +193,10 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	{
 		case EventType::Analog:
 		{
+			// ODC Analog is a double by default...
 			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
-			LOGDEBUG("OS - Received Event - Analog - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(analogmeas));
+			LOGDEBUG("OS - Received Event - Analog - Index {}  Value 0x{}",std::to_string(ODCIndex), to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
 			{
 				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(ODCIndex));
@@ -214,7 +208,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			uint16_t countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
-			LOGDEBUG("OS - Received Event - Counter - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(countermeas));
+			LOGDEBUG("OS - Received Event - Counter - Index {}  Value 0x{}", std::to_string(ODCIndex), to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))
 			{
 				LOGERROR("Tried to set the value for an invalid counter point index " + std::to_string(ODCIndex));
@@ -224,13 +218,11 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		}
 		case EventType::Binary:
 		{
-			// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
-			// If an event for a point comes in that is older than the last event, we put it into the COS queue, but dont change the actual current value.
-			MD3Time now = MD3Now(); // msec since epoch.
-			MD3Time eventtime = event->GetTimestamp();
+			CBTime now = CBNow(); // msec since epoch.
+			CBTime eventtime = event->GetTimestamp();
 			uint8_t meas = event->GetPayload<EventType::Binary>();
 
-			LOGDEBUG("OS - Received Event - Binary - Index " + std::to_string(ODCIndex) + " Value 0x" + to_hexstring(meas));
+			LOGDEBUG("OS - Received Event - Binary - Index {}, Bit Value {}",std::to_string(ODCIndex),std::to_string(meas));
 
 			// Check that the passed time is within 30 minutes of the actual time, if not use the current time
 			if (MyPointConf->OverrideOldTimeStamps)
@@ -238,7 +230,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 				if (abs(static_cast<int64_t>(now / 1000) - static_cast<int64_t>(eventtime / 1000)) < 60 * 30)
 				{
 					eventtime = now; // msec since epoch.
-					LOGDEBUG("Binary time tag value is too far from current time (>30min) changing to current time. Point index " + std::to_string(ODCIndex));
+					LOGDEBUG("Binary time tag value is too far from current time (>30min) changing to current time. Point index {}",std::to_string(ODCIndex));
 				}
 			}
 
@@ -254,7 +246,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			auto state = event->GetPayload<EventType::ConnectState>();
 
-			// This will be fired by (typically) an MD3OutMaster port on the "other" side of the ODC Event bus. i.e. something downstream has connected
+			// This will be fired by (typically) an CBOutMaster port on the "other" side of the ODC Event bus. i.e. something downstream has connected
 			// We should probably send any Digital or Analog outputs, but we can't send POM (Pulse)
 
 			if (state == ConnectState::CONNECTED)
@@ -265,7 +257,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			}
 			else if (state == ConnectState::DISCONNECTED)
 			{
-				// If we were an on demand connection, we would take down the connection . For MD3 we are using persistent connections only.
+				// If we were an on demand connection, we would take down the connection . For CB we are using persistent connections only.
 				// We have lost an ODC connection, so events we send don't go anywhere.
 			}
 
@@ -275,7 +267,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
+				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(MISSINGVALUE)))
 				{
 					LOGERROR("Tried to set the failure value for an invalid analog point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
@@ -287,7 +279,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			if ((event->GetQuality() != QualityFlags::ONLINE))
 			{
-				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
+				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(MISSINGVALUE)))
 				{
 					LOGERROR("Tried to set the failure value for an invalid counter point index " + std::to_string(ODCIndex));
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
@@ -299,13 +291,8 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 	}
 }
-
-
-
 #ifdef _MSC_VER
 #pragma endregion
-#endif
 
-#ifdef _MSC_VER
 #pragma endregion OpenDataConInteraction
 #endif

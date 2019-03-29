@@ -16,3 +16,4 @@ MD3Port/uncrustify.cfg
 MD3Port/uncrustify_here.pl
 
 cmake-build-debug-mingw/
+MD3Port/opendatacon debug path.txt

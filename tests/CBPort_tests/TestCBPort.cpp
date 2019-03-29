@@ -18,18 +18,29 @@
  *	limitations under the License.
  */
 
-#include "ConsoleUI.h"
+#include <iostream>
+#include <opendatacon/Platform.h>
 
-extern "C" ConsoleUI* new_ConsoleUIPlugin(const std::string& Name, const std::string& File, const Json::Value& Overrides)
+int main( int argc, char* argv[] )
 {
-	//if(Overrides.isObject())
-	{}
+	std::string libname = "CBPort";
+	std::string libfilename = GetLibFileName(libname);
+	auto pluginlib = LoadModule(libfilename.c_str());
 
-	return new ConsoleUI();
-}
+	if (pluginlib == nullptr)
+	{
+		std::cout << libname << " Info: dynamic library load failed '" << libfilename << "' :" << LastSystemError() << std::endl;
+		return 1;
+	}
 
-extern "C" void delete_ConsoleUIPlugin(ConsoleUI* aIUI_ptr)
-{
-	delete aIUI_ptr;
-	return;
+	int (*run_tests)(int,char**);
+
+	run_tests = (int (*)(int,char**))LoadSymbol(pluginlib, "run_tests");
+
+	if(run_tests == nullptr)
+	{
+		std::cout << "Info: failed to load run_tests symbol from '" << libfilename << "' "<< std::endl;
+		return 1;
+	}
+	return run_tests( argc, argv );
 }
