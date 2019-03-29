@@ -215,6 +215,7 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 		// Update the comms state point
 		PortUp();
 
+		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if(pConf->pPointConf->SetQualityOnLinkStatus)
 		{
 			// Trigger integrity scan to get point quality
