@@ -210,6 +210,10 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		{
 			polltype = AnalogPoints;
 		}
+		if (iequals(JSONNode[n]["PointType"].asString(), "Counter"))
+		{
+			polltype = CounterPoints;
+		}
 		if (iequals(JSONNode[n]["PointType"].asString(), "TimeSetCommand"))
 		{
 			polltype = TimeSetCommand;
@@ -460,7 +464,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 
 							if (PollGroups[pollgroup].ModuleAddresses.size() > 1)
 							{
-								LOGERROR("Analog Poll group " + std::to_string(pollgroup) + "is configured for more than one MD3 Module address. To scan another address, another poll group must be used.");
+								LOGERROR("Analog or Counter Poll group " + std::to_string(pollgroup) + "is configured for more than one MD3 Module address. To scan another address, another poll group must be used.");
 							}
 						}
 					}

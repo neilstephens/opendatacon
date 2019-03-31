@@ -18,26 +18,27 @@
  *	limitations under the License.
  */
 /*
- * MD3OutstationPortConf.h
+ * CBOutstationPortConf.h
  *
- *  Created on: 1/2/2018
+ *  Created on: 13/09/2018
  *      Author: Scott Ellis <scott.ellis@novatex.com.au> - derived from DNP3 version
  */
 
-#ifndef MD3OUTSTATIONPORTCONF_H_
-#define MD3OUTSTATIONPORTCONF_H_
+#ifndef CBOUTSTATIONPORTCONF_H_
+#define CBOUTSTATIONPORTCONF_H_
 
 #include <opendatacon/DataPort.h>
 #include <opendatacon/TCPSocketManager.h>
-#include "MD3PointConf.h"
-#include "MD3PointTableAccess.h"
+#include "CBPointConf.h"
+#include "CBPointTableAccess.h"
+#include "CBConnection.h"
 
 // Megadata System Flag register definition bits
 #define SYSTEMPOWERUPFLAGBIT 15
 #define SYSTEMTIMEINCORRECTFLAGBIT 14
 #define FILEUPLOADPENDINGFLAGBIT 13
 
-enum TCPClientServer { CLIENT, SERVER, DEFAULT };
+enum TCPClientServer { CLIENT, SERVER };
 enum server_type_t { ONDEMAND, PERSISTENT, MANUAL };
 
 enum class SerialParity: char
@@ -45,7 +46,7 @@ enum class SerialParity: char
 	NONE='N',EVEN='E',ODD='O'
 };
 
-struct MD3AddrConf
+struct CBAddrConf
 {
 	//IP
 	std::string IP;
@@ -57,29 +58,34 @@ struct MD3AddrConf
 	uint16_t TCPConnectRetryPeriodms;
 
 	// Default address values can minimally set IP.
-	MD3AddrConf():
+	CBAddrConf():
 		IP("127.0.0.1"),
 		Port("20000"),
-		ClientServer(TCPClientServer::DEFAULT),
+		ClientServer(TCPClientServer::SERVER),
 		OutstationAddr(1),
 		TCPConnectRetryPeriodms(500)
 	{}
 	std::string ChannelID()
 	{
-		return IP + ":" + Port + ":" + std::to_string(ClientServer);
+		if (channelid == "")
+			channelid = CBConnection::MakeChannelID(IP, Port, (ClientServer == SERVER));
+		return channelid;
 	}
+
+private:
+	std::string channelid = "";
 };
 
-class MD3PortConf: public DataPortConf
+class CBPortConf: public DataPortConf
 {
 public:
-	MD3PortConf(std::string FileName, const Json::Value& ConfOverrides)
+	CBPortConf(std::string FileName, const Json::Value& ConfOverrides)
 	{
-		pPointConf.reset(new MD3PointConf(FileName, ConfOverrides));
+		pPointConf.reset(new CBPointConf(FileName, ConfOverrides));
 	}
 
-	std::shared_ptr<MD3PointConf> pPointConf;
-	MD3AddrConf mAddrConf;
+	std::shared_ptr<CBPointConf> pPointConf;
+	CBAddrConf mAddrConf;
 };
 
 #endif

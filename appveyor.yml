@@ -73,6 +73,7 @@ test_script:
 - cmd: '%cmake_builddir%\%configuration%\ODC_tests.exe'
 #- cmd: '%cmake_builddir%\%configuration%\DNP3Port_tests.exe' #opendnp3 bug makes this hang at the moment
 - cmd: '%cmake_builddir%\%configuration%\MD3Port_tests.exe'
+- cmd: '%cmake_builddir%\%configuration%\CBPort_tests.exe'
 
 artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
