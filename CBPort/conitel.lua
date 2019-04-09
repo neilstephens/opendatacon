@@ -24,9 +24,9 @@ local conitel_proto = Proto("conitel","Conitel Protocol")
 local f = conitel_proto.fields
 -- Need to use ProtoFields for the Station, MtoS, Function and Data so that we can then display them as columns, which then means we can export to excel.
 
-f.conitelfunction = ProtoField.uint8 ("conitel.function",  "Function", base.HEX)
-f.station  = ProtoField.uint8 ("conitel.station",  "Station", base.HEX)
-f.group = ProtoField.uint8("conitel.group", "Group", base.HEX)
+f.conitelfunction = ProtoField.uint8 ("conitel.function",  "Function", base.DEC)
+f.station  = ProtoField.uint8 ("conitel.station",  "Station", base.DEC)
+f.group = ProtoField.uint8("conitel.group", "Group", base.DEC)
 f.blockcount = ProtoField.uint8("conitel.blockcount","BlockCount", base.HEX)
 f.data = ProtoField.bytes("conitel.data", "Packet Data")
 f.blocks = ProtoField.uint8("conitel.data", "Block")
@@ -149,6 +149,7 @@ function conitel_proto.dissector(buffer,pinfo,tree)
 
 	-- If not our protocol, we should return 0. If it is ours, return nothing.
 	--debug("Packet is good");
+	pinfo.conversation = conitel_proto
 end
 
 
@@ -195,15 +196,20 @@ function GetEOM(block)
 	return bit32.band(block,0x01)
 end
 
+--register as a heuristic dissector
+conitel_proto:register_heuristic("tcp",conitel_proto.dissector)
+
 -- load the tcp.port table
-local tcp_table = DissectorTable.get("tcp.port")
+--local tcp_table = DissectorTable.get("tcp.port")
 -- register our protocol to handle tcp port 5001
 -- Add the other ports we use...
-tcp_table:add(5001,conitel_proto)
-tcp_table:add(5002,conitel_proto)
-tcp_table:add(5003,conitel_proto)
-tcp_table:add(5004,conitel_proto)
-tcp_table:add(5005,conitel_proto)
-tcp_table:add(5006,conitel_proto)
-tcp_table:add(5007,conitel_proto)
-tcp_table:add(5008,conitel_proto)
+--tcp_table:add(5001,conitel_proto)
+--tcp_table:add(5002,conitel_proto)
+--tcp_table:add(5003,conitel_proto)
+--tcp_table:add(5004,conitel_proto)
+--tcp_table:add(5005,conitel_proto)
+--tcp_table:add(5006,conitel_proto)
+--tcp_table:add(5007,conitel_proto)
+--tcp_table:add(5008,conitel_proto)
+--tcp_table:add(5009,conitel_proto)
+--tcp_table:add(5010,conitel_proto)
