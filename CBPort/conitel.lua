@@ -24,14 +24,17 @@ local conitel_proto = Proto("conitel","Conitel Protocol")
 local f = conitel_proto.fields
 -- Need to use ProtoFields for the Station, MtoS, Function and Data so that we can then display them as columns, which then means we can export to excel.
 
-f.conitelfunction = ProtoField.uint8 ("conitel.function",  "Function", base.HEX)
-f.station  = ProtoField.uint8 ("conitel.station",  "Station", base.HEX)
-f.group = ProtoField.uint8("conitel.group", "Group", base.HEX)
+f.conitelfunction = ProtoField.uint8 ("conitel.function",  "Function", base.DEC)
+f.station  = ProtoField.uint8 ("conitel.station",  "Station", base.DEC)
+f.group = ProtoField.uint8("conitel.group", "Group", base.DEC)
 f.blockcount = ProtoField.uint8("conitel.blockcount","BlockCount", base.HEX)
 f.data = ProtoField.bytes("conitel.data", "Packet Data")
 f.blocks = ProtoField.uint8("conitel.data", "Block")
 f.adata = ProtoField.uint16("conitel.adata","A Data", base.HEX)
 f.bdata = ProtoField.uint16("conitel.bdata","B Data", base.HEX)
+f.soedata = ProtoField.uint8("conitel.soedata", "SOE")
+f.soegroup = ProtoField.uint8("conitel.soegroup","SOE Group", base.HEX)
+f.soeindex = ProtoField.uint16("conitel.soeindex","SOE Index", base.HEX)
 
 -- create a function to dissect it
 function conitel_proto.dissector(buffer,pinfo,tree)
@@ -141,16 +144,72 @@ function conitel_proto.dissector(buffer,pinfo,tree)
 
 	for blk = 1, blockcount-1,1
 	do
-		block = buffer(blk*4,4):uint()
+		local block = buffer(blk*4,4):uint()
 		local blockleaf = subtree:add(f.blocks, blk)
 		blockleaf:add(f.adata,GetBlockA(block))
 		blockleaf:add(f.bdata,GetBlockB(block))
 	end
-
+	
+	if (conitelfunction == 10) then
+	
+		local block = buffer(0,4):uint()
+		
+		local soeblockcount = 1		
+		local payloads = {}
+		payloads[soeblockcount] = GetBlockB(block)
+		soeblockcount = soeblockcount + 1
+		
+		for blk = 1, blockcount-1,1
+		do
+			block = buffer(blk*4,4):uint()
+			payloads[soeblockcount] = GetBlockA(block)
+			soeblockcount = soeblockcount + 1
+			payloads[soeblockcount] = GetBlockB(block)
+			soeblockcount = soeblockcount + 1
+		end
+		
+		-- So now we have the payloads, need to extract the group, index, timestamp for the SOE records 
+		-- variable length - 41 or 30 bits long. The first record should always be 41 bits
+		local payloadbitindex = 0
+		local maxpayloadbitindex = 12 * (soeblockcount-1)
+		local soegroup = 0
+		local soeindex = 0
+		local result = false
+		local soeblk = 1
+		
+		while true
+		do
+			result, payloadbitindex, soegroup, soeindex = DecodeSOERecord(payloads, payloadbitindex, maxpayloadbitindex )
+			-- If the preceeding function failed, exit loop
+			if (result == false) then break end
+			
+			local blockleaf = subtree:add(f.soedata, soeblk)
+			blockleaf:add(f.soegroup,soegroup)
+			blockleaf:add(f.soeindex,soeindex)
+			soeblk = soeblk + 1
+		end
+	end
+	
 	-- If not our protocol, we should return 0. If it is ours, return nothing.
 	--debug("Packet is good");
+	pinfo.conversation = conitel_proto
 end
 
+-- The payload is an array of 12 bit values, stored in the lower 12 bits.
+-- payloadbitindex is the index into this array. So 0 is bit 11 in the first payload array value. 12 is bit 11in the second payload entry.
+-- We return true (succeed) or false. The payloadbitindex will be updated and needs to be a reference like variable
+function DecodeSOERecord(payloads, payloadbitindex, maxpayloadbitindex)
+
+	local soegroup = 0
+	local soeindex = 0
+	
+	if (payloadbitindex >= maxpayloadbitindex) then
+		return false, payloadbitindex, soegroup, soeindex
+	end
+	payloadbitindex = payloadbitindex + 41	-- dummy test!
+	
+	return true, payloadbitindex, soegroup, soeindex
+end
 
 function CalculateBCH(block)
 
@@ -195,15 +254,20 @@ function GetEOM(block)
 	return bit32.band(block,0x01)
 end
 
+--register as a heuristic dissector
+conitel_proto:register_heuristic("tcp",conitel_proto.dissector)
+
 -- load the tcp.port table
-local tcp_table = DissectorTable.get("tcp.port")
+--local tcp_table = DissectorTable.get("tcp.port")
 -- register our protocol to handle tcp port 5001
 -- Add the other ports we use...
-tcp_table:add(5001,conitel_proto)
-tcp_table:add(5002,conitel_proto)
-tcp_table:add(5003,conitel_proto)
-tcp_table:add(5004,conitel_proto)
-tcp_table:add(5005,conitel_proto)
-tcp_table:add(5006,conitel_proto)
-tcp_table:add(5007,conitel_proto)
-tcp_table:add(5008,conitel_proto)
+--tcp_table:add(5001,conitel_proto)
+--tcp_table:add(5002,conitel_proto)
+--tcp_table:add(5003,conitel_proto)
+--tcp_table:add(5004,conitel_proto)
+--tcp_table:add(5005,conitel_proto)
+--tcp_table:add(5006,conitel_proto)
+--tcp_table:add(5007,conitel_proto)
+--tcp_table:add(5008,conitel_proto)
+--tcp_table:add(5009,conitel_proto)
+--tcp_table:add(5010,conitel_proto)
