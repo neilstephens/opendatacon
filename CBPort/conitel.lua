@@ -29,9 +29,12 @@ f.station  = ProtoField.uint8 ("conitel.station",  "Station", base.DEC)
 f.group = ProtoField.uint8("conitel.group", "Group", base.DEC)
 f.blockcount = ProtoField.uint8("conitel.blockcount","BlockCount", base.HEX)
 f.data = ProtoField.bytes("conitel.data", "Packet Data")
-f.blocks = ProtoField.uint8("conitel.data", "Block")
-f.adata = ProtoField.uint16("conitel.adata","A Data", base.HEX)
-f.bdata = ProtoField.uint16("conitel.bdata","B Data", base.HEX)
+--f.blocks = ProtoField.uint8("conitel.data", "Payload Block")
+--f.adata = ProtoField.uint16("conitel.adata","A Data", base.HEX)
+--f.bdata = ProtoField.uint16("conitel.bdata","B Data", base.HEX)
+f.soedata = ProtoField.uint8("conitel.soedata", "SOE")
+--f.soegroup = ProtoField.uint8("conitel.soegroup","SOE Group", base.HEX)
+--f.soeindex = ProtoField.uint16("conitel.soeindex","SOE Index", base.HEX)
 
 -- create a function to dissect it
 function conitel_proto.dissector(buffer,pinfo,tree)
@@ -137,30 +140,134 @@ function conitel_proto.dissector(buffer,pinfo,tree)
 	-- change to spit this out in blocks of 4, spaces on each byte
 	local dataleaf = subtree:add(f.data, buffer())
 
---	local datalenleaf = subtree:add("Data Length : " ..  pktlen)
+	--	local datalenleaf = subtree:add("Data Length : " ..  pktlen)
+	local blockleaf = subtree:add("Payload Data")
+	blockleaf:add("1B " .. string.format("0x%03x",GetBlockA(buffer(0,4):uint())))
 
 	for blk = 1, blockcount-1,1
 	do
-		block = buffer(blk*4,4):uint()
-		local blockleaf = subtree:add(f.blocks, blk)
-		blockleaf:add(f.adata,GetBlockA(block))
-		blockleaf:add(f.bdata,GetBlockB(block))
+		local block = buffer(blk*4,4):uint()
+		
+		blockleaf:add(blk+1 .. "A " .. string.format("0x%03x",GetBlockA(block)))
+		blockleaf:add(blk+1 .. "B " .. string.format("0x%03x",GetBlockB(block)))
 	end
-
+	
+	if (conitelfunction == 10) then
+	
+		local block = buffer(0,4):uint()
+		
+		local soeblockcount = 1		
+		local payloads = {}
+		payloads[soeblockcount] = GetBlockB(block)
+		soeblockcount = soeblockcount + 1
+		
+		for blk = 1, blockcount-1,1
+		do
+			block = buffer(blk*4,4):uint()
+			payloads[soeblockcount] = GetBlockA(block)
+			soeblockcount = soeblockcount + 1
+			payloads[soeblockcount] = GetBlockB(block)
+			soeblockcount = soeblockcount + 1
+		end
+		
+		-- So now we have the payloads, need to extract the group, index, timestamp for the SOE records 
+		-- variable length - 41 or 30 bits long. The first record should always be 41 bits
+		local payloadbitindex = 0
+		local maxpayloadbitindex = 12 * #payloads
+		local soegroup = 0
+		local soeindex = 0
+		local soebitvalue = 0
+		local result = false
+		local soeblk = 1
+		
+		while true
+		do
+			result, payloadbitindex, soegroup, soeindex, soebitvalue = DecodeSOERecord(payloads, payloadbitindex, maxpayloadbitindex )
+			-- If the preceeding function failed, exit loop
+			if (result == false) then break end
+			
+			local blockleaf = subtree:add(f.soedata, soeblk)
+			blockleaf:add("SOE Group " .. soegroup)
+			blockleaf:add("SOE Index " .. soeindex)
+			blockleaf:add("SOE Bitvalue "..soebitvalue)
+			soeblk = soeblk + 1
+		end
+	end
+	
 	-- If not our protocol, we should return 0. If it is ours, return nothing.
 	--debug("Packet is good");
 	pinfo.conversation = conitel_proto
+
 end
 
+-- The payload is an array of 12 bit values, stored in the lower 12 bits.
+-- payloadbitindex is the index into this array. So 0 is bit 11 in the first payload array value. 12 is bit 11 in the second payload entry.
+-- We return true (succeed) or false. The payloadbitindex will be updated and returned
+function DecodeSOERecord(payloads, payloadbitindex, maxpayloadbitindex)
+
+	soegroup = 0
+	soeindex = 0
+	
+	if (payloadbitindex + 30 > maxpayloadbitindex) then	-- make sure there is at least enough data for a short SOE record
+		return false, payloadbitindex, soegroup, soeindex
+	end
+	
+	-- Collect bit values into variables, pass in the payload array, the bit index into that array and the number of bits
+	soegroup,payloadbitindex = ExtractBits(payloads, payloadbitindex,3)
+	
+	soeindex,payloadbitindex = ExtractBits(payloads, payloadbitindex,7)
+
+	soebitvalue,payloadbitindex = ExtractBits(payloads, payloadbitindex,1)
+	QualityBit,payloadbitindex = ExtractBits(payloads, payloadbitindex,1)
+	TimeFormatBit,payloadbitindex = ExtractBits(payloads, payloadbitindex,1)
+
+	if (TimeFormatBit == 1) then -- Long time
+		print("Long Time SOE")
+		Hour,payloadbitindex = ExtractBits(payloads, payloadbitindex,5)
+		Minute,payloadbitindex = ExtractBits(payloads, payloadbitindex,6)
+	end
+	
+	Second,payloadbitindex = ExtractBits(payloads, payloadbitindex,6)
+	Millisecond,payloadbitindex = ExtractBits(payloads, payloadbitindex,10)
+	LastEventFlag,payloadbitindex = ExtractBits(payloads, payloadbitindex,1)
+	
+	return true, payloadbitindex, soegroup, soeindex, soebitvalue
+end
+
+function ExtractBits(payloads, payloadbitindex, numberofbits)
+
+	local result = 0;
+	for bit = numberofbits-1, 0 ,-1
+	do
+		result = result + GetBit(payloads, payloadbitindex, bit)
+		payloadbitindex = payloadbitindex + 1
+	end
+	print("Result, numbits "..result..", "..numberofbits)
+	return result, payloadbitindex
+end
+
+function GetBit(payloads, payloadbitindex, bitleftshift)
+	local block = math.floor(payloadbitindex / 12)
+	local bit = payloadbitindex % 12
+	
+	if (block+1 > #payloads) then
+		return 0
+	end
+	
+	local bitvalue = bit32.band(bit32.rshift(payloads[block+1],11-bit), 0x01)
+	-- Now left shift to put the bit in the correct position for the answer
+	bitvalue = bit32.lshift(bitvalue, bitleftshift)
+	return bitvalue
+end
 
 function CalculateBCH(block)
 
-    local bch = 0
+  local bch = 0
 
     -- xor each of the sub-remainders corresponding to set bits in the first 26 bits of the payload
 	for bit = 0, 25 ,1
 	do
-        if (bit32.band(bit32.lshift(block, bit),0x80000000) == 0x80000000)	then -- The bit is set
+     if (bit32.band(bit32.lshift(block, bit),0x80000000) == 0x80000000)	then -- The bit is set
             bch = bit32.band(bit32.bxor(bch,BCH[bit+1]),0x1F)	-- LUA Array index is 1 based, not 0. Limit to 5 bits
 		end
 	end

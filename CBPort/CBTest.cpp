@@ -555,6 +555,21 @@ TEST_CASE("Util - SOEEventFormat")
 	REQUIRE(SOE2.Millisecond == 0x201);
 	REQUIRE(SOE2.LastEventFlag == true);
 	REQUIRE(Success);
+
+	uint64_t payload = 0x9945455800000000; // From a packet capture
+	// Now test our BitArray handling.
+	std::array<bool, MaxSOEBits> BitArray3;
+	for (int i = 0; i < 64; i++)
+		BitArray3[i] = ((payload >> (63 - i)) & 0x01) == 0x01;
+
+	newstartbit = 0;
+	SOEEventFormat SOE3(BitArray3, 0, 64, newstartbit, 0, Success); // Build a new SOE record from the BitArray
+
+	REQUIRE(SOE3.Group == 4);
+	REQUIRE(SOE3.Number == 0x65);
+
+	REQUIRE(Success);
+
 	STANDARD_TEST_TEARDOWN();
 }
 
