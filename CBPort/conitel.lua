@@ -197,6 +197,7 @@ function conitel_proto.dissector(buffer,pinfo,tree)
 	-- If not our protocol, we should return 0. If it is ours, return nothing.
 	--debug("Packet is good");
 	pinfo.conversation = conitel_proto
+
 end
 
 -- The payload is an array of 12 bit values, stored in the lower 12 bits.
@@ -261,12 +262,12 @@ end
 
 function CalculateBCH(block)
 
-    local bch = 0
+  local bch = 0
 
     -- xor each of the sub-remainders corresponding to set bits in the first 26 bits of the payload
 	for bit = 0, 25 ,1
 	do
-        if (bit32.band(bit32.lshift(block, bit),0x80000000) == 0x80000000)	then -- The bit is set
+     if (bit32.band(bit32.lshift(block, bit),0x80000000) == 0x80000000)	then -- The bit is set
             bch = bit32.band(bit32.bxor(bch,BCH[bit+1]),0x1F)	-- LUA Array index is 1 based, not 0. Limit to 5 bits
 		end
 	end
