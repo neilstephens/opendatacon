@@ -39,7 +39,7 @@
 //	DIG - Used
 //	MCDC - Used - Same as SMCDC
 //	SMCDC - Used - input binary - data and change bit - 6 channels per location. Same as MCC.
-//	SOEDIG
+//	SOEDIG - Same as DIG, but Mosaic uses it to calculate group and index from its scan group, payload and index.
 //	AHA - Used
 //	SMCDA - Used - input, binary - data and change bit - 6 channels per location. Same as MCA.
 //	ACC

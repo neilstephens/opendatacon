@@ -153,6 +153,12 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		uint32_t group = JSONNode[n]["Group"].asUInt();
 		uint32_t pollrate = JSONNode[n]["PollRate"].asUInt();
 
+		if ((pollrate == 0) || (pollrate > 9000000))
+		{
+			LOGERROR("Illegal PollRate, ignoring poll group {}. PollRate :{}",PollID,pollrate);
+			error = true;
+		}
+
 		if (PollGroups.count(PollID) > 0)
 		{
 			LOGERROR("Duplicate poll group ignored : "+ JSONNode[n].toStyledString());
