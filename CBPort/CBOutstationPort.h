@@ -150,7 +150,6 @@ public:
 	uint8_t CountBinaryBlocksWithChanges();
 
 	// Testing use only
-	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group]; } // Return a copy, cannot be changed
 private:
 

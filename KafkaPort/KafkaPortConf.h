@@ -36,14 +36,11 @@ struct KafkaAddrConf
 	//IP
 	std::string IP;
 	std::string Port;
-	std::string Topic;
-
 
 	// Default address values can minimally set IP.
 	KafkaAddrConf():
 		IP("127.0.0.1"),
-		Port("20000"),
-		Topic("Historian")
+		Port("20000")
 	{}
 
 private:

@@ -57,30 +57,7 @@ void CommandLineLoggingCleanup();
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;
 
-typedef uint64_t KafkaTime; // msec since epoch, utc, most time functions are uint64_t
 
-KafkaTime KafkaNow();
-
-const KafkaTime KafkaTimeOneDay = 1000 * 60 * 60 * 24;
-const KafkaTime KafkaTimeOneHour = 1000 * 60 * 60;
-
-// Give us the time for the start of the current day in KafkaTime (msec since epoch)
-inline KafkaTime GetDayStartTime(KafkaTime time)
-{
-	KafkaTime Days = time / KafkaTimeOneDay;
-	return (Days * KafkaTimeOneDay); // msec*sec*min*hours
-}
-// Give us the time of day value in msec
-inline KafkaTime GetTimeOfDayOnly(KafkaTime time)
-{
-	return time - GetDayStartTime(time);
-}
-
-// Get the hour value for the current time value 0-23
-inline KafkaTime GetHour(KafkaTime time)
-{
-	return time / KafkaTimeOneHour % 24;
-}
 // We use for signed/unsigned conversions, where we know we will not have problems.
 // Static casting all over the place still produces a lot of gcc warning messages.
 // Also we can put checks in here if required.
@@ -90,7 +67,7 @@ OT numeric_cast(const ST value)
 	return static_cast<OT>(value);
 }
 
-// Quality Flags
+// Quality Flags use ToString(quality) to turn into a string representation.
 //	NONE              = 0,
 //	ONLINE            = 1<<0,
 //	RESTART           = 1<<1,

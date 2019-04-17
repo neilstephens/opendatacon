@@ -62,10 +62,6 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("Port"))
 		static_cast<KafkaPortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asString();
-
-	if (JSONRoot.isMember("Topic"))
-		static_cast<KafkaPortConf*>(pConf.get())->mAddrConf.Topic = JSONRoot["Topic"].asString();
-
 }
 
 KafkaPort::~KafkaPort()
@@ -125,13 +121,14 @@ void KafkaPort::SendKafkaMessage(const std::string &key, double measurement, Qua
 {
 	if (key.length() == 0)
 	{
-		LOGERROR("OS - Tried to send an empty message to the TCP Port");
+		LOGERROR("Tried to send an empty key to Kafka");
 		return;
 	}
-	//LOGDEBUG("OS - Sending Message - {}, {}", KafkaMessageAsString(CompleteKafkaMessage), ToString(quality));
-	// Done this way just to get context into log messages.
+	std::string value = "{\"Value\" : " + std::to_string(measurement) + ", \"Quality\" : \"" + ToString(quality) + "\"}";
 
-	//LastSentKafkaMessage = CompleteKafkaMessage; // Take a copy of last message
+	LOGDEBUG("Sending Kafka Message - {}, {}", key, value);
+
+	// Now actually send it to Kafka!!!
 }
 
 #ifdef _MSC_VER

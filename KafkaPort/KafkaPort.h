@@ -35,7 +35,6 @@
 
 #include "Kafka.h"
 #include "KafkaPortConf.h"
-#include "KafkaUtility.h"
 
 
 using namespace odc;
@@ -58,6 +57,12 @@ public:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 	void SendKafkaMessage(const std::string &key, double measurement, QualityFlags quality);
+
+
+	// Testing use only
+	KafkaPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
+	KafkaAddrConf *GetAddrAccess() { return &(MyConf->mAddrConf); }
+	std::string GetTopic() { return MyPointConf->Topic; };
 
 protected:
 

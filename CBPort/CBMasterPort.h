@@ -102,8 +102,6 @@ public:
 	void SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback);
 	void SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
 
-	// Testing use only
-	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 private:
 
 	std::unique_ptr<asio::strand> MasterCommandStrand;

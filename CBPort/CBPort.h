@@ -59,6 +59,8 @@ public:
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the CBConnection.
 
+	// Testing use only
+	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 protected:
 
 	TCPClientServer ClientOrServer();

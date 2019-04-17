@@ -45,7 +45,6 @@
 #include <spdlog/sinks/basic_file_sink.h>
 
 #include "KafkaPort.h"
-#include "KafkaUtility.h"
 
 
 #if defined(NONVSTESTING)
@@ -244,7 +243,7 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 #pragma endregion TEST_HELPERS
 #endif
 
-namespace SimpleUnitTestsCB
+namespace SimpleUnitTests
 {
 TEST_CASE("Util - ConfigFileLoadTest")
 {
@@ -252,23 +251,29 @@ TEST_CASE("Util - ConfigFileLoadTest")
 	STANDARD_TEST_SETUP();
 	TEST_KafkaPort(Json::nullValue);
 
-	STANDARD_TEST_TEARDOWN();
-}
+	std::string key;
 
-TEST_CASE("KafkaPacket - ClassConstructor")
-{
-	SIMPLE_TEST_SETUP();
+	bool ares = KPort->GetPointTable()->GetAnalogKafkaKeyUsingODCIndex(1, key);
+	REQUIRE(ares);
+	REQUIRE(key == "HS01234|ANA|1");
 
-	//	REQUIRE(b.CheckBBitIsZero());
+	bool bres = KPort->GetPointTable()->GetBinaryKafkaKeyUsingODCIndex(12, key);
+	REQUIRE(bres);
+	REQUIRE(key == "HS01234|BIN|12");
+
+	REQUIRE(KPort->GetTopic() == "Historian");
+	REQUIRE(KPort->GetAddrAccess()->IP == "127.0.0.1");
+	REQUIRE(KPort->GetAddrAccess()->Port == "10000");
+
 	STANDARD_TEST_TEARDOWN();
 }
 }
 
 namespace EventTests
 {
-void SendBinaryEvent(std::unique_ptr<KafkaPort> &KPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
+void SendBinaryEvent(std::unique_ptr<KafkaPort> &KPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE)
 {
-	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual, time);
+	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual);
 	event->SetPayload<EventType::Binary>(std::move(val));
 
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
@@ -291,10 +296,42 @@ TEST_CASE("ODC - BinaryEvent")
 	// TEST EVENTS WITH DIRECT CALL
 	// Test on a valid binary point
 	const int ODCIndex = 1;
-	bool val = true;
+
 	QualityFlags qual = QualityFlags::ONLINE;
 
 	SendBinaryEvent(KPort, ODCIndex, true, qual);
+
+	STANDARD_TEST_TEARDOWN();
+}
+
+void SendAnalogEvent(std::unique_ptr<KafkaPort> &KPort, int ODCIndex,double val, QualityFlags qual = QualityFlags::ONLINE)
+{
+	auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, "Testing", qual);
+	event->SetPayload<EventType::Analog>(std::move(val));
+
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			res = command_stat;
+		});
+
+	KPort->Event(event, "TestHarness", pStatusCallback);
+	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+}
+
+TEST_CASE("ODC - AnalogEvent")
+{
+	STANDARD_TEST_SETUP();
+	TEST_KafkaPort(Json::nullValue);
+
+	KPort->Enable();
+
+	// TEST EVENTS WITH DIRECT CALL
+	// Test on a valid binary point
+	const int ODCIndex = 1;
+	QualityFlags qual = QualityFlags::ONLINE | QualityFlags::RESTART;
+
+	SendAnalogEvent(KPort, ODCIndex, 12.345, qual);
 
 	STANDARD_TEST_TEARDOWN();
 }

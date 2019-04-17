@@ -64,6 +64,13 @@ void KafkaPointConf::ProcessElements(const Json::Value& JSONRoot)
 		ProcessPoints(PointType::Binary, Binaries);
 	}
 
+	if (JSONRoot.isMember("Topic"))
+		Topic = JSONRoot["Topic"].asString();
+	else
+	{
+		LOGERROR("A Kafta Topic must be specificed : {}", JSONRoot.asString());
+	}
+
 	if (JSONRoot.isMember("KafkaCommandTimeoutmsec"))
 	{
 		//	KafkaCommandTimeoutmsec = JSONRoot["KafkaCommandTimeoutmsec"].asUInt();
@@ -107,7 +114,7 @@ void KafkaPointConf::ProcessPoints(PointType pt, const Json::Value& JSONNode)
 		}
 
 		if (JSONNode[n].isMember("EQType"))
-			eqtype = JSONNode[n]["Group"].asUInt();
+			eqtype = JSONNode[n]["EQType"].asString();
 		else
 		{
 			LOGERROR(" A point needs a \"EQType\" : {}",JSONNode[n].toStyledString());

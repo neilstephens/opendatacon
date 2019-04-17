@@ -39,7 +39,6 @@
 
 
 #include "Kafka.h"
-#include "KafkaUtility.h"
 #include "KafkaPointTableAccess.h"
 
 using namespace odc;
@@ -56,5 +55,6 @@ public:
 	void ProcessPoints(PointType pt, const Json::Value & JSONNode);
 
 	KafkaPointTableAccess PointTable; // All access to point table through this.
+	std::string Topic;
 };
 #endif

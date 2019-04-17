@@ -33,8 +33,6 @@
 
 
 #include "Kafka.h"
-#include "KafkaUtility.h"
-
 
 using namespace odc;
 
