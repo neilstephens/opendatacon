@@ -81,12 +81,6 @@ public:
 
 	std::map<uint32_t, CBPollGroup> PollGroups;
 
-	// System Sign On Configuration - this is a "special" point that is used to pass the systemsignon command through ODC.
-	std::pair<int32_t, uint32_t> SystemSignOnPoint = std::make_pair(int32_t(0),uint32_t(0));
-	std::pair<int32_t, uint32_t> FreezeResetCountersPoint = std::make_pair(int32_t(0), uint32_t(0));
-	std::pair<int32_t, uint32_t> POMControlPoint = std::make_pair(int32_t(0), uint32_t(0));
-	std::pair<int32_t, uint32_t> DOMControlPoint = std::make_pair(int32_t(0), uint32_t(0));
-
 	// Swap the station and group values when the device is a Baker (not Conitel)
 	bool IsBakerDevice = false;
 
