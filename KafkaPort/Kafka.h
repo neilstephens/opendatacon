@@ -68,20 +68,20 @@ OT numeric_cast(const ST value)
 }
 
 // Quality Flags use ToString(quality) to turn into a string representation.
-//	NONE              = 0,
-//	ONLINE            = 1<<0,
-//	RESTART           = 1<<1,
-//	COMM_LOST         = 1<<2,
-//	REMOTE_FORCED     = 1<<3,
-//	LOCAL_FORCED      = 1<<4,
-//	OVERRANGE         = 1<<5,
-//	REFERENCE_ERR     = 1<<6,
-//	ROLLOVER          = 1<<7,
-//	DISCONTINUITY     = 1<<8,
-//	CHATTER_FILTER    = 1<<9
 
 enum PointType { Binary, Analog };
 static std::string GetKafkaKey(std::string & EQType, PointType pt, size_t ODCIndex) { return EQType + ((pt == Binary) ? "|BIN|" : "|ANA|") + std::to_string(ODCIndex); }
 static std::string GetPointTypeString(PointType pt) { return (pt == PointType::Binary) ? "Binary" : "Analog"; }
 
-#endif
+class KafkaEvent
+{
+public:
+	KafkaEvent(): Key(""), Value("")
+	{};
+	KafkaEvent(const std::string& key, const std::string& value): Key(key), Value(value)
+	{};
+
+	std::string Key;
+	std::string Value;
+};
+#endif  Kafka_H_

@@ -35,6 +35,7 @@
 
 #include "Kafka.h"
 #include "KafkaPortConf.h"
+#include "StrandProtectedQueue.h"
 
 
 using namespace odc;
@@ -56,7 +57,9 @@ public:
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	void SendKafkaMessage(const std::string &key, double measurement, QualityFlags quality);
+	void QueueKafkaEvent(const std::string &key, double measurement, QualityFlags quality);
+
+	void SendKafkaEvents();
 
 
 	// Testing use only
@@ -69,6 +72,7 @@ protected:
 	// Worker functions to try and clean up the code...
 	KafkaPortConf *MyConf;
 	std::shared_ptr<KafkaPointConf> MyPointConf;
+	std::shared_ptr<StrandProtectedQueue<KafkaEvent>> pKafkaEventQueue;
 };
 
 #endif

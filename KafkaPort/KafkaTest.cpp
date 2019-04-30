@@ -299,8 +299,18 @@ TEST_CASE("ODC - BinaryEvent")
 
 	QualityFlags qual = QualityFlags::ONLINE;
 
+	// Do three events so they end up in the same kafka message - otherwise single messages..
 	SendBinaryEvent(KPort, ODCIndex, true, qual);
+	SendBinaryEvent(KPort, ODCIndex+1, false, qual);
+	SendBinaryEvent(KPort, ODCIndex+2, true, qual);
+	START_IOS(2);
 
+	WaitIOS(IOS, 1);
+
+	SendBinaryEvent(KPort, ODCIndex, true, qual);
+	WaitIOS(IOS,1);
+
+	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
 }
 
@@ -323,6 +333,7 @@ TEST_CASE("ODC - AnalogEvent")
 {
 	STANDARD_TEST_SETUP();
 	TEST_KafkaPort(Json::nullValue);
+	START_IOS(2);
 
 	KPort->Enable();
 
@@ -333,6 +344,9 @@ TEST_CASE("ODC - AnalogEvent")
 
 	SendAnalogEvent(KPort, ODCIndex, 12.345, qual);
 
+	WaitIOS(IOS, 3);
+
+	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
 }
 }

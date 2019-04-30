@@ -28,8 +28,7 @@
 #include <iostream>
 #include "KafkaPort.h"
 #include "KafkaPortConf.h"
-
-//TODO Suck in what we need from the OutStation implementations to recevive and handle (package and send) Kafka messages.
+#include "StrandProtectedQueue.h"
 
 KafkaPort::KafkaPort(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
@@ -111,24 +110,50 @@ void KafkaPort::SocketStateHandler(bool state)
 
 void KafkaPort::Build()
 {
-
 	// Creates internally if necessary
 	//pConnection = KafkaConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
+	// The passed in method will be called whenever there are events in the queue.
+	pKafkaEventQueue.reset(new StrandProtectedQueue<KafkaEvent>(*pIOS, 5000, std::bind(&KafkaPort::SendKafkaEvents, this)));
 }
 
-void KafkaPort::SendKafkaMessage(const std::string &key, double measurement, QualityFlags quality)
+void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, QualityFlags quality)
 {
 	if (key.length() == 0)
 	{
-		LOGERROR("Tried to send an empty key to Kafka");
+		LOGERROR("Tried to queue an empty key to Kafka");
 		return;
 	}
 	std::string value = "{\"Value\" : " + std::to_string(measurement) + ", \"Quality\" : \"" + ToString(quality) + "\"}";
+	KafkaEvent ev(key, value);
+	pKafkaEventQueue->async_push(ev);
 
-	LOGDEBUG("Sending Kafka Message - {}, {}", key, value);
-
+	LOGDEBUG("Queued Kafka Message - {}, {}", key, value);
 	// Now actually send it to Kafka!!!
+}
+
+// Process everything in the queue, into a Kafka message, compress and send. The question is how we call this?
+// Register it as a handler to be called every time new data is pushed into the queue?
+// Use a flag in the push routine to handle if a call to this method has already been queued.
+
+//TODO SendKafkaEvents
+void KafkaPort::SendKafkaEvents()
+{
+	LOGDEBUG("SendKafkaEvents called");
+
+	// Queue a lambda, that will be called with a vector of all the events currently in the queue. We process them and send them to the Kafka cluster
+
+	auto pProcessCallback = std::make_shared<StrandProtectedQueue<KafkaEvent>::ProcessAllEventsCallbackFn>([&](std::vector<KafkaEvent> Events)
+		{
+			for (int i = 0; i < Events.size(); i++)
+			{
+			//Events[i]
+
+			}
+			LOGDEBUG("Kafka Message Send would happen now..");
+		});
+
+	pKafkaEventQueue->async_pop_all(pProcessCallback);
 }
 
 #ifdef _MSC_VER
@@ -159,7 +184,7 @@ void KafkaPort::Event(std::shared_ptr<const EventInfo> event, const std::string&
 				LOGERROR("Tried to get the key for an invalid analog point index " + std::to_string(ODCIndex));
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
-			SendKafkaMessage(key, measurement, quality);
+			QueueKafkaEvent(key, measurement, quality);
 
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
 		}
@@ -175,7 +200,7 @@ void KafkaPort::Event(std::shared_ptr<const EventInfo> event, const std::string&
 				LOGERROR("Tried to get the key for an invalid abinary point index " + std::to_string(ODCIndex));
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
-			SendKafkaMessage(key, measurement, quality);
+			QueueKafkaEvent(key, measurement, quality);
 
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
 		}

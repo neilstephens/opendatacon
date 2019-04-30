@@ -46,7 +46,7 @@ Starting with an example configuration:
 	// Index is the ODC Index. All other fields in the point conf are Kafka fields. 
 	// The key will look like: "HS01234|ANA|56" The first part is the EQType, which can be roughly translated as RTU. The second is ANA (analog) or BIN (binary). 
 	// The last value is the point number which will be the ODC index. i.e. Set the ODC index to match the point number.
-	// The value part of the Kafka pair will be like {"Value": 0.123, "Quality": "ONLINE|RESTART"}
+	// The value part of the Kafka pair will be like {"Value": 0.123, "Quality": "|ONLINE|RESTART|"}
 	
 	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "EQType" : "HS01234" },
 					{"Index" : 12, "EQType" : "HS01234"}],
