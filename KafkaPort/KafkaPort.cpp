@@ -66,7 +66,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 KafkaPort::~KafkaPort()
 {
 	Disable();
-	//KafkaConnection::RemoveOutstation(pConnection, MyConf->mAddrConf.OutstationAddr);
+	KafkaConnection.reset(); // Remove our ref count from the sheared ptr, so it is destructed.
 }
 
 void KafkaPort::Enable()
@@ -74,12 +74,13 @@ void KafkaPort::Enable()
 	if (enabled) return;
 	try
 	{
+		//KafkaConnection->
 		//	KafkaConnection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 		enabled = true;
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Problem opening connection : {} : {}", Name, e.what());
+		LOGERROR("Problem opening Kafka connection : {} : {}", Name, e.what());
 		return;
 	}
 }
@@ -88,78 +89,29 @@ void KafkaPort::Disable()
 	if (!enabled) return;
 	enabled = false;
 
-	//KafkaConnection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
-}
-
-// Have to fire the SocketStateHandler for all other OutStations sharing this socket.
-void KafkaPort::SocketStateHandler(bool state)
-{
-	std::string msg;
-	if (state)
-	{
-		PublishEvent(ConnectState::CONNECTED);
-		msg = Name + ": pConnection established.";
-	}
-	else
-	{
-		PublishEvent(ConnectState::DISCONNECTED);
-		msg = Name + ": pConnection closed.";
-	}
-	LOGINFO(msg);
+	//KafkaConnection->
 }
 
 void KafkaPort::Build()
 {
-	// Creates internally if necessary
-	//pConnection = KafkaConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
-
 	// The passed in method will be called whenever there are events in the queue.
 	pKafkaEventQueue.reset(new StrandProtectedQueue<KafkaEvent>(*pIOS, 5000, std::bind(&KafkaPort::SendKafkaEvents, this)));
+
+	libkafka_asio::Connection::Configuration configuration;
+	configuration.auto_connect = true;
+	configuration.client_id = "libkafka_asio_example"; // MyPointConf->ClientIDString
+	configuration.socket_timeout = 10000;              //MyConf->mAddrConf.TCPConnectRetryPeriodms
+	configuration.SetBroker("localhost",9092);         //MyConf->mAddrConf.IP, MyConf->mAddrConf.Port
+
+	KafkaConnection.reset( new libkafka_asio::Connection (*pIOS, configuration));
 }
 
-void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, QualityFlags quality)
-{
-	if (key.length() == 0)
-	{
-		LOGERROR("Tried to queue an empty key to Kafka");
-		return;
-	}
-	std::string value = "{\"Value\" : " + std::to_string(measurement) + ", \"Quality\" : \"" + ToString(quality) + "\"}";
-	KafkaEvent ev(key, value);
-	pKafkaEventQueue->async_push(ev);
-
-	LOGDEBUG("Queued Kafka Message - {}, {}", key, value);
-	// Now actually send it to Kafka!!!
-}
-
-// Process everything in the queue, into a Kafka message, compress and send. The question is how we call this?
-// Register it as a handler to be called every time new data is pushed into the queue?
-// Use a flag in the push routine to handle if a call to this method has already been queued.
-
-//TODO SendKafkaEvents
-void KafkaPort::SendKafkaEvents()
-{
-	LOGDEBUG("SendKafkaEvents called");
-
-	// Queue a lambda, that will be called with a vector of all the events currently in the queue. We process them and send them to the Kafka cluster
-
-	auto pProcessCallback = std::make_shared<StrandProtectedQueue<KafkaEvent>::ProcessAllEventsCallbackFn>([&](std::vector<KafkaEvent> Events)
-		{
-			for (int i = 0; i < Events.size(); i++)
-			{
-			//Events[i]
-
-			}
-			LOGDEBUG("Kafka Message Send would happen now..");
-		});
-
-	pKafkaEventQueue->async_pop_all(pProcessCallback);
-}
 
 #ifdef _MSC_VER
 #pragma region ODCEvents
 #endif
 // We received a change in data from an Event (from the opendatacon Connector). We need to then send it as a Kafka message
+
 
 void KafkaPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
@@ -233,4 +185,96 @@ void KafkaPort::Event(std::shared_ptr<const EventInfo> event, const std::string&
 #ifdef _MSC_VER
 #pragma endregion DataEvents
 #endif
+
+void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, QualityFlags quality)
+{
+	if (key.length() == 0)
+	{
+		LOGERROR("Tried to queue an empty key to Kafka");
+		return;
+	}
+	std::string value = "{\"Value\" : " + std::to_string(measurement) + ", \"Quality\" : \"" + ToString(quality) + "\"}";
+	KafkaEvent ev(key, value);
+	pKafkaEventQueue->async_push(ev);
+
+	LOGDEBUG("Queued Kafka Message - {}, {}", key, value);
+	// Now actually send it to Kafka!!!
+}
+
+// Process everything in the queue, into a Kafka message, compress and send. The question is how we call this?
+// Register it as a handler to be called every time new data is pushed into the queue?
+// Use a flag in the push routine to handle if a call to this method has already been queued.
+
+//TODO SendKafkaEvents
+void KafkaPort::SendKafkaEvents()
+{
+	LOGDEBUG("SendKafkaEvents called");
+
+	// Queue a lambda, that will be called with a vector of all the events currently in the queue. We process them and send them to the Kafka cluster
+	// Define the lambda to be called her, it is called with an async method below.
+
+	StrandProtectedQueue<KafkaEvent>::ProcessAllEventsCallbackFnPtr pProcessCallback =
+		std::make_shared<StrandProtectedQueue<KafkaEvent>::ProcessAllEventsCallbackFn>([&](std::vector<KafkaEvent> Events)
+			{
+				LOGDEBUG("Packaging up Kafka Message..");
+
+				if (Events.size() == 0)
+				{
+				      LOGDEBUG("No Events to Send to Kafka");
+				      return; // Nothing to do
+				}
+
+				libkafka_asio::MessageSet messageset; // Build multiple messages (each holding an event) into the messageset. Then we compress to a message.
+
+				for (int i = 0; i < Events.size(); i++)
+				{
+				      LOGDEBUG("Message Key {}, Value {}", Events[i].Key, Events[i].Value);
+
+				      libkafka_asio::Message message;
+				      message.mutable_value().reset(new libkafka_asio::Bytes::element_type(Events[i].Value.begin(), Events[i].Value.end()));
+				      message.mutable_key().reset(new libkafka_asio::Bytes::element_type(Events[i].Key.begin(), Events[i].Key.end()));
+
+				      libkafka_asio::MessageAndOffset messageandoffset(message, i+1); // Offset is 1 based??
+
+				      messageset.push_back(messageandoffset);
+				}
+
+				// Compress the message
+				asio::error_code ec;
+				libkafka_asio::Message smallmessage = CompressMessageSet(messageset, libkafka_asio::constants::Compression::kCompressionSnappy, ec);
+
+				if (libkafka_asio::kErrorSuccess != ec)
+				{
+				// Compression failed...
+				      LOGDEBUG("Kafka Compression of message failed! Error Code {} - {}", ec.value(), asio::system_error(ec).what());
+				      return;
+				}
+
+				libkafka_asio::ProduceRequest request;
+				request.set_required_acks(1); // This is the default anyway. We can set to 0 so we dont need an ack, or more than 1 of there is more than one message in a message (I think)
+
+				std::string MessageTopic("Test");
+
+				request.AddMessage(smallmessage, MessageTopic, 0);
+
+				// Send the prepared produce request.
+				// The connection will attempt to automatically connect to one of the brokers, specified in the configuration.
+				KafkaConnection->AsyncRequest(
+					request,
+					[&](const libkafka_asio::Connection::ErrorCodeType & err,
+					    const libkafka_asio::ProduceResponse::OptionalType & response)
+					{
+						if (err)
+						{
+						      LOGDEBUG("Kafka Produce Message Failed {} ", asio::system_error(err).what());
+						}
+						else
+							LOGDEBUG("Kafka Produce Message Succeeded ");
+					});
+			});
+
+	pKafkaEventQueue->async_pop_all(pProcessCallback);
+}
+
+
 

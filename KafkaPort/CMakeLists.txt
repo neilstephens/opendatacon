@@ -19,17 +19,29 @@
  #
 project(KafkaPort)
 cmake_minimum_required(VERSION 2.8)
+
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules")
+
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
+
+find_package(Boost REQUIRED) 
+find_package(ZLIB REQUIRED)
+find_package(Snappy REQUIRED)
+
+set(Kafka-asio_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/submodules/libkafka-asio/lib" CACHE PATH "Set the path to the kafka-asio lib folder" )
 
 include_directories(
 	"../include"
 	"../JSON"
 	"${ASIO_HOME}/include"
 	"${SPDLOG_HOME}/include"
-)
+    "${Boost_INCLUDE_DIRS}"
+	"${ZLIB_INCLUDE_DIR}"
+	"${SNAPPY_INCLUDE_DIR}"
+	"${Kafka-asio_INCLUDE_DIR}")
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC)
+target_link_libraries(${PROJECT_NAME} ODC ${ZLIB_LIBRARIES} ${SNAPPY_LIBRARIES} )
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

@@ -36,6 +36,7 @@
 #include "Kafka.h"
 #include "KafkaPortConf.h"
 #include "StrandProtectedQueue.h"
+#include <libkafka_asio/libkafka_asio.h>
 
 
 using namespace odc;
@@ -49,7 +50,7 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) final;
 
-	void SocketStateHandler(bool state);
+//	void SocketStateHandler(bool state);
 
 	void Enable() override;
 	void Disable() override;
@@ -73,6 +74,7 @@ protected:
 	KafkaPortConf *MyConf;
 	std::shared_ptr<KafkaPointConf> MyPointConf;
 	std::shared_ptr<StrandProtectedQueue<KafkaEvent>> pKafkaEventQueue;
+	std::shared_ptr<libkafka_asio::Connection> KafkaConnection;
 };
 
 #endif

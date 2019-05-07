@@ -308,7 +308,7 @@ TEST_CASE("ODC - BinaryEvent")
 	WaitIOS(IOS, 1);
 
 	SendBinaryEvent(KPort, ODCIndex, true, qual);
-	WaitIOS(IOS,1);
+	WaitIOS(IOS,4);
 
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();

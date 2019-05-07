@@ -58,6 +58,7 @@ public:
 		// Just do a post. Need to copy the _value into the Lambda as it will go out of scope when async_push exits
 		internal_queue_strand.dispatch([&,_value]()
 			{
+				LOGDEBUG("Push Async Dispatch Method Called");
 				// This is only called from within the internal_queue_strand, so we are safe.
 				// Only push if we have space
 				if (fifo.size() < size)
@@ -86,6 +87,7 @@ public:
 		// Need to copy the eventscallback into the Lambda as it will possibly go out of scope
 		internal_queue_strand.dispatch([&, eventscallback]()
 			{
+				LOGDEBUG("POP All Dispatch Method Called");
 				// This is only called from within the internal_queue_strand, so we are thread safe.
 				auto totalevents = fifo.size();
 				std::vector<T> Events(totalevents);
