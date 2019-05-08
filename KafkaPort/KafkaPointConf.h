@@ -56,5 +56,6 @@ public:
 
 	KafkaPointTableAccess PointTable; // All access to point table through this.
 	std::string Topic;
+	uint32_t SocketTimeout;
 };
 #endif

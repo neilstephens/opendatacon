@@ -70,6 +70,12 @@ void KafkaPointConf::ProcessElements(const Json::Value& JSONRoot)
 	{
 		LOGERROR("A Kafta Topic must be specificed : {}", JSONRoot.asString());
 	}
+	if (JSONRoot.isMember("SocketTimeout"))
+		SocketTimeout = JSONRoot["SocketTimeout"].asUInt();
+	else
+	{
+		LOGERROR("A Kafta Socket Timeout (say 10000msec) must be specificed : {}", JSONRoot.asString());
+	}
 
 	if (JSONRoot.isMember("KafkaCommandTimeoutmsec"))
 	{

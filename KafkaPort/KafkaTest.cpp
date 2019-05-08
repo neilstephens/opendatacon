@@ -70,9 +70,9 @@ const char *conffilename1 = "KafkaConfig.conf";
 const char *conffile1 = R"001(
 {
 	"IP" : "127.0.0.1",		// Kafka IP Address for initial connection - Kafka then supplies all the IP's of the Kafka cluster. We dont have to worry about this.
-	"Port" : 10000,
-	"Topic" : "Historian",	// Kafka Topic we will publish messages to. NOTE: we do not specify the partiton (look at the Kafka docs!)
-
+	"Port" : 9092,
+	"Topic" : "Test",	// Kafka Topic we will publish messages to. NOTE: we do not specify the partiton (look at the Kafka docs!)
+	"SocketTimeout" : 10000,	// msec
 
 	//-------Point conf--------#
 	// Index is the ODC Index. All other fields in the point conf are Kafka fields.
@@ -261,9 +261,9 @@ TEST_CASE("Util - ConfigFileLoadTest")
 	REQUIRE(bres);
 	REQUIRE(key == "HS01234|BIN|12");
 
-	REQUIRE(KPort->GetTopic() == "Historian");
+	REQUIRE(KPort->GetTopic() == "Test");
 	REQUIRE(KPort->GetAddrAccess()->IP == "127.0.0.1");
-	REQUIRE(KPort->GetAddrAccess()->Port == "10000");
+	REQUIRE(KPort->GetAddrAccess()->Port == "9092");
 
 	STANDARD_TEST_TEARDOWN();
 }

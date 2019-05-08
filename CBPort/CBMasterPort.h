@@ -104,7 +104,7 @@ public:
 
 private:
 
-	std::unique_ptr<asio::strand> MasterCommandStrand;
+	std::unique_ptr<asio::io_service::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
 
 	std::mutex DigitalCommandSequenceNumberMutex;

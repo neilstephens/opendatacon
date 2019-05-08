@@ -99,9 +99,9 @@ void KafkaPort::Build()
 
 	libkafka_asio::Connection::Configuration configuration;
 	configuration.auto_connect = true;
-	configuration.client_id = "libkafka_asio_example"; // MyPointConf->ClientIDString
-	configuration.socket_timeout = 10000;              //MyConf->mAddrConf.TCPConnectRetryPeriodms
-	configuration.SetBroker("localhost",9092);         //MyConf->mAddrConf.IP, MyConf->mAddrConf.Port
+	configuration.client_id = "odckafkaport"; // MyPointConf->ClientIDString
+	configuration.socket_timeout = 10000;     //MyConf->mAddrConf.TCPConnectRetryPeriodms
+	configuration.SetBroker(MyConf->mAddrConf.IP, MyConf->mAddrConf.Port);
 
 	KafkaConnection.reset( new libkafka_asio::Connection (*pIOS, configuration));
 }
@@ -205,7 +205,6 @@ void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, Qual
 // Register it as a handler to be called every time new data is pushed into the queue?
 // Use a flag in the push routine to handle if a call to this method has already been queued.
 
-//TODO SendKafkaEvents
 void KafkaPort::SendKafkaEvents()
 {
 	LOGDEBUG("SendKafkaEvents called");
@@ -216,19 +215,19 @@ void KafkaPort::SendKafkaEvents()
 	StrandProtectedQueue<KafkaEvent>::ProcessAllEventsCallbackFnPtr pProcessCallback =
 		std::make_shared<StrandProtectedQueue<KafkaEvent>::ProcessAllEventsCallbackFn>([&](std::vector<KafkaEvent> Events)
 			{
-				LOGDEBUG("Packaging up Kafka Message..");
-
 				if (Events.size() == 0)
 				{
-				      LOGDEBUG("No Events to Send to Kafka");
+				      LOGERROR("No Events to Send to Kafka");
 				      return; // Nothing to do
 				}
+
+				LOGDEBUG("Packaging up Kafka Message.. {} Events", Events.size());
 
 				libkafka_asio::MessageSet messageset; // Build multiple messages (each holding an event) into the messageset. Then we compress to a message.
 
 				for (int i = 0; i < Events.size(); i++)
 				{
-				      LOGDEBUG("Message Key {}, Value {}", Events[i].Key, Events[i].Value);
+				//LOGDEBUG("Message Key {}, Value {}", Events[i].Key, Events[i].Value);
 
 				      libkafka_asio::Message message;
 				      message.mutable_value().reset(new libkafka_asio::Bytes::element_type(Events[i].Value.begin(), Events[i].Value.end()));
@@ -246,16 +245,14 @@ void KafkaPort::SendKafkaEvents()
 				if (libkafka_asio::kErrorSuccess != ec)
 				{
 				// Compression failed...
-				      LOGDEBUG("Kafka Compression of message failed! Error Code {} - {}", ec.value(), asio::system_error(ec).what());
+				      LOGERROR("Kafka Compression of message failed! Error Code {} - {}", ec.value(), asio::system_error(ec).what());
 				      return;
 				}
 
 				libkafka_asio::ProduceRequest request;
 				request.set_required_acks(1); // This is the default anyway. We can set to 0 so we dont need an ack, or more than 1 of there is more than one message in a message (I think)
 
-				std::string MessageTopic("Test");
-
-				request.AddMessage(smallmessage, MessageTopic, 0);
+				request.AddMessage(smallmessage, GetTopic(), 0);
 
 				// Send the prepared produce request.
 				// The connection will attempt to automatically connect to one of the brokers, specified in the configuration.
@@ -266,13 +263,14 @@ void KafkaPort::SendKafkaEvents()
 					{
 						if (err)
 						{
-						      LOGDEBUG("Kafka Produce Message Failed {} ", asio::system_error(err).what());
+						      LOGERROR("Kafka Produce (Send) Message Failed {} ", asio::system_error(err).what());
 						}
 						else
-							LOGDEBUG("Kafka Produce Message Succeeded ");
+							LOGDEBUG("Kafka Produce (Send) Message Succeeded ");
 					});
 			});
 
+	// This produces the events vector and passes it to the passed lambda.
 	pKafkaEventQueue->async_pop_all(pProcessCallback);
 }
 
