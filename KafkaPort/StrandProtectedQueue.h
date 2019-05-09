@@ -68,15 +68,14 @@ public:
 				else
 					LOGDEBUG("Strand Protected Queue Overflowed - dumping pushed Item..");
 
-				// Check to see if we need to schedule the queuehandler - to process what we have put in the queue. The bool flag is strand protected...
-				if (NoQueuedHandler)
+				// Check to see if we need to schedule the queuehandler - to process what we have put in the queue.
+				if (queuehandler && !ProcessingEvents)
 				{
-				      NoQueuedHandler = false;
-				      if (queuehandler)
-						io_service.post([&]()
-							{
-								queuehandler();
-							});
+				      ProcessingEvents = true; // Protected by strand
+				      io_service.post([&]()
+						{
+							queuehandler();
+						});
 				}
 			});
 	}
@@ -101,27 +100,22 @@ public:
 
 				// Post the callback with the Events vector - so we dont lock up the strand for extended periods
 				if (eventscallback != nullptr)
-					io_service.post([Events, eventscallback]() // Need to copy the vector as it goes out of scope - do a move - the compiler probably does it for us?
+					internal_queue_strand.dispatch([&,Events, eventscallback]() // Need to copy the vector as it goes out of scope - do a move - the compiler probably does it for us?
 						{
 							(*eventscallback)(Events);
 						});
 
-				// If we have new data, schedule the queue handler again to process the items - which will call us again..
-				if (fifo.size() != 0)
-				{
-				      if (queuehandler)
-				      {
-				            io_service.post([&]()
-							{
-								queuehandler();
-							});
-					}
-				}
-				else
-				{
-				// No queued handler, so when we next push an item, queue the handler.
-				      NoQueuedHandler = true;
-				}
+			});
+	}
+
+	// Indicate that we have finished the pop-all call, and we can call the handler again.
+	void finished_pop_all()
+	{
+		// Dispatch will execute now - if we can, otherwise results in a post.
+		internal_queue_strand.dispatch([&]()
+			{
+				LOGDEBUG("Finished POP All Callback");
+				ProcessingEvents = false; // We are now finished processing the list of events, we can start another. Protected by strand
 			});
 	}
 
@@ -129,9 +123,9 @@ private:
 	std::queue<T> fifo;
 	unsigned int size;
 	asio::io_service& io_service;
-	asio::strand internal_queue_strand;
+	asio::io_service::strand internal_queue_strand;
 	std::function<void()> queuehandler = nullptr;
-	bool NoQueuedHandler = true;
+	bool ProcessingEvents = false;
 };
 
 #endif

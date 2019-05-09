@@ -95,7 +95,7 @@ void KafkaPort::Disable()
 void KafkaPort::Build()
 {
 	// The passed in method will be called whenever there are events in the queue.
-	pKafkaEventQueue.reset(new StrandProtectedQueue<KafkaEvent>(*pIOS, 5000, std::bind(&KafkaPort::SendKafkaEvents, this)));
+	pKafkaEventQueue.reset(new StrandProtectedQueue<KafkaEvent>(*pIOS, 100, std::bind(&KafkaPort::SendKafkaEvents, this)));
 
 	libkafka_asio::Connection::Configuration configuration;
 	configuration.auto_connect = true;
@@ -195,7 +195,7 @@ void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, Qual
 	}
 	std::string value = "{\"Value\" : " + std::to_string(measurement) + ", \"Quality\" : \"" + ToString(quality) + "\"}";
 	KafkaEvent ev(key, value);
-	pKafkaEventQueue->async_push(ev);
+	pKafkaEventQueue->async_push(ev); // Takes a copy
 
 	LOGDEBUG("Queued Kafka Message - {}, {}", key, value);
 	// Now actually send it to Kafka!!!
@@ -256,6 +256,10 @@ void KafkaPort::SendKafkaEvents()
 
 				// Send the prepared produce request.
 				// The connection will attempt to automatically connect to one of the brokers, specified in the configuration.
+				//TODO These can probably not overlap, so need to not send the next one until we have finished this one...
+				LOGDEBUG("Posting Async Kafka Request");
+
+				#ifdef DOPOST
 				KafkaConnection->AsyncRequest(
 					request,
 					[&](const libkafka_asio::Connection::ErrorCodeType & err,
@@ -267,7 +271,12 @@ void KafkaPort::SendKafkaEvents()
 						}
 						else
 							LOGDEBUG("Kafka Produce (Send) Message Succeeded ");
+
+						pKafkaEventQueue->finished_pop_all();
 					});
+				#else
+				pKafkaEventQueue->finished_pop_all();
+				#endif
 			});
 
 	// This produces the events vector and passes it to the passed lambda.
