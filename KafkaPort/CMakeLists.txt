@@ -18,15 +18,47 @@
  #	limitations under the License.
  #
 project(KafkaPort)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules")
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
+#Give a pointer on where to find our installed pakages.
+list(APPEND CMAKE_PREFIX_PATH "${ZLIB_HOME}")
+list(APPEND CMAKE_PREFIX_PATH "${SNAPPY_HOME}")
+list(APPEND CMAKE_PREFIX_PATH "${Boost_DIR}")
+
+#Have to stuff around to get the correct ZLIB libraries, the find package always seems to come back with the DLL version.
+if (BUILD_SHARED_LIBS)
+	find_package(ZLIB REQUIRED)
+else()
+	# Handle appveyor only building the single target.
+	set( ZLIB_LIBRARIES "")
+	
+	if(UNIX)	
+		find_library(ZLIB_STATIC libz.a PATHS "${ZLIB_HOME}" NO_SYSTEM_ENVIRONMENT_PATH)	##static linux equivalent.. (.so dynamic). We want to use our version, not one somewhere else in the system
+		
+		if (NOT (${ZLIB_STATIC} STREQUAL "ZLIB_STATIC-NOTFOUND"))
+			list( APPEND ZLIB_LIBRARIES  ${ZLIB_STATIC})
+		endif()
+	else()
+		find_library(ZLIB_STATIC zlibstatic PATHS "${ZLIB_HOME}" NO_SYSTEM_ENVIRONMENT_PATH)	#We want to use our version, not one somewhere else in the system
+		find_library(ZLIB_STATICD zlibstaticd PATHS "${ZLIB_HOME}" NO_SYSTEM_ENVIRONMENT_PATH)
+	
+		if (NOT (${ZLIB_STATIC} STREQUAL "ZLIB_STATIC-NOTFOUND"))
+			list( APPEND ZLIB_LIBRARIES optimized ${ZLIB_STATIC})
+		endif()
+		if (NOT (${ZLIB_STATICD} STREQUAL "ZLIB_STATICD-NOTFOUND"))
+			list( APPEND ZLIB_LIBRARIES debug ${ZLIB_STATICD})
+		endif()
+	endif()
+	set(ZLIB_INCLUDE_DIR "${ZLIB_HOME}/include")
+endif()
 
 find_package(Boost REQUIRED) 
-find_package(ZLIB REQUIRED)
 find_package(Snappy REQUIRED)
+
+message( "ZLIB_LIBRARIES - ${ZLIB_LIBRARIES}")
+message( "SNAPPY_LIBRARIES - ${SNAPPY_LIBRARIES}")
 
 set(Kafka-asio_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/submodules/libkafka-asio/lib" CACHE PATH "Set the path to the kafka-asio lib folder" )
 
@@ -39,6 +71,8 @@ include_directories(
 	"${ZLIB_INCLUDE_DIR}"
 	"${SNAPPY_INCLUDE_DIR}"
 	"${Kafka-asio_INCLUDE_DIR}")
+
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC ${ZLIB_LIBRARIES} ${SNAPPY_LIBRARIES} )
