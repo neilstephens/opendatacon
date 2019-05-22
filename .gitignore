@@ -16,3 +16,8 @@ MD3Port/uncrustify.cfg
 MD3Port/uncrustify_here.pl
 
 cmake-build-debug-mingw/
+submodules/asio-1.12.2/
+KafkaPort/uncrustify_here.pl
+CBPort/uncrustify.cfg
+KafkaPort/uncrustify.cfg
+CBPort/uncrustify_here.pl
