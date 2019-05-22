@@ -29,39 +29,46 @@
 
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
+#include <opendatacon/util.h>
 
 #include <Python.h>
 
 #include "PyPortConf.h"
-#include "PyPortFactory.h"
-#include "PyPortManager.h"
+// #include "PyPointTableAccess.h"
+
+// Hide some of the code to make Logging cleaner
+#define LOGDEBUG(...) \
+	if (auto log = odc::spdlog_get("CBPort")) \
+		log->debug(__VA_ARGS__);
+#define LOGERROR(...) \
+	if (auto log = odc::spdlog_get("CBPort")) \
+		log->error(__VA_ARGS__);
+#define LOGWARN(...) \
+	if (auto log = odc::spdlog_get("CBPort"))  \
+		log->warn(__VA_ARGS__);
+#define LOGINFO(...) \
+	if (auto log = odc::spdlog_get("CBPort")) \
+		log->info(__VA_ARGS__);
 
 using namespace odc;
 
 class PyPort: public DataPort
 {
-	friend PyPortManager;
+
 public:
-	PyPort(std::shared_ptr<PyPortManager> Manager, std::string Name, std::string ConfFilename, const Json::Value ConfOverrides);
-	~PyPort();
+	PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
+	~PyPort() override;
+	void ProcessElements(const Json::Value& JSONRoot) final;
 
-	void ProcessElements(const Json::Value& JSONRoot);
+	void Enable() override;
+	void Disable() override;
+	void Build() override;
 
-	virtual void Enable() override;
-	virtual void Disable() override;
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	void BuildOrRebuild();
 
-	template<typename T> std::future<CommandStatus> EventT(const T& meas, uint16_t index, const std::string& SenderName);
-	template<typename T> std::future<CommandStatus> EventQ(const T& qual, uint16_t index, const std::string& SenderName);
-
-	//virtual std::future<CommandStatus> Event(const ConnectState& state, uint16_t index, const std::string& SenderName);
-
-	virtual std::future<CommandStatus> Event(const Binary& meas, uint16_t index, const std::string& SenderName);
-	virtual std::future<CommandStatus> Event(const Analog& meas, uint16_t index, const std::string& SenderName);
-
-	virtual std::future<CommandStatus> Event(const BinaryQuality qual, uint16_t index, const std::string& SenderName);
-	virtual std::future<CommandStatus> Event(const AnalogQuality qual, uint16_t index, const std::string& SenderName);
+	// Testing use only
+//	PyPointTableAccess* GetPointTable() { return &(MyPointConf->PointTable); }
 
 protected:
 	static PyMethodDef PyModuleMethods[];
@@ -74,16 +81,23 @@ protected:
 		/* Type-specific fields go here. */
 	} PyDataPortObject;
 
+	// Worker functions to try and clean up the code...
+	PyPortConf* MyConf;
+//	std::shared_ptr<PyPointConf> MyPointConf;
+
 private:
-	std::shared_ptr<PyPortManager> Manager_;
+	// Worker methods
+	void PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c);
 
 	/// Python interface definition
 	static PyObject* Py_init(PyObject *self, PyObject *args);
+
+	/*
 	static PyObject* PublishEventBoolean(PyObject *self, PyObject *args);
 	static PyObject* PublishEventInteger(PyObject *self, PyObject *args);
 	static PyObject* PublishEventFloat(PyObject *self, PyObject *args);
 	static PyObject* PublishEventConnectState(PyObject *self, PyObject *args);
-
+	*/
 	PyObject *pyModule = nullptr;
 	PyObject *pyInstance = nullptr;
 	PyObject *pyFuncEnable = nullptr;
@@ -95,6 +109,12 @@ private:
 	PyObject *pyFuncEventControlAnalog = nullptr;
 
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
+
+	// Pulled in from PyPortManager
+	void PyErrOutput();
+	void PostPyCall(PyObject* pyFunction, PyObject* pyArgs);
+	void PostPyCall(PyObject* pyFunction, PyObject* pyArgs, std::function<void(PyObject*)> callback);
+
 };
 
 #endif /* PYPORT_H_ */

@@ -21,3 +21,5 @@ KafkaPort/uncrustify_here.pl
 CBPort/uncrustify.cfg
 KafkaPort/uncrustify.cfg
 CBPort/uncrustify_here.pl
+PyPort/uncrustify_here.pl
+PyPort/uncrustify.cfg

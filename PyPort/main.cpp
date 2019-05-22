@@ -24,14 +24,34 @@
  *      Author: Alan Murray <alan@atmurray.net>
  */
 
-#include "PyPortFactory.h"
+#include "PyPort.h"
 
-extern "C" odc::DataPortFactory* new_DataPortFactory(std::shared_ptr<odc::IOManager> pIOM)
+
+extern "C" PyPort* new_PyPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
 {
-	return PyPortFactory::Get(pIOM);
+	return new PyPort(Name, File, Overrides);
 }
 
-extern "C" void delete_DataPortFactory(odc::DataPortFactory* PortFactory)
+extern "C" void delete_PyPort(PyPort* aPyPort_ptr)
 {
-	return delete PortFactory;
+	delete aPyPort_ptr;
+	return;
+}
+
+//
+// Should be turned on for "normal" builds, and off if you want to use Visual Studio Test Integration.
+//
+
+extern "C" int run_tests(int argc, char* argv[])
+{
+	#ifdef NONVSTESTING
+	// Create loggers for tests here
+	CommandLineLoggingSetup();
+
+	return Catch::Session().run(argc, argv);
+	// And release here.
+	CommandLineLoggingCleanup();
+	#else
+	return 1;
+	#endif
 }

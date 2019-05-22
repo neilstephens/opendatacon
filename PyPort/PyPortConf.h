@@ -29,8 +29,6 @@
 
 #include <memory>
 #include <opendatacon/DataPortConf.h>
-#include <json/json.h>
-//#include "PyPointConf.h"
 
 class PyPortConf: public DataPortConf
 {

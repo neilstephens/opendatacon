@@ -26,3 +26,5 @@
 
 #include "PyPortConf.h"
 
+// No code to actually read a config at the monment, Alan set everything to defaults.
+// We will have to pull the section of config meant for us (PyPort), and pass it to the Python script, so it can handle ODC point events, and create them

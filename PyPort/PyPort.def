@@ -20,3 +20,5 @@
 LIBRARY PyPort
 EXPORTS
 	new_PyPort
+	delete_PyPort
+	run_tests
