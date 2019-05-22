@@ -20,7 +20,15 @@
 project(KafkaPort)
 cmake_minimum_required(VERSION 3.1)
 
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules")
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/submodules/libkafka-asio/cmake/Modules")	# Find Snappy Command
+
+# Do these need to be set to an install directory instead of the source directory? Need to trigger libkafka-asio build in ODC Main makefile at configure...
+
+set(Kafka-asio_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/submodules/libkafka-asio/lib" CACHE PATH "Set the path to the kafka-asio lib folder" )
+set(ZLIB_HOME "${CMAKE_SOURCE_DIR}/submodules/libkafka-asio/submodules/zlib" CACHE PATH "Set the path to the zlib folder" )
+set(SNAPPY_HOME "${CMAKE_SOURCE_DIR}/submodules/libkafka-asio/submodules/snappy" CACHE PATH "Set the path to the snappy folder" )
+set(Boost_DIR "${CMAKE_SOURCE_DIR}/submodules/libkafka-asio/submodules/boost_1_70_0" CACHE PATH "Set the path to the Boost Subset folder" )
+
 
 #Give a pointer on where to find our installed pakages.
 list(APPEND CMAKE_PREFIX_PATH "${ZLIB_HOME}")
@@ -59,8 +67,6 @@ find_package(Snappy REQUIRED)
 
 message( "ZLIB_LIBRARIES - ${ZLIB_LIBRARIES}")
 message( "SNAPPY_LIBRARIES - ${SNAPPY_LIBRARIES}")
-
-set(Kafka-asio_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/submodules/libkafka-asio/lib" CACHE PATH "Set the path to the kafka-asio lib folder" )
 
 include_directories(
 	"../include"
