@@ -24,6 +24,18 @@
  *      Author: Alan Murray <alan@atmurray.net>
  */
 
+
+// Python Interface:
+// We need to call a function Config(JSONString) when we load and process the config file. We are passing a "Python" section of the config,
+// which could be any valid JSON.
+// We need to call a method when we get Build() called.
+// We need to call a Python method every time we get an event, and pass it a callback that it should call when it is finished. Do we need a timeout on how
+// long until it responds, then we just respond with a fail.
+// Do we need to call a Python like timer method, that will allow the Python code to set how long it should be until it is next called.
+// Kind of like an adjustable timer tick. We could do this through ASIO. We could also then use a strand to control access to the Python instance - can
+// we have one per core???
+
+
 #include "PyPort.h"
 #include <Python.h>
 #include <chrono>
@@ -33,6 +45,47 @@
 #include <iomanip>
 
 std::unordered_map<PyObject*, PyPort*> PyPort::PyPorts;
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+
+struct module_state
+{
+	PyObject* error;
+};
+
+static PyObject* error_out(PyObject* m)
+{
+	struct module_state* st = GETSTATE(m);
+	PyErr_SetString(st->error, "something bad happened");
+	return NULL;
+}
+
+static PyMethodDef myextension_methods[] = {
+	{"error_out", (PyCFunction)error_out, METH_NOARGS, NULL},
+	{NULL, NULL}
+};
+
+static int myextension_traverse(PyObject* m, visitproc visit, void* arg)
+{
+	Py_VISIT(GETSTATE(m)->error);
+	return 0;
+}
+
+static int myextension_clear(PyObject* m)
+{
+	Py_CLEAR(GETSTATE(m)->error);
+	return 0;
+}
+static struct PyModuleDef moduledef = {
+	PyModuleDef_HEAD_INIT,
+	"ODC",
+	NULL,
+	sizeof(struct module_state),
+	myextension_methods,
+	NULL,
+	myextension_traverse,
+	myextension_clear,
+	NULL
+};
 
 PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
@@ -54,7 +107,7 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 	PyRun_SimpleString("sys.path.append(\".\")");
 
 	/* create a new module */
-	PyObject* module = Py_InitModule("odc", PyPort::PyModuleMethods);
+	PyObject* module = PyModule_Create(&moduledef); // Py_InitModule("odc", PyPort::PyModuleMethods);
 	PyDateTime_IMPORT;
 
 	/* create a new class/type */
@@ -195,6 +248,7 @@ PyObject* PyPort::Py_init(PyObject *self, PyObject *args)
 	PyDateTime_IMPORT;
 	return Py_None;
 }
+
 
 // Just schedule the callback, don't want to do it in a strand protected section.
 void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c)

@@ -27,6 +27,10 @@
 #ifndef PYPORT_H_
 #define PYPORT_H_
 
+// If we are compiling for external testing (or production) define this.
+// If we are using VS and its test framework, don't define this.
+//#define NONVSTESTING
+
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
@@ -35,6 +39,11 @@
 
 #include "PyPortConf.h"
 // #include "PyPointTableAccess.h"
+
+
+typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+typedef std::shared_ptr<Timer_t> pTimer_t;
+
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(...) \

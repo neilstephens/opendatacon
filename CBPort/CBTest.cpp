@@ -189,17 +189,21 @@ void WriteConfFilesToCurrentWorkingDirectory()
 {
 	std::ofstream ofs(conffilename1);
 	if (!ofs)
-		WARN("Could not open conffile1 for writing");
+	{
+		FAIL("Could not open conffile1 for writing");
+	}
 
 	ofs << conffile1;
 	ofs.close();
 
 	std::ofstream ofs2(conffilename2);
 	if (!ofs2)
-		WARN("Could not open conffile2 for writing");
+	{
+		FAIL("Could not open conffile2 for writing");
+	}
 
 	ofs2 << conffile2;
-	ofs.close();
+	ofs2.close();
 }
 
 void SetupLoggers()

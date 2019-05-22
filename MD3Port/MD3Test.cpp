@@ -210,7 +210,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 	if (!ofs2) FAIL("Could not open conffile2 for writing");
 
 	ofs2 << conffile2;
-	ofs.close();
+	ofs2.close();
 }
 void SetupLoggers()
 {

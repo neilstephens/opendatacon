@@ -28,7 +28,9 @@
 #define PyPortCONF_H_
 
 #include <memory>
+#include <string>
 #include <opendatacon/DataPortConf.h>
+#include <opendatacon/ConfigParser.h>
 
 class PyPortConf: public DataPortConf
 {
