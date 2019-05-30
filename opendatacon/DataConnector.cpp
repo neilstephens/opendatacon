@@ -252,8 +252,15 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 			{
 				if(!Transform->Event(new_event_obj))
 				{
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->trace("{} Index {} Event {} => Transform Block", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), Name);
 					(*pStatusCallback)(CommandStatus::UNDEFINED);
 					return;
+				}
+				else
+				{
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->trace("{} Index {} Event {} => Transform Pass", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), Name);
 				}
 			}
 		}
@@ -268,6 +275,9 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 			//check if we were right and correct if need be
 			if(pSendee->GetName() == SenderName)
 				pSendee = Connections[aMatch_it->second].first;
+
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->trace("{} Index {} Event {} => {}", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), Name, pSendee->GetName());
 
 			pSendee->Event(new_event_obj, this->Name, multi_callback);
 		}
