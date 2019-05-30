@@ -33,6 +33,7 @@
 #include <atomic>
 #include <opendatacon/asio.h>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
 
 namespace odc
 {
@@ -96,6 +97,8 @@ protected:
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(auto IOHandler_pair: Subscribers)
 		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->trace("{} Index {} Event {} => {}", ToString(event->GetEventType()),event->GetIndex(), Name, IOHandler_pair.first);
 			IOHandler_pair.second->Event(event, Name, multi_callback);
 		}
 	}

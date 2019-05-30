@@ -156,6 +156,8 @@ enum class ControlCode : uint8_t
 	UNDEFINED = 15
 };
 
+//TODO: make these ToString functions faster
+//	use hash map cache
 #define ENUMSTRING(A,E,B) if(A == E::B) return #B;
 inline std::string ToString(const ControlCode cc)
 {
@@ -174,6 +176,43 @@ inline std::string ToString(const ControlCode cc)
 	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON        )
 	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON_CANCEL )
 	ENUMSTRING(cc,ControlCode,UNDEFINED            )
+	return "UNKNOWN";
+}
+
+inline std::string ToString(const EventType et)
+{
+	ENUMSTRING(et,EventType,Binary                   )
+	ENUMSTRING(et,EventType,DoubleBitBinary          )
+	ENUMSTRING(et,EventType,Analog                   )
+	ENUMSTRING(et,EventType,Counter                  )
+	ENUMSTRING(et,EventType,FrozenCounter            )
+	ENUMSTRING(et,EventType,BinaryOutputStatus       )
+	ENUMSTRING(et,EventType,AnalogOutputStatus       )
+	ENUMSTRING(et,EventType,BinaryCommandEvent       )
+	ENUMSTRING(et,EventType,AnalogCommandEvent       )
+	ENUMSTRING(et,EventType,OctetString              )
+	ENUMSTRING(et,EventType,TimeAndInterval          )
+	ENUMSTRING(et,EventType,SecurityStat             )
+	ENUMSTRING(et,EventType,ControlRelayOutputBlock  )
+	ENUMSTRING(et,EventType,AnalogOutputInt16        )
+	ENUMSTRING(et,EventType,AnalogOutputInt32        )
+	ENUMSTRING(et,EventType,AnalogOutputFloat32      )
+	ENUMSTRING(et,EventType,AnalogOutputDouble64     )
+	ENUMSTRING(et,EventType,BinaryQuality            )
+	ENUMSTRING(et,EventType,DoubleBitBinaryQuality   )
+	ENUMSTRING(et,EventType,AnalogQuality            )
+	ENUMSTRING(et,EventType,CounterQuality           )
+	ENUMSTRING(et,EventType,BinaryOutputStatusQuality)
+	ENUMSTRING(et,EventType,FrozenCounterQuality     )
+	ENUMSTRING(et,EventType,AnalogOutputStatusQuality)
+	ENUMSTRING(et,EventType,FileAuth                 )
+	ENUMSTRING(et,EventType,FileCommand              )
+	ENUMSTRING(et,EventType,FileCommandStatus        )
+	ENUMSTRING(et,EventType,FileTransport            )
+	ENUMSTRING(et,EventType,FileTransportStatus      )
+	ENUMSTRING(et,EventType,FileDescriptor           )
+	ENUMSTRING(et,EventType,FileSpecString           )
+	ENUMSTRING(et,EventType,ConnectState             )
 	return "UNKNOWN";
 }
 
