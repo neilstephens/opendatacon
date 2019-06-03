@@ -31,14 +31,12 @@
 // If we are using VS and its test framework, don't define this.
 //#define NONVSTESTING
 
+#include <Python.h>
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 
-#include <Python.h>
-
 #include "PyPortConf.h"
-// #include "PyPointTableAccess.h"
 
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
@@ -75,10 +73,6 @@ public:
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-
-	// Testing use only
-//	PyPointTableAccess* GetPointTable() { return &(MyPointConf->PointTable); }
-
 protected:
 	static PyMethodDef PyModuleMethods[];
 	static PyMethodDef PyPortMethods[];
@@ -92,7 +86,6 @@ protected:
 
 	// Worker functions to try and clean up the code...
 	PyPortConf* MyConf;
-//	std::shared_ptr<PyPointConf> MyPointConf;
 
 private:
 	// Worker methods
@@ -100,30 +93,22 @@ private:
 
 	/// Python interface definition
 	static PyObject* Py_init(PyObject *self, PyObject *args);
+	PyObject* GetFunction(PyObject* pyInstance, std::string& sFunction);
 
-	/*
-	static PyObject* PublishEventBoolean(PyObject *self, PyObject *args);
-	static PyObject* PublishEventInteger(PyObject *self, PyObject *args);
-	static PyObject* PublishEventFloat(PyObject *self, PyObject *args);
-	static PyObject* PublishEventConnectState(PyObject *self, PyObject *args);
-	*/
+	static PyObject* pyPublishEvent(PyObject *self, PyObject *args);
+
 	PyObject *pyModule = nullptr;
 	PyObject *pyInstance = nullptr;
 	PyObject *pyFuncEnable = nullptr;
 	PyObject *pyFuncDisable = nullptr;
-	PyObject *pyFuncEventConnectState = nullptr;
-	PyObject *pyFuncEventBinary = nullptr;
-	PyObject *pyFuncEventAnalog = nullptr;
-	PyObject *pyFuncEventControlBinary = nullptr;
-	PyObject *pyFuncEventControlAnalog = nullptr;
+	PyObject *pyFuncEvent = nullptr;
 
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
 
 	// Pulled in from PyPortManager
 	void PyErrOutput();
 	void PostPyCall(PyObject* pyFunction, PyObject* pyArgs);
-	void PostPyCall(PyObject* pyFunction, PyObject* pyArgs, std::function<void(PyObject*)> callback);
-
+	void PostPyCall(PyObject* pyFunction, PyObject* pyArgs, SharedStatusCallback_t pStatusCallback);
 };
 
 #endif /* PYPORT_H_ */

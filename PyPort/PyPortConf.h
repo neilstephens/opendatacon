@@ -36,28 +36,20 @@ class PyPortConf: public DataPortConf
 {
 public:
 	PyPortConf(std::string FileName, const Json::Value& ConfOverrides):
-		ModuleName("PyPort"),
-		ClassName("PyClass"),
-		FuncEnable("Enable"),
-		FuncDisable("Disable"),
-		FuncEventConnectState("EventConnectState"),
-		FuncEventBinary("EventBinary"),
-		FuncEventAnalog("EventAnalog"),
-		FuncEventControlBinary("EventControlBinary"),
-		FuncEventControlAnalog("EventControlAnalog")
+		pyModuleName("PyPortSim"),
+		pyClassName("SimPortClass"),
+		pyFuncEnableName("Enable"),
+		pyFuncDisableName("Disable"),
+		pyFuncEventName("EventHandler")
 	{
 		//pPointConf.reset(new PyPointConf(FileName, ConfOverrides));
 	}
 
-	std::string ModuleName;
-	std::string ClassName;
-	std::string FuncEnable;
-	std::string FuncDisable;
-	std::string FuncEventConnectState;
-	std::string FuncEventBinary;
-	std::string FuncEventAnalog;
-	std::string FuncEventControlBinary;
-	std::string FuncEventControlAnalog;
+	std::string pyModuleName;
+	std::string pyClassName;
+	std::string pyFuncEnableName;
+	std::string pyFuncDisableName;
+	std::string pyFuncEventName;
 
 	//std::unique_ptr<PyPointConf> pPointConf;
 };

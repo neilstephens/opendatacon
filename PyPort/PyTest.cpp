@@ -79,44 +79,18 @@ const char *conffile1 = R"001(
 	"TCPClientServer" : "SERVER",
 	"LinkNumRetry": 4,
 
-	//-------Point conf--------#
-	// Conitel/baker switch
-	"IsBakerDevice" : false,
+	// Python Module/Class/Method name definitions
+	"ModuleName" : "PyPortSim",
+	"ClassName": "SimPortClass",
+	"FuncEnable" : "Enable",
+	"FuncDisable" : "Disable",
+	"FuncEventHandler" : "EventHandler",
 
-	// If a binary event time stamp is outside 30 minutes of current time, replace the timestamp
-	"OverrideOldTimeStamps" : false,
+	//-------Point conf--------Pass this through to the Python code to deal with
 
-	// This flag will have the OutStation respond without waiting for ODC responses - it will still send the ODC commands, just no feedback. Useful for testing and connecting to the sim port.
-	// Set to false, the OutStation will set up ODC/timeout callbacks/lambdas for ODC responses. If not found will default to false.
-	"StandAloneOutstation" : true,
-
-	// Maximum time to wait for CB Master responses to a command and number of times to retry a command.
-	"CBCommandTimeoutmsec" : 3000,
-	"CBCommandRetries" : 1,
-
-	// Master only PollGroups - ignored by outstation
 	"PollGroups" : [{"ID" : 1, "PollRate" : 10000, "Group" : 3, "PollType" : "Scan"},
 					{"ID" : 2, "PollRate" : 20000, "Group" : 3, "PollType" : "SOEScan"},
 					{"ID" : 3, "PollRate" : 120000, "PollType" : "TimeSetCommand"}],
-
-
-	// The payload location can be 1B, 2A, 2B
-	// Where there is a 24 bit result (ACC24) the next payload location will automatically be used. Do not put something else in there!
-	// The point table will build a group list with all the data it has to collect for a given group number.
-	// We can only use range for Binary and Control. For analog each one has to be defined singularly
-	// SOE point definitions are optional. If missing - not an SOE point.
-
-	// Digital IN
-	// DIG - 12 bits to a Payload, Channel(bit) 1 to 12. On a range, the Channel is the first Channel in the range.
-	// MCA,MCB,MCC - 6 bits fit in one payload
-
-	// Analog IN
-	// ANA - 1 Channel per payload
-	// ANA6 - 2 Channels per payload
-
-	// Counter IN
-	// ACC12 - 1 to a payload,
-	// ACC24 - takes two payloads.
 
 	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG", "SOE" : {"Group": 5, "Index" : 0} },
 					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
@@ -129,20 +103,10 @@ const char *conffile1 = R"001(
 					{"Index" : 3, "Group" : 3, "PayloadLocation": "4B","Channel" : 1, "Type":"ANA6"},
 					{"Index" : 4, "Group" : 3, "PayloadLocation": "4B","Channel" : 2, "Type":"ANA6"}],
 
-	// None of the counter commands are used  - ACC(12) and ACC24 are not used.
-	"Counters" : [	{"Index" : 5, "Group" : 3, "PayloadLocation": "5A","Channel" : 1, "Type":"ACC12"},
-					{"Index" : 6, "Group" : 3, "PayloadLocation": "5B","Channel" : 1, "Type":"ACC12"},
-					{"Index" : 7, "Group" : 3, "PayloadLocation": "6A","Channel" : 1, "Type":"ACC24"}],
-
-	// CONTROL up to 12 bits per group address, Channel 1 to 12. Python simulator used dual points one for trip one for close.
 	"BinaryControls" : [{"Index": 1,  "Group" : 4, "Channel" : 1, "Type" : "CONTROL"},
                         {"Range" : {"Start" : 10, "Stop" : 21}, "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
 
-	// Setpoint A/B maps from Channel 1 == A, Channel 2 == B
-	"AnalogControls" : [{"Index": 1,  "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
-
-	// Special definition, so we know where to find the Remote Status Data in the scanned group.
-	"RemoteStatus" : [{"Group":3, "Channel" : 1, "PayloadLocation": "7A"}]
+	"AnalogControls" : [{"Index": 1,  "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}]
 
 })001";
 
@@ -294,7 +258,7 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
 
 #define TEST_PythonPort(overridejson)\
-	auto PythonPort = std::make_unique<CBMasterPort>("TestMaster", conffilename1, overridejson); \
+	auto PythonPort = std::make_unique<PyPort>("TestMaster", conffilename1, overridejson); \
 	PythonPort->SetIOS(&IOS);      \
 	PythonPort->Build();
 
@@ -366,7 +330,6 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
 }
-
 }
 
 #endif
