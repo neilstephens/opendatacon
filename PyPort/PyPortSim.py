@@ -6,9 +6,11 @@ class SimPortClass:
         self.objectname = objectname    # So we can find this instance later to call appropriate PublishEvent method
 
     def Enable(self):
+        print("Python - Enabled")
         enabled = True
 
     def Disable(self):
+        print("Python - Disabled")
         enabled = False
 
     def EventHandler(self,EventType, Index, Time, Quality, Sender):

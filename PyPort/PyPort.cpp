@@ -200,12 +200,20 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 
 PyPort::~PyPort()
 {
-
 	LOGDEBUG("Destructing PyPort");
+
 	Py_XDECREF(pyFuncEvent);
-	if (pyModule != NULL) { Py_DECREF(pyModule); }
+	Py_XDECREF(pyFuncEnable);
+	Py_XDECREF(pyFuncDisable);
 
 	PyPorts.erase(this->pyInstance);
+	Py_XDECREF(pyInstance);
+
+	if (pyModule != nullptr)
+	{
+		Py_DECREF(pyModule);
+	}
+
 	Py_Finalize();
 }
 
@@ -226,18 +234,18 @@ void PyPort::Build()
 	}
 	Py_DECREF(pyUniCodeModuleName);
 
-	PyObject* pyDict = nullptr, * pyClass = nullptr;
-
-	// pDict and pFunc are borrowed references
-	pyDict = PyModule_GetDict(pyModule);
+	PyObject* pyDict = PyModule_GetDict(pyModule);
 	if (pyDict == nullptr)
 	{
 		LOGERROR("Could not load Python Dictionary Reference");
 		if (PyErr_Occurred()) PyErrOutput();
 		return;
 	}
+
 	// Build the name of a callable class
-	pyClass = PyDict_GetItemString(pyDict, MyConf->pyClassName.c_str());
+	PyObject* pyClass = PyDict_GetItemString(pyDict, MyConf->pyClassName.c_str());
+
+	// Py_XDECREF(pyDict);	// Borrowed reference, dont destruct
 
 	if (pyClass == nullptr)
 	{
@@ -257,7 +265,7 @@ void PyPort::Build()
 
 		PyPorts.emplace(pyInstance, this);
 
-		Py_DECREF(pyArgs);
+		Py_DECREF(pyArgs); // pyObjectName is stolen into pyArgs, so dealt with in this call
 
 		if (PyErr_Occurred())
 		{
@@ -271,6 +279,7 @@ void PyPort::Build()
 		LOGERROR("pyClass not callable");
 		return;
 	}
+	// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
 
 	pyFuncEnable = GetFunction(pyInstance, MyConf->pyFuncEnableName);
 	pyFuncDisable = GetFunction(pyInstance, MyConf->pyFuncDisableName);
@@ -284,7 +293,9 @@ void PyPort::Enable()
 	if (enabled) return;
 	enabled = true;
 
-	PostPyCall(pyFuncEnable, PyTuple_New(0)); // No passed variables
+	auto pyArgs = PyTuple_New(0);
+	PostPyCall(pyFuncEnable, pyArgs); // No passed variables
+	Py_DECREF(pyArgs);
 };
 
 void PyPort::Disable()
@@ -292,9 +303,10 @@ void PyPort::Disable()
 	if (!enabled) return;
 	enabled = false;
 
-	PostPyCall(pyFuncDisable, PyTuple_New(0)); // No passed variables
+	auto pyArgs = PyTuple_New(0);
+	PostPyCall(pyFuncDisable, pyArgs); // No passed variables
+	Py_DECREF(pyArgs);
 };
-
 
 // So we have received an event from the ODC message bus - it will be Control or Connect events.
 // We will be sending back values (PublishEvent), from the simulator, as if we were a connected master scanning a live RTU.
@@ -318,7 +330,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 	auto pyQuality = PyLong_FromUnsignedLong(static_cast<unsigned long>(event->GetQuality()));
 	auto pySender = PyUnicode_FromString(SenderName.c_str());
 
-	// pValue reference stolen here:
+	// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
 	PyTuple_SetItem(pyArgs, 0, pyEventType);
 	PyTuple_SetItem(pyArgs, 1, pyIndex);
 	PyTuple_SetItem(pyArgs, 2, pyTime);
@@ -364,6 +376,8 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 	PyTuple_SetItem(pyArgs, 4, pySender);
 
 	PostPyCall(pyFuncEvent, pyArgs, pStatusCallback); // Callback will be called when done...
+
+	Py_DECREF(pyArgs);
 }
 /*
 switch (event->GetEventType())
@@ -529,53 +543,50 @@ void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback
 //TODO: Think that we may need to strand protect this to prevent problems. There is also the Python GIL (global interpreter lock) to consider..
 void PyPort::PostPyCall(PyObject* pyFunction, PyObject* pyArgs)
 {
-	pIOS->post([&,pyArgs, pyFunction]
+//	pIOS->post([&, pyArgs, pyFunction]
+	{
+		if (pyFunction && PyCallable_Check(pyFunction))
 		{
-			if (pyFunction && PyCallable_Check(pyFunction))
-			{
-			      PyObject_CallObject(pyFunction, pyArgs);
-			      Py_DECREF(pyArgs);
+			PyObject_CallObject(pyFunction, pyArgs);
 
-			      if (PyErr_Occurred())
-			      {
-			            PyErrOutput();
-				}
-			}
-			else
+			if (PyErr_Occurred())
 			{
-			      LOGERROR("Python Method is not valid");
+				PyErrOutput();
 			}
-		});
+		}
+		else
+		{
+			LOGERROR("Python Method is not valid");
+		}
+	} //);
 }
 // Post a call to a python method, that also has a callback attached. As we are not expecting the Python code to take long (not expecting network ops)
 // wait for it to complete, and then call any passed callback function.
 void PyPort::PostPyCall(PyObject* pyFunction, PyObject* pyArgs, SharedStatusCallback_t pStatusCallback)
 {
-	pIOS->post([&, pyArgs, pyFunction, pStatusCallback]
+//	pIOS->post([&, pyArgs, pyFunction, pStatusCallback]
+	{
+		if (pyFunction && PyCallable_Check(pyFunction))
 		{
-			if (pyFunction && PyCallable_Check(pyFunction))
+			PyObject* result = PyObject_CallObject(pyFunction, pyArgs);
+
+			if (PyErr_Occurred())
 			{
-			      PyObject* result = PyObject_CallObject(pyFunction, pyArgs);
-
-			      Py_DECREF(pyArgs);
-
-			      if (PyErr_Occurred())
-			      {
-			            PyErrOutput();
-				}
+				PyErrOutput();
+			}
 			//TODO: Unpack the PyObject result, and call our callback.
 
-			      if (true)
-					PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
-			      else
-					PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-			}
+			if (true)
+				PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
 			else
-			{
-			      LOGERROR("Python Method is not valid");
-			      PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-			}
-		});
+				PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+		}
+		else
+		{
+			LOGERROR("Python Method is not valid");
+			PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+		}
+	} //);
 }
 void PyPort::ProcessElements(const Json::Value& JSONRoot)
 {
