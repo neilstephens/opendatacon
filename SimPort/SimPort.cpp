@@ -477,16 +477,18 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 								return;
 						}
 					}
-					else
+					else //LATCH
 					{
 						switch(command.functionCode)
 						{
 							case ControlCode::LATCH_ON:
 							case ControlCode::CLOSE_PULSE_ON:
+							case ControlCode::PULSE_ON:
 								PublishEvent(fb.on_value);
 								break;
 							case ControlCode::LATCH_OFF:
 							case ControlCode::TRIP_PULSE_ON:
+							case ControlCode::PULSE_OFF:
 								PublishEvent(fb.off_value);
 								break;
 							default:
