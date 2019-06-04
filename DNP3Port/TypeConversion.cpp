@@ -39,47 +39,68 @@ CommandStatus ToODC(const opendnp3::CommandStatus dnp3)
 	{
 		case opendnp3::CommandStatus::SUCCESS:
 			stat = CommandStatus::SUCCESS;
+			break;
 		case opendnp3::CommandStatus::TIMEOUT:
 			stat = CommandStatus::TIMEOUT;
+			break;
 		case opendnp3::CommandStatus::NO_SELECT:
 			stat = CommandStatus::NO_SELECT;
+			break;
 		case opendnp3::CommandStatus::FORMAT_ERROR:
 			stat = CommandStatus::FORMAT_ERROR;
+			break;
 		case opendnp3::CommandStatus::NOT_SUPPORTED:
 			stat = CommandStatus::NOT_SUPPORTED;
+			break;
 		case opendnp3::CommandStatus::ALREADY_ACTIVE:
 			stat = CommandStatus::ALREADY_ACTIVE;
+			break;
 		case opendnp3::CommandStatus::HARDWARE_ERROR:
 			stat = CommandStatus::HARDWARE_ERROR;
+			break;
 		case opendnp3::CommandStatus::LOCAL:
 			stat = CommandStatus::LOCAL;
+			break;
 		case opendnp3::CommandStatus::TOO_MANY_OPS:
 			stat = CommandStatus::TOO_MANY_OPS;
+			break;
 		case opendnp3::CommandStatus::NOT_AUTHORIZED:
 			stat = CommandStatus::NOT_AUTHORIZED;
+			break;
 		case opendnp3::CommandStatus::AUTOMATION_INHIBIT:
 			stat = CommandStatus::AUTOMATION_INHIBIT;
+			break;
 		case opendnp3::CommandStatus::PROCESSING_LIMITED:
 			stat = CommandStatus::PROCESSING_LIMITED;
+			break;
 		case opendnp3::CommandStatus::OUT_OF_RANGE:
 			stat = CommandStatus::OUT_OF_RANGE;
+			break;
 		case opendnp3::CommandStatus::DOWNSTREAM_LOCAL:
 			stat = CommandStatus::DOWNSTREAM_LOCAL;
+			break;
 		case opendnp3::CommandStatus::ALREADY_COMPLETE:
 			stat = CommandStatus::ALREADY_COMPLETE;
+			break;
 		case opendnp3::CommandStatus::BLOCKED:
 			stat = CommandStatus::BLOCKED;
+			break;
 		case opendnp3::CommandStatus::CANCELLED:
 			stat = CommandStatus::CANCELLED;
+			break;
 		case opendnp3::CommandStatus::BLOCKED_OTHER_MASTER:
 			stat = CommandStatus::BLOCKED_OTHER_MASTER;
+			break;
 		case opendnp3::CommandStatus::DOWNSTREAM_FAIL:
 			stat = CommandStatus::DOWNSTREAM_FAIL;
+			break;
 		case opendnp3::CommandStatus::NON_PARTICIPATING:
 			stat = CommandStatus::NON_PARTICIPATING;
+			break;
 		case opendnp3::CommandStatus::UNDEFINED:
 		default:
 			stat = CommandStatus::UNDEFINED;
+			break;
 	}
 	return stat;
 }
@@ -91,47 +112,68 @@ opendnp3::CommandStatus FromODC(const CommandStatus stat)
 	{
 		case CommandStatus::SUCCESS:
 			dnp3 = opendnp3::CommandStatus::SUCCESS;
+			break;
 		case CommandStatus::TIMEOUT:
 			dnp3 = opendnp3::CommandStatus::TIMEOUT;
+			break;
 		case CommandStatus::NO_SELECT:
 			dnp3 = opendnp3::CommandStatus::NO_SELECT;
+			break;
 		case CommandStatus::FORMAT_ERROR:
 			dnp3 = opendnp3::CommandStatus::FORMAT_ERROR;
+			break;
 		case CommandStatus::NOT_SUPPORTED:
 			dnp3 = opendnp3::CommandStatus::NOT_SUPPORTED;
+			break;
 		case CommandStatus::ALREADY_ACTIVE:
 			dnp3 = opendnp3::CommandStatus::ALREADY_ACTIVE;
+			break;
 		case CommandStatus::HARDWARE_ERROR:
 			dnp3 = opendnp3::CommandStatus::HARDWARE_ERROR;
+			break;
 		case CommandStatus::LOCAL:
 			dnp3 = opendnp3::CommandStatus::LOCAL;
+			break;
 		case CommandStatus::TOO_MANY_OPS:
 			dnp3 = opendnp3::CommandStatus::TOO_MANY_OPS;
+			break;
 		case CommandStatus::NOT_AUTHORIZED:
 			dnp3 = opendnp3::CommandStatus::NOT_AUTHORIZED;
+			break;
 		case CommandStatus::AUTOMATION_INHIBIT:
 			dnp3 = opendnp3::CommandStatus::AUTOMATION_INHIBIT;
+			break;
 		case CommandStatus::PROCESSING_LIMITED:
 			dnp3 = opendnp3::CommandStatus::PROCESSING_LIMITED;
+			break;
 		case CommandStatus::OUT_OF_RANGE:
 			dnp3 = opendnp3::CommandStatus::OUT_OF_RANGE;
+			break;
 		case CommandStatus::DOWNSTREAM_LOCAL:
 			dnp3 = opendnp3::CommandStatus::DOWNSTREAM_LOCAL;
+			break;
 		case CommandStatus::ALREADY_COMPLETE:
 			dnp3 = opendnp3::CommandStatus::ALREADY_COMPLETE;
+			break;
 		case CommandStatus::BLOCKED:
 			dnp3 = opendnp3::CommandStatus::BLOCKED;
+			break;
 		case CommandStatus::CANCELLED:
 			dnp3 = opendnp3::CommandStatus::CANCELLED;
+			break;
 		case CommandStatus::BLOCKED_OTHER_MASTER:
 			dnp3 = opendnp3::CommandStatus::BLOCKED_OTHER_MASTER;
+			break;
 		case CommandStatus::DOWNSTREAM_FAIL:
 			dnp3 = opendnp3::CommandStatus::DOWNSTREAM_FAIL;
+			break;
 		case CommandStatus::NON_PARTICIPATING:
 			dnp3 = opendnp3::CommandStatus::NON_PARTICIPATING;
+			break;
 		case CommandStatus::UNDEFINED:
 		default:
 			dnp3 = opendnp3::CommandStatus::UNDEFINED;
+			break;
 	}
 	return dnp3;
 }
@@ -480,35 +522,50 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::ControlRelayOutputBlock& dnp3, 
 	{
 		case opendnp3::ControlCode::NUL:
 			val.functionCode = ControlCode::NUL;
+			break;
 		case opendnp3::ControlCode::NUL_CANCEL:
 			val.functionCode = ControlCode::NUL_CANCEL;
+			break;
 		case opendnp3::ControlCode::PULSE_ON:
 			val.functionCode = ControlCode::PULSE_ON;
+			break;
 		case opendnp3::ControlCode::PULSE_ON_CANCEL:
 			val.functionCode = ControlCode::PULSE_ON_CANCEL;
+			break;
 		case opendnp3::ControlCode::PULSE_OFF:
 			val.functionCode = ControlCode::PULSE_OFF;
+			break;
 		case opendnp3::ControlCode::PULSE_OFF_CANCEL:
 			val.functionCode = ControlCode::PULSE_OFF_CANCEL;
+			break;
 		case opendnp3::ControlCode::LATCH_ON:
 			val.functionCode = ControlCode::LATCH_ON;
+			break;
 		case opendnp3::ControlCode::LATCH_ON_CANCEL:
 			val.functionCode = ControlCode::LATCH_ON_CANCEL;
+			break;
 		case opendnp3::ControlCode::LATCH_OFF:
 			val.functionCode = ControlCode::LATCH_OFF;
+			break;
 		case opendnp3::ControlCode::LATCH_OFF_CANCEL:
 			val.functionCode = ControlCode::LATCH_OFF_CANCEL;
+			break;
 		case opendnp3::ControlCode::CLOSE_PULSE_ON:
 			val.functionCode = ControlCode::CLOSE_PULSE_ON;
+			break;
 		case opendnp3::ControlCode::CLOSE_PULSE_ON_CANCEL:
 			val.functionCode = ControlCode::CLOSE_PULSE_ON_CANCEL;
+			break;
 		case opendnp3::ControlCode::TRIP_PULSE_ON:
 			val.functionCode = ControlCode::TRIP_PULSE_ON;
+			break;
 		case opendnp3::ControlCode::TRIP_PULSE_ON_CANCEL:
 			val.functionCode = ControlCode::TRIP_PULSE_ON_CANCEL;
+			break;
 		case opendnp3::ControlCode::UNDEFINED:
 		default:
 			val.functionCode = ControlCode::UNDEFINED;
+			break;
 	}
 	val.count = dnp3.count;
 	val.onTimeMS = dnp3.onTimeMS;
@@ -844,35 +901,50 @@ template<> opendnp3::ControlRelayOutputBlock FromODC<opendnp3::ControlRelayOutpu
 	{
 		case ControlCode::NUL:
 			dnp3.functionCode = opendnp3::ControlCode::NUL;
+			break;
 		case ControlCode::NUL_CANCEL:
 			dnp3.functionCode = opendnp3::ControlCode::NUL_CANCEL;
+			break;
 		case ControlCode::PULSE_ON:
 			dnp3.functionCode = opendnp3::ControlCode::PULSE_ON;
+			break;
 		case ControlCode::PULSE_ON_CANCEL:
 			dnp3.functionCode = opendnp3::ControlCode::PULSE_ON_CANCEL;
+			break;
 		case ControlCode::PULSE_OFF:
 			dnp3.functionCode = opendnp3::ControlCode::PULSE_OFF;
+			break;
 		case ControlCode::PULSE_OFF_CANCEL:
 			dnp3.functionCode = opendnp3::ControlCode::PULSE_OFF_CANCEL;
+			break;
 		case ControlCode::LATCH_ON:
 			dnp3.functionCode = opendnp3::ControlCode::LATCH_ON;
+			break;
 		case ControlCode::LATCH_ON_CANCEL:
 			dnp3.functionCode = opendnp3::ControlCode::LATCH_ON_CANCEL;
+			break;
 		case ControlCode::LATCH_OFF:
 			dnp3.functionCode = opendnp3::ControlCode::LATCH_OFF;
+			break;
 		case ControlCode::LATCH_OFF_CANCEL:
 			dnp3.functionCode = opendnp3::ControlCode::LATCH_OFF_CANCEL;
+			break;
 		case ControlCode::CLOSE_PULSE_ON:
 			dnp3.functionCode = opendnp3::ControlCode::CLOSE_PULSE_ON;
+			break;
 		case ControlCode::CLOSE_PULSE_ON_CANCEL:
 			dnp3.functionCode = opendnp3::ControlCode::CLOSE_PULSE_ON_CANCEL;
+			break;
 		case ControlCode::TRIP_PULSE_ON:
 			dnp3.functionCode = opendnp3::ControlCode::TRIP_PULSE_ON;
+			break;
 		case ControlCode::TRIP_PULSE_ON_CANCEL:
 			dnp3.functionCode = opendnp3::ControlCode::TRIP_PULSE_ON_CANCEL;
+			break;
 		case ControlCode::UNDEFINED:
 		default:
 			dnp3.functionCode = opendnp3::ControlCode::UNDEFINED;
+			break;
 	}
 	dnp3.count = control.count;
 	dnp3.onTimeMS = control.onTimeMS;
