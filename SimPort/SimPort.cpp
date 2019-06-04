@@ -383,7 +383,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							continue;
 						}
 
-						auto index = FeedbackBinaries[fbn]["Index"].asUInt();
+						auto fb_index = FeedbackBinaries[fbn]["Index"].asUInt();
 						auto on_qual = QualityFlags::ONLINE;
 						auto off_qual = QualityFlags::ONLINE;
 						bool on_val = true;
@@ -419,12 +419,12 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							}
 						}
 
-						auto on = std::make_shared<EventInfo>(EventType::Binary,index,Name,on_qual);
+						auto on = std::make_shared<EventInfo>(EventType::Binary,fb_index,Name,on_qual);
 						on->SetPayload<EventType::Binary>(std::move(on_val));
-						auto off = std::make_shared<EventInfo>(EventType::Binary,index,Name,off_qual);
+						auto off = std::make_shared<EventInfo>(EventType::Binary,fb_index,Name,off_qual);
 						off->SetPayload<EventType::Binary>(std::move(off_val));
-						BinaryFeedback fb(on,off,mode);
-						pConf->ControlFeedback[index].push_back(std::move(fb));
+
+						pConf->ControlFeedback[index].emplace_back(on,off,mode);
 					}
 				}
 			}
