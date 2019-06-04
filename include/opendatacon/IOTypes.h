@@ -419,7 +419,10 @@ public:
 				DELETEPAYLOADCASE(EventType::ConnectState             )
 				default:
 					if(auto log = odc::spdlog_get("opendatacon"))
-						log->error("odc::EventInfo destructor can't handle EventType::{}. Terminating",ToString(Type));
+					{
+						log->critical("odc::EventInfo destructor can't handle EventType::{}. Terminating",ToString(Type));
+						log->flush();
+					}
 					//Can't throw from destructor - so exit
 					exit(1);
 			}
