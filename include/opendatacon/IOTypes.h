@@ -317,6 +317,10 @@ EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
 EVENTPAYLOAD(EventType::ConnectState             , ConnectState)
 //TODO: map the rest
 
+#define DELETEPAYLOADCASE(T)\
+	case T: \
+		delete static_cast<typename EventTypePayload<T>::type*>(pPayload); \
+		break;
 
 class EventInfo
 {
@@ -328,8 +332,46 @@ public:
 		Timestamp(time),
 		Quality(qual),
 		SourcePort(source),
-		Type(tp)
+		Type(tp),
+		pPayload(nullptr)
 	{}
+
+	~EventInfo()
+	{
+		if(pPayload)
+		{
+			switch(Type)
+			{
+				DELETEPAYLOADCASE(EventType::Binary                   )
+				DELETEPAYLOADCASE(EventType::DoubleBitBinary          )
+				DELETEPAYLOADCASE(EventType::Analog                   )
+				DELETEPAYLOADCASE(EventType::Counter                  )
+				DELETEPAYLOADCASE(EventType::FrozenCounter            )
+				DELETEPAYLOADCASE(EventType::BinaryOutputStatus       )
+				DELETEPAYLOADCASE(EventType::AnalogOutputStatus       )
+				DELETEPAYLOADCASE(EventType::BinaryCommandEvent       )
+				DELETEPAYLOADCASE(EventType::AnalogCommandEvent       )
+				DELETEPAYLOADCASE(EventType::OctetString              )
+				DELETEPAYLOADCASE(EventType::TimeAndInterval          )
+				DELETEPAYLOADCASE(EventType::SecurityStat             )
+				DELETEPAYLOADCASE(EventType::ControlRelayOutputBlock  )
+				DELETEPAYLOADCASE(EventType::AnalogOutputInt16        )
+				DELETEPAYLOADCASE(EventType::AnalogOutputInt32        )
+				DELETEPAYLOADCASE(EventType::AnalogOutputFloat32      )
+				DELETEPAYLOADCASE(EventType::AnalogOutputDouble64     )
+				DELETEPAYLOADCASE(EventType::BinaryQuality            )
+				DELETEPAYLOADCASE(EventType::DoubleBitBinaryQuality   )
+				DELETEPAYLOADCASE(EventType::AnalogQuality            )
+				DELETEPAYLOADCASE(EventType::CounterQuality           )
+				DELETEPAYLOADCASE(EventType::BinaryOutputStatusQuality)
+				DELETEPAYLOADCASE(EventType::FrozenCounterQuality     )
+				DELETEPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+				DELETEPAYLOADCASE(EventType::ConnectState             )
+				default:
+					break;
+			}
+		}
+	}
 
 	//Getters
 	const EventType& GetEventType() const { return Type; }
@@ -343,7 +385,9 @@ public:
 	{
 		if(t != Type)
 			throw std::runtime_error("Wrong payload type requested for selected odc::EventInfo");
-		return Payload<t>();
+		if(!pPayload)
+			throw std::runtime_error("Called GetPayload on uninitialised odc::EventInfo payload");
+		return *static_cast<typename EventTypePayload<t>::type*>(pPayload);
 	}
 
 	std::string GetPayloadString() const
@@ -351,35 +395,35 @@ public:
 		switch(Type)
 		{
 			case EventType::Binary:
-				return std::to_string(Payload<EventType::Binary>());
+				return std::to_string(GetPayload<EventType::Binary>());
 			case EventType::Analog:
-				return std::to_string(Payload<EventType::Analog>());
+				return std::to_string(GetPayload<EventType::Analog>());
 			case EventType::Counter:
-				return std::to_string(Payload<EventType::Counter>());
+				return std::to_string(GetPayload<EventType::Counter>());
 			case EventType::FrozenCounter:
-				return std::to_string(Payload<EventType::FrozenCounter>());
+				return std::to_string(GetPayload<EventType::FrozenCounter>());
 			case EventType::BinaryOutputStatus:
-				return std::to_string(Payload<EventType::BinaryOutputStatus>());
+				return std::to_string(GetPayload<EventType::BinaryOutputStatus>());
 			case EventType::AnalogOutputStatus:
-				return std::to_string(Payload<EventType::AnalogOutputStatus>());
+				return std::to_string(GetPayload<EventType::AnalogOutputStatus>());
 			case EventType::ControlRelayOutputBlock:
-				return std::string(Payload<EventType::ControlRelayOutputBlock>());
+				return std::string(GetPayload<EventType::ControlRelayOutputBlock>());
 			case EventType::OctetString:
-				return Payload<EventType::OctetString>();
+				return GetPayload<EventType::OctetString>();
 			case EventType::BinaryQuality:
-				return ToString(Payload<EventType::BinaryQuality>());
+				return ToString(GetPayload<EventType::BinaryQuality>());
 			case EventType::DoubleBitBinaryQuality:
-				return ToString(Payload<EventType::DoubleBitBinaryQuality>());
+				return ToString(GetPayload<EventType::DoubleBitBinaryQuality>());
 			case EventType::AnalogQuality:
-				return ToString(Payload<EventType::AnalogQuality>());
+				return ToString(GetPayload<EventType::AnalogQuality>());
 			case EventType::CounterQuality:
-				return ToString(Payload<EventType::CounterQuality>());
+				return ToString(GetPayload<EventType::CounterQuality>());
 			case EventType::BinaryOutputStatusQuality:
-				return ToString(Payload<EventType::BinaryOutputStatusQuality>());
+				return ToString(GetPayload<EventType::BinaryOutputStatusQuality>());
 			case EventType::FrozenCounterQuality:
-				return ToString(Payload<EventType::FrozenCounterQuality>());
+				return ToString(GetPayload<EventType::FrozenCounterQuality>());
 			case EventType::AnalogOutputStatusQuality:
-				return ToString(Payload<EventType::AnalogOutputStatusQuality>());
+				return ToString(GetPayload<EventType::AnalogOutputStatusQuality>());
 			default:
 				return "<no_string_representation>";
 		}
@@ -396,7 +440,9 @@ public:
 	{
 		if(t != Type)
 			throw std::runtime_error("Wrong payload type specified for selected odc::EventInfo");
-		Payload<t>() = std::move(p);
+		if(pPayload)
+			delete static_cast<typename EventTypePayload<t>::type*>(pPayload);
+		pPayload = new typename EventTypePayload<t>::type(std::move(p));
 	}
 
 private:
@@ -405,13 +451,7 @@ private:
 	QualityFlags Quality;
 	std::string SourcePort;
 	const EventType Type;
-
-	template<EventType t>
-	typename EventTypePayload<t>::type& Payload() const
-	{
-		static typename EventTypePayload<t>::type Payload;
-		return Payload;
-	}
+	void *pPayload;
 };
 
 }
