@@ -32,6 +32,7 @@
 #include <tuple>
 
 #include <opendatacon/EnumClassFlags.h>
+#include <opendatacon/util.h>
 
 namespace odc
 {
@@ -176,7 +177,7 @@ inline std::string ToString(const ControlCode cc)
 	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON        )
 	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON_CANCEL )
 	ENUMSTRING(cc,ControlCode,UNDEFINED            )
-	return "UNKNOWN";
+	return "<no_string_representation>";
 }
 
 inline std::string ToString(const EventType et)
@@ -213,7 +214,7 @@ inline std::string ToString(const EventType et)
 	ENUMSTRING(et,EventType,FileDescriptor           )
 	ENUMSTRING(et,EventType,FileSpecString           )
 	ENUMSTRING(et,EventType,ConnectState             )
-	return "UNKNOWN";
+	return "<no_string_representation>";
 }
 
 //Quatilty flags that can be used for any EventType
@@ -321,6 +322,10 @@ EVENTPAYLOAD(EventType::ConnectState             , ConnectState)
 	case T: \
 		delete static_cast<typename EventTypePayload<T>::type*>(pPayload); \
 		break;
+#define COPYPAYLOADCASE(T)\
+	case T: \
+		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type(evt.GetPayload<T>())); \
+		break;
 
 class EventInfo
 {
@@ -335,6 +340,51 @@ public:
 		Type(tp),
 		pPayload(nullptr)
 	{}
+	//deep copy for payload
+	EventInfo(const EventInfo& evt):
+		Index(evt.Index),
+		Timestamp(evt.Timestamp),
+		Quality(evt.Quality),
+		SourcePort(evt.SourcePort),
+		Type(evt.Type),
+		pPayload(evt.pPayload)
+	{
+		if(pPayload)
+		{
+			switch(Type)
+			{
+				COPYPAYLOADCASE(EventType::Binary                   )
+				COPYPAYLOADCASE(EventType::DoubleBitBinary          )
+				COPYPAYLOADCASE(EventType::Analog                   )
+				COPYPAYLOADCASE(EventType::Counter                  )
+				COPYPAYLOADCASE(EventType::FrozenCounter            )
+				COPYPAYLOADCASE(EventType::BinaryOutputStatus       )
+				COPYPAYLOADCASE(EventType::AnalogOutputStatus       )
+				COPYPAYLOADCASE(EventType::BinaryCommandEvent       )
+				COPYPAYLOADCASE(EventType::AnalogCommandEvent       )
+				COPYPAYLOADCASE(EventType::OctetString              )
+				COPYPAYLOADCASE(EventType::TimeAndInterval          )
+				COPYPAYLOADCASE(EventType::SecurityStat             )
+				COPYPAYLOADCASE(EventType::ControlRelayOutputBlock  )
+				COPYPAYLOADCASE(EventType::AnalogOutputInt16        )
+				COPYPAYLOADCASE(EventType::AnalogOutputInt32        )
+				COPYPAYLOADCASE(EventType::AnalogOutputFloat32      )
+				COPYPAYLOADCASE(EventType::AnalogOutputDouble64     )
+				COPYPAYLOADCASE(EventType::BinaryQuality            )
+				COPYPAYLOADCASE(EventType::DoubleBitBinaryQuality   )
+				COPYPAYLOADCASE(EventType::AnalogQuality            )
+				COPYPAYLOADCASE(EventType::CounterQuality           )
+				COPYPAYLOADCASE(EventType::BinaryOutputStatusQuality)
+				COPYPAYLOADCASE(EventType::FrozenCounterQuality     )
+				COPYPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+				COPYPAYLOADCASE(EventType::ConnectState             )
+				default:
+					std::string msg = "odc::EventInfo copy-ctor can't handle EventType::"+ToString(Type);
+					throw std::runtime_error(msg);
+					break;
+			}
+		}
+	}
 
 	~EventInfo()
 	{
@@ -368,7 +418,10 @@ public:
 				DELETEPAYLOADCASE(EventType::AnalogOutputStatusQuality)
 				DELETEPAYLOADCASE(EventType::ConnectState             )
 				default:
-					break;
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->error("odc::EventInfo destructor can't handle EventType::{}. Terminating",ToString(Type));
+					//Can't throw from destructor - so exit
+					exit(1);
 			}
 		}
 	}
