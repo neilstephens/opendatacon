@@ -98,7 +98,7 @@ protected:
 		for(auto IOHandler_pair: Subscribers)
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->trace("{} Index {} Event {} => {}", ToString(event->GetEventType()),event->GetIndex(), Name, IOHandler_pair.first);
+				log->trace("{} {} Payload {} Event {} => {}", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, IOHandler_pair.first);
 			IOHandler_pair.second->Event(event, Name, multi_callback);
 		}
 	}

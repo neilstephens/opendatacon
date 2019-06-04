@@ -346,6 +346,45 @@ public:
 		return Payload<t>();
 	}
 
+	std::string GetPayloadString() const
+	{
+		switch(Type)
+		{
+			case EventType::Binary:
+				return std::to_string(Payload<EventType::Binary>());
+			case EventType::Analog:
+				return std::to_string(Payload<EventType::Analog>());
+			case EventType::Counter:
+				return std::to_string(Payload<EventType::Counter>());
+			case EventType::FrozenCounter:
+				return std::to_string(Payload<EventType::FrozenCounter>());
+			case EventType::BinaryOutputStatus:
+				return std::to_string(Payload<EventType::BinaryOutputStatus>());
+			case EventType::AnalogOutputStatus:
+				return std::to_string(Payload<EventType::AnalogOutputStatus>());
+			case EventType::ControlRelayOutputBlock:
+				return std::string(Payload<EventType::ControlRelayOutputBlock>());
+			case EventType::OctetString:
+				return Payload<EventType::OctetString>();
+			case EventType::BinaryQuality:
+				return ToString(Payload<EventType::BinaryQuality>());
+			case EventType::DoubleBitBinaryQuality:
+				return ToString(Payload<EventType::DoubleBitBinaryQuality>());
+			case EventType::AnalogQuality:
+				return ToString(Payload<EventType::AnalogQuality>());
+			case EventType::CounterQuality:
+				return ToString(Payload<EventType::CounterQuality>());
+			case EventType::BinaryOutputStatusQuality:
+				return ToString(Payload<EventType::BinaryOutputStatusQuality>());
+			case EventType::FrozenCounterQuality:
+				return ToString(Payload<EventType::FrozenCounterQuality>());
+			case EventType::AnalogOutputStatusQuality:
+				return ToString(Payload<EventType::AnalogOutputStatusQuality>());
+			default:
+				return "<no_string_representation>";
+		}
+	}
+
 	//Setters
 	void SetIndex(size_t i){ Index = i; }
 	void SetTimestamp(msSinceEpoch_t tm = msSinceEpoch()){ Timestamp = tm; }
