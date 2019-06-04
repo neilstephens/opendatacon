@@ -45,16 +45,16 @@ typedef std::shared_ptr<Timer_t> pTimer_t;
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(...) \
-	if (auto log = odc::spdlog_get("CBPort")) \
+	if (auto log = odc::spdlog_get("PyPort")) \
 		log->debug(__VA_ARGS__);
 #define LOGERROR(...) \
-	if (auto log = odc::spdlog_get("CBPort")) \
+	if (auto log = odc::spdlog_get("PyPort")) \
 		log->error(__VA_ARGS__);
 #define LOGWARN(...) \
-	if (auto log = odc::spdlog_get("CBPort"))  \
+	if (auto log = odc::spdlog_get("PyPort"))  \
 		log->warn(__VA_ARGS__);
 #define LOGINFO(...) \
-	if (auto log = odc::spdlog_get("CBPort")) \
+	if (auto log = odc::spdlog_get("PyPort")) \
 		log->info(__VA_ARGS__);
 
 using namespace odc;
@@ -74,6 +74,7 @@ public:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 protected:
+	// Structures used to pass our extension methods to our Python code.
 	static PyMethodDef PyModuleMethods[];
 	static PyMethodDef PyPortMethods[];
 	static PyTypeObject PyDataPortType;
@@ -84,28 +85,28 @@ protected:
 		/* Type-specific fields go here. */
 	} PyDataPortObject;
 
-	// Worker functions to try and clean up the code...
+	// Worker function to try and clean up the code...
 	PyPortConf* MyConf;
 
 private:
-	// Worker methods
-	void PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c);
-
-	/// Python interface definition
-	static PyObject* Py_init(PyObject *self, PyObject *args);
-	PyObject* GetFunction(PyObject* pyInstance, std::string& sFunction);
-
+	// Extension methods provided to our Python code
+	static PyObject* PyInit_DataPort(PyObject* self, PyObject* args);
+	static PyObject* pyLogMessage(PyObject* self, PyObject* args);
 	static PyObject* pyPublishEvent(PyObject *self, PyObject *args);
 
+	// Keep pointers to the methods in out Python code that we want to be able to call.
 	PyObject *pyModule = nullptr;
 	PyObject *pyInstance = nullptr;
 	PyObject *pyFuncEnable = nullptr;
 	PyObject *pyFuncDisable = nullptr;
 	PyObject *pyFuncEvent = nullptr;
 
+	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
 
-	// Pulled in from PyPortManager
+	// Worker methods
+	void PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c);
+	PyObject* GetFunction(PyObject* pyInstance, std::string& sFunction);
 	void PyErrOutput();
 	void PostPyCall(PyObject* pyFunction, PyObject* pyArgs);
 	void PostPyCall(PyObject* pyFunction, PyObject* pyArgs, SharedStatusCallback_t pStatusCallback);

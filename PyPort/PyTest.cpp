@@ -156,10 +156,10 @@ void WriteStartLoggingMessage(std::string TestName)
 {
 	std::string msg = "Logging for '"+TestName+"' started..";
 
-	if (auto cblogger = odc::spdlog_get("PyPort"))
+	if (auto pylogger = odc::spdlog_get("PyPort"))
 	{
-		cblogger->info("------------------");
-		cblogger->info(msg);
+		pylogger->info("------------------");
+		pylogger->info(msg);
 	}
 	else
 		std::cout << "Error PyPort Logger not operational";

@@ -37,7 +37,7 @@
 #include "PyPort.h"
 #include <chrono>
 #include <ctime>
-#include <datetime.h>
+#include <datetime.h> //PyDateTime
 #include <time.h>
 #include <iomanip>
 
@@ -71,12 +71,58 @@ struct module_state
 static PyObject* error_out(PyObject* m)
 {
 	struct module_state* st = GETSTATE(m);
+	// This sets the error/exception state in Python, first value is the exception code - like PyExc_ZeroDivisionError, second is error message.
 	PyErr_SetString(st->error, "something bad happened");
 	return NULL;
 }
 
+static PyObject* LogMessage(PyObject* self, PyObject* args)
+{
+	uint32_t logtype;
+	const char* message;
+
+	// Now parse the arguments provided, one Unsigned int (I) and a string (s) and the function name.
+	if (!PyArg_ParseTuple(args, "Is:LogMessage", &logtype, &message))
+	{
+		if (PyErr_Occurred()) // If the parsetuple fails, this should always be true!
+		{
+			PyErr_Print();
+		}
+		return NULL;
+	}
+
+	std::string WholeMessage = message;
+
+	// Take appropriate action
+	if (auto log = odc::spdlog_get("PyPort"))
+	{
+		// Ordinals match spdlog values - spdlog::level::level_enum::
+		switch (logtype)
+		{
+			case 0: log->trace(WholeMessage);
+				break;
+			case 1:
+				log->debug(WholeMessage);
+				break;
+			case 2:
+				log->info(WholeMessage);
+				break;
+			case 3:
+				log->warn(WholeMessage);
+				break;
+			case 4:
+				log->error(WholeMessage);
+				break;
+			default:
+				log->critical(WholeMessage);
+		}
+	}
+
+	return NULL;
+}
 static PyMethodDef myextension_methods[] = {
 	{"error_out", (PyCFunction)error_out, METH_NOARGS, NULL},
+	{"LogMessage", LogMessage, METH_VARARGS,"Log a message to SpdLog"},
 	{NULL, NULL}
 };
 
@@ -93,8 +139,8 @@ static int myextension_clear(PyObject* m)
 }
 static struct PyModuleDef moduledef = {
 	PyModuleDef_HEAD_INIT,
-	"ODC",
-	NULL,
+	"ODC", // Name of module
+	NULL,  // Module documentation - docstring format
 	sizeof(struct module_state),
 	myextension_methods,
 	NULL,
@@ -103,17 +149,22 @@ static struct PyModuleDef moduledef = {
 	NULL
 };
 
+// We are defining methods that will exist in parallel with the Python methods that are defined in the script?
 PyMethodDef PyPort::PyPortMethods[] = {
-	{"pyPublishEventBoolean",
+	{"PublishEvent",
 	 PyPort::pyPublishEvent, // fn pointer to wrap
 	 METH_VARARGS,
 	 "Publish ODC event to subscribed ports"},
+	{"LogMessage",
+	 PyPort::pyLogMessage, // fn pointer to wrap
+	 METH_VARARGS,
+	 "Log a message to spdlog" },
 	{NULL, NULL, 0, NULL} // sentinel.
 };
 
 PyTypeObject PyPort::PyDataPortType = {
 	PyVarObject_HEAD_INIT(NULL, 0)
-	"odc.DataPort",                           /* tp_name */
+	"DataPort",                               /* tp_name */
 	sizeof(PyDataPortObject),                 /* tp_basicsize */
 	0,                                        /* tp_itemsize */
 	0,                                        /* tp_dealloc */
@@ -147,7 +198,7 @@ PyTypeObject PyPort::PyDataPortType = {
 	0,                                        /* tp_descr_get */
 	0,                                        /* tp_descr_set */
 	0,                                        /* tp_dictoffset */
-	(initproc)PyPort::Py_init,                /* tp_init */
+	(initproc)PyPort::PyInit_DataPort,        /* tp_init */
 	0,                                        /* tp_alloc */
 	PyType_GenericNew,                        /* tp_new */
 };
@@ -164,11 +215,13 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 	// Just to save a lot of dereferencing..
 	MyConf = static_cast<PyPortConf*>(this->pConf.get());
 
-	//We still may need to process the file (or overrides) to get Addr details:
+	// We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
 
 	PyEval_InitThreads();
-	Py_Initialize();
+	Py_Initialize(); // Get the Python interpreter running
+
+	// Now execute some commands to get the environment ready.
 	if (PyRun_SimpleString("import sys") != 0)
 	{
 		LOGERROR("Unable to import python sys library");
@@ -180,21 +233,24 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 		LOGERROR("Unable to append to sys path in python sys library");
 		return;
 	}
-
-	// create a new module
-	PyObject* module = PyModule_Create(&moduledef);
 	PyDateTime_IMPORT;
+
+	// create a new module, which has our functions in it, which should be available to the interpreter.
+	// It is also the place our class will be created/instansiated
+	PyObject* module = PyModule_Create(&moduledef);
 
 	// create a new class/type
 	PyDataPortType.tp_new = PyType_GenericNew;
+
 	if (PyType_Ready(&PyPort::PyDataPortType) != 0)
 	{
-		LOGERROR("Unable to create the python class");
+		LOGERROR("Unable to create the python class definition");
 		return;
 	}
+	// Now create an instance of the DataPort class (in our module)
 	if (PyModule_AddObject(module, "DataPort", (PyObject*)&PyPort::PyDataPortType) != 0)
 	{
-		LOGERROR("Unable to addobject to the python class");
+		LOGERROR("Unable to create DataPort class instance in the module");
 	}
 }
 
@@ -285,7 +341,9 @@ void PyPort::Build()
 	pyFuncDisable = GetFunction(pyInstance, MyConf->pyFuncDisableName);
 	pyFuncEvent = GetFunction(pyInstance, MyConf->pyFuncEventName);
 
-	LOGDEBUG("Loaded \"{}\"\n", MyConf->pyModuleName);
+	//TODO: Call the config function in script ProcessJSONConfig(self, MainJSON, OverrideJSON)
+
+	LOGDEBUG("Loaded \"{}\" ", MyConf->pyModuleName);
 }
 
 void PyPort::Enable()
@@ -445,8 +503,65 @@ switch (event->GetEventType())
 }
 */
 
-//TODO: Static method, that then needs to work out which instance it is so it can call the correct PublishEvent. Might be better to use Bind in passing
-// the function call into the array passed to Python??
+
+// This is an extension method that we have provided to our embedded Python. It will feed a message into our logging framework
+// It is static, so we have to work out which instance of this class should handle it.
+PyObject* PyPort::pyLogMessage(PyObject* self, PyObject* args)
+{
+	uint32_t logtype;
+	const char* message;
+
+	// Now parse the arguments provided, onee Unsigned int (I) and a string (s) and the function name.
+	if (!PyArg_ParseTuple(args, "Is:PublishEvent", &logtype, &message))
+	{
+		if (PyErr_Occurred())
+		{
+			PyErr_Print();
+		}
+		return NULL;
+	}
+
+	// Work out which instance of our PyPort is talking to us.
+	if (!PyPorts.count(self))
+	{
+		LOGERROR("PublishEvent called from Python code for unknown PyPort object");
+		return NULL;
+	}
+	auto thisPyPort = PyPorts.at(self);
+
+	// Tag the message with our portname
+	std::string WholeMessage = thisPyPort->GetName() + " - " + message;
+
+	// Take appropriate action
+	if (auto log = odc::spdlog_get("PyPort"))
+	{
+		// Ordinals match spdlog values - spdlog::level::level_enum::
+		switch (logtype)
+		{
+			case 0: log->trace(WholeMessage);
+				break;
+			case 1:
+				log->debug(WholeMessage);
+				break;
+			case 2:
+				log->info(WholeMessage);
+				break;
+			case 3:
+				log->warn(WholeMessage);
+				break;
+			case 4:
+				log->error(WholeMessage);
+				break;
+			default:
+				log->critical(WholeMessage);
+		}
+	}
+
+	// Return a PyObject return value, in this case "none".
+	return Py_BuildValue("");
+}
+// This is an extension method that we have provided to our embedded Python. It will post an event into the ODC bus.
+// It is static, so we have to work out which instance of this class should handle it.
 PyObject* PyPort::pyPublishEvent(PyObject *self, PyObject *args)
 {
 	//TODO Update to new general event type, so we pass any event. Then decode in Python
@@ -455,13 +570,15 @@ PyObject* PyPort::pyPublishEvent(PyObject *self, PyObject *args)
 	uint32_t quality;
 	PyObject *pyTime = nullptr;
 
+	// Work out which instance of our PyPort is talking to us.
 	if(!PyPorts.count(self))
 	{
-		fprintf(stderr, "Callback for unknown PyPort object\n");
+		LOGERROR("PublishEvent called from Python code for unknown PyPort object");
 		return NULL;
 	}
 	auto thisPyPort = PyPorts.at(self);
 
+	// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
 	if(!PyArg_ParseTuple(args, "IIIO:PublishEvent", &index, &value, &quality, &pyTime))
 	{
 		if (PyErr_Occurred())
@@ -471,15 +588,19 @@ PyObject* PyPort::pyPublishEvent(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
+	// Take appropriate action
+
 	//     Timestamp time = PyDateTime_to_Timestamp(pyTime);
 
 	//    Binary newmeas(value, quality, time);
 
 	// Update to new format     thisPyPort->PublishEvent(newmeas, index);
 
+	// Return a PyObject return value.
 	return Py_BuildValue("i", 0);
 }
 
+// Get a PyObject handle for the function name given, in the Python instance given.
 PyObject* PyPort::GetFunction(PyObject* pyInstance, std::string& sFunction)
 {
 	PyObject* pyFunc = PyObject_GetAttrString(pyInstance, sFunction.c_str());
@@ -493,7 +614,7 @@ PyObject* PyPort::GetFunction(PyObject* pyInstance, std::string& sFunction)
 	return pyFunc;
 }
 
-PyObject* PyPort::Py_init(PyObject* self, PyObject* args)
+PyObject* PyPort::PyInit_DataPort(PyObject* self, PyObject* args)
 {
 	LOGDEBUG("PyPort.__init__ called");
 	Py_INCREF(Py_None);
@@ -517,13 +638,15 @@ void PyPort::PyErrOutput()
 		if (pstr)
 		{
 			const char* err_msg = PyUnicode_AsUTF8(pstr);
+			Py_DECREF(pstr);
+
 			if (err_msg)
 			{
 				std::cout << "Python Error " << err_msg << std::endl;
 				LOGERROR("Python Error {}", err_msg);
 			}
 		}
-		PyErr_Restore(ptype, pvalue, ptraceback);
+		PyErr_Restore(ptype, pvalue, ptraceback); //TODO: Do we need to do this or DECREF the variables?
 	}
 }
 
