@@ -326,6 +326,10 @@ EVENTPAYLOAD(EventType::ConnectState             , ConnectState)
 	case T: \
 		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type(evt.GetPayload<T>())); \
 		break;
+#define DEFAULTPAYLOADCASE(T)\
+	case T: \
+		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type()); \
+		break;
 
 class EventInfo
 {
@@ -499,6 +503,45 @@ public:
 		if(pPayload)
 			delete static_cast<typename EventTypePayload<t>::type*>(pPayload);
 		pPayload = new typename EventTypePayload<t>::type(std::move(p));
+	}
+
+	//Set default payload - mostly for testing
+	void SetPayload()
+	{
+		if(pPayload)
+			return;
+		switch(Type)
+		{
+			DEFAULTPAYLOADCASE(EventType::Binary                   )
+			DEFAULTPAYLOADCASE(EventType::DoubleBitBinary          )
+			DEFAULTPAYLOADCASE(EventType::Analog                   )
+			DEFAULTPAYLOADCASE(EventType::Counter                  )
+			DEFAULTPAYLOADCASE(EventType::FrozenCounter            )
+			DEFAULTPAYLOADCASE(EventType::BinaryOutputStatus       )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputStatus       )
+			DEFAULTPAYLOADCASE(EventType::BinaryCommandEvent       )
+			DEFAULTPAYLOADCASE(EventType::AnalogCommandEvent       )
+			DEFAULTPAYLOADCASE(EventType::OctetString              )
+			DEFAULTPAYLOADCASE(EventType::TimeAndInterval          )
+			DEFAULTPAYLOADCASE(EventType::SecurityStat             )
+			DEFAULTPAYLOADCASE(EventType::ControlRelayOutputBlock  )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputInt16        )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputInt32        )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputFloat32      )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputDouble64     )
+			DEFAULTPAYLOADCASE(EventType::BinaryQuality            )
+			DEFAULTPAYLOADCASE(EventType::DoubleBitBinaryQuality   )
+			DEFAULTPAYLOADCASE(EventType::AnalogQuality            )
+			DEFAULTPAYLOADCASE(EventType::CounterQuality           )
+			DEFAULTPAYLOADCASE(EventType::BinaryOutputStatusQuality)
+			DEFAULTPAYLOADCASE(EventType::FrozenCounterQuality     )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+			DEFAULTPAYLOADCASE(EventType::ConnectState             )
+			default:
+				std::string msg = "odc::EventInfo default payload setter can't handle EventType::"+ToString(Type);
+				throw std::runtime_error(msg);
+				break;
+		}
 	}
 
 private:

@@ -31,6 +31,38 @@ using namespace odc;
 
 #define SUITE(name) "EventInfoTestSuite - " name
 
+TEST_CASE(SUITE("EventTypes"))
+{
+	auto event_type = EventType::BeforeRange;
+	REQUIRE(ToString(event_type) == "<no_string_representation>");
+	while((event_type+1) != EventType::AfterRange)
+	{
+		event_type = event_type+1;
+		REQUIRE(ToString(event_type) != "<no_string_representation>");
+
+		//construct
+		std::shared_ptr<EventInfo> event;
+		REQUIRE_NOTHROW([&]()
+			{
+				event = std::make_shared<EventInfo>(event_type);
+			} ());
+
+		//set default payload
+		REQUIRE_NOTHROW(event->SetPayload());
+
+		//copy
+		std::shared_ptr<EventInfo> event_copy;
+		REQUIRE_NOTHROW([&]()
+			{
+				event_copy = std::make_shared<EventInfo>(*event);
+			} ());
+
+		//destruct
+		REQUIRE_NOTHROW(event.reset());
+		REQUIRE_NOTHROW(event_copy.reset());
+	}
+}
+
 TEST_CASE(SUITE("PayloadTransport"))
 {
 	//Generate a load of events
