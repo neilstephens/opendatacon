@@ -20,8 +20,8 @@
 /*
  * IOTypes.h
  *
- *  Created on: 20/12/2015
- *      Author: Alan Murray <alan@atmurray.net>
+ *  Re-Created on: 2018-06-24
+ *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
 #ifndef IOTYPES_H_
