@@ -82,9 +82,6 @@ const char *conffile1 = R"001(
 	// Python Module/Class/Method name definitions
 	"ModuleName" : "PyPortSim",
 	"ClassName": "SimPortClass",
-	"FuncEnable" : "Enable",
-	"FuncDisable" : "Disable",
-	"FuncEventHandler" : "EventHandler",
 
 	//-------Point conf--------Pass this through to the Python code to deal with
 

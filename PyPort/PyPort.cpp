@@ -33,176 +33,14 @@
 // Do we need to call a Python like timer method, that will allow the Python code to set how long it should be until it is next called.
 // So leave the extension bit out for the moment, just get to the pont where we can load the class and call its methods...
 
-
 #include "PyPort.h"
 #include <chrono>
 #include <ctime>
-#include <datetime.h> //PyDateTime
 #include <time.h>
 #include <iomanip>
 
 
 using namespace odc;
-
-msSinceEpoch_t PyDateTime_to_msSinceEpoch_t(PyObject* pyTime)
-{
-	if (!pyTime || !PyDateTime_Check(pyTime))
-		throw std::exception();
-
-	tm timeinfo;
-	timeinfo.tm_sec = PyDateTime_DATE_GET_SECOND(pyTime);
-	timeinfo.tm_min = PyDateTime_DATE_GET_MINUTE(pyTime);
-	timeinfo.tm_hour = PyDateTime_DATE_GET_HOUR(pyTime);
-	timeinfo.tm_mday = PyDateTime_GET_DAY(pyTime);
-	timeinfo.tm_mon = PyDateTime_GET_MONTH(pyTime) - 1;
-	timeinfo.tm_year = PyDateTime_GET_YEAR(pyTime) - 1900;
-
-	return msSinceEpoch_t(0); //TODO DateTime convert (std::chrono::seconds(my_mktime(&timeinfo)) + std::chrono::microseconds(PyDateTime_DATE_GET_MICROSECOND(pyTime)));
-}
-
-std::unordered_map<PyObject*, PyPort*> PyPort::PyPorts;
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-
-struct module_state
-{
-	PyObject* error;
-};
-
-static PyObject* error_out(PyObject* m)
-{
-	struct module_state* st = GETSTATE(m);
-	// This sets the error/exception state in Python, first value is the exception code - like PyExc_ZeroDivisionError, second is error message.
-	PyErr_SetString(st->error, "something bad happened");
-	return NULL;
-}
-
-static PyObject* LogMessage(PyObject* self, PyObject* args)
-{
-	uint32_t logtype;
-	const char* message;
-
-	// Now parse the arguments provided, one Unsigned int (I) and a string (s) and the function name.
-	if (!PyArg_ParseTuple(args, "Is:LogMessage", &logtype, &message))
-	{
-		if (PyErr_Occurred()) // If the parsetuple fails, this should always be true!
-		{
-			PyErr_Print();
-		}
-		return NULL;
-	}
-
-	std::string WholeMessage = message;
-
-	// Take appropriate action
-	if (auto log = odc::spdlog_get("PyPort"))
-	{
-		// Ordinals match spdlog values - spdlog::level::level_enum::
-		switch (logtype)
-		{
-			case 0: log->trace(WholeMessage);
-				break;
-			case 1:
-				log->debug(WholeMessage);
-				break;
-			case 2:
-				log->info(WholeMessage);
-				break;
-			case 3:
-				log->warn(WholeMessage);
-				break;
-			case 4:
-				log->error(WholeMessage);
-				break;
-			default:
-				log->critical(WholeMessage);
-		}
-	}
-
-	return NULL;
-}
-static PyMethodDef myextension_methods[] = {
-	{"error_out", (PyCFunction)error_out, METH_NOARGS, NULL},
-	{"LogMessage", LogMessage, METH_VARARGS,"Log a message to SpdLog"},
-	{NULL, NULL}
-};
-
-static int myextension_traverse(PyObject* m, visitproc visit, void* arg)
-{
-	Py_VISIT(GETSTATE(m)->error);
-	return 0;
-}
-
-static int myextension_clear(PyObject* m)
-{
-	Py_CLEAR(GETSTATE(m)->error);
-	return 0;
-}
-static struct PyModuleDef moduledef = {
-	PyModuleDef_HEAD_INIT,
-	"ODC", // Name of module
-	NULL,  // Module documentation - docstring format
-	sizeof(struct module_state),
-	myextension_methods,
-	NULL,
-	myextension_traverse,
-	myextension_clear,
-	NULL
-};
-
-// We are defining methods that will exist in parallel with the Python methods that are defined in the script?
-PyMethodDef PyPort::PyPortMethods[] = {
-	{"PublishEvent",
-	 PyPort::pyPublishEvent, // fn pointer to wrap
-	 METH_VARARGS,
-	 "Publish ODC event to subscribed ports"},
-	{"LogMessage",
-	 PyPort::pyLogMessage, // fn pointer to wrap
-	 METH_VARARGS,
-	 "Log a message to spdlog" },
-	{NULL, NULL, 0, NULL} // sentinel.
-};
-
-PyTypeObject PyPort::PyDataPortType = {
-	PyVarObject_HEAD_INIT(NULL, 0)
-	"DataPort",                               /* tp_name */
-	sizeof(PyDataPortObject),                 /* tp_basicsize */
-	0,                                        /* tp_itemsize */
-	0,                                        /* tp_dealloc */
-	0,                                        /* tp_print */
-	0,                                        /* tp_getattr */
-	0,                                        /* tp_setattr */
-	0,                                        /* tp_reserved */
-	0,                                        /* tp_repr */
-	0,                                        /* tp_as_number */
-	0,                                        /* tp_as_sequence */
-	0,                                        /* tp_as_mapping */
-	0,                                        /* tp_hash  */
-	0,                                        /* tp_call */
-	0,                                        /* tp_str */
-	0,                                        /* tp_getattro */
-	0,                                        /* tp_setattro */
-	0,                                        /* tp_as_buffer */
-	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
-	"DataPort objects",                       /* tp_doc */
-	0,                                        /* tp_traverse */
-	0,                                        /* tp_clear */
-	0,                                        /* tp_richcompare */
-	0,                                        /* tp_weaklistoffset */
-	0,                                        /* tp_iter */
-	0,                                        /* tp_iternext */
-	PyPortMethods,                            /* tp_methods */
-	0,                                        /* tp_members */
-	0,                                        /* tp_getset */
-	0,                                        /* tp_base */
-	0,                                        /* tp_dict */
-	0,                                        /* tp_descr_get */
-	0,                                        /* tp_descr_set */
-	0,                                        /* tp_dictoffset */
-	(initproc)PyPort::PyInit_DataPort,        /* tp_init */
-	0,                                        /* tp_alloc */
-	PyType_GenericNew,                        /* tp_new */
-};
-
 
 
 // Constructor for PyPort --------------------------------------
@@ -218,59 +56,13 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 	// We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
 
-	PyEval_InitThreads();
-	Py_Initialize(); // Get the Python interpreter running
-
-	// Now execute some commands to get the environment ready.
-	if (PyRun_SimpleString("import sys") != 0)
-	{
-		LOGERROR("Unable to import python sys library");
-		return;
-	}
-	// Append current working directory to the sys.path variable - so we ca find the module.
-	if (PyRun_SimpleString("sys.path.append(\".\")") != 0)
-	{
-		LOGERROR("Unable to append to sys path in python sys library");
-		return;
-	}
-	PyDateTime_IMPORT;
-
-	// create a new module, which has our functions in it, which should be available to the interpreter.
-	// It is also the place our class will be created/instansiated
-	PyObject* module = PyModule_Create(&moduledef);
-
-	// create a new class/type
-	PyDataPortType.tp_new = PyType_GenericNew;
-
-	if (PyType_Ready(&PyPort::PyDataPortType) != 0)
-	{
-		LOGERROR("Unable to create the python class definition");
-		return;
-	}
-	// Now create an instance of the DataPort class (in our module)
-	if (PyModule_AddObject(module, "DataPort", (PyObject*)&PyPort::PyDataPortType) != 0)
-	{
-		LOGERROR("Unable to create DataPort class instance in the module");
-	}
+	pWrapper.reset(new PythonWrapper(this->Name));
 }
 
 PyPort::~PyPort()
 {
 	LOGDEBUG("Destructing PyPort");
-
-	Py_XDECREF(pyFuncEvent);
-	Py_XDECREF(pyFuncEnable);
-	Py_XDECREF(pyFuncDisable);
-
-	PyPorts.erase(this->pyInstance);
-	Py_XDECREF(pyInstance);
-
-	if (pyModule != nullptr)
-	{
-		Py_DECREF(pyModule);
-	}
-
-	Py_Finalize();
+	pWrapper.reset();
 }
 
 // The ASIO IOS instance is up, our config files have been read and parsed, this is the opportunity to kick off connections and scheduled processes
@@ -278,70 +70,7 @@ void PyPort::Build()
 {
 	//asio::io_service::strand pyStrand(IOMgr.);
 
-	//TODO Do we have to make sure we have the GIL before we do anything?
-	const auto pyUniCodeModuleName = PyUnicode_FromString(MyConf->pyModuleName.c_str());
-
-	pyModule = PyImport_Import(pyUniCodeModuleName);
-	if (pyModule == nullptr)
-	{
-		LOGERROR("Could not load Python Module - {}", MyConf->pyModuleName);
-		if (PyErr_Occurred()) PyErrOutput();
-		return;
-	}
-	Py_DECREF(pyUniCodeModuleName);
-
-	PyObject* pyDict = PyModule_GetDict(pyModule);
-	if (pyDict == nullptr)
-	{
-		LOGERROR("Could not load Python Dictionary Reference");
-		if (PyErr_Occurred()) PyErrOutput();
-		return;
-	}
-
-	// Build the name of a callable class
-	PyObject* pyClass = PyDict_GetItemString(pyDict, MyConf->pyClassName.c_str());
-
-	// Py_XDECREF(pyDict);	// Borrowed reference, dont destruct
-
-	if (pyClass == nullptr)
-	{
-		LOGERROR("Could not load Python Class Reference - {}", MyConf->pyClassName);
-		if (PyErr_Occurred()) PyErrOutput();
-		return;
-	}
-	// Create an instance of the class
-	if (pyClass && PyCallable_Check(pyClass))
-	{
-		auto pyArgs = PyTuple_New(1);
-		auto pyObjectName = PyUnicode_FromString(this->Name.c_str());
-		PyTuple_SetItem(pyArgs, 0, pyObjectName);
-
-		pyInstance = PyObject_CallObject(pyClass, pyArgs);
-		LOGDEBUG("pyObject: {}", (uint64_t)pyInstance);
-
-		PyPorts.emplace(pyInstance, this);
-
-		Py_DECREF(pyArgs); // pyObjectName is stolen into pyArgs, so dealt with in this call
-
-		if (PyErr_Occurred())
-		{
-			PyErrOutput();
-			return;
-		}
-	}
-	else
-	{
-		PyErrOutput();
-		LOGERROR("pyClass not callable");
-		return;
-	}
-	// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
-
-	pyFuncEnable = GetFunction(pyInstance, MyConf->pyFuncEnableName);
-	pyFuncDisable = GetFunction(pyInstance, MyConf->pyFuncDisableName);
-	pyFuncEvent = GetFunction(pyInstance, MyConf->pyFuncEventName);
-
-	//TODO: Call the config function in script ProcessJSONConfig(self, MainJSON, OverrideJSON)
+	pWrapper->Build("DataPort", MyConf->pyModuleName, MyConf->pyClassName, this->Name);
 
 	LOGDEBUG("Loaded \"{}\" ", MyConf->pyModuleName);
 }
@@ -351,9 +80,7 @@ void PyPort::Enable()
 	if (enabled) return;
 	enabled = true;
 
-	auto pyArgs = PyTuple_New(0);
-	PostPyCall(pyFuncEnable, pyArgs); // No passed variables
-	Py_DECREF(pyArgs);
+	pWrapper->Enable();
 };
 
 void PyPort::Disable()
@@ -361,9 +88,7 @@ void PyPort::Disable()
 	if (!enabled) return;
 	enabled = false;
 
-	auto pyArgs = PyTuple_New(0);
-	PostPyCall(pyFuncDisable, pyArgs); // No passed variables
-	Py_DECREF(pyArgs);
+	pWrapper->Disable();
 };
 
 // So we have received an event from the ODC message bus - it will be Control or Connect events.
@@ -433,7 +158,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 
 	PyTuple_SetItem(pyArgs, 4, pySender);
 
-	PostPyCall(pyFuncEvent, pyArgs, pStatusCallback); // Callback will be called when done...
+//	PostPyCall(pyFuncEvent, pyArgs, pStatusCallback); // Callback will be called when done...
 
 	Py_DECREF(pyArgs);
 }
@@ -504,152 +229,6 @@ switch (event->GetEventType())
 */
 
 
-// This is an extension method that we have provided to our embedded Python. It will feed a message into our logging framework
-// It is static, so we have to work out which instance of this class should handle it.
-PyObject* PyPort::pyLogMessage(PyObject* self, PyObject* args)
-{
-	uint32_t logtype;
-	const char* message;
-
-	// Now parse the arguments provided, onee Unsigned int (I) and a string (s) and the function name.
-	if (!PyArg_ParseTuple(args, "Is:PublishEvent", &logtype, &message))
-	{
-		if (PyErr_Occurred())
-		{
-			PyErr_Print();
-		}
-		return NULL;
-	}
-
-	// Work out which instance of our PyPort is talking to us.
-	if (!PyPorts.count(self))
-	{
-		LOGERROR("PublishEvent called from Python code for unknown PyPort object");
-		return NULL;
-	}
-	auto thisPyPort = PyPorts.at(self);
-
-	// Tag the message with our portname
-	std::string WholeMessage = thisPyPort->GetName() + " - " + message;
-
-	// Take appropriate action
-	if (auto log = odc::spdlog_get("PyPort"))
-	{
-		// Ordinals match spdlog values - spdlog::level::level_enum::
-		switch (logtype)
-		{
-			case 0: log->trace(WholeMessage);
-				break;
-			case 1:
-				log->debug(WholeMessage);
-				break;
-			case 2:
-				log->info(WholeMessage);
-				break;
-			case 3:
-				log->warn(WholeMessage);
-				break;
-			case 4:
-				log->error(WholeMessage);
-				break;
-			default:
-				log->critical(WholeMessage);
-		}
-	}
-
-	// Return a PyObject return value, in this case "none".
-	return Py_BuildValue("");
-}
-// This is an extension method that we have provided to our embedded Python. It will post an event into the ODC bus.
-// It is static, so we have to work out which instance of this class should handle it.
-PyObject* PyPort::pyPublishEvent(PyObject *self, PyObject *args)
-{
-	//TODO Update to new general event type, so we pass any event. Then decode in Python
-	uint32_t index;
-	uint32_t value;
-	uint32_t quality;
-	PyObject *pyTime = nullptr;
-
-	// Work out which instance of our PyPort is talking to us.
-	if(!PyPorts.count(self))
-	{
-		LOGERROR("PublishEvent called from Python code for unknown PyPort object");
-		return NULL;
-	}
-	auto thisPyPort = PyPorts.at(self);
-
-	// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
-	if(!PyArg_ParseTuple(args, "IIIO:PublishEvent", &index, &value, &quality, &pyTime))
-	{
-		if (PyErr_Occurred())
-		{
-			PyErr_Print();
-		}
-		return NULL;
-	}
-
-	// Take appropriate action
-
-	//     Timestamp time = PyDateTime_to_Timestamp(pyTime);
-
-	//    Binary newmeas(value, quality, time);
-
-	// Update to new format     thisPyPort->PublishEvent(newmeas, index);
-
-	// Return a PyObject return value.
-	return Py_BuildValue("i", 0);
-}
-
-// Get a PyObject handle for the function name given, in the Python instance given.
-PyObject* PyPort::GetFunction(PyObject* pyInstance, std::string& sFunction)
-{
-	PyObject* pyFunc = PyObject_GetAttrString(pyInstance, sFunction.c_str());
-
-	if (!pyFunc || PyErr_Occurred() || !PyCallable_Check(pyFunc))
-	{
-		PyErrOutput();
-		LOGERROR("Cannot resolve function \"{}\"\n", sFunction);
-		return nullptr;
-	}
-	return pyFunc;
-}
-
-PyObject* PyPort::PyInit_DataPort(PyObject* self, PyObject* args)
-{
-	LOGDEBUG("PyPort.__init__ called");
-	Py_INCREF(Py_None);
-	PyDateTime_IMPORT;
-	return Py_None;
-}
-
-void PyPort::PyErrOutput()
-{
-	//TODO Look at https://stackoverflow.com/questions/1796510/accessing-a-python-traceback-from-the-c-api
-
-	PyObject* ptype, * pvalue, * ptraceback;
-	PyErr_Fetch(&ptype, &pvalue, &ptraceback);
-	//pvalue contains error message
-	//ptraceback contains stack snapshot and many other information
-	//(see python traceback structure)
-
-	if (pvalue)
-	{
-		PyObject* pstr = PyObject_Str(pvalue);
-		if (pstr)
-		{
-			const char* err_msg = PyUnicode_AsUTF8(pstr);
-			Py_DECREF(pstr);
-
-			if (err_msg)
-			{
-				std::cout << "Python Error " << err_msg << std::endl;
-				LOGERROR("Python Error {}", err_msg);
-			}
-		}
-		PyErr_Restore(ptype, pvalue, ptraceback); //TODO: Do we need to do this or DECREF the variables?
-	}
-}
-
 // Just schedule the callback, don't want to do it in a strand protected section.
 void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c)
 {
@@ -662,27 +241,7 @@ void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback
 	}
 }
 
-// Post a call to a python method, that will be executed by ASIO.
-//TODO: Think that we may need to strand protect this to prevent problems. There is also the Python GIL (global interpreter lock) to consider..
-void PyPort::PostPyCall(PyObject* pyFunction, PyObject* pyArgs)
-{
-//	pIOS->post([&, pyArgs, pyFunction]
-	{
-		if (pyFunction && PyCallable_Check(pyFunction))
-		{
-			PyObject_CallObject(pyFunction, pyArgs);
 
-			if (PyErr_Occurred())
-			{
-				PyErrOutput();
-			}
-		}
-		else
-		{
-			LOGERROR("Python Method is not valid");
-		}
-	} //);
-}
 // Post a call to a python method, that also has a callback attached. As we are not expecting the Python code to take long (not expecting network ops)
 // wait for it to complete, and then call any passed callback function.
 void PyPort::PostPyCall(PyObject* pyFunction, PyObject* pyArgs, SharedStatusCallback_t pStatusCallback)
@@ -695,7 +254,7 @@ void PyPort::PostPyCall(PyObject* pyFunction, PyObject* pyArgs, SharedStatusCall
 
 			if (PyErr_Occurred())
 			{
-				PyErrOutput();
+				pWrapper->PyErrOutput();
 			}
 			//TODO: Unpack the PyObject result, and call our callback.
 
@@ -717,10 +276,4 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyModuleName = JSONRoot["ModuleName"].asString();
 	if (JSONRoot.isMember("ClassName"))
 		MyConf->pyClassName = JSONRoot["ClassName"].asString();
-	if (JSONRoot.isMember("FuncEnable"))
-		MyConf->pyFuncEnableName = JSONRoot["FuncEnable"].asString();
-	if (JSONRoot.isMember("FuncDisable"))
-		MyConf->pyFuncDisableName = JSONRoot["FuncDisable"].asString();
-	if (JSONRoot.isMember("FuncEventHandler"))
-		MyConf->pyFuncEventName = JSONRoot["FuncEventHandler"].asString();
 }

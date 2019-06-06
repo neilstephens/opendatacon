@@ -37,19 +37,13 @@ class PyPortConf: public DataPortConf
 public:
 	PyPortConf(std::string FileName, const Json::Value& ConfOverrides):
 		pyModuleName("PyPortSim"),
-		pyClassName("SimPortClass"),
-		pyFuncEnableName("Enable"),
-		pyFuncDisableName("Disable"),
-		pyFuncEventName("EventHandler")
+		pyClassName("SimPortClass")
 	{
 		//pPointConf.reset(new PyPointConf(FileName, ConfOverrides));
 	}
 
 	std::string pyModuleName;
 	std::string pyClassName;
-	std::string pyFuncEnableName;
-	std::string pyFuncDisableName;
-	std::string pyFuncEventName;
 
 	//std::unique_ptr<PyPointConf> pPointConf;
 };
