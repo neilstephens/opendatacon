@@ -64,7 +64,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 	const char* message;
 
 	// Now parse the arguments provided, one Unsigned int (I) and a string (s) and the function name. DO NOT GET THIS WRONG!
-	if (!PyArg_ParseTuple(args, "PIs:log",&guid, &logtype, &message))
+	if (!PyArg_ParseTuple(args, "LIs:log",&guid, &logtype, &message))
 	{
 		if (PyErr_Occurred())
 		{
@@ -132,7 +132,7 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 	PyObject* pyTime = nullptr;
 
 	// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
-	if (!PyArg_ParseTuple(args, "PIIIO:PublishEvent", &guid, &index, &value, &quality, &pyTime))
+	if (!PyArg_ParseTuple(args, "LIIIO:PublishEvent", &guid, &index, &value, &quality, &pyTime))
 	{
 		if (PyErr_Occurred())
 		{
