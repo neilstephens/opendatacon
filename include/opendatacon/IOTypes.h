@@ -214,6 +214,18 @@ inline std::string ToString(const EventType et)
 	ENUMSTRING(et,EventType,FileDescriptor           )
 	ENUMSTRING(et,EventType,FileSpecString           )
 	ENUMSTRING(et,EventType,ConnectState             )
+	ENUMSTRING(et,EventType,Reserved1                )
+	ENUMSTRING(et,EventType,Reserved2                )
+	ENUMSTRING(et,EventType,Reserved3                )
+	ENUMSTRING(et,EventType,Reserved4                )
+	ENUMSTRING(et,EventType,Reserved5                )
+	ENUMSTRING(et,EventType,Reserved6                )
+	ENUMSTRING(et,EventType,Reserved7                )
+	ENUMSTRING(et,EventType,Reserved8                )
+	ENUMSTRING(et,EventType,Reserved9                )
+	ENUMSTRING(et,EventType,Reserved10               )
+	ENUMSTRING(et,EventType,Reserved11               )
+	ENUMSTRING(et,EventType,Reserved12               )
 	return "<no_string_representation>";
 }
 
@@ -315,7 +327,26 @@ EVENTPAYLOAD(EventType::CounterQuality           , QualityFlags)
 EVENTPAYLOAD(EventType::BinaryOutputStatusQuality, QualityFlags)
 EVENTPAYLOAD(EventType::FrozenCounterQuality     , QualityFlags)
 EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
+EVENTPAYLOAD(EventType::FileAuth                 , char) //stub
+EVENTPAYLOAD(EventType::FileCommand              , char) //stub
+EVENTPAYLOAD(EventType::FileCommandStatus        , char) //stub
+EVENTPAYLOAD(EventType::FileTransport            , char) //stub
+EVENTPAYLOAD(EventType::FileTransportStatus      , char) //stub
+EVENTPAYLOAD(EventType::FileDescriptor           , char) //stub
+EVENTPAYLOAD(EventType::FileSpecString           , char) //stub
 EVENTPAYLOAD(EventType::ConnectState             , ConnectState)
+EVENTPAYLOAD(EventType::Reserved1                , char) //stub
+EVENTPAYLOAD(EventType::Reserved2                , char) //stub
+EVENTPAYLOAD(EventType::Reserved3                , char) //stub
+EVENTPAYLOAD(EventType::Reserved4                , char) //stub
+EVENTPAYLOAD(EventType::Reserved5                , char) //stub
+EVENTPAYLOAD(EventType::Reserved6                , char) //stub
+EVENTPAYLOAD(EventType::Reserved7                , char) //stub
+EVENTPAYLOAD(EventType::Reserved8                , char) //stub
+EVENTPAYLOAD(EventType::Reserved9                , char) //stub
+EVENTPAYLOAD(EventType::Reserved10               , char) //stub
+EVENTPAYLOAD(EventType::Reserved11               , char) //stub
+EVENTPAYLOAD(EventType::Reserved12               , char) //stub
 //TODO: map the rest
 
 #define DELETEPAYLOADCASE(T)\
@@ -381,7 +412,26 @@ public:
 				COPYPAYLOADCASE(EventType::BinaryOutputStatusQuality)
 				COPYPAYLOADCASE(EventType::FrozenCounterQuality     )
 				COPYPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+				COPYPAYLOADCASE(EventType::FileAuth                 )
+				COPYPAYLOADCASE(EventType::FileCommand              )
+				COPYPAYLOADCASE(EventType::FileCommandStatus        )
+				COPYPAYLOADCASE(EventType::FileTransport            )
+				COPYPAYLOADCASE(EventType::FileTransportStatus      )
+				COPYPAYLOADCASE(EventType::FileDescriptor           )
+				COPYPAYLOADCASE(EventType::FileSpecString           )
 				COPYPAYLOADCASE(EventType::ConnectState             )
+				COPYPAYLOADCASE(EventType::Reserved1                )
+				COPYPAYLOADCASE(EventType::Reserved2                )
+				COPYPAYLOADCASE(EventType::Reserved3                )
+				COPYPAYLOADCASE(EventType::Reserved4                )
+				COPYPAYLOADCASE(EventType::Reserved5                )
+				COPYPAYLOADCASE(EventType::Reserved6                )
+				COPYPAYLOADCASE(EventType::Reserved7                )
+				COPYPAYLOADCASE(EventType::Reserved8                )
+				COPYPAYLOADCASE(EventType::Reserved9                )
+				COPYPAYLOADCASE(EventType::Reserved10               )
+				COPYPAYLOADCASE(EventType::Reserved11               )
+				COPYPAYLOADCASE(EventType::Reserved12               )
 				default:
 					std::string msg = "odc::EventInfo copy-ctor can't handle EventType::"+ToString(Type);
 					throw std::runtime_error(msg);
@@ -420,7 +470,26 @@ public:
 				DELETEPAYLOADCASE(EventType::BinaryOutputStatusQuality)
 				DELETEPAYLOADCASE(EventType::FrozenCounterQuality     )
 				DELETEPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+				DELETEPAYLOADCASE(EventType::FileAuth                 )
+				DELETEPAYLOADCASE(EventType::FileCommand              )
+				DELETEPAYLOADCASE(EventType::FileCommandStatus        )
+				DELETEPAYLOADCASE(EventType::FileTransport            )
+				DELETEPAYLOADCASE(EventType::FileTransportStatus      )
+				DELETEPAYLOADCASE(EventType::FileDescriptor           )
+				DELETEPAYLOADCASE(EventType::FileSpecString           )
 				DELETEPAYLOADCASE(EventType::ConnectState             )
+				DELETEPAYLOADCASE(EventType::Reserved1                )
+				DELETEPAYLOADCASE(EventType::Reserved2                )
+				DELETEPAYLOADCASE(EventType::Reserved3                )
+				DELETEPAYLOADCASE(EventType::Reserved4                )
+				DELETEPAYLOADCASE(EventType::Reserved5                )
+				DELETEPAYLOADCASE(EventType::Reserved6                )
+				DELETEPAYLOADCASE(EventType::Reserved7                )
+				DELETEPAYLOADCASE(EventType::Reserved8                )
+				DELETEPAYLOADCASE(EventType::Reserved9                )
+				DELETEPAYLOADCASE(EventType::Reserved10               )
+				DELETEPAYLOADCASE(EventType::Reserved11               )
+				DELETEPAYLOADCASE(EventType::Reserved12               )
 				default:
 					if(auto log = odc::spdlog_get("opendatacon"))
 					{
@@ -536,7 +605,26 @@ public:
 			DEFAULTPAYLOADCASE(EventType::BinaryOutputStatusQuality)
 			DEFAULTPAYLOADCASE(EventType::FrozenCounterQuality     )
 			DEFAULTPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+			DEFAULTPAYLOADCASE(EventType::FileAuth                 )
+			DEFAULTPAYLOADCASE(EventType::FileCommand              )
+			DEFAULTPAYLOADCASE(EventType::FileCommandStatus        )
+			DEFAULTPAYLOADCASE(EventType::FileTransport            )
+			DEFAULTPAYLOADCASE(EventType::FileTransportStatus      )
+			DEFAULTPAYLOADCASE(EventType::FileDescriptor           )
+			DEFAULTPAYLOADCASE(EventType::FileSpecString           )
 			DEFAULTPAYLOADCASE(EventType::ConnectState             )
+			DEFAULTPAYLOADCASE(EventType::Reserved1                )
+			DEFAULTPAYLOADCASE(EventType::Reserved2                )
+			DEFAULTPAYLOADCASE(EventType::Reserved3                )
+			DEFAULTPAYLOADCASE(EventType::Reserved4                )
+			DEFAULTPAYLOADCASE(EventType::Reserved5                )
+			DEFAULTPAYLOADCASE(EventType::Reserved6                )
+			DEFAULTPAYLOADCASE(EventType::Reserved7                )
+			DEFAULTPAYLOADCASE(EventType::Reserved8                )
+			DEFAULTPAYLOADCASE(EventType::Reserved9                )
+			DEFAULTPAYLOADCASE(EventType::Reserved10               )
+			DEFAULTPAYLOADCASE(EventType::Reserved11               )
+			DEFAULTPAYLOADCASE(EventType::Reserved12               )
 			default:
 				std::string msg = "odc::EventInfo default payload setter can't handle EventType::"+ToString(Type);
 				throw std::runtime_error(msg);
