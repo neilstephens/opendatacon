@@ -42,6 +42,19 @@ enum class  InitState_t { ENABLED, DISABLED, DELAYED };
 
 typedef std::shared_ptr<std::function<void (CommandStatus status)>> SharedStatusCallback_t;
 
+//class to synchronise access to connection demand map
+class DemandMap
+{
+public:
+	bool InDemand();
+	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
+private:
+	std::map<std::string,bool> connection_demands;
+	std::mutex mtx;
+	//TODO: do it using asio
+	//asio::io_service::strand sync;
+};
+
 class IOHandler
 {
 public:
@@ -72,9 +85,9 @@ protected:
 	asio::io_service* pIOS;
 	std::atomic_bool enabled;
 
-	bool InDemand();
-	std::map<std::string,bool> connection_demands;
-	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
+	inline bool InDemand(){ return mDemandMap.InDemand(); }
+	inline bool MuxConnectionEvents(ConnectState state, const std::string& SenderName)
+	{ return mDemandMap.MuxConnectionEvents(state, SenderName); }
 
 	inline void PublishEvent(ConnectState state)
 	{
@@ -107,6 +120,7 @@ protected:
 
 private:
 	std::unordered_map<std::string,IOHandler*> Subscribers;
+	DemandMap mDemandMap;
 
 	// Important that this is private - for inter process memory management
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;

@@ -56,23 +56,28 @@ void IOHandler::SetIOS(asio::io_service* ios_ptr)
 	pIOS = ios_ptr;
 }
 
-bool IOHandler::InDemand()
+bool DemandMap::InDemand()
 {
+	std::lock_guard<std::mutex> lck (mtx);
 	for(auto demand : connection_demands)
 		if(demand.second)
 			return true;
 	return false;
 }
 
-bool IOHandler::MuxConnectionEvents(ConnectState state, const std::string& SenderName)
+bool DemandMap::MuxConnectionEvents(ConnectState state, const std::string& SenderName)
 {
 	if (state == ConnectState::DISCONNECTED)
 	{
-		connection_demands[SenderName] = false;
+		{
+			std::lock_guard<std::mutex> lck (mtx);
+			connection_demands[SenderName] = false;
+		}
 		return !InDemand();
 	}
 	else if (state == ConnectState::CONNECTED)
 	{
+		std::lock_guard<std::mutex> lck (mtx);
 		bool new_demand = !connection_demands[SenderName];
 		connection_demands[SenderName] = true;
 		return new_demand;
@@ -99,36 +104,36 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 	auto pCB_sync = std::make_shared<asio::io_service::strand>(*pIOS);
 	return std::make_shared<std::function<void (CommandStatus status)>>
 		       (pCB_sync->wrap(
-		[pCB_sync,
-		 pCombinedStatus,
-		 pExecCount,
-		 cb_number,
-		 pStatusCallback](CommandStatus status)
-		{
-			if(*pCombinedStatus == CommandStatus::UNDEFINED)
-				return;
+				 [pCB_sync,
+				  pCombinedStatus,
+				  pExecCount,
+				  cb_number,
+				  pStatusCallback](CommandStatus status)
+				 {
+					 if(*pCombinedStatus == CommandStatus::UNDEFINED)
+						 return;
 
-			if(++(*pExecCount) == 1)
-			{
-			      *pCombinedStatus = status;
-			      if(*pCombinedStatus == CommandStatus::UNDEFINED)
-			      {
-			            (*pStatusCallback)(*pCombinedStatus);
-			            return;
-				}
-			}
-			else if(status != *pCombinedStatus)
-			{
-			      *pCombinedStatus = CommandStatus::UNDEFINED;
-			      (*pStatusCallback)(*pCombinedStatus);
-			      return;
-			}
+					 if(++(*pExecCount) == 1)
+					 {
+					       *pCombinedStatus = status;
+					       if(*pCombinedStatus == CommandStatus::UNDEFINED)
+					       {
+					             (*pStatusCallback)(*pCombinedStatus);
+					             return;
+						 }
+					 }
+					 else if(status != *pCombinedStatus)
+					 {
+					       *pCombinedStatus = CommandStatus::UNDEFINED;
+					       (*pStatusCallback)(*pCombinedStatus);
+					       return;
+					 }
 
-			if(*pExecCount >= cb_number)
-			{
-			      (*pStatusCallback)(*pCombinedStatus);
-			}
-		}));
+					 if(*pExecCount >= cb_number)
+					 {
+					       (*pStatusCallback)(*pCombinedStatus);
+					 }
+				 }));
 }
 
 }
