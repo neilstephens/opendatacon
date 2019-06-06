@@ -23,6 +23,7 @@
  *  Created on: 05/06/2019
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+#include <atomic>
 #include <catch.hpp>
 #include "TestPorts.h"
 #include "../opendatacon/DataConnector.h"
@@ -88,7 +89,7 @@ TEST_CASE(SUITE("PayloadTransport"))
 	Conn.SetIOS(&ios);
 	Conn.Enable();
 
-	std::atomic_int16_t cb_count(0);
+	std::atomic<uint16_t> cb_count(0);
 	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
 		{
 			REQUIRE(status == CommandStatus::SUCCESS);
