@@ -69,28 +69,31 @@ public:
 	void PyErrOutput();
 
 	std::string Name;
-	static PythonWrapper* GetThisFromPythonSelf(PyObject* self)
+
+	void StoreWrapperMapping()
 	{
-		if (PyWrappers.count(self))
+		PyWrappers.emplace((uint64_t)this,0);
+	}
+	void RemoveWrapperMapping()
+	{
+		PyWrappers.erase((uint64_t)this);
+	}
+	// Do this to make sure it is valid
+	static PythonWrapper* GetThisFromPythonSelf(uint64_t guid)
+	{
+		if (PyWrappers.count(guid))
 		{
-			return PyWrappers.at(self);
+			return (PythonWrapper*)guid;
 		}
 		return nullptr;
 	}
 
-protected:
-	// Structures used to pass our extension methods to our Python code. Do these need to be port local???
-//	static PyMethodDef PyModuleMethods[];
-//	static PyMethodDef PyPortMethods[];
-//	static PyTypeObject PyDataPortType;
-
 private:
 	// Keep track of each PyWrapper so static methods can get access to the correct PyPort instance
-	static std::unordered_map<PyObject*, PythonWrapper*> PyWrappers;
+	static std::unordered_map<uint64_t, int> PyWrappers;
 	static std::atomic_uint PythonWrapper::InterpreterUseCount; // Used to keep track of Interpreter Setup/Tear down.
 
 	void InitialisePyInterpreter();
-	void CreateBasePyModule(const std::string& modulename);
 	void ImportModuleAndCreateClassInstance(const std::string& pyModuleName, const std::string& pyClassName, const std::string& PortName);
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.

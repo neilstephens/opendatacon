@@ -49,126 +49,22 @@ using namespace odc;
 msSinceEpoch_t PyDateTime_to_msSinceEpoch_t(PyObject* pyTime);
 
 std::atomic_uint PythonWrapper::InterpreterUseCount = 0;
-std::unordered_map<PyObject*, PythonWrapper*> PythonWrapper::PyWrappers;
+std::unordered_map<uint64_t, int> PythonWrapper::PyWrappers;
 
-
-#pragma region Embedding Code
-
-//This section does all the things necessary to get a module defined and configured, so that we can use it as the "base" module for the interpreter
-typedef struct
-{
-	PyObject_HEAD
-	/* Type-specific fields go here. */
-} PyDataPortObject;
-
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-
-struct module_state
-{
-	PyObject* error;
-};
-
-static PyObject* error_out(PyObject* m)
-{
-	struct module_state* st = GETSTATE(m);
-	// This sets the error/exception state in Python, first value is the exception code - like PyExc_ZeroDivisionError, second is error message.
-	PyErr_SetString(st->error, "something bad happened");
-	return NULL;
-}
-
-static PyMethodDef myextension_methods[] = {
-	{"error_out", (PyCFunction)error_out, METH_NOARGS, NULL},
-	{NULL, NULL}
-};
-
-static int myextension_traverse(PyObject* m, visitproc visit, void* arg)
-{
-	Py_VISIT(GETSTATE(m)->error);
-	return 0;
-}
-
-static int myextension_clear(PyObject* m)
-{
-	Py_CLEAR(GETSTATE(m)->error);
-	return 0;
-}
-
-static struct PyModuleDef moduledef = {
-	PyModuleDef_HEAD_INIT,
-	"odcmodule", // Name of module
-	NULL,        // Module documentation - docstring format
-	sizeof(struct module_state),
-	myextension_methods,
-	NULL,
-	myextension_traverse,
-	myextension_clear,
-	NULL
-};
-
-PyObject* PyInit_DataPort(PyObject* self, PyObject* args)
-{
-	LOGDEBUG("PyPort.__init__ called");
-	Py_INCREF(Py_None);
-	PyDateTime_IMPORT;
-	return Py_None;
-}
-
-PyTypeObject PyDataPortType = {
-	PyVarObject_HEAD_INIT(NULL, 0)
-	"DataPort",                               /* tp_name */
-	sizeof(PyDataPortObject),                 /* tp_basicsize */
-	0,                                        /* tp_itemsize */
-	0,                                        /* tp_dealloc */
-	0,                                        /* tp_print */
-	0,                                        /* tp_getattr */
-	0,                                        /* tp_setattr */
-	0,                                        /* tp_reserved */
-	0,                                        /* tp_repr */
-	0,                                        /* tp_as_number */
-	0,                                        /* tp_as_sequence */
-	0,                                        /* tp_as_mapping */
-	0,                                        /* tp_hash  */
-	0,                                        /* tp_call */
-	0,                                        /* tp_str */
-	0,                                        /* tp_getattro */
-	0,                                        /* tp_setattro */
-	0,                                        /* tp_as_buffer */
-	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
-	"DataPort objects",                       /* tp_doc */
-	0,                                        /* tp_traverse */
-	0,                                        /* tp_clear */
-	0,                                        /* tp_richcompare */
-	0,                                        /* tp_weaklistoffset */
-	0,                                        /* tp_iter */
-	0,                                        /* tp_iternext */
-	0,                                        /* tp_methods */
-	0,                                        /* tp_members */
-	0,                                        /* tp_getset */
-	0,                                        /* tp_base */
-	0,                                        /* tp_dict */
-	0,                                        /* tp_descr_get */
-	0,                                        /* tp_descr_set */
-	0,                                        /* tp_dictoffset */
-	(initproc)PyInit_DataPort,                /* tp_init */
-	0,                                        /* tp_alloc */
-	PyType_GenericNew,                        /* tp_new */
-};
-
-#pragma endregion
 
 #pragma region odc support module
 // This is where we expose ODC methods to our script, so they can be called by the script when needed.
-// This is an extension method that we have provided to our embedded Python. It will feed a message into our logging framework
 
 // This is an extension method that we have provided to our embedded Python. It will feed a message into our logging framework
-// It is static, so we have to work out which instance of this class should handle it.
+// It is static, so we have to work out which instance of the PythonWrapper class should handle it.
 static PyObject* odc_log(PyObject* self, PyObject* args)
 {
 	uint32_t logtype;
+	uint64_t guid;
 	const char* message;
 
 	// Now parse the arguments provided, one Unsigned int (I) and a string (s) and the function name. DO NOT GET THIS WRONG!
-	if (!PyArg_ParseTuple(args, "Is:log", &logtype, &message))
+	if (!PyArg_ParseTuple(args, "PIs:log",&guid, &logtype, &message))
 	{
 		if (PyErr_Occurred())
 		{
@@ -180,7 +76,9 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 	std::string WholeMessage = "pyLog - ";
 
 	// Work out which instance of our PyWrapper is talking to us.
-	auto thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(self);
+	PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
+
+	LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
 
 	if (thisPyWrapper != nullptr)
 	{
@@ -223,17 +121,18 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 }
 
 // This is an extension method that we have provided to our embedded Python. It will post an event into the ODC bus.
-// It is static, so we have to work out which instance of this class should handle it.
+// It is static, so we have to work out which instance of the PythonWrapper class should handle it.
 static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 {
 	//TODO Update to new general event type, so we pass any event. Then decode in Python
 	uint32_t index;
 	uint32_t value;
 	uint32_t quality;
+	uint64_t guid;
 	PyObject* pyTime = nullptr;
 
 	// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
-	if (!PyArg_ParseTuple(args, "IIIO:PublishEvent", &index, &value, &quality, &pyTime))
+	if (!PyArg_ParseTuple(args, "PIIIO:PublishEvent", &guid, &index, &value, &quality, &pyTime))
 	{
 		if (PyErr_Occurred())
 		{
@@ -272,7 +171,6 @@ static PyObject* PyInit_odc(void)
 // Load the module into the python interpreter before we initialise it.
 void ImportODCModule()
 {
-	//TODO Need to push the logging constants into the module.
 	if (PyImport_AppendInittab("odc", &PyInit_odc) != 0)
 	{
 		LOGERROR("Unable to import odc module to Python Interpreter");
@@ -301,7 +199,7 @@ PythonWrapper::~PythonWrapper()
 	Py_XDECREF(pyFuncEnable);
 	Py_XDECREF(pyFuncDisable);
 
-	PyWrappers.erase(this->pyInstance);
+	RemoveWrapperMapping();
 	Py_XDECREF(pyInstance);
 
 	if (pyModule != nullptr)
@@ -349,29 +247,6 @@ void PythonWrapper::InitialisePyInterpreter()
 	PyDateTime_IMPORT;
 }
 
-void PythonWrapper::CreateBasePyModule(const std::string& modulename)
-{
-	// create a new module, which will contain the class we create
-	// It is also the place our class will be created/instansiated
-	// Do we need different module names for each port instance?
-	PyObject* module = PyModule_Create(&moduledef);
-
-	// create a new class/type
-	PyDataPortType.tp_new = PyType_GenericNew;
-
-	if (PyType_Ready(&PyDataPortType) != 0)
-	{
-		LOGERROR("Unable to create the python class definition");
-		throw std::runtime_error::runtime_error("Unable to create the python class definition");
-	}
-	// Add an object to the module we have created. In this case we are adding the DataPortType as a class "DataPort"
-	// to the module. It does not really do anything.
-	if (PyModule_AddObject(module, "DataPort", (PyObject*)&PyDataPortType) != 0)
-	{
-		LOGERROR("Unable to create base/root DataPort class instance in the base module");
-		throw std::runtime_error::runtime_error("Unable to create DataPort class instance in the base module");
-	}
-}
 
 void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModuleName, const std::string& pyClassName, const std::string& PortName)
 {
@@ -408,9 +283,11 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 	// Create an instance of the class, with a name matching the port name
 	if (pyClass && PyCallable_Check(pyClass))
 	{
-		auto pyArgs = PyTuple_New(1);
+		auto pyArgs = PyTuple_New(2);
+		auto pyguid = PyLong_FromUnsignedLongLong((uint64_t)this); // Pass a this pointer into our constructor, so we can idenify ourselves on calls back into C land
 		auto pyObjectName = PyUnicode_FromString(PortName.c_str());
-		PyTuple_SetItem(pyArgs, 0, pyObjectName);
+		PyTuple_SetItem(pyArgs, 0, pyguid);
+		PyTuple_SetItem(pyArgs, 1, pyObjectName);
 
 		pyInstance = PyObject_CallObject(pyClass, pyArgs);
 		if (pyInstance == nullptr)
@@ -420,11 +297,10 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 
 			throw std::runtime_error::runtime_error("Could not get instance pointer for Python Class");
 		}
-		LOGDEBUG("pyObject: {0:#x}", (uint64_t)pyInstance);
 
-		PyWrappers.emplace(pyInstance, this);
+		StoreWrapperMapping();
 
-		Py_DECREF(pyArgs); // pyObjectName is stolen into pyArgs, so dealt with in this call
+		Py_DECREF(pyArgs); // pyObjectName, pyguid is stolen into pyArgs, so dealt with in this call
 	}
 	else
 	{
