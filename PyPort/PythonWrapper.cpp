@@ -51,6 +51,21 @@ msSinceEpoch_t PyDateTime_to_msSinceEpoch_t(PyObject* pyTime);
 std::atomic_uint PythonWrapper::InterpreterUseCount = 0;
 std::unordered_map<uint64_t, int> PythonWrapper::PyWrappers;
 
+// Wrap getting/releasing the GIL to be bullet proof.
+class GetPythonGIL
+{
+	PyGILState_STATE gstate;
+
+public:
+	GetPythonGIL()
+	{
+		gstate = PyGILState_Ensure();
+	}
+	~GetPythonGIL()
+	{
+		PyGILState_Release(gstate);
+	}
+};
 
 #pragma region odc support module
 // This is where we expose ODC methods to our script, so they can be called by the script when needed.
@@ -195,6 +210,7 @@ PythonWrapper::~PythonWrapper()
 {
 	LOGDEBUG("Destructing PythonWrapper");
 
+	Py_XDECREF(pyFuncConfig);
 	Py_XDECREF(pyFuncEvent);
 	Py_XDECREF(pyFuncEnable);
 	Py_XDECREF(pyFuncDisable);
@@ -211,19 +227,21 @@ PythonWrapper::~PythonWrapper()
 	if (InterpreterUseCount == 0)
 	{
 		LOGDEBUG("Py_Finalize");
-		Py_Finalize();
+		if (PyGILState_Check() == 1)
+		{
+			Py_Finalize();
+		}
+		else
+		{
+			GetPythonGIL g;
+			Py_Finalize();
+		}
 	}
 }
 // Startup the interpreter - need to have matching tear down in destructor.
 void PythonWrapper::InitialisePyInterpreter()
 {
-	//PyEval_InitThreads();	// Setup interpreter to support threading (could choose not to do this if we use strand protection??)
-	// This grabs the GIL, so we should release it when we dont need it. We should also get our PyThreadState and maintain it
-	// This is for an old python version - need to check if this still applies.
-
-	// Seems we really want to use a strand, this would then mean we dont need the GIL, so would be faster. Just need to make sure any python code we
-	// run does not do any threading, which should be ok. If we use the c interface to program scheduled tasks, they will be strand protected
-	// and we can do all we want, but rely on ASIO to coordinate it.
+	PyEval_InitThreads(); // Setup interpreter to support threading. We are using a strand to sync access to the interpreter, but still need this.
 
 	LOGDEBUG("Py_Initialize");
 
@@ -250,6 +268,8 @@ void PythonWrapper::InitialisePyInterpreter()
 
 void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModuleName, const std::string& pyClassName, const std::string& PortName)
 {
+	GetPythonGIL g;
+
 	const auto pyUniCodeModuleName = PyUnicode_FromString(pyModuleName.c_str());
 
 	pyModule = PyImport_Import(pyUniCodeModuleName);
@@ -310,6 +330,7 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 	}
 	// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
 
+	pyFuncConfig = GetFunction(pyInstance, "Config");
 	pyFuncEnable = GetFunction(pyInstance, "Enable");
 	pyFuncDisable = GetFunction(pyInstance, "Disable");
 	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
@@ -319,24 +340,108 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 void PythonWrapper::Build(const std::string& modulename, std::string& pyLoadModuleName, std::string& pyClassName, std::string& PortName)
 {
 	// Throws exceptions on fail
-//	CreateBasePyModule(modulename);
-
 	ImportModuleAndCreateClassInstance(pyLoadModuleName, pyClassName, PortName);
+}
+
+void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONOverride)
+{
+	GetPythonGIL g;
+
+	auto pyArgs = PyTuple_New(2);
+	auto pyJSONMain = PyUnicode_FromString(JSONMain.c_str());
+	auto pyJSONOverride = PyUnicode_FromString(JSONOverride.c_str());
+	PyTuple_SetItem(pyArgs, 0, pyJSONMain);
+	PyTuple_SetItem(pyArgs, 1, pyJSONOverride);
+
+	PyObject* pyResult = PyCall(pyFuncConfig, pyArgs); // No passed variables, assume no delayed return
+	if (pyResult) Py_DECREF(pyResult);
+	Py_DECREF(pyArgs);
 }
 
 void PythonWrapper::Enable()
 {
+	GetPythonGIL g;
 	auto pyArgs = PyTuple_New(0);
-	PostPyCall(pyFuncEnable, pyArgs); // No passed variables
+	PyObject* pyResult = PyCall(pyFuncEnable, pyArgs); // No passed variables, assume no delayed return
+	if (pyResult) Py_DECREF(pyResult);
 	Py_DECREF(pyArgs);
 };
 
 void PythonWrapper::Disable()
 {
+	GetPythonGIL g;
 	auto pyArgs = PyTuple_New(0);
-	PostPyCall(pyFuncDisable, pyArgs); // No passed variables
+	PyObject* pyResult = PyCall(pyFuncDisable, pyArgs); // No passed variables, assume no delayed return
+	if (pyResult) Py_DECREF(pyResult);
 	Py_DECREF(pyArgs);
 };
+
+// When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.
+CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName)
+{
+	// Try and send all events through to Python without modification, return value will be success or failure - using our predefined values.
+	GetPythonGIL g;
+
+	auto pyArgs = PyTuple_New(5);
+	auto pyEventType = PyLong_FromUnsignedLong(static_cast<unsigned long>(event->GetEventType()));
+	auto pyIndex = PyLong_FromUnsignedLong(event->GetIndex());
+	auto pyTime = PyLong_FromUnsignedLong(event->GetTimestamp());
+	auto pyQuality = PyLong_FromUnsignedLong(static_cast<unsigned long>(event->GetQuality()));
+	auto pySender = PyUnicode_FromString(SenderName.c_str());
+
+	// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
+	PyTuple_SetItem(pyArgs, 0, pyEventType);
+	PyTuple_SetItem(pyArgs, 1, pyIndex);
+	PyTuple_SetItem(pyArgs, 2, pyTime);
+	PyTuple_SetItem(pyArgs, 3, pyQuality);
+
+	/*
+	typedef std::pair<bool, bool> DBB;
+	typedef std::tuple<msSinceEpoch_t, uint32_t, uint8_t> TAI;
+	typedef std::pair<uint16_t, uint32_t> SS;
+	typedef std::pair<int16_t, CommandStatus> AO16;
+	typedef std::pair<int32_t, CommandStatus> AO32;
+	typedef std::pair<float, CommandStatus> AOF;
+	typedef std::pair<double, CommandStatus> AOD;
+
+	EVENTPAYLOAD(EventType::Binary, bool)
+	        EVENTPAYLOAD(EventType::DoubleBitBinary, DBB)
+	        EVENTPAYLOAD(EventType::Analog, double)
+	        EVENTPAYLOAD(EventType::Counter, uint32_t)
+	        EVENTPAYLOAD(EventType::FrozenCounter, uint32_t)
+	        EVENTPAYLOAD(EventType::BinaryOutputStatus, bool)
+	        EVENTPAYLOAD(EventType::AnalogOutputStatus, double)
+	        EVENTPAYLOAD(EventType::BinaryCommandEvent, CommandStatus)
+	        EVENTPAYLOAD(EventType::AnalogCommandEvent, CommandStatus)
+	        EVENTPAYLOAD(EventType::OctetString, std::string)
+	        EVENTPAYLOAD(EventType::TimeAndInterval, TAI)
+	        EVENTPAYLOAD(EventType::SecurityStat, SS)
+	        EVENTPAYLOAD(EventType::ControlRelayOutputBlock, ControlRelayOutputBlock)
+	        EVENTPAYLOAD(EventType::AnalogOutputInt16, AO16)
+	        EVENTPAYLOAD(EventType::AnalogOutputInt32, AO32)
+	        EVENTPAYLOAD(EventType::AnalogOutputFloat32, AOF)
+	        EVENTPAYLOAD(EventType::AnalogOutputDouble64, AOD)
+	        EVENTPAYLOAD(EventType::BinaryQuality, QualityFlags)
+	        EVENTPAYLOAD(EventType::DoubleBitBinaryQuality, QualityFlags)
+	        EVENTPAYLOAD(EventType::AnalogQuality, QualityFlags)
+	        EVENTPAYLOAD(EventType::CounterQuality, QualityFlags)
+	        EVENTPAYLOAD(EventType::BinaryOutputStatusQuality, QualityFlags)
+	        EVENTPAYLOAD(EventType::FrozenCounterQuality, QualityFlags)
+	        EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
+	        EVENTPAYLOAD(EventType::ConnectState, ConnectState)
+	        */
+	//PyTuple_SetItem(pyArgs, 4, event->GetPayload()); //TODO Can be many types - how best to handle??
+
+	PyTuple_SetItem(pyArgs, 4, pySender);
+
+	//	PostPyCall(pyFuncEvent, pyArgs, pStatusCallback); // Callback will be called when done...
+	PyObject* pyResult = PyCall(pyFuncEvent, pyArgs); // No passed variables
+
+	if (pyResult) Py_DECREF(pyResult);
+	Py_DECREF(pyArgs);
+
+	return CommandStatus::SUCCESS;
+}
 #pragma region
 
 
@@ -383,23 +488,22 @@ void PythonWrapper::PyErrOutput()
 		PyErr_Restore(ptype, pvalue, ptraceback); //TODO: Do we need to do this or DECREF the variables?
 	}
 }
-// Post a call to a python method, that will be executed by ASIO.
-//TODO: Think that we may need to strand protect this to prevent problems. There is also the Python GIL (global interpreter lock) to consider..
-void PythonWrapper::PostPyCall(PyObject* pyFunction, PyObject* pyArgs)
+
+PyObject* PythonWrapper::PyCall(PyObject* pyFunction, PyObject* pyArgs)
 {
-	//	pIOS->post([&, pyArgs, pyFunction]
+	if (pyFunction && PyCallable_Check(pyFunction))
 	{
-		if (pyFunction && PyCallable_Check(pyFunction))
-		{
-			PyObject_CallObject(pyFunction, pyArgs);
-			PyErrOutput();
-		}
-		else
-		{
-			LOGERROR("Python Method is not valid");
-		}
-	} //);
+		PyObject* Result = PyObject_CallObject(pyFunction, pyArgs);
+		PyErrOutput();
+		return Result;
+	}
+	else
+	{
+		LOGERROR("Python Method is not valid");
+		return nullptr;
+	}
 }
+
 msSinceEpoch_t PyDateTime_to_msSinceEpoch_t(PyObject* pyTime)
 {
 	if (!pyTime || !PyDateTime_Check(pyTime))
@@ -417,3 +521,69 @@ msSinceEpoch_t PyDateTime_to_msSinceEpoch_t(PyObject* pyTime)
 }
 
 #pragma endregion
+
+/*
+switch (event->GetEventType())
+{
+
+      case EventType::ControlRelayOutputBlock:
+      return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+      case EventType::AnalogOutputInt16:
+      return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+      case EventType::AnalogOutputInt32:
+      return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+      case EventType::AnalogOutputFloat32:
+      return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+      case EventType::AnalogOutputDouble64:
+      return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+
+
+      case EventType::Analog:
+      {
+              // ODC Analog is a double by default...
+              uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
+
+              LOGDEBUG("OS - Received Event - Analog - Index {}  Value 0x{}", std::to_string(ODCIndex), std::to_string(analogmeas));
+              return (*pStatusCallback)(CommandStatus::SUCCESS);
+      }
+      case EventType::Counter:
+      {
+              return (*pStatusCallback)(CommandStatus::SUCCESS);
+      }
+      case EventType::Binary:
+      {
+              uint8_t meas = event->GetPayload<EventType::Binary>();
+
+              LOGDEBUG("OS - Received Event - Binary - Index {}, Bit Value {}", std::to_string(ODCIndex), std::to_string(meas));
+
+              return (*pStatusCallback)(CommandStatus::SUCCESS);
+      }
+      case EventType::AnalogQuality:
+      {
+              return (*pStatusCallback)(CommandStatus::SUCCESS);
+      }
+      case EventType::CounterQuality:
+      {
+              return (*pStatusCallback)(CommandStatus::SUCCESS);
+      }
+      case EventType::ConnectState:
+      {
+              auto state = event->GetPayload<EventType::ConnectState>();
+              // This will be fired by (typically) an CBOutStation port on the "other" side of the ODC Event bus. blockindex.e. something upstream has connected
+              // We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
+
+              if (state == ConnectState::CONNECTED)
+              {
+                        LOGDEBUG("Got a connected event - Triggering sending of current data ");
+              }
+              else if (state == ConnectState::DISCONNECTED)
+              {
+                        LOGDEBUG("Got a disconnected event - cant send events data ");
+              }
+
+              return PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
+      }
+      default:
+              return PostCallbackCall(pStatusCallback, CommandStatus::NOT_SUPPORTED);
+}
+*/

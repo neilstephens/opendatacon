@@ -68,10 +68,14 @@ protected:
 
 private:
 	std::unique_ptr<PythonWrapper> pWrapper;
+	std::string JSONMain;
+	std::string JSONOverride;
+
+	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
+	static std::shared_ptr<asio::strand> python_strand;
 
 	// Worker methods
 	void PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c);
-	void PostPyCall(PyObject* pyFunction, PyObject* pyArgs, SharedStatusCallback_t pStatusCallback);
 };
 
 #endif /* PYPORT_H_ */

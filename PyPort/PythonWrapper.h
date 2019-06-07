@@ -34,7 +34,7 @@
 #include <Python.h>
 #include <unordered_map>
 #include <opendatacon/util.h>
-
+#include <opendatacon/DataPort.h>
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(...) \
@@ -60,25 +60,16 @@ public:
 	PythonWrapper(const std::string& aName);
 	~PythonWrapper();
 	void Build(const std::string& modulename, std::string& pyLoadModuleName, std::string& pyClassName, std::string& PortName);
-
+	void Config(const std::string& JSONMain, const std::string& JSONOverride);
 	void Enable();
 	void Disable();
+	CommandStatus Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
 
-/*	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-*/
 	void PyErrOutput();
 
 	std::string Name;
 
-	void StoreWrapperMapping()
-	{
-		PyWrappers.emplace((uint64_t)this,0);
-	}
-	void RemoveWrapperMapping()
-	{
-		PyWrappers.erase((uint64_t)this);
-	}
-	// Do this to make sure it is valid
+	// Do this to make sure it is always a valid pointer - the python code could pass anything back...
 	static PythonWrapper* GetThisFromPythonSelf(uint64_t guid)
 	{
 		if (PyWrappers.count(guid))
@@ -89,22 +80,32 @@ public:
 	}
 
 private:
-	// Keep track of each PyWrapper so static methods can get access to the correct PyPort instance
-	static std::unordered_map<uint64_t, int> PyWrappers;
-	static std::atomic_uint PythonWrapper::InterpreterUseCount; // Used to keep track of Interpreter Setup/Tear down.
+	void StoreWrapperMapping()
+	{
+		PyWrappers.emplace((uint64_t)this, 0);
+	}
+	void RemoveWrapperMapping()
+	{
+		PyWrappers.erase((uint64_t)this);
+	}
 
 	void InitialisePyInterpreter();
 	void ImportModuleAndCreateClassInstance(const std::string& pyModuleName, const std::string& pyClassName, const std::string& PortName);
 
+	PyObject* GetFunction(PyObject* pyInstance, const std::string& sFunction);
+	PyObject* PyCall(PyObject* pyFunction, PyObject* pyArgs);
+
+	// Keep track of each PyWrapper so static methods can get access to the correct PyPort instance
+	static std::unordered_map<uint64_t, int> PyWrappers;
+	static std::atomic_uint PythonWrapper::InterpreterUseCount; // Used to keep track of Interpreter Setup/Tear down.
+
 	// Keep pointers to the methods in out Python code that we want to be able to call.
 	PyObject* pyModule = nullptr;
 	PyObject* pyInstance = nullptr;
+	PyObject* pyFuncConfig = nullptr;
 	PyObject* pyFuncEnable = nullptr;
 	PyObject* pyFuncDisable = nullptr;
 	PyObject* pyFuncEvent = nullptr;
-
-	PyObject* GetFunction(PyObject* pyInstance, const std::string& sFunction);
-	void PostPyCall(PyObject* pyFunction, PyObject* pyArgs);
 };
 
 #endif /* PYWRAPPER_H_ */

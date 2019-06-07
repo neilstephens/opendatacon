@@ -38,16 +38,20 @@
 #include <ctime>
 #include <time.h>
 #include <iomanip>
+#include "../submodules/asio-1.12.2/include/asio/strand.hpp"
 
 
 using namespace odc;
 
+std::shared_ptr<asio::strand> PyPort::python_strand = nullptr;
 
 // Constructor for PyPort --------------------------------------
 PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
-	DataPort(aName, aConfFilename, aConfOverrides)
+	DataPort(aName, aConfFilename, aConfOverrides),
+	JSONMain(""),
+	JSONOverride("")
 {
-	//the creation of a new CBPortConf will get the point details
+	//the creation of a new PyPortConf will get the point details
 	pConf.reset(new PyPortConf(ConfFilename, ConfOverrides));
 
 	// Just to save a lot of dereferencing..
@@ -55,22 +59,46 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 
 	// We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
-
-	pWrapper.reset(new PythonWrapper(this->Name));
 }
 
 PyPort::~PyPort()
 {
 	LOGDEBUG("Destructing PyPort");
-	pWrapper.reset();
+
+	// Not sure about this, we still have to protect the calls into the Python code, including the destructor, which should shut down the interpreter.
+	python_strand->dispatch([&]()
+		{
+			LOGDEBUG("reset pWrapper");
+			pWrapper.reset();
+			// Only 1 strand per ODC system.
+			if (python_strand.use_count() == 1)
+			{
+			      LOGDEBUG("reset python_strand");
+			//			python_strand.reset();
+			}
+		});
 }
 
 // The ASIO IOS instance is up, our config files have been read and parsed, this is the opportunity to kick off connections and scheduled processes
 void PyPort::Build()
 {
-	//asio::io_service::strand pyStrand(IOMgr.);
+	// Only 1 strand per ODC system. Must wait until build as pIOS is not available in the constructor
+	if (python_strand == nullptr)
+	{
+		LOGDEBUG("Create python_strand");
+		python_strand.reset(new asio::strand(*pIOS));
+	}
 
-	pWrapper->Build("DataPort", MyConf->pyModuleName, MyConf->pyClassName, this->Name);
+	// Every call to pWrapper should be strand protected.
+	python_strand->dispatch([&]()
+		{
+			pWrapper.reset(new PythonWrapper(this->Name)); // If first time constructor is called, will instansiate the interpreter.
+
+			// Python code is loaded and class created, __init__ called.
+			pWrapper->Build("PyPort", MyConf->pyModuleName, MyConf->pyClassName, this->Name);
+
+			pWrapper->Config(JSONMain, JSONOverride);
+		});
 
 	LOGDEBUG("Loaded \"{}\" ", MyConf->pyModuleName);
 }
@@ -80,15 +108,20 @@ void PyPort::Enable()
 	if (enabled) return;
 	enabled = true;
 
-	pWrapper->Enable();
+	python_strand->dispatch([&]()
+		{
+			pWrapper->Enable();
+		});
 };
 
 void PyPort::Disable()
 {
 	if (!enabled) return;
 	enabled = false;
-
-	pWrapper->Disable();
+	python_strand->dispatch([&]()
+		{
+			pWrapper->Disable();
+		});
 };
 
 // So we have received an event from the ODC message bus - it will be Control or Connect events.
@@ -100,134 +133,18 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 {
 	if (!enabled)
 	{
+		LOGDEBUG("PyPort {} not enabled, Event from {} ignored", Name, SenderName);
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
 
-	// Try and send all events through to Python without modification, return value will be success or failure - using our predefined values.
+	python_strand->dispatch([&, event, SenderName]()
+		{
+			CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
 
-	auto pyArgs = PyTuple_New(5);
-	auto pyEventType = PyLong_FromUnsignedLong(static_cast<unsigned long>(event->GetEventType()));
-	auto pyIndex = PyLong_FromUnsignedLong(event->GetIndex());
-	auto pyTime = PyLong_FromUnsignedLong(event->GetTimestamp());
-	auto pyQuality = PyLong_FromUnsignedLong(static_cast<unsigned long>(event->GetQuality()));
-	auto pySender = PyUnicode_FromString(SenderName.c_str());
-
-	// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
-	PyTuple_SetItem(pyArgs, 0, pyEventType);
-	PyTuple_SetItem(pyArgs, 1, pyIndex);
-	PyTuple_SetItem(pyArgs, 2, pyTime);
-	PyTuple_SetItem(pyArgs, 3, pyQuality);
-
-	/*
-	typedef std::pair<bool, bool> DBB;
-	typedef std::tuple<msSinceEpoch_t, uint32_t, uint8_t> TAI;
-	typedef std::pair<uint16_t, uint32_t> SS;
-	typedef std::pair<int16_t, CommandStatus> AO16;
-	typedef std::pair<int32_t, CommandStatus> AO32;
-	typedef std::pair<float, CommandStatus> AOF;
-	typedef std::pair<double, CommandStatus> AOD;
-
-	EVENTPAYLOAD(EventType::Binary, bool)
-	      EVENTPAYLOAD(EventType::DoubleBitBinary, DBB)
-	      EVENTPAYLOAD(EventType::Analog, double)
-	      EVENTPAYLOAD(EventType::Counter, uint32_t)
-	      EVENTPAYLOAD(EventType::FrozenCounter, uint32_t)
-	      EVENTPAYLOAD(EventType::BinaryOutputStatus, bool)
-	      EVENTPAYLOAD(EventType::AnalogOutputStatus, double)
-	      EVENTPAYLOAD(EventType::BinaryCommandEvent, CommandStatus)
-	      EVENTPAYLOAD(EventType::AnalogCommandEvent, CommandStatus)
-	      EVENTPAYLOAD(EventType::OctetString, std::string)
-	      EVENTPAYLOAD(EventType::TimeAndInterval, TAI)
-	      EVENTPAYLOAD(EventType::SecurityStat, SS)
-	      EVENTPAYLOAD(EventType::ControlRelayOutputBlock, ControlRelayOutputBlock)
-	      EVENTPAYLOAD(EventType::AnalogOutputInt16, AO16)
-	      EVENTPAYLOAD(EventType::AnalogOutputInt32, AO32)
-	      EVENTPAYLOAD(EventType::AnalogOutputFloat32, AOF)
-	      EVENTPAYLOAD(EventType::AnalogOutputDouble64, AOD)
-	      EVENTPAYLOAD(EventType::BinaryQuality, QualityFlags)
-	      EVENTPAYLOAD(EventType::DoubleBitBinaryQuality, QualityFlags)
-	      EVENTPAYLOAD(EventType::AnalogQuality, QualityFlags)
-	      EVENTPAYLOAD(EventType::CounterQuality, QualityFlags)
-	      EVENTPAYLOAD(EventType::BinaryOutputStatusQuality, QualityFlags)
-	      EVENTPAYLOAD(EventType::FrozenCounterQuality, QualityFlags)
-	      EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
-	      EVENTPAYLOAD(EventType::ConnectState, ConnectState)
-	      */
-	//PyTuple_SetItem(pyArgs, 4, event->GetPayload()); //TODO Can be many types - how best to handle??
-
-	PyTuple_SetItem(pyArgs, 4, pySender);
-
-//	PostPyCall(pyFuncEvent, pyArgs, pStatusCallback); // Callback will be called when done...
-
-	Py_DECREF(pyArgs);
+			PostCallbackCall(pStatusCallback, result);
+		});
 }
-/*
-switch (event->GetEventType())
-{
-
-    case EventType::ControlRelayOutputBlock:
-    return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-    case EventType::AnalogOutputInt16:
-    return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-    case EventType::AnalogOutputInt32:
-    return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-    case EventType::AnalogOutputFloat32:
-    return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-    case EventType::AnalogOutputDouble64:
-    return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-
-
-    case EventType::Analog:
-    {
-          // ODC Analog is a double by default...
-          uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
-
-          LOGDEBUG("OS - Received Event - Analog - Index {}  Value 0x{}", std::to_string(ODCIndex), std::to_string(analogmeas));
-          return (*pStatusCallback)(CommandStatus::SUCCESS);
-    }
-    case EventType::Counter:
-    {
-          return (*pStatusCallback)(CommandStatus::SUCCESS);
-    }
-    case EventType::Binary:
-    {
-          uint8_t meas = event->GetPayload<EventType::Binary>();
-
-          LOGDEBUG("OS - Received Event - Binary - Index {}, Bit Value {}", std::to_string(ODCIndex), std::to_string(meas));
-
-          return (*pStatusCallback)(CommandStatus::SUCCESS);
-    }
-    case EventType::AnalogQuality:
-    {
-          return (*pStatusCallback)(CommandStatus::SUCCESS);
-    }
-    case EventType::CounterQuality:
-    {
-          return (*pStatusCallback)(CommandStatus::SUCCESS);
-    }
-    case EventType::ConnectState:
-    {
-          auto state = event->GetPayload<EventType::ConnectState>();
-          // This will be fired by (typically) an CBOutStation port on the "other" side of the ODC Event bus. blockindex.e. something upstream has connected
-          // We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
-
-          if (state == ConnectState::CONNECTED)
-          {
-                LOGDEBUG("Got a connected event - Triggering sending of current data ");
-          }
-          else if (state == ConnectState::DISCONNECTED)
-          {
-                LOGDEBUG("Got a disconnected event - cant send events data ");
-          }
-
-          return PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
-    }
-    default:
-          return PostCallbackCall(pStatusCallback, CommandStatus::NOT_SUPPORTED);
-}
-*/
-
 
 // Just schedule the callback, don't want to do it in a strand protected section.
 void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c)
@@ -241,37 +158,22 @@ void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback
 	}
 }
 
-
-// Post a call to a python method, that also has a callback attached. As we are not expecting the Python code to take long (not expecting network ops)
-// wait for it to complete, and then call any passed callback function.
-void PyPort::PostPyCall(PyObject* pyFunction, PyObject* pyArgs, SharedStatusCallback_t pStatusCallback)
-{
-//	pIOS->post([&, pyArgs, pyFunction, pStatusCallback]
-	{
-		if (pyFunction && PyCallable_Check(pyFunction))
-		{
-			PyObject* result = PyObject_CallObject(pyFunction, pyArgs);
-
-			if (PyErr_Occurred())
-			{
-				pWrapper->PyErrOutput();
-			}
-			//TODO: Unpack the PyObject result, and call our callback.
-
-			if (true)
-				PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
-			else
-				PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-		}
-		else
-		{
-			LOGERROR("Python Method is not valid");
-			PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-		}
-	} //);
-}
+// This should be called twice, once for the config file setion, and the second for config overrides.
 void PyPort::ProcessElements(const Json::Value& JSONRoot)
 {
+	if (JSONMain.length() == 0)
+	{
+		std::stringstream ss;
+		ss << JSONRoot;
+		JSONMain = ss.str(); // Spit the root out as string, so we can pass to Python in build.
+	}
+	else if (JSONOverride.length() == 0)
+	{
+		std::stringstream ss;
+		ss << JSONRoot;
+		JSONOverride = ss.str(); // Spit the root out as string, so we can pass to Python in build.
+	}
+
 	if (JSONRoot.isMember("ModuleName"))
 		MyConf->pyModuleName = JSONRoot["ModuleName"].asString();
 	if (JSONRoot.isMember("ClassName"))
