@@ -72,9 +72,28 @@ extern "C" int run_tests( int argc, char* argv[] )
 {
 	#ifdef NONVSTESTING
 	// Create loggers for tests here
-	CommandLineLoggingSetup();
+	spdlog::level::level_enum log_level = spdlog::level::off;
+	int new_argc = argc;
+	char** new_argv = argv;
+	if(argc > 1)
+	{
+		std::string level_str = argv[1];
+		log_level = spdlog::level::from_str(level_str);
+		if(log_level == spdlog::level::off && level_str != "off")
+		{
+			std::cout << "CBPort: optional log level as first arg. Choose from:" << std::endl;
+			for(uint8_t i = 0; i < 7; i++)
+				std::cout << spdlog::level::level_names[i] << std::endl;
+		}
+		else
+		{
+			new_argc = argc-1;
+			new_argv = argv+1;
+		}
+	}
+	CommandLineLoggingSetup(log_level);
 
-	return Catch::Session().run( argc, argv );
+	return Catch::Session().run( new_argc, new_argv );
 	// And release here.
 	CommandLineLoggingCleanup();
 	#else

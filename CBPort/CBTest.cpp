@@ -202,7 +202,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 	ofs.close();
 }
 
-void SetupLoggers()
+void SetupLoggers(spdlog::level::level_enum log_level)
 {
 	// So create the log sink first - can be more than one and add to a vector.
 	#if defined(NONVSTESTING)
@@ -215,12 +215,12 @@ void SetupLoggers()
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
 	auto pLibLogger = std::make_shared<spdlog::logger>("CBPort", begin(sinks),end(sinks));
-	pLibLogger->set_level(spdlog::level::trace);
+	pLibLogger->set_level(log_level);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
-	pODCLogger->set_level(spdlog::level::trace);
+	pODCLogger->set_level(log_level);
 	odc::spdlog_register_logger(pODCLogger);
 
 }
@@ -261,9 +261,9 @@ void TestTearDown(void)
 	#endif
 }
 // Used for command line test setup
-void CommandLineLoggingSetup()
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
 {
-	SetupLoggers();
+	SetupLoggers(log_level);
 	WriteStartLoggingMessage("All Tests");
 }
 void CommandLineLoggingCleanup()
