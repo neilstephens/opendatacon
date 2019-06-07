@@ -44,7 +44,7 @@ struct BinaryFeedback
 	std::shared_ptr<EventInfo> off_value;
 	FeedbackMode mode;
 
-	BinaryFeedback(std::shared_ptr<EventInfo> on, std::shared_ptr<EventInfo> off, FeedbackMode amode):
+	BinaryFeedback(const std::shared_ptr<EventInfo> on, const std::shared_ptr<EventInfo> off, const FeedbackMode amode):
 		on_value(on),
 		off_value(off),
 		mode(amode)

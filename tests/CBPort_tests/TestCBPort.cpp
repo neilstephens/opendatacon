@@ -17,9 +17,30 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
-/**
- */
 
-#define CATCH_CONFIG_MAIN
-#include <catch.hpp>
-#include "../opendatacon/DataConnector.cpp"
+#include <iostream>
+#include <opendatacon/Platform.h>
+
+int main( int argc, char* argv[] )
+{
+	std::string libname = "CBPort";
+	std::string libfilename = GetLibFileName(libname);
+	auto pluginlib = LoadModule(libfilename.c_str());
+
+	if (pluginlib == nullptr)
+	{
+		std::cout << libname << " Info: dynamic library load failed '" << libfilename << "' :" << LastSystemError() << std::endl;
+		return 1;
+	}
+
+	int (*run_tests)(int,char**);
+
+	run_tests = (int (*)(int,char**))LoadSymbol(pluginlib, "run_tests");
+
+	if(run_tests == nullptr)
+	{
+		std::cout << "Info: failed to load run_tests symbol from '" << libfilename << "' "<< std::endl;
+		return 1;
+	}
+	return run_tests( argc, argv );
+}

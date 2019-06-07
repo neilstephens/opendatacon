@@ -383,7 +383,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							continue;
 						}
 
-						auto index = FeedbackBinaries[fbn]["Index"].asUInt();
+						auto fb_index = FeedbackBinaries[fbn]["Index"].asUInt();
 						auto on_qual = QualityFlags::ONLINE;
 						auto off_qual = QualityFlags::ONLINE;
 						bool on_val = true;
@@ -419,12 +419,12 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							}
 						}
 
-						auto on = std::make_shared<EventInfo>(EventType::Binary,index,Name,on_qual);
+						auto on = std::make_shared<EventInfo>(EventType::Binary,fb_index,Name,on_qual);
 						on->SetPayload<EventType::Binary>(std::move(on_val));
-						auto off = std::make_shared<EventInfo>(EventType::Binary,index,Name,off_qual);
+						auto off = std::make_shared<EventInfo>(EventType::Binary,fb_index,Name,off_qual);
 						off->SetPayload<EventType::Binary>(std::move(off_val));
-						BinaryFeedback fb(on,off,mode);
-						pConf->ControlFeedback[index].push_back(std::move(fb));
+
+						pConf->ControlFeedback[index].emplace_back(on,off,mode);
 					}
 				}
 			}
@@ -435,8 +435,12 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 
 void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
+	if(auto log = odc::spdlog_get("SimPort"))
+		log->trace("{}: Recieved control.", Name);
 	if(event->GetEventType() != EventType::ControlRelayOutputBlock)
 	{
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->trace("{}: Control code not supported.", Name);
 		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 		return;
 	}
@@ -447,12 +451,18 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	{
 		if(i == index)
 		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->trace("{}: Control {}: Matched configured index.", Name, index);
 			if(pConf->ControlFeedback.count(i))
 			{
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->trace("{}: Control {}: Setting ({}) control feedback point(s)...", Name, index, pConf->ControlFeedback[i].size());
 				for(auto& fb : pConf->ControlFeedback[i])
 				{
 					if(fb.mode == FeedbackMode::PULSE)
 					{
+						if(auto log = odc::spdlog_get("SimPort"))
+							log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index,fb.on_value->GetIndex());
 						switch(command.functionCode)
 						{
 							case ControlCode::PULSE_ON:
@@ -477,16 +487,26 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 								return;
 						}
 					}
-					else
+					else //LATCH
 					{
 						switch(command.functionCode)
 						{
 							case ControlCode::LATCH_ON:
 							case ControlCode::CLOSE_PULSE_ON:
+							case ControlCode::PULSE_ON:
+								if(auto log = odc::spdlog_get("SimPort"))
+									log->trace("{}: Control {}: Latch on feedback to Binary {}.",
+										Name, index,fb.on_value->GetIndex());
+								fb.on_value->SetTimestamp();
 								PublishEvent(fb.on_value);
 								break;
 							case ControlCode::LATCH_OFF:
 							case ControlCode::TRIP_PULSE_ON:
+							case ControlCode::PULSE_OFF:
+								if(auto log = odc::spdlog_get("SimPort"))
+									log->trace("{}: Control {}: Latch off feedback to Binary {}.",
+										Name, index,fb.off_value->GetIndex());
+								fb.off_value->SetTimestamp();
 								PublishEvent(fb.off_value);
 								break;
 							default:
@@ -497,6 +517,11 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 				}
 				(*pStatusCallback)(CommandStatus::SUCCESS);
 				return;
+			}
+			else
+			{
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->trace("{}: Control {}: No feeback points configured.", Name, index);
 			}
 			(*pStatusCallback)(CommandStatus::UNDEFINED);
 			return;

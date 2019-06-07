@@ -17,27 +17,18 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
-/**
+/*
+ * IOHandlerTests.cpp
+ *
+ *  Created on: 2018-06-17
+ *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 #include <catch.hpp>
 #include <opendatacon/IOTypes.h>
-#include "../opendatacon/NullPort.h"
+#include "TestPorts.h"
 #include "../opendatacon/DataConnector.h"
-#include "../opendatacon/DataConnector.cpp"
 
 using namespace odc;
-
-class PublicPublishNullPort: public NullPort
-{
-public:
-	PublicPublishNullPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
-		NullPort(aName, aConfFilename, aConfOverrides)
-	{}
-	void PublicPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}))
-	{
-		PublishEvent(event,pStatusCallback);
-	}
-};
 
 #define SUITE(name) "IOHandlerTestSuite - " name
 
@@ -53,7 +44,7 @@ TEST_CASE(SUITE("StatusCallback"))
 	asio::io_service ios;
 	asio::io_service::work work(ios);
 
-	PublicPublishNullPort Source("Null1","",Json::Value::nullSingleton());
+	PublicPublishPort Source("Null1","",Json::Value::nullSingleton());
 	NullPort Null2("Null2","",Json::Value::nullSingleton());
 	NullPort Null3("Null3","",Json::Value::nullSingleton());
 	NullPort Null4("Null4","",Json::Value::nullSingleton());

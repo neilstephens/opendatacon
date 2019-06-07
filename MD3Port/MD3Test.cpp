@@ -32,6 +32,8 @@
 #include <array>
 #include <fstream>
 #include <cassert>
+#include <spdlog/sinks/basic_file_sink.h>
+
 
 #define COMPILE_TESTS
 
@@ -51,6 +53,7 @@
 #ifdef NONVSTESTING
 #include <catch.hpp>
 #else
+#include "spdlog/sinks/msvc_sink.h"
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
@@ -115,13 +118,19 @@ const char *conffile1 = R"001(
 	// You will get errors if the wrong type of points are assigned to the wrong poll group
 	// The force unconditional parameter will force the code to NOT use delta commands during polling.
 	// The TimeSetCommand is used to send time set commands to the OutStation
+	// The "TimeTaggedDigital" flag if true, asks for COS records in addition to "Normal" digital values in the scan (using Fn11)
+	// When we scan digitals, we do a scan for each module. The logic of scanning multiple modules gets a little tricky.
+	// The digital scans (what is scanned) is worked out from the Binary point definition. The first module address,
+	// the total number of modules which are part of the Fn11 and 12 commands
 
 	"PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary", "TimeTaggedDigital" : true },
 					{"PollRate" : 20000, "ID" : 2, "PointType" : "Analog", "ForceUnconditional" : false },
 					{"PollRate" : 60000, "ID" : 3, "PointType" : "TimeSetCommand"},
 					{"PollRate" : 60000, "ID" : 4, "PointType" : "Binary",  "TimeTaggedDigital" : false },
 					{"PollRate" : 180000, "ID" : 5, "PointType" : "SystemFlagScan"},
-					{"PollRate" : 60000, "ID" : 6, "PointType" : "NewTimeSetCommand"}],
+					{"PollRate" : 60000, "ID" : 6, "PointType" : "NewTimeSetCommand"},
+					{"PollRate" : 60000, "ID" : 7, "PointType" : "Counter"},
+					{"PollRate" : 60000, "ID" : 8, "PointType" : "Counter"}],
 
 	// We expect the binary modules to be consecutive - MD3 Addressing - (or consecutive groups for scanning), the scanning is then simpler
 	"Binaries" : [{"Index": 80,  "Module" : 33, "Offset" : 0, "PointType" : "BASICINPUT"},
@@ -137,8 +146,8 @@ const char *conffile1 = R"001(
 						{"Range" : {"Start" : 100, "Stop" : 115}, "Module" : 37, "Offset" : 0, "PointType" : "DOMOUTPUT"},
 						{"Range" : {"Start" : 116, "Stop" : 123}, "Module" : 38, "Offset" : 0, "PointType" : "POMOUTPUT"}],
 
-	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},
-					{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}],
+	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0, "PollGroup" : 7},
+					{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0, "PollGroup" : 8}],
 
 	"AnalogControls" : [{"Range" : {"Start" : 1, "Stop" : 8}, "Module" : 39, "Offset" : 0}]
 })001";
@@ -173,7 +182,7 @@ const char *conffile2 = R"002(
 
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0}],
 
-	"BinaryControls" : [{"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "PointType" : "DOMOUTPUT"}],
+	"BinaryControls" : [{"Range" : {"Start" : 16, "Stop" : 31}, "Module" : 35, "Offset" : 0, "PointType" : "POMOUTPUT"}],
 
 	"Counters" : [{"Range" : {"Start" : 0, "Stop" : 7}, "Module" : 61, "Offset" : 0},{"Range" : {"Start" : 8, "Stop" : 15}, "Module" : 62, "Offset" : 0}]
 })002";
@@ -206,24 +215,21 @@ void WriteConfFilesToCurrentWorkingDirectory()
 void SetupLoggers()
 {
 	// So create the log sink first - can be more than one and add to a vector.
-	#ifdef WIN32
-	// Add a sink to the TestLogger?
+	#ifdef NONVSTESTING
+	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	#else
+	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
 	#endif
-	auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	console->set_level(spdlog::level::debug);
-	LogSinks.push_back(console);
+	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("testslog.txt", true);
 
-	// Then create the logger (async - as used in ODC) then connect to all sinks.
-	auto pLibLogger = std::make_shared<spdlog::async_logger>("MD3Port", begin(LogSinks), end(LogSinks),
-		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
+	auto pLibLogger = std::make_shared<spdlog::logger>("MD3Port", begin(sinks), end(sinks));
 	pLibLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
-	auto pODCLogger = std::make_shared<spdlog::async_logger>("opendatacon", begin(LogSinks), end(LogSinks),
-		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-
+	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
 	pODCLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pODCLogger);
 
@@ -326,6 +332,11 @@ void Wait(asio::io_service &IOS, int seconds)
 	auto MD3MAPort = std::make_unique<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
 	MD3MAPort->SetIOS(&IOS);      \
 	MD3MAPort->Build();
+
+#define TEST_MD3MAPort2(overridejson)\
+	auto MD3MAPort2 = std::make_unique<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
+	MD3MAPort2->SetIOS(&IOS);      \
+	MD3MAPort2->Build();
 
 #define TEST_MD3OSPort(overridejson)      \
 	auto MD3OSPort = std::make_unique<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
@@ -704,6 +715,68 @@ TEST_CASE("MD3Block - ClassConstructor5")
 	REQUIRE(!b.IsFormattedBlock());
 	REQUIRE(b.CheckSumPasses());
 }
+TEST_CASE("MD3Block - BlockBuilding")
+{
+	MD3BlockData db;
+
+	// From a packet capture - 0x7C,0x05,0x20,0x0F,0x52, 0x00
+	// Test the block building code.
+	db.AddByteToBlock(0x7c);
+	db.AddByteToBlock(0x05);
+	db.AddByteToBlock(0x20);
+	db.AddByteToBlock(0x0f);
+	db.AddByteToBlock(0x52);
+	db.AddByteToBlock(0x00);
+
+	REQUIRE(db.IsValidBlock());
+
+	uint8_t stationaddress = 124;
+	bool mastertostation = true;
+	MD3_FUNCTION_CODE functioncode = ANALOG_UNCONDITIONAL;
+	uint8_t moduleaddress = 0x20;
+	uint8_t channels = 16;
+	bool lastblock = true;
+	bool APL = false;
+	bool RSF = false;
+	bool HRP = false;
+	bool DCP = false;
+
+	MD3BlockFormatted b(db);
+
+	REQUIRE(b.GetStationAddress() == stationaddress);
+	REQUIRE(b.IsMasterToStationMessage() == mastertostation);
+	REQUIRE(b.GetModuleAddress() == moduleaddress);
+	REQUIRE(b.GetFunctionCode() == functioncode);
+	REQUIRE(b.GetChannels() == channels);
+	REQUIRE(b.IsEndOfMessageBlock() == lastblock);
+	REQUIRE(b.IsFormattedBlock());
+	REQUIRE(b.GetAPL() == APL);
+	REQUIRE(b.GetRSF() == RSF);
+	REQUIRE(b.GetHRP() == HRP);
+	REQUIRE(b.GetDCP() == DCP);
+	REQUIRE(b.CheckSumPasses());
+
+
+	// Now add some more bytes, check that they block is invalid until we should have a valid block again...
+	db.AddByteToBlock(0x7c);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x05);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x20);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x0f);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x52);
+	REQUIRE(!db.IsValidBlock());
+
+	db.AddByteToBlock(0x00);
+
+	REQUIRE(db.IsValidBlock());
+}
 TEST_CASE("MD3Block - Fn9")
 {
 	MD3BlockFn9 b9(0x20, true, 3, 100, false, true);
@@ -856,6 +929,36 @@ TEST_CASE("MD3Block - Fn16")
 	REQUIRE(b16b.CheckSumPasses());
 	REQUIRE(b16b.IsValid());
 	REQUIRE(b16b.GetNoCounterReset() == false);
+}
+
+TEST_CASE("MD3Block - Fn20")
+{
+	// Master from packet capture -> 1e140c951e0061f36a95960000200fdff600
+
+	// Decode the captured packet to get the values and then rebuild it again!
+	MD3BlockData FirstPacket("1e140c951e00");
+	MD3BlockFn20MtoS commandblocktest(FirstPacket);
+
+	uint8_t StationAddress = commandblocktest.GetStationAddress();     // 0x7C;
+	uint8_t ModuleAddress = commandblocktest.GetModuleAddress();       //10;
+	uint8_t ControlSelection = commandblocktest.GetControlSelection(); //9;
+	uint8_t ChannelSelection = commandblocktest.GetChannelSelection(); //5;
+
+	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ControlSelection, ChannelSelection);
+
+	std::string DesiredResult = BuildHexStringFromASCIIHexString("1e140c951e00");
+	std::string ActualResult = commandblock.ToBinaryString();
+	REQUIRE(DesiredResult == ActualResult);
+
+	MD3BlockData datablock1 = commandblock.GenerateSecondBlock(false); // Not last block
+	DesiredResult = BuildHexStringFromASCIIHexString("61f36a959600");
+	ActualResult = datablock1.ToBinaryString();
+	REQUIRE(DesiredResult == ActualResult);
+
+	MD3BlockData datablock2 = commandblock.GenerateThirdBlock(0x20); // Control value is 0x20 (32)
+	DesiredResult = BuildHexStringFromASCIIHexString("00200fdff600");
+	ActualResult = datablock2.ToBinaryString();
+	REQUIRE(DesiredResult == ActualResult);
 }
 TEST_CASE("MD3Block - Fn23")
 {
@@ -1991,6 +2094,49 @@ TEST_CASE("Station - DOMControlFn19")
 
 	TestTearDown();
 }
+
+TEST_CASE("Station - InputPointControlFn20") //TODO: Input Point Control
+{
+	// One of the few multi-block commands - the request can be 2 or 3 blocks
+	// This is an example from where 32 is written out to an RTU to cause an auto reclose - in a local control routine
+	// Master -> 1e140c951e0061f36a95960000200fdff600
+	// RTU Response -> 9e0f0c054a00
+
+	STANDARD_TEST_SETUP();
+	TEST_MD3OSPort(Json::nullValue);
+
+	MD3OSPort->Enable();
+
+	//  Station 0x7C
+	uint8_t StationAddress = 0x7C;
+	uint8_t ModuleAddress = 39;
+	uint8_t ControlSelection = 9;
+	uint8_t ChannelSelection = 5;
+	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ControlSelection, ChannelSelection);
+
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+	output << commandblock.ToBinaryString();
+
+	MD3BlockData datablock1 = commandblock.GenerateSecondBlock(false); // Not last block
+	output << datablock1.ToBinaryString();
+
+	MD3BlockData datablock2 = commandblock.GenerateThirdBlock(0x20); // Control value is 32
+	output << datablock2.ToBinaryString();
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+
+	// Send the Command
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f27956600");
+
+	REQUIRE(Response == DesiredResult); // OK Command
+
+	TestTearDown();
+}
 TEST_CASE("Station - AOMControlFn23")
 {
 	// One of the few multi-block commands
@@ -2176,7 +2322,7 @@ TEST_CASE("Station - Multi-drop TCP Test")
 
 	START_IOS(1);
 
-	// The two MD3Ports will share a connection, only the first to enable will open it.
+	// The two MD3Ports will share a connection, only the first to enable will open it. Two different conf files.
 	TEST_MD3OSPort(Json::nullValue);
 	TEST_MD3OSPort2(Json::nullValue);
 
@@ -2399,14 +2545,15 @@ TEST_CASE("Master - Analog")
 		std::ostream output(&write_buffer);
 		output << commandblock.ToBinaryString();
 
-		const std::string Payload = BuildHexStringFromASCIIHexString("100011018400" // Channel 0 and 1
-			                                                       "12021303b700" // Channel 2 and 3 etc
-			                                                       "14041505b900"
-			                                                       "160617078a00"
-			                                                       "18081909a500"
-			                                                       "1A0A1B0B9600"
-			                                                       "1C0C1D0D9800"
-			                                                       "1E0E1F0Feb00");
+		std::string Payload = BuildHexStringFromASCIIHexString("100011018400" // Channel 0 and 1
+			                                                 "12021303b700" // Channel 2 and 3 etc
+			                                                 "14041505b900"
+			                                                 "160617078a00"
+			                                                 "18081909a500"
+			                                                 "1A0A1B0B9600"
+			                                                 "1C0C1D0D9800"
+			                                                 "1E0E1F0Feb00");
+		Payload = "stuff" + Payload + "more stuff"; // To test TCP Framing...
 		output << Payload;
 
 		// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
@@ -3449,82 +3596,92 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 	STOP_IOS();
 	TestTearDown();
 }
-TEST_CASE("Master - Binary Scan Multi-drop Test Using TCP")
+TEST_CASE("Master - POM Multi-drop Test Using TCP")
 {
 	// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
-
+	// Create two masters, and then see if they can share the TCP connection successfully.
 	STANDARD_TEST_SETUP();
+	// Outstations are as for the conf files
 	TEST_MD3OSPort(Json::nullValue);
 	TEST_MD3OSPort2(Json::nullValue);
+
+	// The masters need to be TCP Clients - should be only change necessary.
+	Json::Value MAportoverride;
+	MAportoverride["TCPClientServer"] = "CLIENT";
+	TEST_MD3MAPort(MAportoverride);
+
+	Json::Value MAportoverride2;
+	MAportoverride2["TCPClientServer"] = "CLIENT";
+	TEST_MD3MAPort2(MAportoverride2);
+
 
 	START_IOS(1);
 
 	MD3OSPort->Enable();
 	MD3OSPort2->Enable();
+	MD3MAPort->Enable();
+	MD3MAPort2->Enable();
 
-	std::vector<std::string> ResponseVec;
-	auto ResponseCallback = [&](buf_t& readbuf)
-					{
-						size_t bufsize = readbuf.size();
-						std::string S(bufsize, 0);
-
-						for (size_t i = 0; i < bufsize; i++)
-						{
-							S[i] = static_cast<char>(readbuf.sgetc());
-							readbuf.consume(1);
-						}
-						ResponseVec.push_back(S); // Store so we can check
-					};
-
-	bool socketisopen = false;
-	auto SocketStateHandler = [&socketisopen](bool state)
-					  {
-						  socketisopen = state;
-					  };
-
-	// An outstation is a server by default (Master connects to it...)
-	// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
-	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
-	pSockMan.reset(new TCPSocketManager<std::string>
-			(&IOS, false, "127.0.0.1", "10000",
-			ResponseCallback,
-			SocketStateHandler,
-			std::numeric_limits<size_t>::max(),
-			true,
-			500));
-	pSockMan->Open();
-
+	// Allow everything to get setup.
 	Wait(IOS, 3);
-	REQUIRE(socketisopen); // Should be set in a callback.
 
-	// Send the Command - results in an async write
-	//  Station 0x7C
-	MD3BlockFn16MtoS commandblock(0x7C, true);
-	pSockMan->Write(commandblock.ToBinaryString());
+	// So to do this test, we are going to send an Event into the Master which will require it to send a POM command to the outstation.
+	// We should then have an Event triggered on the outstation caused by the POM. We need to capture this to check that it was the correct POM Event.
 
-	Wait(IOS, 1);
+	// Send a POM command by injecting an ODC event to the Master
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
+			res = command_stat;
+		});
 
-	//  Station 0x7D
-	MD3BlockFn16MtoS commandblock2(0x7D, true);
-	pSockMan->Write(commandblock2.ToBinaryString());
+	bool point_on = true;
+	uint16_t ODCIndex = 116;
 
-	Wait(IOS, 5); // Allow async processes to run.
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+	val.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
 
-	// Need to handle multiple responses...
-	// Deal with the last response first...
-	REQUIRE(ResponseVec.size() == 2);
+	auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
-	REQUIRE(ResponseVec.back() == BuildHexStringFromASCIIHexString("fd0f01027c00")); // OK Command
-	ResponseVec.pop_back();
+	// Send an ODC DigitalOutput command to the Master.
+	MD3MAPort->Event(event, "TestHarness", pStatusCallback);
 
-	REQUIRE(ResponseVec.back() == BuildHexStringFromASCIIHexString("fc0f01034600")); // OK Command
-	ResponseVec.pop_back();
+	// Wait for it to go to the OutStation and Back again
+	Wait(IOS, 3);
 
-	REQUIRE(ResponseVec.empty());
+	REQUIRE(res == CommandStatus::SUCCESS);
 
-	pSockMan->Close();
+	// Now do the other Master/Outstation combination.
+	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
+			res2 = command_stat;
+		});
+
+	ODCIndex = 16;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val2;
+	val2.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event2 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event2->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val2));
+
+	// Send an ODC DigitalOutput command to the Master.
+	MD3MAPort2->Event(event2, "TestHarness2", pStatusCallback2);
+
+	// Wait for it to go to the OutStation and Back again
+	Wait(IOS, 3);
+
+	REQUIRE(res2 == CommandStatus::SUCCESS);
+
 	MD3OSPort->Disable();
 	MD3OSPort2->Disable();
+
+	MD3MAPort->Disable();
+	MD3MAPort2->Disable();
 
 	STOP_IOS();
 	TestTearDown();

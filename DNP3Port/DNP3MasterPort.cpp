@@ -165,7 +165,7 @@ void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 	if(link_dead && !channel_dead) //must be on link up
 	{
 		link_dead = false;
-		// Update the comms state point and qualities
+		// Update the comms state point
 		PortUp();
 	}
 	//TODO: track a statistic - reset count
@@ -212,8 +212,17 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 	if(link_dead)
 	{
 		link_dead = false;
-		// Update the comms state point and qualities
+		// Update the comms state point
 		PortUp();
+
+		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		if(pConf->pPointConf->SetQualityOnLinkStatus)
+		{
+			// Trigger integrity scan to get point quality
+			// Only way to get true state upstream
+			// Can't just reset quality, because it would make new events for old values
+			IntegrityScan->Demand();
+		}
 	}
 }
 

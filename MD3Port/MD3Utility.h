@@ -99,6 +99,7 @@ public:
 	{
 		data = CombineDataBytes(_data[0],_data[1],_data[2],_data[3]);
 		endbyte = _data[4];
+		builddataindex = 6;
 	}
 	explicit MD3BlockData(const std::string &hexdata)
 	{
@@ -116,12 +117,16 @@ public:
 			data = CombineDataBytes(res[0],res[1],res[2],res[3]);
 			endbyte = numeric_cast<uint8_t>(res[4]);
 			assert(res[5] == 0x00); // Sixth byte should always be zero.
+			builddataindex = 6;
+
 		}
 		else if (hexdata.size() == 6)
 		{
 			data = CombineDataBytes(hexdata[0],hexdata[1],hexdata[2],hexdata[3]);
 			endbyte = numeric_cast<uint8_t>(hexdata[4]);
 			assert(hexdata[5] == 0x00); // Sixth byte should always be zero.
+			builddataindex = 6;
+
 		}
 		else
 		{
@@ -133,6 +138,7 @@ public:
 	{
 		data = static_cast<uint32_t>(firstword) << 16 | static_cast<uint32_t>(secondword);
 		SetEndByte(DataBlock, lastblock);
+		builddataindex = 6;
 	}
 
 	explicit MD3BlockData(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4, bool lastblock = false)
@@ -145,20 +151,20 @@ public:
 		data = CombineDataBytes(c1, c2, c3, c4);
 		SetEndByte(DataBlock, lastblock);
 	}
-	uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
-	{
-		return ShiftLeftResult32Bits(b1, 24) | ShiftLeftResult32Bits(b2,16) | ShiftLeftResult32Bits(b3,8) | numeric_cast<uint32_t>(b4);
-	}
-	uint32_t CombineDataBytes(const char c1, const char c2, const char c3, const char c4)
-	{
-		return CombineDataBytes(numeric_cast<uint8_t>(c1), numeric_cast<uint8_t>(c2), numeric_cast<uint8_t>(c3), numeric_cast<uint8_t>(c4));
-	}
 	explicit MD3BlockData(const uint32_t _data, bool lastblock = false)
 	{
 		data = _data;
 		SetEndByte(DataBlock, lastblock);
 	}
 
+	static uint32_t CombineDataBytes(const uint8_t b1, const uint8_t b2, const uint8_t b3, const uint8_t b4)
+	{
+		return ShiftLeftResult32Bits(b1, 24) | ShiftLeftResult32Bits(b2, 16) | ShiftLeftResult32Bits(b3, 8) | numeric_cast<uint32_t>(b4);
+	}
+	static uint32_t CombineDataBytes(const char c1, const char c2, const char c3, const char c4)
+	{
+		return CombineDataBytes(numeric_cast<uint8_t>(c1), numeric_cast<uint8_t>(c2), numeric_cast<uint8_t>(c3), numeric_cast<uint8_t>(c4));
+	}
 	void SetEndByte(blocktype blockt, bool lastblock)
 	{
 		endbyte = MD3CRC(data); // Max 6 bits returned
@@ -167,6 +173,7 @@ public:
 			endbyte |= FOMBIT; // NOT a formatted block, must be 1
 
 		endbyte |= lastblock ? EOMBIT : 0x00;
+		builddataindex = 6; // Just to mark it as full. Only used for rx'd block assembly.
 	}
 
 	bool IsEndOfMessageBlock() const
@@ -187,7 +194,7 @@ public:
 		uint8_t calc = MD3CRC(data);
 		return MD3CRCCompare(calc, endbyte);
 	}
-	// Index 0 to 4 as you would expect
+	// Index 0 to 3, 0 is MSB not LSB
 	uint8_t GetByte(int b) const
 	{
 		assert((b >= 0) && (b < 4));
@@ -238,9 +245,54 @@ public:
 		return oss.str();
 	}
 
+	// Used to build a 6 byte block from the TCP stream so we can test if it is a valid MD3B Block. If the block is already full, push out one byte to make room for a new one.
+	void AddByteToBlock(uint8_t b)
+	{
+		if (builddataindex < 4)
+		{
+			// We do not have a full block yet, so add
+			int shiftcount = 8 * (3 - builddataindex++);
+			data |= ShiftLeftResult32Bits(b, shiftcount);
+		}
+		else if (builddataindex == 4)
+		{
+			// The CRC/EOM data
+			endbyte = b;
+			builddataindex++;
+		}
+		else if (builddataindex == 5)
+		{
+			// The Paddign Byte
+			paddingbyte = b;
+			builddataindex++;
+		}
+		else if (builddataindex > 5)
+		{
+			// We have a full block, so push out one byte then add the new one. Have to shift things in the 3 storage locations..bit cumbersome
+			data = ShiftLeftResult32Bits(data, 8);
+			data |= ShiftLeftResult32Bits(endbyte, 0); // No shift but convert to 32 bit.
+			endbyte = paddingbyte;
+			paddingbyte = b;
+		}
+	}
+	bool IsValidBlock()
+	{
+		// Test everything we can to verify this is a CB block of data.
+		return CheckSumPasses() && (builddataindex == 6) && (paddingbyte == 0);
+	}
+	void Clear()
+	{
+		data = 0;
+		endbyte = 0;
+		paddingbyte = 0;
+		builddataindex = 0;
+	}
+
 protected:
 	uint32_t data = 0;
 	uint8_t endbyte = 0;
+	uint8_t paddingbyte = 0;     // Should always be 0!
+	uint32_t builddataindex = 0; // Used in TCP framingblock building only.
 };
 
 typedef std::vector<MD3BlockData> MD3Message_t;
@@ -283,10 +335,10 @@ public:
 		SetEndByte(FormattedBlock, lastblock);
 	}
 
-	uint32_t CombineFormattedBytes(bool mastertostation, uint8_t StationAddress, uint8_t functioncode, uint8_t moduleaddress, uint8_t b4)
+	static uint32_t CombineFormattedBytes(bool mastertostation, uint8_t StationAddress, uint8_t functioncode, uint8_t moduleaddress, uint8_t b4)
 	{
 		uint8_t direction = mastertostation ? 0x00 : 0x80;
-		return CombineDataBytes(direction | StationAddress, functioncode, moduleaddress, b4);
+		return CombineDataBytes(direction | (StationAddress & 0x7f), functioncode, moduleaddress, b4);
 	}
 
 	// Apply to formatted blocks only!
@@ -835,6 +887,95 @@ public:
 		uint8_t checkdata = (SecondBlock.GetFirstWord() & 0x0FF) + ((SecondBlock.GetFirstWord() >> 8) & 0x0FF);
 		if (checkdata != SecondBlock.GetByte(2))
 			return false;
+
+		return true;
+	}
+};
+// Input point Control
+class MD3BlockFn20MtoS: public MD3BlockFormatted
+{
+public:
+	explicit MD3BlockFn20MtoS(const MD3BlockData& parent)
+	{
+		data = parent.GetData();
+		endbyte = parent.GetEndByte();
+	}
+
+	MD3BlockFn20MtoS(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t ControlSelection, uint8_t ChannelSelection)
+	{
+		bool lastblock = false;
+		bool mastertostation = true;
+
+		assert((StationAddress & 0x7F) == StationAddress); // Max of 7 bits;
+		assert((ControlSelection & 0x0F) == ControlSelection);
+		assert((ChannelSelection & 0x0F) == ChannelSelection);
+
+		data = CombineFormattedBytes(mastertostation, StationAddress, INPUT_POINT_CONTROL, ModuleAddress, (((ControlSelection << 4) & 0xF0) | (ChannelSelection & 0x0f)));
+
+		SetEndByte(FormattedBlock, lastblock);
+	}
+	uint8_t GetChannel() const
+	{
+		return (data & 0x0FF);
+	}
+	uint8_t GetModuleAddress() const
+	{
+		return (data >> 8) & 0x0FF;
+	}
+	uint8_t GetControlSelection() const
+	{
+		return (data >> 4) & 0x0F;
+	}
+	uint8_t GetChannelSelection() const
+	{
+		return data & 0x0F;
+	}
+	// The second block in the message only contains a different format of the information in the first
+	MD3BlockData GenerateSecondBlock(bool IsLastPacket) const
+	{
+		bool mastertostation = true;
+		uint8_t SelectionByte = GetControlSelection() << 4 | GetChannelSelection();
+		uint32_t seconddata = CombineFormattedBytes(mastertostation, ~GetStationAddress(), ~GetModuleAddress(), uint8_t(~SelectionByte),SelectionByte); // The last byte here is indicated as reserved, but this value seems to be ok.
+
+		MD3BlockData sb(seconddata, IsLastPacket);
+		return sb;
+	}
+	// The Third block is optional depending on what you are planning to do.
+	MD3BlockData GenerateThirdBlock(uint16_t OutputData) const
+	{
+		uint32_t thirddata = ShiftLeftResult32Bits(OutputData & 0x0FFF, 16) | (~OutputData & 0x0FFF);
+
+		MD3BlockData sb(thirddata, true); // Last Block
+		return sb;
+	}
+
+	// Checks that the value and its complement match - so we can use the value. If not there has been a problem.
+	bool VerifyThirdBlock(MD3BlockData &ThirdBlock) const
+	{
+		return (ThirdBlock.GetFirstWord() & 0x0FFF) == (~ThirdBlock.GetSecondWord() & 0x0FFF);
+	}
+	uint16_t GetOutputFromThirdBlock(MD3BlockData &ThirdBlock) const
+	{
+		return ThirdBlock.GetFirstWord() & 0x0FFF;
+	}
+
+	// Check the second block against the first (this one) to see if we have a valid command
+	bool VerifyAgainstSecondBlock(MD3BlockData &SecondBlock) const
+	{
+		// Check that the complements and the originals match
+
+		if (GetStationAddress() != (~SecondBlock.GetByte(0) & 0x07F)) // Is the station address correct?
+			return false;
+
+		if (GetModuleAddress() != (~SecondBlock.GetByte(1) & 0x0FF)) // Is the module address correct?
+			return false;
+
+		if ((GetChannelSelection() & 0x0f) != (~SecondBlock.GetByte(2) & 0x0F)) // Is the channel selection correct?
+			return false;
+
+		if ((GetControlSelection() & 0x0f) != (~(SecondBlock.GetByte(2) >> 4) & 0x0F)) // Is the control selection correct?
+			return false;
+		// Last byte we dont care - it is reserved.
 
 		return true;
 	}

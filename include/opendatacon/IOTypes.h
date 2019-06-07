@@ -20,8 +20,8 @@
 /*
  * IOTypes.h
  *
- *  Created on: 20/12/2015
- *      Author: Alan Murray <alan@atmurray.net>
+ *  Re-Created on: 2018-06-24
+ *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
 #ifndef IOTYPES_H_
@@ -32,6 +32,7 @@
 #include <tuple>
 
 #include <opendatacon/EnumClassFlags.h>
+#include <opendatacon/util.h>
 
 namespace odc
 {
@@ -156,6 +157,8 @@ enum class ControlCode : uint8_t
 	UNDEFINED = 15
 };
 
+//TODO: make these ToString functions faster
+//	use hash map cache
 #define ENUMSTRING(A,E,B) if(A == E::B) return #B;
 inline std::string ToString(const ControlCode cc)
 {
@@ -174,7 +177,56 @@ inline std::string ToString(const ControlCode cc)
 	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON        )
 	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON_CANCEL )
 	ENUMSTRING(cc,ControlCode,UNDEFINED            )
-	return "UNKNOWN";
+	return "<no_string_representation>";
+}
+
+inline std::string ToString(const EventType et)
+{
+	ENUMSTRING(et,EventType,Binary                   )
+	ENUMSTRING(et,EventType,DoubleBitBinary          )
+	ENUMSTRING(et,EventType,Analog                   )
+	ENUMSTRING(et,EventType,Counter                  )
+	ENUMSTRING(et,EventType,FrozenCounter            )
+	ENUMSTRING(et,EventType,BinaryOutputStatus       )
+	ENUMSTRING(et,EventType,AnalogOutputStatus       )
+	ENUMSTRING(et,EventType,BinaryCommandEvent       )
+	ENUMSTRING(et,EventType,AnalogCommandEvent       )
+	ENUMSTRING(et,EventType,OctetString              )
+	ENUMSTRING(et,EventType,TimeAndInterval          )
+	ENUMSTRING(et,EventType,SecurityStat             )
+	ENUMSTRING(et,EventType,ControlRelayOutputBlock  )
+	ENUMSTRING(et,EventType,AnalogOutputInt16        )
+	ENUMSTRING(et,EventType,AnalogOutputInt32        )
+	ENUMSTRING(et,EventType,AnalogOutputFloat32      )
+	ENUMSTRING(et,EventType,AnalogOutputDouble64     )
+	ENUMSTRING(et,EventType,BinaryQuality            )
+	ENUMSTRING(et,EventType,DoubleBitBinaryQuality   )
+	ENUMSTRING(et,EventType,AnalogQuality            )
+	ENUMSTRING(et,EventType,CounterQuality           )
+	ENUMSTRING(et,EventType,BinaryOutputStatusQuality)
+	ENUMSTRING(et,EventType,FrozenCounterQuality     )
+	ENUMSTRING(et,EventType,AnalogOutputStatusQuality)
+	ENUMSTRING(et,EventType,FileAuth                 )
+	ENUMSTRING(et,EventType,FileCommand              )
+	ENUMSTRING(et,EventType,FileCommandStatus        )
+	ENUMSTRING(et,EventType,FileTransport            )
+	ENUMSTRING(et,EventType,FileTransportStatus      )
+	ENUMSTRING(et,EventType,FileDescriptor           )
+	ENUMSTRING(et,EventType,FileSpecString           )
+	ENUMSTRING(et,EventType,ConnectState             )
+	ENUMSTRING(et,EventType,Reserved1                )
+	ENUMSTRING(et,EventType,Reserved2                )
+	ENUMSTRING(et,EventType,Reserved3                )
+	ENUMSTRING(et,EventType,Reserved4                )
+	ENUMSTRING(et,EventType,Reserved5                )
+	ENUMSTRING(et,EventType,Reserved6                )
+	ENUMSTRING(et,EventType,Reserved7                )
+	ENUMSTRING(et,EventType,Reserved8                )
+	ENUMSTRING(et,EventType,Reserved9                )
+	ENUMSTRING(et,EventType,Reserved10               )
+	ENUMSTRING(et,EventType,Reserved11               )
+	ENUMSTRING(et,EventType,Reserved12               )
+	return "<no_string_representation>";
 }
 
 //Quatilty flags that can be used for any EventType
@@ -275,9 +327,40 @@ EVENTPAYLOAD(EventType::CounterQuality           , QualityFlags)
 EVENTPAYLOAD(EventType::BinaryOutputStatusQuality, QualityFlags)
 EVENTPAYLOAD(EventType::FrozenCounterQuality     , QualityFlags)
 EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
+EVENTPAYLOAD(EventType::FileAuth                 , char) //stub
+EVENTPAYLOAD(EventType::FileCommand              , char) //stub
+EVENTPAYLOAD(EventType::FileCommandStatus        , char) //stub
+EVENTPAYLOAD(EventType::FileTransport            , char) //stub
+EVENTPAYLOAD(EventType::FileTransportStatus      , char) //stub
+EVENTPAYLOAD(EventType::FileDescriptor           , char) //stub
+EVENTPAYLOAD(EventType::FileSpecString           , char) //stub
 EVENTPAYLOAD(EventType::ConnectState             , ConnectState)
+EVENTPAYLOAD(EventType::Reserved1                , char) //stub
+EVENTPAYLOAD(EventType::Reserved2                , char) //stub
+EVENTPAYLOAD(EventType::Reserved3                , char) //stub
+EVENTPAYLOAD(EventType::Reserved4                , char) //stub
+EVENTPAYLOAD(EventType::Reserved5                , char) //stub
+EVENTPAYLOAD(EventType::Reserved6                , char) //stub
+EVENTPAYLOAD(EventType::Reserved7                , char) //stub
+EVENTPAYLOAD(EventType::Reserved8                , char) //stub
+EVENTPAYLOAD(EventType::Reserved9                , char) //stub
+EVENTPAYLOAD(EventType::Reserved10               , char) //stub
+EVENTPAYLOAD(EventType::Reserved11               , char) //stub
+EVENTPAYLOAD(EventType::Reserved12               , char) //stub
 //TODO: map the rest
 
+#define DELETEPAYLOADCASE(T)\
+	case T: \
+		delete static_cast<typename EventTypePayload<T>::type*>(pPayload); \
+		break;
+#define COPYPAYLOADCASE(T)\
+	case T: \
+		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type(evt.GetPayload<T>())); \
+		break;
+#define DEFAULTPAYLOADCASE(T)\
+	case T: \
+		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type()); \
+		break;
 
 class EventInfo
 {
@@ -289,8 +372,135 @@ public:
 		Timestamp(time),
 		Quality(qual),
 		SourcePort(source),
-		Type(tp)
+		Type(tp),
+		pPayload(nullptr)
 	{}
+	//deep copy for payload
+	EventInfo(const EventInfo& evt):
+		Index(evt.Index),
+		Timestamp(evt.Timestamp),
+		Quality(evt.Quality),
+		SourcePort(evt.SourcePort),
+		Type(evt.Type),
+		pPayload(evt.pPayload)
+	{
+		if(pPayload)
+		{
+			switch(Type)
+			{
+				COPYPAYLOADCASE(EventType::Binary                   )
+				COPYPAYLOADCASE(EventType::DoubleBitBinary          )
+				COPYPAYLOADCASE(EventType::Analog                   )
+				COPYPAYLOADCASE(EventType::Counter                  )
+				COPYPAYLOADCASE(EventType::FrozenCounter            )
+				COPYPAYLOADCASE(EventType::BinaryOutputStatus       )
+				COPYPAYLOADCASE(EventType::AnalogOutputStatus       )
+				COPYPAYLOADCASE(EventType::BinaryCommandEvent       )
+				COPYPAYLOADCASE(EventType::AnalogCommandEvent       )
+				COPYPAYLOADCASE(EventType::OctetString              )
+				COPYPAYLOADCASE(EventType::TimeAndInterval          )
+				COPYPAYLOADCASE(EventType::SecurityStat             )
+				COPYPAYLOADCASE(EventType::ControlRelayOutputBlock  )
+				COPYPAYLOADCASE(EventType::AnalogOutputInt16        )
+				COPYPAYLOADCASE(EventType::AnalogOutputInt32        )
+				COPYPAYLOADCASE(EventType::AnalogOutputFloat32      )
+				COPYPAYLOADCASE(EventType::AnalogOutputDouble64     )
+				COPYPAYLOADCASE(EventType::BinaryQuality            )
+				COPYPAYLOADCASE(EventType::DoubleBitBinaryQuality   )
+				COPYPAYLOADCASE(EventType::AnalogQuality            )
+				COPYPAYLOADCASE(EventType::CounterQuality           )
+				COPYPAYLOADCASE(EventType::BinaryOutputStatusQuality)
+				COPYPAYLOADCASE(EventType::FrozenCounterQuality     )
+				COPYPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+				COPYPAYLOADCASE(EventType::FileAuth                 )
+				COPYPAYLOADCASE(EventType::FileCommand              )
+				COPYPAYLOADCASE(EventType::FileCommandStatus        )
+				COPYPAYLOADCASE(EventType::FileTransport            )
+				COPYPAYLOADCASE(EventType::FileTransportStatus      )
+				COPYPAYLOADCASE(EventType::FileDescriptor           )
+				COPYPAYLOADCASE(EventType::FileSpecString           )
+				COPYPAYLOADCASE(EventType::ConnectState             )
+				COPYPAYLOADCASE(EventType::Reserved1                )
+				COPYPAYLOADCASE(EventType::Reserved2                )
+				COPYPAYLOADCASE(EventType::Reserved3                )
+				COPYPAYLOADCASE(EventType::Reserved4                )
+				COPYPAYLOADCASE(EventType::Reserved5                )
+				COPYPAYLOADCASE(EventType::Reserved6                )
+				COPYPAYLOADCASE(EventType::Reserved7                )
+				COPYPAYLOADCASE(EventType::Reserved8                )
+				COPYPAYLOADCASE(EventType::Reserved9                )
+				COPYPAYLOADCASE(EventType::Reserved10               )
+				COPYPAYLOADCASE(EventType::Reserved11               )
+				COPYPAYLOADCASE(EventType::Reserved12               )
+				default:
+					std::string msg = "odc::EventInfo copy-ctor can't handle EventType::"+ToString(Type);
+					throw std::runtime_error(msg);
+					break;
+			}
+		}
+	}
+
+	~EventInfo()
+	{
+		if(pPayload)
+		{
+			switch(Type)
+			{
+				DELETEPAYLOADCASE(EventType::Binary                   )
+				DELETEPAYLOADCASE(EventType::DoubleBitBinary          )
+				DELETEPAYLOADCASE(EventType::Analog                   )
+				DELETEPAYLOADCASE(EventType::Counter                  )
+				DELETEPAYLOADCASE(EventType::FrozenCounter            )
+				DELETEPAYLOADCASE(EventType::BinaryOutputStatus       )
+				DELETEPAYLOADCASE(EventType::AnalogOutputStatus       )
+				DELETEPAYLOADCASE(EventType::BinaryCommandEvent       )
+				DELETEPAYLOADCASE(EventType::AnalogCommandEvent       )
+				DELETEPAYLOADCASE(EventType::OctetString              )
+				DELETEPAYLOADCASE(EventType::TimeAndInterval          )
+				DELETEPAYLOADCASE(EventType::SecurityStat             )
+				DELETEPAYLOADCASE(EventType::ControlRelayOutputBlock  )
+				DELETEPAYLOADCASE(EventType::AnalogOutputInt16        )
+				DELETEPAYLOADCASE(EventType::AnalogOutputInt32        )
+				DELETEPAYLOADCASE(EventType::AnalogOutputFloat32      )
+				DELETEPAYLOADCASE(EventType::AnalogOutputDouble64     )
+				DELETEPAYLOADCASE(EventType::BinaryQuality            )
+				DELETEPAYLOADCASE(EventType::DoubleBitBinaryQuality   )
+				DELETEPAYLOADCASE(EventType::AnalogQuality            )
+				DELETEPAYLOADCASE(EventType::CounterQuality           )
+				DELETEPAYLOADCASE(EventType::BinaryOutputStatusQuality)
+				DELETEPAYLOADCASE(EventType::FrozenCounterQuality     )
+				DELETEPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+				DELETEPAYLOADCASE(EventType::FileAuth                 )
+				DELETEPAYLOADCASE(EventType::FileCommand              )
+				DELETEPAYLOADCASE(EventType::FileCommandStatus        )
+				DELETEPAYLOADCASE(EventType::FileTransport            )
+				DELETEPAYLOADCASE(EventType::FileTransportStatus      )
+				DELETEPAYLOADCASE(EventType::FileDescriptor           )
+				DELETEPAYLOADCASE(EventType::FileSpecString           )
+				DELETEPAYLOADCASE(EventType::ConnectState             )
+				DELETEPAYLOADCASE(EventType::Reserved1                )
+				DELETEPAYLOADCASE(EventType::Reserved2                )
+				DELETEPAYLOADCASE(EventType::Reserved3                )
+				DELETEPAYLOADCASE(EventType::Reserved4                )
+				DELETEPAYLOADCASE(EventType::Reserved5                )
+				DELETEPAYLOADCASE(EventType::Reserved6                )
+				DELETEPAYLOADCASE(EventType::Reserved7                )
+				DELETEPAYLOADCASE(EventType::Reserved8                )
+				DELETEPAYLOADCASE(EventType::Reserved9                )
+				DELETEPAYLOADCASE(EventType::Reserved10               )
+				DELETEPAYLOADCASE(EventType::Reserved11               )
+				DELETEPAYLOADCASE(EventType::Reserved12               )
+				default:
+					if(auto log = odc::spdlog_get("opendatacon"))
+					{
+						log->critical("odc::EventInfo destructor can't handle EventType::{}. Terminating",ToString(Type));
+						log->flush();
+					}
+					//Can't throw from destructor - so exit
+					exit(1);
+			}
+		}
+	}
 
 	//Getters
 	const EventType& GetEventType() const { return Type; }
@@ -304,7 +514,48 @@ public:
 	{
 		if(t != Type)
 			throw std::runtime_error("Wrong payload type requested for selected odc::EventInfo");
-		return Payload<t>();
+		if(!pPayload)
+			throw std::runtime_error("Called GetPayload on uninitialised odc::EventInfo payload");
+		return *static_cast<typename EventTypePayload<t>::type*>(pPayload);
+	}
+
+	std::string GetPayloadString() const
+	{
+		switch(Type)
+		{
+			case EventType::Binary:
+				return std::to_string(GetPayload<EventType::Binary>());
+			case EventType::Analog:
+				return std::to_string(GetPayload<EventType::Analog>());
+			case EventType::Counter:
+				return std::to_string(GetPayload<EventType::Counter>());
+			case EventType::FrozenCounter:
+				return std::to_string(GetPayload<EventType::FrozenCounter>());
+			case EventType::BinaryOutputStatus:
+				return std::to_string(GetPayload<EventType::BinaryOutputStatus>());
+			case EventType::AnalogOutputStatus:
+				return std::to_string(GetPayload<EventType::AnalogOutputStatus>());
+			case EventType::ControlRelayOutputBlock:
+				return std::string(GetPayload<EventType::ControlRelayOutputBlock>());
+			case EventType::OctetString:
+				return GetPayload<EventType::OctetString>();
+			case EventType::BinaryQuality:
+				return ToString(GetPayload<EventType::BinaryQuality>());
+			case EventType::DoubleBitBinaryQuality:
+				return ToString(GetPayload<EventType::DoubleBitBinaryQuality>());
+			case EventType::AnalogQuality:
+				return ToString(GetPayload<EventType::AnalogQuality>());
+			case EventType::CounterQuality:
+				return ToString(GetPayload<EventType::CounterQuality>());
+			case EventType::BinaryOutputStatusQuality:
+				return ToString(GetPayload<EventType::BinaryOutputStatusQuality>());
+			case EventType::FrozenCounterQuality:
+				return ToString(GetPayload<EventType::FrozenCounterQuality>());
+			case EventType::AnalogOutputStatusQuality:
+				return ToString(GetPayload<EventType::AnalogOutputStatusQuality>());
+			default:
+				return "<no_string_representation>";
+		}
 	}
 
 	//Setters
@@ -318,7 +569,67 @@ public:
 	{
 		if(t != Type)
 			throw std::runtime_error("Wrong payload type specified for selected odc::EventInfo");
-		Payload<t>() = std::move(p);
+		if(pPayload)
+			delete static_cast<typename EventTypePayload<t>::type*>(pPayload);
+		pPayload = new typename EventTypePayload<t>::type(std::move(p));
+	}
+
+	//Set default payload - mostly for testing
+	void SetPayload()
+	{
+		if(pPayload)
+			return;
+		switch(Type)
+		{
+			DEFAULTPAYLOADCASE(EventType::Binary                   )
+			DEFAULTPAYLOADCASE(EventType::DoubleBitBinary          )
+			DEFAULTPAYLOADCASE(EventType::Analog                   )
+			DEFAULTPAYLOADCASE(EventType::Counter                  )
+			DEFAULTPAYLOADCASE(EventType::FrozenCounter            )
+			DEFAULTPAYLOADCASE(EventType::BinaryOutputStatus       )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputStatus       )
+			DEFAULTPAYLOADCASE(EventType::BinaryCommandEvent       )
+			DEFAULTPAYLOADCASE(EventType::AnalogCommandEvent       )
+			DEFAULTPAYLOADCASE(EventType::OctetString              )
+			DEFAULTPAYLOADCASE(EventType::TimeAndInterval          )
+			DEFAULTPAYLOADCASE(EventType::SecurityStat             )
+			DEFAULTPAYLOADCASE(EventType::ControlRelayOutputBlock  )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputInt16        )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputInt32        )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputFloat32      )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputDouble64     )
+			DEFAULTPAYLOADCASE(EventType::BinaryQuality            )
+			DEFAULTPAYLOADCASE(EventType::DoubleBitBinaryQuality   )
+			DEFAULTPAYLOADCASE(EventType::AnalogQuality            )
+			DEFAULTPAYLOADCASE(EventType::CounterQuality           )
+			DEFAULTPAYLOADCASE(EventType::BinaryOutputStatusQuality)
+			DEFAULTPAYLOADCASE(EventType::FrozenCounterQuality     )
+			DEFAULTPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+			DEFAULTPAYLOADCASE(EventType::FileAuth                 )
+			DEFAULTPAYLOADCASE(EventType::FileCommand              )
+			DEFAULTPAYLOADCASE(EventType::FileCommandStatus        )
+			DEFAULTPAYLOADCASE(EventType::FileTransport            )
+			DEFAULTPAYLOADCASE(EventType::FileTransportStatus      )
+			DEFAULTPAYLOADCASE(EventType::FileDescriptor           )
+			DEFAULTPAYLOADCASE(EventType::FileSpecString           )
+			DEFAULTPAYLOADCASE(EventType::ConnectState             )
+			DEFAULTPAYLOADCASE(EventType::Reserved1                )
+			DEFAULTPAYLOADCASE(EventType::Reserved2                )
+			DEFAULTPAYLOADCASE(EventType::Reserved3                )
+			DEFAULTPAYLOADCASE(EventType::Reserved4                )
+			DEFAULTPAYLOADCASE(EventType::Reserved5                )
+			DEFAULTPAYLOADCASE(EventType::Reserved6                )
+			DEFAULTPAYLOADCASE(EventType::Reserved7                )
+			DEFAULTPAYLOADCASE(EventType::Reserved8                )
+			DEFAULTPAYLOADCASE(EventType::Reserved9                )
+			DEFAULTPAYLOADCASE(EventType::Reserved10               )
+			DEFAULTPAYLOADCASE(EventType::Reserved11               )
+			DEFAULTPAYLOADCASE(EventType::Reserved12               )
+			default:
+				std::string msg = "odc::EventInfo default payload setter can't handle EventType::"+ToString(Type);
+				throw std::runtime_error(msg);
+				break;
+		}
 	}
 
 private:
@@ -327,13 +638,7 @@ private:
 	QualityFlags Quality;
 	std::string SourcePort;
 	const EventType Type;
-
-	template<EventType t>
-	typename EventTypePayload<t>::type& Payload() const
-	{
-		static typename EventTypePayload<t>::type Payload;
-		return Payload;
-	}
+	void *pPayload;
 };
 
 }
