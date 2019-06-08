@@ -123,7 +123,7 @@ script:
   - make package
   - make install
   - $RUN install/bin/ODC_tests
-  #- $RUN install/bin/DNP3Port_tests #opendnp3 bug makes this hang at the moment
+  - $RUN install/bin/DNP3Port_tests
   - $RUN install/bin/MD3Port_tests
   - $RUN install/bin/CBPort_tests error -d yes
   - $STOP

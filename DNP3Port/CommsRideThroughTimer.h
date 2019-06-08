@@ -36,7 +36,7 @@ public:
 
 private:
 	uint32_t Timeoutms;
-	asio::strand TimerAccessStrand;
+	asio::io_service::strand TimerAccessStrand;
 	bool RideThroughInProgress;
 	asio::basic_waitable_timer<std::chrono::steady_clock> aCommsRideThroughTimer;
 	const std::function<void()> CommsGoodCB;

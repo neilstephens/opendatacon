@@ -202,7 +202,7 @@ private:
 	std::queue<T> fifo;
 	unsigned int size;
 	asio::io_service& io_service;
-	asio::strand internal_queue_strand;
+	asio::io_service::strand internal_queue_strand;
 };
 
 #endif
