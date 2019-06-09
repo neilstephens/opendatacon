@@ -628,7 +628,10 @@ void DataConcentrator::Shutdown()
 		{
 			shutting_down = true;
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Disabling Interfaces...");
+			{
+			      log->critical("Shutting Down...");
+			      log->info("Disabling Interfaces...");
+			}
 			for(auto& Name_n_UI : Interfaces)
 			{
 			      Name_n_UI.second->Disable();
