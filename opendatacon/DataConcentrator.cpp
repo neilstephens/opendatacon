@@ -102,6 +102,25 @@ DataConcentrator::~DataConcentrator()
 	for (auto& thread : threads)
 		thread.detach();
 	threads.clear();
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+	{
+		//if there's a tcp sink, we need to destroy it
+		//	because ostream will be destroyed
+		if(LogSinksMap.count("tcp"))
+		{
+			//This doesn't look thread safe
+			//	but we're on the main thread at this point
+			//	the only other threads should be spdlog threads
+			//	so if we flush first this should be safe...
+			log->flush();
+			auto tcp_sink_pos = std::find(log->sinks().begin(),log->sinks().end(),LogSinksMap["tcp"]);
+			if(tcp_sink_pos != log->sinks().end())
+			{
+				log->sinks().erase(tcp_sink_pos);
+			}
+		}
+	}
 }
 
 void DataConcentrator::SetLogLevel(std::stringstream& ss)
@@ -648,11 +667,18 @@ void DataConcentrator::Shutdown()
 			{
 			      Name_n_Port.second->Disable();
 			}
+
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->flush();
+			{
+			      log->info("Finishing asynchronous tasks...");
+			      log->flush(); //for the benefit of tcp logger shutdown
+			}
+
+			//shutdown tcp logger so it doesn't keep the io_service going
 			TCPbuf.DeInit();
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Finishing asynchronous tasks...");
+			if(LogSinksMap.count("tcp"))
+				LogSinksMap["tcp"]->set_level(spdlog::level::off);
+
 			ios_working.reset();
 		});
 }
