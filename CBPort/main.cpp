@@ -83,7 +83,7 @@ extern "C" int run_tests( int argc, char* argv[] )
 		{
 			std::cout << "CBPort: optional log level as first arg. Choose from:" << std::endl;
 			for(uint8_t i = 0; i < 7; i++)
-				std::cout << spdlog::level::level_names[i] << std::endl;
+				std::cout << spdlog::level::level_string_views[i].data() << std::endl;
 		}
 		else
 		{

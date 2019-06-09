@@ -119,7 +119,7 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 				{
 					std::cout << "Invalid log level. Options are:" << std::endl;
 					for(uint8_t i = 0; i < 7; i++)
-						std::cout << spdlog::level::level_names[i] << std::endl;
+						std::cout << spdlog::level::level_string_views[i].data() << std::endl;
 					return;
 				}
 				else
@@ -136,7 +136,7 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 		std::cout << sink.first << std::endl;
 	std::cout << std::endl << "Levels:" << std::endl;
 	for(uint8_t i = 0; i < 7; i++)
-		std::cout << spdlog::level::level_names[i] << std::endl;
+		std::cout << spdlog::level::level_string_views[i].data() << std::endl;
 }
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
@@ -248,8 +248,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
 	log->critical("This is opendatacon version '{}'", ODC_VERSION_STRING);
-	log->critical("Log level set to {}", spdlog::level::level_names[log_level]);
-	log->critical("Console level set to {}", spdlog::level::level_names[console_level]);
+	log->critical("Log level set to {}", spdlog::level::level_string_views[log_level]);
+	log->critical("Console level set to {}", spdlog::level::level_string_views[console_level]);
 	log->info("Loading configuration... ");
 
 	//Configure the user interface

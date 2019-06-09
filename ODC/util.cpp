@@ -57,6 +57,11 @@ void spdlog_drop(const std::string &name)
 	spdlog::drop(name);
 }
 
+void spdlog_drop_all()
+{
+	spdlog::drop_all();
+}
+
 void spdlog_shutdown()
 {
 	spdlog::shutdown();
