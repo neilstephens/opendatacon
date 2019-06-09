@@ -176,4 +176,6 @@ TEST_CASE(SUITE("Serial link"))
 	t.join();
 	MPUT.reset();
 	OPUT.reset();
+
+	system("killall socat");
 }
