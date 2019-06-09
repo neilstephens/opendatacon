@@ -102,6 +102,25 @@ DataConcentrator::~DataConcentrator()
 	for (auto& thread : threads)
 		thread.detach();
 	threads.clear();
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+	{
+		//if there's a tcp sink, we need to destroy it
+		//	because ostream will be destroyed
+		if(LogSinksMap.count("tcp"))
+		{
+			//This doesn't look thread safe
+			//	but we're on the main thread at this point
+			//	the only other threads should be spdlog threads
+			//	so if we flush first this should be safe...
+			log->flush();
+			auto tcp_sink_pos = std::find(log->sinks().begin(),log->sinks().end(),LogSinksMap["tcp"]);
+			if(tcp_sink_pos != log->sinks().end())
+			{
+				log->sinks().erase(tcp_sink_pos);
+			}
+		}
+	}
 }
 
 void DataConcentrator::SetLogLevel(std::stringstream& ss)
@@ -119,7 +138,7 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 				{
 					std::cout << "Invalid log level. Options are:" << std::endl;
 					for(uint8_t i = 0; i < 7; i++)
-						std::cout << spdlog::level::level_names[i] << std::endl;
+						std::cout << spdlog::level::level_string_views[i].data() << std::endl;
 					return;
 				}
 				else
@@ -136,7 +155,7 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 		std::cout << sink.first << std::endl;
 	std::cout << std::endl << "Levels:" << std::endl;
 	for(uint8_t i = 0; i < 7; i++)
-		std::cout << spdlog::level::level_names[i] << std::endl;
+		std::cout << spdlog::level::level_string_views[i].data() << std::endl;
 }
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
@@ -248,8 +267,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
 	log->critical("This is opendatacon version '{}'", ODC_VERSION_STRING);
-	log->critical("Log level set to {}", spdlog::level::level_names[log_level]);
-	log->critical("Console level set to {}", spdlog::level::level_names[console_level]);
+	log->critical("Log level set to {}", spdlog::level::level_string_views[log_level]);
+	log->critical("Console level set to {}", spdlog::level::level_string_views[console_level]);
 	log->info("Loading configuration... ");
 
 	//Configure the user interface
@@ -628,7 +647,10 @@ void DataConcentrator::Shutdown()
 		{
 			shutting_down = true;
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Disabling Interfaces...");
+			{
+			      log->critical("Shutting Down...");
+			      log->info("Disabling Interfaces...");
+			}
 			for(auto& Name_n_UI : Interfaces)
 			{
 			      Name_n_UI.second->Disable();
@@ -645,11 +667,18 @@ void DataConcentrator::Shutdown()
 			{
 			      Name_n_Port.second->Disable();
 			}
+
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->flush();
+			{
+			      log->info("Finishing asynchronous tasks...");
+			      log->flush(); //for the benefit of tcp logger shutdown
+			}
+
+			//shutdown tcp logger so it doesn't keep the io_service going
 			TCPbuf.DeInit();
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Finishing asynchronous tasks...");
+			if(LogSinksMap.count("tcp"))
+				LogSinksMap["tcp"]->set_level(spdlog::level::off);
+
 			ios_working.reset();
 		});
 }

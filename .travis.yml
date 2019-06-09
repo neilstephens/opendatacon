@@ -66,17 +66,17 @@ install:
   - export INSTALL_PREFIX=$(pwd)/install
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      brew install libmodbus libmicrohttpd
+      brew install libmodbus libmicrohttpd socat
       #export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     elif [ -z "$DOCKER_BUILD" ]; then
-      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev
+      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     fi
   - |
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
       sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
-      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev"
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat"
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       export SYSROOT=$(pwd)/sysroot/
@@ -92,7 +92,7 @@ install:
         curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm
-        yum install -y libmicrohttpd-devel
+        yum install -y libmicrohttpd-devel socat
       '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
@@ -110,7 +110,7 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo dpkg --add-architecture i386
       sudo apt-get update
-      sudo apt-get install -y lib32stdc++-5-dev libstdc++-5-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386
+      sudo apt-get install -y lib32stdc++-5-dev libstdc++-5-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 socat:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
@@ -119,11 +119,11 @@ install:
 
 script:
   - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT ..
-  - make
+  - make -j2
   - make package
   - make install
   - $RUN install/bin/ODC_tests
-  #- $RUN install/bin/DNP3Port_tests #opendnp3 bug makes this hang at the moment
+#  - $RUN install/bin/DNP3Port_tests #doesn't exit cleanly
   - $RUN install/bin/MD3Port_tests
   - $RUN install/bin/CBPort_tests error -d yes
   - $STOP
