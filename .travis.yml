@@ -126,7 +126,6 @@ script:
 #  - $RUN install/bin/DNP3Port_tests #doesn't exit cleanly
   - $RUN install/bin/MD3Port_tests
   - $RUN install/bin/CBPort_tests error -d yes
-  - $RUN (sleep 5 && echo shutdown) | /install/bin/opendatacon -p example/DNP3-JSON/
   - $STOP
 
 deploy:
