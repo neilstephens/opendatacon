@@ -32,6 +32,7 @@ public:
 		std::function<void()>&& aCommsGoodCB,
 		std::function<void()>&& aCommsBadCB);
 	void Trigger();
+	void FastForward();
 	void Cancel();
 
 private:

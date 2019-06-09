@@ -77,6 +77,8 @@ void DNP3OutstationPort::Disable()
 	enabled = false;
 
 	pOutstation->Disable();
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: DNP3 stack disabled", Name);
 }
 
 // Called by OpenDNP3 Thread Pool
