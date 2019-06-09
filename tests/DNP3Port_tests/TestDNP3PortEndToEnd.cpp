@@ -101,11 +101,13 @@ TEST_CASE(SUITE("Serial link"))
 		WARN("Can't get system shell to execute socat (for virtual serial ports) - skipping test");
 		return;
 	}
-	if(system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &"))
+	if(system("socat -h > /dev/null"))
 	{
 		WARN("Failed to execute socat (for virtual serial ports) - skipping test");
 		return;
 	}
+
+	system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &");
 
 	asio::io_service ios;
 	auto work = std::make_unique<asio::io_service::work>(ios);
