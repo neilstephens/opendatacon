@@ -119,7 +119,7 @@ install:
 
 script:
   - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT ..
-  - make
+  - make -j2
   - make package
   - make install
   - $RUN install/bin/ODC_tests
