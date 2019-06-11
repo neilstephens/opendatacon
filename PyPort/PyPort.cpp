@@ -66,17 +66,18 @@ PyPort::~PyPort()
 	LOGDEBUG("Destructing PyPort");
 
 	// Not sure about this, we still have to protect the calls into the Python code, including the destructor, which should shut down the interpreter.
-	python_strand->dispatch([&]()
+	//python_strand->dispatch([&]()
+//	pIOS->post([&]()
+	{
+		LOGDEBUG("reset pWrapper");
+		pWrapper.reset();
+		// Only 1 strand per ODC system.
+		if (python_strand.use_count() == 1)
 		{
-			LOGDEBUG("reset pWrapper");
-			pWrapper.reset();
-			// Only 1 strand per ODC system.
-			if (python_strand.use_count() == 1)
-			{
-			      LOGDEBUG("reset python_strand");
+			LOGDEBUG("reset python_strand");
 			//			python_strand.reset();
-			}
-		});
+		}
+	} //);
 }
 
 // The ASIO IOS instance is up, our config files have been read and parsed, this is the opportunity to kick off connections and scheduled processes
@@ -90,7 +91,8 @@ void PyPort::Build()
 	}
 
 	// Every call to pWrapper should be strand protected.
-	python_strand->dispatch([&]()
+	pIOS->post([&]()
+		//python_strand->dispatch([&]()
 		{
 			pWrapper.reset(new PythonWrapper(this->Name)); // If first time constructor is called, will instansiate the interpreter.
 
@@ -108,7 +110,8 @@ void PyPort::Enable()
 	if (enabled) return;
 	enabled = true;
 
-	python_strand->dispatch([&]()
+	pIOS->post([&]()
+		//python_strand->dispatch([&]()
 		{
 			pWrapper->Enable();
 		});
@@ -118,7 +121,8 @@ void PyPort::Disable()
 {
 	if (!enabled) return;
 	enabled = false;
-	python_strand->dispatch([&]()
+	pIOS->post([&]()
+		//python_strand->dispatch([&]()
 		{
 			pWrapper->Disable();
 		});
@@ -138,7 +142,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		return;
 	}
 
-	python_strand->dispatch([&, event, SenderName]()
+	pIOS->post([&, event, SenderName, pStatusCallback]()
 		{
 			CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
 
@@ -161,17 +165,18 @@ void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback
 // This should be called twice, once for the config file setion, and the second for config overrides.
 void PyPort::ProcessElements(const Json::Value& JSONRoot)
 {
+	// We need to strip comments from the JSON here, as Python JSON handling libraries throw on finding comments.
 	if (JSONMain.length() == 0)
 	{
-		std::stringstream ss;
-		ss << JSONRoot;
-		JSONMain = ss.str(); // Spit the root out as string, so we can pass to Python in build.
+		Json::StreamWriterBuilder wbuilder;
+		wbuilder["commentStyle"] = "None";                // No comments
+		JSONMain = Json::writeString(wbuilder, JSONRoot); // Spit the root out as string, so we can pass to Python in build.
 	}
 	else if (JSONOverride.length() == 0)
 	{
-		std::stringstream ss;
-		ss << JSONRoot;
-		JSONOverride = ss.str(); // Spit the root out as string, so we can pass to Python in build.
+		Json::StreamWriterBuilder wbuilder;
+		wbuilder["commentStyle"] = "None";                    // No comments
+		JSONOverride = Json::writeString(wbuilder, JSONRoot); // Spit the root out as string, so we can pass to Python in build.
 	}
 
 	if (JSONRoot.isMember("ModuleName"))

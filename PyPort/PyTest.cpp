@@ -276,33 +276,14 @@ TEST_CASE("Py.CheckTimeConversion")
 
 namespace EventTests
 {
-void SendBinaryEvent(std::unique_ptr<PyPort>& PythonPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
-{
-	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual, time);
-	event->SetPayload<EventType::Binary>(std::move(val));
-
-	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
-	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
-		{
-			res = command_stat;
-		});
-
-	PythonPort->Event(event, "TestHarness", pStatusCallback);
-	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
-}
-void SendAnalogEvent(std::unique_ptr<PyPort> & PythonPort, int ODCIndex, double val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
+void SendBinaryEvent(std::unique_ptr<PyPort>& PythonPort, int ODCIndex, bool val, SharedStatusCallback_t pStatusCallback, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
+{}
+void SendAnalogEvent(std::unique_ptr<PyPort>& PythonPort, int ODCIndex, double val, SharedStatusCallback_t pStatusCallback, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
 {
 	auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
 	event->SetPayload<EventType::Analog>(std::move(val));
 
-	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
-	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
-		{
-			res = command_stat;
-		});
-
 	PythonPort->Event(event, "TestHarness", pStatusCallback);
-	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 }
 
 TEST_CASE("Py.SendBinaryAndAnalogEvents")
@@ -312,15 +293,33 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 	STANDARD_TEST_SETUP();
 	TEST_PythonPort(Json::nullValue);
 
-	START_IOS(2);
+	START_IOS(1);
+
+	WaitIOS(IOS, 2); // Allow build to run
 
 	PythonPort->Enable();
 
-	SendBinaryEvent(PythonPort, 1, true);
-
-//	SendAnalogEvent(PythonPort, 1, 1000.1);
-
 	WaitIOS(IOS, 1);
+
+	CommandStatus res = CommandStatus::UNDEFINED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			res = command_stat;
+		});
+
+	//SendBinaryEvent(PythonPort, 1, true, pStatusCallback);
+	int ODCIndex = 1;
+	bool val = true;
+	auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
+	boolevent->SetPayload<EventType::Binary>(std::move(val));
+
+	PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
+
+	//	SendAnalogEvent(PythonPort, 1, 1000.1,pStatusCallback);
+	//REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+
+	WaitIOS(IOS, 10);
+	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 	PythonPort->Disable();
 

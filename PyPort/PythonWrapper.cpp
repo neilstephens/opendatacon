@@ -50,6 +50,7 @@ msSinceEpoch_t PyDateTime_to_msSinceEpoch_t(PyObject* pyTime);
 
 std::atomic_uint PythonWrapper::InterpreterUseCount = 0;
 std::unordered_map<uint64_t, int> PythonWrapper::PyWrappers;
+PyThreadState* PythonWrapper::threadState;
 
 // Wrap getting/releasing the GIL to be bullet proof.
 class GetPythonGIL
@@ -59,11 +60,17 @@ class GetPythonGIL
 public:
 	GetPythonGIL()
 	{
-		gstate = PyGILState_Ensure();
+		if (!_Py_IsFinalizing())
+			gstate = PyGILState_Ensure();
+	}
+	bool OkToContinue()
+	{
+		return !_Py_IsFinalizing(); // If the interpreter is shutting down, alert our code
 	}
 	~GetPythonGIL()
 	{
-		PyGILState_Release(gstate);
+		if (!_Py_IsFinalizing())
+			PyGILState_Release(gstate);
 	}
 };
 
@@ -79,12 +86,9 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 	const char* message;
 
 	// Now parse the arguments provided, one Unsigned int (I) and a string (s) and the function name. DO NOT GET THIS WRONG!
-	if (!PyArg_ParseTuple(args, "LIs:log",&guid, &logtype, &message))
+	if (!PyArg_ParseTuple(args, "LIs:log", &guid, &logtype, &message))
 	{
-		if (PyErr_Occurred())
-		{
-			PyErr_Print();
-		}
+		PythonWrapper::PyErrOutput();
 		return NULL;
 	}
 
@@ -149,10 +153,7 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 	// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
 	if (!PyArg_ParseTuple(args, "LIIIO:PublishEvent", &guid, &index, &value, &quality, &pyTime))
 	{
-		if (PyErr_Occurred())
-		{
-			PyErr_Print();
-		}
+		PythonWrapper::PyErrOutput();
 		return NULL;
 	}
 	LOGDEBUG("Python Publish Event Index: {}, Value {}, Quality {}", index, value, quality);
@@ -164,8 +165,8 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 
 	// Update to new format     thisPyPort->PublishEvent(newmeas, index);
 
-	// Return a PyObject return value.
-	return Py_BuildValue("i", 0);
+	// Return a PyObject return value. True is 1
+	return Py_BuildValue("i", 1);
 }
 
 static PyMethodDef odcMethods[] = {
@@ -210,39 +211,40 @@ PythonWrapper::~PythonWrapper()
 {
 	LOGDEBUG("Destructing PythonWrapper");
 
-	Py_XDECREF(pyFuncConfig);
-	Py_XDECREF(pyFuncEvent);
-	Py_XDECREF(pyFuncEnable);
-	Py_XDECREF(pyFuncDisable);
-
-	RemoveWrapperMapping();
-	Py_XDECREF(pyInstance);
-
-	if (pyModule != nullptr)
+	// Scope the GIL lock
 	{
-		Py_DECREF(pyModule);
+		GetPythonGIL g; // Need the GIL to release the module and the instance - and - potentially the Interpreter
+
+		Py_XDECREF(pyFuncConfig);
+		Py_XDECREF(pyFuncEvent);
+		Py_XDECREF(pyFuncEnable);
+		Py_XDECREF(pyFuncDisable);
+
+		RemoveWrapperMapping();
+		Py_XDECREF(pyInstance);
+
+		if (pyModule != nullptr)
+		{
+			Py_DECREF(pyModule);
+		}
 	}
+
 	// Only shut down the interpreter when there are no more users left.
 	InterpreterUseCount--;
 	if (InterpreterUseCount == 0)
 	{
 		LOGDEBUG("Py_Finalize");
-		if (PyGILState_Check() == 1)
-		{
-			Py_Finalize();
-		}
-		else
-		{
-			GetPythonGIL g;
-			Py_Finalize();
-		}
+		//Retrieve GIL if we are not already finalising (should never happen) and we dont already have it.
+		if (!_Py_IsFinalizing() && !PyGILState_Check())
+			PyEval_RestoreThread(threadState);
+		//	GetPythonGIL g; If we do this we hang, if we dont we get an error saying we dont have the GIL...
+		if (!Py_FinalizeEx())
+			LOGERROR("Python Py_Finalize() Failed");
 	}
 }
 // Startup the interpreter - need to have matching tear down in destructor.
 void PythonWrapper::InitialisePyInterpreter()
 {
-	PyEval_InitThreads(); // Setup interpreter to support threading. We are using a strand to sync access to the interpreter, but still need this.
-
 	LOGDEBUG("Py_Initialize");
 
 	// Load our odc module exposing our internal methods to python (i.e. loggin commands)
@@ -263,12 +265,25 @@ void PythonWrapper::InitialisePyInterpreter()
 		return;
 	}
 	PyDateTime_IMPORT;
+
+	// Initialize threads and release GIL (saving it as well):
+	PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
+	if (!PyGILState_Check())
+		LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
+
+	threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 }
 
 
 void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModuleName, const std::string& pyClassName, const std::string& PortName)
 {
 	GetPythonGIL g;
+
+	if (!g.OkToContinue())
+	{
+		LOGERROR("Error - Interpreter Closing Down in ImportModuleAndCreateClassInstance");
+		return;
+	}
 
 	const auto pyUniCodeModuleName = PyUnicode_FromString(pyModuleName.c_str());
 
@@ -346,6 +361,11 @@ void PythonWrapper::Build(const std::string& modulename, std::string& pyLoadModu
 void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONOverride)
 {
 	GetPythonGIL g;
+	if (!g.OkToContinue())
+	{
+		LOGERROR("Error - Interpreter Closing Down in Config");
+		return;
+	}
 
 	auto pyArgs = PyTuple_New(2);
 	auto pyJSONMain = PyUnicode_FromString(JSONMain.c_str());
@@ -361,6 +381,11 @@ void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONO
 void PythonWrapper::Enable()
 {
 	GetPythonGIL g;
+	if (!g.OkToContinue())
+	{
+		LOGERROR("Error - Interpreter Closing Down in Enable");
+		return;
+	}
 	auto pyArgs = PyTuple_New(0);
 	PyObject* pyResult = PyCall(pyFuncEnable, pyArgs); // No passed variables, assume no delayed return
 	if (pyResult) Py_DECREF(pyResult);
@@ -370,6 +395,11 @@ void PythonWrapper::Enable()
 void PythonWrapper::Disable()
 {
 	GetPythonGIL g;
+	if (!g.OkToContinue())
+	{
+		LOGERROR("Error - Interpreter Closing Down in Disable");
+		return;
+	}
 	auto pyArgs = PyTuple_New(0);
 	PyObject* pyResult = PyCall(pyFuncDisable, pyArgs); // No passed variables, assume no delayed return
 	if (pyResult) Py_DECREF(pyResult);
@@ -381,7 +411,11 @@ CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> event, const
 {
 	// Try and send all events through to Python without modification, return value will be success or failure - using our predefined values.
 	GetPythonGIL g;
-
+	if (!g.OkToContinue())
+	{
+		LOGERROR("Error - Interpreter Closing Down in Event");
+		return CommandStatus::UNDEFINED;
+	}
 	auto pyArgs = PyTuple_New(5);
 	auto pyEventType = PyLong_FromUnsignedLong(static_cast<unsigned long>(event->GetEventType()));
 	auto pyIndex = PyLong_FromUnsignedLong(event->GetIndex());
@@ -405,31 +439,31 @@ CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> event, const
 	typedef std::pair<double, CommandStatus> AOD;
 
 	EVENTPAYLOAD(EventType::Binary, bool)
-	        EVENTPAYLOAD(EventType::DoubleBitBinary, DBB)
-	        EVENTPAYLOAD(EventType::Analog, double)
-	        EVENTPAYLOAD(EventType::Counter, uint32_t)
-	        EVENTPAYLOAD(EventType::FrozenCounter, uint32_t)
-	        EVENTPAYLOAD(EventType::BinaryOutputStatus, bool)
-	        EVENTPAYLOAD(EventType::AnalogOutputStatus, double)
-	        EVENTPAYLOAD(EventType::BinaryCommandEvent, CommandStatus)
-	        EVENTPAYLOAD(EventType::AnalogCommandEvent, CommandStatus)
-	        EVENTPAYLOAD(EventType::OctetString, std::string)
-	        EVENTPAYLOAD(EventType::TimeAndInterval, TAI)
-	        EVENTPAYLOAD(EventType::SecurityStat, SS)
-	        EVENTPAYLOAD(EventType::ControlRelayOutputBlock, ControlRelayOutputBlock)
-	        EVENTPAYLOAD(EventType::AnalogOutputInt16, AO16)
-	        EVENTPAYLOAD(EventType::AnalogOutputInt32, AO32)
-	        EVENTPAYLOAD(EventType::AnalogOutputFloat32, AOF)
-	        EVENTPAYLOAD(EventType::AnalogOutputDouble64, AOD)
-	        EVENTPAYLOAD(EventType::BinaryQuality, QualityFlags)
-	        EVENTPAYLOAD(EventType::DoubleBitBinaryQuality, QualityFlags)
-	        EVENTPAYLOAD(EventType::AnalogQuality, QualityFlags)
-	        EVENTPAYLOAD(EventType::CounterQuality, QualityFlags)
-	        EVENTPAYLOAD(EventType::BinaryOutputStatusQuality, QualityFlags)
-	        EVENTPAYLOAD(EventType::FrozenCounterQuality, QualityFlags)
-	        EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
-	        EVENTPAYLOAD(EventType::ConnectState, ConnectState)
-	        */
+	            EVENTPAYLOAD(EventType::DoubleBitBinary, DBB)
+	            EVENTPAYLOAD(EventType::Analog, double)
+	            EVENTPAYLOAD(EventType::Counter, uint32_t)
+	            EVENTPAYLOAD(EventType::FrozenCounter, uint32_t)
+	            EVENTPAYLOAD(EventType::BinaryOutputStatus, bool)
+	            EVENTPAYLOAD(EventType::AnalogOutputStatus, double)
+	            EVENTPAYLOAD(EventType::BinaryCommandEvent, CommandStatus)
+	            EVENTPAYLOAD(EventType::AnalogCommandEvent, CommandStatus)
+	            EVENTPAYLOAD(EventType::OctetString, std::string)
+	            EVENTPAYLOAD(EventType::TimeAndInterval, TAI)
+	            EVENTPAYLOAD(EventType::SecurityStat, SS)
+	            EVENTPAYLOAD(EventType::ControlRelayOutputBlock, ControlRelayOutputBlock)
+	            EVENTPAYLOAD(EventType::AnalogOutputInt16, AO16)
+	            EVENTPAYLOAD(EventType::AnalogOutputInt32, AO32)
+	            EVENTPAYLOAD(EventType::AnalogOutputFloat32, AOF)
+	            EVENTPAYLOAD(EventType::AnalogOutputDouble64, AOD)
+	            EVENTPAYLOAD(EventType::BinaryQuality, QualityFlags)
+	            EVENTPAYLOAD(EventType::DoubleBitBinaryQuality, QualityFlags)
+	            EVENTPAYLOAD(EventType::AnalogQuality, QualityFlags)
+	            EVENTPAYLOAD(EventType::CounterQuality, QualityFlags)
+	            EVENTPAYLOAD(EventType::BinaryOutputStatusQuality, QualityFlags)
+	            EVENTPAYLOAD(EventType::FrozenCounterQuality, QualityFlags)
+	            EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
+	            EVENTPAYLOAD(EventType::ConnectState, ConnectState)
+	            */
 	//PyTuple_SetItem(pyArgs, 4, event->GetPayload()); //TODO Can be many types - how best to handle??
 
 	PyTuple_SetItem(pyArgs, 4, pySender);
@@ -437,10 +471,18 @@ CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> event, const
 	//	PostPyCall(pyFuncEvent, pyArgs, pStatusCallback); // Callback will be called when done...
 	PyObject* pyResult = PyCall(pyFuncEvent, pyArgs); // No passed variables
 
-	if (pyResult) Py_DECREF(pyResult);
 	Py_DECREF(pyArgs);
 
-	return CommandStatus::SUCCESS;
+	if (pyResult) // Non nullptr is a result
+	{
+		long res = PyLong_AsLong(pyResult);
+		PyErrOutput();
+		Py_DECREF(pyResult);
+
+		return res ? CommandStatus::SUCCESS : CommandStatus::UNDEFINED;
+	}
+
+	return CommandStatus::UNDEFINED;
 }
 #pragma region
 
@@ -526,64 +568,64 @@ msSinceEpoch_t PyDateTime_to_msSinceEpoch_t(PyObject* pyTime)
 switch (event->GetEventType())
 {
 
-      case EventType::ControlRelayOutputBlock:
-      return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-      case EventType::AnalogOutputInt16:
-      return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-      case EventType::AnalogOutputInt32:
-      return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-      case EventType::AnalogOutputFloat32:
-      return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-      case EventType::AnalogOutputDouble64:
-      return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+        case EventType::ControlRelayOutputBlock:
+        return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+        case EventType::AnalogOutputInt16:
+        return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+        case EventType::AnalogOutputInt32:
+        return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+        case EventType::AnalogOutputFloat32:
+        return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+        case EventType::AnalogOutputDouble64:
+        return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 
 
-      case EventType::Analog:
-      {
-              // ODC Analog is a double by default...
-              uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
+        case EventType::Analog:
+        {
+                    // ODC Analog is a double by default...
+                    uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
-              LOGDEBUG("OS - Received Event - Analog - Index {}  Value 0x{}", std::to_string(ODCIndex), std::to_string(analogmeas));
-              return (*pStatusCallback)(CommandStatus::SUCCESS);
-      }
-      case EventType::Counter:
-      {
-              return (*pStatusCallback)(CommandStatus::SUCCESS);
-      }
-      case EventType::Binary:
-      {
-              uint8_t meas = event->GetPayload<EventType::Binary>();
+                    LOGDEBUG("OS - Received Event - Analog - Index {}  Value 0x{}", std::to_string(ODCIndex), std::to_string(analogmeas));
+                    return (*pStatusCallback)(CommandStatus::SUCCESS);
+        }
+        case EventType::Counter:
+        {
+                    return (*pStatusCallback)(CommandStatus::SUCCESS);
+        }
+        case EventType::Binary:
+        {
+                    uint8_t meas = event->GetPayload<EventType::Binary>();
 
-              LOGDEBUG("OS - Received Event - Binary - Index {}, Bit Value {}", std::to_string(ODCIndex), std::to_string(meas));
+                    LOGDEBUG("OS - Received Event - Binary - Index {}, Bit Value {}", std::to_string(ODCIndex), std::to_string(meas));
 
-              return (*pStatusCallback)(CommandStatus::SUCCESS);
-      }
-      case EventType::AnalogQuality:
-      {
-              return (*pStatusCallback)(CommandStatus::SUCCESS);
-      }
-      case EventType::CounterQuality:
-      {
-              return (*pStatusCallback)(CommandStatus::SUCCESS);
-      }
-      case EventType::ConnectState:
-      {
-              auto state = event->GetPayload<EventType::ConnectState>();
-              // This will be fired by (typically) an CBOutStation port on the "other" side of the ODC Event bus. blockindex.e. something upstream has connected
-              // We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
+                    return (*pStatusCallback)(CommandStatus::SUCCESS);
+        }
+        case EventType::AnalogQuality:
+        {
+                    return (*pStatusCallback)(CommandStatus::SUCCESS);
+        }
+        case EventType::CounterQuality:
+        {
+                    return (*pStatusCallback)(CommandStatus::SUCCESS);
+        }
+        case EventType::ConnectState:
+        {
+                    auto state = event->GetPayload<EventType::ConnectState>();
+                    // This will be fired by (typically) an CBOutStation port on the "other" side of the ODC Event bus. blockindex.e. something upstream has connected
+                    // We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
 
-              if (state == ConnectState::CONNECTED)
-              {
-                        LOGDEBUG("Got a connected event - Triggering sending of current data ");
-              }
-              else if (state == ConnectState::DISCONNECTED)
-              {
-                        LOGDEBUG("Got a disconnected event - cant send events data ");
-              }
+                    if (state == ConnectState::CONNECTED)
+                    {
+                                    LOGDEBUG("Got a connected event - Triggering sending of current data ");
+                    }
+                    else if (state == ConnectState::DISCONNECTED)
+                    {
+                                    LOGDEBUG("Got a disconnected event - cant send events data ");
+                    }
 
-              return PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
-      }
-      default:
-              return PostCallbackCall(pStatusCallback, CommandStatus::NOT_SUPPORTED);
+                    return PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
+        }
+        default:
+                    return PostCallbackCall(pStatusCallback, CommandStatus::NOT_SUPPORTED);
 }
 */

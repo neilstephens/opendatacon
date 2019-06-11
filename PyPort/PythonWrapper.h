@@ -65,7 +65,7 @@ public:
 	void Disable();
 	CommandStatus Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
 
-	void PyErrOutput();
+	static void PyErrOutput();
 
 	std::string Name;
 
@@ -98,6 +98,7 @@ private:
 	// Keep track of each PyWrapper so static methods can get access to the correct PyPort instance
 	static std::unordered_map<uint64_t, int> PyWrappers;
 	static std::atomic_uint PythonWrapper::InterpreterUseCount; // Used to keep track of Interpreter Setup/Tear down.
+	static PyThreadState* threadState;
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.
 	PyObject* pyModule = nullptr;
