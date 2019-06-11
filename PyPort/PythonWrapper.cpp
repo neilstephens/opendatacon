@@ -37,6 +37,7 @@
 #include "PythonWrapper.h"
 #include <chrono>
 #include <ctime>
+#include <exception>
 #include <datetime.h> //PyDateTime
 #include <time.h>
 #include <iomanip>
@@ -207,41 +208,7 @@ PythonWrapper::PythonWrapper(const std::string& aName):
 	}
 }
 
-PythonWrapper::~PythonWrapper()
-{
-	LOGDEBUG("Destructing PythonWrapper");
 
-	// Scope the GIL lock
-	{
-		GetPythonGIL g; // Need the GIL to release the module and the instance - and - potentially the Interpreter
-
-		Py_XDECREF(pyFuncConfig);
-		Py_XDECREF(pyFuncEvent);
-		Py_XDECREF(pyFuncEnable);
-		Py_XDECREF(pyFuncDisable);
-
-		RemoveWrapperMapping();
-		Py_XDECREF(pyInstance);
-
-		if (pyModule != nullptr)
-		{
-			Py_DECREF(pyModule);
-		}
-	}
-
-	// Only shut down the interpreter when there are no more users left.
-	InterpreterUseCount--;
-	if (InterpreterUseCount == 0)
-	{
-		LOGDEBUG("Py_Finalize");
-		//Retrieve GIL if we are not already finalising (should never happen) and we dont already have it.
-		if (!_Py_IsFinalizing() && !PyGILState_Check())
-			PyEval_RestoreThread(threadState);
-		//	GetPythonGIL g; If we do this we hang, if we dont we get an error saying we dont have the GIL...
-		if (!Py_FinalizeEx())
-			LOGERROR("Python Py_Finalize() Failed");
-	}
-}
 // Startup the interpreter - need to have matching tear down in destructor.
 void PythonWrapper::InitialisePyInterpreter()
 {
@@ -272,6 +239,55 @@ void PythonWrapper::InitialisePyInterpreter()
 		LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
 
 	threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
+}
+// This one seems to be excatly what we need, and we are doing it, but it is not working...
+// https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
+
+PythonWrapper::~PythonWrapper()
+{
+	LOGDEBUG("Destructing PythonWrapper");
+
+	// Scope the GIL lock
+	{
+		GetPythonGIL g; // Need the GIL to release the module and the instance - and - potentially the Interpreter
+
+		Py_XDECREF(pyFuncConfig);
+		Py_XDECREF(pyFuncEvent);
+		Py_XDECREF(pyFuncEnable);
+		Py_XDECREF(pyFuncDisable);
+
+		RemoveWrapperMapping();
+		Py_XDECREF(pyInstance);
+
+		if (pyModule != nullptr)
+		{
+			Py_DECREF(pyModule);
+		}
+	}
+
+	// Only shut down the interpreter when there are no more users left.
+	InterpreterUseCount--;
+	if (InterpreterUseCount == 0)
+	{
+		LOGDEBUG("Py_Finalize");
+		// Restore the state as it was after we called Initialize()
+		LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
+		// Supposed to acquire the GIL and restore the state...
+		PyEval_RestoreThread(threadState);
+		LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
+
+		//	GetPythonGIL g; //TODO If we do this we hang, if we dont we get an error saying we dont have the GIL...
+		try
+		{
+			//TODO This try/catch does not work, as when Py_Finalize() fails, it calls abort - which we cannot catch.
+			if (!Py_FinalizeEx())
+				LOGERROR("Python Py_Finalize() Failed");
+		}
+		catch (std::exception& e)
+		{
+			LOGERROR("Excception Caught calling Py_FinalizeEx() - {}", e.what());
+		}
+	}
 }
 
 

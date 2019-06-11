@@ -293,7 +293,7 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 	STANDARD_TEST_SETUP();
 	TEST_PythonPort(Json::nullValue);
 
-	START_IOS(1);
+	START_IOS(2);
 
 	WaitIOS(IOS, 2); // Allow build to run
 
