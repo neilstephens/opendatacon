@@ -31,4 +31,6 @@ Sender = "Test"
 res = x.EventHandler(EventType, Index, Time, Quality, Sender)
 print("Event Result - {}".format(res))
 
+resjson = x.RestRequestHandler("http:\\\\testserver\\name\\cboperation?Fail=true")
+print("JSON Response {}".format(resjson))
 print("Done")

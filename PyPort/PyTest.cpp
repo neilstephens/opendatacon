@@ -302,7 +302,7 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 	WaitIOS(IOS, 1);
 
 	CommandStatus res = CommandStatus::UNDEFINED;
-	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&](CommandStatus command_stat)
 		{
 			res = command_stat;
 		});
@@ -315,11 +315,25 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 
 	PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 
+	WaitIOS(IOS, 2);
+	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+
 	//	SendAnalogEvent(PythonPort, 1, 1000.1,pStatusCallback);
 	//REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
-	WaitIOS(IOS, 10);
-	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+	std::string url("http://testserver/thisport/cb?test=harold");
+	std::string sres;
+
+	auto pResponseCallback = std::make_shared<std::function<void(std::string url)>>([&](std::string response)
+		{
+			sres = response;
+		});
+
+	PythonPort->RestHandler(url, pResponseCallback);
+
+	LOGDEBUG("Response {}", sres);
+	WaitIOS(IOS, 2);
+	REQUIRE(sres == "{\"test\": \"Hello\"}"); // The Get will Wait for the result to be set.
 
 	PythonPort->Disable();
 

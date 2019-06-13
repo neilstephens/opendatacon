@@ -42,6 +42,7 @@
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;
+typedef std::shared_ptr<std::function<void (const std::string response)>> ResponseCallback_t;
 
 using namespace odc;
 
@@ -58,6 +59,7 @@ public:
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void RestHandler(const std::string& url, ResponseCallback_t pResponseCallback);
 
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
@@ -76,6 +78,7 @@ private:
 
 	// Worker methods
 	void PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c);
+	void PostResponseCallbackCall(const ResponseCallback_t& pResponseCallback, const std::string& response);
 };
 
 #endif /* PYPORT_H_ */

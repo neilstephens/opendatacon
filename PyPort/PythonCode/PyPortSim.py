@@ -77,3 +77,16 @@ class SimPortClass:
     def EventHandler(self,EventType, Index, Time, Quality, Sender):
         self.LogDebug("EventHander: {}, {}".format(Sender, self.guid))
         return True
+
+    # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
+    # called. It will be decode sufficiently so that it is passed to the correct PythonPort (us)
+    # To make these calls in Python (our test scripts) we can use the library below.
+    # https://2.python-requests.org//en/master/
+    #
+    # We return the response that we want sent back to the caller. This will be a JSON string. A null string would be an error.
+    def RestRequestHandler(self, url):
+        self.LogDebug("RestRequestHander: {}".format(url))
+        Response = {}   # Empty Dict
+        Response['test'] = "Hello"
+
+        return json.dumps(Response)

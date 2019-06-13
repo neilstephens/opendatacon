@@ -64,6 +64,7 @@ public:
 	void Enable();
 	void Disable();
 	CommandStatus Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
+	std::string RestHandler(const std::string& url);
 
 	static void PyErrOutput();
 
@@ -107,6 +108,7 @@ private:
 	PyObject* pyFuncEnable = nullptr;
 	PyObject* pyFuncDisable = nullptr;
 	PyObject* pyFuncEvent = nullptr;
+	PyObject* pyRestHandler = nullptr;
 };
 
 #endif /* PYWRAPPER_H_ */

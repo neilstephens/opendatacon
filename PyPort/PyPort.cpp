@@ -168,6 +168,29 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 	});
 }
 
+// This is called when we have decoded a restful request, to the point where we know which instance it should be passed to. We give it a callback, which will
+// be used to actually send the response back to the caller.
+void PyPort::RestHandler(const std::string& url, ResponseCallback_t pResponseCallback)
+{
+      if (!enabled)
+      {
+            LOGDEBUG("PyPort {} not enabled, Restful Request from {} ignored", Name);
+            PostResponseCallbackCall(pResponseCallback, "Error Port not enambled");
+            return;
+	}
+
+	#ifdef STRAND
+      python_strand->dispatch([&, url, pResponseCallback]()
+	#else
+      pIOS->dispatch([&, url, pResponseCallback]()
+					#endif
+	{
+		std::string result = pWrapper->RestHandler(url); // Expect no long processing or waits in the python code to handle this.
+
+		PostResponseCallbackCall(pResponseCallback, result);
+	});
+}
+
 // Just schedule the callback, don't want to do it in a strand protected section.
 void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c)
 {
@@ -176,6 +199,16 @@ void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback
             pIOS->post([&, pStatusCallback, c]()
 			{
 				(*pStatusCallback)(c);
+			});
+	}
+}
+void PyPort::PostResponseCallbackCall(const ResponseCallback_t & pResponseCallback, const std::string& response)
+{
+      if (pResponseCallback != nullptr)
+      {
+            pIOS->post([&, pResponseCallback, response]()
+			{
+				(*pResponseCallback)(response);
 			});
 	}
 }

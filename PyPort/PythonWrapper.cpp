@@ -280,8 +280,8 @@ PythonWrapper::~PythonWrapper()
 		try
 		{
 			//TODO This try/catch does not work, as when Py_Finalize() fails, it calls abort - which we cannot catch.
-			if (!Py_FinalizeEx())
-				LOGERROR("Python Py_Finalize() Failed");
+//			if (!Py_FinalizeEx())
+			LOGERROR("Python Py_Finalize() Failed");
 		}
 		catch (std::exception& e)
 		{
@@ -365,6 +365,7 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 	pyFuncEnable = GetFunction(pyInstance, "Enable");
 	pyFuncDisable = GetFunction(pyInstance, "Disable");
 	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
+	pyRestHandler = GetFunction(pyInstance, "RestRequestHandler");
 	//TODO: Call the config function in script ProcessJSONConfig(self, MainJSON, OverrideJSON)
 }
 
@@ -499,6 +500,40 @@ CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> event, const
 	}
 
 	return CommandStatus::UNDEFINED;
+}
+
+
+// This is a handler for a Rest request received by the (global to all PythonPorts) handler, which will pass it to us.
+// We will get the url, and return a JSON formatted response. We do not prune the url in any way, just pass it all through.
+std::string PythonWrapper::RestHandler(const std::string& url)
+{
+	// Try and send all events through to Python without modification, return value will be success or failure - using our predefined values.
+	GetPythonGIL g;
+	if (!g.OkToContinue())
+	{
+		LOGERROR("Error in Python Wrapper handling of Restful Request");
+		return "Error in Python Wrapper";
+	}
+	auto pyArgs = PyTuple_New(1);
+	auto pyurl = PyUnicode_FromString(url.c_str());
+
+	// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
+	PyTuple_SetItem(pyArgs, 0, pyurl);
+
+	PyObject* pyResult = PyCall(pyRestHandler, pyArgs); // No passed variables
+
+	Py_DECREF(pyArgs);
+
+	if (pyResult) // Non nullptr is a result
+	{
+		std::string res = std::string(PyUnicode_AsUTF8(pyResult));
+		PyErrOutput();
+		Py_DECREF(pyResult);
+
+		return res;
+	}
+
+	return "Did not get a response from Python RestHandler";
 }
 #pragma region
 
