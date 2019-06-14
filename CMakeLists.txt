@@ -144,12 +144,14 @@ endif()
 
 # Compiler configuration
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
-# tell asio to only compile once (where <asio/ssl/impl/src.hpp> is included)
-add_definitions(-DASIO_DYN_LINK)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
 	message("CMAKE configuring opendatacon for Visual Studio C++" )
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
+	# tell asio to only compile once (where <asio/ssl/impl/src.hpp> is included)
+	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DASIO_DYN_LINK")
 
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 	# using Intel C++
@@ -162,10 +164,14 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 		message("using special options for GNU compiler")
 		#--no-gnu-unique is required for true dynamic loading and unloading of shared libs
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --no-gnu-unique")
-		#only export API symbols
-		set(CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS} " -Wl,--version-script=${CMAKE_SOURCE_DIR}/include/opendatacon/ModuleABI.version")
 	endif()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
+	#only export API symbols
+	set(CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS} " -Wl,--version-script=${CMAKE_SOURCE_DIR}/include/opendatacon/ModuleABI.version")
+	# tell asio to only compile once (where <asio/ssl/impl/src.hpp> is included)
+	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASIO_DYN_LINK")
+
 	option(STATIC_LIBSTDC++ "Link libstdc++ statically" ON)
 	if(STATIC_LIBSTDC++)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
