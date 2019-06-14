@@ -212,7 +212,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 	ofs2 << conffile2;
 	ofs2.close();
 }
-void SetupLoggers()
+void SetupLoggers(spdlog::level::level_enum loglevel)
 {
 	// So create the log sink first - can be more than one and add to a vector.
 	#ifdef NONVSTESTING
@@ -225,7 +225,7 @@ void SetupLoggers()
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
 	auto pLibLogger = std::make_shared<spdlog::logger>("MD3Port", begin(sinks), end(sinks));
-	pLibLogger->set_level(spdlog::level::trace);
+	pLibLogger->set_level(loglevel);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
@@ -245,6 +245,24 @@ void SetupLoggers()
 	else
 		std::cout << "Error opendatacon Logger not operational";
 }
+void WriteStartLoggingMessage(std::string TestName)
+{
+	std::string msg = "Logging for '" + TestName + "' started..";
+
+	if (auto cblogger = odc::spdlog_get("CBPort"))
+	{
+		cblogger->info("------------------");
+		cblogger->info(msg);
+	}
+	else
+		std::cout << "Error MD3Port Logger not operational";
+
+	/*	if (auto odclogger = odc::spdlog_get("opendatacon"))
+	                  odclogger->info(msg);
+	        else
+	                  std::cout << "Error opendatacon Logger not operational";
+	                  */
+}
 void TestSetup(bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
@@ -259,7 +277,16 @@ void TestTearDown()
 {
 	spdlog::drop_all(); // Close off everything
 }
-
+// Used for command line test setup
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
+{
+	SetupLoggers(log_level);
+	WriteStartLoggingMessage("All Tests");
+}
+void CommandLineLoggingCleanup()
+{
+	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
+}
 // A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
 // Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
 std::string BuildHexStringFromASCIIHexString(const std::string &as)

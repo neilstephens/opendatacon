@@ -51,6 +51,8 @@
 	if (auto log = odc::spdlog_get("MD3Port")) \
 		log->info(__VA_ARGS__);
 
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
+void CommandLineLoggingCleanup();
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;
