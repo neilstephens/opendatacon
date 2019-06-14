@@ -24,20 +24,8 @@
 
 //TODO: refactor this to be able to unload the library too
 
-void* GetPortFunc(const std::string& libname, const std::string& objname, bool destroy)
+void* GetPortFunc(void* pluginlib, const std::string& objname, bool destroy)
 {
-	//Looks for a specific library (for libs that implement more than one class)
-	std::string libfilename = GetLibFileName(libname);
-
-	//try to load the lib
-	auto pluginlib = LoadModule(libfilename.c_str());
-
-	if (pluginlib == nullptr)
-	{
-		std::cerr << libname << " Info: dynamic library load failed '" << libfilename << "' :"<< LastSystemError()<< std::endl;
-		return nullptr;
-	}
-
 	std::string funcname;
 	if(destroy)
 		funcname = "delete_";
@@ -49,19 +37,19 @@ void* GetPortFunc(const std::string& libname, const std::string& objname, bool d
 
 	if (port_func == nullptr)
 	{
-		std::cerr << libname << " Info: failed to load symbol '" << funcname << "' in library '" << libfilename << "' - " << LastSystemError() << std::endl;
+		std::cerr << " Info: failed to load symbol '" << funcname << "' - " << LastSystemError() << std::endl;
 		return nullptr;
 	}
 	return port_func;
 }
 
-newptr GetPortCreator(const std::string& libname, const std::string& objname)
+newptr GetPortCreator(void* pluginlib, const std::string& objname)
 {
-	return (newptr)GetPortFunc(libname,objname);
+	return (newptr)GetPortFunc(pluginlib,objname);
 }
 
-delptr GetPortDestroyer(const std::string& libname, const std::string& objname)
+delptr GetPortDestroyer(void *pluginlib, const std::string& objname)
 {
-	return (delptr)GetPortFunc(libname,objname,true);
+	return (delptr)GetPortFunc(pluginlib,objname,true);
 }
 

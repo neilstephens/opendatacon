@@ -27,12 +27,14 @@
 
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
+	//Load the library
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	{
 		asio::io_service ios;
 
-		newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
 		REQUIRE(newOutstation);
-		delptr deleteOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+		delptr deleteOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
 		REQUIRE(deleteOutstation);
 
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
@@ -47,9 +49,9 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	{
 		asio::io_service ios;
 
-		newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
 		REQUIRE(newOutstation);
-		delptr deleteOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+		delptr deleteOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
 		REQUIRE(deleteOutstation);
 
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
@@ -59,4 +61,5 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 
 		deleteOutstation(OPUT);
 	}
+	UnLoadModule(portlib);
 }
