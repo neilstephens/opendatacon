@@ -24,6 +24,10 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+//compile asio only in libODC
+//ASIO_DYN_LINK lets other modules link to it
+#include <asio/impl/src.hpp>
+
 #include <opendatacon/util.h>
 #include <regex>
 

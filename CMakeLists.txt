@@ -143,8 +143,9 @@ if(APPLE)
 endif()
 
 # Compiler configuration
-
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
+# tell asio to only compile once (where <asio/ssl/impl/src.hpp> is included)
+add_definitions(-DASIO_DYN_LINK)
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
 	message("CMAKE configuring opendatacon for Visual Studio C++" )
@@ -159,7 +160,10 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
 	if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 		message("using special options for GNU compiler")
+		#--no-gnu-unique is required for true dynamic loading and unloading of shared libs
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --no-gnu-unique")
+		#only export API symbols
+		set(CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS} " -Wl,--version-script=${CMAKE_SOURCE_DIR}/include/opendatacon/ModuleABI.version")
 	endif()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
 	option(STATIC_LIBSTDC++ "Link libstdc++ statically" ON)
