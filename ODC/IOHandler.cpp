@@ -96,15 +96,19 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 	{
 		throw std::runtime_error("Uninitialised io_service on enabled IOHandler");
 	}
-	if(cb_number == 1)
+
+	if(cb_number < 2)
 		return pStatusCallback;
 
+	//We must keep the io_service active for the life of the strand/handler we're about to create
+	auto work = std::make_shared<asio::io_service::work>(*pIOS);
 	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
 	auto pExecCount = std::make_shared<size_t>(0);
 	auto pCB_sync = std::make_shared<asio::io_service::strand>(*pIOS);
 	return std::make_shared<std::function<void (CommandStatus status)>>
 		       (pCB_sync->wrap(
-				 [pCB_sync,
+				 [work,
+				  pCB_sync,
 				  pCombinedStatus,
 				  pExecCount,
 				  cb_number,
