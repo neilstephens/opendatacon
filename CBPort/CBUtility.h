@@ -33,7 +33,6 @@
 #include <array>
 #include <sstream>
 #include <iomanip>
-#include <algorithm>
 
 #include "CB.h"
 
