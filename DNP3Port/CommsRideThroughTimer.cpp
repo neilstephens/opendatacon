@@ -49,7 +49,16 @@ void CommsRideThroughTimer::Trigger()
 		});
 }
 
-
+void CommsRideThroughTimer::FastForward()
+{
+	TimerAccessStrand.post([this]()
+		{
+			if(RideThroughInProgress)
+				aCommsRideThroughTimer.cancel();
+			RideThroughInProgress = false;
+			CommsBadCB();
+		});
+}
 
 void CommsRideThroughTimer::Cancel()
 {

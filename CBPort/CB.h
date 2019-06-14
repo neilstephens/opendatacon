@@ -71,7 +71,7 @@
 	if (auto log = odc::spdlog_get("CBPort")) \
 		log->info(__VA_ARGS__);
 
-void CommandLineLoggingSetup();
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

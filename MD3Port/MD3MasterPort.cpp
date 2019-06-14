@@ -109,7 +109,7 @@ void MD3MasterPort::Build()
 		PollScheduler.reset(new ASIOScheduler(*pIOS));
 
 	MasterCommandProtectedData.CurrentCommandTimeoutTimer.reset(new Timer_t(*pIOS));
-	MasterCommandStrand.reset(new asio::strand(*pIOS));
+	MasterCommandStrand.reset(new asio::io_service::strand(*pIOS));
 
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(IsOutStation, MyPointConf->NewDigitalCommands, *pIOS);

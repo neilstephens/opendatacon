@@ -1,5 +1,14 @@
-opendatacon version 1.1.1
+opendatacon version 1.2.1
 
+1.2.1
+	- Updated third party libraries
+	- Fixes for cleaner shutdown
+
+1.2.0
+	- CBPort - Conitel 2020 and Baker protocols
+	- Extra core tests
+	- Major core bugfixes - bugs were introduced in 1.0.0
+		- ALL PREVIOUS 1.X.X VERSIONS ARE CONSIDERED BROKEN/DEPRECATED
 1.1.1
 	- Fix Windows packages - some dlls weren't bundled properly, and x86 named wrong 
 
@@ -32,7 +41,7 @@ opendatacon version 1.1.1
 	- Misc. fixes recommended by code review (more to come in future releases)  
 
 0.4.1
-0.3.5
+0.3.5 (backport)
 	- Hotfix for File Logger - Logs persist on restart
 	- DNP3 Master port initialise port down (comms point, quality flags) directly before enabling stack.
 	

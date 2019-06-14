@@ -66,7 +66,7 @@ TEST_CASE(SUITE("TCP link"))
 
 	//TODO: write a better way to wait for GetStatus
 	unsigned int count = 0;
-	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
+	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 20000)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
@@ -79,7 +79,7 @@ TEST_CASE(SUITE("TCP link"))
 	OPUT->Disable();
 
 	count = 0;
-	while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 5000)
+	while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
@@ -101,11 +101,13 @@ TEST_CASE(SUITE("Serial link"))
 		WARN("Can't get system shell to execute socat (for virtual serial ports) - skipping test");
 		return;
 	}
-	if(system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &"))
+	if(system("socat -h > /dev/null"))
 	{
 		WARN("Failed to execute socat (for virtual serial ports) - skipping test");
 		return;
 	}
+
+	system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &");
 
 	asio::io_service ios;
 	auto work = std::make_unique<asio::io_service::work>(ios);
@@ -148,7 +150,7 @@ TEST_CASE(SUITE("Serial link"))
 
 	//TODO: write a better way to wait for GetStatus
 	unsigned int count = 0;
-	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
+	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 20000)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
@@ -161,7 +163,7 @@ TEST_CASE(SUITE("Serial link"))
 	OPUT->Disable();
 
 	count = 0;
-	while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 5000)
+	while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
@@ -174,4 +176,6 @@ TEST_CASE(SUITE("Serial link"))
 	t.join();
 	MPUT.reset();
 	OPUT.reset();
+
+	system("killall socat");
 }
