@@ -213,9 +213,6 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 endif()
 
 find_package(Threads REQUIRED)
-if(CMAKE_USE_PTHREADS_INIT)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-endif()
 
 # the RPATH to be used when installing - allowing local libraries to be found for standalone installs,
 # as well as installed locations
