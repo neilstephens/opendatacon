@@ -38,6 +38,7 @@ if(USE_DNP3_SUBMODULE)
 			-DASIO_HOME=${ASIO_HOME}/include
 			-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 			-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+			-DASIO_DYN_LINK
 		CACHE STRING "cmake options to use when building DNP3 submodule"
 	)
 	if(NOT EXISTS "${DNP3_SOURCE}/.git")
