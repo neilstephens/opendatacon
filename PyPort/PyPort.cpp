@@ -44,7 +44,7 @@
 
 using namespace odc;
 
-std::shared_ptr<asio::strand> PyPort::python_strand = nullptr;
+std::shared_ptr<asio::io_context::strand> PyPort::python_strand = nullptr;
 
 // Constructor for PyPort --------------------------------------
 PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
@@ -91,7 +91,7 @@ void PyPort::Build()
 	if (python_strand == nullptr)
 	{
 		LOGDEBUG("Create python_strand");
-		python_strand.reset(new asio::strand(*pIOS));
+		python_strand.reset(new asio::io_context::strand(*pIOS));
 	}
 
 	// Every call to pWrapper should be strand protected.

@@ -70,7 +70,7 @@ set(TESTS OFF CACHE BOOL "Build tests"						)
 set(WEBUI OFF CACHE BOOL "Build the http(s) web user interface"	)
 set(DNP3PORT OFF CACHE BOOL "Build DNP3 Port"				)
 set(JSONPORT OFF CACHE BOOL "Build JSON Port"				)
-set(PYPORT OFF CACHE BOOL "Build python Port"				)
+set(PYPORT OFF CACHE BOOL "Build Python Port"				)
 set(MODBUSPORT OFF CACHE BOOL "Build Modbus Port"			)
 set(SIMPORT OFF CACHE BOOL "Build Simulation Port"			)
 set(MD3PORT OFF CACHE BOOL "Build MD3 Port"					)
@@ -86,7 +86,7 @@ if(FULL)
 	set(WEBUI ON CACHE BOOL "Build the http(s) web user interface"	FORCE)
 	set(DNP3PORT ON CACHE BOOL "Build DNP3 Port"			   	FORCE)
 	set(JSONPORT ON CACHE BOOL "Build JSON Port"			   	FORCE)
-	set(PYPORT ON CACHE BOOL "Build python Port"			   	FORCE)
+	set(PYPORT ON CACHE BOOL "Build Python Port"			   	FORCE)
 	set(MODBUSPORT ON CACHE BOOL "Build Modbus Port"		   	FORCE)
 	set(SIMPORT ON CACHE BOOL "Build Simulation Port"		   	FORCE)
 	set(MD3PORT ON CACHE BOOL "Build MD3 Port"			   	FORCE)
@@ -147,6 +147,7 @@ endif()
 # Compiler configuration
 
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
+add_definitions(-DBOOST_ASIO_ENABLE_HANDLER_TRACKING) # Add Handler tracking output to stderr SJE
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

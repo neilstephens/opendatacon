@@ -46,7 +46,7 @@ typedef std::shared_ptr<std::function<void (const std::string response)>> Respon
 
 using namespace odc;
 
-void CommandLineLoggingSetup();
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
 class PyPort: public DataPort
@@ -77,7 +77,7 @@ private:
 	std::string JSONOverride;
 
 	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
-	static std::shared_ptr<asio::strand> python_strand;
+	static std::shared_ptr<asio::io_context::strand> python_strand;
 
 	// Worker methods
 	void PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c);

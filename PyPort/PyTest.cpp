@@ -186,9 +186,9 @@ void TestTearDown(void)
 	#endif
 }
 // Used for command line test setup
-void CommandLineLoggingSetup()
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
 {
-	SetupLoggers();
+	SetupLoggers(log_level);
 	WriteStartLoggingMessage("All Tests");
 }
 void CommandLineLoggingCleanup()
