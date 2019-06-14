@@ -26,6 +26,12 @@
 
 #include "PyPort.h"
 
+#ifdef NONVSTESTING
+#define CATCH_CONFIG_RUNNER
+#include <catch.hpp>
+#else
+#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
+#endif
 
 extern "C" PyPort* new_PyPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
 {

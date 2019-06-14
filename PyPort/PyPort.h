@@ -29,7 +29,7 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-//#define NONVSTESTING
+#define NONVSTESTING
 
 #include <Python.h>
 #include <unordered_map>
@@ -45,6 +45,9 @@ typedef std::shared_ptr<Timer_t> pTimer_t;
 typedef std::shared_ptr<std::function<void (const std::string response)>> ResponseCallback_t;
 
 using namespace odc;
+
+void CommandLineLoggingSetup();
+void CommandLineLoggingCleanup();
 
 class PyPort: public DataPort
 {

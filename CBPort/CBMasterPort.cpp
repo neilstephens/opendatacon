@@ -82,7 +82,7 @@ void CBMasterPort::SocketStateHandler(bool state)
 	{
 		PollScheduler->Start();
 		PublishEvent(std::move(ConnectState::CONNECTED));
-		msg = Name + ": pConnection established.";
+		msg = Name + ": Connection established.";
 		ResetDigitalCommandSequenceNumber(); // Outstation when it sees this will send all digital values as if on power up.
 	}
 	else
@@ -94,7 +94,7 @@ void CBMasterPort::SocketStateHandler(bool state)
 		ClearCBCommandQueue(); // Remove all waiting commands and callbacks
 
 		PublishEvent(std::move(ConnectState::DISCONNECTED));
-		msg = Name + ": pConnection closed.";
+		msg = Name + ": Connection closed.";
 	}
 	LOGINFO(msg);
 }
