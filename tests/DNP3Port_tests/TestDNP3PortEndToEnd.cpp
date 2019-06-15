@@ -29,14 +29,14 @@
 
 TEST_CASE(SUITE("TCP link"))
 {
-	auto ios = std::make_unique<asio::io_service>();
-	auto work = std::make_unique<asio::io_service::work>(*ios);
-	std::thread t([&](){ios->run();});
-
 	//Load the library
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
+		auto ios = std::make_unique<asio::io_service>();
+		auto work = std::make_unique<asio::io_service::work>(*ios);
+		std::thread t([&](){ios->run();});
+
 		//make an outstation port
 		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
 		REQUIRE(newOutstation);
@@ -92,6 +92,7 @@ TEST_CASE(SUITE("TCP link"))
 
 		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
+
 		work.reset();
 		t.join();
 		ios.reset();
@@ -102,14 +103,14 @@ TEST_CASE(SUITE("TCP link"))
 
 TEST_CASE(SUITE("Serial link"))
 {
-	auto ios = std::make_unique<asio::io_service>();
-	auto work = std::make_unique<asio::io_service::work>(*ios);
-	std::thread t([&](){ios->run();});
-
 	//Load the library
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
+		auto ios = std::make_unique<asio::io_service>();
+		auto work = std::make_unique<asio::io_service::work>(*ios);
+		std::thread t([&](){ios->run();});
+
 		if (!system(NULL))
 		{
 			WARN("Can't get system shell to execute socat (for virtual serial ports) - skipping test");
