@@ -164,14 +164,12 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 		message("using special options for GNU compiler")
 		#--no-gnu-unique is required for true dynamic loading and unloading of shared libs
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --no-gnu-unique")
-		execute_process(
-			COMMAND ldd --version
-			OUTPUT_VARIABLE glibc_version_str
-			OUTPUT_STRIP_TRAILING_WHITESPACE
+
+		try_run(RUN_RESULT_VAR COMPILE_RESULT_VAR
+			${CMAKE_BINARY_DIR}/test/ ${CMAKE_SOURCE_DIR}/glibc-version.c
+			RUN_OUTPUT_VARIABLE glibc_version
 		)
-		message("ldd --version : ${glibc_version_str}")
-		string(REGEX MATCH "2\\.[0-9][0-9]" glibc_version ${glibc_version_str})
-		message("Matched version: ${glibc_version}")
+		message("glibc version: ${glibc_version}")
 		if(glibc_version LESS 2.17)
 			message("linking relatime lib for old libc")
 			set(RT "rt")
