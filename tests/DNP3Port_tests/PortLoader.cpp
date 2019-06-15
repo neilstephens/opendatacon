@@ -24,7 +24,7 @@
 
 //TODO: refactor this to be able to unload the library too
 
-void* GetPortFunc(void* pluginlib, const std::string& objname, bool destroy)
+void* GetPortFunc(module_ptr pluginlib, const std::string& objname, bool destroy)
 {
 	std::string funcname;
 	if(destroy)
@@ -43,12 +43,12 @@ void* GetPortFunc(void* pluginlib, const std::string& objname, bool destroy)
 	return port_func;
 }
 
-newptr GetPortCreator(void* pluginlib, const std::string& objname)
+newptr GetPortCreator(module_ptr pluginlib, const std::string& objname)
 {
 	return (newptr)GetPortFunc(pluginlib,objname);
 }
 
-delptr GetPortDestroyer(void *pluginlib, const std::string& objname)
+delptr GetPortDestroyer(module_ptr pluginlib, const std::string& objname)
 {
 	return (delptr)GetPortFunc(pluginlib,objname,true);
 }
