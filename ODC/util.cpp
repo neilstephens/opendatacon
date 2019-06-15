@@ -24,14 +24,13 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#include <opendatacon/util.h>
+
 //compile asio only in libODC
 //ASIO_DYN_LINK lets other modules link to it
 #include <asio/impl/src.hpp>
 
-#include <opendatacon/util.h>
 #include <regex>
-
-using namespace std;
 
 namespace odc
 {
@@ -71,7 +70,7 @@ void spdlog_shutdown()
 	spdlog::shutdown();
 }
 
-bool getline_noncomment(istream& is, string& line)
+bool getline_noncomment(std::istream& is, std::string& line)
 {
 	//chew up blank lines and comments
 	do
@@ -86,7 +85,7 @@ bool getline_noncomment(istream& is, string& line)
 	return true;
 }
 
-bool extract_delimited_string(istream& ist, string& extracted)
+bool extract_delimited_string(std::istream& ist, std::string& extracted)
 {
 	extracted.clear();
 	char delim;
@@ -106,7 +105,7 @@ bool extract_delimited_string(istream& ist, string& extracted)
 	return false;
 }
 
-bool extract_delimited_string(const std::string& delims, istream& ist, string& extracted)
+bool extract_delimited_string(const std::string& delims, std::istream& ist, std::string& extracted)
 {
 	extracted.clear();
 	char delim;
