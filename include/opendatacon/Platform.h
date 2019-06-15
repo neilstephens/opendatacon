@@ -53,6 +53,7 @@ inline BOOL WINAPI UnLoadModule(HMODULE handle)
 	return FreeLibrary(handle);
 }
 
+typedef FARPROC symbol_ptr;
 inline FARPROC LoadSymbol(HMODULE a, const std::string& b)
 {
 	return GetProcAddress(a, b.c_str());
@@ -116,6 +117,8 @@ inline int UnLoadModule(void* handle)
 	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
 	return dlclose(handle);
 }
+
+typedef void* symbol_ptr;
 inline void* LoadSymbol(void* a, const std::string& b)
 {
 	return dlsym(a, b.c_str());

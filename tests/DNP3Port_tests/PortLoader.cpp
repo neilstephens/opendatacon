@@ -24,7 +24,7 @@
 
 //TODO: refactor this to be able to unload the library too
 
-void* GetPortFunc(module_ptr pluginlib, const std::string& objname, bool destroy)
+symbol_ptr GetPortFunc(module_ptr pluginlib, const std::string& objname, bool destroy)
 {
 	std::string funcname;
 	if(destroy)
@@ -33,7 +33,7 @@ void* GetPortFunc(module_ptr pluginlib, const std::string& objname, bool destroy
 		funcname = "new_";
 
 	funcname += objname + "Port";
-	void* port_func = LoadSymbol(pluginlib, funcname.c_str());
+	symbol_ptr port_func = LoadSymbol(pluginlib, funcname.c_str());
 
 	if (port_func == nullptr)
 	{
