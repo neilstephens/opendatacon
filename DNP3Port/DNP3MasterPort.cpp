@@ -37,6 +37,7 @@
 
 DNP3MasterPort::~DNP3MasterPort()
 {
+	pCommsRideThroughTimer.reset();
 	ChannelStateSubscriber::Unsubscribe(this);
 	if(IntegrityScan)
 		IntegrityScan.reset();
