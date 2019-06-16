@@ -187,8 +187,11 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 		endif()
 	endif()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
-	#only export API symbols
-	set(CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS} " -Wl,--version-script=${CMAKE_SOURCE_DIR}/include/opendatacon/ModuleABI.version")
+	if(NOT APPLE)
+		#only export API symbols
+		message("Using linker version script")
+		set(CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS} " -Wl,--version-script=${CMAKE_SOURCE_DIR}/include/opendatacon/ModuleABI.version")
+	endif()
 	# tell asio to only compile once (where <asio/ssl/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASIO_DYN_LINK")

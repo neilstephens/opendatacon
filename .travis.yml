@@ -119,11 +119,11 @@ install:
 
 script:
   - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT ..
-  - make -j2
+  - make -j3
   - make package
   - make install
   - $RUN install/bin/ODC_tests
- # - $RUN install/bin/DNP3Port_tests
+  - $RUN install/bin/DNP3Port_tests
   - $RUN install/bin/MD3Port_tests
   - $RUN install/bin/CBPort_tests error -d yes
   - $STOP
