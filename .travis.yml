@@ -122,9 +122,9 @@ script:
   - make -j3
   - make package
   - make install
-  - $RUN install/bin/ODC_tests
-#  - $RUN install/bin/DNP3Port_tests
-  - $RUN install/bin/MD3Port_tests
+  - $RUN install/bin/ODC_tests -d yes
+  - $RUN install/bin/DNP3Port_tests -d yes
+  - $RUN install/bin/MD3Port_tests -d yes
   - $RUN install/bin/CBPort_tests error -d yes
   - $STOP
 
