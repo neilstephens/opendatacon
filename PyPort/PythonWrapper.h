@@ -52,19 +52,23 @@
 
 using namespace odc;
 
+typedef std::function<void (uint32_t, uint32_t)> SetTimerFnType;
 
 class PythonWrapper
 {
 
 public:
-	PythonWrapper(const std::string& aName);
+	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn);
 	~PythonWrapper();
 	void Build(const std::string& modulename, std::string& pyLoadModuleName, std::string& pyClassName, std::string& PortName);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
 	void Enable();
 	void Disable();
 	CommandStatus Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
+	void CallTimerHandler(uint32_t id);
 	std::string RestHandler(const std::string& url);
+
+	SetTimerFnType GetPythonPortSetTimerFn() { return PythonPortSetTimerFn; }; // Protect set access, only allow get.
 
 	static void PyErrOutput();
 
@@ -108,7 +112,10 @@ private:
 	PyObject* pyFuncEnable = nullptr;
 	PyObject* pyFuncDisable = nullptr;
 	PyObject* pyFuncEvent = nullptr;
+	PyObject* pyTimerHandler = nullptr;
 	PyObject* pyRestHandler = nullptr;
+
+	SetTimerFnType PythonPortSetTimerFn;
 };
 
 #endif /* PYWRAPPER_H_ */

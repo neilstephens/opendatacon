@@ -29,7 +29,7 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-#define NONVSTESTING
+//#define NONVSTESTING
 
 #include <Python.h>
 #include <unordered_map>
@@ -62,6 +62,7 @@ public:
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void SetTimer(uint32_t id, uint32_t delayms);
 	void RestHandler(const std::string& url, ResponseCallback_t pResponseCallback);
 
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance

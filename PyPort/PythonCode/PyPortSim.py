@@ -45,7 +45,9 @@ class SimPortClass:
         self.objectname = objectname    # So we can find this instance later to call appropriate PublishEvent method
         self.guid = odcportguid # So that when we call an odc method, we can work out which odcport to hand it too. 
         self.Enabled= False;
+        self.i = 0
         self.LogDebug("SimPortClass Init Called - {}".format(objectname))        # No forward declaration in Python
+        return
 
     def Config(self, MainJSON, OverrideJSON):
         """ The JSON values should be passed as strings, which we then load into a dictionary for processing"""
@@ -64,19 +66,28 @@ class SimPortClass:
            self.LogError("Exception on parsing JSON Config data - {}".format(sys.exc_info()[0]))
            return
         self.LogDebug("JSON Config strings Parsed")
+        return
 
     def Enable(self):
         self.LogTrace("Enabled - {}".format(datetime.now().isoformat(" ")))
         self.enabled = True;
+        return
 
     def Disable(self):
         self.LogDebug("Disabled - {}".format(datetime.now().isoformat(" ")))
         self.enabled = False
+        return
 
     # Needs to return True or False, which will be translated into CommandStatus::SUCCESS or CommandStatus::UNDEFINED
     def EventHandler(self,EventType, Index, Time, Quality, Sender):
         self.LogDebug("EventHander: {}, {}".format(Sender, self.guid))
         return True
+
+    # Will be called at the appropriate time by the ASIO handler system. Will be passed an id for the timeout, 
+    # so you can have multiple timers running.
+    def TimerHandler(self,TimerId):
+        self.LogDebug("TimerHander: ID {}, {}".format(TimerId, self.guid))
+        return
 
     # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
     # called. It will be decode sufficiently so that it is passed to the correct PythonPort (us)
@@ -88,5 +99,9 @@ class SimPortClass:
         self.LogDebug("RestRequestHander: {}".format(url))
         Response = {}   # Empty Dict
         Response['test'] = "Hello"
+
+        odc.SetTimer(self.guid, self.i, 1001-self.i)    # Set a timer to go off in 1 second
+        self.i = self.i + 1
+       // self.LogDebug("RestRequestHander: Sent Set Timer Command {}".format(self.i))
 
         return json.dumps(Response)

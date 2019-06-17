@@ -33,4 +33,7 @@ print("Event Result - {}".format(res))
 
 resjson = x.RestRequestHandler("http:\\\\testserver\\name\\cboperation?Fail=true")
 print("JSON Response {}".format(resjson))
+
+x.TimerHandler(1)
+
 print("Done")

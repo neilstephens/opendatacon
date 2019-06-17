@@ -170,9 +170,49 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 	return Py_BuildValue("i", 1);
 }
 
+// This is an extension method that we have provided to our embedded Python. It will post an event into the ODC bus.
+// It is static, so we have to work out which instance of the PythonWrapper class should handle it.
+static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
+{
+	uint32_t id;
+	uint32_t delay;
+	uint64_t guid;
+
+	// Now parse the arguments provided, Long (L) Unsigned ints (I) and the function name.
+	if (!PyArg_ParseTuple(args, "LII:SetTimer", &guid, &id, &delay))
+	{
+		PythonWrapper::PyErrOutput();
+		return NULL;
+	}
+	LOGDEBUG("Python SetTimer ID: {}, Delay {}", id, delay);
+
+	// Work out which instance of our PyWrapper is talking to us.
+	PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
+
+	LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
+
+	if (thisPyWrapper != nullptr)
+	{
+		// Will create an async wait and call the Python code at the correct time.
+		// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
+		// The PyPort ensures that pyWrapper is managed within a strand
+		LOGDEBUG("Python SetTimer - about to call PyPort SetTimer method");
+		auto fn = thisPyWrapper->GetPythonPortSetTimerFn();
+		fn(id, delay);
+	}
+	else
+	{
+		LOGDEBUG("odc.setTimer called from Python code for unknown PyPort object");
+	}
+
+	// Return a PyObject return value, in this case "none".
+	return Py_BuildValue("");
+}
+
 static PyMethodDef odcMethods[] = {
 	{"log", odc_log, METH_VARARGS, "Process a log message, level and string message"},
 	{"PublishEvent", odc_PublishEvent, METH_VARARGS, "Publish ODC event to subscribed ports"},
+	{"SetTimer", odc_SetTimer, METH_VARARGS, "Set a Timer Callback up"},
 	{NULL, NULL, 0, NULL}
 };
 
@@ -198,12 +238,12 @@ void ImportODCModule()
 
 #pragma region Startup/Setup Functions
 
-PythonWrapper::PythonWrapper(const std::string& aName):
-	Name(aName)
+PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn):
+	Name(aName),
+	PythonPortSetTimerFn(SetTimerFn)
 {
-	if (InterpreterUseCount == 0)
+	if (InterpreterUseCount++ == 0) // Test and Increment!
 	{
-		InterpreterUseCount++;
 		InitialisePyInterpreter(); // We only need one for a running ODC instance...
 	}
 }
@@ -255,6 +295,8 @@ PythonWrapper::~PythonWrapper()
 		Py_XDECREF(pyFuncEvent);
 		Py_XDECREF(pyFuncEnable);
 		Py_XDECREF(pyFuncDisable);
+		Py_XDECREF(pyTimerHandler);
+		Py_XDECREF(pyRestHandler);
 
 		RemoveWrapperMapping();
 		Py_XDECREF(pyInstance);
@@ -365,6 +407,7 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 	pyFuncEnable = GetFunction(pyInstance, "Enable");
 	pyFuncDisable = GetFunction(pyInstance, "Disable");
 	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
+	pyTimerHandler = GetFunction(pyInstance, "TimerHandler");
 	pyRestHandler = GetFunction(pyInstance, "RestRequestHandler");
 	//TODO: Call the config function in script ProcessJSONConfig(self, MainJSON, OverrideJSON)
 }
@@ -502,6 +545,24 @@ CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> event, const
 	return CommandStatus::UNDEFINED;
 }
 
+// We have to call this from the PyPort as an asyncwait on the strand. We just pass in the ID, as the delay will have been used.
+void PythonWrapper::CallTimerHandler( uint32_t id)
+{
+	GetPythonGIL g;
+	if (!g.OkToContinue())
+	{
+		LOGERROR("Error - Interpreter Closing Down in SetTimer");
+		return;
+	}
+	auto pyArgs = PyTuple_New(1);
+	auto pyID = PyLong_FromUnsignedLong(id);
+
+	// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
+	PyTuple_SetItem(pyArgs, 0, pyID);
+	PyObject* pyResult = PyCall(pyTimerHandler, pyArgs); // No passed variables, assume no delayed return
+	if (pyResult) Py_DECREF(pyResult);
+	Py_DECREF(pyArgs);
+};
 
 // This is a handler for a Rest request received by the (global to all PythonPorts) handler, which will pass it to us.
 // We will get the url, and return a JSON formatted response. We do not prune the url in any way, just pass it all through.

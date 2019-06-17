@@ -75,9 +75,6 @@ const char *conffile1 = R"001(
 {
 	"IP" : "127.0.0.1",
 	"Port" : 10000,
-	"OutstationAddr" : 9,
-	"TCPClientServer" : "SERVER",
-	"LinkNumRetry": 4,
 
 	// Python Module/Class/Method name definitions
 	"ModuleName" : "PyPortSim",
@@ -127,7 +124,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 	ofs.close();
 }
 
-void SetupLoggers()
+void SetupLoggers(spdlog::level::level_enum log_level)
 {
 	// So create the log sink first - can be more than one and add to a vector.
 	#if defined(NONVSTESTING)
@@ -139,13 +136,13 @@ void SetupLoggers()
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
-	auto pLibLogger = std::make_shared<spdlog::logger>("PyPort", begin(sinks),end(sinks));
-	pLibLogger->set_level(spdlog::level::trace);
+	auto pLibLogger = std::make_shared<spdlog::logger>("PyPort", begin(sinks), end(sinks));
+	pLibLogger->set_level(log_level);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
-	pODCLogger->set_level(spdlog::level::trace);
+	pODCLogger->set_level(log_level);
 	odc::spdlog_register_logger(pODCLogger);
 
 }
@@ -170,7 +167,7 @@ void WriteStartLoggingMessage(std::string TestName)
 void TestSetup(std::string TestName, bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
-	SetupLoggers();
+	SetupLoggers(spdlog::level::level_enum::trace);
 	#endif
 	WriteStartLoggingMessage(TestName);
 
@@ -198,7 +195,7 @@ void CommandLineLoggingCleanup()
 
 void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
 {
-	// We don\92t have to consider the timer going out of scope in this use case.
+	// We dont have to consider the timer going out of scope in this use case.
 	Timer_t timer(IOS);
 	timer.expires_from_now(std::chrono::seconds(seconds));
 	timer.async_wait([&IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
@@ -258,6 +255,10 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 	auto PythonPort = std::make_unique<PyPort>("TestMaster", conffilename1, overridejson); \
 	PythonPort->SetIOS(&IOS);      \
 	PythonPort->Build();
+#define TEST_PythonPort2(overridejson)\
+	auto PythonPort2 = std::make_unique<PyPort>("TestMaster2", conffilename1, overridejson); \
+	PythonPort2->SetIOS(&IOS);      \
+	PythonPort2->Build();
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -292,12 +293,14 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 	// Then we update the data in the point table, scan again and check the data we get back.
 	STANDARD_TEST_SETUP();
 	TEST_PythonPort(Json::nullValue);
+	TEST_PythonPort2(Json::nullValue);
 
-	START_IOS(2);
+	START_IOS(4);
 
 	WaitIOS(IOS, 2); // Allow build to run
 
 	PythonPort->Enable();
+	PythonPort2->Enable();
 
 	WaitIOS(IOS, 1);
 
@@ -335,7 +338,23 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 	WaitIOS(IOS, 2);
 	REQUIRE(sres == "{\"test\": \"Hello\"}"); // The Get will Wait for the result to be set.
 
+	// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.
+	PythonPort->SetTimer(120, 1200);
+	PythonPort->SetTimer(121, 1000);
+	PythonPort->SetTimer(122, 800);
+
+	for (int i = 0; i < 1000; i++)
+	{
+		url = fmt::format("RestHandler sent url {:d}", i);
+		PythonPort2->SetTimer(i + 100, 1001 - i);
+		PythonPort->RestHandler(url, pResponseCallback);
+	}
+
+	// Wait - we should see the timer callback triggered.
+	WaitIOS(IOS, 5);
+
 	PythonPort->Disable();
+	PythonPort2->Disable();
 
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();

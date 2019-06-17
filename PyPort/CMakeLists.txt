@@ -19,7 +19,7 @@
  # 
 project(PyPort)
 cmake_minimum_required(VERSION 2.8)
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def PythonCode/*.py)
 
 find_package(PythonLibs REQUIRED)
 

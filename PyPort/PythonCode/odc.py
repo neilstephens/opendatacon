@@ -9,3 +9,8 @@ def log(guid, level, message):
 def PublishEvent(guid, ODCIndex, value, quality, pyTime):
     print("Publish Event - Guid - {} - {} {} {} {}".format(guid, ODCIndex, value, quality, pyTime))
     return True
+
+# "LII:SetTimer"
+def SetTimer(guid, id, milliseconds):
+    print("SetTimer - Guid - {} - ID {} - Delay - {}".format(guid, id, milliseconds))
+    return
