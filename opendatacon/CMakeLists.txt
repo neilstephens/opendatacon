@@ -26,10 +26,6 @@ else()
 	file(GLOB DAEMON_SRC_LIST POSIXDaemon/*.cpp POSIXDaemon/*.h)
 endif()
 
-if(CMAKE_USE_PTHREADS_INIT)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-endif()
-
 option(USE_TCLAP_SUBMODULE "Use git submodule to download tclap header library" ON)
 
 set(TCLAP_HOME_INSTRUCTIONS "Choose the location of tclap header library: where it was installed - there should be an include directory within")
