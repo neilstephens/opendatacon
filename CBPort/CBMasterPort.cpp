@@ -157,7 +157,7 @@ void CBMasterPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 // Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
 void CBMasterPort::QueueCBCommand(const CBMessage_t &CompleteCBMessage, SharedStatusCallback_t pStatusCallback)
 {
-	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post. Note the calling thread must be one of the io_service threads.... this changes our tests!
+	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post.
 		{
 			if (MasterCommandProtectedData.MasterCommandQueue.size() < MasterCommandProtectedData.MaxCommandQueueSize)
 			{
