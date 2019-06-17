@@ -59,12 +59,15 @@ ConnectionTokenType::~ConnectionTokenType()
 	}
 }
 
-CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_service
-	bool aisServer,                                //Whether to act as a server or client
-	const std::string& aEndPoint,                  //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                      //Port to connect to if client, or listen on if server
+CBConnection::CBConnection
+(
+	std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                          //Whether to act as a server or client
+	const std::string& aEndPoint,            //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                //Port to connect to if client, or listen on if server
 	bool isbakerdevice,
-	uint16_t retry_time_ms):
+	uint16_t retry_time_ms
+):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort),
@@ -86,12 +89,15 @@ CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_ser
 }
 
 // Static Method
-ConnectionTokenType CBConnection::AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
-	bool aisServer,                                                    //Whether to act as a server or client
-	const std::string& aEndPoint,                                      //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                                          //Port to connect to if client, or listen on if server
+ConnectionTokenType CBConnection::AddConnection
+(
+	std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                          //Whether to act as a server or client
+	const std::string& aEndPoint,            //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                //Port to connect to if client, or listen on if server
 	bool isbakerdevice,
-	uint16_t retry_time_ms)
+	uint16_t retry_time_ms
+)
 {
 	std::string ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 

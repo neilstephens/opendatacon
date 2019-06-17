@@ -41,7 +41,7 @@
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
-	pIOS(std::make_unique<asio::io_service>(std::thread::hardware_concurrency())),
+	pIOS(std::make_unique<asio::io_service>(std::thread::hardware_concurrency()+1)),
 	ios_working(std::make_unique<asio::io_service::work>(*pIOS)),
 	shutting_down(false),
 	shut_down(false),
@@ -89,9 +89,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		interface.second->AddResponder("Plugins", Interfaces);
 	}
 	for(auto& port : DataPorts)
-		port.second->SetIOS(pIOS.get());
+		port.second->SetIOS(pIOS);
 	for(auto& conn : DataConnectors)
-		conn.second->SetIOS(pIOS.get());
+		conn.second->SetIOS(pIOS);
 }
 
 DataConcentrator::~DataConcentrator()
@@ -239,7 +239,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
 					temp_logger->error("Invalid TCPLog TCPClientServer setting '{}'. Choose CLIENT or SERVER. Defaulting to SERVER.", TCPLogJSON["TCPClientServer"].asString());
 
-				TCPbuf.Init(pIOS.get(),isServer,TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString());
+				TCPbuf.Init(pIOS,isServer,TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString());
 				pTCPostream = std::make_unique<std::ostream>(&TCPbuf);
 			}
 		}
@@ -624,7 +624,6 @@ void DataConcentrator::Run()
 	for(auto& thread : threads)
 		thread.join();
 	threads.clear();
-	pIOS.reset();
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Destoying Interfaces...");

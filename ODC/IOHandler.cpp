@@ -51,7 +51,7 @@ void IOHandler::Subscribe(IOHandler* pIOHandler, std::string aName)
 	this->Subscribers[aName] = pIOHandler;
 }
 
-void IOHandler::SetIOS(asio::io_service* ios_ptr)
+void IOHandler::SetIOS(std::shared_ptr<asio::io_service> ios_ptr)
 {
 	pIOS = ios_ptr;
 }

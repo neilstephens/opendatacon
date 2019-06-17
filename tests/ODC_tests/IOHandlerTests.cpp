@@ -41,8 +41,8 @@ TEST_CASE(SUITE("StatusCallback"))
 	 * verify the status callback
 	 */
 
-	asio::io_service ios;
-	asio::io_service::work work(ios);
+	auto ios = std::make_shared<asio::io_service>();
+	auto work = std::make_shared<asio::io_service::work>(*ios);
 
 	PublicPublishPort Source("Null1","",Json::Value::nullSingleton());
 	NullPort Null2("Null2","",Json::Value::nullSingleton());
@@ -86,12 +86,12 @@ TEST_CASE(SUITE("StatusCallback"))
 	DataConnector Conn4("Conn4","",Conn4Conf);
 	DataConnector* Conns[4] = {&Conn1,&Conn2,&Conn3,&Conn4};
 
-	Source.SetIOS(&ios);
+	Source.SetIOS(ios);
 	for(auto& p : Sinks)
-		p->SetIOS(&ios);
+		p->SetIOS(ios);
 	for(auto& c :Conns)
 	{
-		c->SetIOS(&ios);
+		c->SetIOS(ios);
 		c->Enable();
 	}
 
@@ -117,7 +117,7 @@ TEST_CASE(SUITE("StatusCallback"))
 		Source.PublicPublishEvent(event,StatusCallback);
 		while(!executed)
 		{
-			ios.run_one();
+			ios->run_one();
 		}
 		if(mask == 0x00)
 			REQUIRE(cb_status == CommandStatus::BLOCKED);

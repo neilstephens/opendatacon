@@ -28,17 +28,18 @@
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
 	//Load the library
+	InitLibaryLoading();
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		asio::io_service ios;
+		auto ios = std::make_shared<asio::io_service>();
 		newptr newMaster = GetPortCreator(portlib, "DNP3Master");
 		REQUIRE(newMaster);
 		delptr deleteMaster = GetPortDestroyer(portlib, "DNP3Master");
 		REQUIRE(deleteMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
-		MPUT->SetIOS(&ios);
+		MPUT->SetIOS(ios);
 		MPUT->Enable();
 		MPUT->Disable();
 
@@ -46,14 +47,14 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	}
 	/// Test the destruction of an enabled port
 	{
-		asio::io_service ios;
+		auto ios = std::make_shared<asio::io_service>();
 		newptr newMaster = GetPortCreator(portlib, "DNP3Master");
 		REQUIRE(newMaster);
 		delptr deleteMaster = GetPortDestroyer(portlib, "DNP3Master");
 		REQUIRE(deleteMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
-		MPUT->SetIOS(&ios);
+		MPUT->SetIOS(ios);
 		MPUT->Enable();
 
 		deleteMaster(MPUT);

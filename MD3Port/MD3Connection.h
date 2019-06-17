@@ -74,10 +74,10 @@ class MD3Connection
 
 public:
 	MD3Connection
-		(asio::io_service* apIOS,     //pointer to an asio io_service
-		bool aisServer,               //Whether to act as a server or client
-		const std::string& aEndPoint, //IP addr or hostname (to connect to if client, or bind to if server)
-		const std::string& aPort,     //Port to connect to if client, or listen on if server
+		(std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
+		bool aisServer,                           //Whether to act as a server or client
+		const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                 //Port to connect to if client, or listen on if server
 		uint16_t retry_time_ms = 0);
 
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
@@ -95,11 +95,14 @@ public:
 
 	static void RemoveMaster(const ConnectionTokenType &ConnectionTok,uint8_t TargetStationAddress);
 
-	static ConnectionTokenType AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
-		bool aisServer,                                             //Whether to act as a server or client
-		const std::string& aEndPoint,                               //IP addr or hostname (to connect to if client, or bind to if server)
-		const std::string& aPort,                                   //Port to connect to if client, or listen on if server
-		uint16_t retry_time_ms = 0);
+	static ConnectionTokenType AddConnection
+	(
+		std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
+		bool aisServer,                          //Whether to act as a server or client
+		const std::string& aEndPoint,            //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                //Port to connect to if client, or listen on if server
+		uint16_t retry_time_ms = 0
+	);
 
 	static void Open(const ConnectionTokenType &ConnectionTok);
 
@@ -119,7 +122,7 @@ public:
 	static void SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, std::function<void(std::string)> f);
 
 private:
-	asio::io_service* pIOS;
+	std::shared_ptr<asio::io_service> pIOS;
 	std::string EndPoint;
 	std::string Port;
 	std::string ChannelID;

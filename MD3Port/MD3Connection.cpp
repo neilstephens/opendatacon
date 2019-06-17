@@ -59,35 +59,38 @@ ConnectionTokenType::~ConnectionTokenType()
 	}
 }
 
-MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_service
-	bool aisServer,                                  //Whether to act as a server or client
-	const std::string& aEndPoint,                    //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                        //Port to connect to if client, or listen on if server
+MD3Connection::MD3Connection
+	(std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                           //Whether to act as a server or client
+	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                 //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort),
-	isServer(aisServer)
-{
-	pSockMan.reset(new TCPSocketManager<std::string>
+	isServer(aisServer),
+	pSockMan(std::make_shared<TCPSocketManager<std::string>>
 			(pIOS, isServer, EndPoint, Port,
 			std::bind(&MD3Connection::ReadCompletionHandler, this, std::placeholders::_1),
 			std::bind(&MD3Connection::SocketStateHandler, this, std::placeholders::_1),
 			std::numeric_limits<size_t>::max(),
 			true,
-			retry_time_ms));
-
+			retry_time_ms))
+{
 	ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
 	LOGDEBUG("Opened an MD3Connection object " + ChannelID + " As a " + (isServer ? "Server" : "Client"));
 }
 
 // Static Method
-ConnectionTokenType MD3Connection::AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
-	bool aisServer,                                                     //Whether to act as a server or client
-	const std::string& aEndPoint,                                       //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                                           //Port to connect to if client, or listen on if server
-	uint16_t retry_time_ms)
+ConnectionTokenType MD3Connection::AddConnection
+(
+	std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                          //Whether to act as a server or client
+	const std::string& aEndPoint,            //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                //Port to connect to if client, or listen on if server
+	uint16_t retry_time_ms
+)
 {
 	std::string ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 

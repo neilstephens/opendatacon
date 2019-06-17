@@ -30,10 +30,11 @@
 TEST_CASE(SUITE("TCP link"))
 {
 	//Load the library
+	InitLibaryLoading();
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		auto ios = std::make_unique<asio::io_service>();
+		auto ios = std::make_shared<asio::io_service>();
 		auto work = std::make_unique<asio::io_service::work>(*ios);
 		std::thread t([&](){ios->run();});
 
@@ -64,8 +65,8 @@ TEST_CASE(SUITE("TCP link"))
 		MPUT->Build();
 
 		//turn them on
-		OPUT->SetIOS(ios.get());
-		MPUT->SetIOS(ios.get());
+		OPUT->SetIOS(ios);
+		MPUT->SetIOS(ios);
 		OPUT->Enable();
 		MPUT->Enable();
 
@@ -110,10 +111,11 @@ TEST_CASE(SUITE("Serial link"))
 	else
 	{
 		//Load the library
+		InitLibaryLoading();
 		auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 		REQUIRE(portlib);
 		{
-			auto ios = std::make_unique<asio::io_service>();
+			auto ios = std::make_shared<asio::io_service>();
 			auto work = std::make_unique<asio::io_service::work>(*ios);
 			std::thread t([&](){ios->run();});
 
@@ -149,8 +151,8 @@ TEST_CASE(SUITE("Serial link"))
 			MPUT->Build();
 
 			//turn them on
-			OPUT->SetIOS(ios.get());
-			MPUT->SetIOS(ios.get());
+			OPUT->SetIOS(ios);
+			MPUT->SetIOS(ios);
 			OPUT->Enable();
 			MPUT->Enable();
 
