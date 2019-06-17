@@ -51,7 +51,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	InitLibaryLoading();
 
 	//Version
-	this->AddCommand("version", [this](const ParamCollection &params) //"Print version information"
+	this->AddCommand("version", [](const ParamCollection &params) //"Print version information"
 		{
 			Json::Value result;
 			result["version"] = ODC_VERSION_STRING;
@@ -578,7 +578,7 @@ void DataConcentrator::Run()
 		{
 			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
-			pTimer->async_wait([pTimer,this,&Name_n_Conn](asio::error_code err_code)
+			pTimer->async_wait([pTimer,&Name_n_Conn](asio::error_code err_code)
 				{
 					//FIXME: check err_code?
 					Name_n_Conn.second->Enable();
@@ -600,7 +600,7 @@ void DataConcentrator::Run()
 		{
 			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
-			pTimer->async_wait([pTimer,this,&Name_n_Port](asio::error_code err_code)
+			pTimer->async_wait([pTimer,&Name_n_Port](asio::error_code err_code)
 				{
 					//FIXME: check err_code?
 					Name_n_Port.second->Enable();
