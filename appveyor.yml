@@ -71,7 +71,7 @@ build_script:
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target PACKAGE
 test_script:
 - cmd: '%cmake_builddir%\%configuration%\ODC_tests.exe -d yes'
-#- cmd: '%cmake_builddir%\%configuration%\DNP3Port_tests.exe -d yes'
+- cmd: '%cmake_builddir%\%configuration%\DNP3Port_tests.exe -d yes'
 - cmd: '%cmake_builddir%\%configuration%\MD3Port_tests.exe -d yes'
 - cmd: '%cmake_builddir%\%configuration%\CBPort_tests.exe error -d yes'
 

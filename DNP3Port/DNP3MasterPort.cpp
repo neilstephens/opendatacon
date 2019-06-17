@@ -42,7 +42,10 @@ DNP3MasterPort::~DNP3MasterPort()
 	if(IntegrityScan)
 		IntegrityScan.reset();
 	if(pMaster)
+	{
+		pMaster->Shutdown();
 		pMaster.reset();
+	}
 	if(pChannel)
 		pChannel.reset();
 }
