@@ -145,6 +145,9 @@ endif()
 # Compiler configuration
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
 
+#uncomment below to debug asio handlers on stderr
+#add_definitions(-DASIO_ENABLE_HANDLER_TRACKING)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
 	message("CMAKE configuring opendatacon for Visual Studio C++" )
@@ -193,8 +196,6 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	if(NOT APPLE)
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
 		#only export API symbols
-		message("Using linker version script")
-		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--version-script=${CMAKE_SOURCE_DIR}/include/opendatacon/ModuleABI.version")
 	endif()
 	# tell asio to only compile once (where <asio/ssl/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
