@@ -160,6 +160,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+	endif()
 	if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 		message("using special options for GNU compiler")
 		#--no-gnu-unique is required for true dynamic loading and unloading of shared libs
@@ -188,9 +191,10 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	endif()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
 	if(NOT APPLE)
+		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
 		#only export API symbols
 		message("Using linker version script")
-		set(CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS} " -Wl,--version-script=${CMAKE_SOURCE_DIR}/include/opendatacon/ModuleABI.version")
+		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--version-script=${CMAKE_SOURCE_DIR}/include/opendatacon/ModuleABI.version")
 	endif()
 	# tell asio to only compile once (where <asio/ssl/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
@@ -201,6 +205,11 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
 		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++")
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -static-libstdc++")
+		#why is this not automatic with Clang?
+		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+			#need to add these to the link libraries manually
+			set(LIBCXX "c++" "c++abi")
+		endif()
 	endif()
 
 	# different release and debug flags
