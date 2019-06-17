@@ -277,15 +277,6 @@ TEST_CASE("Py.CheckTimeConversion")
 
 namespace EventTests
 {
-void SendBinaryEvent(std::unique_ptr<PyPort>& PythonPort, int ODCIndex, bool val, SharedStatusCallback_t pStatusCallback, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
-{}
-void SendAnalogEvent(std::unique_ptr<PyPort>& PythonPort, int ODCIndex, double val, SharedStatusCallback_t pStatusCallback, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
-{
-	auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-	event->SetPayload<EventType::Analog>(std::move(val));
-
-	PythonPort->Event(event, "TestHarness", pStatusCallback);
-}
 
 TEST_CASE("Py.SendBinaryAndAnalogEvents")
 {
@@ -318,11 +309,19 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 
 	PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 
-	WaitIOS(IOS, 2);
+	WaitIOS(IOS, 1);
 	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
-	//	SendAnalogEvent(PythonPort, 1, 1000.1,pStatusCallback);
-	//REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+	res = CommandStatus::UNDEFINED;
+	double fval = 100.1;
+	ODCIndex = 1001;
+	auto event2 = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+	event2->SetPayload<EventType::Analog>(std::move(fval));
+
+	PythonPort->Event(event2, "TestHarness", pStatusCallback);
+
+	WaitIOS(IOS, 1);
+	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 	std::string url("http://testserver/thisport/cb?test=harold");
 	std::string sres;

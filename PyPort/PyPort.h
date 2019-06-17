@@ -64,6 +64,7 @@ public:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 	void SetTimer(uint32_t id, uint32_t delayms);
 	void RestHandler(const std::string& url, ResponseCallback_t pResponseCallback);
+	void PublishEventCall(const char* EventType, uint32_t ODCIndex, const char* Quality, const char* Payload);
 
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;

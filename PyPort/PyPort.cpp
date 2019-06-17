@@ -90,8 +90,11 @@ void PyPort::Build()
 	// Every call to pWrapper should be strand protected.
 	python_strand->dispatch([&]()
 		{
-			// If first time constructor is called, will instansiate the interpreter. Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
-			pWrapper.reset(new PythonWrapper(this->Name, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2)));
+			// If first time constructor is called, will instansiate the interpreter.
+			// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
+			// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
+			pWrapper.reset(new PythonWrapper(this->Name, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
+				std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
 			// Python code is loaded and class created, __init__ called.
 			pWrapper->Build("PyPort", MyConf->pyModuleName, MyConf->pyClassName, this->Name);
@@ -124,9 +127,21 @@ void PyPort::Disable()
 		});
 };
 
+// We pass this method string values for fields (from Python) parse them and create the ODC event then send it.
+// A pointer to this method is passed to the Wrapper class so it can be called when we get information from the Python code.
+void PyPort::PublishEventCall(const char* EventType, uint32_t ODCIndex,  const char* Quality, const char* Payload )
+{
+	LOGDEBUG("PyPort Publish Event {}, {}, {}, {}", EventType, ODCIndex, Quality, Payload);
+	// Parse strings to create event - allow time to default to now.
+	/*double fval = 100.1;
+	ODCIndex = 1001;
+	QualityFlags qual = QualityFlags::ONLINE;
+	auto event2 = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, qual);
+	event2->SetPayload<EventType::Analog>(std::move(fval));
+	*/
+	//PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([](CommandStatus status) {}))
+}
 // So we have received an event from the ODC message bus - it will be Control or Connect events.
-// We will be sending back values (PublishEvent), from the simulator, as if we were a connected master scanning a live RTU.
-// That is assuming our Python script is a simulator (RTU) It could also be accepting point data values sent out by someone else.
 // So basically the Event mechanism is agnostinc. You can be a producer of control events and a consumer of data events, or the reverse, or in some odd cases -
 // A consumer of both types of events (this means you are just a listener on a conversation between two other devices.)
 void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)

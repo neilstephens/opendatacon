@@ -53,12 +53,13 @@
 using namespace odc;
 
 typedef std::function<void (uint32_t, uint32_t)> SetTimerFnType;
+typedef std::function<void ( const char*, uint32_t, const char*, const char*)> PublishEventCallFnType;
 
 class PythonWrapper
 {
 
 public:
-	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn);
+	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
 	~PythonWrapper();
 	void Build(const std::string& modulename, std::string& pyLoadModuleName, std::string& pyClassName, std::string& PortName);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
@@ -68,7 +69,9 @@ public:
 	void CallTimerHandler(uint32_t id);
 	std::string RestHandler(const std::string& url);
 
-	SetTimerFnType GetPythonPortSetTimerFn() { return PythonPortSetTimerFn; }; // Protect set access, only allow get.
+	SetTimerFnType GetPythonPortSetTimerFn() { return PythonPortSetTimerFn; };                         // Protect set access, only allow get.
+	PublishEventCallFnType GetPythonPortPublishEventCallFn() { return PythonPortPublishEventCallFn; }; // Protect set access, only allow get.
+
 
 	static void PyErrOutput();
 
@@ -116,6 +119,7 @@ private:
 	PyObject* pyRestHandler = nullptr;
 
 	SetTimerFnType PythonPortSetTimerFn;
+	PublishEventCallFnType PythonPortPublishEventCallFn;
 };
 
 #endif /* PYWRAPPER_H_ */

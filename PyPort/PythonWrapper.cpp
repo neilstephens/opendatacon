@@ -42,12 +42,12 @@
 #include <time.h>
 #include <iomanip>
 #include <exception>
+#include <opendatacon/IOTypes.h>
 #include "PyPort.h"
 
 
-using namespace odc;
 
-msSinceEpoch_t PyDateTime_to_msSinceEpoch_t(PyObject* pyTime);
+using namespace odc;
 
 std::atomic_uint PythonWrapper::InterpreterUseCount = 0;
 std::unordered_map<uint64_t, int> PythonWrapper::PyWrappers;
@@ -145,26 +145,39 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 {
 	//TODO Update to new general event type, so we pass any event. Then decode in Python
-	uint32_t index;
-	uint32_t value;
-	uint32_t quality;
+	uint32_t ODCIndex;
+	const char* EventType;
+	const char* Payload;
+	const char* Quality;
 	uint64_t guid;
-	PyObject* pyTime = nullptr;
+
 
 	// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
-	if (!PyArg_ParseTuple(args, "LIIIO:PublishEvent", &guid, &index, &value, &quality, &pyTime))
+	if (!PyArg_ParseTuple(args, "LsIss:PublishEvent", &guid, &EventType, &ODCIndex, &Quality, &Payload))
 	{
 		PythonWrapper::PyErrOutput();
 		return NULL;
 	}
-	LOGDEBUG("Python Publish Event Index: {}, Value {}, Quality {}", index, value, quality);
-	// Take appropriate action
+	LOGDEBUG("Python Publish Event {}, {}, {}, {}",EventType, ODCIndex, Quality, Payload);
 
-	//     Timestamp time = PyDateTime_to_Timestamp(pyTime);
+	// Work out which instance of our PyWrapper is talking to us.
+	PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-	//    Binary newmeas(value, quality, time);
+	LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
 
-	// Update to new format     thisPyPort->PublishEvent(newmeas, index);
+	if (thisPyWrapper != nullptr)
+	{
+		// Will create an async wait and call the Python code at the correct time.
+		// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
+		// The PyPort ensures that pyWrapper is managed within a strand
+		LOGDEBUG("Python PublishEvent - about to call PyPort PublishEventCall method");
+		auto fn = thisPyWrapper->GetPythonPortPublishEventCallFn();
+		fn(EventType, ODCIndex, Quality, Payload);
+	}
+	else
+	{
+		LOGDEBUG("odc.PublishEvent called from Python code for unknown PyPort object - ignored");
+	}
 
 	// Return a PyObject return value. True is 1
 	return Py_BuildValue("i", 1);
@@ -202,7 +215,7 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 	}
 	else
 	{
-		LOGDEBUG("odc.setTimer called from Python code for unknown PyPort object");
+		LOGDEBUG("odc.setTimer called from Python code for unknown PyPort object - Ignored");
 	}
 
 	// Return a PyObject return value, in this case "none".
@@ -238,9 +251,10 @@ void ImportODCModule()
 
 #pragma region Startup/Setup Functions
 
-PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn):
+PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn):
 	Name(aName),
-	PythonPortSetTimerFn(SetTimerFn)
+	PythonPortSetTimerFn(SetTimerFn),
+	PythonPortPublishEventCallFn(PublishEventCallFn)
 {
 	if (InterpreterUseCount++ == 0) // Test and Increment!
 	{
@@ -467,7 +481,7 @@ void PythonWrapper::Disable()
 };
 
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.
-CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName)
+CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName)
 {
 	// Try and send all events through to Python without modification, return value will be success or failure - using our predefined values.
 	GetPythonGIL g;
@@ -476,57 +490,21 @@ CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> event, const
 		LOGERROR("Error - Interpreter Closing Down in Event");
 		return CommandStatus::UNDEFINED;
 	}
-	auto pyArgs = PyTuple_New(5);
-	auto pyEventType = PyLong_FromUnsignedLong(static_cast<unsigned long>(event->GetEventType()));
-	auto pyIndex = PyLong_FromUnsignedLong(event->GetIndex());
-	auto pyTime = PyLong_FromUnsignedLong(event->GetTimestamp());
-	auto pyQuality = PyLong_FromUnsignedLong(static_cast<unsigned long>(event->GetQuality()));
+	auto pyArgs = PyTuple_New(6);
+	auto pyEventType = PyUnicode_FromString(odc::ToString(odcevent->GetEventType()).c_str()); // String Event Type
+	auto pyIndex = PyLong_FromUnsignedLong(odcevent->GetIndex());
+	auto pyTime = PyLong_FromUnsignedLongLong(odcevent->GetTimestamp());             // msSinceEpoch
+	auto pyQuality = PyUnicode_FromString(ToString(odcevent->GetQuality()).c_str()); // String quality flags
+	auto pyPayload = PyUnicode_FromString(odcevent->GetPayloadString().c_str());
 	auto pySender = PyUnicode_FromString(SenderName.c_str());
 
-	// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
+	// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
 	PyTuple_SetItem(pyArgs, 0, pyEventType);
 	PyTuple_SetItem(pyArgs, 1, pyIndex);
 	PyTuple_SetItem(pyArgs, 2, pyTime);
 	PyTuple_SetItem(pyArgs, 3, pyQuality);
-
-	/*
-	typedef std::pair<bool, bool> DBB;
-	typedef std::tuple<msSinceEpoch_t, uint32_t, uint8_t> TAI;
-	typedef std::pair<uint16_t, uint32_t> SS;
-	typedef std::pair<int16_t, CommandStatus> AO16;
-	typedef std::pair<int32_t, CommandStatus> AO32;
-	typedef std::pair<float, CommandStatus> AOF;
-	typedef std::pair<double, CommandStatus> AOD;
-
-	EVENTPAYLOAD(EventType::Binary, bool)
-	            EVENTPAYLOAD(EventType::DoubleBitBinary, DBB)
-	            EVENTPAYLOAD(EventType::Analog, double)
-	            EVENTPAYLOAD(EventType::Counter, uint32_t)
-	            EVENTPAYLOAD(EventType::FrozenCounter, uint32_t)
-	            EVENTPAYLOAD(EventType::BinaryOutputStatus, bool)
-	            EVENTPAYLOAD(EventType::AnalogOutputStatus, double)
-	            EVENTPAYLOAD(EventType::BinaryCommandEvent, CommandStatus)
-	            EVENTPAYLOAD(EventType::AnalogCommandEvent, CommandStatus)
-	            EVENTPAYLOAD(EventType::OctetString, std::string)
-	            EVENTPAYLOAD(EventType::TimeAndInterval, TAI)
-	            EVENTPAYLOAD(EventType::SecurityStat, SS)
-	            EVENTPAYLOAD(EventType::ControlRelayOutputBlock, ControlRelayOutputBlock)
-	            EVENTPAYLOAD(EventType::AnalogOutputInt16, AO16)
-	            EVENTPAYLOAD(EventType::AnalogOutputInt32, AO32)
-	            EVENTPAYLOAD(EventType::AnalogOutputFloat32, AOF)
-	            EVENTPAYLOAD(EventType::AnalogOutputDouble64, AOD)
-	            EVENTPAYLOAD(EventType::BinaryQuality, QualityFlags)
-	            EVENTPAYLOAD(EventType::DoubleBitBinaryQuality, QualityFlags)
-	            EVENTPAYLOAD(EventType::AnalogQuality, QualityFlags)
-	            EVENTPAYLOAD(EventType::CounterQuality, QualityFlags)
-	            EVENTPAYLOAD(EventType::BinaryOutputStatusQuality, QualityFlags)
-	            EVENTPAYLOAD(EventType::FrozenCounterQuality, QualityFlags)
-	            EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
-	            EVENTPAYLOAD(EventType::ConnectState, ConnectState)
-	            */
-	//PyTuple_SetItem(pyArgs, 4, event->GetPayload()); //TODO Can be many types - how best to handle??
-
-	PyTuple_SetItem(pyArgs, 4, pySender);
+	PyTuple_SetItem(pyArgs, 4, pyPayload);
+	PyTuple_SetItem(pyArgs, 5, pySender);
 
 	//	PostPyCall(pyFuncEvent, pyArgs, pStatusCallback); // Callback will be called when done...
 	PyObject* pyResult = PyCall(pyFuncEvent, pyArgs); // No passed variables
@@ -541,7 +519,6 @@ CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> event, const
 
 		return res ? CommandStatus::SUCCESS : CommandStatus::UNDEFINED;
 	}
-
 	return CommandStatus::UNDEFINED;
 }
 
@@ -656,22 +633,6 @@ PyObject* PythonWrapper::PyCall(PyObject* pyFunction, PyObject* pyArgs)
 		LOGERROR("Python Method is not valid");
 		return nullptr;
 	}
-}
-
-msSinceEpoch_t PyDateTime_to_msSinceEpoch_t(PyObject* pyTime)
-{
-	if (!pyTime || !PyDateTime_Check(pyTime))
-		throw std::exception();
-
-	tm timeinfo;
-	timeinfo.tm_sec = PyDateTime_DATE_GET_SECOND(pyTime);
-	timeinfo.tm_min = PyDateTime_DATE_GET_MINUTE(pyTime);
-	timeinfo.tm_hour = PyDateTime_DATE_GET_HOUR(pyTime);
-	timeinfo.tm_mday = PyDateTime_GET_DAY(pyTime);
-	timeinfo.tm_mon = PyDateTime_GET_MONTH(pyTime) - 1;
-	timeinfo.tm_year = PyDateTime_GET_YEAR(pyTime) - 1900;
-
-	return msSinceEpoch_t(0); //TODO DateTime convert (std::chrono::seconds(my_mktime(&timeinfo)) + std::chrono::microseconds(PyDateTime_DATE_GET_MICROSECOND(pyTime)));
 }
 
 #pragma endregion

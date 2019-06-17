@@ -5,9 +5,10 @@ def log(guid, level, message):
     print("Log - Guid - {} - Level {} - Message - {}".format(guid, level, message))
     return
 
-# "LIIIO:PublishEvent"
-def PublishEvent(guid, ODCIndex, value, quality, pyTime):
-    print("Publish Event - Guid - {} - {} {} {} {}".format(guid, ODCIndex, value, quality, pyTime))
+# "LsIss:PublishEvent"
+# Same format as Event
+def PublishEvent(guid, EventType, ODCIndex, Quality, PayLoad ):
+    print("Publish Event - Guid - {} - {} {} {}".format(guid, EventType, ODCIndex, Quality, PayLoad))
     return True
 
 # "LII:SetTimer"

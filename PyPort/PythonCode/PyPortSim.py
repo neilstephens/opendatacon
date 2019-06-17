@@ -12,6 +12,8 @@ Warn = 3
 Error = 4
 Critical = 5
 
+# QualityFlags,ONLINE,RESTART,COMM_LOST,REMOTE_FORCED,LOCAL_FORCE,OVERRANGE,REFERENCE_ERR,ROLLOVER,DISCONTINUITY,CHATTER_FILTER
+
 class SimPortClass:
     ''' Our class to handle an ODC Port. We must have __init__, ProcessJSONConfig, Enable, Disable, EventHander defined, as they will be called by our c/c++ code.
     The c/c++ code also defines some methods on this class, which we can call, as well as possibly some global functions we can call.
@@ -79,8 +81,16 @@ class SimPortClass:
         return
 
     # Needs to return True or False, which will be translated into CommandStatus::SUCCESS or CommandStatus::UNDEFINED
-    def EventHandler(self,EventType, Index, Time, Quality, Sender):
-        self.LogDebug("EventHander: {}, {}".format(Sender, self.guid))
+    # EventType (string) Index (int), Time (msSinceEpoch), Quality (string) Payload (string ) Sender (string)
+    def EventHandler(self,EventType, Index, Time, Quality, Payload, Sender):
+        self.LogDebug("EventHander: {}, {}, {} {} - {}".format(self.guid,Sender,Index,EventType,Payload))
+
+        if (EventType == "Binary"):
+            self.LogDebug("Event is a Binary")
+        if ("ONLINE" not in Quality):
+            self.LogDebug("Event Quality not ONLINE")
+        
+        odc.PublishEvent(self.guid,Sender,Index,EventType,Payload)  # Echoing Event for testing. Sender, Time auto created in ODC
         return True
 
     # Will be called at the appropriate time by the ASIO handler system. Will be passed an id for the timeout, 
@@ -102,6 +112,6 @@ class SimPortClass:
 
         odc.SetTimer(self.guid, self.i, 1001-self.i)    # Set a timer to go off in 1 second
         self.i = self.i + 1
-       // self.LogDebug("RestRequestHander: Sent Set Timer Command {}".format(self.i))
+        self.LogDebug("RestRequestHander: Sent Set Timer Command {}".format(self.i))
 
         return json.dumps(Response)
