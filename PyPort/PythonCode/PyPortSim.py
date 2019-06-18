@@ -12,7 +12,12 @@ Warn = 3
 Error = 4
 Critical = 5
 
-# QualityFlags,ONLINE,RESTART,COMM_LOST,REMOTE_FORCED,LOCAL_FORCE,OVERRANGE,REFERENCE_ERR,ROLLOVER,DISCONTINUITY,CHATTER_FILTER
+# Exact string values for Event parameters.
+# EventTypes, ConnectState,Binary,Analog,Counter,FrozenCounter,BinaryOutputStatus,AnalogOutputStatus,ControlRelayOutputBlock and others...
+# QualityFlags, ONLINE,RESTART,COMM_LOST,REMOTE_FORCED,LOCAL_FORCE,OVERRANGE,REFERENCE_ERR,ROLLOVER,DISCONTINUITY,CHATTER_FILTER
+# ConnectState, PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN
+# ControlCode, NUL,NUL_CANCEL,PULSE_ON,PULSE_ON_CANCEL,PULSE_OFF,PULSE_OFF_CANCEL,LATCH_ON,LATCH_ON_CANCEL,LATCH_OFF,LATCH_OFF_CANCEL,
+#               CLOSE_PULSE_ON,CLOSE_PULSE_ON_CANCEL,TRIP_PULSE_ON,TRIP_PULSE_ON_CANCEL,UNDEFINED      
 
 class SimPortClass:
     ''' Our class to handle an ODC Port. We must have __init__, ProcessJSONConfig, Enable, Disable, EventHander defined, as they will be called by our c/c++ code.
@@ -20,23 +25,18 @@ class SimPortClass:
     The class methods are part of odc. We currently have odc.log and odc.publishevent.
     '''
 
-# Worker Methods used by the Methods called by ODC. They need to be in this section so they are available in the code below.
+# Worker Methods. They need to be in this section so they are available in the code below.
 
     def LogTrace(self, message ):
         odc.log(self.guid, Trace, message )
-
     def LogError(self, message ):
         odc.log(self.guid,Error, message )
-
     def LogDebug(self, message ):
         odc.log(self.guid, Debug, message )
-
     def LogInfo(self, message ):
         odc.log(self.guid,Info, message )
-
     def LogWarn(self, message ):
         odc.log(self.guid, Warn, message )
-
     def LogCritical(self, message ):
         odc.log(self.guid,Critical, message )
 
@@ -81,7 +81,7 @@ class SimPortClass:
         return
 
     # Needs to return True or False, which will be translated into CommandStatus::SUCCESS or CommandStatus::UNDEFINED
-    # EventType (string) Index (int), Time (msSinceEpoch), Quality (string) Payload (string ) Sender (string)
+    # EventType (string) Index (int), Time (msSinceEpoch), Quality (string) Payload (string) Sender (string)
     def EventHandler(self,EventType, Index, Time, Quality, Payload, Sender):
         self.LogDebug("EventHander: {}, {}, {} {} - {}".format(self.guid,Sender,Index,EventType,Payload))
 
