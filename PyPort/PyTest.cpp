@@ -252,11 +252,11 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
 
 #define TEST_PythonPort(overridejson)\
-	auto PythonPort = std::make_unique<PyPort>("TestMaster", conffilename1, overridejson); \
+	auto PythonPort = std::make_shared<PyPort>("TestMaster", conffilename1, overridejson); \
 	PythonPort->SetIOS(&IOS);      \
 	PythonPort->Build();
 #define TEST_PythonPort2(overridejson)\
-	auto PythonPort2 = std::make_unique<PyPort>("TestMaster2", conffilename1, overridejson); \
+	auto PythonPort2 = std::make_shared<PyPort>("TestMaster2", conffilename1, overridejson); \
 	PythonPort2->SetIOS(&IOS);      \
 	PythonPort2->Build();
 
@@ -264,19 +264,68 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 #pragma endregion TEST_HELPERS
 #endif
 
-namespace SimpleUnitTestsPy
-{
-TEST_CASE("Py.CheckTimeConversion")
-{
-	SIMPLE_TEST_SETUP();
-
-	REQUIRE(true);
-	STANDARD_TEST_TEARDOWN();
-}
-}
-
 namespace EventTests
 {
+void CheckEventStringConversions(std::shared_ptr<EventInfo> inevent, std::shared_ptr<PyPort> PythonPort)
+{
+	// Get string representation as used in PythonWrapper
+	std::string EventTypeStr = odc::ToString(inevent->GetEventType());
+	std::string QualityStr = ToString(inevent->GetQuality());
+	std::string PayloadStr = inevent->GetPayloadString();
+	uint32_t ODCIndex = inevent->GetIndex();
+
+	// Create a new event from those strings
+	std::shared_ptr<EventInfo> pubevent = PythonPort->CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr);
+
+	// Check that we got back data matching the original event.
+	REQUIRE(odc::ToString(pubevent->GetEventType()) == EventTypeStr);
+	REQUIRE(pubevent->GetIndex() == ODCIndex);
+	REQUIRE(ToString(pubevent->GetQuality()) == QualityStr);
+	REQUIRE(pubevent->GetPayloadString() == PayloadStr);
+}
+TEST_CASE("Py.TestEventStringConversions")
+{
+	STANDARD_TEST_SETUP();
+	TEST_PythonPort(Json::nullValue);
+
+	uint32_t ODCIndex = 1001;
+
+	INFO("ConnectState")
+	{
+		ConnectState state = ConnectState::CONNECTED;
+		auto odcevent = std::make_shared<EventInfo>(EventType::ConnectState, 0, "Testing");
+		odcevent->SetPayload<EventType::ConnectState>(std::move(state));
+
+		CheckEventStringConversions(odcevent, PythonPort);
+	}
+	INFO("Binary")
+	{
+		bool val = true;
+		auto odcevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", QualityFlags::RESTART);
+		odcevent->SetPayload<EventType::Binary>(std::move(val));
+
+		CheckEventStringConversions(odcevent, PythonPort);
+	}
+	INFO("Analog")
+	{
+		double fval = 100.1;
+		auto odcevent = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, "Testing", QualityFlags::ONLINE);
+		odcevent->SetPayload<EventType::Analog>(std::move(fval));
+
+		CheckEventStringConversions(odcevent, PythonPort);
+	}
+	INFO("ControlRelayOutputBlock")
+	{
+		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+		val.functionCode = ControlCode::LATCH_ON; // ControlCode::LATCH_OFF;
+		auto odcevent = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness", QualityFlags::RESTART | QualityFlags::ONLINE);
+		odcevent->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+		CheckEventStringConversions(odcevent, PythonPort);
+	}
+	//TODO: The rest of the Payload types that we need to handle
+	STANDARD_TEST_TEARDOWN();
+}
 
 TEST_CASE("Py.SendBinaryAndAnalogEvents")
 {
@@ -301,7 +350,6 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 			res = command_stat;
 		});
 
-	//SendBinaryEvent(PythonPort, 1, true, pStatusCallback);
 	int ODCIndex = 1;
 	bool val = true;
 	auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");

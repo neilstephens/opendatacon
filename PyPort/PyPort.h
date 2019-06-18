@@ -59,12 +59,19 @@ public:
 
 	void Enable() override;
 	void Disable() override;
-	void Build() override;
 
+	void Build() override;
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 	void SetTimer(uint32_t id, uint32_t delayms);
 	void RestHandler(const std::string& url, ResponseCallback_t pResponseCallback);
-	void PublishEventCall(const char* EventType, uint32_t ODCIndex, const char* Quality, const char* Payload);
+	void PublishEventCall(const std::string &EventTypeStr, uint32_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
+
+	// Utility/Testing
+	bool GetEventTypeFromStringName(const std::string StrEventType, EventType& EventTypeResult);
+	bool GetControlCodeFromStringName(const std::string StrControlCode, ControlCode& ControlCodeResult);
+	bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult);
+	std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr);
+	bool GetQualityFlagsFromStringName(const std::string StrQuality, QualityFlags& QualityResult);
 
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;

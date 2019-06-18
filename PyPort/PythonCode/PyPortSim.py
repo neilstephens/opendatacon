@@ -90,7 +90,7 @@ class SimPortClass:
         if ("ONLINE" not in Quality):
             self.LogDebug("Event Quality not ONLINE")
         
-        odc.PublishEvent(self.guid,Sender,Index,EventType,Payload)  # Echoing Event for testing. Sender, Time auto created in ODC
+        odc.PublishEvent(self.guid,EventType,Index,Quality,Payload)  # Echoing Event for testing. Sender, Time auto created in ODC
         return True
 
     # Will be called at the appropriate time by the ASIO handler system. Will be passed an id for the timeout, 
