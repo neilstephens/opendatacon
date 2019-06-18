@@ -69,7 +69,7 @@ install:
       brew install libmodbus libmicrohttpd socat
       #export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     elif [ -z "$DOCKER_BUILD" ]; then
-      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat
+      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     fi
   - |
