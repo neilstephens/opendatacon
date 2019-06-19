@@ -281,6 +281,15 @@ struct ControlRelayOutputBlock
 };
 
 enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
+inline std::string ToString(const ConnectState cs)
+{
+	ENUMSTRING(cs, ConnectState, PORT_UP)
+	ENUMSTRING(cs, ConnectState, CONNECTED)
+	ENUMSTRING(cs, ConnectState, DISCONNECTED)
+	ENUMSTRING(cs, ConnectState, PORT_DOWN)
+	return "<no_string_representation>";
+}
+
 
 typedef uint64_t msSinceEpoch_t;
 inline msSinceEpoch_t msSinceEpoch()
