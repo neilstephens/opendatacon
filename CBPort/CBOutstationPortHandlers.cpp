@@ -595,7 +595,7 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 	if (!MyPointConf->PointTable.TimeTaggedDataAvailable(SOEGroup))
 	{
 		// Format empty response
-		// TODO: Not clear in the spec what an empty SOE response is, however I am going to assume that a full echo of the inbound packet is the empty response.
+		// Not clear in the spec what an empty SOE response is, however I am going to assume that a full echo of the inbound packet is the empty response.
 		// The Master can work out that there should be another block for a real response, also Group 0, Point 0 is unlikely to be used?
 		ResponseCBMessage.push_back(Header);
 	}

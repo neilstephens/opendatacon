@@ -637,6 +637,12 @@ void CBMasterPort::SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const 
 
 bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData & ReceivedHeader, const CBMessage_t& CompleteCBMessage)
 {
+	if (CompleteCBMessage.size() == 1)
+	{
+		LOGDEBUG("SOE Scan Data processing - No SOE Data to process");
+		return true;
+	}
+
 	LOGDEBUG("SOE Scan Data processing - Blocks {}", CompleteCBMessage.size());
 
 	uint32_t UsedBits = 0;
