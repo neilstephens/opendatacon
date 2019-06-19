@@ -31,7 +31,7 @@
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const bool isoutstation, asio::io_service & IOS)
+void CBPointTableAccess::Build(const bool isoutstation, asio::io_context & IOS)
 {
 	IsOutstation = isoutstation;
 	// Setup 16 TimeTagged event queues, never will we use all of them, Group 0 is most used.

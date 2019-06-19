@@ -59,7 +59,7 @@ ConnectionTokenType::~ConnectionTokenType()
 	}
 }
 
-CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_service
+CBConnection::CBConnection (asio::io_context* apIOS, //pointer to an asio io_context
 	bool aisServer,                                //Whether to act as a server or client
 	const std::string& aEndPoint,                  //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                      //Port to connect to if client, or listen on if server
@@ -86,7 +86,7 @@ CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_ser
 }
 
 // Static Method
-ConnectionTokenType CBConnection::AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
+ConnectionTokenType CBConnection::AddConnection(asio::io_context* apIOS, //pointer to an asio io_context
 	bool aisServer,                                                    //Whether to act as a server or client
 	const std::string& aEndPoint,                                      //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                                          //Port to connect to if client, or listen on if server

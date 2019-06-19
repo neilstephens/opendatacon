@@ -74,7 +74,7 @@ class CBConnection
 
 public:
 	CBConnection
-		(asio::io_service* apIOS,     //pointer to an asio io_service
+		(asio::io_context* apIOS,     //pointer to an asio io_context
 		bool aisServer,               //Whether to act as a server or client
 		const std::string& aEndPoint, //IP addr or hostname (to connect to if client, or bind to if server)
 		const std::string& aPort,     //Port to connect to if client, or listen on if server
@@ -98,7 +98,7 @@ public:
 
 	static void RemoveMaster(const ConnectionTokenType &ConnectionTok,uint8_t TargetStationAddress);
 
-	static ConnectionTokenType AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
+	static ConnectionTokenType AddConnection(asio::io_context* apIOS, //pointer to an asio io_context
 		bool aisServer,                                             //Whether to act as a server or client
 		const std::string& aEndPoint,                               //IP addr or hostname (to connect to if client, or bind to if server)
 		const std::string& aPort,                                   //Port to connect to if client, or listen on if server
@@ -124,7 +124,7 @@ public:
 	static void SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, std::function<void(std::string)> f);
 
 private:
-	asio::io_service* pIOS;
+	asio::io_context* pIOS;
 	std::string EndPoint;
 	std::string Port;
 	std::string InternalChannelID;

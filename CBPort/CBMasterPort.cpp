@@ -105,7 +105,7 @@ void CBMasterPort::Build()
 		PollScheduler.reset(new ASIOScheduler(*pIOS));
 
 	MasterCommandProtectedData.CurrentCommandTimeoutTimer.reset(new Timer_t(*pIOS));
-	MasterCommandStrand.reset(new asio::io_service::strand(*pIOS));
+	MasterCommandStrand.reset(new asio::io_context::strand(*pIOS));
 
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(IsOutStation, *pIOS);

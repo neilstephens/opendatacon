@@ -106,7 +106,7 @@ public:
 	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 private:
 
-	std::unique_ptr<asio::io_service::strand> MasterCommandStrand;
+	std::unique_ptr<asio::io_context::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
 
 	std::mutex DigitalCommandSequenceNumberMutex;

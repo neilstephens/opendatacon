@@ -109,7 +109,7 @@ void MD3MasterPort::Build()
 		PollScheduler.reset(new ASIOScheduler(*pIOS));
 
 	MasterCommandProtectedData.CurrentCommandTimeoutTimer.reset(new Timer_t(*pIOS));
-	MasterCommandStrand.reset(new asio::io_service::strand(*pIOS));
+	MasterCommandStrand.reset(new asio::io_context::strand(*pIOS));
 
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(IsOutStation, MyPointConf->NewDigitalCommands, *pIOS);
@@ -161,7 +161,7 @@ void MD3MasterPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 // Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
 void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, SharedStatusCallback_t pStatusCallback)
 {
-	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post. Note the calling thread must be one of the io_service threads.... this changes our tests!
+	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post. Note the calling thread must be one of the io_context threads.... this changes our tests!
 		{
 			if (MasterCommandProtectedData.MasterCommandQueue.size() < MasterCommandProtectedData.MaxCommandQueueSize)
 			{

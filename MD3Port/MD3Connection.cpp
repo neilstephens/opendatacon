@@ -59,7 +59,7 @@ ConnectionTokenType::~ConnectionTokenType()
 	}
 }
 
-MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_service
+MD3Connection::MD3Connection (asio::io_context* apIOS, //pointer to an asio io_context
 	bool aisServer,                                  //Whether to act as a server or client
 	const std::string& aEndPoint,                    //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                        //Port to connect to if client, or listen on if server
@@ -83,7 +83,7 @@ MD3Connection::MD3Connection (asio::io_service* apIOS, //pointer to an asio io_s
 }
 
 // Static Method
-ConnectionTokenType MD3Connection::AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
+ConnectionTokenType MD3Connection::AddConnection(asio::io_context* apIOS, //pointer to an asio io_context
 	bool aisServer,                                                     //Whether to act as a server or client
 	const std::string& aEndPoint,                                       //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                                           //Port to connect to if client, or listen on if server
