@@ -41,6 +41,7 @@ const std::string DYNLIBEXT = "d.dll";
 const std::string DYNLIBEXT = ".dll";
 #endif
 
+typedef HMODULE module_ptr;
 inline HMODULE LoadModule(const std::string& a)
 {
 	//LoadLibrary is ref counted so you can call FreeLibrary the same number of times to unload
@@ -52,6 +53,7 @@ inline BOOL WINAPI UnLoadModule(HMODULE handle)
 	return FreeLibrary(handle);
 }
 
+typedef FARPROC symbol_ptr;
 inline FARPROC LoadSymbol(HMODULE a, const std::string& b)
 {
 	return GetProcAddress(a, b.c_str());
@@ -104,6 +106,7 @@ const std::string DYNLIBEXT = ".so";
 const std::string DYNLIBEXT = ".so";
 #endif
 
+typedef void* module_ptr;
 inline void* LoadModule(const std::string& a)
 {
 	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
@@ -114,6 +117,8 @@ inline int UnLoadModule(void* handle)
 	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
 	return dlclose(handle);
 }
+
+typedef void* symbol_ptr;
 inline void* LoadSymbol(void* a, const std::string& b)
 {
 	return dlsym(a, b.c_str());

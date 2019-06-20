@@ -59,35 +59,38 @@ ConnectionTokenType::~ConnectionTokenType()
 	}
 }
 
-MD3Connection::MD3Connection (asio::io_context* apIOS, //pointer to an asio io_context
-	bool aisServer,                                  //Whether to act as a server or client
-	const std::string& aEndPoint,                    //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                        //Port to connect to if client, or listen on if server
+MD3Connection::MD3Connection
+	(std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                           //Whether to act as a server or client
+	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                 //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort),
-	isServer(aisServer)
-{
-	pSockMan.reset(new TCPSocketManager<std::string>
+	isServer(aisServer),
+	pSockMan(std::make_shared<TCPSocketManager<std::string>>
 			(pIOS, isServer, EndPoint, Port,
 			std::bind(&MD3Connection::ReadCompletionHandler, this, std::placeholders::_1),
 			std::bind(&MD3Connection::SocketStateHandler, this, std::placeholders::_1),
 			std::numeric_limits<size_t>::max(),
 			true,
-			retry_time_ms));
-
+			retry_time_ms))
+{
 	ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
 	LOGDEBUG("Opened an MD3Connection object " + ChannelID + " As a " + (isServer ? "Server" : "Client"));
 }
 
 // Static Method
-ConnectionTokenType MD3Connection::AddConnection(asio::io_context* apIOS, //pointer to an asio io_context
-	bool aisServer,                                                     //Whether to act as a server or client
-	const std::string& aEndPoint,                                       //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                                           //Port to connect to if client, or listen on if server
-	uint16_t retry_time_ms)
+ConnectionTokenType MD3Connection::AddConnection
+(
+	std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                          //Whether to act as a server or client
+	const std::string& aEndPoint,            //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                //Port to connect to if client, or listen on if server
+	uint16_t retry_time_ms
+)
 {
 	std::string ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
@@ -324,16 +327,18 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 	// We should have a multiple of 6 bytes. 5 data bytes and one padding byte for every MD3 block, then possibly multiple blocks
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
 
+	static MD3BlockData md3block; // This remains across multiple calls to this method. Starts empty.
+
 	while (readbuf.size() > 0)
 	{
 		// Add another byte to our 4 byte block.
 
-		ReadCompletionHandlerMD3block.AddByteToBlock(static_cast<uint8_t>(readbuf.sgetc()));
+		md3block.AddByteToBlock(static_cast<uint8_t>(readbuf.sgetc()));
 		readbuf.consume(1);
 
-		if (ReadCompletionHandlerMD3block.IsValidBlock()) // Check checksum padding byte and number of chars we have stuffed into the block
+		if (md3block.IsValidBlock()) // Check checksum padding byte and number of chars we have stuffed into the block
 		{
-			if (ReadCompletionHandlerMD3block.IsFormattedBlock())
+			if (md3block.IsFormattedBlock())
 			{
 				// This only occurs for the first block. So if we are not expecting it we need to clear out the Message Block Vector
 				// We know we are looking for the first block if MD3Message is empty.
@@ -342,20 +347,20 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 					LOGDEBUG("Received a start block when we have not got to an end block - discarding data blocks - " + std::to_string(MD3Message.size()));
 					MD3Message.clear();
 				}
-				MD3Message.push_back(ReadCompletionHandlerMD3block); // Takes a copy of the block
+				MD3Message.push_back(md3block); // Takes a copy of the block
 			}
 			else if (MD3Message.size() == 0)
 			{
-				LOGDEBUG("Received a non start block when we are waiting for a start block - discarding data - " + ReadCompletionHandlerMD3block.ToString());
+				LOGDEBUG("Received a non start block when we are waiting for a start block - discarding data - " + md3block.ToString());
 			}
 			else
 			{
-				MD3Message.push_back(ReadCompletionHandlerMD3block); // Takes a copy of the block
+				MD3Message.push_back(md3block); // Takes a copy of the block
 			}
 
 			// The start and any other block can be the end block
 			// We might get an end block out of order, so just ignore.
-			if (ReadCompletionHandlerMD3block.IsEndOfMessageBlock() && (MD3Message.size() != 0))
+			if (md3block.IsEndOfMessageBlock() && (MD3Message.size() != 0))
 			{
 				// Once we have the last block, then hand off MD3Message to process.
 				RouteMD3Message(MD3Message);
@@ -363,7 +368,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 			}
 
 			// We have got a valid block, so empty the collection block so we can get the next one.
-			ReadCompletionHandlerMD3block.Clear();
+			md3block.Clear();
 		}
 		else
 		{

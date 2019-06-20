@@ -62,19 +62,18 @@ add_custom_command(
 add_custom_target(version DEPENDS "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h")
 
 # various optional libraries and projects
-option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, PyPort, SimPort, MD3Port, CBPort, Tests, ConsoleUI, WebUI)" OFF)
+option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, SimPort, MD3Port, CBPort, Tests, ConsoleUI, WebUI)" OFF)
 option(USE_ASIO_SUBMODULE "Use git submodule to download asio header library" ON)
 option(USE_SPDLOG_SUBMODULE "Use git submodule to download spdlog header library" ON)
 
-set(TESTS OFF CACHE BOOL "Build tests"						)
+set(TESTS OFF CACHE BOOL "Build tests"					)
 set(WEBUI OFF CACHE BOOL "Build the http(s) web user interface"	)
 set(DNP3PORT OFF CACHE BOOL "Build DNP3 Port"				)
 set(JSONPORT OFF CACHE BOOL "Build JSON Port"				)
-set(PYPORT OFF CACHE BOOL "Build Python Port"				)
 set(MODBUSPORT OFF CACHE BOOL "Build Modbus Port"			)
 set(SIMPORT OFF CACHE BOOL "Build Simulation Port"			)
-set(MD3PORT OFF CACHE BOOL "Build MD3 Port"					)
-set(CBPORT OFF CACHE BOOL "Build Conitel-Baker Port"		)
+set(MD3PORT OFF CACHE BOOL "Build MD3 Port"				)
+set(CBPORT OFF CACHE BOOL "Build Conitel-Baker Port"				)
 set(CONSOLEUI OFF CACHE BOOL "Build the console user interface"	)
 
 # other options off-by-default that you can enable
@@ -86,7 +85,6 @@ if(FULL)
 	set(WEBUI ON CACHE BOOL "Build the http(s) web user interface"	FORCE)
 	set(DNP3PORT ON CACHE BOOL "Build DNP3 Port"			   	FORCE)
 	set(JSONPORT ON CACHE BOOL "Build JSON Port"			   	FORCE)
-	set(PYPORT ON CACHE BOOL "Build Python Port"			   	FORCE)
 	set(MODBUSPORT ON CACHE BOOL "Build Modbus Port"		   	FORCE)
 	set(SIMPORT ON CACHE BOOL "Build Simulation Port"		   	FORCE)
 	set(MD3PORT ON CACHE BOOL "Build MD3 Port"			   	FORCE)
@@ -145,18 +143,18 @@ if(APPLE)
 endif()
 
 # Compiler configuration
-
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
-add_definitions(-DBOOST_ASIO_ENABLE_HANDLER_TRACKING) # Add Handler tracking output to stderr SJE
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+#uncomment below to debug asio handlers on stderr
+#add_definitions(-DASIO_ENABLE_HANDLER_TRACKING)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
 	message("CMAKE configuring opendatacon for Visual Studio C++" )
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
+	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
+	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DASIO_DYN_LINK")
 
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 	# using Intel C++
@@ -165,15 +163,54 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
-
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+	endif()
 	if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 		message("using special options for GNU compiler")
+		#--no-gnu-unique is required for true dynamic loading and unloading of shared libs
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --no-gnu-unique")
+		#now some trickery to see which glibc
+		execute_process(
+			COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libc.so.6
+			OUTPUT_VARIABLE libc_file
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+		execute_process(
+			COMMAND ${libc_file} --version
+			OUTPUT_VARIABLE glibc_version_str
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+		)
+		if(glibc_version_str)
+			message("libc.so.6 --version :")
+			message("${glibc_version_str}")
+			string(REGEX MATCH "2\\.[0-9][0-9]" glibc_version ${glibc_version_str})
+			message("Matched version: ${glibc_version}")
+			if(glibc_version LESS 2.17)
+				message("linking realtime lib for old libc")
+				set(RT "rt")
+			endif()
+		endif()
 	endif()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
+	if(NOT APPLE)
+		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
+		#only export API symbols
+	endif()
+	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
+	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASIO_DYN_LINK")
+
 	option(STATIC_LIBSTDC++ "Link libstdc++ statically" ON)
 	if(STATIC_LIBSTDC++)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
+		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++")
+		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -static-libstdc++")
+		#why is this not automatic with Clang?
+		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+			#need to add these to the link libraries manually
+			set(LIBCXX "c++" "c++abi")
+		endif()
 	endif()
 
 	# different release and debug flags
@@ -213,7 +250,7 @@ endif()
 
 find_package(Threads REQUIRED)
 if(CMAKE_USE_PTHREADS_INIT)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
 # the RPATH to be used when installing - allowing local libraries to be found for standalone installs,
@@ -282,10 +319,6 @@ if(JSONPORT)
 	message("add subdir JSONPort")
 	add_subdirectory(JSONPort)
 endif()
-if(PYPORT)
-	message("add subdir PyPort")
-	add_subdirectory(PyPort)
-endif()
 if(WEBUI)
 	message("add subdir WebUI")
 	add_subdirectory(WebUI)
@@ -298,11 +331,10 @@ if(TESTS)
 	message("add subdir tests")
 	enable_testing()
 	add_subdirectory(tests)
+	add_test(DNP3Port_tests DNP3Port_tests)
 	add_test(ODC_tests ODC_tests)
 	add_test(MD3_tests MD3_tests)
 	add_test(CB_tests CB_tests)
-	add_test(DNP3Port_tests DNP3Port_tests)
-	add_test(SimPort_tests SimPort_tests)
 endif()
 if(MODBUSPORT)
 	message("add subdir ModbusPort")

@@ -23,6 +23,7 @@ CommsRideThroughTimer::CommsRideThroughTimer(asio::io_service &ios,
 	const uint32_t aTimeoutms,
 	std::function<void()>&& aCommsGoodCB,
 	std::function<void()>&& aCommsBadCB):
+	busy(0),
 	Timeoutms(aTimeoutms),
 	TimerAccessStrand(ios),
 	RideThroughInProgress(false),
@@ -31,42 +32,58 @@ CommsRideThroughTimer::CommsRideThroughTimer(asio::io_service &ios,
 	CommsBadCB(aCommsBadCB)
 {}
 
+CommsRideThroughTimer::~CommsRideThroughTimer()
+{
+	aCommsRideThroughTimer.cancel();
+	while(busy)
+	{}
+}
+
 void CommsRideThroughTimer::Trigger()
 {
+	++busy;
 	TimerAccessStrand.post([this]()
 		{
 			if(RideThroughInProgress)
-				return;
+			{
+			      busy--;
+			      return;
+			}
 
 			RideThroughInProgress = true;
 			aCommsRideThroughTimer.expires_from_now(std::chrono::milliseconds(Timeoutms));
 			aCommsRideThroughTimer.async_wait(TimerAccessStrand.wrap([this](asio::error_code err)
-					{
-						if(RideThroughInProgress)
-							CommsBadCB();
-						RideThroughInProgress = false;
-					}));
+				{
+					if(RideThroughInProgress)
+						CommsBadCB();
+					RideThroughInProgress = false;
+					busy--;
+				}));
 		});
 }
 
 void CommsRideThroughTimer::FastForward()
 {
+	++busy;
 	TimerAccessStrand.post([this]()
 		{
 			if(RideThroughInProgress)
 				aCommsRideThroughTimer.cancel();
 			RideThroughInProgress = false;
 			CommsBadCB();
+			busy--;
 		});
 }
 
 void CommsRideThroughTimer::Cancel()
 {
+	++busy;
 	TimerAccessStrand.post([this]()
 		{
 			if(RideThroughInProgress)
 				aCommsRideThroughTimer.cancel();
 			RideThroughInProgress = false;
 			CommsGoodCB();
+			busy--;
 		});
 }

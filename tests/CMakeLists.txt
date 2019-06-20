@@ -16,7 +16,7 @@
  #	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
- # 
+ #
 add_subdirectory(ODC_tests)
 add_subdirectory(DNP3Port_tests)
 add_subdirectory(MD3Port_tests)

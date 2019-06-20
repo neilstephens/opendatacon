@@ -31,11 +31,13 @@ public:
 		const uint32_t aTimeoutms,
 		std::function<void()>&& aCommsGoodCB,
 		std::function<void()>&& aCommsBadCB);
+	~CommsRideThroughTimer();
 	void Trigger();
 	void FastForward();
 	void Cancel();
 
 private:
+	std::atomic_size_t busy;
 	uint32_t Timeoutms;
 	asio::io_service::strand TimerAccessStrand;
 	bool RideThroughInProgress;

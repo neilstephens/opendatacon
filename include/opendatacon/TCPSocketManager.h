@@ -80,7 +80,7 @@ class TCPSocketManager
 {
 public:
 	TCPSocketManager
-		(asio::io_service* apIOS,                         //pointer to an asio io_service
+		(std::shared_ptr<asio::io_service> apIOS,         //pointer to an asio io_service
 		bool aisServer,                                   //Whether to act as a server or client
 		const std::string& aEndPoint,                     //IP addr or hostname (to connect to if client, or bind to if server)
 		const std::string& aPort,                         //Port to connect to if client, or listen on if server
@@ -188,7 +188,7 @@ public:
 private:
 	bool isConnected;
 	bool manuallyClosed;
-	asio::io_service* pIOS;
+	std::shared_ptr<asio::io_service> pIOS;
 	const bool isServer;
 	const std::function<void(buf_t&)> ReadCallback;
 	const std::function<void(bool)> StateCallback;
