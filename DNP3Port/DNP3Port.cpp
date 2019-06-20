@@ -224,9 +224,8 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 class ChannelListener: public asiodnp3::IChannelListener
 {
 public:
-	ChannelListener(const std::string& ChanID_, DNP3Port* pPort_):
-		ChanID(ChanID_),
-		pPort(pPort_)
+	ChannelListener(const std::string& aChanID, DNP3Port* pPort):
+		ChanID(aChanID)
 	{
 		ChannelStateSubscriber::Subscribe(pPort,ChanID);
 	}
@@ -236,13 +235,13 @@ public:
 		ChannelStateSubscriber::StateListener(ChanID,state);
 	}
 private:
-	std::string ChanID;
-	DNP3Port* pPort;
+	const std::string ChanID;
 };
 
 std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 {
-	static std::unordered_map<std::string, std::shared_ptr<asiodnp3::IChannel>> Channels;
+	static std::unordered_map<std::string, std::weak_ptr<asiodnp3::IChannel>> Channels;
+	std::shared_ptr<asiodnp3::IChannel> chan(nullptr);
 
 	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -260,12 +259,12 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 	}
 
 	//create a new channel if needed
-	if(!Channels.count(ChannelID))
+	if(!Channels.count(ChannelID) || !(chan = Channels[ChannelID].lock()))
 	{
 		auto listener = std::make_shared<ChannelListener>(ChannelID,this);
 		if(isSerial)
 		{
-			Channels[ChannelID] = IOMgr->AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+			chan = IOMgr->AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 				asiopal::ChannelRetry(
 					openpal::TimeDuration::Milliseconds(500),
 					openpal::TimeDuration::Milliseconds(5000)),
@@ -277,7 +276,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 			{
 				case TCPClientServer::SERVER:
 				{
-					Channels[ChannelID] = IOMgr->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					chan = IOMgr->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 						pConf->pPointConf->ServerAcceptMode,
 						pConf->mAddrConf.IP,
 						pConf->mAddrConf.Port,listener);
@@ -286,7 +285,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 
 				case TCPClientServer::CLIENT:
 				{
-					Channels[ChannelID] = IOMgr->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					chan = IOMgr->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 						asiopal::ChannelRetry(
 							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
 							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
@@ -305,8 +304,9 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 				}
 			}
 		}
+		Channels[ChannelID] = chan;
 	}
 
-	return Channels[ChannelID];
+	return chan;
 }
 
