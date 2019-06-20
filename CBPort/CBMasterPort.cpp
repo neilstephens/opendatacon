@@ -540,7 +540,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	}
 	if (!FoundMatch)
 	{
-		MyPointConf->PointTable.ForEachMatchingBinaryPoint(group, payloadlocation, [&](CBBinaryPoint &pt)
+		MyPointConf->PointTable.ForEachMatchingBinaryPoint(group, payloadlocation, [&](CBBinaryPoint& pt)
 			{
 				uint8_t ch = pt.GetChannel();
 
@@ -549,9 +549,8 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 				{
 					case DIG:
 						{
-						      LOGDEBUG("MA - DIG Block Received");
-
 						      uint8_t bitvalue = (data >> (12 - ch)) & 0x0001;
+						      LOGDEBUG("MA - DIG Block Received - Chan {} - Value {}", ch, bitvalue);
 
 						      SendBinaryEvent(pt, bitvalue, now);
 
@@ -561,9 +560,10 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 
 					case MCA:
 						{
-						      LOGDEBUG("MA - MCA Block Received");
-						// The Change state cannot be handled in ODC, it will be handled by the actual value changes
-						      uint8_t bitvalue = (data >> (11 - (ch - 1) * 2)) & 0x0001;
+						                                                                 // The Change state cannot be handled in ODC, it will be handled by the actual value changes
+						      uint8_t bitvalue = (data >> (10 - (ch - 1) * 2)) & 0x0001; // Bit 11 is COS, Bit 10 is Value. Bit 1 is COS, Bit 0 is value
+						      uint8_t cos = (data >> (11 - (ch - 1) * 2)) & 0x0001;
+						      LOGDEBUG("MA - MCA Block Received - Chan {} - Value {} - COS {}", ch, bitvalue, cos);
 
 						      SendBinaryEvent(pt, bitvalue, now);
 
@@ -573,9 +573,10 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 
 					case MCB:
 						{
-						      LOGDEBUG("MA - MCB Block Received");
-						// The Change state cannot be handled in ODC, it will be handled by the actual value changes
-						      uint8_t bitvalue = (data >> (11 - (ch - 1) * 2)) & 0x0001;
+						                                                                 // The Change state cannot be handled in ODC, it will be handled by the actual value changes
+						      uint8_t bitvalue = (data >> (10 - (ch - 1) * 2)) & 0x0001; // Bit 11 is COS, Bit 10 is Value. Bit 1 is COS, Bit 0 is value
+						      uint8_t cos = (data >> (11 - (ch - 1) * 2)) & 0x0001;
+						      LOGDEBUG("MA - MCB Block Received - Chan {} - Value {} - COS {}", ch, bitvalue, cos);
 
 						      SendBinaryEvent(pt, bitvalue, now);
 
@@ -585,9 +586,10 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 
 					case MCC:
 						{
-						      LOGDEBUG("MA - MCC Block Received");
-						// The Change state cannot be handled in ODC, it will be handled by the actual value changes
-						      uint8_t bitvalue = (data >> (11 - (ch - 1) * 2)) & 0x0001;
+						                                                                 // The Change state cannot be handled in ODC, it will be handled by the actual value changes
+						      uint8_t bitvalue = (data >> (10 - (ch - 1) * 2)) & 0x0001; // Bit 11 is COS, Bit 10 is Value. Bit 1 is COS, Bit 0 is value
+						      uint8_t cos = (data >> (11 - (ch - 1) * 2)) & 0x0001;
+						      LOGDEBUG("MA - MCC Block Received - Chan {} - Value {} - COS {}", ch, bitvalue, cos);
 
 						      SendBinaryEvent(pt, bitvalue, now);
 
