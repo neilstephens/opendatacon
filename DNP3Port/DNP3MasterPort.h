@@ -104,7 +104,7 @@ private:
 	std::atomic_bool stack_enabled;
 	bool assign_class_sent;
 	std::shared_ptr<asiodnp3::IMasterScan> IntegrityScan;
-	std::unique_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
+	std::shared_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
 	void SetCommsGood();
 	void SetCommsFailed();
