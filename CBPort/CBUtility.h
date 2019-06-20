@@ -103,6 +103,8 @@ int GetSetBit(uint32_t data, int numberofbits);
 
 std::vector<std::string> split(const std::string& s, char delimiter);
 
+std::string GetFunctionCodeName(uint8_t functioncode);
+std::string GetSubFunctionCodeName(uint8_t functioncode);
 
 
 template <class T>
@@ -344,6 +346,7 @@ public:
 		oss << std::setw(2) << (data & 0x0FF);
 		return oss.str();
 	}
+
 
 	// Used to build a 4 byte block from the TCP stream so we can test if it is a valid CB Block. If the block is already full, push out one byte to make room for a new one.
 	void AddByteToBlock(uint8_t b)

@@ -234,7 +234,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				// If you want a resend command and not send the same command again, allow the following line.
 				// DoResendCommand = true;
 
-				LOGDEBUG("Sending Retry on command :{}",std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
+				LOGDEBUG("Sending Retry on command :{}",GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode))
 			}
 			else
 			{
@@ -249,7 +249,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 						SetAllPointsQualityToCommsLost(); // All the connected points need their quality set to comms lost
 					});
 
-				LOGDEBUG("Reached maximum number of retries on command :{}", std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
+				LOGDEBUG("Reached maximum number of retries on command :{}", GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode))
 			}
 		}
 
@@ -264,9 +264,10 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 			MasterCommandProtectedData.MasterCommandQueue.pop();
 
 			MasterCommandProtectedData.CurrentFunctionCode = MasterCommandProtectedData.CurrentCommand.first[0].GetFunctionCode();
-			LOGDEBUG("Sending next command : Fn {}, St {}, Gr {}",std::to_string(MasterCommandProtectedData.CurrentFunctionCode),
+			LOGDEBUG("Sending next command : Fn {}, St {}, Gr {}, 1B {}", GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode),
 				std::to_string(MasterCommandProtectedData.CurrentCommand.first[0].GetStationAddress()),
-				std::to_string(MasterCommandProtectedData.CurrentCommand.first[0].GetGroup()))
+				std::to_string(MasterCommandProtectedData.CurrentCommand.first[0].GetGroup()),
+				to_binstring(MasterCommandProtectedData.CurrentCommand.first[0].GetB()));
 		}
 
 		// If either of the above situations need us to send a command, do so.
@@ -295,7 +296,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 								// we have cancelled the timer and this callback is called, that we do NOT take any action!
 								if (endtime == MasterCommandProtectedData.TimerExpireTime)
 								{
-								      LOGDEBUG("CB Master Timeout valid - CB Function {}", std::to_string(MasterCommandProtectedData.CurrentFunctionCode));
+								      LOGDEBUG("CB Master Timeout valid - CB Function {}", GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode));
 
 								      MasterCommandProtectedData.ProcessingCBCommand = false; // Only gets reset on success or timeout.
 
@@ -359,23 +360,22 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 
 			CBBlockData Header = CompleteCBMessage[0];
 
-			LOGDEBUG("CB Master received a response to sending cmd {} On Station Address - {}", std::to_string(MasterCommandProtectedData.CurrentFunctionCode),std::to_string(Header.GetStationAddress()));
+			LOGDEBUG("CB Master received a response to sending cmd {} On Station Address - {}", GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode),std::to_string(Header.GetStationAddress()));
 
 			// If we have an error, we have to wait for the timeout to occur, there may be another packet in behind which is the correct one. If we bail now we may never re-synchronise.
 			if (Header.GetStationAddress() == 0)
 			{
-			      LOGERROR("Received broadcast return message - address 0 - ignoring - {} On Station Address - {}",std::to_string(Header.GetFunctionCode()),std::to_string(Header.GetStationAddress()));
+			      LOGERROR("Received broadcast return message - address 0 - ignoring - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()),std::to_string(Header.GetStationAddress()));
 			      return;
 			}
 			if (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr)
 			{
-			      LOGERROR("Received a message from the wrong address - ignoring - {} On Station Address - {}", std::to_string(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
+			      LOGERROR("Received a message from the wrong address - ignoring - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
 			      return;
 			}
 			if (Header.GetFunctionCode() != MasterCommandProtectedData.CurrentFunctionCode)
 			{
-			      LOGERROR("Received a message with the wrong (non-matching) function code - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      LOGERROR("Received a message with the wrong (non-matching) function code - ignoring - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()),std::to_string(Header.GetStationAddress()));
 			      return;
 			}
 
@@ -407,9 +407,9 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 					NotImplemented = true;
 					break;
 				case FUNC_MASTER_STATION_REQUEST:
+					LOGDEBUG("Received Master Station Request Response - Sub Code {}, Station {}", GetSubFunctionCodeName(Header.GetGroup()), std::to_string(Header.GetStationAddress()));
 					success = true; // We dont need to check what we get back...
 					break;
-
 				case FUNC_SEND_NEW_SOE:
 					success = ProcessSOEScanRequestReturn(Header, CompleteCBMessage); // Fn - 10
 					break;
@@ -426,13 +426,13 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 					NotImplemented = true;
 					break;
 				default:
-					LOGERROR("Unknown Message Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+					LOGERROR("Unknown Message Function - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()) , std::to_string(Header.GetStationAddress()));
 					break;
 			}
 
 			if (NotImplemented == true)
 			{
-			      LOGERROR("PendingCommand Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      LOGERROR("PendingCommand Function NOT Implemented - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()),std::to_string(Header.GetStationAddress()));
 			}
 
 			if (success) // Move to the next command. Only other place we do this is in the timeout.
@@ -446,8 +446,8 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			}
 			else
 			{
-			      LOGERROR("PendingCommand Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
-					" Expecting " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      LOGERROR("PendingCommand Response failed - Received - {},  Expecting {}  On Station Address - {}",
+					GetFunctionCodeName(Header.GetFunctionCode()), GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode), std::to_string(Header.GetStationAddress()));
 			}
 			#ifdef _MSC_VER
 			#pragma warning(suppress: 26495)
@@ -1068,7 +1068,7 @@ void CBMasterPort::WriteObject(const ControlRelayOutputBlock& command, const uin
 
 		SendDigitalControlOnCommand(MyConf->mAddrConf.OutstationAddr, Group, Channel, pStatusCallback);
 	}
-	LOGDEBUG("Master received a Binary Control Output Command - Index: {} - {} Group/Channel {}/{}", OnOffString,std::to_string(index), std::to_string(Group), std::to_string(Channel));
+	LOGDEBUG("Master received a Binary Control Output Command - Index: {} - {} Group {} Channel {}", index, OnOffString,std::to_string(index), std::to_string(Group), std::to_string(Channel));
 }
 
 void CBMasterPort::WriteObject(const int16_t &command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
