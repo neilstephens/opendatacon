@@ -231,3 +231,47 @@ std::string CBMessageAsString(const CBMessage_t& CompleteCBMessage)
 	}
 	return res;
 }
+
+std::string GetFunctionCodeName(uint8_t functioncode)
+{
+	switch (functioncode)
+	{
+		case FUNC_SCAN_DATA: return "SCAN_DATA";
+		case     FUNC_EXECUTE_COMMAND: return "EXECUTE_COMMAND";
+		case     FUNC_TRIP: return "TRIP";
+		case     FUNC_SETPOINT_A: return "SETPOINT_A";
+		case     FUNC_CLOSE: return "CLOSE";
+		case     FUNC_SETPOINT_B: return "SETPOINT_B";
+		case     FUNC_RESET: return "RESET";
+		case     FUNC_MASTER_STATION_REQUEST: return "MASTER_STATION_REQUEST";
+		case     FUNC_SEND_NEW_SOE: return "SEND_NEW_SOE";
+		case     FUNC_REPEAT_SOE: return "REPEAT_SOE";
+		case     FUNC_UNIT_RAISE_LOWER: return "";
+		case     FUNC_FREEZE_AND_SCAN_ACC: return "FREEZE_AND_SCAN_ACC";
+		case     FUNC_FREEZE_SCAN_AND_RESET_ACC: return "FREEZE_SCAN_AND_RESET_ACC";
+		default: return "Unknown Function Code";
+	}
+}
+std::string GetSubFunctionCodeName(uint8_t functioncode)
+{
+	switch (functioncode)
+	{
+		case MASTER_SUB_FUNC_0_NOTUSED: return "0_NOTUSED";
+		case MASTER_SUB_FUNC_TESTRAM: return "TESTRAM";
+		case MASTER_SUB_FUNC_TESTPROM: return "TESTPROM";
+		case MASTER_SUB_FUNC_TESTEPROM: return "TESTEPROM";
+		case MASTER_SUB_FUNC_TESTIO: return "TESTIO";
+		case MASTER_SUB_FUNC_SEND_TIME_UPDATES: return "SEND_TIME_UPDATES";
+		case MASTER_SUB_FUNC_SPARE1: return "SPARE1";
+		case MASTER_SUB_FUNC_SPARE2: return "SPARE2";
+		case MASTER_SUB_FUNC_RETRIEVE_REMOTE_STATUS_WORD: return "RETRIEVE_REMOTE_STATUS_WORD";
+		case MASTER_SUB_FUNC_RETREIVE_INPUT_CIRCUIT_DATA: return "RETREIVE_INPUT_CIRCUIT_DAT";
+		case MASTER_SUB_FUNC_TIME_CORRECTION_FACTOR_ESTABLISHMENT: return "TIME_CORRECTION_FACTOR_ESTABLISHMENT";
+		case MASTER_SUB_FUNC_REPEAT_PREVIOUS_TRANSMISSION: return "REPEAT_PREVIOUS_TRANSMISSION";
+		case MASTER_SUB_FUNC_SPARE3: return "SPARE3";
+		case MASTER_SUB_FUNC_SET_LOOPBACKS: return "SET_LOOPBACKS";
+		case MASTER_SUB_FUNC_RESET_RTU_WARM: return "RESET_RTU_WARM";
+		case MASTER_SUB_FUNC_RESET_RTU_COLD: return "RESET_RTU_COLD";
+		default: return "Unknown Sub-Function Code";
+	}
+}
