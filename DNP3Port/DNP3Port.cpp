@@ -24,19 +24,12 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-
 #include <openpal/logging/LogLevels.h>
 #include <opendnp3/gen/Parity.h>
 #include <opendatacon/util.h>
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
 #include "ChannelStateSubscriber.h"
-
-std::shared_ptr<asiodnp3::DNP3Manager> DNP3Port::IOMgr()
-{
-	static auto mgr = std::make_shared<asiodnp3::DNP3Manager>(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>());
-	return mgr;
-}
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -45,12 +38,37 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	link_dead(true),
 	channel_dead(true)
 {
+	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
+	static std::weak_ptr<asiodnp3::DNP3Manager> weak_mgr;
+
+	//if we're the first/only one on the scene,
+	// init the DNP3Manager
+	if(!init_flag.test_and_set(std::memory_order_acquire))
+	{
+		//make a custom deleter for the DNP3Manager that will also clear the init flag
+		auto deinit_del = [](asiodnp3::DNP3Manager* mgr_ptr)
+					{init_flag.clear(); delete mgr_ptr;};
+		this->IOMgr = std::shared_ptr<asiodnp3::DNP3Manager>(
+			new asiodnp3::DNP3Manager(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>()),
+			deinit_del);
+		weak_mgr = this->IOMgr;
+	}
+	//otherwise just make sure it's finished initialising and take a shared_ptr
+	else
+	{
+		while (!(this->IOMgr = weak_mgr.lock()))
+		{} //init happens very seldom, so spin lock is good
+	}
+
 	//the creation of a new DNP3PortConf will get the point details
 	pConf.reset(new DNP3PortConf(ConfFilename, ConfOverrides));
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
 }
+
+DNP3Port::~DNP3Port()
+{}
 
 // Called by OpenDNP3 Thread Pool
 void DNP3Port::StateListener(opendnp3::ChannelState state)
@@ -247,7 +265,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 		auto listener = std::make_shared<ChannelListener>(ChannelID,this);
 		if(isSerial)
 		{
-			Channels[ChannelID] = IOMgr()->AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+			Channels[ChannelID] = IOMgr->AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 				asiopal::ChannelRetry(
 					openpal::TimeDuration::Milliseconds(500),
 					openpal::TimeDuration::Milliseconds(5000)),
@@ -259,7 +277,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 			{
 				case TCPClientServer::SERVER:
 				{
-					Channels[ChannelID] = IOMgr()->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					Channels[ChannelID] = IOMgr->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 						pConf->pPointConf->ServerAcceptMode,
 						pConf->mAddrConf.IP,
 						pConf->mAddrConf.Port,listener);
@@ -268,7 +286,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 
 				case TCPClientServer::CLIENT:
 				{
-					Channels[ChannelID] = IOMgr()->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					Channels[ChannelID] = IOMgr->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
 						asiopal::ChannelRetry(
 							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
 							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
