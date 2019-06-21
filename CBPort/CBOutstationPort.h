@@ -138,7 +138,7 @@ public:
 
 	void ConvertBitArrayToPayloadWords(const uint32_t UsedBits, std::array<bool, MaxSOEBits> &BitArray, std::vector<uint16_t> &PayloadWords);
 
-	void BuildPackedEventBitArray(uint8_t Group, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits);
+	void BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits);
 
 	void ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage);
 	void EchoReceivedHeaderToMaster(CBBlockData & Header);

@@ -586,9 +586,8 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 	LOGDEBUG("OS - SendSOEResponse - FnA - Code {}", Header.GetGroup());
 
 	CBMessage_t ResponseCBMessage;
-	uint8_t SOEGroup = Header.GetGroup();
 
-	if (!MyPointConf->PointTable.TimeTaggedDataAvailable(SOEGroup))
+	if (!MyPointConf->PointTable.TimeTaggedDataAvailable())
 	{
 		// Format empty response
 		// Not clear in the spec what an empty SOE response is, however I am going to assume that a full echo of the inbound packet is the empty response.
@@ -601,7 +600,7 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 		uint32_t UsedBits = 0;
 		std::array<bool, MaxSOEBits> BitArray;
 
-		BuildPackedEventBitArray(Header.GetGroup(), BitArray, UsedBits);
+		BuildPackedEventBitArray(BitArray, UsedBits);
 
 		// Using an vector of uint16_t to store up to 31 x 12 bit blocks of data.
 		// Store the data in the bottom 12 bits of the 16 bit word.
@@ -671,7 +670,7 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 		PayloadWords.push_back(payload);
 	}
 }
-void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits)
+void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits)
 {
 	// The SOE data is built into a stream of bits (that may not be block aligned) and then it is stuffed 12 bits at a time into the available Payload locations - up to 31.
 	// First section format:
@@ -688,7 +687,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 	{
 		// There must be at least one SOE available to get to here.
 
-		if (!MyPointConf->PointTable.PeekNextTaggedEventPoint(SOEGroup,CurrentPoint)) // Don't pop until we are happy...
+		if (!MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint)) // Don't pop until we are happy...
 		{
 			// We have run out of data, so break out of the loop, but first we need to set the last event flag in the previous packet--this is the last bit in the vector
 			// SET LAST EVENT FLAG
@@ -719,7 +718,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 		if (PackedEvent.AddDataToBitArray(BitArray,UsedBits))
 		{
 			// Pop the event so we can move onto the next one
-			MyPointConf->PointTable.PopNextTaggedEventPoint(SOEGroup);
+			MyPointConf->PointTable.PopNextTaggedEventPoint();
 		}
 		else
 		{
