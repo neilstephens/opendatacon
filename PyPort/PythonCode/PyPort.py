@@ -9,6 +9,8 @@
 # test arguments
 import odc
 import PyPortSim
+import requests
+import json
 
 print("Staring Run")
 
@@ -35,15 +37,19 @@ conf = """{
 
 }"""
 
-guid = 12345678
-x =PyPortSim.SimPortClass(guid, "TestInstance")
+
+
 
 MainJSON = ""
 OverrideJSON = """{"Port" : 11111,"ModuleName" : "PyPortSimModified","PollGroups" : [{"ID" : 1, "PollRate" : 11111, "Group" : 3, "PollType" : "Scan"}]}"""
+
+"""
+guid = 12345678
+x =PyPortSim.SimPortClass(guid, "TestInstance")
+
 x.Config(conf, OverrideJSON)
 
 x.Enable()
-
 x.Disable()
 
 EventType = 1    # Binary?
@@ -61,3 +67,30 @@ print("JSON Response {}".format(resjson))
 x.TimerHandler(1)
 
 print("Done")
+"""
+
+requesttimeout = 10
+try:
+#    r = requests.get('https://httpbin.org/ip', timeout=requesttimeout)
+
+#    print('Response is {0}'.format(json.dumps(r.json())))
+
+#    payload = {'key1': 'value1', 'key2': 'value2'}
+
+    i  = 0
+    while i < 100:
+        r = requests.get('http://localhost:8000', timeout=requesttimeout)
+        print('Response is {0}'.format(r.text))
+        i = i + 1
+
+    print('Response is {0}'.format(r.text))
+
+  #  r = requests.post('https://httpbin.org/post', data = {'key':'value'}, timeout=requesttimeout)
+
+  #  print(r.text)
+
+ #   print('Response is {0}'.format(json.dumps(r.json())))
+                 
+    #r = requests.post(url, json=payload, timeout=requesttimeout)
+except requests.exceptions.RequestException as e:
+    print("Exception - {}".format(e))
