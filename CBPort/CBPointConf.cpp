@@ -237,7 +237,6 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		std::string pointtypestring = "";
 		bool IsSOE = false;
 		uint8_t SOEIndex = 0;
-		uint8_t SOEGroup = 0;
 
 		PayloadLocationType payloadlocation;
 
@@ -252,7 +251,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		}
 		else
 		{
-			LOGERROR(BinaryName + " A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : " + JSONNode[n].toStyledString());
+			LOGERROR("A {} point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : : {}", BinaryName, JSONNode[n].toStyledString());
 			start = 1;
 			stop = 0;
 			error = true;
@@ -266,7 +265,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			}
 			else
 			{
-				LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
+				LOGERROR("A Binary point needs a \"PayloadLocation\" : {}", JSONNode[n].toStyledString());
 				error = true;
 			}
 		}
@@ -280,7 +279,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			group = JSONNode[n]["Group"].asUInt();
 		else
 		{
-			LOGERROR(BinaryName + " A point needs a \"Group\" : " + JSONNode[n].toStyledString());
+			LOGERROR("A {} point needs a \"Group\" : {}", BinaryName, JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -290,7 +289,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		}
 		else
 		{
-			LOGERROR(BinaryName + " A point needs a \"Channel\" : " + JSONNode[n].toStyledString());
+			LOGERROR("A {} point needs a \"Channel\" : {}", BinaryName, JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -309,39 +308,34 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 				pointtype = BINCONTROL;
 			else
 			{
-				LOGERROR(BinaryName + " A point needs a valid \"Type\" : " + JSONNode[n].toStyledString());
+				LOGERROR("A {} point needs a valid \"Type\" : {}", BinaryName,JSONNode[n].toStyledString());
 				error = true;
 			}
 		}
 		else
 		{
-			LOGERROR(BinaryName + " A point needs a \"Type\" : " + JSONNode[n].toStyledString());
+			LOGERROR("A {} point needs a \"Type\" : {}", BinaryName, JSONNode[n].toStyledString());
 			error = true;
 		}
 
-		if (pointtype == DIG) // Dont do SOE for MCx or CONTROL!
+		if (pointtype != BINCONTROL) // Do SOE for MCx or DIG
 		{
 			if (JSONNode[n].isMember("SOE"))
 			{
-				if (JSONNode[n]["SOE"].isMember("Group") && JSONNode[n]["SOE"].isMember("Index"))
+				if ( JSONNode[n]["SOE"].isMember("Index"))
 				{
 					IsSOE = true;
 					SOEIndex = JSONNode[n]["SOE"]["Index"].asUInt();
-					SOEGroup = JSONNode[n]["SOE"]["Group"].asUInt();
+
 					if (SOEIndex > 120)
 					{
-						LOGERROR("\"SOEIndex\" must be 0 to 120 : " + JSONNode[n].toStyledString());
-						error = true;
-					}
-					if (SOEIndex > 15)
-					{
-						LOGERROR("\"SOEGroup\" must be 0 to 15 : " + JSONNode[n].toStyledString());
+						LOGERROR("\"SOEIndex\" must be 0 to 120 : {}",JSONNode[n].toStyledString());
 						error = true;
 					}
 				}
 				else
 				{
-					LOGERROR(BinaryName + " If SOE exists, it needs an \"Index\" and a \"Group\" : " + JSONNode[n].toStyledString());
+					LOGERROR("{} point - If SOE exists, it needs an \"Index\" : {}", BinaryName,JSONNode[n].toStyledString());
 					error = true;
 				}
 			}
@@ -359,31 +353,31 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					// Do some sanity checks
 					if ((pointtype == DIG) && ((currentchannel < 1) || (currentchannel > 12)))
 					{
-						LOGERROR("A binary point channel for point type DIG must be between 1 and 12 " + std::to_string(currentchannel));
+						LOGERROR("A binary point channel for point type DIG must be between 1 and 12 {}", std::to_string(currentchannel));
 					}
 					else if (((pointtype == MCA) || (pointtype == MCB) || (pointtype == MCC)) && ((currentchannel < 1) || (currentchannel > 6)))
 					{
-						LOGERROR("A binary point channel for point type MCA/MCB/MCC must be between 1 and 6 " + std::to_string(currentchannel));
+						LOGERROR("A binary point channel for point type MCA/MCB/MCC must be between 1 and 6 {}", std::to_string(currentchannel));
 					}
 					else if (pointtype == BINCONTROL)
 					{
-						LOGERROR("A binary input cannot have type CONTROL " + std::to_string(currentchannel));
+						LOGERROR("A binary input cannot have type CONTROL {}", std::to_string(currentchannel));
 					}
 					else
 					{
 						// Only add the point if it passes
-						res = PointTable.AddBinaryPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, payloadlocation, pointtype, IsSOE, SOEIndex, SOEGroup);
+						res = PointTable.AddBinaryPointToPointTable(index, numeric_cast<uint8_t>(group), currentchannel, payloadlocation, pointtype, IsSOE, SOEIndex);
 					}
 				}
 				else if (ptype == BinaryControl)
 				{
 					if (pointtype != BINCONTROL)
 					{
-						LOGERROR("A binary control can only have type CONTROL " + std::to_string(currentchannel));
+						LOGERROR("A binary control can only have type CONTROL {}", std::to_string(currentchannel));
 					}
 					else if ((currentchannel < 1) || (currentchannel > 12))
 					{
-						LOGERROR("A binary control channel must be between 1 and 12 " + std::to_string(currentchannel));
+						LOGERROR("A binary control channel must be between 1 and 12 {}", std::to_string(currentchannel));
 					}
 					else
 					{
@@ -396,8 +390,10 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 
 				if (res)
 				{
+					std::string payloadstring = (BinaryName == "BinaryControl") ? "C" : payloadlocation.to_string();
 					// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
-					LOGDEBUG(BinaryName+" Adding a Binary - Index: "+std::to_string(index)+" Group: "+ std::to_string(group) + " Channel: " + std::to_string(currentchannel) + " Point Type: "+ pointtypestring +" Payload Location: "+payloadlocation.to_string());
+					LOGDEBUG("Adding a {} - Index: {} Group: {} Channel: {}  Point Type : {} Payload Location : {}",
+						BinaryName,std::to_string(index),std::to_string(group),std::to_string(currentchannel),pointtypestring,payloadstring);
 				}
 				SOEIndex++;
 			}
@@ -592,7 +588,7 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 				}
 				else if ((channel < 1) || (channel > 2))
 				{
-					LOGERROR("An analogcontrol point channel for point type CONTROL must be between 1 and 2 " + std::to_string(channel));
+					LOGERROR("An analogcontrol point channel for point type CONTROL must be between 1 and 2 {}",std::to_string(channel));
 				}
 				else
 				{
@@ -604,8 +600,11 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 
 			if (res)
 			{
+				std::string payloadstring = (Name == "AnalogControl") ? "C" : payloadlocation.to_string();
+
 				// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
-				LOGDEBUG("Adding a "+Name+" - Index: " + std::to_string(index) + " Group: " + std::to_string(group) + " Channel: " + std::to_string(channel) + " Point Type: " + pointtypestring + " Payload Location: " + payloadlocation.to_string());
+				LOGDEBUG("Adding an {} - Index: {} Group: {} Channel: {}  Point Type : {} Payload Location : {}",
+					Name, std::to_string(index), std::to_string(group), std::to_string(channel), pointtypestring, payloadstring);
 			}
 		}
 	}

@@ -637,7 +637,7 @@ void CBMasterPort::SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const 
 	}
 }
 
-bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData & ReceivedHeader, const CBMessage_t& CompleteCBMessage)
+bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader, const CBMessage_t& CompleteCBMessage)
 {
 	if (CompleteCBMessage.size() == 1)
 	{
@@ -653,10 +653,8 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData & ReceivedHeade
 	if (!ConvertSOEMessageToBitArray(CompleteCBMessage, BitArray, UsedBits))
 		return false;
 
-	uint8_t SOEGroup = ReceivedHeader.GetGroup(); // The Group in the SOE events is its scan group. Go figure.
-
 	// Convert the BitArray to SOE events, and call our lambda for each
-	ForEachSOEEventInBitArray(BitArray, UsedBits, [&](SOEEventFormat &soeevnt)
+	ForEachSOEEventInBitArray(BitArray, UsedBits, [&](SOEEventFormat& soeevnt)
 		{
 			// Now use the data in the SOE Event to fire off an ODC event..
 			// Find the Point in our database...using SOE Group and Number
@@ -665,7 +663,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData & ReceivedHeade
 
 			size_t ODCIndex = 0;
 
-			if (MyPointConf->PointTable.GetBinaryODCIndexUsingSOE(SOEGroup, SOEIndex, ODCIndex))
+			if (MyPointConf->PointTable.GetBinaryODCIndexUsingSOE(SOEIndex, ODCIndex))
 			{
 			      uint8_t bitvalue = soeevnt.ValueBit;
 
@@ -688,14 +686,14 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData & ReceivedHeade
 			      CBTime changedtime = GetDayStartTime(Now) + soeevnt.GetTotalMsecTime();
 
 			      QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
-			      LOGDEBUG("Published Binary SOE Event - SOE Group {}, SOE Index {} ODC Index {} Bit Value {}",SOEGroup, SOEIndex,ODCIndex,bitvalue);
+			      LOGDEBUG("Published Binary SOE Event -  SOE Index {} ODC Index {} Bit Value {}", SOEIndex, ODCIndex, bitvalue);
 			      auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(changedtime));
 			      event->SetPayload<EventType::Binary>(bitvalue == 1);
 			      PublishEvent(event);
 			}
 			else
 			{
-			      LOGERROR("Received an Binary SOE Event Record, but we dont have a matching point definition... Group {}, Number {}", SOEGroup, SOEIndex);
+			      LOGERROR("Received an Binary SOE Event Record, but we dont have a matching point definition... Number {}", SOEIndex);
 			}
 		});
 
