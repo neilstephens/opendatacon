@@ -39,7 +39,7 @@ public:
 	static void StateListener(const std::string& ChanID, opendnp3::ChannelState state);
 
 private:
-	ChannelStateSubscriber(){}
+	ChannelStateSubscriber() = delete;
 	static std::multimap<std::string, DNP3Port*> SubscriberMap;
 
 	//FIXME: replace with a strand
