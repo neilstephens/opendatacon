@@ -27,10 +27,6 @@
 #ifndef PYWRAPPER_H_
 #define PYWRAPPER_H_
 
-// If we are compiling for external testing (or production) define this.
-// If we are using VS and its test framework, don't define this.
-//#define NONVSTESTING
-
 #include <Python.h>
 #include <unordered_map>
 #include <opendatacon/util.h>
@@ -105,7 +101,7 @@ private:
 
 	// Keep track of each PyWrapper so static methods can get access to the correct PyPort instance
 	static std::unordered_map<uint64_t, int> PyWrappers;
-	static std::atomic_uint PythonWrapper::InterpreterUseCount; // Used to keep track of Interpreter Setup/Tear down.
+	static std::atomic_uint InterpreterUseCount; // Used to keep track of Interpreter Setup/Tear down.
 	static PyThreadState* threadState;
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.

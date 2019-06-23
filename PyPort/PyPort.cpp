@@ -149,7 +149,7 @@ void PyPort::Enable()
 		{
 			pWrapper->Enable();
 		});
-};
+}
 
 void PyPort::Disable()
 {
@@ -160,7 +160,7 @@ void PyPort::Disable()
 		{
 			pWrapper->Disable();
 		});
-};
+}
 
 bool PyPort::GetQualityFlagsFromStringName(const std::string StrQuality, QualityFlags& QualityResult)
 {
@@ -233,8 +233,6 @@ bool PyPort::GetControlCodeFromStringName(const std::string StrControlCode, Cont
 bool PyPort::GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult)
 {
 #define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
-
-	ConnectStateResult;
 
 	CHECKCONNECTSTATESTRING(ConnectState::CONNECTED);
 	CHECKCONNECTSTATESTRING(ConnectState::DISCONNECTED);
@@ -423,7 +421,8 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 
 			}
 		});
-};
+}
+
 // This is called when we have decoded a restful request, to the point where we know which instance it should be passed to. We give it a callback, which will
 // be used to actually send the response back to the caller.
 void PyPort::RestHandler(const std::string& url, ResponseCallback_t pResponseCallback)
