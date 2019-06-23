@@ -41,7 +41,6 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include "../submodules/asio-1.12.2/include/asio/strand.hpp"
 
 using namespace odc;
 
