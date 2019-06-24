@@ -26,6 +26,22 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def PythonCode/*.py)
 
 find_package(Python3 COMPONENTS Development)	# The new way of doing things, can pass Python_ROOT_DIR as a hint
 
+if (${Python3_INCLUDE_DIRS}) #We found Python
+
+	if (NOT ${Python3_LIBRARY_DEBUG})
+		#Appveyor does not seem to have the debug libraries and we dont need them - I think - just link to Release
+		message("Found Python Release Library but no Debug Library ${Python3_LIBRARY_RELEASE} ")
+		SET(Python3_LIBRARIES,${Python3_LIBRARY_RELEASE})
+	endif
+
+else
+	# We have to find the libraries using old CMake command as Python3 does not work on some of our targets.
+	message("find_package(Python3) failed, trying find_package(PythonLibs) ")
+	find_package( PythonLibs 3.5 REQUIRED)
+	set(Python3_INCLUDE_DIRS, ${PYTHON_INCLUDE_DIRS})
+	set(Python3_LIBRARIES, ${PYTHON_LIBRARIES})
+endif
+
 message("Found Python Include Dirs ${Python3_INCLUDE_DIRS} ")
 message("Found Python Libraries ${Python3_LIBRARIES} ")
 
