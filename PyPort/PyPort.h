@@ -33,7 +33,7 @@
 
 // We us a call that is only available in version 3.7
 // For CI we only have 3.5 on Linux
-// #define PYTHON3.7
+// #define PYTHON3_7
 
 #include <Python.h>
 #include <unordered_map>
