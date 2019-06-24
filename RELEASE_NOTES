@@ -1,5 +1,11 @@
 opendatacon version 1.2.1
 
+1.2.2
+	- Conitel (CBPort) improvements and fixes
+	- Further core fixes for clean shutdown
+	- Reduced redundancy by compiling ASIO only into libODC
+	- Upstream fixes to opendnp3
+	
 1.2.1
 	- Updated third party libraries
 	- Fixes for cleaner shutdown
