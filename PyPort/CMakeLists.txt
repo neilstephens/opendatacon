@@ -26,19 +26,19 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def PythonCode/*.py)
 
 find_package(Python3 COMPONENTS Development)	# The new way of doing things, can pass Python_ROOT_DIR as a hint
 
-message("Found Python Include Dirs ${Python_INCLUDE_DIRS} ")
-message("Found Python Libraries ${Python_LIBRARIES} ")
+message("Found Python Include Dirs ${Python3_INCLUDE_DIRS} ")
+message("Found Python Libraries ${Python3_LIBRARIES} ")
 
 include_directories(
 	"../include"
 	"../JSON"
-	${Python_INCLUDE_DIRS}
+	${Python3_INCLUDE_DIRS}
 	"${DNP3_HOME}/include"
 	"${ASIO_HOME}/include"
 )
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC ${openpal_libs} ${opendnp3_libs} ${Python_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ODC ${openpal_libs} ${opendnp3_libs} ${Python3_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
