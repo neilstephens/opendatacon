@@ -588,7 +588,7 @@ TEST_CASE("Util - ConfigFileLoadTest")
 	STANDARD_TEST_SETUP();
 	auto CBOSPort = std::make_unique<CBOutstationPort>("TestOutStation", "CBAutoGenConfig.conf", Json::nullValue);
 
-	CBOSPort->SetIOS(&IOS);
+	CBOSPort->SetIOS(IOS);
 	CBOSPort->Build();
 
 	STANDARD_TEST_TEARDOWN();
