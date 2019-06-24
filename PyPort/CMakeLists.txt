@@ -22,8 +22,9 @@ cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def PythonCode/*.py)
 
 # For Appveyor the paths are C:\Python37 for x86 and C:\Python37-x64 for 3.7.3 which is what we are using. Need to specifiy this explicitly?
-# Can Cmake find these?
-find_package(PythonLibs 3.7.3 EXACT REQUIRED)
+# Can Cmake find these? Travis std version is 3.6. Appveyor has 3.7
+find_package(PythonInterp 3.6 REQUIRED)
+find_package(PythonLibs 3.6 REQUIRED)
 
 include_directories(
 	"../include"
