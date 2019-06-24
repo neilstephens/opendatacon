@@ -155,9 +155,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// Common application configuration
 	if (JSONRoot.isMember("ServerAcceptMode"))
 	{
-		if(JSONRoot["TCPConnectRetryPeriodMinms"].asString() == "CloseNew")
+		if(JSONRoot["ServerAcceptMode"].asString() == "CloseNew")
 			ServerAcceptMode = opendnp3::ServerAcceptMode::CloseNew;
-		else if(JSONRoot["TCPConnectRetryPeriodMinms"].asString() == "CloseExisting")
+		else if(JSONRoot["ServerAcceptMode"].asString() == "CloseExisting")
 			ServerAcceptMode = opendnp3::ServerAcceptMode::CloseExisting;
 		else
 		if(auto log = odc::spdlog_get("DNP3Port"))
