@@ -21,26 +21,36 @@ project(PyPort)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def PythonCode/*.py)
 
-# For Appveyor the paths are C:\Python37 for x86 and C:\Python37-x64 for 3.7.3 which is what we are using. Need to specifiy this explicitly?
-# Need to apt-get install for travis, for Appveyor we need to set Python_ROOT_DIR so it finds the correct version x86 or x64.
+# For Appveyor the paths are C:\Python37 for x86 and C:\Python37-x64 for 3.7.3 which is what we are using. 
+# For Appveyor we need to set Python_ROOT_DIR so it finds the correct version x86 or x64. There is code in the appveyor.yml file to do this.
 
 find_package(Python3 COMPONENTS Development)	# The new way of doing things, can pass Python_ROOT_DIR as a hint
 
-if (${Python3_INCLUDE_DIRS}) #We found Python
+if (Python3_FOUND) 
+	message("Python3 Found")
 
-	if (NOT ${Python3_LIBRARY_DEBUG})
-		#Appveyor does not seem to have the debug libraries and we dont need them - I think - just link to Release
-		message("Found Python Release Library but no Debug Library ${Python3_LIBRARY_RELEASE} ")
-		SET(Python3_LIBRARIES,${Python3_LIBRARY_RELEASE})
-	endif
+	if(WIN32)
+		if (NOT Python3_LIBRARY_DEBUG)
+			#Appveyor does not have the debug libraries. Point to our copy that we have put into GIT. This issue will be fixed on next Image Release
+			# Remove this and Python37_d.lib from GIT when the Appveyor image catches up.
 
-else
+			message("Found Python Release Library but no Debug Library ${Python3_LIBRARY_RELEASE}")
+			get_filename_component(LibFileName "${Python3_LIBRARY_RELEASE}" NAME_WE)
+			message("Target Filename: ${CMAKE_SOURCE_DIR}/${LibFileName}_d.lib")
+#			execute_process(
+#				COMMAND ${CMAKE_COMMAND} -E copy "${Python3_LIBRARY_RELEASE}" "${CMAKE_BINARY_DIR}/${LibFileName}_d.lib"  
+#			)
+			set(Python3_LIBRARIES "optimized;${Python3_LIBRARY_RELEASE};debug;${CMAKE_SOURCE_DIR}/PyPort/${LibFileName}_d.lib")
+		endif()
+	endif()
+
+else()
 	# We have to find the libraries using old CMake command as Python3 does not work on some of our targets.
 	message("find_package(Python3) failed, trying find_package(PythonLibs) ")
-	find_package( PythonLibs 3.5 REQUIRED)
-	set(Python3_INCLUDE_DIRS, ${PYTHON_INCLUDE_DIRS})
-	set(Python3_LIBRARIES, ${PYTHON_LIBRARIES})
-endif
+	find_package(PythonLibs 3.5 REQUIRED)
+	set(Python3_INCLUDE_DIRS "${PYTHON_INCLUDE_DIRS}")
+	set(Python3_LIBRARIES "${PYTHON_LIBRARIES}")
+endif()
 
 message("Found Python Include Dirs ${Python3_INCLUDE_DIRS} ")
 message("Found Python Libraries ${Python3_LIBRARIES} ")
