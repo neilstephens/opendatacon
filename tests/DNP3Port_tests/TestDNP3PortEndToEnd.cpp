@@ -83,6 +83,7 @@ TEST_CASE(SUITE("TCP link"))
 
 		//turn outstation off
 		OPUT->Disable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 		count = 0;
 		while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
