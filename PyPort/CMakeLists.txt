@@ -22,20 +22,23 @@ cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def PythonCode/*.py)
 
 # For Appveyor the paths are C:\Python37 for x86 and C:\Python37-x64 for 3.7.3 which is what we are using. Need to specifiy this explicitly?
-# Can Cmake find these? Travis std version is 3.6. Appveyor has 3.7
+# Need to apt-get install for travis, for Appveyor we need to set Python_ROOT_DIR so it finds the correct version x86 or x64.
 
-find_package(PythonLibs 3.6 REQUIRED)
+find_package(Python3 COMPONENTS Development)	# The new way of doing things, can pass Python_ROOT_DIR as a hint
+
+message("Found Python Include Dirs ${Python_INCLUDE_DIRS} ")
+message("Found Python Libraries ${Python_LIBRARIES} ")
 
 include_directories(
 	"../include"
 	"../JSON"
-	${PYTHON_INCLUDE_DIRS}
+	${Python_INCLUDE_DIRS}
 	"${DNP3_HOME}/include"
 	"${ASIO_HOME}/include"
 )
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC ${openpal_libs} ${opendnp3_libs} ${PYTHON_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ODC ${openpal_libs} ${opendnp3_libs} ${Python_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
