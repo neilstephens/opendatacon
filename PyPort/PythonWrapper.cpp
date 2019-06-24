@@ -49,7 +49,7 @@
 
 using namespace odc;
 
-std::atomic_uint PythonWrapper::InterpreterUseCount = 0;
+std::atomic_uint PythonWrapper::InterpreterUseCount(0);
 std::unordered_map<uint64_t, int> PythonWrapper::PyWrappers;
 PyThreadState* PythonWrapper::threadState;
 
@@ -364,7 +364,7 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 	{
 		LOGERROR("Could not load Python Module - {}", pyModuleName);
 		PyErrOutput();
-		throw std::runtime_error::runtime_error("Could not load Python Module");
+		throw std::runtime_error("Could not load Python Module");
 	}
 	Py_DECREF(pyUniCodeModuleName);
 
@@ -373,7 +373,7 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 	{
 		LOGERROR("Could not load Python Dictionary Reference");
 		PyErrOutput();
-		throw std::runtime_error::runtime_error("Could not load Python Dictionary Reference");
+		throw std::runtime_error("Could not load Python Dictionary Reference");
 	}
 
 	// Build the name of a callable class
@@ -385,7 +385,7 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 	{
 		LOGERROR("Could not load Python Class Reference - {}", pyClassName);
 		PyErrOutput();
-		throw std::runtime_error::runtime_error("Could not load Python Class");
+		throw std::runtime_error("Could not load Python Class");
 	}
 	// Create an instance of the class, with a name matching the port name
 	if (pyClass && PyCallable_Check(pyClass))
@@ -402,7 +402,7 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 			LOGDEBUG("Could not get instance pointer for Python Class");
 			PyErrOutput();
 
-			throw std::runtime_error::runtime_error("Could not get instance pointer for Python Class");
+			throw std::runtime_error("Could not get instance pointer for Python Class");
 		}
 
 		StoreWrapperMapping();
@@ -413,7 +413,7 @@ void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModu
 	{
 		PyErrOutput();
 		LOGERROR("pyClass not callable");
-		throw std::runtime_error::runtime_error("pyClass not callable");
+		throw std::runtime_error("pyClass not callable");
 	}
 	// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
 
@@ -464,7 +464,7 @@ void PythonWrapper::Enable()
 	PyObject* pyResult = PyCall(pyFuncEnable, pyArgs); // No passed variables, assume no delayed return
 	if (pyResult) Py_DECREF(pyResult);
 	Py_DECREF(pyArgs);
-};
+}
 
 void PythonWrapper::Disable()
 {
@@ -478,7 +478,7 @@ void PythonWrapper::Disable()
 	PyObject* pyResult = PyCall(pyFuncDisable, pyArgs); // No passed variables, assume no delayed return
 	if (pyResult) Py_DECREF(pyResult);
 	Py_DECREF(pyArgs);
-};
+}
 
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.
 CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName)
@@ -539,7 +539,7 @@ void PythonWrapper::CallTimerHandler( uint32_t id)
 	PyObject* pyResult = PyCall(pyTimerHandler, pyArgs); // No passed variables, assume no delayed return
 	if (pyResult) Py_DECREF(pyResult);
 	Py_DECREF(pyArgs);
-};
+}
 
 // This is a handler for a Rest request received by the (global to all PythonPorts) handler, which will pass it to us.
 // We will get the url, and return a JSON formatted response. We do not prune the url in any way, just pass it all through.
@@ -637,69 +637,3 @@ PyObject* PythonWrapper::PyCall(PyObject* pyFunction, PyObject* pyArgs)
 }
 
 #pragma endregion
-
-/*
-switch (event->GetEventType())
-{
-
-        case EventType::ControlRelayOutputBlock:
-        return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-        case EventType::AnalogOutputInt16:
-        return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-        case EventType::AnalogOutputInt32:
-        return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-        case EventType::AnalogOutputFloat32:
-        return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-        case EventType::AnalogOutputDouble64:
-        return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-
-
-        case EventType::Analog:
-        {
-                    // ODC Analog is a double by default...
-                    uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
-
-                    LOGDEBUG("OS - Received Event - Analog - Index {}  Value 0x{}", std::to_string(ODCIndex), std::to_string(analogmeas));
-                    return (*pStatusCallback)(CommandStatus::SUCCESS);
-        }
-        case EventType::Counter:
-        {
-                    return (*pStatusCallback)(CommandStatus::SUCCESS);
-        }
-        case EventType::Binary:
-        {
-                    uint8_t meas = event->GetPayload<EventType::Binary>();
-
-                    LOGDEBUG("OS - Received Event - Binary - Index {}, Bit Value {}", std::to_string(ODCIndex), std::to_string(meas));
-
-                    return (*pStatusCallback)(CommandStatus::SUCCESS);
-        }
-        case EventType::AnalogQuality:
-        {
-                    return (*pStatusCallback)(CommandStatus::SUCCESS);
-        }
-        case EventType::CounterQuality:
-        {
-                    return (*pStatusCallback)(CommandStatus::SUCCESS);
-        }
-        case EventType::ConnectState:
-        {
-                    auto state = event->GetPayload<EventType::ConnectState>();
-                    // This will be fired by (typically) an CBOutStation port on the "other" side of the ODC Event bus. blockindex.e. something upstream has connected
-                    // We should probably send all the points to the Outstation as we don't know what state the OutStation point table will be in.
-
-                    if (state == ConnectState::CONNECTED)
-                    {
-                                    LOGDEBUG("Got a connected event - Triggering sending of current data ");
-                    }
-                    else if (state == ConnectState::DISCONNECTED)
-                    {
-                                    LOGDEBUG("Got a disconnected event - cant send events data ");
-                    }
-
-                    return PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
-        }
-        default:
-                    return PostCallbackCall(pStatusCallback, CommandStatus::NOT_SUPPORTED);
-}
-*/
