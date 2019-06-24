@@ -61,17 +61,25 @@ class GetPythonGIL
 public:
 	GetPythonGIL()
 	{
+		#ifdef PYTHON3 .7
 		if (!_Py_IsFinalizing())
-			gstate = PyGILState_Ensure();
+		#endif
+		gstate = PyGILState_Ensure();
 	}
 	bool OkToContinue()
 	{
+		#ifdef PYTHON3 .7
 		return !_Py_IsFinalizing(); // If the interpreter is shutting down, alert our code
+		#else
+		return true;
+		#endif
 	}
 	~GetPythonGIL()
 	{
+		#ifdef PYTHON3 .7
 		if (!_Py_IsFinalizing())
-			PyGILState_Release(gstate);
+		#endif
+		PyGILState_Release(gstate);
 	}
 };
 

@@ -31,6 +31,10 @@
 // If we are using VS and its test framework, don't define this.
 #define NONVSTESTING
 
+// We us a call that is only available in version 3.7
+// For CI we only have 3.5 on Linux
+// #define PYTHON3.7
+
 #include <Python.h>
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
