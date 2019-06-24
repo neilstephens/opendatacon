@@ -27,17 +27,20 @@
 
 TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 {
+	//Load the library
+	InitLibaryLoading();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	{
-		asio::io_service ios;
+		auto ios = std::make_shared<asio::io_service>();
 
-		newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
 		REQUIRE(newOutstation);
-		delptr deleteOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+		delptr deleteOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
 		REQUIRE(deleteOutstation);
 
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
-		OPUT->SetIOS(&ios);
+		OPUT->SetIOS(ios);
 		OPUT->Enable();
 		OPUT->Disable();
 
@@ -45,18 +48,19 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	}
 	/// Test the destruction of an enabled port
 	{
-		asio::io_service ios;
+		auto ios = std::make_shared<asio::io_service>();
 
-		newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
+		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
 		REQUIRE(newOutstation);
-		delptr deleteOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
+		delptr deleteOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
 		REQUIRE(deleteOutstation);
 
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
-		OPUT->SetIOS(&ios);
+		OPUT->SetIOS(ios);
 		OPUT->Enable();
 
 		deleteOutstation(OPUT);
 	}
+	UnLoadModule(portlib);
 }

@@ -70,8 +70,8 @@ TEST_CASE(SUITE("PayloadTransport"))
 	//send them over a DataConnector
 	//check they arrived intact
 
-	asio::io_service ios;
-	auto work = std::make_shared<asio::io_service::work>(ios);
+	auto ios = std::make_shared<asio::io_service>();
+	auto work = std::make_shared<asio::io_service::work>(*ios);
 
 	PublicPublishPort Source("Source","",Json::Value::nullSingleton());
 	PayloadCheckPort Sink("Sink","",Json::Value::nullSingleton());
@@ -82,11 +82,11 @@ TEST_CASE(SUITE("PayloadTransport"))
 	ConnConf["Connections"][0]["Port2"] = "Sink";
 	DataConnector Conn("Conn","",ConnConf);
 
-	Source.SetIOS(&ios);
-	Sink.SetIOS(&ios);
+	Source.SetIOS(ios);
+	Sink.SetIOS(ios);
 	Source.Enable();
 	Sink.Enable();
-	Conn.SetIOS(&ios);
+	Conn.SetIOS(ios);
 	Conn.Enable();
 
 	std::atomic<uint16_t> cb_count(0);
@@ -115,9 +115,9 @@ TEST_CASE(SUITE("PayloadTransport"))
 	}
 	std::vector<std::thread> threads;
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		threads.emplace_back([&]() {ios.run(); });
+		threads.emplace_back([&]() {ios->run(); });
 	while(cb_count < 1000)
-		ios.poll_one();
+		ios->poll_one();
 	work.reset();
 	for(auto& t : threads)
 		t.join();

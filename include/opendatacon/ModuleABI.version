@@ -1,0 +1,13 @@
+DataPortABI_1.0
+{
+	global:
+		new_*Port;
+		delete_*Port;
+		new_*Plugin;
+		delete_*Plugin;
+		new_*Transform;
+		delete_*Transform;
+		run_tests;
+	local:
+		*;
+}; 

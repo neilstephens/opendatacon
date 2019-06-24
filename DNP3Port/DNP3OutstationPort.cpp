@@ -48,10 +48,13 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 DNP3OutstationPort::~DNP3OutstationPort()
 {
 	ChannelStateSubscriber::Unsubscribe(this);
+	if(pOutstation)
+	{
+		pOutstation->Shutdown();
+		pOutstation.reset();
+	}
 	if(pChannel)
 		pChannel.reset();
-	if(pOutstation)
-		pOutstation.reset();
 }
 
 void DNP3OutstationPort::Enable()

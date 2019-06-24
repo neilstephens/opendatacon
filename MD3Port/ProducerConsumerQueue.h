@@ -89,7 +89,7 @@ public:
 		std::unique_lock<std::mutex> lck(Mut);
 		return Queue.empty();
 	}
-	int Size()
+	size_t Size()
 	{
 		std::unique_lock<std::mutex> lck(Mut);
 		return Queue.size();

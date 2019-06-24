@@ -275,12 +275,20 @@ struct ControlRelayOutputBlock
 
 	explicit operator std::string() const
 	{
-		return ToString(functionCode)+"|Count "+std::to_string(count)+
-		       "|ON "+std::to_string(onTimeMS)+"ms|OFF "+std::to_string(offTimeMS)+"ms)";
+		return "|"+ToString(functionCode)+"|Count "+std::to_string(count)+
+		       "|ON "+std::to_string(onTimeMS)+"ms|OFF "+std::to_string(offTimeMS)+"ms|";
 	}
 };
 
 enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
+inline std::string ToString(const ConnectState cs)
+{
+	ENUMSTRING(cs, ConnectState, PORT_UP)
+	ENUMSTRING(cs, ConnectState, CONNECTED)
+	ENUMSTRING(cs, ConnectState, DISCONNECTED)
+	ENUMSTRING(cs, ConnectState, PORT_DOWN)
+	return "<no_string_representation>";
+}
 
 typedef uint64_t msSinceEpoch_t;
 inline msSinceEpoch_t msSinceEpoch()
@@ -523,6 +531,8 @@ public:
 	{
 		switch(Type)
 		{
+			case EventType::ConnectState:
+				return ToString(GetPayload<EventType::ConnectState>());
 			case EventType::Binary:
 				return std::to_string(GetPayload<EventType::Binary>());
 			case EventType::Analog:

@@ -80,7 +80,7 @@ class TCPSocketManager
 {
 public:
 	TCPSocketManager
-		(asio::io_service* apIOS,                         //pointer to an asio io_service
+		(std::shared_ptr<asio::io_service> apIOS,         //pointer to an asio io_service
 		bool aisServer,                                   //Whether to act as a server or client
 		const std::string& aEndPoint,                     //IP addr or hostname (to connect to if client, or bind to if server)
 		const std::string& aPort,                         //Port to connect to if client, or listen on if server
@@ -166,17 +166,17 @@ public:
 				}
 
 				asio::async_write(Sock,buf,asio::transfer_all(),WriteStrand.wrap([this,buf](asio::error_code err_code, std::size_t n)
-					{
-						if(err_code)
 						{
-						      writebufs.push_back(buf);
-						      if(writebufs.size() > buffer_limit)
-								writebufs.erase(writebufs.begin());
-						      AutoClose();
-						      AutoOpen();
-						      return;
-						}
-					}));
+							if(err_code)
+							{
+							      writebufs.push_back(buf);
+							      if(writebufs.size() > buffer_limit)
+									writebufs.erase(writebufs.begin());
+							      AutoClose();
+							      AutoOpen();
+							      return;
+							}
+						}));
 			});
 	}
 
@@ -188,7 +188,7 @@ public:
 private:
 	bool isConnected;
 	bool manuallyClosed;
-	asio::io_service* pIOS;
+	std::shared_ptr<asio::io_service> pIOS;
 	const bool isServer;
 	const std::function<void(buf_t&)> ReadCallback;
 	const std::function<void(bool)> StateCallback;
@@ -253,18 +253,18 @@ private:
 	void Read()
 	{
 		asio::async_read(Sock, readbuf, asio::transfer_at_least(1), ReadStrand.wrap([this](asio::error_code err_code, std::size_t n)
-			{
-				if(err_code)
 				{
-				      AutoClose();
-				      AutoOpen();
-				}
-				else
-				{
-				      ReadCallback(readbuf);
-				      Read();
-				}
-			}));
+					if(err_code)
+					{
+					      AutoClose();
+					      AutoOpen();
+					}
+					else
+					{
+					      ReadCallback(readbuf);
+					      Read();
+					}
+				}));
 	}
 	void AutoOpen()
 	{

@@ -69,14 +69,14 @@ install:
       brew install libmodbus libmicrohttpd socat
       #export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     elif [ -z "$DOCKER_BUILD" ]; then
-      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat
+      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     fi
   - |
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
       sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
-      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat"
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc"
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       export SYSROOT=$(pwd)/sysroot/
@@ -119,12 +119,12 @@ install:
 
 script:
   - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT ..
-  - make -j2
+  - make -j3
   - make package
   - make install
-  - $RUN install/bin/ODC_tests
-#  - $RUN install/bin/DNP3Port_tests #doesn't exit cleanly
-  - $RUN install/bin/MD3Port_tests
+  - $RUN install/bin/ODC_tests -d yes
+  - $RUN install/bin/DNP3Port_tests -d yes
+  - $RUN install/bin/MD3Port_tests -d yes
   - $RUN install/bin/CBPort_tests error -d yes
   - $STOP
 

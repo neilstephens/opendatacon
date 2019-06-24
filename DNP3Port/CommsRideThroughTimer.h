@@ -24,13 +24,14 @@
 #include <opendatacon/asio.h>
 
 
-class CommsRideThroughTimer
+class CommsRideThroughTimer: public std::enable_shared_from_this<CommsRideThroughTimer>
 {
 public:
 	CommsRideThroughTimer(asio::io_service& ios,
 		const uint32_t aTimeoutms,
 		std::function<void()>&& aCommsGoodCB,
 		std::function<void()>&& aCommsBadCB);
+	~CommsRideThroughTimer();
 	void Trigger();
 	void FastForward();
 	void Cancel();

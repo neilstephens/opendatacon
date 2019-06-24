@@ -63,3 +63,4 @@ target_link_libraries(${PROJECT_NAME} ODC modbus_target)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
+

@@ -218,6 +218,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 
 		for(auto& point_pair : pConf->pPointConf->Analogs)
 		{
+			if(!point_pair.second.isMember("JSONPath"))
+				continue;
 			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
 			//if the path existed, load up the point
 			if(!val.isNull())
@@ -254,6 +256,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 
 		for(auto& point_pair : pConf->pPointConf->Binaries)
 		{
+			if(!point_pair.second.isMember("JSONPath"))
+				continue;
 			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
 			//if the path existed, load up the point
 			if(!val.isNull())
