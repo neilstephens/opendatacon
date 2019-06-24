@@ -154,7 +154,7 @@ private:
 	// We need one read completion handler hooked to each address/port combination. This method is re-entrant,
 	// We do some basic CB block identification and processing, enough to give us complete blocks and StationAddresses
 	void ReadCompletionHandler(buf_t& readbuf);
-
+	MD3BlockData ReadCompletionHandlerMD3block = MD3BlockData(0); // This remains across multiple calls to this method in a given class instance. Starts empty.
 };
 #endif
 
