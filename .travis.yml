@@ -76,7 +76,9 @@ install:
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
       sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
-      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc python3.5-dev"
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc software-properties-common"
+      docker exec -i $DOCK sh -c "add-apt-repository ppa:deadsnakes/ppa"
+      docker exec -i $DOCK sh -c "apt-get install -y python3.5 python3.5-dev"
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       export SYSROOT=$(pwd)/sysroot/
@@ -94,9 +96,10 @@ install:
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm       
         yum install -y libmicrohttpd-devel socat
         yum install -y yum-utils
-        yum-config-manager --enable ol6_latest
+        yum-config-manager --enable ol6_software_collections
         yum install -y scl-utils
-        yum install -y rh-python36
+        yum install -y rh-python35
+        scl enable rh-python35 bash
       '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
@@ -114,7 +117,9 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo dpkg --add-architecture i386
       sudo apt-get update
-      sudo apt-get install -y lib32stdc++-5-dev libstdc++-5-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 socat:i386 python3.5-dev:i386
+      sudo apt-get install -y lib32stdc++-5-dev libstdc++-5-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 socat:i386 
+      sudo apt-get install -y python3.5-minimal:i386 
+      sudo apt-get install -y python3.5-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"

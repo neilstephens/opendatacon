@@ -31,16 +31,23 @@ if (Python3_FOUND)
 
 	if(WIN32)
 		if (NOT Python3_LIBRARY_DEBUG)
-			#Appveyor does not have the debug libraries. Point to our copy that we have put into GIT. This issue will be fixed on next Image Release
+			# Appveyor does not have the debug libraries. Point to our copy that we have put into GIT. This issue will be fixed on next Image Release
 			# Remove this and Python37_d.lib from GIT when the Appveyor image catches up.
+
+			if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")	# 64 Bit
+				set(platform "x64")
+			else()
+				set(platform "x86")
+			endif()
 
 			message("Found Python Release Library but no Debug Library ${Python3_LIBRARY_RELEASE}")
 			get_filename_component(LibFileName "${Python3_LIBRARY_RELEASE}" NAME_WE)
 			message("Target Filename: ${CMAKE_SOURCE_DIR}/${LibFileName}_d.lib")
+# We may have to copy the dll to the c:\Python37 and c:\Python37-x64 folders to run tests.
 #			execute_process(
 #				COMMAND ${CMAKE_COMMAND} -E copy "${Python3_LIBRARY_RELEASE}" "${CMAKE_BINARY_DIR}/${LibFileName}_d.lib"  
 #			)
-			set(Python3_LIBRARIES "optimized;${Python3_LIBRARY_RELEASE};debug;${CMAKE_SOURCE_DIR}/PyPort/${LibFileName}_d.lib")
+			set(Python3_LIBRARIES "optimized;${Python3_LIBRARY_RELEASE};debug;${CMAKE_SOURCE_DIR}/PyPort/${platform}/${LibFileName}_d.lib")
 		endif()
 	endif()
 
