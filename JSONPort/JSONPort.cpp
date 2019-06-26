@@ -179,7 +179,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 	Json::Value JSONRoot; // will contain the root value after parsing.
 	std::string err_str;
 
-	bool parsing_success = JSONReader->parse(start,stop,&JSONRoot,&err_str);
+	bool parsing_success = JSONReader->parse(start, stop, &JSONRoot, &err_str);
 	if (parsing_success)
 	{
 		JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
@@ -191,43 +191,43 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						  //val will traverse any paths, starting at the root
 						  auto val = JSONRoot;
 						  //traverse
-						  for(unsigned int n = 0; n < nodes.size(); ++n)
-							  if((val = val[nodes[n].asCString()]).isNull())
+						  for (unsigned int n = 0; n < nodes.size(); ++n)
+							  if ((val = val[nodes[n].asCString()]).isNull())
 								  break;
 						  return val;
 					  };
 
 		msSinceEpoch_t timestamp = 0;
-		if(!pConf->pPointConf->TimestampPath.isNull())
+		if (!pConf->pPointConf->TimestampPath.isNull())
 		{
 			try
 			{
 				timestamp = TraversePath(pConf->pPointConf->TimestampPath).asUInt64();
-				if(timestamp == 0)
+				if (timestamp == 0)
 					throw std::runtime_error("Null timestamp");
 			}
-			catch(std::runtime_error e)
+			catch (std::runtime_error e)
 			{
-				if(auto log = odc::spdlog_get("JSONPort"))
-					log->error("Error decoding timestamp as Uint64: '{}'",e.what());
+				if (auto log = odc::spdlog_get("JSONPort"))
+					log->error("Error decoding timestamp as Uint64: '{}'", e.what());
 			}
 		}
 
 		//vector to store any events we find contained in this Json object
 		std::vector<std::shared_ptr<EventInfo>> events;
 
-		for(auto& point_pair : pConf->pPointConf->Analogs)
+		for (auto& point_pair : pConf->pPointConf->Analogs)
 		{
-			if(!point_pair.second.isMember("JSONPath"))
+			if (!point_pair.second.isMember("JSONPath"))
 				continue;
 			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
 			//if the path existed, load up the point
-			if(!val.isNull())
+			if (!val.isNull())
 			{
-				auto event = std::make_shared<EventInfo>(EventType::Analog,point_pair.first,Name,QualityFlags::ONLINE,timestamp);
-				if(val.isNumeric())
+				auto event = std::make_shared<EventInfo>(EventType::Analog, point_pair.first, Name, QualityFlags::ONLINE, timestamp);
+				if (val.isNumeric())
 					event->SetPayload<EventType::Analog>(val.asDouble());
-				else if(val.isString())
+				else if (val.isString())
 				{
 					double value;
 					try
@@ -235,18 +235,18 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						value = std::stod(val.asString());
 						event->SetPayload<EventType::Analog>(std::move(value));
 					}
-					catch(std::exception&)
+					catch (std::exception&)
 					{
-						if(auto log = odc::spdlog_get("JSONPort"))
-							log->error("Error decoding Analog from string '{}', for index {}",val.asString(),point_pair.first);
+						if (auto log = odc::spdlog_get("JSONPort"))
+							log->error("Error decoding Analog from string '{}', for index {}", val.asString(), point_pair.first);
 						event->SetPayload<EventType::Analog>(0);
 						event->SetQuality(QualityFlags::OVERRANGE);
 					}
 				}
 				else
 				{
-					if(auto log = odc::spdlog_get("JSONPort"))
-						log->error("Error decoding Analog for index {}",point_pair.first);
+					if (auto log = odc::spdlog_get("JSONPort"))
+						log->error("Error decoding Analog for index {}", point_pair.first);
 					event->SetPayload<EventType::Analog>(0);
 					event->SetQuality(QualityFlags::OVERRANGE);
 				}
@@ -254,31 +254,31 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			}
 		}
 
-		for(auto& point_pair : pConf->pPointConf->Binaries)
+		for (auto& point_pair : pConf->pPointConf->Binaries)
 		{
-			if(!point_pair.second.isMember("JSONPath"))
+			if (!point_pair.second.isMember("JSONPath"))
 				continue;
 			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
 			//if the path existed, load up the point
-			if(!val.isNull())
+			if (!val.isNull())
 			{
-				auto event = std::make_shared<EventInfo>(EventType::Binary,point_pair.first,Name,QualityFlags::ONLINE,timestamp);
+				auto event = std::make_shared<EventInfo>(EventType::Binary, point_pair.first, Name, QualityFlags::ONLINE, timestamp);
 				bool true_val = false;
-				if(point_pair.second.isMember("TrueVal"))
+				if (point_pair.second.isMember("TrueVal"))
 				{
 					true_val = (val == point_pair.second["TrueVal"]);
-					if(point_pair.second.isMember("FalseVal"))
+					if (point_pair.second.isMember("FalseVal"))
 						if (!true_val && (val != point_pair.second["FalseVal"]))
 							event->SetQuality(QualityFlags::COMM_LOST);
 				}
-				else if(point_pair.second.isMember("FalseVal"))
+				else if (point_pair.second.isMember("FalseVal"))
 					true_val = !(val == point_pair.second["FalseVal"]);
-				else if(val.isNumeric() || val.isBool())
+				else if (val.isNumeric() || val.isBool())
 					true_val = val.asBool();
-				else if(val.isString())
+				else if (val.isString())
 				{
 					true_val = (val.asString() == "true");
-					if(!true_val && (val.asString() != "false"))
+					if (!true_val && (val.asString() != "false"))
 						event->SetQuality(QualityFlags::COMM_LOST);
 				}
 				else
@@ -290,43 +290,43 @@ void JSONPort::ProcessBraced(const std::string& braced)
 		}
 
 		//Publish any analog and binary events from above
-		for(auto& event : events)
+		for (auto& event : events)
 		{
 			PublishEvent(event);
 		}
 		//We'll publish any controls separately below, because they each have a callback
 
-		for(auto& point_pair : pConf->pPointConf->Controls)
+		for (auto& point_pair : pConf->pPointConf->Controls)
 		{
-			if(!point_pair.second.isMember("JSONPath"))
+			if (!point_pair.second.isMember("JSONPath"))
 				continue;
 			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
 			//if the path existed, get the value and send the control
-			if(!val.isNull())
+			if (!val.isNull())
 			{
-				auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,point_pair.first,Name,QualityFlags::NONE,timestamp);
+				auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, point_pair.first, Name, QualityFlags::NONE, timestamp);
 
 				ControlRelayOutputBlock command;
 				command.functionCode = ControlCode::PULSE_ON; //default pulse if nothing else specified
 
 				//work out control code to send
-				if(point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
+				if (point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
 				{
 					auto check_val = [&](std::string truename, std::string falsename) -> bool
 							     {
 								     bool ret = true;
-								     if(point_pair.second.isMember(truename))
+								     if (point_pair.second.isMember(truename))
 								     {
 									     ret = (val == point_pair.second[truename]);
-									     if(point_pair.second.isMember(falsename))
+									     if (point_pair.second.isMember(falsename))
 										     if (!ret && (val != point_pair.second[falsename]))
 											     throw std::runtime_error("Unexpected control value");
 								     }
-								     else if(point_pair.second.isMember(falsename))
+								     else if (point_pair.second.isMember(falsename))
 									     ret = !(val == point_pair.second[falsename]);
-								     else if(val.isNumeric() || val.isBool())
+								     else if (val.isNumeric() || val.isBool())
 									     ret = val.asBool();
-								     else if(val.isString()) //Guess some sensible default on/off/trip/close values
+								     else if (val.isString()) //Guess some sensible default on/off/trip/close values
 								     {
 									     //TODO: replace with regex?
 									     ret = (val.asString() == "true" ||
@@ -338,69 +338,69 @@ void JSONPort::ProcessBraced(const std::string& braced)
 									            val.asString() == "close" ||
 									            val.asString() == "Close" ||
 									            val.asString() == "CLOSE");
-									     if(!ret && (val.asString() != "false" &&
-									                 val.asString() != "False" &&
-									                 val.asString() != "FALSE" &&
-									                 val.asString() != "off" &&
-									                 val.asString() != "Off" &&
-									                 val.asString() != "OFF" &&
-									                 val.asString() != "trip" &&
-									                 val.asString() != "Trip" &&
-									                 val.asString() != "TRIP"))
+									     if (!ret && (val.asString() != "false" &&
+									                  val.asString() != "False" &&
+									                  val.asString() != "FALSE" &&
+									                  val.asString() != "off" &&
+									                  val.asString() != "Off" &&
+									                  val.asString() != "OFF" &&
+									                  val.asString() != "trip" &&
+									                  val.asString() != "Trip" &&
+									                  val.asString() != "TRIP"))
 										     throw std::runtime_error("Unexpected control value");
 								     }
 								     return ret;
 							     };
 
 					auto cm = point_pair.second["ControlMode"].asString();
-					if(cm == "LATCH")
+					if (cm == "LATCH")
 					{
 						bool on;
 						try
 						{
-							on = check_val("OnVal","OffVal");
+							on = check_val("OnVal", "OffVal");
 						}
-						catch(std::runtime_error e)
+						catch (std::runtime_error e)
 						{
-							if(auto log = odc::spdlog_get("JSONPort"))
-								log->error("'{}', for index {}",e.what(),point_pair.first);
+							if (auto log = odc::spdlog_get("JSONPort"))
+								log->error("'{}', for index {}", e.what(), point_pair.first);
 							continue;
 						}
-						if(on)
+						if (on)
 							command.functionCode = ControlCode::LATCH_ON;
 						else
 							command.functionCode = ControlCode::LATCH_OFF;
 					}
-					else if(cm == "TRIPCLOSE")
+					else if (cm == "TRIPCLOSE")
 					{
 						bool trip;
 						try
 						{
-							trip = check_val("TripVal","CloseVal");
+							trip = check_val("TripVal", "CloseVal");
 						}
-						catch(std::runtime_error e)
+						catch (std::runtime_error e)
 						{
-							if(auto log = odc::spdlog_get("JSONPort"))
-								log->error("'{}', for index {}",e.what(),point_pair.first);
+							if (auto log = odc::spdlog_get("JSONPort"))
+								log->error("'{}', for index {}", e.what(), point_pair.first);
 							continue;
 						}
-						if(trip)
+						if (trip)
 							command.functionCode = ControlCode::TRIP_PULSE_ON;
 						else
 							command.functionCode = ControlCode::CLOSE_PULSE_ON;
 					}
-					else if(cm != "PULSE")
+					else if (cm != "PULSE")
 					{
-						if(auto log = odc::spdlog_get("JSONPort"))
-							log->error("Unrecongnised ControlMode '{}', recieved for index {}",cm,point_pair.first);
+						if (auto log = odc::spdlog_get("JSONPort"))
+							log->error("Unrecongnised ControlMode '{}', recieved for index {}", cm, point_pair.first);
 						continue;
 					}
 				}
-				if(point_pair.second.isMember("PulseCount"))
+				if (point_pair.second.isMember("PulseCount"))
 					command.count = point_pair.second["PulseCount"].asUInt();
-				if(point_pair.second.isMember("OnTimems"))
+				if (point_pair.second.isMember("OnTimems"))
 					command.onTimeMS = point_pair.second["OnTimems"].asUInt();
-				if(point_pair.second.isMember("OffTimems"))
+				if (point_pair.second.isMember("OffTimems"))
 					command.offTimeMS = point_pair.second["OffTimems"].asUInt();
 
 				auto pStatusCallback =
@@ -409,7 +409,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							Json::Value result;
 							result["Command"]["Index"] = point_pair.first;
 
-							if(command_stat == CommandStatus::SUCCESS)
+							if (command_stat == CommandStatus::SUCCESS)
 								result["Command"]["Status"] = "SUCCESS";
 							else
 								result["Command"]["Status"] = "UNDEFINED";
@@ -417,22 +417,88 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							//TODO: make this writer reusable (class member)
 							//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
 							Json::StreamWriterBuilder wbuilder;
-							if(!pConf->style_output)
+							if (!pConf->style_output)
 								wbuilder["indentation"] = "";
 							std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
 
 							std::ostringstream oss;
-							pWriter->write(result, &oss); oss<<std::endl;
+							pWriter->write(result, &oss); oss << std::endl;
 							pSockMan->Write(oss.str());
 						});
 				event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(command));
-				PublishEvent(event,pStatusCallback);
+				PublishEvent(event, pStatusCallback);
+			}
+		}
+
+		for (auto& point_pair : pConf->pPointConf->AnalogControls)
+		{
+			if (!point_pair.second.isMember("JSONPath"))
+				continue;
+			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
+			//if the path existed, get the value and send the control
+
+			// Now decode the val JSON string to get the index and value and process that
+			if (!val.isNull())
+			{
+				auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, point_pair.first, Name, QualityFlags::ONLINE, timestamp);
+				AO16 analogpayload;
+				analogpayload.second = CommandStatus::SUCCESS;
+
+				if (auto log = odc::spdlog_get("JSONPort"))
+					log->debug("JSNOn AnalogControl Command - {}", val.asString());
+
+				if (val.isNumeric())
+					analogpayload.first = val.asUInt();
+				else if (val.isString())
+				{
+					try
+					{
+						analogpayload.first = std::stoul(val.asString());
+					}
+					catch (std::exception&)
+					{
+						if (auto log = odc::spdlog_get("JSONPort"))
+							log->error("Error decoding AnalogControl from string '{}', for index {}", val.asString(), point_pair.first);
+					}
+				}
+				else
+				{
+					if (auto log = odc::spdlog_get("JSONPort"))
+						log->error("Error decoding AnalogControl value for index {}", point_pair.first);
+					return;
+				}
+				event->SetPayload<EventType::AnalogOutputInt16>(move(analogpayload));
+
+				auto pStatusCallback =
+					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
+						{
+							Json::Value result;
+							result["Command"]["Index"] = point_pair.first;
+
+							if (command_stat == CommandStatus::SUCCESS)
+								result["Command"]["Status"] = "SUCCESS";
+							else
+								result["Command"]["Status"] = "UNDEFINED";
+
+							//TODO: make this writer reusable (class member)
+							//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+							Json::StreamWriterBuilder wbuilder;
+							if (!pConf->style_output)
+								wbuilder["indentation"] = "";
+							std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
+							std::ostringstream oss;
+							pWriter->write(result, &oss); oss << std::endl;
+							pSockMan->Write(oss.str());
+						});
+
+				PublishEvent(event, pStatusCallback);
 			}
 		}
 	}
 	else
 	{
-		if(auto log = odc::spdlog_get("JSONPort"))
+		if (auto log = odc::spdlog_get("JSONPort"))
 			log->warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
 	}
 }

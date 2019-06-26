@@ -77,7 +77,7 @@ install:
       sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc software-properties-common"
-      docker exec -i $DOCK sh -c "add-apt-repository ppa:deadsnakes/ppa"
+      docker exec -i $DOCK sh -c "add-apt-repository -y ppa:deadsnakes/ppa"
       docker exec -i $DOCK sh -c "apt-get install -y python3.5 python3.5-dev"
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
@@ -96,6 +96,7 @@ install:
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm       
         yum install -y libmicrohttpd-devel socat
         yum install -y yum-utils
+        yum-config-manager --enable software_collections
         yum-config-manager --enable ol6_software_collections
         yum install -y scl-utils
         yum install -y rh-python35
