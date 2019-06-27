@@ -18,38 +18,13 @@
  *	limitations under the License.
  */
 /*
- * PyPortConf.h
+ * ClientRequest.h
  *
- *  Created on: 26/03/2017
- *      Author: Alan Murray <alan@atmurray.net>
+ *  Created on: 26/6/2019
+ *      Author: Scott Ellis <scott.ellis@novatex.com.au>
  */
 
-#ifndef PyPortCONF_H_
-#define PyPortCONF_H_
-
-#include <memory>
+#include "../Py.h"
 #include <string>
-#include <opendatacon/DataPortConf.h>
-#include <opendatacon/ConfigParser.h>
 
-class PyPortConf: public DataPortConf
-{
-public:
-	PyPortConf(std::string FileName, const Json::Value& ConfOverrides):
-		pyModuleName("PyPortSim"),
-		pyClassName("SimPortClass"),
-		pyHTTPAddr("localhost"),
-		pyHTTPPort("8000")
-	{
-		//pPointConf.reset(new PyPointConf(FileName, ConfOverrides));
-	}
-
-	std::string pyModuleName;
-	std::string pyClassName;
-	std::string pyHTTPAddr;
-	std::string pyHTTPPort;
-
-	//std::unique_ptr<PyPointConf> pPointConf;
-};
-
-#endif /* PyPortCONF_H_ */
+bool DoHttpRequst(std::string server, std::string port, std::string path, std::string& callresp);

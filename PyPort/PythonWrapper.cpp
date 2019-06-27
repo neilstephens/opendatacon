@@ -90,60 +90,66 @@ public:
 // It is static, so we have to work out which instance of the PythonWrapper class should handle it.
 static PyObject* odc_log(PyObject* self, PyObject* args)
 {
-	uint32_t logtype;
-	uint64_t guid;
-	const char* message;
-
-	// Now parse the arguments provided, one Unsigned int (I) and a string (s) and the function name. DO NOT GET THIS WRONG!
-	if (!PyArg_ParseTuple(args, "LIs:log", &guid, &logtype, &message))
+	try
 	{
-		PythonWrapper::PyErrOutput();
-		return NULL;
-	}
+		uint32_t logtype;
+		uint64_t guid;
+		const char* message;
 
-	std::string WholeMessage = "pyLog - ";
-
-	// Work out which instance of our PyWrapper is talking to us.
-	PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
-
-	LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
-
-	if (thisPyWrapper != nullptr)
-	{
-		WholeMessage += thisPyWrapper->Name + " - ";
-	}
-	else
-	{
-		LOGDEBUG("odc.Log called from Python code for unknown PyPort object");
-	}
-
-	WholeMessage += message;
-
-	// Take appropriate action
-	if (auto log = odc::spdlog_get("PyPort"))
-	{
-		// Ordinals match spdlog values - spdlog::level::level_enum::
-		switch (logtype)
+		// Now parse the arguments provided, one Unsigned int (I) and a string (s) and the function name. DO NOT GET THIS WRONG!
+		if (!PyArg_ParseTuple(args, "LIs:log", &guid, &logtype, &message))
 		{
-			case 0: log->trace(WholeMessage);
-				break;
-			case 1:
-				log->debug(WholeMessage);
-				break;
-			case 2:
-				log->info(WholeMessage);
-				break;
-			case 3:
-				log->warn(WholeMessage);
-				break;
-			case 4:
-				log->error(WholeMessage);
-				break;
-			default:
-				log->critical(WholeMessage);
+			PythonWrapper::PyErrOutput();
+			return NULL;
+		}
+
+		std::string WholeMessage = "pyLog - ";
+
+		// Work out which instance of our PyWrapper is talking to us.
+		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
+
+		LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
+
+		if (thisPyWrapper != nullptr)
+		{
+			WholeMessage += thisPyWrapper->Name + " - ";
+		}
+		else
+		{
+			LOGDEBUG("odc.Log called from Python code for unknown PyPort object");
+		}
+
+		WholeMessage += message;
+
+		// Take appropriate action
+		if (auto log = odc::spdlog_get("PyPort"))
+		{
+			// Ordinals match spdlog values - spdlog::level::level_enum::
+			switch (logtype)
+			{
+				case 0: log->trace(WholeMessage);
+					break;
+				case 1:
+					log->debug(WholeMessage);
+					break;
+				case 2:
+					log->info(WholeMessage);
+					break;
+				case 3:
+					log->warn(WholeMessage);
+					break;
+				case 4:
+					log->error(WholeMessage);
+					break;
+				default:
+					log->critical(WholeMessage);
+			}
 		}
 	}
-
+	catch (std::exception& e)
+	{
+		LOGERROR("Excception Caught in odc_log - {}", e.what());
+	}
 	// Return a PyObject return value, in this case "none".
 	return Py_BuildValue("");
 }
@@ -152,41 +158,46 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 // It is static, so we have to work out which instance of the PythonWrapper class should handle it.
 static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 {
-	//TODO Update to new general event type, so we pass any event. Then decode in Python
-	uint32_t ODCIndex;
-	const char* EventType;
-	const char* Payload;
-	const char* Quality;
-	uint64_t guid;
-
-
-	// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
-	if (!PyArg_ParseTuple(args, "LsIss:PublishEvent", &guid, &EventType, &ODCIndex, &Quality, &Payload))
+	try
 	{
-		PythonWrapper::PyErrOutput();
-		return NULL;
+		uint32_t ODCIndex;
+		const char* EventType;
+		const char* Payload;
+		const char* Quality;
+		uint64_t guid;
+
+
+		// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
+		if (!PyArg_ParseTuple(args, "LsIss:PublishEvent", &guid, &EventType, &ODCIndex, &Quality, &Payload))
+		{
+			PythonWrapper::PyErrOutput();
+			return NULL;
+		}
+		LOGDEBUG("Python Publish Event {}, {}, {}, {}", EventType, ODCIndex, Quality, Payload);
+
+		// Work out which instance of our PyWrapper is talking to us.
+		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
+
+		LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
+
+		if (thisPyWrapper != nullptr)
+		{
+			// Will create an async wait and call the Python code at the correct time.
+			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
+			// The PyPort ensures that pyWrapper is managed within a strand
+			LOGDEBUG("Python PublishEvent - about to call PyPort PublishEventCall method");
+			auto fn = thisPyWrapper->GetPythonPortPublishEventCallFn();
+			fn(EventType, ODCIndex, Quality, Payload);
+		}
+		else
+		{
+			LOGDEBUG("odc.PublishEvent called from Python code for unknown PyPort object - ignored");
+		}
 	}
-	LOGDEBUG("Python Publish Event {}, {}, {}, {}",EventType, ODCIndex, Quality, Payload);
-
-	// Work out which instance of our PyWrapper is talking to us.
-	PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
-
-	LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
-
-	if (thisPyWrapper != nullptr)
+	catch (std::exception& e)
 	{
-		// Will create an async wait and call the Python code at the correct time.
-		// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
-		// The PyPort ensures that pyWrapper is managed within a strand
-		LOGDEBUG("Python PublishEvent - about to call PyPort PublishEventCall method");
-		auto fn = thisPyWrapper->GetPythonPortPublishEventCallFn();
-		fn(EventType, ODCIndex, Quality, Payload);
+		LOGERROR("Excception Caught in odc_PublishEvent() - {}", e.what());
 	}
-	else
-	{
-		LOGDEBUG("odc.PublishEvent called from Python code for unknown PyPort object - ignored");
-	}
-
 	// Return a PyObject return value. True is 1
 	return Py_BuildValue("i", 1);
 }
@@ -195,37 +206,43 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 // It is static, so we have to work out which instance of the PythonWrapper class should handle it.
 static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 {
-	uint32_t id;
-	uint32_t delay;
-	uint64_t guid;
-
-	// Now parse the arguments provided, Long (L) Unsigned ints (I) and the function name.
-	if (!PyArg_ParseTuple(args, "LII:SetTimer", &guid, &id, &delay))
+	try
 	{
-		PythonWrapper::PyErrOutput();
-		return NULL;
+		uint32_t id;
+		uint32_t delay;
+		uint64_t guid;
+
+		// Now parse the arguments provided, Long (L) Unsigned ints (I) and the function name.
+		if (!PyArg_ParseTuple(args, "LII:SetTimer", &guid, &id, &delay))
+		{
+			PythonWrapper::PyErrOutput();
+			return NULL;
+		}
+		LOGDEBUG("Python SetTimer ID: {}, Delay {}", id, delay);
+
+		// Work out which instance of our PyWrapper is talking to us.
+		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
+
+		LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
+
+		if (thisPyWrapper != nullptr)
+		{
+			// Will create an async wait and call the Python code at the correct time.
+			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
+			// The PyPort ensures that pyWrapper is managed within a strand
+			LOGDEBUG("Python SetTimer - about to call PyPort SetTimer method");
+			auto fn = thisPyWrapper->GetPythonPortSetTimerFn();
+			fn(id, delay);
+		}
+		else
+		{
+			LOGDEBUG("odc.setTimer called from Python code for unknown PyPort object - Ignored");
+		}
 	}
-	LOGDEBUG("Python SetTimer ID: {}, Delay {}", id, delay);
-
-	// Work out which instance of our PyWrapper is talking to us.
-	PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
-
-	LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
-
-	if (thisPyWrapper != nullptr)
+	catch (std::exception& e)
 	{
-		// Will create an async wait and call the Python code at the correct time.
-		// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
-		// The PyPort ensures that pyWrapper is managed within a strand
-		LOGDEBUG("Python SetTimer - about to call PyPort SetTimer method");
-		auto fn = thisPyWrapper->GetPythonPortSetTimerFn();
-		fn(id, delay);
+		LOGERROR("Excception Caught in odc_SetTimer - {}", e.what());
 	}
-	else
-	{
-		LOGDEBUG("odc.setTimer called from Python code for unknown PyPort object - Ignored");
-	}
-
 	// Return a PyObject return value, in this case "none".
 	return Py_BuildValue("");
 }
@@ -274,34 +291,42 @@ PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn
 // Startup the interpreter - need to have matching tear down in destructor.
 void PythonWrapper::InitialisePyInterpreter()
 {
-	LOGDEBUG("Py_Initialize");
-
-	// Load our odc module exposing our internal methods to python (i.e. loggin commands)
-	ImportODCModule();
-
-	Py_Initialize(); // Get the Python interpreter running
-
-	// Now execute some commands to get the environment ready.
-	if (PyRun_SimpleString("import sys") != 0)
+	try
 	{
-		LOGERROR("Unable to import python sys library");
-		return;
+		LOGDEBUG("Py_Initialize");
+
+		// Load our odc module exposing our internal methods to python (i.e. loggin commands)
+		ImportODCModule();
+
+		Py_Initialize(); // Get the Python interpreter running
+
+		// Now execute some commands to get the environment ready.
+		if (PyRun_SimpleString("import sys") != 0)
+		{
+			LOGERROR("Unable to import python sys library");
+			return;
+		}
+		// Append current working directory to the sys.path variable - so we ca find the module.
+		if (PyRun_SimpleString("sys.path.append(\".\")") != 0)
+		{
+			LOGERROR("Unable to append to sys path in python sys library");
+			return;
+		}
+		PyDateTime_IMPORT;
+
+		// Initialize threads and release GIL (saving it as well):
+		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
+		if (!PyGILState_Check())
+			LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
+
+		threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 	}
-	// Append current working directory to the sys.path variable - so we ca find the module.
-	if (PyRun_SimpleString("sys.path.append(\".\")") != 0)
+	catch (std::exception& e)
 	{
-		LOGERROR("Unable to append to sys path in python sys library");
-		return;
+		LOGERROR("Exception Caught during pyInitialize() - {}", e.what());
 	}
-	PyDateTime_IMPORT;
-
-	// Initialize threads and release GIL (saving it as well):
-	PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
-	if (!PyGILState_Check())
-		LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
-
-	threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 }
+
 // This one seems to be excatly what we need, and we are doing it, but it is not working...
 // https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
 
@@ -349,7 +374,7 @@ PythonWrapper::~PythonWrapper()
 		}
 		catch (std::exception& e)
 		{
-			LOGERROR("Excception Caught calling Py_FinalizeEx() - {}", e.what());
+			LOGERROR("Exception Caught calling Py_FinalizeEx() - {}", e.what());
 		}
 	}
 }
@@ -357,81 +382,87 @@ PythonWrapper::~PythonWrapper()
 
 void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModuleName, const std::string& pyClassName, const std::string& PortName)
 {
-	GetPythonGIL g;
-
-	if (!g.OkToContinue())
+	try
 	{
-		LOGERROR("Error - Interpreter Closing Down in ImportModuleAndCreateClassInstance");
-		return;
-	}
+		GetPythonGIL g;
 
-	const auto pyUniCodeModuleName = PyUnicode_FromString(pyModuleName.c_str());
-
-	pyModule = PyImport_Import(pyUniCodeModuleName);
-	if (pyModule == nullptr)
-	{
-		LOGERROR("Could not load Python Module - {}", pyModuleName);
-		PyErrOutput();
-		throw std::runtime_error("Could not load Python Module");
-	}
-	Py_DECREF(pyUniCodeModuleName);
-
-	PyObject* pyDict = PyModule_GetDict(pyModule);
-	if (pyDict == nullptr)
-	{
-		LOGERROR("Could not load Python Dictionary Reference");
-		PyErrOutput();
-		throw std::runtime_error("Could not load Python Dictionary Reference");
-	}
-
-	// Build the name of a callable class
-	PyObject* pyClass = PyDict_GetItemString(pyDict, pyClassName.c_str());
-
-	// Py_XDECREF(pyDict);	// Borrowed reference, dont destruct
-
-	if (pyClass == nullptr)
-	{
-		LOGERROR("Could not load Python Class Reference - {}", pyClassName);
-		PyErrOutput();
-		throw std::runtime_error("Could not load Python Class");
-	}
-	// Create an instance of the class, with a name matching the port name
-	if (pyClass && PyCallable_Check(pyClass))
-	{
-		auto pyArgs = PyTuple_New(2);
-		auto pyguid = PyLong_FromUnsignedLongLong((uint64_t)this); // Pass a this pointer into our constructor, so we can idenify ourselves on calls back into C land
-		auto pyObjectName = PyUnicode_FromString(PortName.c_str());
-		PyTuple_SetItem(pyArgs, 0, pyguid);
-		PyTuple_SetItem(pyArgs, 1, pyObjectName);
-
-		pyInstance = PyObject_CallObject(pyClass, pyArgs);
-		if (pyInstance == nullptr)
+		if (!g.OkToContinue())
 		{
-			LOGDEBUG("Could not get instance pointer for Python Class");
-			PyErrOutput();
-
-			throw std::runtime_error("Could not get instance pointer for Python Class");
+			LOGERROR("Error - Interpreter Closing Down in ImportModuleAndCreateClassInstance");
+			return;
 		}
 
-		StoreWrapperMapping();
+		const auto pyUniCodeModuleName = PyUnicode_FromString(pyModuleName.c_str());
 
-		Py_DECREF(pyArgs); // pyObjectName, pyguid is stolen into pyArgs, so dealt with in this call
+		pyModule = PyImport_Import(pyUniCodeModuleName);
+		if (pyModule == nullptr)
+		{
+			LOGERROR("Could not load Python Module - {}", pyModuleName);
+			PyErrOutput();
+			throw std::runtime_error("Could not load Python Module");
+		}
+		Py_DECREF(pyUniCodeModuleName);
+
+		PyObject* pyDict = PyModule_GetDict(pyModule);
+		if (pyDict == nullptr)
+		{
+			LOGERROR("Could not load Python Dictionary Reference");
+			PyErrOutput();
+			throw std::runtime_error("Could not load Python Dictionary Reference");
+		}
+
+		// Build the name of a callable class
+		PyObject* pyClass = PyDict_GetItemString(pyDict, pyClassName.c_str());
+
+		// Py_XDECREF(pyDict);	// Borrowed reference, dont destruct
+
+		if (pyClass == nullptr)
+		{
+			LOGERROR("Could not load Python Class Reference - {}", pyClassName);
+			PyErrOutput();
+			throw std::runtime_error("Could not load Python Class");
+		}
+		// Create an instance of the class, with a name matching the port name
+		if (pyClass && PyCallable_Check(pyClass))
+		{
+			auto pyArgs = PyTuple_New(2);
+			auto pyguid = PyLong_FromUnsignedLongLong((uint64_t)this); // Pass a this pointer into our constructor, so we can idenify ourselves on calls back into C land
+			auto pyObjectName = PyUnicode_FromString(PortName.c_str());
+			PyTuple_SetItem(pyArgs, 0, pyguid);
+			PyTuple_SetItem(pyArgs, 1, pyObjectName);
+
+			pyInstance = PyObject_CallObject(pyClass, pyArgs);
+			if (pyInstance == nullptr)
+			{
+				LOGDEBUG("Could not get instance pointer for Python Class");
+				PyErrOutput();
+
+				throw std::runtime_error("Could not get instance pointer for Python Class");
+			}
+
+			StoreWrapperMapping();
+
+			Py_DECREF(pyArgs); // pyObjectName, pyguid is stolen into pyArgs, so dealt with in this call
+		}
+		else
+		{
+			PyErrOutput();
+			LOGERROR("pyClass not callable");
+			throw std::runtime_error("pyClass not callable");
+		}
+		// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
+
+		pyFuncConfig = GetFunction(pyInstance, "Config");
+		pyFuncEnable = GetFunction(pyInstance, "Enable");
+		pyFuncDisable = GetFunction(pyInstance, "Disable");
+		pyFuncEvent = GetFunction(pyInstance, "EventHandler");
+		pyTimerHandler = GetFunction(pyInstance, "TimerHandler");
+		pyRestHandler = GetFunction(pyInstance, "RestRequestHandler");
 	}
-	else
+	catch (std::exception& e)
 	{
-		PyErrOutput();
-		LOGERROR("pyClass not callable");
-		throw std::runtime_error("pyClass not callable");
+		LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
 	}
-	// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
-
-	pyFuncConfig = GetFunction(pyInstance, "Config");
-	pyFuncEnable = GetFunction(pyInstance, "Enable");
-	pyFuncDisable = GetFunction(pyInstance, "Disable");
-	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
-	pyTimerHandler = GetFunction(pyInstance, "TimerHandler");
-	pyRestHandler = GetFunction(pyInstance, "RestRequestHandler");
-	//TODO: Call the config function in script ProcessJSONConfig(self, MainJSON, OverrideJSON)
 }
 
 void PythonWrapper::Build(const std::string& modulename, std::string& pyLoadModuleName, std::string& pyClassName, std::string& PortName)
@@ -442,111 +473,146 @@ void PythonWrapper::Build(const std::string& modulename, std::string& pyLoadModu
 
 void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONOverride)
 {
-	GetPythonGIL g;
-	if (!g.OkToContinue())
+	try
 	{
-		LOGERROR("Error - Interpreter Closing Down in Config");
-		return;
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error - Interpreter Closing Down in Config");
+			return;
+		}
+
+		auto pyArgs = PyTuple_New(2);
+		auto pyJSONMain = PyUnicode_FromString(JSONMain.c_str());
+		auto pyJSONOverride = PyUnicode_FromString(JSONOverride.c_str());
+		PyTuple_SetItem(pyArgs, 0, pyJSONMain);
+		PyTuple_SetItem(pyArgs, 1, pyJSONOverride);
+
+		PyObject* pyResult = PyCall(pyFuncConfig, pyArgs); // No passed variables, assume no delayed return
+		if (pyResult) Py_DECREF(pyResult);
+		Py_DECREF(pyArgs);
 	}
-
-	auto pyArgs = PyTuple_New(2);
-	auto pyJSONMain = PyUnicode_FromString(JSONMain.c_str());
-	auto pyJSONOverride = PyUnicode_FromString(JSONOverride.c_str());
-	PyTuple_SetItem(pyArgs, 0, pyJSONMain);
-	PyTuple_SetItem(pyArgs, 1, pyJSONOverride);
-
-	PyObject* pyResult = PyCall(pyFuncConfig, pyArgs); // No passed variables, assume no delayed return
-	if (pyResult) Py_DECREF(pyResult);
-	Py_DECREF(pyArgs);
+	catch (std::exception& e)
+	{
+		LOGERROR("Exception Caught calling pyFuncConfig() - {}", e.what());
+	}
 }
 
 void PythonWrapper::Enable()
 {
-	GetPythonGIL g;
-	if (!g.OkToContinue())
+	try
 	{
-		LOGERROR("Error - Interpreter Closing Down in Enable");
-		return;
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error - Interpreter Closing Down in Enable");
+			return;
+		}
+		auto pyArgs = PyTuple_New(0);
+		PyObject* pyResult = PyCall(pyFuncEnable, pyArgs); // No passed variables, assume no delayed return
+		if (pyResult) Py_DECREF(pyResult);
+		Py_DECREF(pyArgs);
 	}
-	auto pyArgs = PyTuple_New(0);
-	PyObject* pyResult = PyCall(pyFuncEnable, pyArgs); // No passed variables, assume no delayed return
-	if (pyResult) Py_DECREF(pyResult);
-	Py_DECREF(pyArgs);
+	catch (std::exception& e)
+	{
+		LOGERROR("Exception Caught calling pyEnable() - {}", e.what());
+	}
 }
 
 void PythonWrapper::Disable()
 {
-	GetPythonGIL g;
-	if (!g.OkToContinue())
+	try
 	{
-		LOGERROR("Error - Interpreter Closing Down in Disable");
-		return;
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error - Interpreter Closing Down in Disable");
+			return;
+		}
+		auto pyArgs = PyTuple_New(0);
+		PyObject* pyResult = PyCall(pyFuncDisable, pyArgs); // No passed variables, assume no delayed return
+		if (pyResult) Py_DECREF(pyResult);
+		Py_DECREF(pyArgs);
 	}
-	auto pyArgs = PyTuple_New(0);
-	PyObject* pyResult = PyCall(pyFuncDisable, pyArgs); // No passed variables, assume no delayed return
-	if (pyResult) Py_DECREF(pyResult);
-	Py_DECREF(pyArgs);
+	catch (std::exception& e)
+	{
+		LOGERROR("Exception Caught calling pyDisable() - {}", e.what());
+	}
 }
 
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.
 CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName)
 {
-	// Try and send all events through to Python without modification, return value will be success or failure - using our predefined values.
-	GetPythonGIL g;
-	if (!g.OkToContinue())
+	try
 	{
-		LOGERROR("Error - Interpreter Closing Down in Event");
-		return CommandStatus::UNDEFINED;
+		// Try and send all events through to Python without modification, return value will be success or failure - using our predefined values.
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error - Interpreter Closing Down in Event");
+			return CommandStatus::UNDEFINED;
+		}
+		auto pyArgs = PyTuple_New(6);
+		auto pyEventType = PyUnicode_FromString(odc::ToString(odcevent->GetEventType()).c_str()); // String Event Type
+		auto pyIndex = PyLong_FromUnsignedLong(odcevent->GetIndex());
+		auto pyTime = PyLong_FromUnsignedLongLong(odcevent->GetTimestamp());             // msSinceEpoch
+		auto pyQuality = PyUnicode_FromString(ToString(odcevent->GetQuality()).c_str()); // String quality flags
+		auto pyPayload = PyUnicode_FromString(odcevent->GetPayloadString().c_str());
+		auto pySender = PyUnicode_FromString(SenderName.c_str());
+
+		// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
+		PyTuple_SetItem(pyArgs, 0, pyEventType);
+		PyTuple_SetItem(pyArgs, 1, pyIndex);
+		PyTuple_SetItem(pyArgs, 2, pyTime);
+		PyTuple_SetItem(pyArgs, 3, pyQuality);
+		PyTuple_SetItem(pyArgs, 4, pyPayload);
+		PyTuple_SetItem(pyArgs, 5, pySender);
+
+		//	PostPyCall(pyFuncEvent, pyArgs, pStatusCallback); // Callback will be called when done...
+		PyObject* pyResult = PyCall(pyFuncEvent, pyArgs); // No passed variables
+
+		Py_DECREF(pyArgs);
+
+		if (pyResult) // Non nullptr is a result
+		{
+			long res = PyLong_AsLong(pyResult);
+			PyErrOutput();
+			Py_DECREF(pyResult);
+
+			return res ? CommandStatus::SUCCESS : CommandStatus::UNDEFINED;
+		}
 	}
-	auto pyArgs = PyTuple_New(6);
-	auto pyEventType = PyUnicode_FromString(odc::ToString(odcevent->GetEventType()).c_str()); // String Event Type
-	auto pyIndex = PyLong_FromUnsignedLong(odcevent->GetIndex());
-	auto pyTime = PyLong_FromUnsignedLongLong(odcevent->GetTimestamp());             // msSinceEpoch
-	auto pyQuality = PyUnicode_FromString(ToString(odcevent->GetQuality()).c_str()); // String quality flags
-	auto pyPayload = PyUnicode_FromString(odcevent->GetPayloadString().c_str());
-	auto pySender = PyUnicode_FromString(SenderName.c_str());
-
-	// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
-	PyTuple_SetItem(pyArgs, 0, pyEventType);
-	PyTuple_SetItem(pyArgs, 1, pyIndex);
-	PyTuple_SetItem(pyArgs, 2, pyTime);
-	PyTuple_SetItem(pyArgs, 3, pyQuality);
-	PyTuple_SetItem(pyArgs, 4, pyPayload);
-	PyTuple_SetItem(pyArgs, 5, pySender);
-
-	//	PostPyCall(pyFuncEvent, pyArgs, pStatusCallback); // Callback will be called when done...
-	PyObject* pyResult = PyCall(pyFuncEvent, pyArgs); // No passed variables
-
-	Py_DECREF(pyArgs);
-
-	if (pyResult) // Non nullptr is a result
+	catch (std::exception& e)
 	{
-		long res = PyLong_AsLong(pyResult);
-		PyErrOutput();
-		Py_DECREF(pyResult);
-
-		return res ? CommandStatus::SUCCESS : CommandStatus::UNDEFINED;
+		LOGERROR("Exception Caught calling pyFuncEvent() - {}", e.what());
 	}
 	return CommandStatus::UNDEFINED;
 }
 
 // We have to call this from the PyPort as an asyncwait on the strand. We just pass in the ID, as the delay will have been used.
-void PythonWrapper::CallTimerHandler( uint32_t id)
+void PythonWrapper::CallTimerHandler(uint32_t id)
 {
-	GetPythonGIL g;
-	if (!g.OkToContinue())
+	try
 	{
-		LOGERROR("Error - Interpreter Closing Down in SetTimer");
-		return;
-	}
-	auto pyArgs = PyTuple_New(1);
-	auto pyID = PyLong_FromUnsignedLong(id);
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error - Interpreter Closing Down in SetTimer");
+			return;
+		}
+		auto pyArgs = PyTuple_New(1);
+		auto pyID = PyLong_FromUnsignedLong(id);
 
-	// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
-	PyTuple_SetItem(pyArgs, 0, pyID);
-	PyObject* pyResult = PyCall(pyTimerHandler, pyArgs); // No passed variables, assume no delayed return
-	if (pyResult) Py_DECREF(pyResult);
-	Py_DECREF(pyArgs);
+		// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
+		PyTuple_SetItem(pyArgs, 0, pyID);
+		PyObject* pyResult = PyCall(pyTimerHandler, pyArgs); // No passed variables, assume no delayed return
+		if (pyResult) Py_DECREF(pyResult);
+		Py_DECREF(pyArgs);
+	}
+	catch (std::exception& e)
+	{
+		LOGERROR("Exception Caught calling pyTimerHandler() - {}", e.what());
+	}
 }
 
 // This is a handler for a Rest request received by the (global to all PythonPorts) handler, which will pass it to us.
@@ -554,31 +620,37 @@ void PythonWrapper::CallTimerHandler( uint32_t id)
 std::string PythonWrapper::RestHandler(const std::string& url)
 {
 	// Try and send all events through to Python without modification, return value will be success or failure - using our predefined values.
-	GetPythonGIL g;
-	if (!g.OkToContinue())
+	try
 	{
-		LOGERROR("Error in Python Wrapper handling of Restful Request");
-		return "Error in Python Wrapper";
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error in Python Wrapper handling of Restful Request");
+			return "Error in Python Wrapper";
+		}
+		auto pyArgs = PyTuple_New(1);
+		auto pyurl = PyUnicode_FromString(url.c_str());
+
+		// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
+		PyTuple_SetItem(pyArgs, 0, pyurl);
+
+		PyObject* pyResult = PyCall(pyRestHandler, pyArgs); // No passed variables
+
+		Py_DECREF(pyArgs);
+
+		if (pyResult) // Non nullptr is a result
+		{
+			std::string res = std::string(PyUnicode_AsUTF8(pyResult));
+			PyErrOutput();
+			Py_DECREF(pyResult);
+
+			return res;
+		}
 	}
-	auto pyArgs = PyTuple_New(1);
-	auto pyurl = PyUnicode_FromString(url.c_str());
-
-	// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
-	PyTuple_SetItem(pyArgs, 0, pyurl);
-
-	PyObject* pyResult = PyCall(pyRestHandler, pyArgs); // No passed variables
-
-	Py_DECREF(pyArgs);
-
-	if (pyResult) // Non nullptr is a result
+	catch (std::exception& e)
 	{
-		std::string res = std::string(PyUnicode_AsUTF8(pyResult));
-		PyErrOutput();
-		Py_DECREF(pyResult);
-
-		return res;
+		LOGERROR("Exception Caught calling pyRestHandler() - {}", e.what());
 	}
-
 	return "Did not get a response from Python RestHandler";
 }
 

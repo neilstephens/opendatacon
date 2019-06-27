@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2017:
+ *	Copyright (c) 2019:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -20,17 +20,12 @@
 /*
  * PyPort.h
  *
- *  Created on: 26/03/2017
- *      Author: Alan Murray <alan@atmurray.net>
+ *  Created on:20/6/2019
+ *      Author: Scott Ellis <scott.ellis@novatex.com.au>
  */
 
 #ifndef PYPORT_H_
 #define PYPORT_H_
-
-// If we are compiling for external testing (or production) define this.
-// If we are using VS and its test framework, don't define this.
-// The test cases do not destruct everthing correctly, they run individually ok, but one after the other they fail.
-//#define NONVSTESTING
 
 // We us a call that is only available in version 3.7
 // For CI we only have 3.5 on Linux
@@ -43,6 +38,7 @@
 
 #include "PythonWrapper.h"
 #include "PyPortConf.h"
+#include "ServerManager.h"
 
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
@@ -89,6 +85,8 @@ private:
 	std::unique_ptr<PythonWrapper> pWrapper;
 	std::string JSONMain;
 	std::string JSONOverride;
+
+	ServerTokenType pServer;
 
 	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
 	static std::shared_ptr<asio::io_context::strand> python_strand;

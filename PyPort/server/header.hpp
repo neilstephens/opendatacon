@@ -12,21 +12,6 @@
 #define HTTP_HEADER_HPP
 
 #include <string>
-#include "spdlog/spdlog.h"
-
-// Hide some of the code to make Logging cleaner
-#define LOGDEBUG(...) \
-	if (auto log = spdlog::get("PyPort")) \
-		log->debug(__VA_ARGS__);
-#define LOGERROR(...) \
-	if (auto log = spdlog::get("PyPort")) \
-		log->error(__VA_ARGS__);
-#define LOGWARN(...) \
-	if (auto log = spdlog::get("PyPort"))  \
-		log->warn(__VA_ARGS__);
-#define LOGINFO(...) \
-	if (auto log = spdlog::get("PyPort")) \
-		log->info(__VA_ARGS__);
 
 namespace http
 {

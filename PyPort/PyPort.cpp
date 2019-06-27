@@ -111,7 +111,9 @@ PyPort::~PyPort()
 			}
 		});
 }
+/*
 
+            */
 // The ASIO IOS instance is up, our config files have been read and parsed, this is the opportunity to kick off connections and scheduled processes
 void PyPort::Build()
 {
@@ -138,6 +140,61 @@ void PyPort::Build()
 		});
 
 	LOGDEBUG("Loaded \"{}\" ", MyConf->pyModuleName);
+
+	pServer = ServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new ServerManager if required
+
+	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
+
+	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, http::reply& rep)
+		{
+			rep.status = http::reply::ok;
+			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
+			rep.headers.resize(2);
+			rep.headers[0].name = "Content-Length";
+			rep.headers[0].value = std::to_string(rep.content.size());
+			rep.headers[1].name = "Content-Type";
+			rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
+		});
+
+	ServerManager::AddHandler(pServer, "GET /", roothandler);
+
+	auto gethandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, http::reply& rep)
+		{
+			// So when we hit here, someone has make a Get request of our Port. Pass it to Python, and wiat for a response...
+			std::string result = pWrapper->RestHandler(absoluteuri); // Expect no long processing or waits in the python code to handle this.
+			std::string contenttype = "application/json";
+
+			if (result.length() > 0)
+			{
+			      rep.status = http::reply::ok;
+			      rep.content.append(result);
+			}
+			else
+			{
+			      rep.status = http::reply::not_found;
+			      rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
+			      contenttype = "text/html";
+			}
+			rep.headers.resize(2);
+			rep.headers[0].name = "Content-Length";
+			rep.headers[0].value = std::to_string(rep.content.size());
+			rep.headers[1].name = "Content-Type";
+			rep.headers[1].value = contenttype;
+		});
+	ServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
+
+	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, http::reply& rep)
+		{
+
+			rep.status = http::reply::ok;
+			rep.content.append("You have reached the PyPort Instance with POST on " + Name);
+			rep.headers.resize(2);
+			rep.headers[0].name = "Content-Length";
+			rep.headers[0].value = std::to_string(rep.content.size());
+			rep.headers[1].name = "Content-Type";
+			rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
+		});
+	ServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
 }
 
 void PyPort::Enable()

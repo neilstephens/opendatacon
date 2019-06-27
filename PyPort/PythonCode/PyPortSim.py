@@ -118,8 +118,13 @@ class SimPortClass:
     # We return the response that we want sent back to the caller. This will be a JSON string. A null string would be an error.
     def RestRequestHandler(self, url):
         self.LogDebug("RestRequestHander: {}".format(url))
+        
+
         Response = {}   # Empty Dict
-        Response["test"] = "Hello"
+        if ("GET" in url):
+            Response["test"] = "GET"
+        else:
+            Response["test"] = "POST"
 
         odc.SetTimer(self.guid, self.i, 1001-self.i)    # Set a timer to go off in a period less than a second
         self.i = self.i + 1

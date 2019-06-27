@@ -35,6 +35,7 @@
 #include <thread>
 #include <chrono>
 #include <cstdint>
+#include "server/clientrequest.h"
 
 #define COMPILE_TESTS
 
@@ -399,6 +400,68 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 
 	// Wait - we should see the timer callback triggered.
 	WaitIOS(IOS, 5);
+
+	PythonPort->Disable();
+	PythonPort2->Disable();
+
+	STOP_IOS();
+	STANDARD_TEST_TEARDOWN();
+}
+TEST_CASE("Py.WebServerTest")
+{
+	STANDARD_TEST_SETUP();
+	TEST_PythonPort(Json::nullValue);
+	TEST_PythonPort2(Json::nullValue);
+
+	START_IOS(4);
+
+	WaitIOS(IOS, 2); // Allow build to run
+
+	PythonPort->Enable();
+	PythonPort2->Enable();
+
+	WaitIOS(IOS, 1); // Allow build to run
+
+	std::string hroot = "http://localhost:8000";
+	std::string h1 = "http://localhost:8000/TestMaster";
+	std::string h2 = "http://localhost:8000/TestMaster2";
+
+	// Do a http request to the root port and make sure we are getting the answer we expect.
+	std::string expectedresponse("Content-Length: 185\r\nContent-Type: text/html\r\n\n"
+		                       "You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, "
+		                       "which is case senstive.<br>Anything beyond this will be passed to the Python code.");
+
+	std::string callresp;
+	bool res = DoHttpRequst("localhost","8000", "/", callresp);
+
+	LOGDEBUG("GET http://localhost:8000 - We got back {}", callresp);
+
+	REQUIRE(res);
+	REQUIRE(expectedresponse == callresp);
+
+	WaitIOS(IOS, 1);
+
+	callresp = "";
+
+	res = DoHttpRequst("localhost", "8000", "/TestMaster", callresp);
+
+	LOGDEBUG("GET http://localhost:8000/TestMaster We got back {}", callresp);
+
+	expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
+
+	REQUIRE(res);
+	REQUIRE(expectedresponse == callresp);
+
+
+	res = DoHttpRequst("localhost", "8000", "/TestMaster2", callresp);
+
+	LOGDEBUG("GET http://localhost:8000/TestMaster2 We got back {}", callresp);
+
+	expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
+
+	REQUIRE(res);
+	REQUIRE(expectedresponse == callresp);
+
 
 	PythonPort->Disable();
 	PythonPort2->Disable();

@@ -27,24 +27,10 @@
 #ifndef PYWRAPPER_H_
 #define PYWRAPPER_H_
 
-#include <Python.h>
+#include "Py.h"
 #include <unordered_map>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
-
-// Hide some of the code to make Logging cleaner
-#define LOGDEBUG(...) \
-	if (auto log = odc::spdlog_get("PyPort")) \
-		log->debug(__VA_ARGS__);
-#define LOGERROR(...) \
-	if (auto log = odc::spdlog_get("PyPort")) \
-		log->error(__VA_ARGS__);
-#define LOGWARN(...) \
-	if (auto log = odc::spdlog_get("PyPort"))  \
-		log->warn(__VA_ARGS__);
-#define LOGINFO(...) \
-	if (auto log = odc::spdlog_get("PyPort")) \
-		log->info(__VA_ARGS__);
 
 using namespace odc;
 
@@ -67,7 +53,6 @@ public:
 
 	SetTimerFnType GetPythonPortSetTimerFn() { return PythonPortSetTimerFn; };                         // Protect set access, only allow get.
 	PublishEventCallFnType GetPythonPortPublishEventCallFn() { return PythonPortPublishEventCallFn; }; // Protect set access, only allow get.
-
 
 	static void PyErrOutput();
 
