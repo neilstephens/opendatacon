@@ -74,13 +74,18 @@ install:
     fi
   - |
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
+      # Install qemu-static and the arm cross compiler into the travis host
       sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
+      # Run the docker image and keep the returned container name for use in exec calls.
+      # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
+      # -ti maintain a terminal, the docker image is jessie:latest
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
-      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc software-properties-common"
-     # docker exec -i $DOCK sh -c "add-apt-repository -y ppa:deadsnakes/ppa"
-     # docker exec -i $DOCK sh -c "apt-get install -y python3.5 python3.5-dev"
+      # Install the arm versions of dependencies into the QEMU user image
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc" 
       mkdir sysroot
+      # Copy /usr to sysroot int the docker image
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
+      # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
@@ -90,21 +95,19 @@ install:
     if [ "$DOCKER_BUILD" == "OEL" ]; then
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti library/oraclelinux:6.6)
       docker exec -i $DOCK sh -c '
+        # load dependencies into docker image so that tests can be run
         curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm
         curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm     
-        curl -O https://yum.oracle.com/repo/OracleLinux/OL6/SoftwareCollections/getPackage/rh-python35-2.0-2.el6.x86_64.rpm
-        rpm -i rh-python35-2.0-2.el6.x86_64.rpm
         yum install -y libmicrohttpd-devel socat
-        yum install -y scl-utils
-        scl enable rh-python35 bash
       '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
       export EL6_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
       export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
+      # need to install the missing arch files for Python3.5 OEL, so the compiler can find them - may just need a simlink.
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       export SYSROOT=$(pwd)/sysroot/
