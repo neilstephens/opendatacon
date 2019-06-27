@@ -29,7 +29,8 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-#define NONVSTESTING
+// The test cases do not destruct everthing correctly, they run individually ok, but one after the other they fail.
+//#define NONVSTESTING
 
 // We us a call that is only available in version 3.7
 // For CI we only have 3.5 on Linux
