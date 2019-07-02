@@ -62,7 +62,7 @@ endif()
 # Check the target arch, if arm, manually set the library location to match where we put it in Travis. 
 # Not a good solution, but the Python3 find_package is always returning the x86_64 version...
 # /usr/lib/python3.5/config-3.5m-x86_64-linux-gnu/libpython3.5m.so --> /usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/libpython3.5m.so
-if ("${CMAKE_LIBRARY_ARCHITECTURE}" == "arm-linux-gnueabihf")
+if ("${CMAKE_LIBRARY_ARCHITECTURE}" EQUAL "arm-linux-gnueabihf")
 	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}" NAME)	
 	message("RPI abihf build - Changed Python Library Path From ${Python3_LIBRARIES} To ${RpiLibFileName}")
 	set(Python3_LIBRARIES "${RpiLibFileName}")
@@ -78,9 +78,13 @@ include_directories(
 	"${DNP3_HOME}/include"
 	"${ASIO_HOME}/include"
 )
+configure_file(PythonCode/PyPortSim.py ${CMAKE_CURRENT_BINARY_DIR}/PyPortSim.py COPYONLY )
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC ${openpal_libs} ${opendnp3_libs} ${Python3_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
+
+# So tests will run
+install(FILES PythonCode/PyPortSim.py DESTINATION ${INSTALLDIR_MODULES})
