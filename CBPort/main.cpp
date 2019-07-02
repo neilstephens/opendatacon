@@ -97,6 +97,7 @@ extern "C" int run_tests( int argc, char* argv[] )
 	// And release here.
 	CommandLineLoggingCleanup();
 	#else
+	std::cout << "CBPort: Compiled for Visual Studio Testing only" << std::endl;
 	return 1;
 	#endif
 }

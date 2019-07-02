@@ -59,6 +59,15 @@ else()
 	set(Python3_LIBRARIES "${PYTHON_LIBRARIES}")
 endif()
 
+# Check the target arch, if arm, manually set the library location to match where we put it in Travis. 
+# Not a good solution, but the Python3 find_package is always returning the x86_64 version...
+# /usr/lib/python3.5/config-3.5m-x86_64-linux-gnu/libpython3.5m.so --> /usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/libpython3.5m.so
+if ("${CMAKE_LIBRARY_ARCHITECTURE}" == "arm-linux-gnueabihf")
+	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}" NAME)	
+	message("RPI abihf build - Changed Python Library Path From ${Python3_LIBRARIES} To ${RpiLibFileName}")
+	set(Python3_LIBRARIES "${RpiLibFileName}")
+endif()
+
 message("Found Python Include Dirs ${Python3_INCLUDE_DIRS} ")
 message("Found Python Libraries ${Python3_LIBRARIES} ")
 

@@ -299,7 +299,7 @@ bool PyPort::GetConnectStateFromStringName(const std::string StrConnectState, Co
 	return false;
 }
 
-std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr)
+std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
 {
 	EventType EventTypeResult;
 	if (!GetEventTypeFromStringName(EventTypeStr, EventTypeResult))
@@ -432,7 +432,7 @@ void PyPort::PublishEventCall(const std::string &EventTypeStr, uint32_t ODCIndex
 	LOGDEBUG("PyPort Publish Event {}, {}, {}, {}", EventTypeStr, ODCIndex, QualityStr, PayloadStr);
 
 	// Separate call to allow testing
-	std::shared_ptr<EventInfo> pubevent = CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr);
+	std::shared_ptr<EventInfo> pubevent = CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr, Name);
 
 	if (pubevent)
 		PublishEvent(pubevent, nullptr);

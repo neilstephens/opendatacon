@@ -267,7 +267,7 @@ void WaitIOS(std::shared_ptr<asio::io_service>IOS, int seconds)
 
 namespace EventTests
 {
-void CheckEventStringConversions(std::shared_ptr<EventInfo> inevent, std::shared_ptr<PyPort> PythonPort)
+void CheckEventStringConversions(std::shared_ptr<EventInfo> inevent)
 {
 	// Get string representation as used in PythonWrapper
 	std::string EventTypeStr = odc::ToString(inevent->GetEventType());
@@ -276,7 +276,7 @@ void CheckEventStringConversions(std::shared_ptr<EventInfo> inevent, std::shared
 	uint32_t ODCIndex = inevent->GetIndex();
 
 	// Create a new event from those strings
-	std::shared_ptr<EventInfo> pubevent = PythonPort->CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr);
+	std::shared_ptr<EventInfo> pubevent = PyPort::CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr, "Testing");
 
 	// Check that we got back data matching the original event.
 	REQUIRE(odc::ToString(pubevent->GetEventType()) == EventTypeStr);
@@ -287,7 +287,6 @@ void CheckEventStringConversions(std::shared_ptr<EventInfo> inevent, std::shared
 TEST_CASE("Py.TestEventStringConversions")
 {
 	STANDARD_TEST_SETUP();
-	TEST_PythonPort(Json::nullValue);
 
 	uint32_t ODCIndex = 1001;
 
@@ -297,7 +296,7 @@ TEST_CASE("Py.TestEventStringConversions")
 		auto odcevent = std::make_shared<EventInfo>(EventType::ConnectState, 0, "Testing");
 		odcevent->SetPayload<EventType::ConnectState>(std::move(state));
 
-		CheckEventStringConversions(odcevent, PythonPort);
+		CheckEventStringConversions(odcevent);
 	}
 	INFO("Binary")
 	{
@@ -305,7 +304,7 @@ TEST_CASE("Py.TestEventStringConversions")
 		auto odcevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", QualityFlags::RESTART);
 		odcevent->SetPayload<EventType::Binary>(std::move(val));
 
-		CheckEventStringConversions(odcevent, PythonPort);
+		CheckEventStringConversions(odcevent);
 	}
 	INFO("Analog")
 	{
@@ -313,7 +312,7 @@ TEST_CASE("Py.TestEventStringConversions")
 		auto odcevent = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, "Testing", QualityFlags::ONLINE);
 		odcevent->SetPayload<EventType::Analog>(std::move(fval));
 
-		CheckEventStringConversions(odcevent, PythonPort);
+		CheckEventStringConversions(odcevent);
 	}
 	INFO("ControlRelayOutputBlock")
 	{
@@ -322,16 +321,17 @@ TEST_CASE("Py.TestEventStringConversions")
 		auto odcevent = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness", QualityFlags::RESTART | QualityFlags::ONLINE);
 		odcevent->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
-		CheckEventStringConversions(odcevent, PythonPort);
+		CheckEventStringConversions(odcevent);
 	}
 	//TODO: The rest of the Payload types that we need to handle
 	STANDARD_TEST_TEARDOWN();
 }
 
-TEST_CASE("Py.SendBinaryAndAnalogEvents")
+TEST_CASE("Py.TestsUsingPython")
 {
-	// So we send a Scan F0 packet to the Outstation, it responds with the data in the point table.
-	// Then we update the data in the point table, scan again and check the data we get back.
+	// So do all the tests that involve using the Python Interpreter in one test, as we dont seem to be able to close it down correctly
+	// and start it again. Not great, but not a massive problem under normal use cases.
+
 	STANDARD_TEST_SETUP();
 	TEST_PythonPort(Json::nullValue);
 	TEST_PythonPort2(Json::nullValue);
@@ -344,131 +344,116 @@ TEST_CASE("Py.SendBinaryAndAnalogEvents")
 	PythonPort2->Enable();
 
 	WaitIOS(IOS, 1);
-
-	CommandStatus res = CommandStatus::UNDEFINED;
-	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&](CommandStatus command_stat)
-		{
-			res = command_stat;
-		});
-
-	int ODCIndex = 1;
-	bool val = true;
-	auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
-	boolevent->SetPayload<EventType::Binary>(std::move(val));
-
-	PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
-
-	WaitIOS(IOS, 1);
-	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
-
-	res = CommandStatus::UNDEFINED;
-	double fval = 100.1;
-	ODCIndex = 1001;
-	auto event2 = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-	event2->SetPayload<EventType::Analog>(std::move(fval));
-
-	PythonPort->Event(event2, "TestHarness", pStatusCallback);
-
-	WaitIOS(IOS, 1);
-	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
-
-	std::string url("http://testserver/thisport/cb?test=harold");
-	std::string sres;
-
-	auto pResponseCallback = std::make_shared<std::function<void(std::string url)>>([&](std::string response)
-		{
-			sres = response;
-		});
-
-	PythonPort->RestHandler(url, pResponseCallback);
-
-	LOGDEBUG("Response {}", sres);
-	WaitIOS(IOS, 2);
-	REQUIRE(sres == "{\"test\": \"Hello\"}"); // The Get will Wait for the result to be set.
-
-	// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.
-	PythonPort->SetTimer(120, 1200);
-	PythonPort->SetTimer(121, 1000);
-	PythonPort->SetTimer(122, 800);
-
-	for (int i = 0; i < 1000; i++)
+	INFO("SendBinaryAndAnalogEvents")
 	{
-		url = fmt::format("RestHandler sent url {:d}", i);
-		PythonPort2->SetTimer(i + 100, 1001 - i);
+
+		CommandStatus res = CommandStatus::UNDEFINED;
+		auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&](CommandStatus command_stat)
+			{
+				res = command_stat;
+			});
+
+		int ODCIndex = 1;
+		bool val = true;
+		auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
+		boolevent->SetPayload<EventType::Binary>(std::move(val));
+
+		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
+
+		WaitIOS(IOS, 1);
+		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+
+		res = CommandStatus::UNDEFINED;
+		double fval = 100.1;
+		ODCIndex = 1001;
+		auto event2 = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event2->SetPayload<EventType::Analog>(std::move(fval));
+
+		PythonPort->Event(event2, "TestHarness", pStatusCallback);
+
+		WaitIOS(IOS, 1);
+		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+
+		std::string url("http://testserver/thisport/cb?test=harold");
+		std::string sres;
+
+		auto pResponseCallback = std::make_shared<std::function<void(std::string url)>>([&](std::string response)
+			{
+				sres = response;
+			});
+
 		PythonPort->RestHandler(url, pResponseCallback);
+
+		LOGDEBUG("Response {}", sres);
+		WaitIOS(IOS, 2);
+		REQUIRE(sres == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
+
+		// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.
+		PythonPort->SetTimer(120, 1200);
+		PythonPort->SetTimer(121, 1000);
+		PythonPort->SetTimer(122, 800);
+
+		for (int i = 0; i < 1000; i++)
+		{
+			url = fmt::format("RestHandler sent url {:d}", i);
+			PythonPort2->SetTimer(i + 100, 1001 - i);
+			PythonPort->RestHandler(url, pResponseCallback);
+		}
+
+		// Wait - we should see the timer callback triggered.
+		WaitIOS(IOS, 5);
 	}
 
-	// Wait - we should see the timer callback triggered.
-	WaitIOS(IOS, 5);
+	INFO("WebServerTest")
+	{
+		std::string hroot = "http://localhost:8000";
+		std::string h1 = "http://localhost:8000/TestMaster";
+		std::string h2 = "http://localhost:8000/TestMaster2";
 
+		// Do a http request to the root port and make sure we are getting the answer we expect.
+		std::string expectedresponse("Content-Length: 185\r\nContent-Type: text/html\r\n\n"
+			                       "You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, "
+			                       "which is case senstive.<br>Anything beyond this will be passed to the Python code.");
+
+		std::string callresp;
+		bool res = DoHttpRequst("localhost", "8000", "/", callresp);
+
+		LOGDEBUG("GET http://localhost:8000 - We got back {}", callresp);
+
+		REQUIRE(res);
+		REQUIRE(expectedresponse == callresp);
+
+		WaitIOS(IOS, 1);
+
+		callresp = "";
+
+		res = DoHttpRequst("localhost", "8000", "/TestMaster", callresp);
+
+		LOGDEBUG("GET http://localhost:8000/TestMaster We got back {}", callresp);
+
+		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
+
+		REQUIRE(res);
+		REQUIRE(expectedresponse == callresp);
+
+
+		res = DoHttpRequst("localhost", "8000", "/TestMaster2", callresp);
+
+		LOGDEBUG("GET http://localhost:8000/TestMaster2 We got back {}", callresp);
+
+		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
+
+		REQUIRE(res);
+		REQUIRE(expectedresponse == callresp);
+
+	}
 	PythonPort->Disable();
 	PythonPort2->Disable();
 
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
 }
-TEST_CASE("Py.WebServerTest")
-{
-	STANDARD_TEST_SETUP();
-	TEST_PythonPort(Json::nullValue);
-	TEST_PythonPort2(Json::nullValue);
 
-	START_IOS(4);
-
-	WaitIOS(IOS, 2); // Allow build to run
-
-	PythonPort->Enable();
-	PythonPort2->Enable();
-
-	WaitIOS(IOS, 1); // Allow build to run
-
-	std::string hroot = "http://localhost:8000";
-	std::string h1 = "http://localhost:8000/TestMaster";
-	std::string h2 = "http://localhost:8000/TestMaster2";
-
-	// Do a http request to the root port and make sure we are getting the answer we expect.
-	std::string expectedresponse("Content-Length: 185\r\nContent-Type: text/html\r\n\n"
-		                       "You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, "
-		                       "which is case senstive.<br>Anything beyond this will be passed to the Python code.");
-
-	std::string callresp;
-	bool res = DoHttpRequst("localhost","8000", "/", callresp);
-
-	LOGDEBUG("GET http://localhost:8000 - We got back {}", callresp);
-
-	REQUIRE(res);
-	REQUIRE(expectedresponse == callresp);
-
-	WaitIOS(IOS, 1);
-
-	callresp = "";
-
-	res = DoHttpRequst("localhost", "8000", "/TestMaster", callresp);
-
-	LOGDEBUG("GET http://localhost:8000/TestMaster We got back {}", callresp);
-
-	expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
-
-	REQUIRE(res);
-	REQUIRE(expectedresponse == callresp);
-
-
-	res = DoHttpRequst("localhost", "8000", "/TestMaster2", callresp);
-
-	LOGDEBUG("GET http://localhost:8000/TestMaster2 We got back {}", callresp);
-
-	expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
-
-	REQUIRE(res);
-	REQUIRE(expectedresponse == callresp);
-
-
-	PythonPort->Disable();
-	PythonPort2->Disable();
-
-	STOP_IOS();
-	STANDARD_TEST_TEARDOWN();
-}
 }
 
 #endif
