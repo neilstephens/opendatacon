@@ -88,4 +88,4 @@ install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
 
 # So tests will run
-install(FILES PythonCode/PyPortSim.py DESTINATION ${INSTALLDIR_MODULES})
+install(FILES PythonCode/PyPortSim.py DESTINATION ${INSTALLDIR_BINS})
