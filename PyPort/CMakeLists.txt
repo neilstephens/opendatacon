@@ -68,6 +68,7 @@ if ("${CMAKE_LIBRARY_ARCHITECTURE}" EQUAL "arm-linux-gnueabihf")
 	set(Python3_LIBRARIES "${RpiLibFileName}")
 endif()
 
+message("Architecture ${CMAKE_LIBRARY_ARCHITECTURE} ")
 message("Found Python Include Dirs ${Python3_INCLUDE_DIRS} ")
 message("Found Python Libraries ${Python3_LIBRARIES} ")
 
