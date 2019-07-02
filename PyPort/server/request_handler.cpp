@@ -144,7 +144,7 @@ bool request_handler::url_decode(const std::string& in, std::string& out, std::s
 		{
 			*p += ' ';
 		}
-		else if (in[i] == '?')
+		else if ((in[i] == '?') && !inquery)
 		{
 			inquery = true;
 			p = &params;

@@ -81,6 +81,7 @@ install:
       wget http://security.debian.org/debian-security/pool/updates/main/p/python3.5/libpython3.5-dev_3.5.3-1+deb9u1_armhf.deb
       dpkg -x libpython3.5-dev_3.5.3-1+deb9u1_armhf.deb libpython3.5-dev_3.5.3-1+deb9u1_armhf_extracted
       sudo cp -r libpython3.5-dev_3.5.3-1+deb9u1_armhf_extracted/usr/include/arm-linux-gnueabihf/ /usr/include/python3.5/arm-linux-gnueabihf/
+      sudo cp -r libpython3.5-dev_3.5.3-1+deb9u1_armhf_extracted/usr/lib/arm-linux-gnueabihf/ /usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/
       #
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
@@ -106,6 +107,11 @@ install:
         curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm     
+        # To get Python3.5 we need the software collections repo, and scl tools. The final command is to activate Python2.5 in bash
+        yum install -y oracle-softwarecollection-release-el6
+        yum install -y scl-utils rh-python35
+        scl enable rh-python35 bash
+        #
         yum install -y libmicrohttpd-devel socat
        '
       sudo pip install gdown
@@ -113,10 +119,8 @@ install:
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
       export EL6_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
       export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
-      # Create a symlink to the x86_64-linux-gnu/python3.5m so the python include file can find it.
-      #ln -s /usr/include/x86_64-linux-gnu /usr/include/python3.5m/x86_64-linux-gnu
-      ls -l  /usr/include/x86_64-linux-gnu
-      ls -l  /usr/include
+      # Create a symlink to the x86_64-linux-gnu/python3.5m so the python include file can find it. This is in the Ubuntu build host.
+      sudo ln -s /usr/include/x86_64-linux-gnu /usr/include/python3.5m/x86_64-linux-gnu
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       export SYSROOT=$(pwd)/sysroot/
@@ -144,7 +148,7 @@ script:
   - make install
   - $RUN install/bin/ODC_tests -d yes
   - $RUN install/bin/DNP3Port_tests -d yes
-  - $RUN install/bin/MD3Port_tests -d yes
+  - $RUN install/bin/MD3Port_tests error -d yes
   - $RUN install/bin/CBPort_tests error -d yes
   - $STOP
 
