@@ -27,3 +27,5 @@ PyPort/Old/
 PyPort/PythonCode/__pycache__/odc.cpython-37.pyc
 PyPort/PythonCode/.vs/PyPort/v16/.suo
 PyPort/PythonCode/__pycache__/PyPortSim.cpython-37.pyc
+PyPort/server/uncrustify_here.pl
+PyPort/server/uncrustify.cfg

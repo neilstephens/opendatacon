@@ -69,13 +69,19 @@ install:
       brew install libmodbus libmicrohttpd socat
       #export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     elif [ -z "$DOCKER_BUILD" ]; then
-      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev python3.5
+      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev python3.5 python3.5-dev
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     fi
   - |
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
       # Install qemu-static and the arm cross compiler into the travis host
-      sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
+      #
+      sudo apt-get install -y qemu-user qemu-user-static gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+      # Get the platform include file needed by Python for armhf, and put it where it expects it to be!
+      wget http://security.debian.org/debian-security/pool/updates/main/p/python3.5/libpython3.5-dev_3.5.3-1+deb9u1_armhf.deb
+      dpkg -x libpython3.5-dev_3.5.3-1+deb9u1_armhf.deb libpython3.5-dev_3.5.3-1+deb9u1_armhf_extracted
+      sudo cp -r libpython3.5-dev_3.5.3-1+deb9u1_armhf_extracted/usr/include/arm-linux-gnueabihf/ /usr/include/python3.5/arm-linux-gnueabihf/
+      #
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
       # -ti maintain a terminal, the docker image is jessie:latest
@@ -101,13 +107,16 @@ install:
         rpm -i libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm     
         yum install -y libmicrohttpd-devel socat
-      '
+       '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
       export EL6_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
       export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
-      # need to install the missing arch files for Python3.5 OEL, so the compiler can find them - may just need a simlink.
+      # Create a symlink to the x86_64-linux-gnu/python3.5m so the python include file can find it.
+      #ln -s /usr/include/x86_64-linux-gnu /usr/include/python3.5m/x86_64-linux-gnu
+      ls -l  /usr/include/x86_64-linux-gnu
+      ls -l  /usr/include
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       export SYSROOT=$(pwd)/sysroot/
