@@ -31,8 +31,11 @@ std::string dirnameOf(const std::string& fname)
 
 int main( int argc, char* argv[] )
 {
+	// If we change the working dir in windows, we fail to find the dll?
+	#ifndef WIN32
 	std::string ExeDir(dirnameOf(argv[0]));
 	ChangeWorkingDir(ExeDir);
+	#endif
 
 	InitLibaryLoading();
 	std::string libname = "PyPort";
