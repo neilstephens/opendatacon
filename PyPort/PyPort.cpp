@@ -41,6 +41,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <experimental/filesystem>
 
 using namespace odc;
 
@@ -111,12 +112,21 @@ PyPort::~PyPort()
 			}
 		});
 }
-/*
 
-            */
 // The ASIO IOS instance is up, our config files have been read and parsed, this is the opportunity to kick off connections and scheduled processes
 void PyPort::Build()
 {
+	// Check that the Python Module is available to load.
+	if (std::experimental::filesystem::exists(MyConf->pyModuleName))
+	{
+		LOGDEBUG("Found Python Module {} in {}", MyConf->pyModuleName, std::experimental::filesystem::current_path());
+	}
+	else
+	{
+		LOGERROR("Could not find Python Module {} in {}", MyConf->pyModuleName, std::experimental::filesystem::current_path());
+		return;
+	}
+
 	// Only 1 strand per ODC system. Must wait until build as pIOS is not available in the constructor
 	if (python_strand == nullptr)
 	{

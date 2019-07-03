@@ -43,14 +43,9 @@ if (Python3_FOUND)
 			message("Found Python Release Library but no Debug Library ${Python3_LIBRARY_RELEASE}")
 			get_filename_component(LibFileName "${Python3_LIBRARY_RELEASE}" NAME_WE)
 			message("Target Filename: ${CMAKE_SOURCE_DIR}/${LibFileName}_d.lib")
-# We may have to copy the dll to the c:\Python37 and c:\Python37-x64 folders to run tests.
-#			execute_process(
-#				COMMAND ${CMAKE_COMMAND} -E copy "${Python3_LIBRARY_RELEASE}" "${CMAKE_BINARY_DIR}/${LibFileName}_d.lib"  
-#			)
 			set(Python3_LIBRARIES "optimized;${Python3_LIBRARY_RELEASE};debug;${CMAKE_SOURCE_DIR}/PyPort/${platform}/${LibFileName}_d.lib")
 		endif()
 	endif()
-
 else()
 	# We have to find the libraries using old CMake command as Python3 does not work on some of our targets.
 	message("find_package(Python3) failed, trying find_package(PythonLibs) ")
@@ -62,8 +57,8 @@ endif()
 # Check the target arch, if arm, manually set the library location to match where we put it in Travis. 
 # Not a good solution, but the Python3 find_package is always returning the x86_64 version...
 # /usr/lib/python3.5/config-3.5m-x86_64-linux-gnu/libpython3.5m.so --> /usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/libpython3.5m.so
-if ("${CMAKE_LIBRARY_ARCHITECTURE}" EQUAL "arm-linux-gnueabihf")
-	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}" NAME)	
+if (CMAKE_LIBRARY_ARCHITECTURE STREQUAL "arm-linux-gnueabihf")
+	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}")	
 	message("RPI abihf build - Changed Python Library Path From ${Python3_LIBRARIES} To ${RpiLibFileName}")
 	set(Python3_LIBRARIES "${RpiLibFileName}")
 endif()
@@ -71,18 +66,18 @@ endif()
 message("Architecture ${CMAKE_LIBRARY_ARCHITECTURE} ")
 message("Found Python Include Dirs ${Python3_INCLUDE_DIRS} ")
 message("Found Python Libraries ${Python3_LIBRARIES} ")
+message("Make Bin Dir ${CMAKE_CURRENT_BINARY_DIR}, Install Bin Dir ${INSTALLDIR_BINS}")
 
 include_directories(
 	"../include"
 	"../JSON"
 	${Python3_INCLUDE_DIRS}
-	"${DNP3_HOME}/include"
 	"${ASIO_HOME}/include"
 )
 configure_file(PythonCode/PyPortSim.py ${CMAKE_CURRENT_BINARY_DIR}/PyPortSim.py COPYONLY )
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC ${openpal_libs} ${opendnp3_libs} ${Python3_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ODC ${Python3_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
