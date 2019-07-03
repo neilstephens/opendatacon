@@ -379,123 +379,111 @@ PythonWrapper::~PythonWrapper()
 	}
 }
 
-
-void PythonWrapper::ImportModuleAndCreateClassInstance(const std::string& pyModuleName, const std::string& pyClassName, const std::string& PortName)
-{
-	try
-	{
-		GetPythonGIL g;
-
-		if (!g.OkToContinue())
-		{
-			LOGERROR("Error - Interpreter Closing Down in ImportModuleAndCreateClassInstance");
-			return;
-		}
-
-		const auto pyUniCodeModuleName = PyUnicode_FromString(pyModuleName.c_str());
-
-		pyModule = PyImport_Import(pyUniCodeModuleName);
-		if (pyModule == nullptr)
-		{
-			LOGERROR("Could not load Python Module - {}", pyModuleName);
-			PyErrOutput();
-			throw std::runtime_error("Could not load Python Module");
-		}
-		Py_DECREF(pyUniCodeModuleName);
-
-		PyObject* pyDict = PyModule_GetDict(pyModule);
-		if (pyDict == nullptr)
-		{
-			LOGERROR("Could not load Python Dictionary Reference");
-			PyErrOutput();
-			throw std::runtime_error("Could not load Python Dictionary Reference");
-		}
-
-		// Build the name of a callable class
-		PyObject* pyClass = PyDict_GetItemString(pyDict, pyClassName.c_str());
-
-		// Py_XDECREF(pyDict);	// Borrowed reference, dont destruct
-
-		if (pyClass == nullptr)
-		{
-			LOGERROR("Could not load Python Class Reference - {}", pyClassName);
-			PyErrOutput();
-			throw std::runtime_error("Could not load Python Class");
-		}
-		// Create an instance of the class, with a name matching the port name
-		if (pyClass && PyCallable_Check(pyClass))
-		{
-			auto pyArgs = PyTuple_New(2);
-			auto pyguid = PyLong_FromUnsignedLongLong((uint64_t)this); // Pass a this pointer into our constructor, so we can idenify ourselves on calls back into C land
-			auto pyObjectName = PyUnicode_FromString(PortName.c_str());
-			PyTuple_SetItem(pyArgs, 0, pyguid);
-			PyTuple_SetItem(pyArgs, 1, pyObjectName);
-
-			pyInstance = PyObject_CallObject(pyClass, pyArgs);
-			if (pyInstance == nullptr)
-			{
-				LOGDEBUG("Could not get instance pointer for Python Class");
-				PyErrOutput();
-
-				throw std::runtime_error("Could not get instance pointer for Python Class");
-			}
-
-			StoreWrapperMapping();
-
-			Py_DECREF(pyArgs); // pyObjectName, pyguid is stolen into pyArgs, so dealt with in this call
-		}
-		else
-		{
-			PyErrOutput();
-			LOGERROR("pyClass not callable");
-			throw std::runtime_error("pyClass not callable");
-		}
-		// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
-
-		pyFuncConfig = GetFunction(pyInstance, "Config");
-		pyFuncEnable = GetFunction(pyInstance, "Enable");
-		pyFuncDisable = GetFunction(pyInstance, "Disable");
-		pyFuncEvent = GetFunction(pyInstance, "EventHandler");
-		pyTimerHandler = GetFunction(pyInstance, "TimerHandler");
-		pyRestHandler = GetFunction(pyInstance, "RestRequestHandler");
-	}
-	catch (std::exception& e)
-	{
-		LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
-	}
-}
-
-void PythonWrapper::Build(const std::string& modulename, std::string& pyLoadModuleName, std::string& pyClassName, std::string& PortName)
+void PythonWrapper::Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
+	const std::string& pyClassName, const std::string& PortName)
 {
 	// Throws exceptions on fail
-	ImportModuleAndCreateClassInstance(pyLoadModuleName, pyClassName, PortName);
+	// ImportModuleAndCreateClassInstance
+	GetPythonGIL g;
+
+	if (!g.OkToContinue())
+	{
+		LOGERROR("Error - Interpreter Closing Down in ImportModuleAndCreateClassInstance");
+		return;
+	}
+
+	// Make sure the path to where the module is, is known to Python
+	PyObject* sysPath = PySys_GetObject((char*)"path");
+	PyObject* programName = PyUnicode_FromString(pyPathName.c_str());
+	PyList_Append(sysPath, programName);
+	Py_DECREF(programName);
+
+	const auto pyUniCodeModuleName = PyUnicode_FromString(pyLoadModuleName.c_str());
+
+	pyModule = PyImport_Import(pyUniCodeModuleName);
+	if (pyModule == nullptr)
+	{
+		LOGERROR("Could not load Python Module - {}", pyLoadModuleName);
+		PyErrOutput();
+		throw std::runtime_error("Could not load Python Module");
+	}
+	Py_DECREF(pyUniCodeModuleName);
+
+	PyObject* pyDict = PyModule_GetDict(pyModule);
+	if (pyDict == nullptr)
+	{
+		LOGERROR("Could not load Python Dictionary Reference");
+		PyErrOutput();
+		throw std::runtime_error("Could not load Python Dictionary Reference");
+	}
+
+	// Build the name of a callable class
+	PyObject* pyClass = PyDict_GetItemString(pyDict, pyClassName.c_str());
+
+	// Py_XDECREF(pyDict);	// Borrowed reference, dont destruct
+
+	if (pyClass == nullptr)
+	{
+		LOGERROR("Could not load Python Class Reference - {}", pyClassName);
+		PyErrOutput();
+		throw std::runtime_error("Could not load Python Class");
+	}
+	// Create an instance of the class, with a name matching the port name
+	if (pyClass && PyCallable_Check(pyClass))
+	{
+		auto pyArgs = PyTuple_New(2);
+		auto pyguid = PyLong_FromUnsignedLongLong((uint64_t)this); // Pass a this pointer into our constructor, so we can idenify ourselves on calls back into C land
+		auto pyObjectName = PyUnicode_FromString(PortName.c_str());
+		PyTuple_SetItem(pyArgs, 0, pyguid);
+		PyTuple_SetItem(pyArgs, 1, pyObjectName);
+
+		pyInstance = PyObject_CallObject(pyClass, pyArgs);
+		if (pyInstance == nullptr)
+		{
+			LOGDEBUG("Could not get instance pointer for Python Class");
+			PyErrOutput();
+
+			throw std::runtime_error("Could not get instance pointer for Python Class");
+		}
+
+		StoreWrapperMapping();
+
+		Py_DECREF(pyArgs); // pyObjectName, pyguid is stolen into pyArgs, so dealt with in this call
+	}
+	else
+	{
+		PyErrOutput();
+		LOGERROR("pyClass not callable");
+		throw std::runtime_error("pyClass not callable");
+	}
+	// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
+
+	pyFuncConfig = GetFunction(pyInstance, "Config");
+	pyFuncEnable = GetFunction(pyInstance, "Enable");
+	pyFuncDisable = GetFunction(pyInstance, "Disable");
+	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
+	pyTimerHandler = GetFunction(pyInstance, "TimerHandler");
+	pyRestHandler = GetFunction(pyInstance, "RestRequestHandler");
 }
 
 void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONOverride)
 {
-	try
+	GetPythonGIL g;
+	if (!g.OkToContinue())
 	{
-		GetPythonGIL g;
-		if (!g.OkToContinue())
-		{
-			LOGERROR("Error - Interpreter Closing Down in Config");
-			return;
-		}
-
-		auto pyArgs = PyTuple_New(2);
-		auto pyJSONMain = PyUnicode_FromString(JSONMain.c_str());
-		auto pyJSONOverride = PyUnicode_FromString(JSONOverride.c_str());
-		PyTuple_SetItem(pyArgs, 0, pyJSONMain);
-		PyTuple_SetItem(pyArgs, 1, pyJSONOverride);
-
-		PyObject* pyResult = PyCall(pyFuncConfig, pyArgs); // No passed variables, assume no delayed return
-		if (pyResult) Py_DECREF(pyResult);
-		Py_DECREF(pyArgs);
+		LOGERROR("Error - Interpreter Closing Down in Config");
+		return;
 	}
-	catch (std::exception& e)
-	{
-		LOGERROR("Exception Caught calling pyFuncConfig() - {}", e.what());
-	}
+
+	auto pyArgs = PyTuple_New(2);
+	auto pyJSONMain = PyUnicode_FromString(JSONMain.c_str());
+	auto pyJSONOverride = PyUnicode_FromString(JSONOverride.c_str());
+	PyTuple_SetItem(pyArgs, 0, pyJSONMain);
+	PyTuple_SetItem(pyArgs, 1, pyJSONOverride);
+
+	PyObject* pyResult = PyCall(pyFuncConfig, pyArgs); // No passed variables, assume no delayed return
+	if (pyResult) Py_DECREF(pyResult);
+	Py_DECREF(pyArgs);
 }
 
 void PythonWrapper::Enable()

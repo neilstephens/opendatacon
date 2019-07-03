@@ -21,8 +21,19 @@
 #include <iostream>
 #include <opendatacon/Platform.h>
 
+std::string dirnameOf(const std::string& fname)
+{
+	size_t pos = fname.find_last_of("\\/");
+	return (std::string::npos == pos)
+	       ? ""
+	       : fname.substr(0, pos);
+}
+
 int main( int argc, char* argv[] )
 {
+	std::string ExeDir(dirnameOf(argv[0]));
+	ChangeWorkingDir(ExeDir);
+
 	InitLibaryLoading();
 	std::string libname = "PyPort";
 	std::string libfilename = GetLibFileName(libname);

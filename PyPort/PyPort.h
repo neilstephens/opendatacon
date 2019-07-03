@@ -87,6 +87,7 @@ private:
 	std::string JSONOverride;
 
 	ServerTokenType pServer;
+	bool PortOperational = false;
 
 	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
 	static std::shared_ptr<asio::io_context::strand> python_strand;

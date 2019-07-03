@@ -43,7 +43,8 @@ class PythonWrapper
 public:
 	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
 	~PythonWrapper();
-	void Build(const std::string& modulename, std::string& pyLoadModuleName, std::string& pyClassName, std::string& PortName);
+	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
+		const std::string& pyClassName, const std::string& PortName);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
 	void Enable();
 	void Disable();
@@ -79,7 +80,6 @@ private:
 	}
 
 	void InitialisePyInterpreter();
-	void ImportModuleAndCreateClassInstance(const std::string& pyModuleName, const std::string& pyClassName, const std::string& PortName);
 
 	PyObject* GetFunction(PyObject* pyInstance, const std::string& sFunction);
 	PyObject* PyCall(PyObject* pyFunction, PyObject* pyArgs);
