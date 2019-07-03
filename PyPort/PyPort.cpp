@@ -41,8 +41,29 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <experimental/filesystem>
+#include <fstream>
+#include <stdio.h>
+#ifdef WIN32
+#include <direct.h>
+#define GetCurrentDir _getcwd
+#else
+#include <unistd.h>
+#define GetCurrentDir getcwd
+#endif
+#include <iostream>
 
+std::string GetCurrentWorkingDir(void)
+{
+	char buff[FILENAME_MAX];
+	GetCurrentDir(buff, FILENAME_MAX);
+	std::string current_working_dir(buff);
+	return current_working_dir;
+}
+bool fileexists(const std::string& filename)
+{
+	std::ifstream ifile(filename.c_str());
+	return (bool)ifile;
+}
 using namespace odc;
 
 std::shared_ptr<asio::io_context::strand> PyPort::python_strand = nullptr;
@@ -117,9 +138,9 @@ PyPort::~PyPort()
 void PyPort::Build()
 {
 	// Check that the Python Module is available to load.
-	std::string CurrentPath(std::experimental::filesystem::current_path().string());
+	std::string CurrentPath(GetCurrentWorkingDir());
 
-	if (std::experimental::filesystem::exists(MyConf->pyModuleName))
+	if (fileexists(MyConf->pyModuleName))
 	{
 		LOGDEBUG("Found Python Module {} in {}", MyConf->pyModuleName, CurrentPath);
 	}
