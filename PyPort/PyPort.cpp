@@ -117,13 +117,15 @@ PyPort::~PyPort()
 void PyPort::Build()
 {
 	// Check that the Python Module is available to load.
+	std::string CurrentPath(std::experimental::filesystem::current_path().string());
+
 	if (std::experimental::filesystem::exists(MyConf->pyModuleName))
 	{
-		LOGDEBUG("Found Python Module {} in {}", MyConf->pyModuleName, std::experimental::filesystem::current_path());
+		LOGDEBUG("Found Python Module {} in {}", MyConf->pyModuleName, CurrentPath);
 	}
 	else
 	{
-		LOGERROR("Could not find Python Module {} in {}", MyConf->pyModuleName, std::experimental::filesystem::current_path());
+		LOGERROR("Could not find Python Module {} in {}", MyConf->pyModuleName, CurrentPath);
 		return;
 	}
 
