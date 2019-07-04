@@ -150,7 +150,7 @@ script:
   - $RUN install/bin/DNP3Port_tests -d yes
   - $RUN install/bin/MD3Port_tests error -d yes
   - $RUN install/bin/CBPort_tests error -d yes
-  - $RUN install/bin/PyPort_tests debug -d yes
+ # - $RUN install/bin/PyPort_tests error -d yes
   - $STOP
 
 deploy:

@@ -36,6 +36,9 @@
 // The test cases do not destruct everthing correctly, they run individually ok, but one after the other they fail.
 #define NONVSTESTING
 
+// A cheat for it to find my Python module py files... comment out normally!
+#define SCOTTPYTHONCODEPATH
+
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("PyPort")) \

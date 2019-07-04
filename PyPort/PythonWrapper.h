@@ -50,7 +50,7 @@ public:
 	void Disable();
 	CommandStatus Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
 	void CallTimerHandler(uint32_t id);
-	std::string RestHandler(const std::string& url);
+	std::string RestHandler(const std::string& url, const std::string& content);
 
 	SetTimerFnType GetPythonPortSetTimerFn() { return PythonPortSetTimerFn; };                         // Protect set access, only allow get.
 	PublishEventCallFnType GetPythonPortPublishEventCallFn() { return PythonPortPublishEventCallFn; }; // Protect set access, only allow get.

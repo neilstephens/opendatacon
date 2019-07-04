@@ -23,7 +23,7 @@ namespace http
 		struct request;
 
 		typedef std::map<std::string, std::string> ParameterMapType;
-		typedef std::function<void(const std::string& absoluteuri, reply& rep)> HandlerCallbackType;
+		typedef std::function<void(const std::string& absoluteuri, const std::string& content, reply& rep)> HandlerCallbackType;
 		typedef std::shared_ptr<HandlerCallbackType> pHandlerCallbackType;
 
 		/// The common handler for all incoming requests.

@@ -14,7 +14,8 @@
 namespace http
 {
 request_parser::request_parser()
-	: state_(method_start)
+	: state_(method_start),
+	charcounter(0)
 {}
 
 void request_parser::reset()
@@ -274,7 +275,30 @@ request_parser::result_type request_parser::consume(request& req, char input)
 				return bad;
 			}
 		case expecting_newline_3:
-			return (input == '\n') ? good : bad;
+			if (input == '\n')
+			{
+				// Check Content Length, if it exsists go to that state, otherwise return good.
+				for (auto h : req.headers)
+				{
+					if (h.name == "Content-Length")
+						req.contentlength = stoul(h.value);
+				}
+				charcounter = 0;
+				state_ = content;
+				return indeterminate;
+			}
+			else
+			{
+				return bad;
+			}
+		case content:
+			// Collect the contentlength number of chars before we are good.
+			req.content.push_back(input);
+			if (++charcounter < req.contentlength)
+				return indeterminate;
+
+			return good;
+
 		default:
 			return bad;
 	}

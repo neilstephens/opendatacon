@@ -382,7 +382,7 @@ TEST_CASE("Py.TestsUsingPython")
 				sres = response;
 			});
 
-		PythonPort->RestHandler(url, pResponseCallback);
+		PythonPort->RestHandler(url, "", pResponseCallback);
 
 		LOGDEBUG("Response {}", sres);
 		WaitIOS(IOS, 2);
@@ -397,7 +397,7 @@ TEST_CASE("Py.TestsUsingPython")
 		{
 			url = fmt::format("RestHandler sent url {:d}", i);
 			PythonPort2->SetTimer(i + 100, 1001 - i);
-			PythonPort->RestHandler(url, pResponseCallback);
+			PythonPort->RestHandler(url, "", pResponseCallback);
 		}
 
 		// Wait - we should see the timer callback triggered.

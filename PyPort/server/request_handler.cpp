@@ -95,7 +95,7 @@ void request_handler::handle_request(const request& req, reply& rep)
 	{
 		// Pass everything so it can be handled/passed to python
 		// What about req.headers[] - a vector
-		(*fn)(req.method + " " + req.uri, rep);
+		(*fn)(req.method + " " + req.uri, req.content, rep);
 		return;
 	}
 

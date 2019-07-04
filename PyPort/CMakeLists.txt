@@ -57,10 +57,16 @@ endif()
 # Check the target arch, if arm, manually set the library location to match where we put it in Travis. 
 # Not a good solution, but the Python3 find_package is always returning the x86_64 version...
 # /usr/lib/python3.5/config-3.5m-x86_64-linux-gnu/libpython3.5m.so --> /usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/libpython3.5m.so
+#
+#	This is not working  - modifying the name. I think that teh find_package is leaving a library defined, without indicating it is an external LIB and we should not build it
+#	however, do not know how to stop this - yet. Or just have it find the correct library in the first place!!!
+#
 if (CMAKE_LIBRARY_ARCHITECTURE STREQUAL "arm-linux-gnueabihf")
 	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}")	
 	message("RPI abihf build - Changed Python Library Path From ${Python3_LIBRARIES} To ${RpiLibFileName}")
-	set(Python3_LIBRARIES "${RpiLibFileName}")
+	set(Python3_LIBRARIES python35m)
+	add_library( python35m SHARED IMPORTED)	# Stop CMake from trying to build the lib
+	set_target_properties(python35m  PROPERTIES  IMPORTED_LOCATION ${RpiLibFileName})
 endif()
 
 message("Architecture ${CMAKE_LIBRARY_ARCHITECTURE} ")
@@ -78,6 +84,7 @@ configure_file(PythonCode/PyPortSim.py ${CMAKE_CURRENT_BINARY_DIR}/PyPortSim.py 
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC ${Python3_LIBRARIES})
+
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

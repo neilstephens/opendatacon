@@ -605,7 +605,7 @@ void PythonWrapper::CallTimerHandler(uint32_t id)
 
 // This is a handler for a Rest request received by the (global to all PythonPorts) handler, which will pass it to us.
 // We will get the url, and return a JSON formatted response. We do not prune the url in any way, just pass it all through.
-std::string PythonWrapper::RestHandler(const std::string& url)
+std::string PythonWrapper::RestHandler(const std::string& url, const std::string& content)
 {
 	// Try and send all events through to Python without modification, return value will be success or failure - using our predefined values.
 	try
@@ -616,11 +616,13 @@ std::string PythonWrapper::RestHandler(const std::string& url)
 			LOGERROR("Error in Python Wrapper handling of Restful Request");
 			return "Error in Python Wrapper";
 		}
-		auto pyArgs = PyTuple_New(1);
+		auto pyArgs = PyTuple_New(2);
 		auto pyurl = PyUnicode_FromString(url.c_str());
+		auto pycontent = PyUnicode_FromString(content.c_str());
 
 		// The py values above are stolen into the pyArgs structure - I think, so only need to release pyArgs
 		PyTuple_SetItem(pyArgs, 0, pyurl);
+		PyTuple_SetItem(pyArgs, 1, pycontent);
 
 		PyObject* pyResult = PyCall(pyRestHandler, pyArgs); // No passed variables
 

@@ -144,9 +144,17 @@ PyPort::~PyPort()
 // The ASIO IOS instance is up, our config files have been read and parsed, this is the opportunity to kick off connections and scheduled processes
 void PyPort::Build()
 {
+	LOGDEBUG("PyPort Build called for {}", Name);
+
 	// Check that the Python Module is available to load.
 	std::string CurrentPath(GetCurrentWorkingDir());
 	std::string FullModuleFilename(CurrentPath + PathSeparator + MyConf->pyModuleName+".py");
+
+	#ifdef SCOTTPYTHONCODEPATH
+	// For my dev code, try where I have it!
+	CurrentPath = "C:\\Users\\scott\\Documents\\Scott\\Company Work\\AusGrid\\PyPort\\PythonCode";
+	FullModuleFilename = CurrentPath + PathSeparator + MyConf->pyModuleName + ".py";
+	#endif
 
 	if (fileexists(FullModuleFilename))
 	{
@@ -157,7 +165,6 @@ void PyPort::Build()
 		LOGERROR("Could not find Python Module {}", FullModuleFilename);
 		return;
 	}
-
 	// Only 1 strand per ODC system. Must wait until build as pIOS is not available in the constructor
 	if (python_strand == nullptr)
 	{
@@ -176,7 +183,7 @@ void PyPort::Build()
 			try
 			{
 			// Python code is loaded and class created, __init__ called.
-			      pWrapper->Build( "PyPort", CurrentPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name);
+			      pWrapper->Build("PyPort", CurrentPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name);
 
 			      pWrapper->Config(JSONMain, JSONOverride);
 			      LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
@@ -194,7 +201,7 @@ void PyPort::Build()
 
 	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
-	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, http::reply& rep)
+	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const std::string& content, http::reply& rep)
 		{
 			rep.status = http::reply::ok;
 			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
@@ -207,10 +214,10 @@ void PyPort::Build()
 
 	ServerManager::AddHandler(pServer, "GET /", roothandler);
 
-	auto gethandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, http::reply& rep)
+	auto gethandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const std::string& content, http::reply& rep)
 		{
-			// So when we hit here, someone has make a Get request of our Port. Pass it to Python, and wiat for a response...
-			std::string result = pWrapper->RestHandler(absoluteuri); // Expect no long processing or waits in the python code to handle this.
+			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
+			std::string result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
 			std::string contenttype = "application/json";
 
 			if (result.length() > 0)
@@ -232,55 +239,64 @@ void PyPort::Build()
 		});
 	ServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
-	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, http::reply& rep)
+	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const std::string& content, http::reply& rep)
 		{
+			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
+			std::string result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
+			std::string contenttype = "application/json";
 
-			rep.status = http::reply::ok;
-			rep.content.append("You have reached the PyPort Instance with POST on " + Name);
+			if (result.length() > 0)
+			{
+			      rep.status = http::reply::ok;
+			      rep.content.append(result);
+			}
+			else
+			{
+			      rep.status = http::reply::not_found;
+			      rep.content.append("You have reached the PyPort Instance with POST on " + Name + " No reponse from Python Code");
+			      contenttype = "text/html";
+			}
 			rep.headers.resize(2);
 			rep.headers[0].name = "Content-Length";
 			rep.headers[0].value = std::to_string(rep.content.size());
 			rep.headers[1].name = "Content-Type";
-			rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
+			rep.headers[1].value = contenttype;
 		});
 	ServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
 }
 
 void PyPort::Enable()
 {
-	if (!PortOperational)
-	{
-		LOGDEBUG("PyPort {} not operational, Enable ignored", Name);
-		return;
-	}
 	if (enabled) return;
 	enabled = true;
 
-	if (PortOperational)
+	if (!PortOperational)
 	{
-		python_strand->dispatch([&]()
-			{
-				pWrapper->Enable();
-			});
+		LOGDEBUG("PyPort {} not operational when trying to enable", Name);
+		return;
 	}
+
+	python_strand->dispatch([&]()
+		{
+			pWrapper->Enable();
+		});
 }
 
 void PyPort::Disable()
 {
-	if (!PortOperational)
-	{
-		LOGDEBUG("PyPort {} not operational, Disable ignored", Name);
-		return;
-	}
 	if (!enabled) return;
 	enabled = false;
-	if (PortOperational)
+
+	if (!PortOperational)
 	{
-		python_strand->dispatch([&]()
-			{
-				pWrapper->Disable();
-			});
+		LOGDEBUG("PyPort {} not operational during port disable", Name);
+		return;
 	}
+
+	python_strand->dispatch([&]()
+		{
+			pWrapper->Disable();
+		});
 }
 
 bool PyPort::GetQualityFlagsFromStringName(const std::string StrQuality, QualityFlags& QualityResult)
@@ -517,15 +533,13 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		LOGDEBUG("PyPort {} not operational, Event from {} ignored", Name, SenderName);
 		return;
 	}
-	if (PortOperational)
-	{
-		python_strand->dispatch([&, event, SenderName, pStatusCallback]()
-			{
-				CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
 
-				PostCallbackCall(pStatusCallback, result);
-			});
-	}
+	python_strand->dispatch([&, event, SenderName, pStatusCallback]()
+		{
+			CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
+
+			PostCallbackCall(pStatusCallback, result);
+		});
 }
 void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 {
@@ -558,7 +572,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 
 // This is called when we have decoded a restful request, to the point where we know which instance it should be passed to. We give it a callback, which will
 // be used to actually send the response back to the caller.
-void PyPort::RestHandler(const std::string& url, ResponseCallback_t pResponseCallback)
+void PyPort::RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback)
 {
 	if (!enabled)
 	{
@@ -573,9 +587,9 @@ void PyPort::RestHandler(const std::string& url, ResponseCallback_t pResponseCal
 		return;
 	}
 
-	python_strand->dispatch([&, url, pResponseCallback]()
+	python_strand->dispatch([&, url, content, pResponseCallback]()
 		{
-			std::string result = pWrapper->RestHandler(url); // Expect no long processing or waits in the python code to handle this.
+			std::string result = pWrapper->RestHandler(url,content); // Expect no long processing or waits in the python code to handle this.
 
 			PostResponseCallbackCall(pResponseCallback, result);
 		});
@@ -624,4 +638,9 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyModuleName = JSONRoot["ModuleName"].asString();
 	if (JSONRoot.isMember("ClassName"))
 		MyConf->pyClassName = JSONRoot["ClassName"].asString();
+	if (JSONRoot.isMember("IP"))
+		MyConf->pyHTTPAddr = JSONRoot["IP"].asString();
+	if (JSONRoot.isMember("Port"))
+		MyConf->pyHTTPPort = JSONRoot["Port"].asString();
+
 }

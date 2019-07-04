@@ -25,6 +25,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="PyPort.py" />
+    <Compile Include="PyPortCBSim.py" />
     <Compile Include="PyPortSim.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />

@@ -64,7 +64,7 @@ public:
 	void Build() override;
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 	void SetTimer(uint32_t id, uint32_t delayms);
-	void RestHandler(const std::string& url, ResponseCallback_t pResponseCallback);
+	void RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback);
 	void PublishEventCall(const std::string &EventTypeStr, uint32_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
 
 	// Utility/Testing

@@ -3,6 +3,7 @@ import json
 import sys
 from datetime import datetime
 import odc
+from urllib.parse import urlparse, parse_qs
 
 # Logging Levels
 Trace = 0
@@ -19,6 +20,9 @@ Critical = 5
 # ControlCode, NUL,NUL_CANCEL,PULSE_ON,PULSE_ON_CANCEL,PULSE_OFF,PULSE_OFF_CANCEL,LATCH_ON,LATCH_ON_CANCEL,LATCH_OFF,LATCH_OFF_CANCEL,
 #               CLOSE_PULSE_ON,CLOSE_PULSE_ON_CANCEL,TRIP_PULSE_ON,TRIP_PULSE_ON_CANCEL,UNDEFINED      
 
+#
+# This is a Circuit Breaker Simulation code
+#
 class SimPortClass:
     ''' Our class to handle an ODC Port. We must have __init__, ProcessJSONConfig, Enable, Disable, EventHander, TimerHandler and
     RestRequestHandler defined, as they will be called by our c/c++ code.
@@ -90,6 +94,50 @@ class SimPortClass:
         self.enabled = False
         return
 
+    #-------------------Worker Methods------------------
+     # Get the current state for a digital bit, matching by the passed parameters.
+    def GetState(self, Json, CBNumber, CBStateBit):
+        for x in Json:
+            if(x["CBNumber"] == CBNumber) and (x["SimType"] == CBStateBit):
+                # we have a match!
+                return x["State"]
+        raise Exception("Could not find a matching State field for {}, {}".format(CBNumber, CBStateBit))
+
+    # Get the current state for a digital bit, matching by the passed parameters.
+    def GetStateFromIndex(self, Json, Index):
+        for x in Json:
+            if(x["Index"] == Index):
+                # we have a match!
+                return x["State"]
+        raise Exception("Could not find a matching State field for Index {}}".format(Index))
+
+    # Return a string indicating what the two binary bits mean
+    def GetCombinedState(self,Bit1, Bit0):
+        CBState = [["FaultZeros","Closed"],["Open","FaultOnes"]]
+        return CBState[Bit1][Bit0]
+
+    def SetState(self, Json, CBNumber, CBStateBit, State):
+        for x in Json:
+            if(x["CBNumber"] == CBNumber) and (x["SimType"] == CBStateBit):
+                # we have a match!
+                 x["State"] = State
+                 return
+        raise Exception("Could not find a matching State field for {}, {}".format(CBNumber, CBStateBit))
+
+    def SetCombinedState(self, Json, CBNumber, Command):
+        CBState = {"FaultZeros":[0,0],
+                   "Closed":[1,0],
+                   "Open":[0,1],
+                   "FaultOnes":[1,1],
+                   "Fault":[1,1]}
+        StateBits = CBState[Command]
+
+        self.SetState( Json, CBNumber, "CBStateBit0", StateBits[0])
+        self.SetState( Json, CBNumber, "CBStateBit1", StateBits[1])
+
+
+    #---------------- Response Methods --------------------
+
     # Needs to return True or False, which will be translated into CommandStatus::SUCCESS or CommandStatus::UNDEFINED
     # EventType (string) Index (int), Time (msSinceEpoch), Quality (string) Payload (string) Sender (string)
     # There is no callback available, the ODC code expects this method to return without delay.
@@ -98,10 +146,16 @@ class SimPortClass:
 
         if (EventType == "Binary"):
             self.LogDebug("Event is a Binary")
+
+        if (EventType == "ControlRelayOutputBlock"):
+            self.LogDebug("Event is a ControlRelayOutputBlock")
+        #TODO Decode and action the Control commands
+          #  self.SetCombinedState(self.ConfigDict["Binaries"], CBNumber, Command):
+
         if ("ONLINE" not in Quality):
             self.LogDebug("Event Quality not ONLINE")
         
-        odc.PublishEvent(self.guid,EventType,Index,Quality,Payload)  # Echoing Event for testing. Sender, Time auto created in ODC
+        #odc.PublishEvent(self.guid,EventType,Index,Quality,Payload)  # Echoing Event for testing. Sender, Time auto created in ODC
         return True
 
     # Will be called at the appropriate time by the ASIO handler system. Will be passed an id for the timeout, 
@@ -110,24 +164,54 @@ class SimPortClass:
         self.LogDebug("TimerHander: ID {}, {}".format(TimerId, self.guid))
         return
 
+   
+
     # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
     # called. It will be decoded sufficiently so that it is passed to the correct PythonPort (us)
     # To make these calls in Python (our test scripts) we can use the library below.
     # https://2.python-requests.org//en/master/
     #
     # We return the response that we want sent back to the caller. This will be a JSON string. A null string would be an error.
-    def RestRequestHandler(self, url, content):
-        self.LogDebug("RestRequestHander: {}".format(url))
-        
+    def RestRequestHandler(self, eurl, content):
 
         Response = {}   # Empty Dict
-        if ("GET" in url):
-            Response["test"] = "GET"
-        else:
-            Response["test"] = "POST"
+        url = ""
+        try:
+            HttpMethod = ""
+            if ("GET" in eurl):
+                url = eurl.replace("GET ","",1)
+                HttpMethod = "GET"
+            elif ("POST" in eurl):
+                url = eurl.replace("POST ","",1)
+                HttpMethod = "POST"
+            else:
+                self.LogError("PyPort only supports GET and POST Http Requests")
+                return ""   # Will cause an error response to the request
 
-        odc.SetTimer(self.guid, self.i, 1001-self.i)    # Set a timer to go off in a period less than a second
-        self.i = self.i + 1
-        self.LogDebug("RestRequestHander: Sent Set Timer Command {}".format(self.i))
+            urlp = urlparse(url)    # Split into sections that we can reference. Mainly to get parameters            
+            
+            # We have only one get option at the moment - Status with CBNumber as the parameter.
+            if (HttpMethod == "GET" and "/PyPortCBSim/status" in eurl):
+                qs = parse_qs(urlp.query)
+                CBNumber = int(qs["CBNumber"][0])
+                Response["CBStateBit0"] = self.GetState(self.ConfigDict["Binaries"], CBNumber, "CBStateBit0")
+                Response["CBStateBit1"] = self.GetState(self.ConfigDict["Binaries"], CBNumber, "CBStateBit1")
+                Response["State"] = self.GetCombinedState(Response["CBStateBit1"],Response["CBStateBit0"])
+
+            elif(HttpMethod == "POST" and "/PyPortCBSim/set" in eurl):
+                #TODO Decode and action the payload
+                self.LogDebug("POST url {} content {}".format(url, content))
+                """{"CBNumber" : 1, "CBState" : "Open"/"Closed"/"FaultZeros"/"FaultOnes" } return enabled state as well"""
+                Response["Result"] = "OK"
+
+            else:
+                self.LogError("Illegal http request")
+                return ""
+
+        except (RuntimeError, TypeError, NameError,Exception) as e:
+            print("Exception - {}".format(e))
+            return ""
 
         return json.dumps(Response)
+
+    

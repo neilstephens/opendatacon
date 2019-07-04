@@ -25,6 +25,8 @@ namespace http
 		int http_version_major;
 		int http_version_minor;
 		std::vector<header> headers;
+		size_t contentlength;
+		std::string content;
 	};
 
 } // namespace http

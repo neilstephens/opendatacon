@@ -9,6 +9,7 @@
 # test arguments
 import odc
 import PyPortSim
+import PyPortCBSim
 import requests
 import json
 
@@ -38,59 +39,62 @@ conf = """{
 }"""
 
 
-
+conf2 = """{"Binaries": [{"CBNumber": 1, "Index": 0, "SimType": "CBStateBit0", "State": 0}, {"CBNumber": 1, "Index": 1, "SimType": "CBStateBit1", "State": 1}],
+    "BinaryControls": [{"CBCommand": "Trip", "CBNumber": 1, "Index": 0}, {"CBCommand": "Close", "CBNumber": 1, "Index": 1}], 
+    "ClassName": "SimPortClass", "IP": "localhost", "ModuleName": "PyPortCBSim", "Port": 10000} """
 
 MainJSON = ""
 OverrideJSON = """{"Port" : 11111,"ModuleName" : "PyPortSimModified","PollGroups" : [{"ID" : 1, "PollRate" : 11111, "Group" : 3, "PollType" : "Scan"}]}"""
 
-"""
-guid = 12345678
-x =PyPortSim.SimPortClass(guid, "TestInstance")
+# Attack the restful interface and see what we get...
+def StimulateViaHttp():
+    requesttimeout = 10
+    try:
+#        r = requests.get('http://localhost:10000/PyPortCBSim/status?CBNumber=1', timeout=requesttimeout)
 
-x.Config(conf, OverrideJSON)
+ #       print('Response is {0}'.format(json.dumps(r.json())))
 
-x.Enable()
-x.Disable()
-
-EventType = 1    # Binary?
-Index = 2
-Time = 15
-Quality = "|RESTART|"
-Payload = "1"
-Sender = "Test"
-res = x.EventHandler(EventType, Index, Time, Quality, Payload, Sender)
-print("Event Result - {}".format(res))
-
-resjson = x.RestRequestHandler("http:\\\\testserver\\name\\cboperation?Fail=true")
-print("JSON Response {}".format(resjson))
-
-x.TimerHandler(1)
-
-print("Done")
-"""
-
-requesttimeout = 10
-try:
-#    r = requests.get('https://httpbin.org/ip', timeout=requesttimeout)
-
-#    print('Response is {0}'.format(json.dumps(r.json())))
-
-#    payload = {'key1': 'value1', 'key2': 'value2'}
-
-    i  = 0
-    while i < 100:
-        r = requests.get('http://localhost:8000', timeout=requesttimeout)
+        payload = {"CBNumber" : 1, "CBState" : "Close"} 
+    
+        r = requests.post('http://localhost:10000/PyPortCBSim/set', json=payload, timeout=requesttimeout)
         print('Response is {0}'.format(r.text))
-        i = i + 1
 
-    print('Response is {0}'.format(r.text))
-
-  #  r = requests.post('https://httpbin.org/post', data = {'key':'value'}, timeout=requesttimeout)
-
-  #  print(r.text)
-
- #   print('Response is {0}'.format(json.dumps(r.json())))
+        print('Response is {0}'.format(json.dumps(r.json())))
                  
-    #r = requests.post(url, json=payload, timeout=requesttimeout)
-except requests.exceptions.RequestException as e:
-    print("Exception - {}".format(e))
+    except requests.exceptions.RequestException as e:
+        print("Exception - {}".format(e))
+
+def SendTestEvent(x):
+    EventType = 16    # Binary?
+    Index = 0
+    Time = 15
+    Quality = "|ONLINE|"
+    Payload = "1"
+    Sender = "Test"
+    res = x.EventHandler(EventType, Index, Time, Quality, Payload, Sender)
+    print("Event Result - {}".format(res))
+
+
+# Main Section
+def StimulateDirectly():
+    guid = 12345678
+    x = PyPortCBSim.SimPortClass(guid, "TestInstance")
+    
+    x.Config(conf2, "")
+    
+    x.Enable()
+    
+    resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortCBSim/status?CBNumber=1","")
+    print("JSON Response {}".format(resjson))
+    
+    payload = {"CBNumber" : 1, "CBState" : "Open"}
+    resjson = x.RestRequestHandler("POST http://localhost:10000/PyPortCBSim/ ",json.dumps(payload))
+    print("JSON Response {}".format(resjson))
+    return guid, payload, resjson, x
+
+
+print("Start")
+StimulateViaHttp()
+print("Done")
+
+
