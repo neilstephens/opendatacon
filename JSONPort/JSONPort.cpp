@@ -507,7 +507,9 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 {
 	if(!enabled)
 	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		if (pStatusCallback)
+			(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
@@ -545,13 +547,15 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 			break;
 		}
 		default:
-			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+			if (pStatusCallback)
+				(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 			return;
 	}
 
 	if(output.isNull())
 	{
-		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+		if (pStatusCallback)
+			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 		return;
 	}
 
@@ -566,5 +570,6 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 	pWriter->write(output, &oss); oss<<std::endl;
 	pSockMan->Write(oss.str());
 
-	(*pStatusCallback)(CommandStatus::SUCCESS);
+	if(pStatusCallback)
+		(*pStatusCallback)(CommandStatus::SUCCESS);
 }

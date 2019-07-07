@@ -278,12 +278,17 @@ request_parser::result_type request_parser::consume(request& req, char input)
 			if (input == '\n')
 			{
 				// Check Content Length, if it exsists go to that state, otherwise return good.
+				req.contentlength = 0;
 				for (auto h : req.headers)
 				{
 					if (h.name == "Content-Length")
 						req.contentlength = stoul(h.value);
 				}
 				charcounter = 0;
+				if (req.contentlength == 0)
+				{
+					return good;
+				}
 				state_ = content;
 				return indeterminate;
 			}

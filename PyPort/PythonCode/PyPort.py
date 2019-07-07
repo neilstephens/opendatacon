@@ -50,11 +50,11 @@ OverrideJSON = """{"Port" : 11111,"ModuleName" : "PyPortSimModified","PollGroups
 def StimulateViaHttp():
     requesttimeout = 10
     try:
-#        r = requests.get('http://localhost:10000/PyPortCBSim/status?CBNumber=1', timeout=requesttimeout)
+        r = requests.get('http://localhost:10000/PyPortCBSim/status?CBNumber=1', timeout=requesttimeout)
 
- #       print('Response is {0}'.format(json.dumps(r.json())))
+        print('Response is {0}'.format(json.dumps(r.json())))
 
-        payload = {"CBNumber" : 1, "CBState" : "Close"} 
+        payload = {"CBNumber" : 1, "CBState" : "Fault"} 
     
         r = requests.post('http://localhost:10000/PyPortCBSim/set', json=payload, timeout=requesttimeout)
         print('Response is {0}'.format(r.text))

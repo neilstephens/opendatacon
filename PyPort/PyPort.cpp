@@ -509,13 +509,13 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 // We are not passing a callback - just nullstr. So dont expect feedback.
 void PyPort::PublishEventCall(const std::string &EventTypeStr, uint32_t ODCIndex,  const std::string &QualityStr, const std::string &PayloadStr )
 {
-	LOGDEBUG("PyPort Publish Event {}, {}, {}, {}", EventTypeStr, ODCIndex, QualityStr, PayloadStr);
+	//LOGDEBUG("PyPort Publish Event {}, {}, {}, {}", EventTypeStr, ODCIndex, QualityStr, PayloadStr);
 
 	// Separate call to allow testing
 	std::shared_ptr<EventInfo> pubevent = CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr, Name);
 
 	if (pubevent)
-		PublishEvent(pubevent, nullptr);
+		PublishEvent(pubevent);
 }
 // So we have received an event from the ODC message bus - it will be Control or Connect events.
 // So basically the Event mechanism is agnostinc. You can be a producer of control events and a consumer of data events, or the reverse, or in some odd cases -

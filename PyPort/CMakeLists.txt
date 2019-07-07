@@ -64,9 +64,9 @@ endif()
 if (CMAKE_LIBRARY_ARCHITECTURE STREQUAL "arm-linux-gnueabihf")
 	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}")	
 	message("RPI abihf build - Changed Python Library Path From ${Python3_LIBRARIES} To ${RpiLibFileName}")
-	set(Python3_LIBRARIES python35m)
-	add_library( python35m SHARED IMPORTED)	# Stop CMake from trying to build the lib
-	set_target_properties(python35m  PROPERTIES  IMPORTED_LOCATION ${RpiLibFileName})
+	set(Python3_LIBRARIES ${RpiLibFileName})
+	add_library( $Python3_LIBRARIES SHARED IMPORTED)	# Stop CMake from trying to build the lib
+	set_target_properties($Python3_LIBRARIES  PROPERTIES  IMPORTED_LOCATION ${RpiLibFileName})
 endif()
 
 message("Architecture ${CMAKE_LIBRARY_ARCHITECTURE} ")

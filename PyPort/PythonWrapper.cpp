@@ -108,7 +108,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
+		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
 
 		if (thisPyWrapper != nullptr)
 		{
@@ -173,19 +173,18 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 			PythonWrapper::PyErrOutput();
 			return NULL;
 		}
-		LOGDEBUG("Python Publish Event {}, {}, {}, {}", EventType, ODCIndex, Quality, Payload);
 
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
+		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
 
 		if (thisPyWrapper != nullptr)
 		{
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
 			// The PyPort ensures that pyWrapper is managed within a strand
-			LOGDEBUG("Python PublishEvent - about to call PyPort PublishEventCall method");
+			LOGDEBUG("Python Publish Event {}, {}, {}, {}", EventType, ODCIndex, Quality, Payload);
 			auto fn = thisPyWrapper->GetPythonPortPublishEventCallFn();
 			fn(EventType, ODCIndex, Quality, Payload);
 		}
@@ -218,19 +217,18 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 			PythonWrapper::PyErrOutput();
 			return NULL;
 		}
-		LOGDEBUG("Python SetTimer ID: {}, Delay {}", id, delay);
 
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
+		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
 
 		if (thisPyWrapper != nullptr)
 		{
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
 			// The PyPort ensures that pyWrapper is managed within a strand
-			LOGDEBUG("Python SetTimer - about to call PyPort SetTimer method");
+			LOGDEBUG("Python SetTimer ID: {}, Delay {}", id, delay);
 			auto fn = thisPyWrapper->GetPythonPortSetTimerFn();
 			fn(id, delay);
 		}
