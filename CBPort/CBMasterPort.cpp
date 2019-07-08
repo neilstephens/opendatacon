@@ -408,7 +408,7 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 					break;
 				case FUNC_MASTER_STATION_REQUEST:
 					LOGDEBUG("Received Master Station Request Response - Sub Code {}, Station {}", GetSubFunctionCodeName(Header.GetGroup()), std::to_string(Header.GetStationAddress()));
-					success = true; // We dont need to check what we get back...
+					success = CheckResponseMessageMatch(CompleteCBMessage, MasterCommandProtectedData.CurrentCommand.first);
 					break;
 				case FUNC_SEND_NEW_SOE:
 					success = ProcessSOEScanRequestReturn(Header, CompleteCBMessage); // Fn - 10
@@ -797,6 +797,45 @@ bool CBMasterPort::CheckResponseHeaderMatch(const CBBlockData& ReceivedHeader, c
 	}
 
 	LOGDEBUG("Returned Header match Sent Header");
+	return true;
+}
+
+bool CBMasterPort::CheckResponseMessageMatch(const CBMessage_t& ReceivedMsg, const CBMessage_t& SentMsg)
+{
+	if (ReceivedMsg[0].GetGroup() != SentMsg[0].GetGroup())
+	{
+		LOGDEBUG("Returned Messager mismatch on Group {}, {}", ReceivedMsg[0].GetGroup(), SentMsg[0].GetGroup());
+		return false;
+	}
+	if (ReceivedMsg[0].GetB() != SentMsg[0].GetB())
+	{
+		LOGDEBUG("Returned Header mismatch on B Data {}, {}", ReceivedMsg[0].GetB(), SentMsg[0].GetB());
+		return false;
+	}
+	if (ReceivedMsg.size() != SentMsg.size())
+	{
+		LOGDEBUG("Returned Message mismatch on message lentgh {}, {}", ReceivedMsg.size(), SentMsg.size());
+		return false;
+	}
+	if (ReceivedMsg.size() > 1)
+	{
+		if (ReceivedMsg[1].GetA() != SentMsg[1].GetA())
+		{
+			LOGDEBUG("Returned Header mismatch on second packet A Data {}, {}", ReceivedMsg[1].GetA(), SentMsg[1].GetA());
+			return false;
+		}
+		if (ReceivedMsg[1].GetB() != SentMsg[1].GetB())
+		{
+			LOGDEBUG("Returned Header mismatch on second packet B Data {}, {}", ReceivedMsg[1].GetB(), SentMsg[1].GetB());
+			return false;
+		}
+	}
+	else if (ReceivedMsg.size() > 2)
+	{
+		LOGDEBUG("Returned Message too large.. {}, {}", ReceivedMsg.size(), SentMsg.size());
+		return false;
+	}
+	LOGDEBUG("Returned Message matched Sent Message");
 	return true;
 }
 

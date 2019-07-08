@@ -64,21 +64,28 @@ endif()
 # running into this error:
 # No rule to make target '/usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/libpython3.5m.so', needed by 'build/lib/libPyPort.so'.  Stop.
 # So this means that it cannot find the file...
-if (CMAKE_LIBRARY_ARCHITECTURE STREQUAL "arm-linux-gnueabihf-notfound")
-	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}")	
-	message("RPI abihf build - Changed Python Library Path From ${Python3_LIBRARIES} To ${RpiLibFileName}")
-	
-	if(NOT EXISTS(${RpiLibFileName}))
-		message( FATAL_ERROR "Python Library Missing ${RpiLibFileName}")
-	endif()
 
-	set(Python3_LIBRARIES ${RpiLibFileName})
+if (CMAKE_LIBRARY_ARCHITECTURE STREQUAL "arm-linux-gnueabihf")
+#	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}")	
+#	message("RPI abihf build - Changed Python Library Path From ${Python3_LIBRARIES} To ${RpiLibFileName}")
+
+#/home/travis/build/ScottEllisNovatex/opendatacon/build/sysroot/usr/include/python3.4m/pyconfig.h:13:55: fatal error: 
+# sysroot/usr/include/arm-linux-gnueabihf/python3.4m/pyconfig.h	
+#/home/travis/build/ScottEllisNovatex/opendatacon/build/sysroot/usr/include/python3.4m
+#sudo ln -s sysroot/usr/include/python3.4m/arm-linux-gnueabihf sysroot/usr/include/arm-linux-gnueabihf	
+
+#	if(NOT EXISTS(${RpiLibFileName}))
+#		message( FATAL_ERROR "Python Library Missing ${RpiLibFileName}")
+#	endif()
+	# Not finding arm-linux-gnueabihf/python3.4m/pyconfig.h	so add the following...
+	#set(Platform_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/build/sysroot/usr/include")
+#	set(Python3_LIBRARIES ${RpiLibFileName})
 #	add_library( "${Python3_LIBRARIES}" SHARED IMPORTED)	# Stop CMake from trying to build the lib
 #	set_target_properties("${Python3_LIBRARIES}"  PROPERTIES  IMPORTED_LOCATION ${RpiLibFileName})
 endif()
 
 message("Architecture ${CMAKE_LIBRARY_ARCHITECTURE} ")
-message("Found Python Include Dirs ${Python3_INCLUDE_DIRS} ")
+message("Found Python Include Dirs ${Python3_INCLUDE_DIRS}")
 message("Found Python Libraries ${Python3_LIBRARIES} ")
 message("Make Bin Dir ${CMAKE_CURRENT_BINARY_DIR}, Install Bin Dir ${INSTALLDIR_BINS}")
 
@@ -92,7 +99,6 @@ configure_file(PythonCode/PyPortSim.py ${CMAKE_CURRENT_BINARY_DIR}/PyPortSim.py 
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC ${Python3_LIBRARIES})
-
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
