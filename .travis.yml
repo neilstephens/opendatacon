@@ -11,15 +11,15 @@ addons:
 
 os:
   - linux
-  - osx
+ # - osx
 
 compiler:
   - gcc
-  - clang
+ # - clang
 
 env:
   - BUILD_CONFIG=Release
-  - BUILD_CONFIG=Debug
+#  - BUILD_CONFIG=Debug
   
 matrix:
   include: #extra matrix entries for docker builds
@@ -28,29 +28,29 @@ matrix:
       services:
         - docker
     #Rpi Debug
-    - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
-      services:
-        - docker
+#    - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
+#      services:
+#        - docker
     #OEL6 Release
-    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
-      services:
-        - docker
+ #   - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
+ #     services:
+ #       - docker
     #OEL6 Debug
-    - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
-      services:
-        - docker
+ #   - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
+ #     services:
+ #       - docker
     #i686 Release
-    - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
-      services:
-        - docker
+ #   - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
+ #     services:
+ #       - docker
     #i686 Debug
-    - env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
-      services:
-        - docker
+ #   - env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
+ #     services:
+ #       - docker
   exclude:
     #Travis docs say on osx gcc is an alias for clang anyway
-    - os: osx
-      compiler: clang
+ #   - os: osx
+ #     compiler: clang
 
 branches:
   only:
@@ -77,11 +77,10 @@ install:
       # Install qemu-static and the arm cross compiler into the travis host
       #
       sudo apt-get install -y qemu-user qemu-user-static gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-      # Get the platform include file needed by Python for armhf, and put it where it expects it to be!
-      wget http://security.debian.org/debian-security/pool/updates/main/p/python3.5/libpython3.5-dev_3.5.3-1+deb9u1_armhf.deb
-      dpkg -x libpython3.5-dev_3.5.3-1+deb9u1_armhf.deb libpython3.5-dev_3.5.3-1+deb9u1_armhf_extracted
-      sudo cp -r libpython3.5-dev_3.5.3-1+deb9u1_armhf_extracted/usr/include/arm-linux-gnueabihf/ /usr/include/python3.5/arm-linux-gnueabihf/
-      sudo cp -r libpython3.5-dev_3.5.3-1+deb9u1_armhf_extracted/usr/lib/arm-linux-gnueabihf/ /usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/
+      # Remove 3.5 we can't get it installed on the armhf sim, install 3.4
+      sudo apt-get remove --purge python3.5
+      sudo apt-get install -y python3.4
+      sudo python3 --version
       #
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
@@ -89,14 +88,17 @@ install:
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
       # Install the arm versions of dependencies into the QEMU user image
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc" 
+      docker exec -i $DOCK sh -c "apt-get install -y python3.4 python3.4-dev" 
+      docker exec -i $DOCK sh -c "python3 --version"
       mkdir sysroot
-      # Copy /usr to sysroot int the docker image
+      # Copy /usr to sysroot in the docker image
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake"
+      sudo ls -l sysroot/usr/lib/python3.4/
     fi
   - |
     if [ "$DOCKER_BUILD" == "OEL" ]; then

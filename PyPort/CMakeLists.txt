@@ -49,7 +49,7 @@ if (Python3_FOUND)
 else()
 	# We have to find the libraries using old CMake command as Python3 does not work on some of our targets.
 	message("find_package(Python3) failed, trying find_package(PythonLibs) ")
-	find_package(PythonLibs 3.5 REQUIRED)
+	find_package(PythonLibs 3.4 REQUIRED)
 	set(Python3_INCLUDE_DIRS "${PYTHON_INCLUDE_DIRS}")
 	set(Python3_LIBRARIES "${PYTHON_LIBRARIES}")
 endif()
@@ -58,15 +58,23 @@ endif()
 # Not a good solution, but the Python3 find_package is always returning the x86_64 version...
 # /usr/lib/python3.5/config-3.5m-x86_64-linux-gnu/libpython3.5m.so --> /usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/libpython3.5m.so
 #
-#	This is not working  - modifying the name. I think that teh find_package is leaving a library defined, without indicating it is an external LIB and we should not build it
+#	This is not working  - modifying the name. I think that the find_package is leaving a library defined, without indicating it is an external LIB and we should not build it
 #	however, do not know how to stop this - yet. Or just have it find the correct library in the first place!!!
 #
-if (CMAKE_LIBRARY_ARCHITECTURE STREQUAL "arm-linux-gnueabihf")
+# running into this error:
+# No rule to make target '/usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/libpython3.5m.so', needed by 'build/lib/libPyPort.so'.  Stop.
+# So this means that it cannot find the file...
+if (CMAKE_LIBRARY_ARCHITECTURE STREQUAL "arm-linux-gnueabihf-notfound")
 	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}")	
 	message("RPI abihf build - Changed Python Library Path From ${Python3_LIBRARIES} To ${RpiLibFileName}")
+	
+	if(NOT EXISTS(${RpiLibFileName}))
+		message( FATAL_ERROR "Python Library Missing ${RpiLibFileName}")
+	endif()
+
 	set(Python3_LIBRARIES ${RpiLibFileName})
-	add_library( $Python3_LIBRARIES SHARED IMPORTED)	# Stop CMake from trying to build the lib
-	set_target_properties($Python3_LIBRARIES  PROPERTIES  IMPORTED_LOCATION ${RpiLibFileName})
+#	add_library( "${Python3_LIBRARIES}" SHARED IMPORTED)	# Stop CMake from trying to build the lib
+#	set_target_properties("${Python3_LIBRARIES}"  PROPERTIES  IMPORTED_LOCATION ${RpiLibFileName})
 endif()
 
 message("Architecture ${CMAKE_LIBRARY_ARCHITECTURE} ")
