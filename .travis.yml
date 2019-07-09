@@ -11,15 +11,15 @@ addons:
 
 os:
   - linux
- # - osx
+  - osx
 
 compiler:
   - gcc
- # - clang
+  - clang
 
 env:
   - BUILD_CONFIG=Release
-#  - BUILD_CONFIG=Debug
+  - BUILD_CONFIG=Debug
   
 matrix:
   include: #extra matrix entries for docker builds
@@ -28,29 +28,29 @@ matrix:
       services:
         - docker
     #Rpi Debug
-#    - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
+      services:
+        - docker
     #OEL6 Release
- #   - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
- #     services:
- #       - docker
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
+      services:
+        - docker
     #OEL6 Debug
- #   - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
- #     services:
- #       - docker
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
+      services:
+        - docker
     #i686 Release
- #   - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
- #     services:
- #       - docker
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
+      services:
+        - docker
     #i686 Debug
- #   - env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
- #     services:
- #       - docker
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
+      services:
+        - docker
   exclude:
     #Travis docs say on osx gcc is an alias for clang anyway
- #   - os: osx
- #     compiler: clang
+    - os: osx
+      compiler: clang
 
 branches:
   only:
@@ -69,6 +69,7 @@ install:
       brew install libmodbus libmicrohttpd socat
       #export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     elif [ -z "$DOCKER_BUILD" ]; then
+      # Not a docker build, just normal linux
       sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev python3.5 python3.5-dev
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     fi
@@ -76,10 +77,9 @@ install:
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
       # Install qemu-static and the arm cross compiler into the travis host
       #
-      sudo apt-get install -y qemu-user qemu-user-static gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-      # Remove Python3 as much as possible, then we will "find" the armhf version which is copied into oour sysroot folder
-      sudo apt-get remove --purge python3 python3.5 libpython3.5-dev
-      #sudo apt autoremove
+      sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
+      # Remove Python3 as much as possible, then we will "find" the armhf version which is copied into our sysroot folder instead of the x86 version
+      sudo apt-get remove  python3 python3.5 python3-dev libpython3-dev python3.5-dev libpython3.5-dev
       #
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
@@ -96,10 +96,8 @@ install:
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake"
+      # Create a link so the python.h file can find the appropriate platform python.h file.
       sudo ln -s "$(pwd)/sysroot/usr/include/arm-linux-gnueabihf" sysroot/usr/include/python3.4m/arm-linux-gnueabihf 
-      sudo ls -l -R sysroot/usr/include/python3.4m
-      sudo ls -l -R sysroot/usr/include/arm-linux-gnueabihf
-      #sudo ls -l -R sysroot/usr/lib
     fi
   - |
     if [ "$DOCKER_BUILD" == "OEL" ]; then

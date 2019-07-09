@@ -23,7 +23,9 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def server/*.cpp server/*.hpp PythonCo
 
 # For Appveyor the paths are C:\Python37 for x86 and C:\Python37-x64 for 3.7.3 which is what we are using. 
 # For Appveyor we need to set Python_ROOT_DIR so it finds the correct version x86 or x64. There is code in the appveyor.yml file to do this.
-
+# For travis cross compilation, uninstall Python3 from the host, so that the find (below) will find the target include and library files.
+# The travis files include some commands to create symbolic links for python platfomr specific python.h files.
+#
 find_package(Python3 COMPONENTS Development)	# The new way of doing things, can pass Python_ROOT_DIR as a hint
 
 if (Python3_FOUND) 
@@ -54,35 +56,6 @@ else()
 	set(Python3_LIBRARIES "${PYTHON_LIBRARIES}")
 endif()
 
-# Check the target arch, if arm, manually set the library location to match where we put it in Travis. 
-# Not a good solution, but the Python3 find_package is always returning the x86_64 version...
-# /usr/lib/python3.5/config-3.5m-x86_64-linux-gnu/libpython3.5m.so --> /usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/libpython3.5m.so
-#
-#	This is not working  - modifying the name. I think that the find_package is leaving a library defined, without indicating it is an external LIB and we should not build it
-#	however, do not know how to stop this - yet. Or just have it find the correct library in the first place!!!
-#
-# running into this error:
-# No rule to make target '/usr/lib/python3.5/config-3.5m-arm-linux-gnueabihf/libpython3.5m.so', needed by 'build/lib/libPyPort.so'.  Stop.
-# So this means that it cannot find the file...
-
-if (CMAKE_LIBRARY_ARCHITECTURE STREQUAL "arm-linux-gnueabihf")
-#	string(REPLACE "x86_64-linux-gnu" "arm-linux-gnueabihf" RpiLibFileName "${Python3_LIBRARIES}")	
-#	message("RPI abihf build - Changed Python Library Path From ${Python3_LIBRARIES} To ${RpiLibFileName}")
-
-#/home/travis/build/ScottEllisNovatex/opendatacon/build/sysroot/usr/include/python3.4m/pyconfig.h:13:55: fatal error: 
-# sysroot/usr/include/arm-linux-gnueabihf/python3.4m/pyconfig.h	
-#/home/travis/build/ScottEllisNovatex/opendatacon/build/sysroot/usr/include/python3.4m
-#sudo ln -s sysroot/usr/include/python3.4m/arm-linux-gnueabihf sysroot/usr/include/arm-linux-gnueabihf	
-
-#	if(NOT EXISTS(${RpiLibFileName}))
-#		message( FATAL_ERROR "Python Library Missing ${RpiLibFileName}")
-#	endif()
-	# Not finding arm-linux-gnueabihf/python3.4m/pyconfig.h	so add the following...
-	#set(Platform_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/build/sysroot/usr/include")
-#	set(Python3_LIBRARIES ${RpiLibFileName})
-#	add_library( "${Python3_LIBRARIES}" SHARED IMPORTED)	# Stop CMake from trying to build the lib
-#	set_target_properties("${Python3_LIBRARIES}"  PROPERTIES  IMPORTED_LOCATION ${RpiLibFileName})
-endif()
 
 message("Architecture ${CMAKE_LIBRARY_ARCHITECTURE} ")
 message("Found Python Include Dirs ${Python3_INCLUDE_DIRS}")

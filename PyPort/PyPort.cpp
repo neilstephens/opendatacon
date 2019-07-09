@@ -57,8 +57,7 @@
 std::string GetCurrentWorkingDir(void)
 {
 	char buff[FILENAME_MAX];
-	GetCurrentDir(buff, FILENAME_MAX);
-	std::string current_working_dir(buff);
+	std::string current_working_dir(GetCurrentDir(buff, FILENAME_MAX));
 	return current_working_dir;
 }
 
