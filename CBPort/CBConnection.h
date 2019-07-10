@@ -74,10 +74,10 @@ class CBConnection
 
 public:
 	CBConnection
-		(asio::io_service* apIOS,     //pointer to an asio io_service
-		bool aisServer,               //Whether to act as a server or client
-		const std::string& aEndPoint, //IP addr or hostname (to connect to if client, or bind to if server)
-		const std::string& aPort,     //Port to connect to if client, or listen on if server
+		(std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_context
+		bool aisServer,                           //Whether to act as a server or client
+		const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                 //Port to connect to if client, or listen on if server
 		bool isbakerdevice,
 		uint16_t retry_time_ms = 0);
 
@@ -98,10 +98,10 @@ public:
 
 	static void RemoveMaster(const ConnectionTokenType &ConnectionTok,uint8_t TargetStationAddress);
 
-	static ConnectionTokenType AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
-		bool aisServer,                                             //Whether to act as a server or client
-		const std::string& aEndPoint,                               //IP addr or hostname (to connect to if client, or bind to if server)
-		const std::string& aPort,                                   //Port to connect to if client, or listen on if server
+	static ConnectionTokenType AddConnection(std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_context
+		bool aisServer,                                                             //Whether to act as a server or client
+		const std::string& aEndPoint,                                               //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                                                   //Port to connect to if client, or listen on if server
 		bool isbakerdevice,
 		uint16_t retry_time_ms = 0);
 
@@ -124,7 +124,7 @@ public:
 	static void SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, std::function<void(std::string)> f);
 
 private:
-	asio::io_service* pIOS;
+	std::shared_ptr<asio::io_service> pIOS;
 	std::string EndPoint;
 	std::string Port;
 	std::string InternalChannelID;
@@ -139,6 +139,7 @@ private:
 	std::function<void(std::string)> SendTCPDataFn = nullptr; // nullptr normally. Set to hook function for testing
 
 	// Need maps for these two...
+	//TODO: Callbacks - how do we prevent calling them during shutdown? Need protection around checking they are valid and using them, from removal during use. If the port is disabled - should ne no traffic.
 	std::unordered_map<uint8_t, std::function<void(CBMessage_t &CBMessage)>> ReadCallbackMap;
 	std::unordered_map<uint8_t, std::function<void(bool)>> StateCallbackMap;
 
@@ -158,7 +159,7 @@ private:
 	// We need one read completion handler hooked to each address/port combination. This method is re-entrant,
 	// We do some basic CB block identification and processing, enough to give us complete blocks and StationAddresses
 	void ReadCompletionHandler(buf_t& readbuf);
-
+	CBBlockData ReadCompletionHandlerCBblock = CBBlockData(0); // This remains across multiple calls to this method in a given class instance. Starts empty.
 };
 #endif
 

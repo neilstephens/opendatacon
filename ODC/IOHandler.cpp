@@ -51,28 +51,33 @@ void IOHandler::Subscribe(IOHandler* pIOHandler, std::string aName)
 	this->Subscribers[aName] = pIOHandler;
 }
 
-void IOHandler::SetIOS(asio::io_service* ios_ptr)
+void IOHandler::SetIOS(std::shared_ptr<asio::io_service> ios_ptr)
 {
 	pIOS = ios_ptr;
 }
 
-bool IOHandler::InDemand()
+bool DemandMap::InDemand()
 {
+	std::lock_guard<std::mutex> lck (mtx);
 	for(auto demand : connection_demands)
 		if(demand.second)
 			return true;
 	return false;
 }
 
-bool IOHandler::MuxConnectionEvents(ConnectState state, const std::string& SenderName)
+bool DemandMap::MuxConnectionEvents(ConnectState state, const std::string& SenderName)
 {
 	if (state == ConnectState::DISCONNECTED)
 	{
-		connection_demands[SenderName] = false;
+		{
+			std::lock_guard<std::mutex> lck (mtx);
+			connection_demands[SenderName] = false;
+		}
 		return !InDemand();
 	}
 	else if (state == ConnectState::CONNECTED)
 	{
+		std::lock_guard<std::mutex> lck (mtx);
 		bool new_demand = !connection_demands[SenderName];
 		connection_demands[SenderName] = true;
 		return new_demand;
@@ -91,15 +96,19 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 	{
 		throw std::runtime_error("Uninitialised io_service on enabled IOHandler");
 	}
-	if(cb_number == 1)
+
+	if(cb_number < 2)
 		return pStatusCallback;
 
+	//We must keep the io_service active for the life of the strand/handler we're about to create
+	auto work = std::make_shared<asio::io_service::work>(*pIOS);
 	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
 	auto pExecCount = std::make_shared<size_t>(0);
 	auto pCB_sync = std::make_shared<asio::io_service::strand>(*pIOS);
 	return std::make_shared<std::function<void (CommandStatus status)>>
 		       (pCB_sync->wrap(
-		[pCB_sync,
+		[work,
+		 pCB_sync,
 		 pCombinedStatus,
 		 pExecCount,
 		 cb_number,

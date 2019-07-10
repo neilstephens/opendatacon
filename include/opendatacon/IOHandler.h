@@ -33,6 +33,7 @@
 #include <atomic>
 #include <opendatacon/asio.h>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
 
 namespace odc
 {
@@ -40,6 +41,19 @@ namespace odc
 enum class  InitState_t { ENABLED, DISABLED, DELAYED };
 
 typedef std::shared_ptr<std::function<void (CommandStatus status)>> SharedStatusCallback_t;
+
+//class to synchronise access to connection demand map
+class DemandMap
+{
+public:
+	bool InDemand();
+	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
+private:
+	std::map<std::string,bool> connection_demands;
+	std::mutex mtx;
+	//TODO: do it using asio
+	//asio::io_service::strand sync;
+};
 
 class IOHandler
 {
@@ -57,7 +71,7 @@ public:
 	virtual void Disable()=0;
 
 	void Subscribe(IOHandler* pIOHandler, std::string aName);
-	void SetIOS(asio::io_service* ios_ptr);
+	void SetIOS(std::shared_ptr<asio::io_service> ios_ptr);
 
 	inline const std::string& GetName(){return Name;}
 	inline const bool Enabled(){return enabled;}
@@ -68,12 +82,12 @@ public:
 
 protected:
 	std::string Name;
-	asio::io_service* pIOS;
+	std::shared_ptr<asio::io_service> pIOS;
 	std::atomic_bool enabled;
 
-	bool InDemand();
-	std::map<std::string,bool> connection_demands;
-	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
+	inline bool InDemand(){ return mDemandMap.InDemand(); }
+	inline bool MuxConnectionEvents(ConnectState state, const std::string& SenderName)
+	{ return mDemandMap.MuxConnectionEvents(state, SenderName); }
 
 	inline void PublishEvent(ConnectState state)
 	{
@@ -96,6 +110,8 @@ protected:
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(auto IOHandler_pair: Subscribers)
 		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->trace("{} {} Payload {} Event {} => {}", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, IOHandler_pair.first);
 			IOHandler_pair.second->Event(event, Name, multi_callback);
 		}
 	}
@@ -104,6 +120,7 @@ protected:
 
 private:
 	std::unordered_map<std::string,IOHandler*> Subscribers;
+	DemandMap mDemandMap;
 
 	// Important that this is private - for inter process memory management
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;

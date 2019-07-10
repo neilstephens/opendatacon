@@ -142,7 +142,7 @@ void ModbusMasterPort::Disconnect()
 	PollScheduler->Stop();
 
 	if(!MBSync->isNull())
-		MBSync->Execute([this](modbus_t* mb)
+		MBSync->Execute([](modbus_t* mb)
 			{
 				modbus_close(mb);
 			});

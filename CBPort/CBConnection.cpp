@@ -59,10 +59,10 @@ ConnectionTokenType::~ConnectionTokenType()
 	}
 }
 
-CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_service
-	bool aisServer,                                //Whether to act as a server or client
-	const std::string& aEndPoint,                  //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                      //Port to connect to if client, or listen on if server
+CBConnection::CBConnection (std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_context
+	bool aisServer,                                                //Whether to act as a server or client
+	const std::string& aEndPoint,                                  //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                                      //Port to connect to if client, or listen on if server
 	bool isbakerdevice,
 	uint16_t retry_time_ms):
 	pIOS(apIOS),
@@ -86,10 +86,10 @@ CBConnection::CBConnection (asio::io_service* apIOS, //pointer to an asio io_ser
 }
 
 // Static Method
-ConnectionTokenType CBConnection::AddConnection(asio::io_service* apIOS, //pointer to an asio io_service
-	bool aisServer,                                                    //Whether to act as a server or client
-	const std::string& aEndPoint,                                      //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                                          //Port to connect to if client, or listen on if server
+ConnectionTokenType CBConnection::AddConnection(std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_context
+	bool aisServer,                                                                    //Whether to act as a server or client
+	const std::string& aEndPoint,                                                      //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                                                          //Port to connect to if client, or listen on if server
 	bool isbakerdevice,
 	uint16_t retry_time_ms)
 {
@@ -356,51 +356,49 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
 
-	static CBBlockData CBblock; // This remains across multiple calls to this method. Starts empty.
-
 	while (readbuf.size() > 0)
 	{
 		// Add another byte to our 4 byte block.
 
-		CBblock.AddByteToBlock(static_cast<uint8_t>(readbuf.sgetc()));
+		ReadCompletionHandlerCBblock.AddByteToBlock(static_cast<uint8_t>(readbuf.sgetc()));
 		readbuf.consume(1);
 
-		if (CBblock.IsValidBlock()) // Check checksum and B bit.
+		if (ReadCompletionHandlerCBblock.IsValidBlock()) // Check checksum and B bit.
 		{
-			if (CBblock.IsAddressBlock())
+			if (ReadCompletionHandlerCBblock.IsAddressBlock())
 			{
 				if (IsBakerDevice)
 				{
 					// If Is a Baker device, swap Station and Group values before passing up the line to where the address is checked and routed...
-					CBblock.DoBakerConitelSwap();
+					ReadCompletionHandlerCBblock.DoBakerConitelSwap();
 				}
 
 				// This only occurs for the first block. So if we are not expecting it we need to clear out the Message Block Vector
 				// We know we are looking for the first block if CBMessage is empty.
 				if (CBMessage.size() != 0)
 				{
-					LOGDEBUG("Received a start block {} when we have not got to an end block - discarding data blocks - {} and storing this start block", CBblock.ToString(), std::to_string(CBMessage.size()));
+					LOGDEBUG("Received a start block {} when we have not got to an end block - discarding data blocks - {} and storing this start block", ReadCompletionHandlerCBblock.ToString(), std::to_string(CBMessage.size()));
 					CBMessage.clear();
 				}
-				CBMessage.push_back(CBblock); // Takes a copy of the block
+				CBMessage.push_back(ReadCompletionHandlerCBblock); // Takes a copy of the block
 			}
 			else if (CBMessage.size() == 0)
 			{
-				LOGDEBUG("Received a non start block when we are waiting for a start block - discarding data - {}", CBblock.ToString());
+				LOGDEBUG("Received a non start block when we are waiting for a start block - discarding data - {}", ReadCompletionHandlerCBblock.ToString());
 			}
 			else if (CBMessage.size() >= MAX_BLOCK_COUNT)
 			{
-				LOGDEBUG("Received more than 16 blocks in a single CB message - discarding data - {}", CBblock.ToString());
+				LOGDEBUG("Received more than 16 blocks in a single CB message - discarding data - {}", ReadCompletionHandlerCBblock.ToString());
 				CBMessage.clear(); // Empty message block queue
 			}
 			else
 			{
-				CBMessage.push_back(CBblock); // Takes a copy of the block
+				CBMessage.push_back(ReadCompletionHandlerCBblock); // Takes a copy of the block
 			}
 
 			// The start and any other block can be the end block
 			// We might get an end block out of order, so just ignore.
-			if (CBblock.IsEndOfMessageBlock() && (CBMessage.size() != 0))
+			if (ReadCompletionHandlerCBblock.IsEndOfMessageBlock() && (CBMessage.size() != 0))
 			{
 				// Once we have the last block, then hand off CBMessage to process.
 				RouteCBMessage(CBMessage);
@@ -408,7 +406,7 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 			}
 
 			// We have got a valid block, so empty the collection block so we can get the next one.
-			CBblock.Clear();
+			ReadCompletionHandlerCBblock.Clear();
 		}
 		else
 		{

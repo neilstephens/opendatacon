@@ -31,33 +31,63 @@ CommsRideThroughTimer::CommsRideThroughTimer(asio::io_service &ios,
 	CommsBadCB(aCommsBadCB)
 {}
 
+CommsRideThroughTimer::~CommsRideThroughTimer()
+{
+	aCommsRideThroughTimer.cancel();
+}
+
 void CommsRideThroughTimer::Trigger()
 {
-	TimerAccessStrand.post([this]()
+	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	TimerAccessStrand.post([weak_self]()
 		{
-			if(RideThroughInProgress)
+			auto self = weak_self.lock();
+			if(!self)
 				return;
 
-			RideThroughInProgress = true;
-			aCommsRideThroughTimer.expires_from_now(std::chrono::milliseconds(Timeoutms));
-			aCommsRideThroughTimer.async_wait(TimerAccessStrand.wrap([this](asio::error_code err)
-					{
-						if(RideThroughInProgress)
-							CommsBadCB();
-						RideThroughInProgress = false;
-					}));
+			if(self->RideThroughInProgress)
+				return;
+
+			self->RideThroughInProgress = true;
+			self->aCommsRideThroughTimer.expires_from_now(std::chrono::milliseconds(self->Timeoutms));
+			self->aCommsRideThroughTimer.async_wait(self->TimerAccessStrand.wrap([weak_self](asio::error_code err)
+				{
+					auto self = weak_self.lock();
+					if(!self)
+						return;
+					if(self->RideThroughInProgress)
+						self->CommsBadCB();
+					self->RideThroughInProgress = false;
+				}));
 		});
 }
 
-
+void CommsRideThroughTimer::FastForward()
+{
+	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	TimerAccessStrand.post([weak_self]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+			if(self->RideThroughInProgress)
+				self->aCommsRideThroughTimer.cancel();
+			self->RideThroughInProgress = false;
+			self->CommsBadCB();
+		});
+}
 
 void CommsRideThroughTimer::Cancel()
 {
-	TimerAccessStrand.post([this]()
+	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	TimerAccessStrand.post([weak_self]()
 		{
-			if(RideThroughInProgress)
-				aCommsRideThroughTimer.cancel();
-			RideThroughInProgress = false;
-			CommsGoodCB();
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+			if(self->RideThroughInProgress)
+				self->aCommsRideThroughTimer.cancel();
+			self->RideThroughInProgress = false;
+			self->CommsGoodCB();
 		});
 }

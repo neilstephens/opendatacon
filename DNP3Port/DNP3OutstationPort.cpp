@@ -48,10 +48,13 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 DNP3OutstationPort::~DNP3OutstationPort()
 {
 	ChannelStateSubscriber::Unsubscribe(this);
+	if(pOutstation)
+	{
+		pOutstation->Shutdown();
+		pOutstation.reset();
+	}
 	if(pChannel)
 		pChannel.reset();
-	if(pOutstation)
-		pOutstation.reset();
 }
 
 void DNP3OutstationPort::Enable()
@@ -77,6 +80,8 @@ void DNP3OutstationPort::Disable()
 	enabled = false;
 
 	pOutstation->Disable();
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: DNP3 stack disabled", Name);
 }
 
 // Called by OpenDNP3 Thread Pool
@@ -146,15 +151,15 @@ void DNP3OutstationPort::Build()
 	}
 
 	asiodnp3::OutstationStackConfig StackConfig(opendnp3::DatabaseSizes(
-			pConf->pPointConf->BinaryIndicies.size(), //numBinary
-			0,                                        //numDoubleBinary
-			pConf->pPointConf->AnalogIndicies.size(), //numAnalog
-			0,                                        //numCounter
-			0,                                        //numFrozenCounter
-			0,                                        //numBinaryOutputStatus
-			0,                                        //numAnalogOutputStatus
-			0,                                        //numTimeAndInterval
-			0));                                      //numOctetString
+		pConf->pPointConf->BinaryIndicies.size(), //numBinary
+		0,                                        //numDoubleBinary
+		pConf->pPointConf->AnalogIndicies.size(), //numAnalog
+		0,                                        //numCounter
+		0,                                        //numFrozenCounter
+		0,                                        //numBinaryOutputStatus
+		0,                                        //numAnalogOutputStatus
+		0,                                        //numTimeAndInterval
+		0));                                      //numOctetString
 
 	uint16_t rawIndex = 0;
 	for (auto index : pConf->pPointConf->AnalogIndicies)

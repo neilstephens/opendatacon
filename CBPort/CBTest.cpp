@@ -123,10 +123,12 @@ const char *conffile1 = R"001(
 	// ACC12 - 1 to a payload,
 	// ACC24 - takes two payloads.
 
-	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG", "SOE" : {"Group": 5, "Index" : 0} },
-					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
+	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG", "SOE" : { "Index" : 0} },
+					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA", "SOE" : { "Index" : 12}},
 					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB"},
-					{"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC" }],
+					{"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC" },
+					{"Index" : 81, "Group" : 6, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB","SOE" : { "Index" : 82}},
+					{"Index" : 90, "Group" : 6, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC","SOE" : { "Index" : 91}} ],
 
 	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
 					{"Index" : 1, "Group" : 3, "PayloadLocation": "3B","Channel" : 1, "Type":"ANA"},
@@ -162,7 +164,7 @@ const char *conffile2 = R"002(
 
 	//-------Point conf--------#
 	// We have two modes for the digital/binary commands. Can be one or the other - not both!
-	"IsBakerDevice" : true,
+	"IsBakerDevice" : false,
 
 	// The magic Analog point we use to pass through the CB time set command.
 	"StandAloneOutstation" : true,
@@ -171,7 +173,7 @@ const char *conffile2 = R"002(
 	"CBCommandTimeoutmsec" : 4000,
 	"CBCommandRetries" : 1,
 
-	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 0, "PointType" : "DIG"}],
+	"Binaries" : [{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG"}],
 
 	// CONTROL up to 12 bits per group address, Channel 1 to 12. Simulator used dual points one for trip one for close.
 	"BinaryControls" : [{"Index": 20,  "Group" : 5, "Channel" : 1, "Type" : "CONTROL"}]
@@ -189,21 +191,28 @@ void WriteConfFilesToCurrentWorkingDirectory()
 {
 	std::ofstream ofs(conffilename1);
 	if (!ofs)
-		WARN("Could not open conffile1 for writing");
+	{
+		FAIL("Could not open conffile1 for writing");
+	}
 
 	ofs << conffile1;
 	ofs.close();
 
 	std::ofstream ofs2(conffilename2);
 	if (!ofs2)
-		WARN("Could not open conffile2 for writing");
+	{
+		FAIL("Could not open conffile2 for writing");
+	}
 
 	ofs2 << conffile2;
-	ofs.close();
+	ofs2.close();
 }
 
-void SetupLoggers()
+void SetupLoggers(spdlog::level::level_enum log_level)
 {
+	if (auto log = odc::spdlog_get("CBPort")) \
+		return; // Already exists
+
 	// So create the log sink first - can be more than one and add to a vector.
 	#if defined(NONVSTESTING)
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -215,12 +224,12 @@ void SetupLoggers()
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
 	auto pLibLogger = std::make_shared<spdlog::logger>("CBPort", begin(sinks),end(sinks));
-	pLibLogger->set_level(spdlog::level::trace);
+	pLibLogger->set_level(log_level);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
-	pODCLogger->set_level(spdlog::level::trace);
+	pODCLogger->set_level(log_level);
 	odc::spdlog_register_logger(pODCLogger);
 
 }
@@ -245,7 +254,7 @@ void WriteStartLoggingMessage(std::string TestName)
 void TestSetup(std::string TestName, bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
-	SetupLoggers();
+	SetupLoggers(spdlog::level::debug);
 	#endif
 	WriteStartLoggingMessage(TestName);
 
@@ -261,9 +270,9 @@ void TestTearDown(void)
 	#endif
 }
 // Used for command line test setup
-void CommandLineLoggingSetup()
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
 {
-	SetupLoggers();
+	SetupLoggers(log_level);
 	WriteStartLoggingMessage("All Tests");
 }
 void CommandLineLoggingCleanup()
@@ -308,7 +317,7 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	asio::io_service IOS(4); // Max 4 threads
+	auto IOS = std::make_shared<asio::io_service>(4); // Max 4 threads
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
@@ -319,35 +328,35 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
-	auto work = std::make_shared<asio::io_service::work>(IOS); /* To keep run - running!*/\
+	auto work = std::make_shared<asio::io_service::work>(*IOS); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(IOS);
+	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS);
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
+	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i]);
 
 #define TEST_CBMAPort(overridejson)\
 	auto CBMAPort = std::make_unique<CBMasterPort>("TestMaster", conffilename1, overridejson); \
-	CBMAPort->SetIOS(&IOS);      \
+	CBMAPort->SetIOS(IOS);      \
 	CBMAPort->Build();
 
 #define TEST_CBMAPort2(overridejson)\
 	auto CBMAPort2 = std::make_unique<CBMasterPort>("TestMaster", conffilename2, overridejson); \
-	CBMAPort2->SetIOS(&IOS);      \
+	CBMAPort2->SetIOS(IOS);      \
 	CBMAPort2->Build();
 
 
 #define TEST_CBOSPort(overridejson)      \
 	auto CBOSPort = std::make_unique<CBOutstationPort>("TestOutStation", conffilename1, overridejson);   \
-	CBOSPort->SetIOS(&IOS);      \
+	CBOSPort->SetIOS(IOS);      \
 	CBOSPort->Build();
 
 #define TEST_CBOSPort2(overridejson)     \
 	auto CBOSPort2 = std::make_unique<CBOutstationPort>("TestOutStation2", conffilename2, overridejson); \
-	CBOSPort2->SetIOS(&IOS);     \
+	CBOSPort2->SetIOS(IOS);     \
 	CBOSPort2->Build();
 
 #ifdef _MSC_VER
@@ -579,7 +588,7 @@ TEST_CASE("Util - ConfigFileLoadTest")
 	STANDARD_TEST_SETUP();
 	auto CBOSPort = std::make_unique<CBOutstationPort>("TestOutStation", "CBAutoGenConfig.conf", Json::nullValue);
 
-	CBOSPort->SetIOS(&IOS);
+	CBOSPort->SetIOS(IOS);
 	CBOSPort->Build();
 
 	STANDARD_TEST_TEARDOWN();
@@ -843,11 +852,11 @@ TEST_CASE("Station - ScanRequest F0")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 2);
 
 	// Check the command is formatted correctly
 	std::string DesiredResult = "0937ffaa" // Echoed block plus data 1B
-	                            "a8080020" // Data 2A and 2B
+	                            "54080030" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
 	                            "00080006"
@@ -891,7 +900,7 @@ TEST_CASE("Station - ScanRequest F0")
 		SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0));
 	}
 
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	// MCA,MCB,MCC Set to starting values
 	SendBinaryEvent(CBOSPort, 12, true);
@@ -904,13 +913,13 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = "09355516" // Echoed block plus data 1B
-	                "8808000c" // Data 2A and 2B
+	                "44080026" // Data 2A and 2B
 	                "400a00b6"
 	                "402882b8"
 	                "405a032c"
 	                "40780030"
 	                "55580013";
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
@@ -939,13 +948,13 @@ TEST_CASE("Station - ScanRequest F0")
 	// It becomes 0x780 Ch1 = 0 S1 =1, Ch2=1,S2 =1,Ch3=1,S3 =1
 	// Finally 0x800	ch1=1,ch2=0,ch3=0
 	DesiredResult = "09355516" // Echoed block plus data 1B
-	                "78080000" // Data 2A and 2B
+	                "bc080004" // Data 2A and 2B
 	                "400a00b6"
 	                "402882b8"
 	                "405a032c"
 	                "40780030"
 	                "55580013";
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -961,13 +970,13 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = "09355516" // Echoed block plus data 1B
-	                "80080022" // Data 2A and 2B
+	                "40080014" // Data 2A and 2B
 	                "400a00b6"
 	                "402882b8"
 	                "405a032c"
 	                "40780030"
 	                "55580013";
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -990,8 +999,8 @@ TEST_CASE("Station - SOERequest F10")
 
 	// Request SOE Data
 	uint8_t station = 9;
-	uint8_t group = 5;
-	CBBlockData commandblock(station, group, FUNC_SEND_NEW_SOE, 0, true);
+
+	CBBlockData commandblock(station, 0, FUNC_SEND_NEW_SOE, 0, true);
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
 
@@ -1010,11 +1019,11 @@ TEST_CASE("Station - SOERequest F10")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // But need to let IOS run as we are using an async queue..
 
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	// Check that we got nothing back ? No Events yet?
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a9500005"); // Echoed block plus
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a9000039"); // Echoed block plus
 
 
 	// Call the Event functions to put some SOE data into the queue ODC Binaries 0 to 12 will capture SOE data.
@@ -1030,10 +1039,10 @@ TEST_CASE("Station - SOERequest F10")
 	SendBinaryEvent(CBOSPort, 0, true, QualityFlags::ONLINE, time++);
 	SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
 
-	WaitIOS(IOS, 2);
+	WaitIOS(*IOS, 2);
 
 	// Check that the SOE Queue contains what we expect it to:
-	bool SOEdataavailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable(group);
+	bool SOEdataavailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable();
 	REQUIRE( SOEdataavailable); // Uses a strand queue with wait for result...
 
 	// Send the SOE Scan command again.
@@ -1041,37 +1050,36 @@ TEST_CASE("Station - SOERequest F10")
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	WaitIOS(IOS, 2);
+	WaitIOS(*IOS, 2);
 
 	// Now we should get back the SOE queued events.
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
-
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a903011892a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
 
 	// Now send the SOE resend command and make sure we get the same result.
-	commandblock = CBBlockData(station, group, FUNC_REPEAT_SOE, 0, true);
+	commandblock = CBBlockData(station, 0, FUNC_REPEAT_SOE, 0, true);
 
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a903011892a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
 
 	// Check if the lastmessagebit is set, if so request the remaining events - we happen to know it it is, so ask for them.
-	commandblock = CBBlockData(station, group, FUNC_SEND_NEW_SOE, 0, true);
+	commandblock = CBBlockData(station, 0, FUNC_SEND_NEW_SOE, 0, true);
 
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a953012492a8c9a653080020004e023c0008c005");
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) ==   "a903011892a8c9a653080020004e023c0008988490080307");
 
 	CBOSPort->Disable();
 
@@ -1298,7 +1306,7 @@ TEST_CASE("Master - Scan Request F0")
 	CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);
 	CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
 
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	// We check the command, but it does not go anywhere, we inject the expected response below.
 	const std::string DesiredResult = "09300025";
@@ -1321,7 +1329,7 @@ TEST_CASE("Master - Scan Request F0")
 	// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
 	CBMAPort->InjectSimulatedTCPMessage(write_buffer);
 
-	WaitIOS(IOS, 5);
+	WaitIOS(*IOS, 5);
 
 	// To check the result, see if the points in the master point list have been changed to the correct values.
 	bool hasbeenset;
@@ -1356,7 +1364,7 @@ TEST_CASE("Master - Scan Request F0")
 
 	// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 	// Need to give ASIO time to process them?
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	for (size_t ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
@@ -1435,7 +1443,7 @@ TEST_CASE("Master - SOE Request F10")
 		uint8_t Group = 5;
 		CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
 
-		WaitIOS(IOS, 2);
+		WaitIOS(*IOS, 2);
 
 		// Check that the command was formatted correctly.
 		const std::string DesiredResult = "a9500005";
@@ -1444,12 +1452,12 @@ TEST_CASE("Master - SOE Request F10")
 		// Add some junk to the front to test the TCP Framing code. Then send an almost complete message (which will be dumped), then send the actual message.
 		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("024670")+
 		                              BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a0200089884")+
-		                              BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
+		                              BuildBinaryStringFromASCIIHexString("a903011892a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
 
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(IOS,3);
+		WaitIOS(*IOS,3);
 
 		// We should now have data available...
 		// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
@@ -1467,14 +1475,14 @@ TEST_CASE("Master - SOE Request F10")
 		      SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
 		*/
 
-		bool DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable(Group);
+		bool DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable();
 		REQUIRE(DataAvailable); // Uses a strand queue with wait for result...
 
 		// Get the list of time tagged events, and check...
 		// There are 16 events in the original conversation, but only 12 fit in the 31 payload locations. Would normally send another command to get the rest of the events.
 		// The last record flag bit in the last record is not set, indicating more messages.
 
-		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList(Group);
+		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
 		REQUIRE(PointList.size() == 0x0C);
 
 		REQUIRE(PointList[0x0].GetIndex() == 0);
@@ -1520,7 +1528,7 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 
 		CBMAPort[StationAddress].reset( new CBMasterPort("Station Master "+std::to_string(StationAddress), conffilename1, MAportoverride));
 
-		CBMAPort[StationAddress]->SetIOS(&IOS);
+		CBMAPort[StationAddress]->SetIOS(IOS);
 		CBMAPort[StationAddress]->Build();
 
 		CBMAPort[StationAddress]->Enable();
@@ -1552,7 +1560,7 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 		// We need to have 16 Masters Defined and send the command on the appropriate Master..
 		CBMAPort[Station]->SendFn10SOEScanCommand(Group, nullptr);
 
-		WaitIOS(IOS, 2);
+		WaitIOS(*IOS, 2);
 
 		// Just ignore the command sent by the Master - need to send it so it is expecting a response.
 
@@ -1560,7 +1568,7 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 		MAoutput << CommandResponse;
 		CBMAPort[Station]->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(IOS, 2);
+		WaitIOS(*IOS, 2);
 
 		// We can just look at the logging output to see if we got any framing errors or other unexpected issues.
 		// We could create a config file for each station that had every group/point in the SOE stream configured so that we could then process them through to
@@ -1587,7 +1595,7 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 	CBOSPort->Enable();
 	CBMAPort->Enable();
 
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
@@ -1600,7 +1608,7 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 	CBMAPort->SendFn9TimeUpdate(pStatusCallback);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(IOS, 4);
+	WaitIOS(*IOS, 4);
 
 	REQUIRE(res == CommandStatus::SUCCESS);
 
@@ -1637,7 +1645,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort2->Enable();
 
 	// Allow everything to get setup.
-	WaitIOS(IOS, 2);
+	WaitIOS(*IOS, 2);
 
 	// So to do this test, we are going to send an Event into the Master which will require it to send a POM command to the outstation.
 	// We should then have an Event triggered on the outstation caused by the POM. We need to capture this to check that it was the correct POM Event.
@@ -1663,7 +1671,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort->Event(event, "TestHarness", pStatusCallback);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(IOS, 4);
+	WaitIOS(*IOS, 4);
 
 	REQUIRE(res == CommandStatus::SUCCESS);
 
@@ -1687,7 +1695,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort2->Event(event2, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(IOS, 3);
+	WaitIOS(*IOS, 3);
 
 	REQUIRE(res2 == CommandStatus::SUCCESS);
 
@@ -1706,7 +1714,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort->Event(event3, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(IOS, 3);
+	WaitIOS(*IOS, 3);
 
 	REQUIRE(res2 == CommandStatus::SUCCESS);
 
@@ -1737,7 +1745,7 @@ TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master an
 	CBMAPort->Enable();
 
 	// Allow everything to get setup.
-	WaitIOS(IOS, 2);
+	WaitIOS(*IOS, 2);
 
 	std::string Response = "Not Set";
 	CBMAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
@@ -1746,7 +1754,7 @@ TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master an
 	CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);
 	CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
 
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 
 	// We check the command, but it does not go anywhere, we would normally (in testing) inject the expected response below.
 	const std::string DesiredResult = "09300025";
@@ -1757,7 +1765,7 @@ TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master an
 
 	// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 	// Need to give ASIO time to process them
-	WaitIOS(IOS, 10);
+	WaitIOS(*IOS, 10);
 
 	// To check the result, the quality of the points will be set to comms_lost
 	/*
@@ -1841,7 +1849,7 @@ TEST_CASE("RTU - Binary Scan TO CB311 ON 172.21.136.80:5001 CB 0x20")
 
       CBMAPort->Enable();
       // actual time tagged data a00b22611900 10008fff9000 5b567bee8600 100000009a00 000210b4a600 64240000e100
-      Wait(IOS, 2); // Allow the connection to come up.
+      Wait(*IOS, 2); // Allow the connection to come up.
       //CBMAPort->EnablePolling(false);	// If the connection comes up after this command, it will enable polling!!!
 
 
@@ -1855,12 +1863,12 @@ TEST_CASE("RTU - Binary Scan TO CB311 ON 172.21.136.80:5001 CB 0x20")
 
       // Read the current analog state.
 //	CBMAPort->DoPoll(2);
-      Wait(IOS, 2);
+      Wait(*IOS, 2);
 
       // Do a time set command
       CBMAPort->DoPoll(4);
 
-      Wait(IOS, 2);
+      Wait(*IOS, 2);
 
       // Send a POM command by injecting an ODC event
       CommandStatus res = CommandStatus::NOT_AUTHORIZED;
@@ -1882,7 +1890,7 @@ TEST_CASE("RTU - Binary Scan TO CB311 ON 172.21.136.80:5001 CB 0x20")
       // Send an ODC DigitalOutput command to the Master.
 //	CBMAPort->Event(event, "TestHarness", pStatusCallback);
 
-      Wait(IOS, 2);
+      Wait(*IOS, 2);
 
 
       STOP_IOS();
@@ -1928,7 +1936,7 @@ TEST_CASE("RTU - GetScanned CB311 ON 172.21.8.111:5001 CB 0x20")
       CBOSPort->Enable();
 
 
-      Wait(IOS, 2); // We just run for a period and see if we get connected and scanned.
+      Wait(*IOS, 2); // We just run for a period and see if we get connected and scanned.
 
       STOP_IOS();
       STANDARD_TEST_TEARDOWN();

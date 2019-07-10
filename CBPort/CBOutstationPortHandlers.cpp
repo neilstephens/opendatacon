@@ -240,28 +240,24 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				}
 				else if ((pt.GetPointType() == MCA) || (pt.GetPointType() == MCB) || (pt.GetPointType() == MCC))
 				{
-				// These types are supposed to occupy 2 consecutive 12 bit blocks, channels 1 to 12.
-				// We can handle them as two separately defined blocks (but consecutive) channels 1 to 6.
-				//TODO: Will check for two consecutive MC blocks in the conf file loading??
+				// Up to 6 x 2 bit blocks, channels 1 to 6.
 				// MCA - The change bit is set when the input changes from open to closed (1-->0). The status bit is 0 when the contact is CLOSED.
 				// MCB - The change bit is set when the input changes from closed to open (0-->1). The status bit is 0 when the contact is OPEN.
 				// MCC - The change bit is set when the input has gone through more than one change of state. The status bit is 0 when the contact is OPEN.
 				// We dont think about open or closed, we will just be getting a value of 1 or 0 from the real outstation, or a simulator. So we dont do inversion or anything like that.
 				// We do need to track the types of transision, and the point has a special field to do this.
 
-				      // Set our bit and MC changed flag in the output. Data bit is first then change bit So bit 11 = data, bit 10 = change in 12 bit word - 11 highest bit.
+				      // Set our bit and MC changed flag in the output. Data bit is first then change bit So bit 11 = changea, bit 10 = data in 12 bit word - 11 highest bit.
 				      uint8_t result;
 				      bool MCS;
 				      pt.GetBinaryAndMCFlagWithFlagReset(result, MCS);
 				      if (result == 1)
 				      {
-				                                                                  // ch 1 to 6
-				            Payload |= ShiftLeftResult16Bits(1, 11 - (ch-1) * 2); // CH 1 to 6!!
+				            Payload |= ShiftLeftResult16Bits(1, 10 - (ch - 1) * 2); // ch 1 to 6
 					}
 				      if (MCS)
 				      {
-				// ch 1 to 6
-				            Payload |= ShiftLeftResult16Bits(1, 11 - ((ch-1) * 2 - 1));
+				            Payload |= ShiftLeftResult16Bits(1, 11 - (ch - 1) * 2); // ch 1 to 6
 					}
 				}
 				else
@@ -529,14 +525,15 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 		{
 			// This is the only code that has extra Master to RTU blocks
 			uint8_t DataIndex = Header.GetB() >> 8;
-			//uint16_t Data = Header.GetB() & 0x1FF;
-			if (DataIndex == 0)
+			uint8_t NumberOfBlocksInMessage = (Header.GetB() >> 4) & 0x00f;
+			uint8_t Fn9Data = (Header.GetB() & 0x00f);
+			if ((DataIndex == 0) && (NumberOfBlocksInMessage == 2) && (CompleteCBMessage.size() == 2))
 			{
 				ProcessUpdateTimeRequest(CompleteCBMessage);
 			}
 			else
 			{
-				LOGERROR("Received Illegal MASTER_SUB_FUNC_SEND_TIME_UPDATES DataIndex value - {} ", DataIndex);
+				LOGERROR("Received Illegal MASTER_SUB_FUNC_SEND_TIME_UPDATES Command - Index {}, Blocks {}, Message Size {} ", DataIndex, NumberOfBlocksInMessage, CompleteCBMessage.size());
 			}
 		}
 		break;
@@ -590,12 +587,11 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 	LOGDEBUG("OS - SendSOEResponse - FnA - Code {}", Header.GetGroup());
 
 	CBMessage_t ResponseCBMessage;
-	uint8_t SOEGroup = Header.GetGroup();
 
-	if (!MyPointConf->PointTable.TimeTaggedDataAvailable(SOEGroup))
+	if (!MyPointConf->PointTable.TimeTaggedDataAvailable())
 	{
 		// Format empty response
-		// TODO: Not clear in the spec what an empty SOE response is, however I am going to assume that a full echo of the inbound packet is the empty response.
+		// Not clear in the spec what an empty SOE response is, however I am going to assume that a full echo of the inbound packet is the empty response.
 		// The Master can work out that there should be another block for a real response, also Group 0, Point 0 is unlikely to be used?
 		ResponseCBMessage.push_back(Header);
 	}
@@ -605,7 +601,7 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 		uint32_t UsedBits = 0;
 		std::array<bool, MaxSOEBits> BitArray;
 
-		BuildPackedEventBitArray(Header.GetGroup(), BitArray, UsedBits);
+		BuildPackedEventBitArray(BitArray, UsedBits);
 
 		// Using an vector of uint16_t to store up to 31 x 12 bit blocks of data.
 		// Store the data in the bottom 12 bits of the 16 bit word.
@@ -675,7 +671,7 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 		PayloadWords.push_back(payload);
 	}
 }
-void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits)
+void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits)
 {
 	// The SOE data is built into a stream of bits (that may not be block aligned) and then it is stuffed 12 bits at a time into the available Payload locations - up to 31.
 	// First section format:
@@ -692,7 +688,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 	{
 		// There must be at least one SOE available to get to here.
 
-		if (!MyPointConf->PointTable.PeekNextTaggedEventPoint(SOEGroup,CurrentPoint)) // Don't pop until we are happy...
+		if (!MyPointConf->PointTable.PeekNextTaggedEventPoint(CurrentPoint)) // Don't pop until we are happy...
 		{
 			// We have run out of data, so break out of the loop, but first we need to set the last event flag in the previous packet--this is the last bit in the vector
 			// SET LAST EVENT FLAG
@@ -723,7 +719,7 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 		if (PackedEvent.AddDataToBitArray(BitArray,UsedBits))
 		{
 			// Pop the event so we can move onto the next one
-			MyPointConf->PointTable.PopNextTaggedEventPoint(SOEGroup);
+			MyPointConf->PointTable.PopNextTaggedEventPoint();
 		}
 		else
 		{
@@ -736,12 +732,29 @@ void CBOutstationPort::BuildPackedEventBitArray(uint8_t SOEGroup, std::array<boo
 	for (uint32_t i = UsedBits; i < MaxSOEBits; i++)
 		BitArray[i] = false;
 }
-// We do not update the time, just send back our current time - assume UTC time of day in milliseconds since 1970 (CBTime()).
-void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t & CompleteCBMessage)
+// We do not update the time, just echo message - assume UTC time of day in milliseconds since 1970 (CBTime()).
+void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 {
 	CBMessage_t ResponseCBMessage;
 
-	BuildUpdateTimeMessage(CompleteCBMessage[0].GetStationAddress(), CBNow(), ResponseCBMessage);
+	uint8_t hh, hhin;
+	uint8_t mm, mmin;
+	uint8_t ss, ssin;
+	uint16_t msec, msecin;
+
+	to_hhmmssmmfromCBtime(CBNow(), hh, mm, ss, msec);
+
+	hhin = (CompleteCBMessage[0].GetB() & 0x07) << 2 | ((CompleteCBMessage[1].GetA() >> 10) & 0x03);
+	mmin = ((CompleteCBMessage[1].GetA() >> 4) & 0x03F);
+	ssin = (CompleteCBMessage[1].GetA() & 0x0F) << 2 | ((CompleteCBMessage[1].GetB() >> 10) & 0x03);
+	msecin = (CompleteCBMessage[1].GetB() & 0x03FF);
+
+	LOGDEBUG("Received Time Set Command {}:{}:{}:{}, Current Time {}:{}:{}:{}", hhin, mmin, ssin, msecin, hh, mm, ss, msec);
+
+	// We just echo back what we were sent. This is what is expected.
+	ResponseCBMessage.push_back(CompleteCBMessage[0]);
+	ResponseCBMessage.push_back(CompleteCBMessage[1]);
+
 
 	SendCBMessage(ResponseCBMessage);
 }

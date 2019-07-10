@@ -19,6 +19,7 @@
  */
 /**
  */
+#include <opendatacon/asio.h>
 #include <thread>
 #include <catch.hpp>
 
@@ -28,150 +29,167 @@
 
 TEST_CASE(SUITE("TCP link"))
 {
-	asio::io_service ios;
-	auto work = std::make_unique<asio::io_service::work>(ios);
-	std::thread t([&](){ios.run();});
-
-	//make an outstation port
-	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
-	REQUIRE(newOutstation);
-	delptr delOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
-	REQUIRE(delOutstation);
-
-	Json::Value Oconf;
-	Oconf["IP"] = "0.0.0.0";
-	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
-	REQUIRE(OPUT);
-
-	//make a master port
-	newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
-	REQUIRE(newMaster);
-	delptr delMaster = GetPortDestroyer("DNP3Port", "DNP3Master");
-	REQUIRE(delMaster);
-
-	Json::Value Mconf;
-	Mconf["ServerType"] = "PERSISTENT";
-	auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
-	REQUIRE(MPUT);
-
-	//get them to build themselves using their configs
-	OPUT->Build();
-	MPUT->Build();
-
-	//turn them on
-	OPUT->SetIOS(&ios);
-	MPUT->SetIOS(&ios);
-	OPUT->Enable();
-	MPUT->Enable();
-
-	//TODO: write a better way to wait for GetStatus
-	unsigned int count = 0;
-	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
+	//Load the library
+	InitLibaryLoading();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		count++;
+		auto ios = std::make_shared<asio::io_service>();
+		auto work = std::make_unique<asio::io_service::work>(*ios);
+		std::thread t([&](){ios->run();});
+
+		//make an outstation port
+		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
+		REQUIRE(newOutstation);
+		delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
+		REQUIRE(delOutstation);
+
+		Json::Value Oconf;
+		Oconf["IP"] = "0.0.0.0";
+		auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
+		REQUIRE(OPUT);
+
+		//make a master port
+		newptr newMaster = GetPortCreator(portlib, "DNP3Master");
+		REQUIRE(newMaster);
+		delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
+		REQUIRE(delMaster);
+
+		Json::Value Mconf;
+		Mconf["ServerType"] = "PERSISTENT";
+		auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+		REQUIRE(MPUT);
+
+		//get them to build themselves using their configs
+		OPUT->Build();
+		MPUT->Build();
+
+		//turn them on
+		OPUT->SetIOS(ios);
+		MPUT->SetIOS(ios);
+		OPUT->Enable();
+		MPUT->Enable();
+
+		//TODO: write a better way to wait for GetStatus
+		unsigned int count = 0;
+		while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 20000)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			count++;
+		}
+
+		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
+		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
+
+		//turn outstation off
+		OPUT->Disable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+		count = 0;
+		while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			count++;
+		}
+
+		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
+		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
+
+		work.reset();
+		t.join();
+		ios.reset();
 	}
-
-	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
-	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
-
-	//turn outstation off
-	OPUT->Disable();
-
-	count = 0;
-	while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 5000)
-	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		count++;
-	}
-
-	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
-	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
-
-	work.reset();
-	t.join();
-	MPUT.reset();
-	OPUT.reset();
+	//Unload the library
+	UnLoadModule(portlib);
 }
+
 
 TEST_CASE(SUITE("Serial link"))
 {
-	if (!system(NULL))
-	{
-		WARN("Can't get system shell to execute socat (for virtual serial ports) - skipping test");
-		return;
-	}
-	if(system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &"))
+	if(system("socat -h > /dev/null"))
 	{
 		WARN("Failed to execute socat (for virtual serial ports) - skipping test");
-		return;
 	}
-
-	asio::io_service ios;
-	auto work = std::make_unique<asio::io_service::work>(ios);
-	std::thread t([&](){ios.run();});
-
-	//make an outstation port
-	newptr newOutstation = GetPortCreator("DNP3Port", "DNP3Outstation");
-	REQUIRE(newOutstation);
-	delptr delOutstation = GetPortDestroyer("DNP3Port", "DNP3Outstation");
-	REQUIRE(delOutstation);
-
-	Json::Value Oconf;
-	Oconf["SerialDevice"] = "SerialEndpoint1";
-	auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
-	REQUIRE(OPUT);
-
-	//make a master port
-	newptr newMaster = GetPortCreator("DNP3Port", "DNP3Master");
-	REQUIRE(newMaster);
-	delptr delMaster = GetPortDestroyer("DNP3Port", "DNP3Master");
-	REQUIRE(delMaster);
-
-	Json::Value Mconf;
-	Mconf["ServerType"] = "PERSISTENT";
-	Mconf["SerialDevice"] = "SerialEndpoint2";
-	Mconf["LinkKeepAlivems"] = 200;
-	Mconf["LinkTimeoutms"] = 100;
-	auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
-	REQUIRE(MPUT);
-
-	//get them to build themselves using their configs
-	OPUT->Build();
-	MPUT->Build();
-
-	//turn them on
-	OPUT->SetIOS(&ios);
-	MPUT->SetIOS(&ios);
-	OPUT->Enable();
-	MPUT->Enable();
-
-	//TODO: write a better way to wait for GetStatus
-	unsigned int count = 0;
-	while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 5000)
+	else
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		count++;
+		//Load the library
+		InitLibaryLoading();
+		auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+		REQUIRE(portlib);
+		{
+			auto ios = std::make_shared<asio::io_service>();
+			auto work = std::make_unique<asio::io_service::work>(*ios);
+			std::thread t([&](){ios->run();});
+
+			system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &");
+
+			//make an outstation port
+			newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
+			REQUIRE(newOutstation);
+			delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
+			REQUIRE(delOutstation);
+
+			Json::Value Oconf;
+			Oconf["SerialDevice"] = "SerialEndpoint1";
+			auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
+			REQUIRE(OPUT);
+
+			//make a master port
+			newptr newMaster = GetPortCreator(portlib, "DNP3Master");
+			REQUIRE(newMaster);
+			delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
+			REQUIRE(delMaster);
+
+			Json::Value Mconf;
+			Mconf["ServerType"] = "PERSISTENT";
+			Mconf["SerialDevice"] = "SerialEndpoint2";
+			Mconf["LinkKeepAlivems"] = 200;
+			Mconf["LinkTimeoutms"] = 100;
+			auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+			REQUIRE(MPUT);
+
+			//get them to build themselves using their configs
+			OPUT->Build();
+			MPUT->Build();
+
+			//turn them on
+			OPUT->SetIOS(ios);
+			MPUT->SetIOS(ios);
+			OPUT->Enable();
+			MPUT->Enable();
+
+			//TODO: write a better way to wait for GetStatus
+			unsigned int count = 0;
+			while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 20000)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				count++;
+			}
+
+			REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
+			REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
+
+			//turn outstation off
+			OPUT->Disable();
+
+			count = 0;
+			while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				count++;
+			}
+
+			REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
+			REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
+
+			system("killall socat");
+
+			work.reset();
+			t.join();
+			ios.reset();
+		}
+		//Unload the library
+		UnLoadModule(portlib);
 	}
-
-	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
-	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
-
-	//turn outstation off
-	OPUT->Disable();
-
-	count = 0;
-	while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 5000)
-	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		count++;
-	}
-
-	REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
-	REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
-
-	work.reset();
-	t.join();
-	MPUT.reset();
-	OPUT.reset();
 }
+

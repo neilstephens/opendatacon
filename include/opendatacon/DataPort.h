@@ -45,10 +45,11 @@ public:
 	{}
 	~DataPort() override {}
 
-	void Enable() override =0;
-	void Disable() override =0;
+	virtual void Enable() override =0;
+	virtual void Disable() override =0;
 	virtual void Build()=0;
-	void ProcessElements(const Json::Value& JSONRoot) override =0;
+	virtual void ProcessElements(const Json::Value& JSONRoot) override =0;
+	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
 	void Event(ConnectState state, const std::string& SenderName) final
 	{

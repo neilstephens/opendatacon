@@ -41,8 +41,8 @@
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
-	IOS(std::thread::hardware_concurrency()),
-	ios_working(new asio::io_service::work(IOS)),
+	pIOS(std::make_unique<asio::io_service>(std::thread::hardware_concurrency()+1)),
+	ios_working(std::make_unique<asio::io_service::work>(*pIOS)),
 	shutting_down(false),
 	shut_down(false),
 	pTCPostream(nullptr)
@@ -51,7 +51,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	InitLibaryLoading();
 
 	//Version
-	this->AddCommand("version", [this](const ParamCollection &params) //"Print version information"
+	this->AddCommand("version", [](const ParamCollection &params) //"Print version information"
 		{
 			Json::Value result;
 			result["version"] = ODC_VERSION_STRING;
@@ -89,9 +89,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		interface.second->AddResponder("Plugins", Interfaces);
 	}
 	for(auto& port : DataPorts)
-		port.second->SetIOS(&IOS);
+		port.second->SetIOS(pIOS);
 	for(auto& conn : DataConnectors)
-		conn.second->SetIOS(&IOS);
+		conn.second->SetIOS(pIOS);
 }
 
 DataConcentrator::~DataConcentrator()
@@ -102,6 +102,25 @@ DataConcentrator::~DataConcentrator()
 	for (auto& thread : threads)
 		thread.detach();
 	threads.clear();
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+	{
+		//if there's a tcp sink, we need to destroy it
+		//	because ostream will be destroyed
+		if(LogSinksMap.count("tcp"))
+		{
+			//This doesn't look thread safe
+			//	but we're on the main thread at this point
+			//	the only other threads should be spdlog threads
+			//	so if we flush first this should be safe...
+			log->flush();
+			auto tcp_sink_pos = std::find(log->sinks().begin(),log->sinks().end(),LogSinksMap["tcp"]);
+			if(tcp_sink_pos != log->sinks().end())
+			{
+				log->sinks().erase(tcp_sink_pos);
+			}
+		}
+	}
 }
 
 void DataConcentrator::SetLogLevel(std::stringstream& ss)
@@ -119,7 +138,7 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 				{
 					std::cout << "Invalid log level. Options are:" << std::endl;
 					for(uint8_t i = 0; i < 7; i++)
-						std::cout << spdlog::level::level_names[i] << std::endl;
+						std::cout << spdlog::level::level_string_views[i].data() << std::endl;
 					return;
 				}
 				else
@@ -136,7 +155,7 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 		std::cout << sink.first << std::endl;
 	std::cout << std::endl << "Levels:" << std::endl;
 	for(uint8_t i = 0; i < 7; i++)
-		std::cout << spdlog::level::level_names[i] << std::endl;
+		std::cout << spdlog::level::level_string_views[i].data() << std::endl;
 }
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
@@ -194,7 +213,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				auto category = SyslogJSON.isMember("MsgCategory") ? SyslogJSON["MsgCategory"].asString() : "-";
 
 				auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink>(
-					IOS,host,port,1,local_host,app,category);
+					*pIOS,host,port,1,local_host,app,category);
 				syslog_sink->set_level(log_level);
 				LogSinksMap["syslog"] = syslog_sink;
 				LogSinksVec.push_back(syslog_sink);
@@ -220,7 +239,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
 					temp_logger->error("Invalid TCPLog TCPClientServer setting '{}'. Choose CLIENT or SERVER. Defaulting to SERVER.", TCPLogJSON["TCPClientServer"].asString());
 
-				TCPbuf.Init(&IOS,isServer,TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString());
+				TCPbuf.Init(pIOS,isServer,TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString());
 				pTCPostream = std::make_unique<std::ostream>(&TCPbuf);
 			}
 		}
@@ -248,8 +267,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
 	log->critical("This is opendatacon version '{}'", ODC_VERSION_STRING);
-	log->critical("Log level set to {}", spdlog::level::level_names[log_level]);
-	log->critical("Console level set to {}", spdlog::level::level_names[console_level]);
+	log->critical("Log level set to {}", spdlog::level::level_string_views[log_level]);
+	log->critical("Console level set to {}", spdlog::level::level_string_views[console_level]);
 	log->info("Loading configuration... ");
 
 	//Configure the user interface
@@ -542,7 +561,7 @@ void DataConcentrator::Run()
 	if (auto log = odc::spdlog_get("opendatacon"))
 		log->info("Starting worker threads...");
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		threads.emplace_back([&]() {IOS.run(); });
+		threads.emplace_back([&]() {pIOS->run(); });
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling DataConnectors...");
@@ -550,16 +569,16 @@ void DataConcentrator::Run()
 	{
 		if(Name_n_Conn.second->InitState == InitState_t::ENABLED)
 		{
-			IOS.post([&]()
+			pIOS->post([&]()
 				{
 					Name_n_Conn.second->Enable();
 				});
 		}
 		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
 		{
-			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(IOS);
+			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
-			pTimer->async_wait([pTimer,this,&Name_n_Conn](asio::error_code err_code)
+			pTimer->async_wait([pTimer,&Name_n_Conn](asio::error_code err_code)
 				{
 					//FIXME: check err_code?
 					Name_n_Conn.second->Enable();
@@ -572,16 +591,16 @@ void DataConcentrator::Run()
 	{
 		if(Name_n_Port.second->InitState == InitState_t::ENABLED)
 		{
-			IOS.post([&]()
+			pIOS->post([&]()
 				{
 					Name_n_Port.second->Enable();
 				});
 		}
 		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
 		{
-			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(IOS);
+			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
-			pTimer->async_wait([pTimer,this,&Name_n_Port](asio::error_code err_code)
+			pTimer->async_wait([pTimer,&Name_n_Port](asio::error_code err_code)
 				{
 					//FIXME: check err_code?
 					Name_n_Port.second->Enable();
@@ -592,7 +611,7 @@ void DataConcentrator::Run()
 		log->info("Enabling Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
-		IOS.post([&]()
+		pIOS->post([&]()
 			{
 				Name_n_UI.second->Enable();
 			});
@@ -601,7 +620,7 @@ void DataConcentrator::Run()
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Up and running.");
 
-	IOS.run();
+	pIOS->run();
 	for(auto& thread : threads)
 		thread.join();
 	threads.clear();
@@ -628,7 +647,10 @@ void DataConcentrator::Shutdown()
 		{
 			shutting_down = true;
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Disabling Interfaces...");
+			{
+			      log->critical("Shutting Down...");
+			      log->info("Disabling Interfaces...");
+			}
 			for(auto& Name_n_UI : Interfaces)
 			{
 			      Name_n_UI.second->Disable();
@@ -645,11 +667,18 @@ void DataConcentrator::Shutdown()
 			{
 			      Name_n_Port.second->Disable();
 			}
+
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->flush();
+			{
+			      log->info("Finishing asynchronous tasks...");
+			      log->flush(); //for the benefit of tcp logger shutdown
+			}
+
+			//shutdown tcp logger so it doesn't keep the io_service going
 			TCPbuf.DeInit();
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Finishing asynchronous tasks...");
+			if(LogSinksMap.count("tcp"))
+				LogSinksMap["tcp"]->set_level(spdlog::level::off);
+
 			ios_working.reset();
 		});
 }

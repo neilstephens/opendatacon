@@ -102,9 +102,11 @@ public:
 	void SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback);
 	void SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
 
+	// Testing use only
+	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 private:
 
-	std::unique_ptr<asio::io_service::strand> MasterCommandStrand;
+	std::unique_ptr<asio::io_context::strand> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
 
 	std::mutex DigitalCommandSequenceNumberMutex;
@@ -123,6 +125,7 @@ private:
 	bool ConvertSOEMessageToBitArray(const CBMessage_t & CompleteCBMessage, std::array<bool, MaxSOEBits>& BitArray, uint32_t & UsedBits);
 	void ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits>& BitArray, uint32_t &UsedBits, std::function<void(SOEEventFormat&soeevt)> fn);
 	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);
+	bool CheckResponseMessageMatch(const CBMessage_t& ReceivedMsg, const CBMessage_t& SentMsg);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 

@@ -28,7 +28,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	"../include"
 	"${SPDLOG_HOME}/include"
 	"${ASIO_HOME}/include")
-target_link_libraries(${PROJECT_NAME} JSON)
+target_link_libraries(${PROJECT_NAME} JSON ${LIBCXX} ${RT})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_LIBS} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)

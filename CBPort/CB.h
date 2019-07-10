@@ -18,7 +18,7 @@
 *	limitations under the License.
 */
 /*
-* CB.h
+*   CB.h
 *
 *  Created on: 10/09/2018
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
@@ -71,7 +71,7 @@
 	if (auto log = odc::spdlog_get("CBPort")) \
 		log->info(__VA_ARGS__);
 
-void CommandLineLoggingSetup();
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
@@ -215,30 +215,27 @@ public:
 		MomentaryChangeStatus(src.MomentaryChangeStatus),
 		PointType(src.PointType),
 		SOEPoint(src.SOEPoint),
-		SOEIndex(src.SOEIndex),
-		SOEGroup(src.SOEGroup)
+		SOEIndex(src.SOEIndex)
 		// Any additions here make sure the operator= method is updated as well!!!
 	{}
 	// Needed for the templated Queue
 	CBBinaryPoint& operator=(const CBBinaryPoint& src);
 
-	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype, bool soepoint, uint8_t soeindex, uint8_t soegroup):
+	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype, bool soepoint, uint8_t soeindex):
 		CBPoint(index, group, channel, static_cast<CBTime>(0), payloadlocation),
 		PointType(pointtype),
 		SOEPoint(soepoint),
-		SOEIndex(soeindex),
-		SOEGroup(soegroup & 0x0f) // Limit to 0-15
+		SOEIndex(soeindex)
 	{}
 
 	CBBinaryPoint(uint32_t index, uint8_t group, uint8_t channel, PayloadLocationType payloadlocation, BinaryPointType pointtype,
-		uint8_t binval, bool changed, CBTime changedtime, bool soepoint, uint8_t soeindex, uint8_t soegroup):
+		uint8_t binval, bool changed, CBTime changedtime, bool soepoint, uint8_t soeindex):
 		CBPoint(index, group, channel, changedtime, payloadlocation),
 		Binary(binval),
 		Changed(changed),
 		PointType(pointtype),
 		SOEPoint(soepoint),
-		SOEIndex(soeindex),
-		SOEGroup(soegroup & 0x0f) // Limit to 0-15
+		SOEIndex(soeindex)
 	{}
 
 
@@ -255,7 +252,6 @@ public:
 	void GetBinaryAndMCFlagWithFlagReset(uint8_t &result, bool &MCS) { std::unique_lock<std::mutex> lck(PointMutex); result = Binary; MCS = MomentaryChangeStatus; Changed = false; MomentaryChangeStatus = false; }
 	bool GetIsSOE() const { return SOEPoint;  }
 	uint8_t GetSOEIndex() const { return SOEIndex; }
-	uint8_t GetSOEGroup() const { return SOEGroup & 0x0f; }
 
 	void SetBinary(const uint8_t &b, const CBTime &ctime)
 	{
@@ -280,7 +276,6 @@ protected:
 	BinaryPointType PointType = DIG;
 	bool SOEPoint = false;
 	uint8_t SOEIndex = 0; // From 0 to 120 (7 bits), per group. The Bottom 3 bits of the group
-	uint8_t SOEGroup = 0; // 0 to 15
 };
 
 class CBAnalogCounterPoint: public CBPoint

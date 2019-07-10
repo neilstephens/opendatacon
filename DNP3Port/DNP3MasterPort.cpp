@@ -41,7 +41,10 @@ DNP3MasterPort::~DNP3MasterPort()
 	if(IntegrityScan)
 		IntegrityScan.reset();
 	if(pMaster)
+	{
+		pMaster->Shutdown();
 		pMaster.reset();
+	}
 	if(pChannel)
 		pChannel.reset();
 }
@@ -59,7 +62,7 @@ void DNP3MasterPort::Enable()
 		return;
 	}
 	if(!pCommsRideThroughTimer)
-		pCommsRideThroughTimer = std::make_unique<CommsRideThroughTimer>(*pIOS,pConf->pPointConf->CommsPointRideThroughTimems,[this](){SetCommsGood();},[this](){SetCommsFailed();});
+		pCommsRideThroughTimer = std::make_shared<CommsRideThroughTimer>(*pIOS,pConf->pPointConf->CommsPointRideThroughTimems,[this](){SetCommsGood();},[this](){SetCommsFailed();});
 
 	enabled = true;
 
@@ -75,10 +78,12 @@ void DNP3MasterPort::Disable()
 
 	if(stack_enabled)
 	{
-		PortDown();
-
 		stack_enabled = false;
-		pMaster->Disable();
+		pMaster->Disable(); //this will trigger comms down
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: DNP3 stack disabled", Name);
+		//don't delay setting comms down if we're disabled intentionally
+		pCommsRideThroughTimer->FastForward();
 	}
 }
 

@@ -23,6 +23,7 @@
 
 int main( int argc, char* argv[] )
 {
+	InitLibaryLoading();
 	std::string libname = "CBPort";
 	std::string libfilename = GetLibFileName(libname);
 	auto pluginlib = LoadModule(libfilename.c_str());

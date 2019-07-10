@@ -17,27 +17,18 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
-/**
+/*
+ * IOHandlerTests.cpp
+ *
+ *  Created on: 2018-06-17
+ *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 #include <catch.hpp>
 #include <opendatacon/IOTypes.h>
-#include "../opendatacon/NullPort.h"
+#include "TestPorts.h"
 #include "../opendatacon/DataConnector.h"
-#include "../opendatacon/DataConnector.cpp"
 
 using namespace odc;
-
-class PublicPublishNullPort: public NullPort
-{
-public:
-	PublicPublishNullPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
-		NullPort(aName, aConfFilename, aConfOverrides)
-	{}
-	void PublicPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}))
-	{
-		PublishEvent(event,pStatusCallback);
-	}
-};
 
 #define SUITE(name) "IOHandlerTestSuite - " name
 
@@ -50,10 +41,10 @@ TEST_CASE(SUITE("StatusCallback"))
 	 * verify the status callback
 	 */
 
-	asio::io_service ios;
-	asio::io_service::work work(ios);
+	auto ios = std::make_shared<asio::io_service>();
+	auto work = std::make_shared<asio::io_service::work>(*ios);
 
-	PublicPublishNullPort Source("Null1","",Json::Value::nullSingleton());
+	PublicPublishPort Source("Null1","",Json::Value::nullSingleton());
 	NullPort Null2("Null2","",Json::Value::nullSingleton());
 	NullPort Null3("Null3","",Json::Value::nullSingleton());
 	NullPort Null4("Null4","",Json::Value::nullSingleton());
@@ -95,12 +86,12 @@ TEST_CASE(SUITE("StatusCallback"))
 	DataConnector Conn4("Conn4","",Conn4Conf);
 	DataConnector* Conns[4] = {&Conn1,&Conn2,&Conn3,&Conn4};
 
-	Source.SetIOS(&ios);
+	Source.SetIOS(ios);
 	for(auto& p : Sinks)
-		p->SetIOS(&ios);
+		p->SetIOS(ios);
 	for(auto& c :Conns)
 	{
-		c->SetIOS(&ios);
+		c->SetIOS(ios);
 		c->Enable();
 	}
 
@@ -126,7 +117,7 @@ TEST_CASE(SUITE("StatusCallback"))
 		Source.PublicPublishEvent(event,StatusCallback);
 		while(!executed)
 		{
-			ios.run_one();
+			ios->run_one();
 		}
 		if(mask == 0x00)
 			REQUIRE(cb_status == CommandStatus::BLOCKED);

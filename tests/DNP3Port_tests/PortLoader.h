@@ -23,7 +23,6 @@
 #ifndef PORTLOADER_H
 #define PORTLOADER_H
 
-#pragma once
 #include <opendatacon/DataPort.h>
 #include <opendatacon/Platform.h>
 
@@ -32,8 +31,8 @@ using namespace odc;
 typedef DataPort* (*newptr)(const std::string& Name, const std::string& File, const Json::Value& Overrides);
 typedef void (*delptr)(DataPort*);
 
-void* GetPortFunc(const std::string& libname, const std::string& objname, bool destroy = false);
-newptr GetPortCreator(const std::string& libname, const std::string& objname);
-delptr GetPortDestroyer(const std::string& libname, const std::string& objname);
+symbol_ptr GetPortFunc(module_ptr pluginlib, const std::string& objname, bool destroy = false);
+newptr GetPortCreator(module_ptr pluginlib, const std::string& objname);
+delptr GetPortDestroyer(module_ptr pluginlib, const std::string& objname);
 
 #endif
