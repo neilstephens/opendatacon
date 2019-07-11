@@ -10,3 +10,6 @@
 [submodule "submodules/dnp3"]
 	path = submodules/dnp3
 	url = https://github.com/dnp3/opendnp3.git
+[submodule "submodules/libkafka-asio"]
+	path = submodules/libkafka-asio
+	url = https://github.com/ScottEllisNovatex/libkafka-asio
