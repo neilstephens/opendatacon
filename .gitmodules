@@ -16,3 +16,6 @@
 [submodule "submodules/zlib"]
 	path = submodules/zlib
 	url = https://github.com/madler/zlib.git
+[submodule "submodules/snappy"]
+	path = submodules/snappy
+	url = https://github.com/google/snappy.git
