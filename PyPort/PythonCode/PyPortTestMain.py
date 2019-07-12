@@ -5,7 +5,7 @@
 # To support this we need an odc module to import (that simulates what odc offers), and a main function to
 # create the Python class (like SimPortClass) and then call the methods with suitable test arguments
 import odc
-import PyPortSim
+#import PyPortSim
 import PyPortCBSim
 import requests
 import json

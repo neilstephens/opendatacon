@@ -13,3 +13,9 @@
 [submodule "submodules/libkafka-asio"]
 	path = submodules/libkafka-asio
 	url = https://github.com/ScottEllisNovatex/libkafka-asio
+[submodule "submodules/zlib"]
+	path = submodules/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "submodules/snappy"]
+	path = submodules/snappy
+	url = https://github.com/google/snappy.git

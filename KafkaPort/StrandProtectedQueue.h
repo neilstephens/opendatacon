@@ -46,11 +46,11 @@ public:
 	typedef std::function<void (std::vector<T> Events)> ProcessAllEventsCallbackFn;
 	typedef std::shared_ptr <ProcessAllEventsCallbackFn> ProcessAllEventsCallbackFnPtr;
 
-	StrandProtectedQueue(asio::io_service& _io_service, unsigned int _size, std::function<void()> _queuehandler)
+	StrandProtectedQueue(asio::io_context& _io_context, unsigned int _size, std::function<void()> _queuehandler)
 		: size(_size),
-		io_service(_io_service),
+		queue_io_context(_io_context),
 		queuehandler(_queuehandler),
-		internal_queue_strand(_io_service)
+		internal_queue_strand(_io_context)
 	{}
 
 	void async_push(const T &_value)
@@ -72,7 +72,7 @@ public:
 				if (queuehandler && !ProcessingEvents)
 				{
 				      ProcessingEvents = true; // Protected by strand
-				      io_service.post([&]()
+				      queue_io_context.post([&]()
 						{
 							queuehandler();
 						});
@@ -122,8 +122,8 @@ public:
 private:
 	std::queue<T> fifo;
 	unsigned int size;
-	asio::io_service& io_service;
-	asio::io_service::strand internal_queue_strand;
+	asio::io_context& queue_io_context;
+	asio::io_context::strand internal_queue_strand;
 	std::function<void()> queuehandler = nullptr;
 	bool ProcessingEvents = false;
 };

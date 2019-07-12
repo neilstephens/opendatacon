@@ -34,6 +34,7 @@
 #include <cassert>
 #include <thread>
 #include <chrono>
+#include <memory>
 
 #define COMPILE_TESTS
 
@@ -100,13 +101,14 @@ void WriteConfFilesToCurrentWorkingDirectory()
 {
 	std::ofstream ofs(conffilename1);
 	if (!ofs)
-		LOGWARN("Could not open conffile1 for writing");
-
+	{
+		INFO("Could not open conffile1 for writing");
+	}
 	ofs << conffile1;
 	ofs.close();
 }
 
-void SetupLoggers()
+void SetupLoggers(spdlog::level::level_enum log_level)
 {
 	// So create the log sink first - can be more than one and add to a vector.
 	#if defined(NONVSTESTING)
@@ -118,13 +120,13 @@ void SetupLoggers()
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
-	auto pLibLogger = std::make_shared<spdlog::logger>("KafkaPort", begin(sinks),end(sinks));
-	pLibLogger->set_level(spdlog::level::trace);
+	auto pLibLogger = std::make_shared<spdlog::logger>("PyPort", begin(sinks), end(sinks));
+	pLibLogger->set_level(log_level);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
-	pODCLogger->set_level(spdlog::level::trace);
+	pODCLogger->set_level(log_level);
 	odc::spdlog_register_logger(pODCLogger);
 
 }
@@ -149,7 +151,7 @@ void WriteStartLoggingMessage(std::string TestName)
 void TestSetup(std::string TestName, bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
-	SetupLoggers();
+	SetupLoggers(spdlog::level::level_enum::trace);
 	#endif
 	WriteStartLoggingMessage(TestName);
 
@@ -158,16 +160,16 @@ void TestSetup(std::string TestName, bool writeconffiles = true)
 }
 void TestTearDown(void)
 {
-	LOGINFO("Test Finished");
+	INFO("Test Finished");
 	#ifndef NONVSTESTING
 
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 	#endif
 }
 // Used for command line test setup
-void CommandLineLoggingSetup()
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
 {
-	SetupLoggers();
+	SetupLoggers(log_level);
 	WriteStartLoggingMessage("All Tests");
 }
 void CommandLineLoggingCleanup()
@@ -175,35 +177,35 @@ void CommandLineLoggingCleanup()
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
 
-void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
+void RunIOSForXSeconds(std::shared_ptr<asio::io_context> IOS, unsigned int seconds)
 {
-	// We don\92t have to consider the timer going out of scope in this use case.
-	Timer_t timer(IOS);
+	// We dont have to consider the timer going out of scope in this use case.
+	Timer_t timer(*IOS);
 	timer.expires_from_now(std::chrono::seconds(seconds));
-	timer.async_wait([&IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
+	timer.async_wait([IOS](asio::error_code) // [=] all autos by copy, [&] all autos by ref
 		{
-			// If there was no more work, the asio::io_service will exit from the IOS.run() below.
+			// If there was no more work, the asio::io_context will exit from the IOS.run() below.
 			// However something is keeping it running, so use the stop command to force the issue.
-			IOS.stop();
+			IOS->stop();
 		});
 
-	IOS.run(); // Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
+	IOS->run(); // Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
 	// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
 	// If the IOS runs out of work, it must be reset before being run again.
 }
-std::thread *StartIOSThread(asio::io_service &IOS)
+std::thread* StartIOSThread(std::shared_ptr<asio::io_context> IOS)
 {
-	return new std::thread([&] { IOS.run(); });
+	return new std::thread([&] { IOS->run(); });
 }
-void StopIOSThread(asio::io_service &IOS, std::thread *runthread)
+void StopIOSThread(std::shared_ptr<asio::io_context> IOS, std::thread* runthread)
 {
-	IOS.stop();        // This does not block. The next line will! If we have multiple threads, have to join all of them.
+	IOS->stop();       // This does not block. The next line will! If we have multiple threads, have to join all of them.
 	runthread->join(); // Wait for it to exit
 	delete runthread;
 }
-void WaitIOS(asio::io_service &IOS, int seconds)
+void WaitIOS(std::shared_ptr<asio::io_context>IOS, int seconds)
 {
-	Timer_t timer(IOS);
+	Timer_t timer(*IOS);
 	timer.expires_from_now(std::chrono::seconds(seconds));
 	timer.wait();
 }
@@ -212,7 +214,7 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	asio::io_service IOS(4); // Max 4 threads
+	auto IOS = std::make_shared<asio::io_context>(4); // Max 4 threads
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
@@ -223,7 +225,7 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
-	auto work = std::make_shared<asio::io_service::work>(IOS); /* To keep run - running!*/\
+	auto work = std::make_shared<asio::io_context::work>(*IOS); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
 	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(IOS);
@@ -234,8 +236,8 @@ void WaitIOS(asio::io_service &IOS, int seconds)
 	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
 
 #define TEST_KafkaPort(overridejson)\
-	auto KPort = std::make_unique<KafkaPort>("TestPort", conffilename1, overridejson); \
-	KPort->SetIOS(&IOS);      \
+	auto KPort = std::make_shared<KafkaPort>("TestPort", conffilename1, overridejson); \
+	KPort->SetIOS(IOS);      \
 	KPort->Build();
 
 
@@ -271,7 +273,7 @@ TEST_CASE("Util - ConfigFileLoadTest")
 
 namespace EventTests
 {
-void SendBinaryEvent(std::unique_ptr<KafkaPort> &KPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE)
+void SendBinaryEvent(std::shared_ptr<KafkaPort> &KPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE)
 {
 	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual);
 	event->SetPayload<EventType::Binary>(std::move(val));
@@ -314,7 +316,7 @@ TEST_CASE("ODC - BinaryEvent")
 	STANDARD_TEST_TEARDOWN();
 }
 
-void SendAnalogEvent(std::unique_ptr<KafkaPort> &KPort, int ODCIndex,double val, QualityFlags qual = QualityFlags::ONLINE)
+void SendAnalogEvent(std::shared_ptr<KafkaPort> &KPort, int ODCIndex,double val, QualityFlags qual = QualityFlags::ONLINE)
 {
 	auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, "Testing", qual);
 	event->SetPayload<EventType::Analog>(std::move(val));

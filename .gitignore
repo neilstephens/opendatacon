@@ -36,3 +36,5 @@ PyPort/server/uncrustify_here.pl
 PyPort/server/uncrustify.cfg
 PyPort/PythonCode/__pycache__/PyPortCBSim.cpython-37.pyc
 
+.vs/
+out/
