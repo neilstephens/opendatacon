@@ -154,7 +154,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
 	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DASIO_DYN_LINK")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DASIO_SEPARATE_COMPILATION")
 
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 	# using Intel C++
@@ -199,7 +199,7 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 	endif()
 	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASIO_DYN_LINK")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASIO_SEPARATE_COMPILATION")
 
 	option(STATIC_LIBSTDC++ "Link libstdc++ statically" ON)
 	if(STATIC_LIBSTDC++)
