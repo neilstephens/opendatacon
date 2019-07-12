@@ -110,7 +110,7 @@ typedef void* module_ptr;
 inline void* LoadModule(const std::string& a)
 {
 	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
-	return dlopen(a.c_str(), RTLD_LAZY);
+	return dlopen(a.c_str(), RTLD_LAZY|RTLD_LOCAL);
 }
 inline int UnLoadModule(void* handle)
 {
