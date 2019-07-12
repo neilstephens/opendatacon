@@ -34,8 +34,8 @@ TEST_CASE(SUITE("TCP link"))
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		auto ios = std::make_shared<asio::io_service>();
-		auto work = std::make_unique<asio::io_service::work>(*ios);
+		auto ios = std::make_shared<odc::asio_service>();
+		auto work = ios->make_work();
 		std::thread t([&](){ios->run();});
 
 		//make an outstation port
@@ -117,8 +117,8 @@ TEST_CASE(SUITE("Serial link"))
 		auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 		REQUIRE(portlib);
 		{
-			auto ios = std::make_shared<asio::io_service>();
-			auto work = std::make_unique<asio::io_service::work>(*ios);
+			auto ios = std::make_shared<odc::asio_service>();
+			auto work = ios->make_work();
 			std::thread t([&](){ios->run();});
 
 			system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &");

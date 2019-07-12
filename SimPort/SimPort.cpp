@@ -85,7 +85,7 @@ void SimPort::PortUp()
 			auto interval = pConf->AnalogUpdateIntervalms[index];
 			auto std_dev = pConf->AnalogStdDevs.count(index) ? pConf->AnalogStdDevs[index] : (mean ? (pConf->default_std_dev_factor*mean) : 20);
 
-			pTimer_t pTimer(new Timer_t(*pIOS));
+			pTimer_t pTimer = pIOS->make_steady_timer();
 			Timers.push_back(pTimer);
 
 			//use a heap pointer as a random seed
@@ -113,7 +113,7 @@ void SimPort::PortUp()
 		{
 			auto interval = pConf->BinaryUpdateIntervalms[index];
 
-			pTimer_t pTimer(new Timer_t(*pIOS));
+			pTimer_t pTimer = pIOS->make_steady_timer();
 			Timers.push_back(pTimer);
 
 			//use a heap pointer as a random seed
@@ -182,7 +182,7 @@ void SimPort::SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t
 
 void SimPort::Build()
 {
-	pEnableDisableSync = std::make_unique<asio::io_service::strand>(*pIOS);
+	pEnableDisableSync = pIOS->make_strand();
 }
 
 void SimPort::ProcessElements(const Json::Value& JSONRoot)
@@ -472,7 +472,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 							case ControlCode::TRIP_PULSE_ON:
 							{
 								PublishEvent(fb.on_value);
-								pTimer_t pTimer(new Timer_t(*pIOS));
+								pTimer_t pTimer = pIOS->make_steady_timer();
 								pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
 								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
 									{

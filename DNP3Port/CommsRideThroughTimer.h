@@ -27,7 +27,7 @@
 class CommsRideThroughTimer: public std::enable_shared_from_this<CommsRideThroughTimer>
 {
 public:
-	CommsRideThroughTimer(asio::io_service& ios,
+	CommsRideThroughTimer(odc::asio_service& ios,
 		const uint32_t aTimeoutms,
 		std::function<void()>&& aCommsGoodCB,
 		std::function<void()>&& aCommsBadCB);
@@ -38,9 +38,9 @@ public:
 
 private:
 	uint32_t Timeoutms;
-	asio::io_service::strand TimerAccessStrand;
+	std::unique_ptr<asio::io_service::strand> pTimerAccessStrand;
 	bool RideThroughInProgress;
-	asio::basic_waitable_timer<std::chrono::steady_clock> aCommsRideThroughTimer;
+	std::unique_ptr<asio::steady_timer> pCommsRideThroughTimer;
 	const std::function<void()> CommsGoodCB;
 	const std::function<void()> CommsBadCB;
 };

@@ -42,10 +42,10 @@ class StrandProtectedQueue
 {
 public:
 
-	StrandProtectedQueue(asio::io_service& _io_service, unsigned int _size)
+	StrandProtectedQueue(odc::asio_service& _io_service, unsigned int _size)
 		: size(_size),
 		io_service(_io_service),
-		internal_queue_strand(_io_service)
+		internal_queue_strand(_io_service.make_strand())
 	{}
 /*	StrandProtectedQueue()
             : io_service(nullptr),
@@ -62,7 +62,7 @@ public:
 		bool success = false;
 
 		// Dispatch will execute now - if we can, otherwise results in a post
-		internal_queue_strand.dispatch([&]()
+		internal_queue_strand->dispatch([&]()
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
 				if (!fifo.empty())
@@ -101,7 +101,7 @@ public:
 		auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
 		// Dispatch will execute now - if we can, otherwise results in a post
-		internal_queue_strand.dispatch([&]()
+		internal_queue_strand->dispatch([&]()
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
 				if (!fifo.empty())
@@ -134,7 +134,7 @@ public:
 		std::promise<bool> promise;
 		auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
-		internal_queue_strand.dispatch([&]() // Dispatch will execute now - if we can, otherwise results in a post
+		internal_queue_strand->dispatch([&]() // Dispatch will execute now - if we can, otherwise results in a post
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
 				promise.set_value(fifo.empty());
@@ -160,7 +160,7 @@ public:
 		auto future = voidpromise.get_future();
 
 		// Dispatch will execute now - if we can, otherwise results in a post
-		internal_queue_strand.dispatch([&]()
+		internal_queue_strand->dispatch([&]()
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
 				// Only push if we have space
@@ -187,7 +187,7 @@ public:
 	void async_push(const T &_value)
 	{
 		// Dispatch will execute now - if we can, otherwise results in a post. Need to copy the _value into the Lambda as it will go out of scope when async_push exits
-		internal_queue_strand.dispatch([&,_value]()
+		internal_queue_strand->dispatch([&,_value]()
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
 				// Only push if we have space
@@ -201,8 +201,8 @@ public:
 private:
 	std::queue<T> fifo;
 	unsigned int size;
-	asio::io_service& io_service;
-	asio::io_service::strand internal_queue_strand;
+	odc::asio_service& io_service;
+	std::unique_ptr<asio::io_service::strand> internal_queue_strand;
 };
 
 #endif

@@ -31,7 +31,7 @@
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const bool isoutstation, asio::io_service & IOS)
+void CBPointTableAccess::Build(const bool isoutstation, odc::asio_service &IOS)
 {
 	IsOutstation = isoutstation;
 	// Setup TimeTagged event queue.

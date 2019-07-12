@@ -304,14 +304,14 @@ std::string BuildHexStringFromASCIIHexString(const std::string &as)
 	}
 	return res;
 }
-void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
+void RunIOSForXSeconds(odc::asio_service &IOS, unsigned int seconds)
 {
 	// We don\92t have to consider the timer going out of scope in this use case.
-	Timer_t timer(IOS);
-	timer.expires_from_now(std::chrono::seconds(seconds));
-	timer.async_wait([&IOS](asio::error_code err_code) // [=] all autos by copy, [&] all autos by ref
+	auto timer = IOS.make_steady_timer();
+	timer->expires_from_now(std::chrono::seconds(seconds));
+	timer->async_wait([&IOS](asio::error_code err_code) // [=] all autos by copy, [&] all autos by ref
 		{
-			// If there was no more work, the asio::io_service will exit from the IOS.run() below.
+			// If there was no more work, the odc::asio_service will exit from the IOS.run() below.
 			// However something is keeping it running, so use the stop command to force the issue.
 			IOS.stop();
 		});
@@ -320,32 +320,32 @@ void RunIOSForXSeconds(asio::io_service &IOS, unsigned int seconds)
 	// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
 	// If the IOS runs out of work, it must be reset before being run again.
 }
-std::thread *StartIOSThread(asio::io_service &IOS)
+std::thread *StartIOSThread(odc::asio_service &IOS)
 {
 	return new std::thread([&] { IOS.run(); });
 }
-void StopIOSThread(asio::io_service &IOS, std::thread *runthread)
+void StopIOSThread(odc::asio_service &IOS, std::thread *runthread)
 {
 	IOS.stop();        // This does not block. The next line will! If we have multiple threads, have to join all of them.
 	runthread->join(); // Wait for it to exit
 	delete runthread;
 }
-void Wait(asio::io_service &IOS, int seconds)
+void Wait(odc::asio_service &IOS, int seconds)
 {
-	Timer_t timer(IOS);
-	timer.expires_from_now(std::chrono::seconds(seconds));
-	timer.wait();
+	auto timer = IOS.make_steady_timer();
+	timer->expires_from_now(std::chrono::seconds(seconds));
+	timer->wait();
 }
 
 
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup();\
-	auto IOS = std::make_shared<asio::io_service>(4); // Max 4 threads
+	auto IOS = std::make_shared<odc::asio_service>(4); // Max 4 threads
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
-	auto work = std::make_shared<asio::io_service::work>(*IOS); /* To keep run - running!*/\
+	auto work = IOS->make_work(); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
 	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS);
@@ -422,9 +422,9 @@ TEST_CASE("Utility - MD3CRCTest")
 
 TEST_CASE("Utility - Strand Queue")
 {
-	asio::io_service IOS(2);
+	odc::asio_service IOS(2);
 
-	asio::io_service::work work(IOS); // Just to keep things from stopping..
+	auto work = IOS.make_work(); // Just to keep things from stopping..
 
 	std::thread t1([&]() {IOS.run(); });
 	std::thread t2([&]() {IOS.run(); });
@@ -459,7 +459,7 @@ TEST_CASE("Utility - Strand Queue")
 	success = foo.sync_front(res);
 	REQUIRE(!success);
 
-	IOS.stop(); // Or work.reset(), if work was a pointer.!
+	work.reset();
 
 	t1.join(); // Wait for thread to end
 	t2.join();

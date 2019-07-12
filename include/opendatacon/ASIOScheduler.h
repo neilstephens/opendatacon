@@ -87,9 +87,9 @@ public:
 class ASIOScheduler
 {
 public:
-	ASIOScheduler(asio::io_service& io_service):
+	ASIOScheduler(odc::asio_service& io_service):
 		running(false),
-		mTimer(io_service)
+		pTimer(io_service.make_steady_timer())
 	{}
 
 	~ASIOScheduler()
@@ -104,8 +104,8 @@ public:
 		running = true;
 		ASIOSchedulerTask* task = Schedule.top();
 
-		mTimer.expires_at(task->nextpoll);
-		mTimer.async_wait(
+		pTimer->expires_at(task->nextpoll);
+		pTimer->async_wait(
 			[this](asio::error_code err_code)
 			{
 				if(err_code != asio::error::operation_aborted)
@@ -126,7 +126,7 @@ public:
 	void Stop()
 	{
 		running = false;
-		mTimer.cancel();
+		pTimer->cancel();
 	}
 
 	void Clear()
@@ -153,7 +153,7 @@ private:
 	typedef std::priority_queue<ASIOSchedulerTask*, std::vector<ASIOSchedulerTask*>, ASIOSchedulerTaskComparison> ScheduleType;
 	ScheduleType Schedule;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	Timer_t mTimer;
+	std::unique_ptr<Timer_t> pTimer;
 };
 
 #endif /* defined(__opendatacon__ASIOScheduler__) */
