@@ -59,10 +59,12 @@ before_build:
 - ps: >-
         If ($env:Platform -Match "64") {
             $env:GEN_PLAT=" Win64"
+            $env:PythonPath="C:/Python37-x64/"
         } Else {
             $env:GEN_PLAT=""
+            $env:PythonPath="C:/Python37/"
         }
-- cmd: 'cmake . -B%cmake_builddir% -G"Visual Studio 15 2017%GEN_PLAT%" -DFULL=ON -DCMAKE_CONFIGURATION_TYPES=%configuration% -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits%'
+- cmd: 'cmake . -B%cmake_builddir% -G"Visual Studio 15 2017%GEN_PLAT%" -DFULL=ON -DCMAKE_CONFIGURATION_TYPES=%configuration% -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits% -DPython3_ROOT_DIR=%PythonPath%'
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
@@ -74,6 +76,7 @@ test_script:
 - cmd: '%cmake_builddir%\%configuration%\DNP3Port_tests.exe -d yes'
 - cmd: '%cmake_builddir%\%configuration%\MD3Port_tests.exe -d yes'
 - cmd: '%cmake_builddir%\%configuration%\CBPort_tests.exe error -d yes'
+#- cmd: '%cmake_builddir%\%configuration%\PyPort_tests.exe error -d yes'
 
 artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
