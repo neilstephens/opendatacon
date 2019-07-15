@@ -60,10 +60,10 @@ ConnectionTokenType::~ConnectionTokenType()
 }
 
 MD3Connection::MD3Connection
-	(std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
-	bool aisServer,                           //Whether to act as a server or client
-	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                 //Port to connect to if client, or listen on if server
+	(std::shared_ptr<odc::asio_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                            //Whether to act as a server or client
+	const std::string& aEndPoint,              //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                  //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
@@ -85,10 +85,10 @@ MD3Connection::MD3Connection
 // Static Method
 ConnectionTokenType MD3Connection::AddConnection
 (
-	std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
-	bool aisServer,                          //Whether to act as a server or client
-	const std::string& aEndPoint,            //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                //Port to connect to if client, or listen on if server
+	std::shared_ptr<odc::asio_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                           //Whether to act as a server or client
+	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                 //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms
 )
 {

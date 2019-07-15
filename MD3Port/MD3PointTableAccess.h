@@ -45,7 +45,7 @@ class MD3PointTableAccess
 {
 public:
 	MD3PointTableAccess();
-	void Build(const bool isoutstation, const bool newdigitalcommands, asio::io_context & IOS);
+	void Build(const bool isoutstation, const bool newdigitalcommands, odc::asio_service & IOS);
 
 	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const uint32_t & pollgroup);
 	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const uint32_t & pollgroup);

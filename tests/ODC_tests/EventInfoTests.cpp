@@ -70,8 +70,8 @@ TEST_CASE(SUITE("PayloadTransport"))
 	//send them over a DataConnector
 	//check they arrived intact
 
-	auto ios = std::make_shared<asio::io_service>();
-	auto work = std::make_shared<asio::io_service::work>(*ios);
+	auto ios = std::make_shared<odc::asio_service>();
+	auto work = ios->make_work();
 
 	PublicPublishPort Source("Source","",Json::Value::nullSingleton());
 	PayloadCheckPort Sink("Sink","",Json::Value::nullSingleton());

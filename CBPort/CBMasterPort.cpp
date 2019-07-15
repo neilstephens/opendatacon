@@ -104,8 +104,8 @@ void CBMasterPort::Build()
 	if (PollScheduler == nullptr)
 		PollScheduler.reset(new ASIOScheduler(*pIOS));
 
-	MasterCommandProtectedData.CurrentCommandTimeoutTimer.reset(new Timer_t(*pIOS));
-	MasterCommandStrand.reset(new asio::io_context::strand(*pIOS));
+	MasterCommandProtectedData.CurrentCommandTimeoutTimer = pIOS->make_steady_timer();
+	MasterCommandStrand = pIOS->make_strand();
 
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(IsOutStation, *pIOS);
@@ -408,7 +408,7 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 					break;
 				case FUNC_MASTER_STATION_REQUEST:
 					LOGDEBUG("Received Master Station Request Response - Sub Code {}, Station {}", GetSubFunctionCodeName(Header.GetGroup()), std::to_string(Header.GetStationAddress()));
-					success = CheckResponseMessageMatch(CompleteCBMessage, MasterCommandProtectedData.CurrentCommand.first);
+					success = true; // We dont need to check what we get back...
 					break;
 				case FUNC_SEND_NEW_SOE:
 					success = ProcessSOEScanRequestReturn(Header, CompleteCBMessage); // Fn - 10
@@ -686,7 +686,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 			      CBTime changedtime = GetDayStartTime(Now) + soeevnt.GetTotalMsecTime();
 
 			      QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
-			      LOGDEBUG("Published Binary SOE Event -  SOE Index {} ODC Index {} Bit Value {} Time {}", SOEIndex, ODCIndex, bitvalue, to_timestringfromCBtime(changedtime));
+			      LOGDEBUG("Published Binary SOE Event -  SOE Index {} ODC Index {} Bit Value {}", SOEIndex, ODCIndex, bitvalue);
 			      auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(changedtime));
 			      event->SetPayload<EventType::Binary>(bitvalue == 1);
 			      PublishEvent(event);
@@ -797,45 +797,6 @@ bool CBMasterPort::CheckResponseHeaderMatch(const CBBlockData& ReceivedHeader, c
 	}
 
 	LOGDEBUG("Returned Header match Sent Header");
-	return true;
-}
-
-bool CBMasterPort::CheckResponseMessageMatch(const CBMessage_t& ReceivedMsg, const CBMessage_t& SentMsg)
-{
-	if (ReceivedMsg[0].GetGroup() != SentMsg[0].GetGroup())
-	{
-		LOGDEBUG("Returned Messager mismatch on Group {}, {}", ReceivedMsg[0].GetGroup(), SentMsg[0].GetGroup());
-		return false;
-	}
-	if (ReceivedMsg[0].GetB() != SentMsg[0].GetB())
-	{
-		LOGDEBUG("Returned Header mismatch on B Data {}, {}", ReceivedMsg[0].GetB(), SentMsg[0].GetB());
-		return false;
-	}
-	if (ReceivedMsg.size() != SentMsg.size())
-	{
-		LOGDEBUG("Returned Message mismatch on message lentgh {}, {}", ReceivedMsg.size(), SentMsg.size());
-		return false;
-	}
-	if (ReceivedMsg.size() > 1)
-	{
-		if (ReceivedMsg[1].GetA() != SentMsg[1].GetA())
-		{
-			LOGDEBUG("Returned Header mismatch on second packet A Data {}, {}", ReceivedMsg[1].GetA(), SentMsg[1].GetA());
-			return false;
-		}
-		if (ReceivedMsg[1].GetB() != SentMsg[1].GetB())
-		{
-			LOGDEBUG("Returned Header mismatch on second packet B Data {}, {}", ReceivedMsg[1].GetB(), SentMsg[1].GetB());
-			return false;
-		}
-	}
-	else if (ReceivedMsg.size() > 2)
-	{
-		LOGDEBUG("Returned Message too large.. {}, {}", ReceivedMsg.size(), SentMsg.size());
-		return false;
-	}
-	LOGDEBUG("Returned Message matched Sent Message");
 	return true;
 }
 
@@ -1131,23 +1092,15 @@ void CBMasterPort::WriteObject(const int16_t &command, const uint32_t &index, co
 	if (Channel == 2)
 		FunctionCode = FUNC_SETPOINT_B;
 
-	auto pStatusCallbacklocal = std::make_shared<std::function<void(CommandStatus)>>([&, pStatusCallback, Group](CommandStatus command_stat)
-		{
-			LOGDEBUG("Internal Callback on ANALOG CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
-
-			if (command_stat == CommandStatus::SUCCESS)
-			{
-			// Then queue the execute command
-			      LOGDEBUG("Queue EXECUTE command in response to successful ANALOG CONTROL command");
-			      CBBlockData executeblock = CBBlockData(MyConf->mAddrConf.OutstationAddr, Group, FUNC_EXECUTE_COMMAND, 0, true);
-			      QueueCBCommand(executeblock, pStatusCallback);
-			}
-		});
-
 	CBBlockData commandblock = CBBlockData(MyConf->mAddrConf.OutstationAddr, Group, FunctionCode, BData, true);
-	QueueCBCommand(commandblock, pStatusCallbacklocal);
+	QueueCBCommand(commandblock, nullptr);
 
-	// The execute command is sent if the initial command works - see lambda above
+	// Then queue the execute command - if the previous one does not work, then this one will not either.
+	// Bit of a question about how to  feedback failure.
+	// Only do the callback on the second - EXECUTE - command.
+
+	CBBlockData executeblock = CBBlockData(MyConf->mAddrConf.OutstationAddr, Group, FUNC_EXECUTE_COMMAND, 0, true);
+	QueueCBCommand(executeblock, pStatusCallback);
 }
 
 
@@ -1175,46 +1128,30 @@ void CBMasterPort::SendDigitalControlOnCommand(const uint8_t &StationAddress, co
 	assert((Channel >= 1) && (Channel <= 12));
 	uint16_t BData = numeric_cast<uint16_t>(1 << (12 - Channel));
 
-	auto pStatusCallbacklocal = std::make_shared<std::function<void(CommandStatus)>>([&, pStatusCallback, Group, StationAddress](CommandStatus command_stat)
-		{
-			LOGDEBUG("Internal Callback on CONTROL ON command result : {}", std::to_string(static_cast<int>(command_stat)));
-
-			if (command_stat == CommandStatus::SUCCESS)
-			{
-			// Then queue the execute command
-			      LOGDEBUG("Queue EXECUTE command in response to successful CONTROL ON command");
-			      CBBlockData executeblock = CBBlockData(StationAddress, Group, FUNC_EXECUTE_COMMAND, 0, true);
-			      QueueCBCommand(executeblock, pStatusCallback);
-			}
-		});
-
 	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_CLOSE, BData, true); // Trip is OPEN or OFF
-	QueueCBCommand(commandblock, pStatusCallbacklocal);
+	QueueCBCommand(commandblock, nullptr);
 
-	// The execute command is sent if the initial command works - see lambda above
+	// Then queue the execute command - if the previous one does not work, then this one will not either.
+	// Bit of a question about how to  feedback failure.
+	// Only do the callback on the second - EXECUTE - command.
+
+	CBBlockData executeblock = CBBlockData(StationAddress, Group, FUNC_EXECUTE_COMMAND, 0, true);
+	QueueCBCommand(executeblock, pStatusCallback);
 }
 void CBMasterPort::SendDigitalControlOffCommand(const uint8_t &StationAddress, const uint8_t &Group, const uint16_t &Channel, const SharedStatusCallback_t &pStatusCallback)
 {
 	assert((Channel >= 1) && (Channel <= 12));
 	uint16_t BData = numeric_cast<uint16_t>(1 << (12 - Channel));
 
-	auto pStatusCallbacklocal = std::make_shared<std::function<void(CommandStatus)>>([&, pStatusCallback, Group, StationAddress](CommandStatus command_stat)
-		{
-			LOGDEBUG("Internal Callback on CONTROL OFF command result : {}", std::to_string(static_cast<int>(command_stat)));
-
-			if (command_stat == CommandStatus::SUCCESS)
-			{
-			// Then queue the execute command
-			      LOGDEBUG("Queue EXECUTE command in response to successful CONTROL OFF command");
-			      CBBlockData executeblock = CBBlockData(StationAddress, Group, FUNC_EXECUTE_COMMAND, 0, true);
-			      QueueCBCommand(executeblock, pStatusCallback);
-			}
-		});
-
 	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_TRIP, BData, true); // Trip is OPEN or OFF
-	QueueCBCommand(commandblock, pStatusCallbacklocal);
+	QueueCBCommand(commandblock, nullptr);
 
-	// The execute command is sent if the initial command works - see lambda above
+	// Then queue the execute command - if the previous one does not work, then this one will not either.
+	// Bit of a question about how to  feedback failure.
+	// Only do the callback on the second - EXECUTE - command.
+
+	CBBlockData executeblock = CBBlockData(StationAddress, Group, FUNC_EXECUTE_COMMAND, 0, true);
+	QueueCBCommand(executeblock, pStatusCallback);
 }
 
 

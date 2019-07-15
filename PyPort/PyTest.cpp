@@ -194,44 +194,44 @@ void CommandLineLoggingCleanup()
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
 
-void RunIOSForXSeconds(std::shared_ptr<asio::io_service> IOS, unsigned int seconds)
+void RunIOSForXSeconds(odc::asio_service& IOS, unsigned int seconds)
 {
 	// We dont have to consider the timer going out of scope in this use case.
-	Timer_t timer(*IOS);
-	timer.expires_from_now(std::chrono::seconds(seconds));
-	timer.async_wait([IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
+	auto timer = IOS.make_steady_timer();
+	timer->expires_from_now(std::chrono::seconds(seconds));
+	timer->async_wait([&IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
 		{
 			// If there was no more work, the asio::io_context will exit from the IOS.run() below.
 			// However something is keeping it running, so use the stop command to force the issue.
-			IOS->stop();
+			IOS.stop();
 		});
 
-	IOS->run(); // Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
+	IOS.run(); // Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
 	// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
 	// If the IOS runs out of work, it must be reset before being run again.
 }
-std::thread *StartIOSThread(std::shared_ptr<asio::io_service> IOS)
+std::thread *StartIOSThread(odc::asio_service& IOS)
 {
-	return new std::thread([&] { IOS->run(); });
+	return new std::thread([&] { IOS.run(); });
 }
-void StopIOSThread(std::shared_ptr<asio::io_service> IOS, std::thread *runthread)
+void StopIOSThread(odc::asio_service& IOS, std::thread *runthread)
 {
-	IOS->stop();       // This does not block. The next line will! If we have multiple threads, have to join all of them.
+	IOS.stop();        // This does not block. The next line will! If we have multiple threads, have to join all of them.
 	runthread->join(); // Wait for it to exit
 	delete runthread;
 }
-void WaitIOS(std::shared_ptr<asio::io_service>IOS, int seconds)
+void WaitIOS(odc::asio_service& IOS, int seconds)
 {
-	Timer_t timer(*IOS);
-	timer.expires_from_now(std::chrono::seconds(seconds));
-	timer.wait();
+	auto timer = IOS.make_steady_timer();
+	timer->expires_from_now(std::chrono::seconds(seconds));
+	timer->wait();
 }
 
 
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	auto IOS = std::make_shared<asio::io_service>(4); // Max 4 threads
+	auto IOS = std::make_shared<odc::asio_service>(4); // Max 4 threads
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
@@ -242,15 +242,15 @@ void WaitIOS(std::shared_ptr<asio::io_service>IOS, int seconds)
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
-	auto work = std::make_shared<asio::io_context::work>(*IOS); /* To keep run - running!*/\
+	auto work = IOS->make_work(); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(IOS);
+	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS);
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
+	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i]);
 
 #define TEST_PythonPort(overridejson)\
 	auto PythonPort = std::make_shared<PyPort>("TestMaster", conffilename1, overridejson); \
@@ -338,12 +338,12 @@ TEST_CASE("Py.TestsUsingPython")
 
 	START_IOS(4);
 
-	WaitIOS(IOS, 2); // Allow build to run
+	WaitIOS(*IOS, 2); // Allow build to run
 
 	PythonPort->Enable();
 	PythonPort2->Enable();
 
-	WaitIOS(IOS, 1);
+	WaitIOS(*IOS, 1);
 	INFO("SendBinaryAndAnalogEvents")
 	{
 
@@ -360,7 +360,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 
-		WaitIOS(IOS, 1);
+		WaitIOS(*IOS, 1);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 		res = CommandStatus::UNDEFINED;
@@ -371,7 +371,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		WaitIOS(IOS, 1);
+		WaitIOS(*IOS, 1);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 		std::string url("http://testserver/thisport/cb?test=harold");
@@ -385,7 +385,7 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort->RestHandler(url, "", pResponseCallback);
 
 		LOGDEBUG("Response {}", sres);
-		WaitIOS(IOS, 2);
+		WaitIOS(*IOS, 2);
 		REQUIRE(sres == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
 
 		// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.
@@ -401,7 +401,7 @@ TEST_CASE("Py.TestsUsingPython")
 		}
 
 		// Wait - we should see the timer callback triggered.
-		WaitIOS(IOS, 5);
+		WaitIOS(*IOS, 5);
 	}
 
 	INFO("WebServerTest")
@@ -423,7 +423,7 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
 
-		WaitIOS(IOS, 1);
+		WaitIOS(*IOS, 1);
 
 		callresp = "";
 

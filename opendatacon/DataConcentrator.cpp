@@ -41,8 +41,8 @@
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
-	pIOS(std::make_unique<asio::io_service>(std::thread::hardware_concurrency()+1)),
-	ios_working(std::make_unique<asio::io_service::work>(*pIOS)),
+	pIOS(std::make_shared<odc::asio_service>(std::thread::hardware_concurrency()+1)),
+	ios_working(pIOS->make_work()),
 	shutting_down(false),
 	shut_down(false),
 	pTCPostream(nullptr)
@@ -576,7 +576,7 @@ void DataConcentrator::Run()
 		}
 		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
 		{
-			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
+			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
 			pTimer->async_wait([pTimer,&Name_n_Conn](asio::error_code err_code)
 				{
@@ -598,7 +598,7 @@ void DataConcentrator::Run()
 		}
 		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
 		{
-			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
+			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
 			pTimer->async_wait([pTimer,&Name_n_Port](asio::error_code err_code)
 				{

@@ -31,7 +31,7 @@
 MD3PointTableAccess::MD3PointTableAccess()
 {}
 
-void MD3PointTableAccess::Build(const bool isoutstation, const bool newdigitalcommands, asio::io_context& IOS)
+void MD3PointTableAccess::Build(const bool isoutstation, const bool newdigitalcommands, odc::asio_service &IOS)
 {
 	IsOutstation = isoutstation;
 	NewDigitalCommands = newdigitalcommands;

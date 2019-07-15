@@ -56,7 +56,7 @@ ServerTokenType::~ServerTokenType()
 	}
 }
 
-ServerManager::ServerManager(std::shared_ptr<asio::io_service> apIOS, const std::string& aEndPoint, const std::string& aPort):
+ServerManager::ServerManager(odc::asio_service &apIOS, const std::string& aEndPoint, const std::string& aPort):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort)
@@ -70,7 +70,7 @@ ServerManager::ServerManager(std::shared_ptr<asio::io_service> apIOS, const std:
 }
 
 // Static Method
-ServerTokenType ServerManager::AddConnection(std::shared_ptr<asio::io_service> apIOS, const std::string& aEndPoint,     const std::string& aPort)
+ServerTokenType ServerManager::AddConnection(odc::asio_service &apIOS, const std::string& aEndPoint,     const std::string& aPort)
 {
 	std::string ServerID = MakeServerID(aEndPoint, aPort);
 
@@ -116,7 +116,7 @@ ServerManager::~ServerManager()
 
 	if (!pServer) // Could be empty if a connection was never added (opened)
 		return;
-
+	pServer->stop();
 	pServer.reset(); // Release our object - should be done anyway when the shared_ptr is destructed, but just to make sure...
 }
 

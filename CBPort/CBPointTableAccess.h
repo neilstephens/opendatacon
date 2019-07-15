@@ -43,7 +43,7 @@ class CBPointTableAccess
 {
 public:
 	CBPointTableAccess();
-	void Build(const bool isoutstation, asio::io_context & IOS);
+	void Build(const bool isoutstation, odc::asio_service & IOS);
 
 	// The add to point table functions add to both the ODC and MD3 Map.
 	// The Conitel Baker methods require that a

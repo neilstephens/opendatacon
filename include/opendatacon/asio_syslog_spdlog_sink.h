@@ -31,20 +31,20 @@ class asio_syslog_spdlog_sink: public spdlog::sinks::sink
 {
 public:
 	asio_syslog_spdlog_sink(
-		asio::io_service& ios,
+		odc::asio_service& ios,
 		const std::string& dst_host,
 		const std::string& dst_port,
 		const int facility = 1,
 		const std::string& local_host = "-",
 		const std::string& app = "-",
 		const std::string& category = "-"):
-		resolver(ios),
+		resolver(ios.make_udp_resolver()),
 		query(asio::ip::udp::v4(), dst_host, dst_port),
-		endpoint(*resolver.resolve(query)),
-		socket(ios),
+		endpoint(*resolver->resolve(query)),
+		socket(ios.make_udp_socket()),
 		facility_(facility)
 	{
-		socket.open(asio::ip::udp::v4());
+		socket->open(asio::ip::udp::v4());
 		//syslog header - looks like "<8*Facility+Severity>VERSION YYYY-MM-DDThh:mm:ss.sss+/-hh:mm HOSTNAME APP-NAME PROCID MSGID (BOM?)MSG"
 		//use formatter pattern to do everything except <8*Facility+Severity>
 		std::string pattern = "1 %Y-%m-%dT%T.%e%z " + local_host + " " + app + " %P " + category +
@@ -71,7 +71,7 @@ public:
 		formatter_->format(msg, formatted);
 		msg_ss.write(formatted.data(), static_cast<std::streamsize>(formatted.size()));
 
-		socket.send_to(asio::buffer(msg_ss.str().c_str(),msg_ss.str().size()), endpoint);
+		socket->send_to(asio::buffer(msg_ss.str().c_str(),msg_ss.str().size()), endpoint);
 	}
 
 
@@ -80,10 +80,10 @@ public:
 	void set_formatter(std::unique_ptr<spdlog::formatter> sink_formatter) override {}
 
 private:
-	asio::ip::udp::resolver resolver;
+	std::unique_ptr<asio::ip::udp::resolver> resolver;
 	asio::ip::udp::resolver::query query;
 	asio::ip::udp::endpoint endpoint;
-	asio::ip::udp::socket socket;
+	std::unique_ptr<asio::ip::udp::socket> socket;
 	std::array<int, 7> severities;
 	int facility_;
 };

@@ -19,27 +19,27 @@
  */
 #include "CommsRideThroughTimer.h"
 
-CommsRideThroughTimer::CommsRideThroughTimer(asio::io_service &ios,
+CommsRideThroughTimer::CommsRideThroughTimer(odc::asio_service &ios,
 	const uint32_t aTimeoutms,
 	std::function<void()>&& aCommsGoodCB,
 	std::function<void()>&& aCommsBadCB):
 	Timeoutms(aTimeoutms),
-	TimerAccessStrand(ios),
+	pTimerAccessStrand(ios.make_strand()),
 	RideThroughInProgress(false),
-	aCommsRideThroughTimer(ios),
+	pCommsRideThroughTimer(ios.make_steady_timer()),
 	CommsGoodCB(aCommsGoodCB),
 	CommsBadCB(aCommsBadCB)
 {}
 
 CommsRideThroughTimer::~CommsRideThroughTimer()
 {
-	aCommsRideThroughTimer.cancel();
+	pCommsRideThroughTimer->cancel();
 }
 
 void CommsRideThroughTimer::Trigger()
 {
 	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
-	TimerAccessStrand.post([weak_self]()
+	pTimerAccessStrand->post([weak_self]()
 		{
 			auto self = weak_self.lock();
 			if(!self)
@@ -49,8 +49,8 @@ void CommsRideThroughTimer::Trigger()
 				return;
 
 			self->RideThroughInProgress = true;
-			self->aCommsRideThroughTimer.expires_from_now(std::chrono::milliseconds(self->Timeoutms));
-			self->aCommsRideThroughTimer.async_wait(self->TimerAccessStrand.wrap([weak_self](asio::error_code err)
+			self->pCommsRideThroughTimer->expires_from_now(std::chrono::milliseconds(self->Timeoutms));
+			self->pCommsRideThroughTimer->async_wait(self->pTimerAccessStrand->wrap([weak_self](asio::error_code err)
 				{
 					auto self = weak_self.lock();
 					if(!self)
@@ -65,13 +65,13 @@ void CommsRideThroughTimer::Trigger()
 void CommsRideThroughTimer::FastForward()
 {
 	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
-	TimerAccessStrand.post([weak_self]()
+	pTimerAccessStrand->post([weak_self]()
 		{
 			auto self = weak_self.lock();
 			if(!self)
 				return;
 			if(self->RideThroughInProgress)
-				self->aCommsRideThroughTimer.cancel();
+				self->pCommsRideThroughTimer->cancel();
 			self->RideThroughInProgress = false;
 			self->CommsBadCB();
 		});
@@ -80,13 +80,13 @@ void CommsRideThroughTimer::FastForward()
 void CommsRideThroughTimer::Cancel()
 {
 	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
-	TimerAccessStrand.post([weak_self]()
+	pTimerAccessStrand->post([weak_self]()
 		{
 			auto self = weak_self.lock();
 			if(!self)
 				return;
 			if(self->RideThroughInProgress)
-				self->aCommsRideThroughTimer.cancel();
+				self->pCommsRideThroughTimer->cancel();
 			self->RideThroughInProgress = false;
 			self->CommsGoodCB();
 		});

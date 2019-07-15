@@ -25,11 +25,6 @@
  */
 
 #include <opendatacon/util.h>
-
-//compile asio only in libODC
-//ASIO_DYN_LINK lets other modules link to it
-#include <asio/impl/src.hpp>
-
 #include <regex>
 
 namespace odc

@@ -29,7 +29,7 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-//#define NONVSTESTING
+#define NONVSTESTING
 
 #include <cstdint>
 #include <opendatacon/DataPort.h>
@@ -51,7 +51,7 @@
 	if (auto log = odc::spdlog_get("KafkaPort")) \
 		log->info(__VA_ARGS__);
 
-void CommandLineLoggingSetup();
+void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

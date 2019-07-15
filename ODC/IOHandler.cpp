@@ -51,7 +51,7 @@ void IOHandler::Subscribe(IOHandler* pIOHandler, std::string aName)
 	this->Subscribers[aName] = pIOHandler;
 }
 
-void IOHandler::SetIOS(std::shared_ptr<asio::io_service> ios_ptr)
+void IOHandler::SetIOS(std::shared_ptr<odc::asio_service> ios_ptr)
 {
 	pIOS = ios_ptr;
 }
@@ -101,10 +101,10 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 		return pStatusCallback;
 
 	//We must keep the io_service active for the life of the strand/handler we're about to create
-	auto work = std::make_shared<asio::io_service::work>(*pIOS);
+	std::shared_ptr<asio::io_service::work> work = pIOS->make_work();
 	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
 	auto pExecCount = std::make_shared<size_t>(0);
-	auto pCB_sync = std::make_shared<asio::io_service::strand>(*pIOS);
+	std::shared_ptr<asio::io_service::strand> pCB_sync = pIOS->make_strand();
 	return std::make_shared<std::function<void (CommandStatus status)>>
 		       (pCB_sync->wrap(
 		[work,

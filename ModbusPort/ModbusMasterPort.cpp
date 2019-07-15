@@ -44,8 +44,8 @@ void ModbusMasterPort::Enable()
 	if(enabled) return;
 	enabled = true;
 
-	pTCPRetryTimer.reset(new Timer_t(*pIOS));
-	PollScheduler.reset(new ASIOScheduler(*pIOS));
+	pTCPRetryTimer = pIOS->make_steady_timer();
+	PollScheduler = std::make_unique<ASIOScheduler>(*pIOS);
 
 	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 

@@ -103,7 +103,7 @@ void KafkaPort::Build()
 	configuration.socket_timeout = 10000;     //MyConf->mAddrConf.TCPConnectRetryPeriodms
 	configuration.SetBroker(MyConf->mAddrConf.IP, MyConf->mAddrConf.Port);
 
-	KafkaConnection.reset( new libkafka_asio::Connection (*pIOS, configuration));
+//SJE	KafkaConnection.reset( new libkafka_asio::Connection (*pIOS, configuration));
 }
 
 

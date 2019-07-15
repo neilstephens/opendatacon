@@ -28,28 +28,23 @@ namespace http {
 
 		/// Construct the server to listen on the specified TCP address and port, and
 		/// serve up files from the given directory.
-		explicit server(std::shared_ptr<asio::io_context> _pIOS, const std::string& address, const std::string& port);
+		explicit server(odc::asio_service &_pIOS, const std::string& address, const std::string& port);
 
 		void register_handler(const std::string& uripattern, pHandlerCallbackType handler)
 		{
 			request_handler_.register_handler(uripattern, handler);
 		};
+		void stop();
 
 	private:
 		/// Perform an asynchronous accept operation.
 		void do_accept();
 
-		/// Wait for a request to stop the server.
-		void do_await_stop();
-
 		/// The io_context used to perform asynchronous operations.
-		std::shared_ptr<asio::io_context> pIOS;
-
-		/// The signal_set is used to register for process termination notifications.
-		asio::signal_set signals_;
+		odc::asio_service &pIOS;
 
 		/// Acceptor used to listen for incoming connections.
-		asio::ip::tcp::acceptor acceptor_;
+		std::unique_ptr <asio::ip::tcp::acceptor> acceptor_;
 
 		/// The connection manager which owns all live connections.
 		connection_manager connection_manager_;
