@@ -210,28 +210,28 @@ void RunIOSForXSeconds(std::shared_ptr<asio::io_service> IOS, unsigned int secon
 	// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
 	// If the IOS runs out of work, it must be reset before being run again.
 }
-std::thread *StartIOSThread(std::shared_ptr<asio::io_service> IOS)
+std::thread *StartIOSThread(std::shared_ptr<odc::asio_service> IOS)
 {
 	return new std::thread([&] { IOS->run(); });
 }
-void StopIOSThread(std::shared_ptr<asio::io_service> IOS, std::thread *runthread)
+void StopIOSThread(std::shared_ptr<odc::asio_service> IOS, std::thread *runthread)
 {
 	IOS->stop();       // This does not block. The next line will! If we have multiple threads, have to join all of them.
 	runthread->join(); // Wait for it to exit
 	delete runthread;
 }
-void WaitIOS(std::shared_ptr<asio::io_service>IOS, int seconds)
+void WaitIOS(std::shared_ptr<odc::asio_service>IOS, int seconds)
 {
-	Timer_t timer(*IOS);
-	timer.expires_from_now(std::chrono::seconds(seconds));
-	timer.wait();
+	auto timer = IOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::seconds(seconds));
+	timer->wait();
 }
 
 
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	auto IOS = std::make_shared<asio::io_service>(4); // Max 4 threads
+	auto IOS = std::make_shared<odc::asio_service>(4); // Max 4 threads
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
@@ -242,7 +242,7 @@ void WaitIOS(std::shared_ptr<asio::io_service>IOS, int seconds)
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
-	auto work = std::make_shared<asio::io_context::work>(*IOS); /* To keep run - running!*/\
+	auto work = IOS->make_work(); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
 	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(IOS);

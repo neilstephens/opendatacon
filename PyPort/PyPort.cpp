@@ -168,7 +168,7 @@ void PyPort::Build()
 	if (python_strand == nullptr)
 	{
 		LOGDEBUG("Create python_strand");
-		python_strand.reset(new asio::io_context::strand(*pIOS));
+		python_strand = pIOS->make_strand();
 	}
 
 	// Every call to pWrapper should be strand protected.
@@ -553,7 +553,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 		return;
 	}
 
-	pTimer_t timer(new Timer_t(*pIOS));
+	pTimer_t timer = pIOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::milliseconds(delayms));
 	timer->async_wait(
 		[&, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted

@@ -56,7 +56,7 @@ ServerTokenType::~ServerTokenType()
 	}
 }
 
-ServerManager::ServerManager(std::shared_ptr<asio::io_service> apIOS, const std::string& aEndPoint, const std::string& aPort):
+ServerManager::ServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
 	Port(aPort)
@@ -70,7 +70,7 @@ ServerManager::ServerManager(std::shared_ptr<asio::io_service> apIOS, const std:
 }
 
 // Static Method
-ServerTokenType ServerManager::AddConnection(std::shared_ptr<asio::io_service> apIOS, const std::string& aEndPoint,     const std::string& aPort)
+ServerTokenType ServerManager::AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint,     const std::string& aPort)
 {
 	std::string ServerID = MakeServerID(aEndPoint, aPort);
 

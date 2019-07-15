@@ -28,7 +28,7 @@
 #define PY_H_
 
 #include <Python.h>
-//#include "../submodules/asio/asio/include/asio/io_service.hpp"
+#include <opendatacon/asio.h>
 #include <opendatacon/util.h>
 
 // If we are compiling for external testing (or production) define this.
@@ -37,7 +37,7 @@
 #define NONVSTESTING
 
 // A cheat for it to find my Python module py files... comment out normally!
-#define SCOTTPYTHONCODEPATH
+//#define SCOTTPYTHONCODEPATH
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(...) \
