@@ -75,6 +75,9 @@ public:
 
 	static ServerTokenType AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort);
 
+	static void StartConnection(const ServerTokenType& ServerTok);
+	static void StopConnection(const ServerTokenType& ServerTok);
+
 	static std::string MakeServerID(std::string aEndPoint, std::string aPort)
 	{
 		return aEndPoint + ":" + aPort;
