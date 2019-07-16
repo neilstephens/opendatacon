@@ -68,12 +68,12 @@ class ServerManager
 	friend class ServerTokenType;
 
 public:
-	ServerManager(odc::asio_service &apIOS, const std::string& aEndPoint, const std::string& aPort);
+	ServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort);
 
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
 	static void AddHandler(const ServerTokenType& ServerTok, const std::string& urlpattern, http::pHandlerCallbackType urihandler);
 
-	static ServerTokenType AddConnection(odc::asio_service &apIOS, const std::string& aEndPoint, const std::string& aPort);
+	static ServerTokenType AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort);
 
 	static std::string MakeServerID(std::string aEndPoint, std::string aPort)
 	{
@@ -83,7 +83,7 @@ public:
 	~ServerManager();
 
 private:
-	odc::asio_service &pIOS;
+	std::shared_ptr<odc::asio_service> pIOS;
 	std::string EndPoint;
 	std::string Port;
 	std::string InternalServerID;

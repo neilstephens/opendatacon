@@ -37,7 +37,7 @@
 // #define NONVSTESTING
 
 // A cheat for it to find my Python module py files... comment out normally!
-#define SCOTTPYTHONCODEPATH
+//#define SCOTTPYTHONCODEPATH
 
 // Hide some of the code to make Logging cleaner
 #define LOGDEBUG(...) \

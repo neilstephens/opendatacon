@@ -196,7 +196,7 @@ void PyPort::Build()
 			LOGDEBUG("Port Operational {}", Name);
 		});
 
-	pServer = ServerManager::AddConnection(*pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new ServerManager if required
+	pServer = ServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new ServerManager if required
 
 	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
@@ -553,10 +553,10 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 		return;
 	}
 
-	auto timer = pIOS->make_steady_timer();
+	pTimer_t timer = pIOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::milliseconds(delayms));
 	timer->async_wait(
-		[&, id](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
+		[&, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
 		{
 			if (err_code != asio::error::operation_aborted)
 			{
