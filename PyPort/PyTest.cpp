@@ -80,29 +80,19 @@ const char *conffile1 = R"001(
 	// Python Module/Class/Method name definitions
 	"ModuleName" : "PyPortSim",
 	"ClassName": "SimPortClass",
+		
+	// The point definitions are only proccessed by the Python code. Any events sent to PyPort by ODC will be passed on.
+	"Binaries" : 
+	[	
+		{"Index" : 0, "CBNumber" : 1, "SimType" : "CBStateBit0", "State": 0},	// Half of a dual bit binary Open 10, Closed 01, Fault 00 or 11 (Is this correct?)
+		{"Index" : 1, "CBNumber" : 1, "SimType" : "CBStateBit1", "State": 1}	// Half of a dual bit binary. State is starting state.
+	],
 
-	//-------Point conf--------Pass this through to the Python code to deal with
-
-	"PollGroups" : [{"ID" : 1, "PollRate" : 10000, "Group" : 3, "PollType" : "Scan"},
-					{"ID" : 2, "PollRate" : 20000, "Group" : 3, "PollType" : "SOEScan"},
-					{"ID" : 3, "PollRate" : 120000, "PollType" : "TimeSetCommand"}],
-
-	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG", "SOE" : {"Group": 5, "Index" : 0} },
-					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
-					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB"},
-					{"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC" }],
-
-	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
-					{"Index" : 1, "Group" : 3, "PayloadLocation": "3B","Channel" : 1, "Type":"ANA"},
-					{"Index" : 2, "Group" : 3, "PayloadLocation": "4A","Channel" : 1, "Type":"ANA"},
-					{"Index" : 3, "Group" : 3, "PayloadLocation": "4B","Channel" : 1, "Type":"ANA6"},
-					{"Index" : 4, "Group" : 3, "PayloadLocation": "4B","Channel" : 2, "Type":"ANA6"}],
-
-	"BinaryControls" : [{"Index": 1,  "Group" : 4, "Channel" : 1, "Type" : "CONTROL"},
-                        {"Range" : {"Start" : 10, "Stop" : 21}, "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
-
-	"AnalogControls" : [{"Index": 1,  "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}]
-
+	"BinaryControls" : 
+	[
+		{"Index": 0, "CBNumber" : 1, "CBCommand":"Trip"},		// Trip pulse
+		{"Index": 1, "CBNumber" : 1, "CBCommand":"Close"}		// Close pulse
+	]
 })001";
 
 
@@ -194,12 +184,12 @@ void CommandLineLoggingCleanup()
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
 
-void RunIOSForXSeconds(std::shared_ptr<asio::io_service> IOS, unsigned int seconds)
+void RunIOSForXSeconds(std::shared_ptr<odc::asio_service> IOS, unsigned int seconds)
 {
 	// We dont have to consider the timer going out of scope in this use case.
-	Timer_t timer(*IOS);
-	timer.expires_from_now(std::chrono::seconds(seconds));
-	timer.async_wait([IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
+	auto timer = IOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::seconds(seconds));
+	timer->async_wait([&IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
 		{
 			// If there was no more work, the asio::io_context will exit from the IOS.run() below.
 			// However something is keeping it running, so use the stop command to force the issue.
@@ -220,7 +210,7 @@ void StopIOSThread(std::shared_ptr<odc::asio_service> IOS, std::thread *runthrea
 	runthread->join(); // Wait for it to exit
 	delete runthread;
 }
-void WaitIOS(std::shared_ptr<odc::asio_service>IOS, int seconds)
+void WaitIOS(std::shared_ptr<odc::asio_service> IOS, int seconds)
 {
 	auto timer = IOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::seconds(seconds));
@@ -344,6 +334,7 @@ TEST_CASE("Py.TestsUsingPython")
 	PythonPort2->Enable();
 
 	WaitIOS(IOS, 1);
+
 	INFO("SendBinaryAndAnalogEvents")
 	{
 
@@ -406,9 +397,9 @@ TEST_CASE("Py.TestsUsingPython")
 
 	INFO("WebServerTest")
 	{
-		std::string hroot = "http://localhost:8000";
-		std::string h1 = "http://localhost:8000/TestMaster";
-		std::string h2 = "http://localhost:8000/TestMaster2";
+		std::string hroot = "http://localhost:10000";
+		std::string h1 = "http://localhost:10000/TestMaster";
+		std::string h2 = "http://localhost:10000/TestMaster2";
 
 		// Do a http request to the root port and make sure we are getting the answer we expect.
 		std::string expectedresponse("Content-Length: 185\r\nContent-Type: text/html\r\n\n"
@@ -416,9 +407,9 @@ TEST_CASE("Py.TestsUsingPython")
 			                       "which is case senstive.<br>Anything beyond this will be passed to the Python code.");
 
 		std::string callresp;
-		bool res = DoHttpRequst("localhost", "8000", "/", callresp);
+		bool res = DoHttpRequst("localhost", "10000", "/", callresp);
 
-		LOGDEBUG("GET http://localhost:8000 - We got back {}", callresp);
+		LOGDEBUG("GET http://localhost:10000 - We got back {}", callresp);
 
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
@@ -427,7 +418,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		callresp = "";
 
-		res = DoHttpRequst("localhost", "8000", "/TestMaster", callresp);
+		res = DoHttpRequst("localhost", "10000", "/TestMaster", callresp);
 
 		LOGDEBUG("GET http://localhost:8000/TestMaster We got back {}", callresp);
 
@@ -437,7 +428,7 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE(expectedresponse == callresp);
 
 
-		res = DoHttpRequst("localhost", "8000", "/TestMaster2", callresp);
+		res = DoHttpRequst("localhost", "10000", "/TestMaster2", callresp);
 
 		LOGDEBUG("GET http://localhost:8000/TestMaster2 We got back {}", callresp);
 

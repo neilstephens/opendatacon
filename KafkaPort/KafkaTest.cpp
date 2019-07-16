@@ -177,35 +177,35 @@ void CommandLineLoggingCleanup()
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
 
-void RunIOSForXSeconds(odc::asio_service& IOS, unsigned int seconds)
+void RunIOSForXSeconds(std::shared_ptr<odc::asio_service> IOS, unsigned int seconds)
 {
 	// We dont have to consider the timer going out of scope in this use case.
-	auto timer = IOS.make_steady_timer();
+	auto timer = IOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::seconds(seconds));
 	timer->async_wait([&IOS](asio::error_code) // [=] all autos by copy, [&] all autos by ref
 		{
 			// If there was no more work, the asio::io_context will exit from the IOS.run() below.
 			// However something is keeping it running, so use the stop command to force the issue.
-			IOS.stop();
+			IOS->stop();
 		});
 
-	IOS.run(); // Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
+	IOS->run(); // Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
 	// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
 	// If the IOS runs out of work, it must be reset before being run again.
 }
-std::thread* StartIOSThread(odc::asio_service& IOS)
+std::thread* StartIOSThread(std::shared_ptr<odc::asio_service> IOS)
 {
-	return new std::thread([&] { IOS.run(); });
+	return new std::thread([&] { IOS->run(); });
 }
-void StopIOSThread(odc::asio_service &IOS, std::thread* runthread)
+void StopIOSThread(std::shared_ptr<odc::asio_service>IOS, std::thread* runthread)
 {
-	IOS.stop();        // This does not block. The next line will! If we have multiple threads, have to join all of them.
+	IOS->stop();       // This does not block. The next line will! If we have multiple threads, have to join all of them.
 	runthread->join(); // Wait for it to exit
 	delete runthread;
 }
-void WaitIOS(odc::asio_service& IOS, int seconds)
+void WaitIOS(std::shared_ptr<odc::asio_service> IOS, int seconds)
 {
-	auto timer = IOS.make_steady_timer();
+	auto timer = IOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::seconds(seconds));
 	timer->wait();
 }
@@ -228,12 +228,12 @@ void WaitIOS(odc::asio_service& IOS, int seconds)
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS);
+	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(IOS);
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i]);
+	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
 
 #define TEST_KafkaPort(overridejson)\
 	auto KPort = std::make_shared<KafkaPort>("TestPort", conffilename1, overridejson); \
@@ -307,10 +307,10 @@ TEST_CASE("ODC - BinaryEvent")
 	SendBinaryEvent(KPort, ODCIndex+2, true, qual);
 	START_IOS(2);
 
-	WaitIOS(*IOS, 1);
+	WaitIOS(IOS, 1);
 
 	SendBinaryEvent(KPort, ODCIndex, true, qual);
-	WaitIOS(*IOS,4);
+	WaitIOS(IOS,4);
 
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
@@ -346,7 +346,7 @@ TEST_CASE("ODC - AnalogEvent")
 
 	SendAnalogEvent(KPort, ODCIndex, 12.345, qual);
 
-	WaitIOS(*IOS, 3);
+	WaitIOS(IOS, 3);
 
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();

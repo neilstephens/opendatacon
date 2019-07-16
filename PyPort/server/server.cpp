@@ -37,20 +37,20 @@ void server::do_accept()
 	acceptor_->async_accept(
 		[this](std::error_code ec, asio::ip::tcp::socket socket)
 		{
-			// Check whether the server was stopped by a signal before this
-			// completion handler had a chance to run.
-			if (!acceptor_->is_open())
-			{
-			      return;
-			}
-
 			if (!ec)
 			{
+			// Check whether the server was stopped by a signal before this
+			// completion handler had a chance to run.
+			      if (!acceptor_->is_open())
+			      {
+			            return;
+				}
+
 			      connection_manager_.start(std::make_shared<connection>(
 					std::move(socket), connection_manager_, request_handler_));
-			}
 
-			do_accept();
+			      do_accept();
+			}
 		});
 }
 
