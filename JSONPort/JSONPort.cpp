@@ -429,6 +429,72 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				PublishEvent(event,pStatusCallback);
 			}
 		}
+
+		for (auto& point_pair : pConf->pPointConf->AnalogControls)
+		{
+			if (!point_pair.second.isMember("JSONPath"))
+				continue;
+			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
+			//if the path existed, get the value and send the control
+
+			// Now decode the val JSON string to get the index and value and process that
+			if (!val.isNull())
+			{
+				auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, point_pair.first, Name, QualityFlags::ONLINE, timestamp);
+				AO16 analogpayload;
+				analogpayload.second = CommandStatus::SUCCESS;
+
+				if (auto log = odc::spdlog_get("JSONPort"))
+					log->debug("JSNOn AnalogControl Command - {}", val.asString());
+
+				if (val.isNumeric())
+					analogpayload.first = val.asUInt();
+				else if (val.isString())
+				{
+					try
+					{
+						analogpayload.first = std::stoul(val.asString());
+					}
+					catch (std::exception&)
+					{
+						if (auto log = odc::spdlog_get("JSONPort"))
+							log->error("Error decoding AnalogControl from string '{}', for index {}", val.asString(), point_pair.first);
+					}
+				}
+				else
+				{
+					if (auto log = odc::spdlog_get("JSONPort"))
+						log->error("Error decoding AnalogControl value for index {}", point_pair.first);
+					return;
+				}
+				event->SetPayload<EventType::AnalogOutputInt16>(move(analogpayload));
+
+				auto pStatusCallback =
+					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
+						{
+							Json::Value result;
+							result["Command"]["Index"] = point_pair.first;
+
+							if (command_stat == CommandStatus::SUCCESS)
+								result["Command"]["Status"] = "SUCCESS";
+							else
+								result["Command"]["Status"] = "UNDEFINED";
+
+							//TODO: make this writer reusable (class member)
+							//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
+							Json::StreamWriterBuilder wbuilder;
+							if (!pConf->style_output)
+								wbuilder["indentation"] = "";
+							std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
+							std::ostringstream oss;
+							pWriter->write(result, &oss); oss << std::endl;
+							pSockMan->Write(oss.str());
+						});
+
+				PublishEvent(event, pStatusCallback);
+			}
+		}
 	}
 	else
 	{
