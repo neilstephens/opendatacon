@@ -526,7 +526,8 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 			// This is the only code that has extra Master to RTU blocks
 			uint8_t DataIndex = Header.GetB() >> 8;
 			uint8_t NumberOfBlocksInMessage = (Header.GetB() >> 4) & 0x00f;
-			uint8_t Fn9Data = (Header.GetB() & 0x00f);
+			//If we needed the Fn9 Data
+			//uint8_t Fn9Data = (Header.GetB() & 0x00f);
 			if ((DataIndex == 0) && (NumberOfBlocksInMessage == 2) && (CompleteCBMessage.size() == 2))
 			{
 				ProcessUpdateTimeRequest(CompleteCBMessage);
