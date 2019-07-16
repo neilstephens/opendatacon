@@ -344,6 +344,7 @@ TEST_CASE("Py.TestsUsingPython")
 	PythonPort2->Enable();
 
 	WaitIOS(*IOS, 1);
+
 	INFO("SendBinaryAndAnalogEvents")
 	{
 
@@ -385,7 +386,7 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort->RestHandler(url, "", pResponseCallback);
 
 		LOGDEBUG("Response {}", sres);
-		WaitIOS(*IOS, 2);
+		WaitIOS(*IOS, 200);
 		REQUIRE(sres == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
 
 		// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.

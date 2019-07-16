@@ -23,17 +23,25 @@ server::server(odc::asio_service& _pIOS, const std::string& address, const std::
 	request_handler_()
 {
 	// Open the acceptor with the option to reuse the address (i.e. SO_REUSEADDR).
-	std::unique_ptr<asio::ip::tcp::resolver> resolver = pIOS.make_tcp_resolver();
-	auto res = resolver->resolve(address, port).begin();
-	asio::ip::tcp::endpoint endpoint = *res;
+	try
+	{
+		std::unique_ptr<asio::ip::tcp::resolver> resolver = pIOS.make_tcp_resolver();
+		auto res = resolver->resolve(address, port).begin();
+		asio::ip::tcp::endpoint endpoint = *res;
 
-	acceptor_ = _pIOS.make_tcp_acceptor(res);
-	acceptor_->open(endpoint.protocol());
-	acceptor_->set_option(asio::ip::tcp::acceptor::reuse_address(true));
-	acceptor_->bind(endpoint);
-	acceptor_->listen();
+		acceptor_ = _pIOS.make_tcp_acceptor(res);
+		//acceptor_->open(endpoint.protocol());
+		acceptor_->set_option(asio::ip::tcp::acceptor::reuse_address(true));
+		//acceptor_->bind(endpoint);
+		acceptor_->listen();
 
-	do_accept(); // Set acceptor callback to process connections
+		do_accept(); // Set acceptor callback to process connections
+	}
+	catch (std::exception& e)
+	{
+		std::string problem = "Exception: " + std::string(e.what());
+		LOGERROR("Encountered a problem opening the http listening port {}:{} - {}", address, port, problem);
+	}
 }
 
 
@@ -42,20 +50,18 @@ void server::do_accept()
 	acceptor_->async_accept(
 		[this](std::error_code ec, asio::ip::tcp::socket socket)
 		{
-			// Check whether the server was stopped by a signal before this
-			// completion handler had a chance to run.
-			if (!acceptor_->is_open())
-			{
-			      return;
-			}
-
 			if (!ec)
 			{
+			      if (!acceptor_->is_open())
+			      {
+			            return;
+				}
+
 			      connection_manager_.start(std::make_shared<connection>(
 					std::move(socket), connection_manager_, request_handler_));
-			}
 
-			do_accept();
+			      do_accept();
+			}
 		});
 }
 

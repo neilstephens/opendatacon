@@ -622,7 +622,7 @@ std::string PythonWrapper::RestHandler(const std::string& url, const std::string
 		PyTuple_SetItem(pyArgs, 0, pyurl);
 		PyTuple_SetItem(pyArgs, 1, pycontent);
 
-		PyObject* pyResult = PyCall(pyRestHandler, pyArgs); // No passed variables
+		PyObject* pyResult = PyCall(pyRestHandler, pyArgs);
 
 		Py_DECREF(pyArgs);
 
