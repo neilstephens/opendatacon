@@ -23,19 +23,18 @@ server::server(std::shared_ptr<odc::asio_service> _pIOS, const std::string& _add
 	request_handler_(),
 	address(_address),
 	port(_port)
-{}
+{
+	auto resolver = pIOS->make_tcp_resolver();
+	acceptor_ = pIOS->make_tcp_acceptor(resolver->resolve(address, port));
+	acceptor_->set_option(asio::ip::tcp::acceptor::reuse_address(true));
+}
 
 void server::start()
 {
-	if (!acceptor_)
-	{
-		auto resolver = pIOS->make_tcp_resolver();
-		acceptor_ = pIOS->make_tcp_acceptor(resolver->resolve(address, port));
-		acceptor_->set_option(asio::ip::tcp::acceptor::reuse_address(true));
-		acceptor_->listen();
-
-		do_accept();
-	}
+	if (acceptor_->is_open())
+		return;
+	acceptor_->listen();
+	do_accept();
 }
 
 void server::stop()
@@ -43,12 +42,8 @@ void server::stop()
 	// The server is stopped by cancelling all outstanding asynchronous
 	// operations. Once all operations have finished the io_context::run()
 	// call will exit.
-	if (acceptor_)
-	{
-		acceptor_->close();
-		connection_manager_.stop_all();
-		acceptor_.reset(); // Force destruction, setting to nullptr so that we know it is not valid
-	}
+	acceptor_->close();
+	connection_manager_.stop_all();
 }
 
 void server::do_accept()
