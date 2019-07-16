@@ -83,7 +83,9 @@ public:
 	}
 };
 
+#ifdef _MSC_VER
 #pragma region odc support module
+#endif
 // This is where we expose ODC methods to our script, so they can be called by the script when needed.
 
 // This is an extension method that we have provided to our embedded Python. It will feed a message into our logging framework
@@ -270,9 +272,10 @@ void ImportODCModule()
 	}
 }
 
+#ifdef _MSC_VER
 #pragma endregion
-
 #pragma region Startup/Setup Functions
+#endif
 
 PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn):
 	Name(aName),
@@ -642,10 +645,10 @@ std::string PythonWrapper::RestHandler(const std::string& url, const std::string
 	return "Did not get a response from Python RestHandler";
 }
 
+#ifdef _MSC_VER
 #pragma region
-
-
 #pragma region WorkerFunctions
+#endif
 
 // Get a PyObject handle for the function name given, in the Python instance given.
 PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sFunction)
@@ -704,4 +707,6 @@ PyObject* PythonWrapper::PyCall(PyObject* pyFunction, PyObject* pyArgs)
 	}
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif
