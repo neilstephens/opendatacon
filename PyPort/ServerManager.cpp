@@ -90,6 +90,30 @@ ServerTokenType ServerManager::AddConnection(std::shared_ptr<odc::asio_service> 
 	return ServerTokenType(ServerID, ServerMap[ServerID]); // the use count on the Connection Map shared_ptr will go up by one.
 }
 
+void ServerManager::StartConnection(const ServerTokenType& ServerTok)
+{
+	if (auto pServerMgr = ServerTok.pServerManager)
+	{
+		pServerMgr->pServer->start(); // Ok to call if already running
+	}
+	else
+	{
+		LOGERROR("Tried to start httpserver when the connection token was no longer valid");
+	}
+}
+
+void ServerManager::StopConnection(const ServerTokenType& ServerTok)
+{
+	if (auto pServerMgr = ServerTok.pServerManager)
+	{
+		pServerMgr->pServer->stop(); // Ok to call if already stopped
+	}
+	else
+	{
+		LOGERROR("Tried to stop httpserver when the connection token was no longer valid");
+	}
+}
+
 void ServerManager::AddHandler(const ServerTokenType& ServerTok, const std::string &urlpattern, http::pHandlerCallbackType urihandler)
 {
 	if (auto pServerMgr = ServerTok.pServerManager)

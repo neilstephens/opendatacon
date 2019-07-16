@@ -269,6 +269,8 @@ void PyPort::Enable()
 	if (enabled) return;
 	enabled = true;
 
+	ServerManager::StartConnection(pServer);
+
 	if (!PortOperational)
 	{
 		LOGDEBUG("PyPort {} not operational when trying to enable", Name);
@@ -285,6 +287,9 @@ void PyPort::Disable()
 {
 	if (!enabled) return;
 	enabled = false;
+
+	// Leaves handlers in place, so can be restarted without re-adding handlers
+	ServerManager::StopConnection(pServer);
 
 	if (!PortOperational)
 	{

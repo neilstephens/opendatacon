@@ -28,7 +28,10 @@ namespace http {
 
 		/// Construct the server to listen on the specified TCP address and port, and
 		/// serve up files from the given directory.
-		explicit server(std::shared_ptr<odc::asio_service> _pIOS, const std::string& address, const std::string& port);
+		explicit server(std::shared_ptr<odc::asio_service> _pIOS, const std::string& _address, const std::string& _port);
+
+		void start();
+		void stop();
 
 		void register_handler(const std::string& uripattern, pHandlerCallbackType handler)
 		{
@@ -36,6 +39,7 @@ namespace http {
 		};
 
 	private:
+
 		/// Perform an asynchronous accept operation.
 		void do_accept();
 
@@ -50,6 +54,8 @@ namespace http {
 
 		/// The handler for all incoming requests.
 		request_handler request_handler_;
+		std::string address;
+		std::string port;
 	};
 
 } // namespace http
