@@ -125,6 +125,7 @@ private:
 	bool ConvertSOEMessageToBitArray(const CBMessage_t & CompleteCBMessage, std::array<bool, MaxSOEBits>& BitArray, uint32_t & UsedBits);
 	void ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits>& BitArray, uint32_t &UsedBits, std::function<void(SOEEventFormat&soeevt)> fn);
 	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);
+	bool CheckResponseMessageMatch(const CBMessage_t& ReceivedMsg, const CBMessage_t& SentMsg);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 
