@@ -113,13 +113,7 @@ void ServerManager::AddHandler(const ServerTokenType& ServerTok, const std::stri
 }
 
 ServerManager::~ServerManager()
-{
-
-	if (!pServer) // Could be empty if a connection was never added (opened)
-		return;
-
-	pServer.reset(); // Release our object - should be done anyway when the shared_ptr is destructed, but just to make sure...
-}
+{}
 
 
 

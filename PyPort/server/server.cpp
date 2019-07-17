@@ -24,15 +24,20 @@ server::server(std::shared_ptr<odc::asio_service> _pIOS, const std::string& _add
 	address(_address),
 	port(_port)
 {
-	auto resolver = pIOS->make_tcp_resolver();
-	acceptor_ = pIOS->make_tcp_acceptor(resolver->resolve(address, port));
-	acceptor_->set_option(asio::ip::tcp::acceptor::reuse_address(true));
+	acceptor_ = pIOS->make_tcp_acceptor();
+	acceptor_->close();
 }
 
 void server::start()
 {
 	if (acceptor_->is_open())
 		return;
+
+	auto resolver = pIOS->make_tcp_resolver();
+	asio::ip::tcp::endpoint endpoint = *resolver->resolve(address, port).begin(); // Only use the first resolved address - should only be one!
+	acceptor_->open(endpoint.protocol());
+	acceptor_->set_option(asio::ip::tcp::acceptor::reuse_address(true));
+	acceptor_->bind(endpoint);
 	acceptor_->listen();
 	do_accept();
 }
@@ -40,8 +45,8 @@ void server::start()
 void server::stop()
 {
 	// The server is stopped by cancelling all outstanding asynchronous
-	// operations. Once all operations have finished the io_context::run()
-	// call will exit.
+	// operations. Once all operations have finished the io_context::run() call will exit.
+	// Does not matter that this could get called on a closed acceptor - it is just ignored in that case.
 	acceptor_->close();
 	connection_manager_.stop_all();
 }
