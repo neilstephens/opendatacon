@@ -406,6 +406,7 @@ TEST_CASE("Py.TestsUsingPython")
 			                       "You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, "
 			                       "which is case senstive.<br>Anything beyond this will be passed to the Python code.");
 
+		LOGERROR("If the Tests Hang here, the client making a HTTP request is waiting for an answer from the HTTP server - and is not getting it..");
 		std::string callresp;
 		bool res = DoHttpRequst("localhost", "10000", "/", callresp);
 
