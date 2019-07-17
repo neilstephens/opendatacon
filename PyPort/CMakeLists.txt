@@ -61,16 +61,29 @@ message("Architecture ${CMAKE_LIBRARY_ARCHITECTURE} ")
 message("Found Python Include Dirs ${Python3_INCLUDE_DIRS}")
 message("Found Python Libraries ${Python3_LIBRARIES} ")
 message("Make Bin Dir ${CMAKE_CURRENT_BINARY_DIR}, Install Bin Dir ${INSTALLDIR_BINS}")
+#hide (in non-advanced mode) the library/include path in cmake guis since it's derrived
+mark_as_advanced(FORCE Python3_INCLUDE_DIRS)
+mark_as_advanced(FORCE Python3_LIBRARIES)
 
-include_directories(
-	"../include"
-	"../JSON"
-	${Python3_INCLUDE_DIRS}
-	"${ASIO_HOME}/include"
-)
-configure_file(PythonCode/PyPortSim.py ${CMAKE_CURRENT_BINARY_DIR}/PyPortSim.py COPYONLY )
+add_library(python_target UNKNOWN IMPORTED)
+set_property(TARGET python_target PROPERTY IMPORTED_LOCATION "${Python3_LIBRARIES}")
+
+configure_file(PythonCode/PyPortSim.py ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/PyPortSim.py COPYONLY )
+
+#include in install/packaging
+option(PACKAGE_LIBPYTHON "Package Python libs in c-pack installer" ON)
+if(PACKAGE_LIBPYTHON)
+	file_w_symlinks(file_w_links "${Python3_LIBRARIES}")
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS})
+	if(WIN32)
+		get_filename_component(PYTHON_DIR ${Python3_LIBRARIES} DIRECTORY)
+		get_filename_component(PYTHON_BASE ${Python3_LIBRARIES} NAME_WE)
+		install(FILES "${PYTHON_DIR}/${PYTHON_BASE}.dll" DESTINATION ${INSTALLDIR_LIBS})
+	endif()
+endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_include_directories(${PROJECT_NAME} PRIVATE "${Python3_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} ODC ${Python3_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})

@@ -49,8 +49,9 @@
 
 using namespace odc;
 
-std::atomic_uint PythonWrapper::InterpreterUseCount(0);
-std::unordered_map<uint64_t, int> PythonWrapper::PyWrappers;
+PythonInitWrapper PythonWrapper::PythonInit;
+std::unordered_set<uint64_t> PythonWrapper::PyWrappers;
+std::shared_timed_mutex PythonWrapper::WrapperHashMutex;
 PyThreadState* PythonWrapper::threadState;
 
 // Wrap getting/releasing the GIL to be bullet proof.
@@ -83,7 +84,9 @@ public:
 	}
 };
 
+#ifdef _MSC_VER
 #pragma region odc support module
+#endif
 // This is where we expose ODC methods to our script, so they can be called by the script when needed.
 
 // This is an extension method that we have provided to our embedded Python. It will feed a message into our logging framework
@@ -270,24 +273,20 @@ void ImportODCModule()
 	}
 }
 
+#ifdef _MSC_VER
 #pragma endregion
-
 #pragma region Startup/Setup Functions
+#endif
 
 PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn):
 	Name(aName),
 	PythonPortSetTimerFn(SetTimerFn),
 	PythonPortPublishEventCallFn(PublishEventCallFn)
-{
-	if (InterpreterUseCount++ == 0) // Test and Increment!
-	{
-		InitialisePyInterpreter(); // We only need one for a running ODC instance...
-	}
-}
+{}
 
 
 // Startup the interpreter - need to have matching tear down in destructor.
-void PythonWrapper::InitialisePyInterpreter()
+PythonInitWrapper::PythonInitWrapper()
 {
 	try
 	{
@@ -317,7 +316,7 @@ void PythonWrapper::InitialisePyInterpreter()
 		if (!PyGILState_Check())
 			LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
 
-		threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
+		PythonWrapper::threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 	}
 	catch (std::exception& e)
 	{
@@ -327,6 +326,28 @@ void PythonWrapper::InitialisePyInterpreter()
 
 // This one seems to be excatly what we need, and we are doing it, but it is not working...
 // https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
+PythonInitWrapper::~PythonInitWrapper()
+{
+	LOGDEBUG("Py_Finalize");
+	// Restore the state as it was after we called Initialize()
+	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
+	// Supposed to acquire the GIL and restore the state...
+	PyEval_RestoreThread(PythonWrapper::threadState);
+	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
+
+	//	GetPythonGIL g; //TODO If we do this we hang, if we dont we get an error saying we dont have the GIL...
+	try
+	{
+		//TODO This try/catch does not work, as when Py_Finalize() fails, it calls abort - which we cannot catch.
+		//			if (!Py_FinalizeEx())
+		LOGERROR("Python Py_Finalize() Failed");
+	}
+	catch (std::exception& e)
+	{
+		LOGERROR("Exception Caught calling Py_FinalizeEx() - {}", e.what());
+	}
+}
+
 
 PythonWrapper::~PythonWrapper()
 {
@@ -349,30 +370,6 @@ PythonWrapper::~PythonWrapper()
 		if (pyModule != nullptr)
 		{
 			Py_DECREF(pyModule);
-		}
-	}
-
-	// Only shut down the interpreter when there are no more users left.
-	InterpreterUseCount--;
-	if (InterpreterUseCount == 0)
-	{
-		LOGDEBUG("Py_Finalize");
-		// Restore the state as it was after we called Initialize()
-		LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
-		// Supposed to acquire the GIL and restore the state...
-		PyEval_RestoreThread(threadState);
-		LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
-
-		//	GetPythonGIL g; //TODO If we do this we hang, if we dont we get an error saying we dont have the GIL...
-		try
-		{
-			//TODO This try/catch does not work, as when Py_Finalize() fails, it calls abort - which we cannot catch.
-//			if (!Py_FinalizeEx())
-			LOGERROR("Python Py_Finalize() Failed");
-		}
-		catch (std::exception& e)
-		{
-			LOGERROR("Exception Caught calling Py_FinalizeEx() - {}", e.what());
 		}
 	}
 }
@@ -642,10 +639,10 @@ std::string PythonWrapper::RestHandler(const std::string& url, const std::string
 	return "Did not get a response from Python RestHandler";
 }
 
+#ifdef _MSC_VER
 #pragma region
-
-
 #pragma region WorkerFunctions
+#endif
 
 // Get a PyObject handle for the function name given, in the Python instance given.
 PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sFunction)
@@ -704,4 +701,6 @@ PyObject* PythonWrapper::PyCall(PyObject* pyFunction, PyObject* pyArgs)
 	}
 }
 
+#ifdef _MSC_VER
 #pragma endregion
+#endif

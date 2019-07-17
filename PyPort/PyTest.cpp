@@ -420,7 +420,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		res = DoHttpRequst("localhost", "10000", "/TestMaster", callresp);
 
-		LOGDEBUG("GET http://localhost:8000/TestMaster We got back {}", callresp);
+		LOGDEBUG("GET http://localhost:10000/TestMaster We got back {}", callresp);
 
 		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
 
@@ -430,7 +430,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		res = DoHttpRequst("localhost", "10000", "/TestMaster2", callresp);
 
-		LOGDEBUG("GET http://localhost:8000/TestMaster2 We got back {}", callresp);
+		LOGDEBUG("GET http://localhost:10000/TestMaster2 We got back {}", callresp);
 
 		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
 

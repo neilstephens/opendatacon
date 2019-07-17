@@ -105,7 +105,7 @@ void request_handler::handle_request(const request& req, reply& rep)
 	return;
 }
 
-// Everything after the http://something:8000 and before the ?var1=value1&var2=value2&var3=value3 part (if it exists)
+// Everything after the http://something:10000 and before the ?var1=value1&var2=value2&var3=value3 part (if it exists)
 bool request_handler::url_decode(const std::string& in, std::string& out, std::string& params)
 {
 	out.clear();

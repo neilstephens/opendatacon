@@ -69,6 +69,7 @@ bool fileexists(const std::string& filename)
 using namespace odc;
 
 std::shared_ptr<asio::io_context::strand> PyPort::python_strand = nullptr;
+std::once_flag PyPort::python_strand_flag;
 
 std::vector<std::string> split(const std::string& s, char delim)
 {
@@ -127,17 +128,6 @@ PyPort::~PyPort()
 		LOGDEBUG("PyPort {} not operational, Python Destructor ignored", Name);
 		return;
 	}
-	python_strand->dispatch([&]()
-		{
-			LOGDEBUG("reset pWrapper");
-			pWrapper.reset();
-			// Only 1 strand per ODC system.
-			if (python_strand.use_count() == 1)
-			{
-			      LOGDEBUG("reset python_strand");
-			//			python_strand.reset();
-			}
-		});
 }
 
 // The ASIO IOS instance is up, our config files have been read and parsed, this is the opportunity to kick off connections and scheduled processes
@@ -165,11 +155,11 @@ void PyPort::Build()
 		return;
 	}
 	// Only 1 strand per ODC system. Must wait until build as pIOS is not available in the constructor
-	if (python_strand == nullptr)
-	{
-		LOGDEBUG("Create python_strand");
-		python_strand = pIOS->make_strand();
-	}
+	std::call_once(PyPort::python_strand_flag,[this]()
+		{
+			LOGDEBUG("Create python_strand");
+			PyPort::python_strand = pIOS->make_strand();
+		});
 
 	// Every call to pWrapper should be strand protected.
 	python_strand->dispatch([&, CurrentPath]()
