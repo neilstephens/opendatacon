@@ -82,6 +82,7 @@ public:
 	std::unique_ptr<asio::ip::tcp::resolver> make_tcp_resolver();
 	std::unique_ptr<asio::ip::tcp::socket> make_tcp_socket();
 	std::unique_ptr<asio::ip::tcp::acceptor> make_tcp_acceptor(asio::ip::tcp::resolver::iterator EndPoint);
+	std::unique_ptr<asio::ip::tcp::acceptor> make_tcp_acceptor();
 	std::unique_ptr<asio::ip::udp::resolver> make_udp_resolver();
 	std::unique_ptr<asio::ip::udp::socket> make_udp_socket();
 
