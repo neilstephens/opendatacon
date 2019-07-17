@@ -28,7 +28,9 @@
 #define PYWRAPPER_H_
 
 #include "Py.h"
-#include <unordered_map>
+#include <mutex>
+#include <shared_mutex>
+#include <unordered_set>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
 
@@ -37,8 +39,18 @@ using namespace odc;
 typedef std::function<void (uint32_t, uint32_t)> SetTimerFnType;
 typedef std::function<void ( const char*, uint32_t, const char*, const char*)> PublishEventCallFnType;
 
+class PythonInitWrapper
+{
+public:
+	PythonInitWrapper();
+	~PythonInitWrapper();
+};
+
 class PythonWrapper
 {
+private:
+	friend class PythonInitWrapper;
+	static PythonInitWrapper PythonInit;
 
 public:
 	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
@@ -62,6 +74,7 @@ public:
 	// Do this to make sure it is always a valid pointer - the python code could pass anything back...
 	static PythonWrapper* GetThisFromPythonSelf(uint64_t guid)
 	{
+		std::shared_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
 		if (PyWrappers.count(guid))
 		{
 			return (PythonWrapper*)guid;
@@ -72,21 +85,21 @@ public:
 private:
 	void StoreWrapperMapping()
 	{
-		PyWrappers.emplace((uint64_t)this, 0);
+		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
+		PyWrappers.emplace((uint64_t)this);
 	}
 	void RemoveWrapperMapping()
 	{
+		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
 		PyWrappers.erase((uint64_t)this);
 	}
-
-	void InitialisePyInterpreter();
 
 	PyObject* GetFunction(PyObject* pyInstance, const std::string& sFunction);
 	PyObject* PyCall(PyObject* pyFunction, PyObject* pyArgs);
 
 	// Keep track of each PyWrapper so static methods can get access to the correct PyPort instance
-	static std::unordered_map<uint64_t, int> PyWrappers;
-	static std::atomic_uint InterpreterUseCount; // Used to keep track of Interpreter Setup/Tear down.
+	static std::unordered_set<uint64_t> PyWrappers;
+	static std::shared_timed_mutex WrapperHashMutex;
 	static PyThreadState* threadState;
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.
