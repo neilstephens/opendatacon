@@ -107,17 +107,25 @@ DataConcentrator::~DataConcentrator()
 	{
 		//if there's a tcp sink, we need to destroy it
 		//	because ostream will be destroyed
-		if(LogSinksMap.count("tcp"))
+		//same for syslog, because asio::io_service will be destroyed
+		for(const char* logger : {"tcp","syslog"})
 		{
-			//This doesn't look thread safe
-			//	but we're on the main thread at this point
-			//	the only other threads should be spdlog threads
-			//	so if we flush first this should be safe...
-			log->flush();
-			auto tcp_sink_pos = std::find(log->sinks().begin(),log->sinks().end(),LogSinksMap["tcp"]);
-			if(tcp_sink_pos != log->sinks().end())
+			if(LogSinksMap.count(logger))
 			{
-				log->sinks().erase(tcp_sink_pos);
+				//This doesn't look thread safe
+				//	but we're on the main thread at this point
+				//	the only other threads should be spdlog threads
+				//	so if we flush first this should be safe...
+				//BUT flush doesn't wait for the async Qs :-(
+				//	it only flushes the sinks
+				//	only thing to do is give some time for the Qs to empty
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				log->flush();
+				auto tcp_sink_pos = std::find(log->sinks().begin(),log->sinks().end(),LogSinksMap[logger]);
+				if(tcp_sink_pos != log->sinks().end())
+				{
+					log->sinks().erase(tcp_sink_pos);
+				}
 			}
 		}
 	}

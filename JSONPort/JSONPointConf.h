@@ -46,6 +46,7 @@ public:
 	std::map<uint16_t, Json::Value> Binaries;
 	std::map<uint16_t, Json::Value> Analogs;
 	std::map<uint16_t, Json::Value> Controls;
+	std::map<uint16_t, Json::Value> AnalogControls;
 	Json::Value TimestampPath;
 	std::unique_ptr<JSONOutputTemplate> pJOT;
 };
