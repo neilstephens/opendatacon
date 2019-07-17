@@ -406,9 +406,9 @@ TEST_CASE("Py.TestsUsingPython")
 
 	INFO("WebServerTest")
 	{
-		std::string hroot = "http://localhost:8000";
-		std::string h1 = "http://localhost:8000/TestMaster";
-		std::string h2 = "http://localhost:8000/TestMaster2";
+		std::string hroot = "http://localhost:10000";
+		std::string h1 = "http://localhost:10000/TestMaster";
+		std::string h2 = "http://localhost:10000/TestMaster2";
 
 		// Do a http request to the root port and make sure we are getting the answer we expect.
 		std::string expectedresponse("Content-Length: 185\r\nContent-Type: text/html\r\n\n"
@@ -416,9 +416,9 @@ TEST_CASE("Py.TestsUsingPython")
 			                       "which is case senstive.<br>Anything beyond this will be passed to the Python code.");
 
 		std::string callresp;
-		bool res = DoHttpRequst("localhost", "8000", "/", callresp);
+		bool res = DoHttpRequst("localhost", "10000", "/", callresp);
 
-		LOGDEBUG("GET http://localhost:8000 - We got back {}", callresp);
+		LOGDEBUG("GET http://localhost:10000 - We got back {}", callresp);
 
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
@@ -427,9 +427,9 @@ TEST_CASE("Py.TestsUsingPython")
 
 		callresp = "";
 
-		res = DoHttpRequst("localhost", "8000", "/TestMaster", callresp);
+		res = DoHttpRequst("localhost", "10000", "/TestMaster", callresp);
 
-		LOGDEBUG("GET http://localhost:8000/TestMaster We got back {}", callresp);
+		LOGDEBUG("GET http://localhost:10000/TestMaster We got back {}", callresp);
 
 		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
 
@@ -437,9 +437,9 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE(expectedresponse == callresp);
 
 
-		res = DoHttpRequst("localhost", "8000", "/TestMaster2", callresp);
+		res = DoHttpRequst("localhost", "10000", "/TestMaster2", callresp);
 
-		LOGDEBUG("GET http://localhost:8000/TestMaster2 We got back {}", callresp);
+		LOGDEBUG("GET http://localhost:10000/TestMaster2 We got back {}", callresp);
 
 		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
 
