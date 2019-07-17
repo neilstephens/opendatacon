@@ -29,7 +29,10 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-#define NONVSTESTING
+//#define NONVSTESTING
+
+// This will make the code actually send the Kafka messages. Without  it - it processes them but does not send them.
+#define DOPOST
 
 #include <cstdint>
 #include <opendatacon/DataPort.h>

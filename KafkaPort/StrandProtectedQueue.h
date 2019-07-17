@@ -79,7 +79,7 @@ public:
 				}
 			});
 	}
-	// Pass in the function to call with all the events currently in the queue
+	// Pass in the function to call which we call with all the events currently in the queue
 	void async_pop_all(const ProcessAllEventsCallbackFnPtr &eventscallback)
 	{
 		// Dispatch will execute now - if we can, otherwise results in a post.

@@ -52,7 +52,7 @@ class KafkaPortConf: public DataPortConf
 public:
 	KafkaPortConf(std::string FileName, const Json::Value& ConfOverrides)
 	{
-		pPointConf.reset(new KafkaPointConf(FileName, ConfOverrides));
+		pPointConf = std::make_shared<KafkaPointConf>(FileName, ConfOverrides);
 	}
 
 	std::shared_ptr<KafkaPointConf> pPointConf;

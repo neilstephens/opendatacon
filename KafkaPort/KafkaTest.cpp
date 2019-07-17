@@ -120,7 +120,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
-	auto pLibLogger = std::make_shared<spdlog::logger>("PyPort", begin(sinks), end(sinks));
+	auto pLibLogger = std::make_shared<spdlog::logger>("KafkaPort", begin(sinks), end(sinks));
 	pLibLogger->set_level(log_level);
 	odc::spdlog_register_logger(pLibLogger);
 
@@ -267,13 +267,21 @@ TEST_CASE("Util - ConfigFileLoadTest")
 	REQUIRE(KPort->GetAddrAccess()->IP == "127.0.0.1");
 	REQUIRE(KPort->GetAddrAccess()->Port == "9092");
 
+	odc::msSinceEpoch_t timestamp = 0x0000016bfd90e5a8; // odc::msSinceEpoch();
+	std::string result = KPort->to_ISO8601_TimeString(timestamp);
+	REQUIRE(result == "2019-07-17T01:34:20.072Z");
+
+	QualityFlags quality(QualityFlags::ONLINE | QualityFlags::RESTART);
+	std::string json = KPort->CreateKafkaPayload("HS01234|BIN|1", 0.0123, quality, timestamp);
+	REQUIRE(json == "{\"PITag\" : \"HS01234|BIN|1\", \"Value\" : 0.012300, \"Quality\" : \"|ONLINE|RESTART|\", \"TimeStamp\" : \"2019-07-17T01:34:20.072Z\"}");
+
 	STANDARD_TEST_TEARDOWN();
 }
 }
 
 namespace EventTests
 {
-void SendBinaryEvent(std::shared_ptr<KafkaPort> &KPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE)
+void SendBinaryEvent(std::shared_ptr<KafkaPort>& KPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE)
 {
 	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual);
 	event->SetPayload<EventType::Binary>(std::move(val));
@@ -303,20 +311,26 @@ TEST_CASE("ODC - BinaryEvent")
 
 	// Do three events so they end up in the same kafka message - otherwise single messages..
 	SendBinaryEvent(KPort, ODCIndex, true, qual);
-	SendBinaryEvent(KPort, ODCIndex+1, false, qual);
-	SendBinaryEvent(KPort, ODCIndex+2, true, qual);
+	SendBinaryEvent(KPort, ODCIndex + 1, false, qual);
+	SendBinaryEvent(KPort, ODCIndex + 2, true, qual);
 	START_IOS(2);
 
 	WaitIOS(IOS, 1);
+	for (int i = 0; i < 100; i++)
+	{
+		SendBinaryEvent(KPort, ODCIndex, true, qual);
+		SendBinaryEvent(KPort, ODCIndex + 1, false, qual);
+		SendBinaryEvent(KPort, ODCIndex + 2, true, qual);
+		SendBinaryEvent(KPort, ODCIndex, false, qual);
+		WaitIOS(IOS, 5);
+	}
 
-	SendBinaryEvent(KPort, ODCIndex, true, qual);
-	WaitIOS(IOS,4);
 
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
 }
 
-void SendAnalogEvent(std::shared_ptr<KafkaPort> &KPort, int ODCIndex,double val, QualityFlags qual = QualityFlags::ONLINE)
+void SendAnalogEvent(std::shared_ptr<KafkaPort>& KPort, int ODCIndex, double val, QualityFlags qual = QualityFlags::ONLINE)
 {
 	auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, "Testing", qual);
 	event->SetPayload<EventType::Analog>(std::move(val));

@@ -58,12 +58,14 @@ public:
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
-	void QueueKafkaEvent(const std::string &key, double measurement, QualityFlags quality);
+	void QueueKafkaEvent(const std::string &key, double measurement, QualityFlags quality, odc::msSinceEpoch_t timestamp);
 
 	void SendKafkaEvents();
 
 
 	// Testing use only
+	std::string KafkaPort::to_ISO8601_TimeString(odc::msSinceEpoch_t timestamp);
+	std::string CreateKafkaPayload(const std::string& key, double measurement, odc::QualityFlags quality, const odc::msSinceEpoch_t& timestamp);
 	KafkaPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 	KafkaAddrConf *GetAddrAccess() { return &(MyConf->mAddrConf); }
 	std::string GetTopic() { return MyPointConf->Topic; };

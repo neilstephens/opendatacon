@@ -26,6 +26,7 @@
 
 
 #include <iostream>
+#include <gsl/gsl_util.h>
 #include "KafkaPort.h"
 #include "KafkaPortConf.h"
 #include "StrandProtectedQueue.h"
@@ -34,7 +35,7 @@ KafkaPort::KafkaPort(const std::string &aName, const std::string & aConfFilename
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
 	//the creation of a new KafkaPortConf will get the point details
-	pConf.reset(new KafkaPortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<KafkaPortConf>(ConfFilename, ConfOverrides);
 
 	// Just to save a lot of dereferencing..
 	MyConf = static_cast<KafkaPortConf*>(this->pConf.get());
@@ -66,7 +67,6 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 KafkaPort::~KafkaPort()
 {
 	Disable();
-	KafkaConnection.reset(); // Remove our ref count from the sheared ptr, so it is destructed.
 }
 
 void KafkaPort::Enable()
@@ -95,7 +95,7 @@ void KafkaPort::Disable()
 void KafkaPort::Build()
 {
 	// The passed in method will be called whenever there are events in the queue.
-	pKafkaEventQueue.reset(new StrandProtectedQueue<KafkaEvent>(*pIOS, 100, std::bind(&KafkaPort::SendKafkaEvents, this)));
+	pKafkaEventQueue = std::make_shared<StrandProtectedQueue<KafkaEvent>>(*pIOS, 100, std::bind(&KafkaPort::SendKafkaEvents, this));
 
 	libkafka_asio::Connection::Configuration configuration;
 	configuration.auto_connect = true;
@@ -103,7 +103,7 @@ void KafkaPort::Build()
 	configuration.socket_timeout = 10000;     //MyConf->mAddrConf.TCPConnectRetryPeriodms
 	configuration.SetBroker(MyConf->mAddrConf.IP, MyConf->mAddrConf.Port);
 
-//SJE	KafkaConnection.reset( new libkafka_asio::Connection (*pIOS, configuration));
+	KafkaConnection = std::make_shared<libkafka_asio::Connection>(*pIOS->ReallyWantTheIOSPtr(), configuration);
 }
 
 
@@ -122,12 +122,14 @@ void KafkaPort::Event(std::shared_ptr<const EventInfo> event, const std::string&
 
 	size_t ODCIndex = event->GetIndex();
 
+	QualityFlags quality = event->GetQuality();
+	odc::msSinceEpoch_t timestamp = event->GetTimestamp();
+
 	switch (event->GetEventType())
 	{
 		case EventType::Analog:
 		{
 			double measurement = event->GetPayload<EventType::Analog>();
-			QualityFlags quality = event->GetQuality();
 
 			LOGDEBUG("OS - Received Event - Analog - Index {}  Value {}  Quality {}", std::to_string(ODCIndex), measurement, ToString(quality));
 			std::string key;
@@ -136,14 +138,13 @@ void KafkaPort::Event(std::shared_ptr<const EventInfo> event, const std::string&
 				LOGERROR("Tried to get the key for an invalid analog point index " + std::to_string(ODCIndex));
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
-			QueueKafkaEvent(key, measurement, quality);
+			QueueKafkaEvent(key, measurement, quality, timestamp);
 
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
 		}
 		case EventType::Binary:
 		{
 			double measurement = event->GetPayload<EventType::Binary>();
-			QualityFlags quality = event->GetQuality();
 
 			LOGDEBUG("OS - Received Event - Binary - Index {}  Value {}  Quality {}", std::to_string(ODCIndex), measurement, ToString(quality));
 			std::string key;
@@ -152,7 +153,7 @@ void KafkaPort::Event(std::shared_ptr<const EventInfo> event, const std::string&
 				LOGERROR("Tried to get the key for an invalid abinary point index " + std::to_string(ODCIndex));
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
-			QueueKafkaEvent(key, measurement, quality);
+			QueueKafkaEvent(key, measurement, quality, timestamp);
 
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
 		}
@@ -186,14 +187,39 @@ void KafkaPort::Event(std::shared_ptr<const EventInfo> event, const std::string&
 #pragma endregion DataEvents
 #endif
 
-void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, QualityFlags quality)
+std::string KafkaPort::to_ISO8601_TimeString(odc::msSinceEpoch_t timestamp)
+{
+	time_t tp = timestamp / 1000; // time_t is normally seconds since epoch. We deal in msec!
+	int msec = timestamp % 1000;
+
+	// Convert to UTC
+	std::tm* t = std::gmtime(&tp);
+	if (t != nullptr)
+	{
+		char buf[sizeof "2011-10-08T07:07:09.000Z++++"];
+		std::strftime(buf, sizeof(buf), "%FT%T", t);
+		std::string result = fmt::format("{}.{:03}Z",buf, msec);
+		return result;
+	}
+	LOGERROR("Failed to convert timestamp to UTC ISO8601 time string");
+	return "";
+}
+
+std::string KafkaPort::CreateKafkaPayload(const std::string& key,  double measurement, odc::QualityFlags quality, const odc::msSinceEpoch_t& timestamp)
+{
+	std::string stringstamp = to_ISO8601_TimeString(timestamp);
+	std::string value = "{\"PITag\" : \"" + key + "\", \"Value\" : " + std::to_string(measurement) + ", \"Quality\" : \"" + ToString(quality) + "\", \"TimeStamp\" : \"" + stringstamp + "\"}";
+	return value;
+}
+
+void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, QualityFlags quality, odc::msSinceEpoch_t timestamp)
 {
 	if (key.length() == 0)
 	{
 		LOGERROR("Tried to queue an empty key to Kafka");
 		return;
 	}
-	std::string value = "{\"Value\" : " + std::to_string(measurement) + ", \"Quality\" : \"" + ToString(quality) + "\"}";
+	std::string value =     CreateKafkaPayload(key, measurement, quality, timestamp );
 	KafkaEvent ev(key, value);
 	pKafkaEventQueue->async_push(ev); // Takes a copy
 
@@ -201,65 +227,79 @@ void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, Qual
 	// Now actually send it to Kafka!!!
 }
 
-// Process everything in the queue, into a Kafka message, compress and send. The question is how we call this?
-// Register it as a handler to be called every time new data is pushed into the queue?
-// Use a flag in the push routine to handle if a call to this method has already been queued.
-
+// Process everything in the queue, into a Kafka message, compress and send.
+// This method is registered with the queue, and will be called when:
+// New data is pushed into the queue - provided is not waiting for a response to a previously sent Kafka message.
+// As there should be a steady stream of messages - dont worry about timeouts to trigger this call.
+// The queue manages the syncronisation of when this is called - it is only called on the queue strand.
+//
 void KafkaPort::SendKafkaEvents()
 {
 	LOGDEBUG("SendKafkaEvents called");
 
-	// Queue a lambda, that will be called with a vector of all the events currently in the queue. We process them and send them to the Kafka cluster
-	// Define the lambda to be called her, it is called with an async method below.
+	// Setup a lambda, that will be called with a vector of all the events currently in the queue.
+	// We process them and send them to the Kafka cluster.
+	// Define the lambda to be called here, it is called with an async method below.
 
 	StrandProtectedQueue<KafkaEvent>::ProcessAllEventsCallbackFnPtr pProcessCallback =
 		std::make_shared<StrandProtectedQueue<KafkaEvent>::ProcessAllEventsCallbackFn>([&](std::vector<KafkaEvent> Events)
 			{
-				if (Events.size() == 0)
+				libkafka_asio::ProduceRequest request;
+				try
 				{
-				      LOGERROR("No Events to Send to Kafka");
-				      return; // Nothing to do
-				}
+				      if (Events.size() == 0)
+				      {
+				            LOGERROR("No Events to Send to Kafka");
+				            pKafkaEventQueue->finished_pop_all(); // Otherwise we get stuck!
+				            return;                               // Nothing to do
+					}
 
-				LOGDEBUG("Packaging up Kafka Message.. {} Events", Events.size());
+				      LOGDEBUG("Packaging up Kafka Message.. {} Events", Events.size());
 
-				libkafka_asio::MessageSet messageset; // Build multiple messages (each holding an event) into the messageset. Then we compress to a message.
+				      libkafka_asio::MessageSet messageset; // Build multiple messages (each holding an event) into the messageset. Then we compress to a message.
 
-				for (int i = 0; i < Events.size(); i++)
-				{
+				      for (int i = 0; i < Events.size(); i++)
+				      {
 				//LOGDEBUG("Message Key {}, Value {}", Events[i].Key, Events[i].Value);
 
-				      libkafka_asio::Message message;
-				      message.mutable_value().reset(new libkafka_asio::Bytes::element_type(Events[i].Value.begin(), Events[i].Value.end()));
-				      message.mutable_key().reset(new libkafka_asio::Bytes::element_type(Events[i].Key.begin(), Events[i].Key.end()));
+				            libkafka_asio::Message message;
+				            message.mutable_value() = std::make_shared<libkafka_asio::Bytes::element_type>(Events[i].Value.begin(), Events[i].Value.end());
+				            message.mutable_key() = std::make_shared<libkafka_asio::Bytes::element_type>(Events[i].Key.begin(), Events[i].Key.end());
 
-				      libkafka_asio::MessageAndOffset messageandoffset(message, i+1); // Offset is 1 based??
+				            libkafka_asio::MessageAndOffset messageandoffset(message, i + 1); // Offset is 1 based??
 
-				      messageset.push_back(messageandoffset);
-				}
+				            messageset.push_back(messageandoffset);
+					}
 
 				// Compress the message
-				asio::error_code ec;
-				libkafka_asio::Message smallmessage = CompressMessageSet(messageset, libkafka_asio::constants::Compression::kCompressionSnappy, ec);
+				      asio::error_code ec;
+				      libkafka_asio::Message smallmessage = CompressMessageSet(messageset, libkafka_asio::constants::Compression::kCompressionSnappy, ec);
 
-				if (libkafka_asio::kErrorSuccess != ec)
+				      if (libkafka_asio::kErrorSuccess != ec)
+				      {
+				            LOGERROR("Kafka Compression of message failed! Error Code {} - {} - WE LOST DATA", ec.value(), asio::system_error(ec).what());
+				            pKafkaEventQueue->finished_pop_all(); // Otherwise we get stuck!
+				            return;
+					}
+
+				      request.set_required_acks(1); // This is the default anyway. We can set to 0 so we dont need an ack, or more than 1 of there is more than one message in a message (I think)
+
+				      request.AddMessage(smallmessage, GetTopic(), 0);
+				}
+				catch(std::exception& e)
 				{
-				// Compression failed...
-				      LOGERROR("Kafka Compression of message failed! Error Code {} - {}", ec.value(), asio::system_error(ec).what());
+				      LOGERROR("Problem Packaging up Kafka Message : {} - WE LOST DATA", e.what());
+				      pKafkaEventQueue->finished_pop_all(); // Otherwise we get stuck!
 				      return;
 				}
-
-				libkafka_asio::ProduceRequest request;
-				request.set_required_acks(1); // This is the default anyway. We can set to 0 so we dont need an ack, or more than 1 of there is more than one message in a message (I think)
-
-				request.AddMessage(smallmessage, GetTopic(), 0);
-
 				// Send the prepared produce request.
 				// The connection will attempt to automatically connect to one of the brokers, specified in the configuration.
-				//TODO These can probably not overlap, so need to not send the next one until we have finished this one...
-				LOGDEBUG("Posting Async Kafka Request");
+				// We cannot get back into this lambda until the pKafkaEventQueue->finished_pop_all(); method is called. That does not happen
+				// until the request is finished.
+				// We DO NOT do any timeout processing. We wait until forever for the request to finish.
 
 				#ifdef DOPOST
+				LOGDEBUG("Posting Async Kafka Request");
 				KafkaConnection->AsyncRequest(
 					request,
 					[&](const libkafka_asio::Connection::ErrorCodeType & err,
@@ -270,16 +310,18 @@ void KafkaPort::SendKafkaEvents()
 						      LOGERROR("Kafka Produce (Send) Message Failed {} ", asio::system_error(err).what());
 						}
 						else
-							LOGDEBUG("Kafka Produce (Send) Message Succeeded ");
-
+						{
+						      LOGDEBUG("Kafka Produce (Send) Message Succeeded ");
+						}
 						pKafkaEventQueue->finished_pop_all();
 					});
 				#else
+				LOGERROR("NOT POSTING Async Kafka Request - check DOPOST compiler flag");
 				pKafkaEventQueue->finished_pop_all();
 				#endif
 			});
 
-	// This produces the events vector and passes it to the passed lambda.
+	// This produces the events vector and passes it to the passed lambda (code above). Kind of convoluted....
 	pKafkaEventQueue->async_pop_all(pProcessCallback);
 }
 

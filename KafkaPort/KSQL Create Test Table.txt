@@ -1,0 +1,10 @@
+CREATE TABLE TestEvents
+  (PITag VARCHAR,
+  Value DOUBLE,
+  Quality VARCHAR,
+  TimeStamp VARCHAR)
+ WITH (KAFKA_TOPIC='Test',
+       VALUE_FORMAT='JSON',
+       KEY='PITag',
+	   TIMESTAMP='TimeStamp',
+       TIMESTAMP_FORMAT='yyyy-MM-dd'THH:mm:ss.S'Z');
