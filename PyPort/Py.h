@@ -34,7 +34,7 @@
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
 // The test cases do not destruct everthing correctly, they run individually ok, but one after the other they fail.
-// #define NONVSTESTING
+#define NONVSTESTING
 
 // A cheat for it to find my Python module py files... comment out normally!
 //#define SCOTTPYTHONCODEPATH

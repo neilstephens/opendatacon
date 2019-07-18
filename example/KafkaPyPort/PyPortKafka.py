@@ -3,6 +3,7 @@ import json
 import sys
 from datetime import datetime, timezone
 import odc
+# getting a problem loading Kafka module - [No module named 'confluent_kafka.cimpl']
 from confluent_kafka import Producer, Consumer, KafkaError
 
 # Logging Levels
