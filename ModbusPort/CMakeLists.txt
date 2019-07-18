@@ -53,7 +53,7 @@ if(PACKAGE_LIBMODBUS)
 	if(WIN32)
 		get_filename_component(MODBUS_DIR ${MODBUS_LIB} DIRECTORY)
 		get_filename_component(MODBUS_BASE ${MODBUS_LIB} NAME_WE)
-		install(FILES "${MODBUS_DIR}/${MODBUS_BASE}.dll" DESTINATION ${INSTALLDIR_MODULES})
+		install(FILES "${MODBUS_DIR}/${MODBUS_BASE}.dll" DESTINATION ${INSTALLDIR_LIBS})
 	endif()
 endif()
 
