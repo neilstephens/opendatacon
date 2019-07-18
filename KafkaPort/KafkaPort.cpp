@@ -32,7 +32,8 @@
 #include "StrandProtectedQueue.h"
 
 KafkaPort::KafkaPort(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
-	DataPort(aName, aConfFilename, aConfOverrides)
+	DataPort(aName, aConfFilename, aConfOverrides),
+	UniqueMessageIndex(0)
 {
 	//the creation of a new KafkaPortConf will get the point details
 	pConf = std::make_unique<KafkaPortConf>(ConfFilename, ConfOverrides);
@@ -207,9 +208,17 @@ std::string KafkaPort::to_ISO8601_TimeString(odc::msSinceEpoch_t timestamp)
 
 std::string KafkaPort::CreateKafkaPayload(const std::string& key,  double measurement, odc::QualityFlags quality, const odc::msSinceEpoch_t& timestamp)
 {
-	std::string stringstamp = to_ISO8601_TimeString(timestamp);
-	std::string value = "{\"PITag\" : \"" + key + "\", \"Value\" : " + std::to_string(measurement) + ", \"Quality\" : \"" + ToString(quality) + "\", \"TimeStamp\" : \"" + stringstamp + "\"}";
-	return value;
+	try
+	{
+		std::string value = fmt::format("{{\"PITag\" : \"{}\", \"Index\" : {}, \"Value\" : {}, \"Quality\" : \"{}\", \"TimeStamp\" : \"{}\"}}",
+			key, UniqueMessageIndex++, measurement, ToString(quality), to_ISO8601_TimeString(timestamp));
+		return value;
+	}
+	catch (std::exception & e)
+	{
+		LOGERROR("Format Problem in CreateKafkaPayload : {} - WE LOST DATA", e.what());
+	}
+	return "";
 }
 
 void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, QualityFlags quality, odc::msSinceEpoch_t timestamp)
@@ -219,7 +228,7 @@ void KafkaPort::QueueKafkaEvent(const std::string &key, double measurement, Qual
 		LOGERROR("Tried to queue an empty key to Kafka");
 		return;
 	}
-	std::string value =     CreateKafkaPayload(key, measurement, quality, timestamp );
+	std::string value = CreateKafkaPayload(key, measurement, quality, timestamp );
 	KafkaEvent ev(key, value);
 	pKafkaEventQueue->async_push(ev); // Takes a copy
 

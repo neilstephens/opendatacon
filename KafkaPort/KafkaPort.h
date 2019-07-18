@@ -77,6 +77,7 @@ protected:
 	std::shared_ptr<KafkaPointConf> MyPointConf;
 	std::shared_ptr<StrandProtectedQueue<KafkaEvent>> pKafkaEventQueue;
 	std::shared_ptr<libkafka_asio::Connection> KafkaConnection;
+	uint64_t UniqueMessageIndex; // Just so we can identify any possible missing messages in the Kafka instance
 };
 
 #endif

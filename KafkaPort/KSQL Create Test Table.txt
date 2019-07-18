@@ -1,10 +1,36 @@
-CREATE TABLE TestEvents
+CREATE STREAM TestEvents
   (PITag VARCHAR,
   Value DOUBLE,
   Quality VARCHAR,
   TimeStamp VARCHAR)
  WITH (KAFKA_TOPIC='Test',
        VALUE_FORMAT='JSON',
-       KEY='PITag',
+       KEY='PITag');
+	   ,
 	   TIMESTAMP='TimeStamp',
        TIMESTAMP_FORMAT='yyyy-MM-dd'THH:mm:ss.S'Z');
+	
+List running containers
+docker-compose ps
+
+List running containers
+docker container ls
+
+List all containers
+docker ps -a
+	
+	   
+docker run --tty --interactive --rm  confluentinc/cp-kafkacat  kafkacat -b host.docker.internal:9092  -t Test  -C -o beginning -d broker,protocol,metadata,topic
+This still errors looking for broker - perhaps dump the container and start again?
+
+Windows Docker - the dns between containers does not work. All you can do is pass or use host.docker.internal to the linux containers, which points to the windows host.
+As the docker kafka containers are mapping their ports to localhost - this should work.
+
+
+Kafka Python Producer
+from confluent_kafka import Producer
+
+conf = {'bootstrap.servers': 'localhost:9092', 'client.id': 'test', 'default.topic.config': {'acks': 'all'}}
+producer = Producer(conf)
+producer.produce(topic, key='key', value='value')
+producer.flush()

@@ -273,7 +273,7 @@ TEST_CASE("Util - ConfigFileLoadTest")
 
 	QualityFlags quality(QualityFlags::ONLINE | QualityFlags::RESTART);
 	std::string json = KPort->CreateKafkaPayload("HS01234|BIN|1", 0.0123, quality, timestamp);
-	REQUIRE(json == "{\"PITag\" : \"HS01234|BIN|1\", \"Value\" : 0.012300, \"Quality\" : \"|ONLINE|RESTART|\", \"TimeStamp\" : \"2019-07-17T01:34:20.072Z\"}");
+	REQUIRE(json == "{\"PITag\" : \"HS01234|BIN|1\", \"Index\" : 0, \"Value\" : 0.0123, \"Quality\" : \"|ONLINE|RESTART|\", \"TimeStamp\" : \"2019-07-17T01:34:20.072Z\"}");
 
 	STANDARD_TEST_TEARDOWN();
 }
