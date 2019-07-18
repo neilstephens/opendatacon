@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>3f5f09d1-984a-4869-b6af-610056ba0e32</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>PyPort.py</StartupFile>
+    <StartupFile>PyPortTestMain.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -24,9 +24,9 @@
     <Compile Include="odc.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="PyPort.py" />
     <Compile Include="PyPortCBSim.py" />
-    <Compile Include="PyPortSim.py" />
+    <Compile Include="PyPortKafka.py" />
+    <Compile Include="PyPortTestMain.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
