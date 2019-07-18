@@ -74,6 +74,7 @@ test_script:
 - cmd: '%cmake_builddir%\%configuration%\DNP3Port_tests.exe -d yes'
 - cmd: '%cmake_builddir%\%configuration%\MD3Port_tests.exe -d yes'
 - cmd: '%cmake_builddir%\%configuration%\CBPort_tests.exe error -d yes'
+- cmd: '%cmake_builddir%\%configuration%\PyPort_tests.exe error -d yes'
 
 artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
