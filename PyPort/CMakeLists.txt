@@ -30,54 +30,78 @@ find_package(Python3 COMPONENTS Development)	# The new way of doing things, can 
 
 if (Python3_FOUND) 
 	message("Python3 Found")
-
-	if(WIN32)
-		if (NOT Python3_LIBRARY_DEBUG)
-			# Appveyor does not have the debug libraries. Point to our copy that we have put into GIT. This issue will be fixed on next Image Release
-			# Remove this and Python37_d.lib from GIT when the Appveyor image catches up.
-
-			if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")	# 64 Bit
-				set(platform "x64")
-			else()
-				set(platform "x86")
-			endif()
-
-			message("Found Python Release Library but no Debug Library ${Python3_LIBRARY_RELEASE}")
-			get_filename_component(LibFileName "${Python3_LIBRARY_RELEASE}" NAME_WE)
-			message("Target Filename: ${CMAKE_SOURCE_DIR}/${LibFileName}_d.lib")
-			set(Python3_LIBRARIES "optimized;${Python3_LIBRARY_RELEASE};debug;${CMAKE_SOURCE_DIR}/PyPort/${platform}/${LibFileName}_d.lib")
-		endif()
-	endif()
 else()
 	# We have to find the libraries using old CMake command as Python3 does not work on some of our targets.
 	message("find_package(Python3) failed, trying find_package(PythonLibs) ")
 	find_package(PythonLibs 3.4 REQUIRED)
+	if(PYTHONLIBS_FOUND)
+		message("Python3 Found")
+	else()
+		message(FATAL_ERROR "Can't find Python3 - bailing")
+	endif()
 	set(Python3_INCLUDE_DIRS "${PYTHON_INCLUDE_DIRS}")
 	set(Python3_LIBRARIES "${PYTHON_LIBRARIES}")
+	set(Python3_LIBRARY_DEBUG "${PYTHON_LIBRARY_DEBUG}")
+	set(Python3_LIBRARY_RELEASE "${PYTHON_LIBRARY_RELEASE}")
+endif()
+if(WIN32)
+	if (NOT Python3_LIBRARY_DEBUG)
+		# Appveyor does not have the debug libraries. Point to our copy that we have put into GIT. This issue will be fixed on next Image Release
+		# Remove this and Python37_d.lib from GIT when the Appveyor image catches up.
+
+		if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")	# 64 Bit
+			set(platform "x64")
+		else()
+			set(platform "x86")
+		endif()
+
+		message("Found Python Release Library but no Debug Library ${Python3_LIBRARY_RELEASE}")
+		get_filename_component(LibFileName "${Python3_LIBRARY_RELEASE}" NAME_WE)
+		message("Target Filename: ${CMAKE_SOURCE_DIR}/${LibFileName}_d.lib")
+		set(Python3_LIBRARY_DEBUG "${CMAKE_SOURCE_DIR}/PyPort/${platform}/${LibFileName}_d.lib")
+		set(Python3_LIBRARIES "optimized;${Python3_LIBRARY_RELEASE};debug;${Python3_LIBRARY_DEBUG}")
+	endif()
+else()
+	if (NOT Python3_LIBRARY_DEBUG)
+		set(Python3_LIBRARY_DEBUG "${Python3_LIBRARY_RELEASE}")
+	endif()
 endif()
 
-
-message("Architecture ${CMAKE_LIBRARY_ARCHITECTURE} ")
 message("Found Python Include Dirs ${Python3_INCLUDE_DIRS}")
-message("Found Python Libraries ${Python3_LIBRARIES} ")
-message("Make Bin Dir ${CMAKE_CURRENT_BINARY_DIR}, Install Bin Dir ${INSTALLDIR_BINS}")
+message("Found Python Debug Library ${Python3_LIBRARY_DEBUG} ")
+message("Found Python Release Library ${Python3_LIBRARY_RELEASE} ")
+message("Python link target string '${Python3_LIBRARIES}'")
+
 #hide (in non-advanced mode) the library/include path in cmake guis since it's derrived
 mark_as_advanced(FORCE Python3_INCLUDE_DIRS)
 mark_as_advanced(FORCE Python3_LIBRARIES)
+mark_as_advanced(FORCE Python3_LIBRARY_DEBUG)
+mark_as_advanced(FORCE Python3_LIBRARY_RELEASE)
 
 add_library(python_target UNKNOWN IMPORTED)
-set_property(TARGET python_target PROPERTY IMPORTED_LOCATION "${Python3_LIBRARIES}")
+set_property(TARGET python_target PROPERTY IMPORTED_LOCATION "${Python3_LIBRARY_RELEASE}")
+add_library(python_target_d UNKNOWN IMPORTED)
+set_property(TARGET python_target_d PROPERTY IMPORTED_LOCATION "${Python3_LIBRARY_DEBUG}")
 
 configure_file(PythonCode/PyPortSim.py ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/PyPortSim.py COPYONLY )
 
 #include in install/packaging
 option(PACKAGE_LIBPYTHON "Package Python libs in c-pack installer" ON)
 if(PACKAGE_LIBPYTHON)
-	file_w_symlinks(file_w_links "${Python3_LIBRARIES}")
-	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS})
+
+	#include in install/packaging
+	file_w_symlinks(file_w_links "${Python3_LIBRARY_RELEASE}") #resolve symlinks
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
+	file_w_symlinks(file_w_links "${Python3_LIBRARY_DEBUG}") #resolve symlinks
+	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
+
 	if(WIN32)
-		get_filename_component(PYTHON_DIR ${Python3_LIBRARIES} DIRECTORY)
-		get_filename_component(PYTHON_BASE ${Python3_LIBRARIES} NAME_WE)
+		get_filename_component(PYTHON_DIR ${Python3_LIBRARY_RELEASE} DIRECTORY)
+		get_filename_component(PYTHON_BASE ${Python3_LIBRARY_RELEASE} NAME_WE)
+		install(FILES "${PYTHON_DIR}/${PYTHON_BASE}.dll" DESTINATION ${INSTALLDIR_LIBS})
+
+		get_filename_component(PYTHON_DIR ${Python3_LIBRARY_DEBUG} DIRECTORY)
+		get_filename_component(PYTHON_BASE ${Python3_LIBRARY_DEBUG} NAME_WE)
 		install(FILES "${PYTHON_DIR}/${PYTHON_BASE}.dll" DESTINATION ${INSTALLDIR_LIBS})
 	endif()
 endif()
