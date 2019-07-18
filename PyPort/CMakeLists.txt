@@ -83,13 +83,13 @@ set_property(TARGET python_target PROPERTY IMPORTED_LOCATION "${Python3_LIBRARY_
 add_library(python_target_d UNKNOWN IMPORTED)
 set_property(TARGET python_target_d PROPERTY IMPORTED_LOCATION "${Python3_LIBRARY_DEBUG}")
 
-if(${CMAKE_CONFIGURATION_TYPES})
+if("${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
+	configure_file(PythonCode/PyPortSim.py ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/PyPortSim.py COPYONLY )
+else()
 	foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 		string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
 		configure_file(PythonCode/PyPortSim.py ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG}}/PyPortSim.py COPYONLY )
 	endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
-else()
-	configure_file(PythonCode/PyPortSim.py ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/PyPortSim.py COPYONLY )
 endif()
 
 #include in install/packaging
