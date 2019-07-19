@@ -41,8 +41,7 @@ class SimPortClass:
         odc.log(self.guid,Critical, message )
 
 
-    # Mandatory Methods that are called by ODC PyPort
-
+    # Required Method
     def __init__(self, odcportguid, objectname):
         self.objectname = objectname    # Documentation/error use only.
         self.guid = odcportguid         # So that when we call an odc method, ODC can work out which pyport to hand it too. 
@@ -52,6 +51,7 @@ class SimPortClass:
         self.LogDebug("SimPortClass Init Called - {}".format(objectname))       
         return
 
+    # Required Method
     def Config(self, MainJSON, OverrideJSON):
         """ The JSON values are passed as strings (stripped of comments), which we then load into a dictionary for processing
         Note that this does not handle Inherits JSON entries correctly (Inherits is effectily an Include file entry)"""
@@ -80,11 +80,19 @@ class SimPortClass:
         # Now extract what is needed for this instance, or just reference the ConfigDict when needed.
         return
 
+    # Required Method
+    def Operational(self):
+        """ This is called from ODC once ODC is ready for us to be fully operational - normally after Build is complete"""
+        self.LogTrace("Port Operational - {}".format(datetime.now().isoformat(" ")))
+        return
+
+    # Required Method
     def Enable(self):
         self.LogTrace("Enabled - {}".format(datetime.now().isoformat(" ")))
         self.enabled = True;
         return
 
+    # Required Method
     def Disable(self):
         self.LogDebug("Disabled - {}".format(datetime.now().isoformat(" ")))
         self.enabled = False

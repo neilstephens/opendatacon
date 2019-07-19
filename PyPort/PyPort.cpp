@@ -176,14 +176,17 @@ void PyPort::Build()
 
 			      pWrapper->Config(JSONMain, JSONOverride);
 			      LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
+
+			      PortOperational = true;
+			      LOGDEBUG("Port Operational {}", Name);
+
+			      pWrapper->PortOperational(); // Tell our Python code that we are ready to roll.
 			}
 			catch (std::exception& e)
 			{
 			      LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
 			      return;
 			}
-			PortOperational = true;
-			LOGDEBUG("Port Operational {}", Name);
 		});
 
 	pServer = ServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new ServerManager if required

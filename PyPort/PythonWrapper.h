@@ -58,6 +58,7 @@ public:
 	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
 		const std::string& pyClassName, const std::string& PortName);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
+	void PortOperational(); // Called when Build is complete.
 	void Enable();
 	void Disable();
 	CommandStatus Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
@@ -68,6 +69,7 @@ public:
 	PublishEventCallFnType GetPythonPortPublishEventCallFn() { return PythonPortPublishEventCallFn; }; // Protect set access, only allow get.
 
 	static void PyErrOutput();
+	static void DumpStackTrace();
 
 	std::string Name;
 
@@ -106,6 +108,7 @@ private:
 	PyObject* pyModule = nullptr;
 	PyObject* pyInstance = nullptr;
 	PyObject* pyFuncConfig = nullptr;
+	PyObject* pyFuncOperational = nullptr;
 	PyObject* pyFuncEnable = nullptr;
 	PyObject* pyFuncDisable = nullptr;
 	PyObject* pyFuncEvent = nullptr;

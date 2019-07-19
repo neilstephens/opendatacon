@@ -1,6 +1,8 @@
 import types
 import json
 import sys
+import time
+import math
 from datetime import datetime, timezone
 import odc
 # getting a problem loading Kafka module - [No module named 'confluent_kafka.cimpl']
@@ -50,9 +52,11 @@ class SimPortClass:
         self.guid = odcportguid         # So that when we call an odc method, ODC can work out which pyport to hand it too. 
         self.Enabled = False;
         self.MessageIndex = 0
+        self.LastMessageIndex = self.MessageIndex
+        self.StartTimeSeconds = time.time()
         self.ConfigDict = {}      # Config Dictionary
-        self.LogDebug("SimPortClass Init Called - {}".format(objectname)) 
-        
+        self.LogDebug("PyPortKafka - SimPortClass Init Called - {}".format(objectname)) 
+        self.LogDebug("Python sys.path - {}".format(sys.path))         
         return
 
     def Config(self, MainJSON, OverrideJSON):
@@ -83,13 +87,18 @@ class SimPortClass:
         # Now extract what is needed for this instance, or just reference the ConfigDict when needed.
         kafkaserver = "{}:{}".format(self.ConfigDict["BrokerIP"],self.ConfigDict["BrokerPort"])
         conf = {'bootstrap.servers': kafkaserver, 'client.id': 'OpenDataCon', 'default.topic.config': {'acks': 'all'}}
-        self.producer = Producer(conf)
+        self.producer = Producer(conf)        
+        return
 
+    def Operational(self):
+        """ This is called from ODC once ODC is ready for us to be fully operational - normally after Build is complete"""
+        self.LogDebug("Port Operational - {}".format(datetime.now().isoformat(" ")))
+        # This is only done once - will self restart from the timer callback.
         odc.SetTimer(self.guid, 1, 2000)    # Start the timer cycle
         return
 
     def Enable(self):
-        self.LogTrace("Enabled - {}".format(datetime.now().isoformat(" ")))
+        self.LogDebug("Enabled - {}".format(datetime.now().isoformat(" ")))
         self.enabled = True;
         return
 
@@ -106,7 +115,7 @@ class SimPortClass:
         Json = self.ConfigDict.get(EventType,"")    # If no configured points for a point type, return empty Json
 
         if (len(Json)==0):
-            self.logError("Can't find point definitions for {} types".format(EventType))
+            self.LogError("Can't find point definitions for {} types".format(EventType))
             return ""
 
         #TODO Do we need a faster way of doing this? Potentially 10,000 points or more.
@@ -121,13 +130,16 @@ class SimPortClass:
         if err is not None:
             self.LogError('Message delivery failed: {}'.format(err))
         else:
-            self.LogTrace('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
+            self.LogDebug('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
 
     # Needs to return True or False, which will be translated into CommandStatus::SUCCESS or CommandStatus::UNDEFINED
     # EventType (string) Index (int), Time (msSinceEpoch), Quality (string) Payload (string) Sender (string)
     # There is no callback available, the ODC code expects this method to return without delay.
     def EventHandler(self,EventType, Index, Time, Quality, Payload, Sender):
-        self.LogDebug("EventHander: {}, {}, {} {} - {}".format(self.guid,Sender,Index,EventType,Payload))
+        # self.LogDebug("EventHander: {}, {}, {} {} - {}".format(self.guid,Sender,Index,EventType,Payload))
+
+        if (EventType == "ConnectState"):
+            return True
 
         PITag = self.GetPITag(EventType, Index)
 
@@ -151,11 +163,11 @@ class SimPortClass:
     # Will be called at the appropriate time by the ASIO handler system. Will be passed an id for the timeout, 
     # so you can have multiple timers running.
     def TimerHandler(self,TimerId):
-        self.LogDebug("TimerHander: ID {}, {}".format(TimerId, self.guid))
+        # self.LogDebug("TimerHander: ID {}, {}".format(TimerId, self.guid))
 
         if (TimerId == 1):
             self.producer.flush()    # We can potentially get held up here? So dont do in the Event method.
-            odc.SetTimer(self.guid, 1, 1000)    # Make it so we fire again in 1 second.
+            odc.SetTimer(self.guid, 1, 500)    # Make it so we fire again in .5 second.
         return
 
     # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
@@ -169,6 +181,10 @@ class SimPortClass:
        
         Response = {}   # Empty Dict
         if ("GET" in url):
-            Response["Status"] = "PyPortKafka Processing is running. Messages Processed - {}".format(self.MessageIndex)
+            DeltaSeconds = time.time() - self.StartTimeSeconds
+            Response["Status"] = "PyPortKafka Processing is running. Messages Processed - {}, Messages/Second - {}".format(self.MessageIndex, math.floor((self.MessageIndex - self.LastMessageIndex)/DeltaSeconds))
+
+            self.StartTimeSeconds = time.time()
+            self.LastMessageIndex = self.MessageIndex
 
         return json.dumps(Response)

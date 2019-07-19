@@ -51,7 +51,8 @@ class SimPortClass:
         self.Enabled = False;
         self.i = 0
         self.ConfigDict = {}      # Config Dictionary
-        self.LogDebug("SimPortClass Init Called - {}".format(objectname))       
+        self.LogDebug("PyPortCBSim - SimPortClass Init Called - {}".format(objectname)) 
+        self.LogDebug("Python sys.path - {}".format(sys.path)) 
         return
 
     # Required Method
@@ -81,6 +82,12 @@ class SimPortClass:
         self.LogDebug("Combined (Merged) JSON Config {}".format(json.dumps(self.ConfigDict)))
 
         # Now extract what is needed for this instance, or just reference the ConfigDict when needed.
+        return
+    
+    # Required Method
+    def Operational(self):
+        """ This is called from ODC once ODC is ready for us to be fully operational - normally after Build is complete"""
+        self.LogTrace("Port Operational - {}".format(datetime.now().isoformat(" ")))
         return
 
     # Required Method

@@ -5,8 +5,7 @@
     <ProjectGuid>3f5f09d1-984a-4869-b6af-610056ba0e32</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>PyPortTestMain.py</StartupFile>
-    <SearchPath>
-    </SearchPath>
+    <SearchPath>..\..\example\KafkaPyPort;..\..\example\JSON-PyPortCBSim</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>PyPort</Name>
@@ -21,12 +20,18 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="odc.py">
-      <SubType>Code</SubType>
+    <Compile Include="..\..\example\JSON-PyPortCBSim\PyPortCBSim.py">
+      <Link>LinkedFiles\PyPortCBSim.py</Link>
     </Compile>
-    <Compile Include="PyPortCBSim.py" />
-    <Compile Include="PyPortKafka.py" />
+    <Compile Include="..\..\example\KafkaPyPort\PyPortKafka.py">
+      <Link>LinkedFiles\PyPortKafka.py</Link>
+    </Compile>
+    <Compile Include="odc.py" />
+    <Compile Include="PyPortSim.py" />
     <Compile Include="PyPortTestMain.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="LinkedFiles\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

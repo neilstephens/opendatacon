@@ -35,6 +35,7 @@
 
 
 #include "PythonWrapper.h"
+#include <frameobject.h>
 #include <chrono>
 #include <ctime>
 #include <exception>
@@ -231,7 +232,7 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
 			// The PyPort ensures that pyWrapper is managed within a strand
-			LOGDEBUG("Python SetTimer ID: {}, Delay {}", id, delay);
+			//LOGTRACE("Python SetTimer ID: {}, Delay {}", id, delay);
 			auto fn = thisPyWrapper->GetPythonPortSetTimerFn();
 			fn(id, delay);
 		}
@@ -303,7 +304,7 @@ PythonInitWrapper::PythonInitWrapper()
 			LOGERROR("Unable to import python sys library");
 			return;
 		}
-		// Append current working directory to the sys.path variable - so we ca find the module.
+		// Append current working directory to the sys.path variable - so we can find the module.
 		if (PyRun_SimpleString("sys.path.append(\".\")") != 0)
 		{
 			LOGERROR("Unable to append to sys path in python sys library");
@@ -359,6 +360,7 @@ PythonWrapper::~PythonWrapper()
 
 		Py_XDECREF(pyFuncConfig);
 		Py_XDECREF(pyFuncEvent);
+		Py_XDECREF(pyFuncOperational);
 		Py_XDECREF(pyFuncEnable);
 		Py_XDECREF(pyFuncDisable);
 		Py_XDECREF(pyTimerHandler);
@@ -454,6 +456,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
 
 	pyFuncConfig = GetFunction(pyInstance, "Config");
+	pyFuncOperational = GetFunction(pyInstance, "Operational");
 	pyFuncEnable = GetFunction(pyInstance, "Enable");
 	pyFuncDisable = GetFunction(pyInstance, "Disable");
 	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
@@ -480,7 +483,26 @@ void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONO
 	if (pyResult) Py_DECREF(pyResult);
 	Py_DECREF(pyArgs);
 }
-
+void PythonWrapper::PortOperational()
+{
+	try
+	{
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error - Interpreter Closing Down in PortOperational");
+			return;
+		}
+		auto pyArgs = PyTuple_New(0);
+		PyObject* pyResult = PyCall(pyFuncOperational, pyArgs); // No passed variables, assume no delayed return
+		if (pyResult) Py_DECREF(pyResult);
+		Py_DECREF(pyArgs);
+	}
+	catch (std::exception& e)
+	{
+		LOGERROR("Exception Caught calling pyPortOperational() - {}", e.what());
+	}
+}
 void PythonWrapper::Enable()
 {
 	try
@@ -658,6 +680,31 @@ PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sF
 	return pyFunc;
 }
 
+void PythonWrapper::DumpStackTrace()
+{
+	PyThreadState* tstate = PyThreadState_GET();
+	if (NULL != tstate && NULL != tstate->frame)
+	{
+		PyFrameObject* frame = tstate->frame;
+
+		LOGERROR("Python stack trace:");
+		while (NULL != frame)
+		{
+			// int line = frame->f_lineno;
+			/*
+			 frame->f_lineno will not always return the correct line number
+			 you need to call PyCode_Addr2Line().
+			*/
+			int line = PyCode_Addr2Line(frame->f_code, frame->f_lasti);
+			const char* filename = PyUnicode_AsUTF8(frame->f_code->co_filename);
+			const char* funcname = PyUnicode_AsUTF8(frame->f_code->co_name);
+			printf("    %s(%d): %s\n", filename, line, funcname);
+			LOGERROR(fmt::format("Trace : {}({}): {}", filename, line, funcname));
+			frame = frame->f_back;
+		}
+	}
+}
+
 void PythonWrapper::PyErrOutput()
 {
 	//TODO Look at https://stackoverflow.com/questions/1796510/accessing-a-python-traceback-from-the-c-api
@@ -674,12 +721,13 @@ void PythonWrapper::PyErrOutput()
 		if (pstr)
 		{
 			const char* err_msg = PyUnicode_AsUTF8(pstr);
+			const char* trace_msg = "";
 			Py_DECREF(pstr);
 
 			if (err_msg)
 			{
-				std::cout << "Python Error " << err_msg << std::endl;
 				LOGERROR("Python Error {}", err_msg);
+				PythonWrapper::DumpStackTrace();
 			}
 		}
 		PyErr_Restore(ptype, pvalue, ptraceback); //TODO: Do we need to do this or DECREF the variables?
