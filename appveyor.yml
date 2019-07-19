@@ -5,6 +5,7 @@ branches:
   - master
   - /^release\/.*$/
   - /^[0-9]+\.[0-9]+\.[0-9]+.*$/
+  - /^feature\/.*$/
   
 os: Visual Studio 2017
 
