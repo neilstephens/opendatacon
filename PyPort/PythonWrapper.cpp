@@ -44,9 +44,8 @@
 #include <exception>
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/Platform.h>
+#include <whereami++.h>
 #include "PyPort.h"
-
-
 
 using namespace odc;
 
@@ -295,10 +294,17 @@ PythonInitWrapper::PythonInitWrapper()
 
 		// Load our odc module exposing our internal methods to python (i.e. loggin commands)
 		ImportODCModule();
-		//wchar_t *program = Py_DecodeLocale("opendatacon", NULL);
-		//Py_SetProgramName(program);
-		//TODO: get https://github.com/gpakosz/whereami
-		PlatformSetEnv("PYTHONHOME","/home/knarl/qtc_projects/opendatacon-build/submodules/python-cmake-buildsystem/install",0);
+
+		#ifdef PYTHON_LIBDIR
+		auto exepath = whereami::getExecutablePath();
+		std::string newpythonpath = exepath.dirname() + "/lib/" PYTHON_LIBDIR;
+		newpythonpath += ":" + exepath.dirname() + "/../lib/" PYTHON_LIBDIR;
+		if(auto pythonpath = getenv("PYTHONPATH"))
+			newpythonpath += ":" + exepath.dirname() + ":" + pythonpath;
+
+		PlatformSetEnv("PYTHONPATH",newpythonpath.c_str(),1);
+		#endif
+
 		Py_Initialize(); // Get the Python interpreter running
 
 		//FIXME: can't log properly because this is static constructor and log doesn't exist

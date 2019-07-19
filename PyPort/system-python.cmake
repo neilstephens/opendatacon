@@ -55,4 +55,10 @@ if(NOT USE_PYTHON_SUBMODULE)
 	set(PYTHON_LIBRARIES "${Python3_LIBRARIES}")
 	set(PYTHON_LIBRARY_DEBUG "${Python3_LIBRARY_DEBUG}")
 	set(PYTHON_LIBRARY_RELEASE "${Python3_LIBRARY_RELEASE}")
+
+	#hide (in non-advanced mode) the library/include path in cmake guis since it's derrived
+	mark_as_advanced(FORCE Python3_INCLUDE_DIRS)
+	mark_as_advanced(FORCE Python3_LIBRARIES)
+	mark_as_advanced(FORCE Python3_LIBRARY_DEBUG)
+	mark_as_advanced(FORCE Python3_LIBRARY_RELEASE)
 endif()

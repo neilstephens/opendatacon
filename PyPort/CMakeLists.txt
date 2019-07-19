@@ -26,18 +26,16 @@ set(PYTHON_HOME_INSTRUCTIONS "Choose the location of Python: where it was instal
 include("compile-python.cmake")
 include("system-python.cmake")
 
+#hide (in non-advanced mode) the library/include path in cmake guis since it's derrived
+mark_as_advanced(FORCE PYTHON_INCLUDE_DIRS)
+mark_as_advanced(FORCE PYTHON_LIBRARY_DEBUG)
+mark_as_advanced(FORCE PYTHON_LIBRARY_RELEASE)
+mark_as_advanced(FORCE PYTHON_LIBRARIES)
+
 message("Python Include Dirs ${PYTHON_INCLUDE_DIRS}")
 message("Python Debug Library ${PYTHON_LIBRARY_DEBUG} ")
 message("Python Release Library ${PYTHON_LIBRARY_RELEASE} ")
-message("Python Debug Runtime Library ${PYTHON_RUNTIME_LIBRARY_DEBUG} ")
-message("Python Release Runtime Library ${PYTHON_RUNTIME_LIBRARY_RELEASE} ")
 message("Python link target string '${PYTHON_LIBRARIES}'")
-
-#hide (in non-advanced mode) the library/include path in cmake guis since it's derrived
-mark_as_advanced(FORCE Python3_INCLUDE_DIRS)
-mark_as_advanced(FORCE Python3_LIBRARIES)
-mark_as_advanced(FORCE Python3_LIBRARY_DEBUG)
-mark_as_advanced(FORCE Python3_LIBRARY_RELEASE)
 
 if("${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
 	configure_file(PythonCode/PyPortSim.py ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/PyPortSim.py COPYONLY )

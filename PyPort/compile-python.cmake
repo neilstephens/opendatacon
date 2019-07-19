@@ -27,7 +27,6 @@ if(USE_PYTHON_SUBMODULE)
 	else()
 		set(PLATFORM_OPT "")
 	endif()
-	message("${CMAKE_COMMAND} ${PYTHON_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} ${PYTHON_SOURCE}")
 	execute_process(
 		COMMAND ${CMAKE_COMMAND} ${PYTHON_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} ${PYTHON_SOURCE}
 		WORKING_DIRECTORY "${PYTHON_BUILD}"
@@ -59,19 +58,8 @@ if(USE_PYTHON_SUBMODULE)
 		COMMAND ${CMAKE_COMMAND} --build ${PYTHON_BUILD} --config $<CONFIG> --target install
 	)
 
-#	# Look for regular libraries
-#	find_library(Python3_LIBRARY_RELEASE NAMES python3.6m PATHS ${PYTHON_HOME}/lib NO_DEFAULT_PATH)
-#	add_library(python_target UNKNOWN IMPORTED)
-#	set_property(TARGET python_target PROPERTY IMPORTED_LOCATION "${Python3_LIBRARY_RELEASE}")
-#	# Look for debug libraries
-#	find_library(Python3_LIBRARY_DEBUG NAMES python3.6m${CMAKE_DEBUG_POSTFIX} PATHS ${PYTHON_HOME}/lib NO_DEFAULT_PATH)
-#	add_library(python_dtarget UNKNOWN IMPORTED)
-#	set_property(TARGET python_dtarget PROPERTY IMPORTED_LOCATION "${Python3_LIBRARY_DEBUG}")
-#	#set a variable to use for linking
-#	set(Python3_LIBRARIES debug python_dtarget optimized python_target )
-
-#	set(Python3_INCLUDE_DIRS "${PYTHON_HOME}/include/python3.6m")
-
 	include(${PYTHON_BUILD}/share/python3.6/PythonConfig.cmake)
 	set(PYTHON_LIBRARIES libpython-static)
+	install(DIRECTORY ${PYTHON_BUILD}/install/lib/python3.6 DESTINATION ${INSTALLDIR_LIBS})
+	add_definitions(-DPYTHON_LIBDIR="python3.6")
 endif()
