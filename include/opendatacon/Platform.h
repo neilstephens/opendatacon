@@ -97,6 +97,11 @@ inline std::string LastSystemError()
 	return message;
 }
 
+inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
+{
+	_putenv_s(var, val);
+}
+
 #else
 #include <dlfcn.h>
 const std::string DYNLIBPRE = "lib";
@@ -140,6 +145,12 @@ inline std::string LastSystemError()
 
 	return message;
 }
+
+inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
+{
+	setenv(var, val, overwrite);
+}
+
 #endif
 
 /// Posix file system directory manipulation - e.g. chdir

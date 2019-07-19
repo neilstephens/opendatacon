@@ -10,3 +10,6 @@
 [submodule "submodules/dnp3"]
 	path = submodules/dnp3
 	url = https://github.com/dnp3/opendnp3.git
+[submodule "submodules/python-cmake-buildsystem"]
+	path = submodules/python-cmake-buildsystem
+	url = https://github.com/python-cmake-buildsystem/python-cmake-buildsystem.git
