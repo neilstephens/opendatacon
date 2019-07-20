@@ -87,7 +87,7 @@ install:
       # -ti maintain a terminal, the docker image is jessie:latest
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
       # Install the arm versions of dependencies into the QEMU user image
-      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc" 
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3.4 python3.4-dev" 
       mkdir sysroot
       # Copy /usr to sysroot in the docker image
@@ -114,7 +114,7 @@ install:
         yum install -y scl-utils rh-python35
         scl enable rh-python35 bash
         #
-        yum install -y libmicrohttpd-devel socat
+        yum install -y libmicrohttpd-devel socat libc6-dev
       '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
