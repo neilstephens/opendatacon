@@ -96,7 +96,7 @@ install:
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=\"$RUNARGS\""
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUNARGS"
       # Create a link so the python.h file can find the appropriate platform python.h file.
       sudo ln -s "$(pwd)/sysroot/usr/include/arm-linux-gnueabihf" sysroot/usr/include/python3.4m/arm-linux-gnueabihf 
     fi
@@ -129,7 +129,7 @@ install:
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=\"$RUNARGS\""
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUNARGS"
     fi
   - |
     if [ "$DOCKER_BUILD" == "i386" ]; then
@@ -142,7 +142,7 @@ install:
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=\"$RUNARGS\""
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUNARGS"
     fi
 
 script:
