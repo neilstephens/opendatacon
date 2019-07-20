@@ -94,8 +94,9 @@ install:
       # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
+      export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUN"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUNARGS"
       # Create a link so the python.h file can find the appropriate platform python.h file.
       sudo ln -s "$(pwd)/sysroot/usr/include/arm-linux-gnueabihf" sysroot/usr/include/python3.4m/arm-linux-gnueabihf 
     fi
@@ -126,8 +127,9 @@ install:
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
+      export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUN"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUNARGS"
     fi
   - |
     if [ "$DOCKER_BUILD" == "i386" ]; then
@@ -138,8 +140,9 @@ install:
       sudo apt-get install -y python3.5-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
+      export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUN"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUNARGS"
     fi
 
 script:
