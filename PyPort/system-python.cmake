@@ -8,7 +8,9 @@ if(NOT USE_PYTHON_SUBMODULE)
 
 	#find python headers
 	file(GLOB_RECURSE PYTHON_H ${PYTHON_HOME}/*Python.h)
+	message("Globbed ${PYTHON_H}")
 	string(REGEX MATCH "python3.[0-9]+m" PYTHON_VER "${PYTHON_H}")
+	message("Version string: ${PYTHON_VER}")
 	find_path(PYTHON_INCLUDE_DIRS Python.h
 		PATHS ${PYTHON_HOME}/include/${PYTHON_VER} ${PYTHON_HOME}/local/include/${PYTHON_VER}
 		NO_DEFAULT_PATH
@@ -17,12 +19,12 @@ if(NOT USE_PYTHON_SUBMODULE)
 	if(PYTHON_INCLUDE_DIRS)
 		message("Python.h found: ${PYTHON_INCLUDE_DIRS}")
 	else()
-		message(FATAL_ERROR "Can't find Python.h in ${PYTHON_HOME}" )
+		message("Can't find Python.h in ${PYTHON_HOME}" )
 	endif()
 
 	#import the python lib
 	find_library(PYTHON_LIB NAMES ${PYTHON_VER} lib${PYTHON_VER}
-		PATHS ${PYTHON_HOME}/lib ${PYTHON_HOME}/local/lib
+		PATHS ${PYTHON_HOME}/lib ${PYTHON_HOME}/local/lib ${PYTHON_HOME}/lib64 ${PYTHON_HOME}/local/lib64
 		PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
 		NO_DEFAULT_PATH
 		CMAKE_FIND_ROOT_PATH_BOTH)
