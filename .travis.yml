@@ -110,7 +110,7 @@ install:
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm     
         # To get Python3.5 we need the software collections repo, and scl tools. The final command is to activate Python2.5 in bash
         yum install -y oracle-softwarecollection-release-el6
-        yum install -y scl-utils rh-python35-devel
+        yum install -y scl-utils rh-python35-scldevel python35-devel
         scl enable rh-python35 bash
         #
         yum install -y libmicrohttpd-devel socat
