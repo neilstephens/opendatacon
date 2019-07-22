@@ -112,8 +112,6 @@ install:
         yum install -y oracle-softwarecollection-release-el6
         /usr/bin/ol_yum_configure.sh
         yum install -y scl-utils rh-python35 rh-python35-python-devel
-        scl enable rh-python35 bash
-        #
         yum install -y libmicrohttpd-devel socat
       '
       sudo pip install gdown
