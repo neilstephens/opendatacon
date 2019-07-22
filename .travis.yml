@@ -114,15 +114,13 @@ install:
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm     
         # To get Python3.5 we need the software collections repo, and scl tools. The final command is to activate Python2.5 in bash
         yum install -y oracle-softwarecollection-release-el6
-        yum install -y scl-utils rh-python35-devel
-        scl enable rh-python35 bash
-        #
+        /usr/bin/ol_yum_configure.sh
+        yum install -y scl-utils rh-python35 rh-python35-python-devel
         yum install -y libmicrohttpd-devel glibc-devel
       '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
-      export EL6_AR=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-ar
       export EL6_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
       export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
       # Create a symlink to the x86_64-linux-gnu/python3.5m so the python include file can find it. This is in the Ubuntu build host.
@@ -133,7 +131,6 @@ install:
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
-      export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
     fi
@@ -148,7 +145,6 @@ install:
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
-      export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
     fi
