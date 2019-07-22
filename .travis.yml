@@ -63,6 +63,7 @@ branches:
 dist: xenial
 
 install:
+  - export SRC_DIR=$(pwd)
   - mkdir -p build/install && cd build
   - export INSTALL_PREFIX=$(pwd)/install
   - |
@@ -89,14 +90,16 @@ install:
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3.4 python3.4-dev" 
       mkdir sysroot
-      # Copy /usr to sysroot in the docker image
+      # Copy /usr to sysroot from within the docker image
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
+      # make symlink so absolute paths work within docker
+      docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
+      docker exec -i $DOCK ln -s /mnt $SRC_DIR
       # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
-      export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUNARGS"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
       # Create a link so the python.h file can find the appropriate platform python.h file.
       sudo ln -s "$(pwd)/sysroot/usr/include/arm-linux-gnueabihf" sysroot/usr/include/python3.4m/arm-linux-gnueabihf 
     fi
@@ -125,11 +128,13 @@ install:
       sudo ln -s /usr/include/x86_64-linux-gnu /usr/include/python3.5m/x86_64-linux-gnu
       mkdir sysroot
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
+      docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
+      docker exec -i $DOCK ln -s /mnt $SRC_DIR
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUNARGS"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
     fi
   - |
     if [ "$DOCKER_BUILD" == "i386" ]; then
@@ -139,10 +144,12 @@ install:
       sudo apt-get install -y python3.5-minimal:i386 
       sudo apt-get install -y python3.5-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
+      docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
+      docker exec -i $DOCK ln -s /mnt $SRC_DIR
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export RUNARGS="docker;exec;--interactive;--workdir;/mnt/build;$DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$RUNARGS"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
     fi
 
 script:
