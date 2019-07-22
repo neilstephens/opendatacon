@@ -31,14 +31,16 @@ endif()
 #find microhttpd headers
 find_path(HTTPD_INCLUDE_PATH microhttpd.h
 	PATHS ${MICROHTTPD_HOME}/include ${MICROHTTPD_HOME}/local/include
-	NO_DEFAULT_PATH)
+	NO_DEFAULT_PATH
+	CMAKE_FIND_ROOT_PATH_BOTH)
 mark_as_advanced(FORCE HTTPD_INCLUDE_PATH)
 
 #import the microhttpd lib
 find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
 	PATHS ${MICROHTTPD_HOME}/lib ${MICROHTTPD_HOME}/local/lib
 	PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
-	NO_DEFAULT_PATH)
+	NO_DEFAULT_PATH
+	CMAKE_FIND_ROOT_PATH_BOTH)
 add_library(httpd_target UNKNOWN IMPORTED)
 set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
 

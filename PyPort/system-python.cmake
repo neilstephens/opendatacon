@@ -7,7 +7,12 @@ if(NOT USE_PYTHON_SUBMODULE)
 	endif()
 
 	#find python headers
-	file(GLOB_RECURSE PYTHON_H ${PYTHON_HOME}/*Python.h)
+	file(GLOB_RECURSE PYTHON_H ${CMAKE_FIND_ROOT_PATH}/${PYTHON_HOME}/*Python.h)
+	if(PYTHON_H)
+		message("Found Python.h using CMAKE_FIND_ROOT_PATH")
+	else()
+		file(GLOB_RECURSE PYTHON_H ${PYTHON_HOME}/*Python.h)
+	endif()
 	message("Globbed ${PYTHON_H}")
 	string(REGEX MATCH "python3.[0-9]+m" PYTHON_VER "${PYTHON_H}")
 	message("Version string: ${PYTHON_VER}")
