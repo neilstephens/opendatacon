@@ -21,7 +21,7 @@ project(PyPort)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def server/*.cpp server/*.hpp PythonCode/*.py)
 
-option(USE_PYTHON_SUBMODULE "Use git submodule to download and build python libraries" ON)
+option(USE_PYTHON_SUBMODULE "Use git submodule to download and build python libraries" OFF)
 set(PYTHON_HOME_INSTRUCTIONS "Choose the location of Python: where it was installed - there should be lib and include directories within")
 include("compile-python.cmake")
 include("system-python.cmake")
