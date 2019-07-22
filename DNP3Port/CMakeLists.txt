@@ -97,16 +97,17 @@ endif()
 #find dnp3 headers
 find_path(DNP3_INCLUDE_PATH opendnp3/LogLevels.h
 	PATHS ${DNP3_HOME}/include ${DNP3_HOME}/local/include
-	NO_DEFAULT_PATH)
+	NO_DEFAULT_PATH
+	CMAKE_FIND_ROOT_PATH_BOTH)
 mark_as_advanced(FORCE DNP3_INCLUDE_PATH)
 
 foreach( component openpal opendnp3 asiopal asiodnp3 )
 	# Look for regular libraries
-	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH)
+	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH CMAKE_FIND_ROOT_PATH_BOTH)
 	add_library(${component}_target UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_target PROPERTY IMPORTED_LOCATION "${${component}_lib}")
 	# Look for debug libraries
-	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH)
+	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH CMAKE_FIND_ROOT_PATH_BOTH)
 	add_library(${component}_dtarget UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
 	#set a variable to use for linking
