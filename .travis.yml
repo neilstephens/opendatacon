@@ -98,6 +98,8 @@ install:
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
+      # Create a link so the python.h file can find the appropriate platform python.h file.
+      sudo ln -s "$(pwd)/sysroot/usr/include/arm-linux-gnueabihf" sysroot/usr/include/python3.4m/arm-linux-gnueabihf 
     fi
   - |
     if [ "$DOCKER_BUILD" == "OEL" ]; then
@@ -108,7 +110,7 @@ install:
         curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm     
-        # To get Python3.5 we need the software collections repo, and scl tools. The final command is to activate Python2.5 in bash
+        # To get Python3.5 we need the software collections repo, and scl tools.
         yum install -y oracle-softwarecollection-release-el6
         /usr/bin/ol_yum_configure.sh
         yum install -y scl-utils rh-python35 rh-python35-python-devel
@@ -124,8 +126,10 @@ install:
       docker exec -i $DOCK cp -a /opt/rh/rh-python35/root/usr /mnt/build/sysroot/opt/rh/rh-python35/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
+      #enable python
+      docker exec -i $DOCK source scl_source enable rh-python35
       export SYSROOT=$(pwd)/sysroot/
-      export RUN="docker exec --interactive --workdir /mnt/build $DOCK scl enable rh-python35"
+      export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/opt/rh/rh-python35/root/usr"
     fi
