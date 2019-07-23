@@ -46,6 +46,7 @@
 #include <opendatacon/Platform.h>
 #include <whereami++.h>
 #include "PyPort.h"
+#include <Python.h>
 
 using namespace odc;
 
@@ -309,9 +310,11 @@ PythonInitWrapper::PythonInitWrapper()
 
 		//FIXME: can't log properly because this is static constructor and log doesn't exist
 		//	use static atomic_flag and static weak_ptr ctor guard like DNP3Manager instead
+		#ifdef PYTHON_34_ORLESS
 		//LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
 		if (auto log = odc::spdlog_get("opendatacon"))
 			log->debug("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
+		#endif
 
 		// Now execute some commands to get the environment ready.
 		if (PyRun_SimpleString("import sys") != 0)

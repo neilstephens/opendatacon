@@ -14,7 +14,8 @@ if(NOT USE_PYTHON_SUBMODULE)
 		file(GLOB_RECURSE PYTHON_H ${PYTHON_HOME}/*Python.h)
 	endif()
 	message("Globbed ${PYTHON_H}")
-	string(REGEX MATCH "python3.[0-9]+m" PYTHON_VER "${PYTHON_H}")
+	string(REGEX MATCH "python3.([0-9])+m" PYTHON_VER "${PYTHON_H}")
+	set(PYTHON_MINOR_VER ${CMAKE_MATCH_1})
 	message("Version string: ${PYTHON_VER}")
 	find_path(PYTHON_INCLUDE_DIRS Python.h
 		PATHS ${PYTHON_HOME}/include/${PYTHON_VER} ${PYTHON_HOME}/local/include/${PYTHON_VER}
@@ -22,12 +23,16 @@ if(NOT USE_PYTHON_SUBMODULE)
 		CMAKE_FIND_ROOT_PATH_BOTH)
 
 	if(PYTHON_INCLUDE_DIRS)
-		message("Python.h found: ${PYTHON_INCLUDE_DIRS}")
+		message("Python headers found: ${PYTHON_INCLUDE_DIRS}")
 	else()
-		message("Can't find Python.h in ${PYTHON_HOME}" )
+		message("Can't find Python headers in ${PYTHON_HOME}" )
 	endif()
 
 	string(REGEX MATCH "3[0-9]+" PYTHON_NUM "${PYTHON_INCLUDE_DIRS}")
+
+	if((${PYTHON_NUM} LESS 35) OR (${PYTHON_MINOR_VER} LESS 5))
+		add_definitions(-DPYTHON_34_ORLESS)
+	endif()
 
 	#import the python lib
 	find_library(PYTHON_LIB NAMES ${PYTHON_VER} lib${PYTHON_VER} libpython${PYTHON_NUM} python${PYTHON_NUM}
