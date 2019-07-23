@@ -27,8 +27,10 @@ if(NOT USE_PYTHON_SUBMODULE)
 		message("Can't find Python.h in ${PYTHON_HOME}" )
 	endif()
 
+	string(REGEX MATCH "3[0-9]+" PYTHON_NUM "${PYTHON_INCLUDE_DIRS}")
+
 	#import the python lib
-	find_library(PYTHON_LIB NAMES ${PYTHON_VER} lib${PYTHON_VER}
+	find_library(PYTHON_LIB NAMES ${PYTHON_VER} lib${PYTHON_VER} libpython${PYTHON_NUM} python${PYTHON_NUM}
 		PATHS ${PYTHON_HOME}/lib ${PYTHON_HOME}/libs ${PYTHON_HOME}/local/lib ${PYTHON_HOME}/lib64 ${PYTHON_HOME}/local/lib64
 		PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
 		NO_DEFAULT_PATH
