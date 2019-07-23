@@ -446,7 +446,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	if (pyClass && PyCallable_Check(pyClass))
 	{
 		auto pyArgs = PyTuple_New(2);
-		auto pyguid = PyLong_FromUnsignedLongLong((uint64_t)this); // Pass a this pointer into our constructor, so we can idenify ourselves on calls back into C land
+		auto pyguid = PyLong_FromVoidPtr(this); // Pass a this pointer into our constructor, so we can idenify ourselves on calls back into C land
 		auto pyObjectName = PyUnicode_FromString(PortName.c_str());
 		PyTuple_SetItem(pyArgs, 0, pyguid);
 		PyTuple_SetItem(pyArgs, 1, pyObjectName);
