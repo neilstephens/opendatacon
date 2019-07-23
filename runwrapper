@@ -2,6 +2,6 @@
 #This file is simply a way to wrap up a possibly complex command (stored in RUN)
 #so it can be executed without quotes etc
 
-$RUN $1
+$RUN $@
 
 
