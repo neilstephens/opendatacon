@@ -184,6 +184,7 @@ inline char* strerror_rp(int therr, char* buf, size_t len)
 //}
 #else
 // posix function
+#include <string.h>
 inline char* strerror_rp(int therr, char* buf, size_t len)
 {
 	strerror_r(therr, buf, len);
