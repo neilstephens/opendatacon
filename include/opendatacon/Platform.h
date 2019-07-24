@@ -187,8 +187,10 @@ inline char* strerror_rp(int therr, char* buf, size_t len)
 #include <string.h>
 inline char* strerror_rp(int therr, char* buf, size_t len)
 {
-	strerror_r(therr, buf, len);
-	return buf;
+	if(strerror_r(therr, buf, len) == 0)
+		return buf;
+	else
+		return nullptr;
 }
 #endif
 

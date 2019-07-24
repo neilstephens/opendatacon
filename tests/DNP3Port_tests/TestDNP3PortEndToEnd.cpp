@@ -121,7 +121,10 @@ TEST_CASE(SUITE("Serial link"))
 			auto work = ios->make_work();
 			std::thread t([&](){ios->run();});
 
-			system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &");
+			if(system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &"))
+			{
+				WARN("socat system call failed");
+			}
 
 			//make an outstation port
 			newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
@@ -182,7 +185,10 @@ TEST_CASE(SUITE("Serial link"))
 			REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 			REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
-			system("killall socat");
+			if(system("killall socat"))
+			{
+				WARN("kill socat system call failed");
+			}
 
 			work.reset();
 			t.join();
