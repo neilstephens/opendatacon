@@ -43,7 +43,7 @@ if(GIT_FOUND)
 	message("-- opendatacon version: ${ODC_VERSION} ${GIT_REPO_COMMIT}(${ODC_AHEAD_VERSION} ahead) ${GIT_REPO_DIRTY}")
 
 	execute_process(
-		COMMAND git submodule foreach git describe --long --dirty --tags
+		COMMAND git submodule foreach git describe --long --dirty --tags --always
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		OUTPUT_VARIABLE GIT_DESCRIBE_SUBS
 		OUTPUT_STRIP_TRAILING_WHITESPACE

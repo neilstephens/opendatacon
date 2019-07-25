@@ -97,6 +97,11 @@ inline std::string LastSystemError()
 	return message;
 }
 
+inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
+{
+	_putenv_s(var, val);
+}
+
 #else
 #include <dlfcn.h>
 const std::string DYNLIBPRE = "lib";
@@ -140,6 +145,12 @@ inline std::string LastSystemError()
 
 	return message;
 }
+
+inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
+{
+	setenv(var, val, overwrite);
+}
+
 #endif
 
 /// Posix file system directory manipulation - e.g. chdir
@@ -164,19 +175,22 @@ inline char* strerror_rp(int therr, char* buf, size_t len)
 	strerror_s(buf, len, therr);
 	return buf;
 }
-#elif defined(_GNU_SOURCE)
-// non-posix GNU-specific function
+//#elif defined(_GNU_SOURCE)
+//// non-posix GNU-specific function
+//#include <string.h>
+//inline char* strerror_rp(int therr, char* buf, size_t len)
+//{
+//	return strerror_r(therr, buf, len);
+//}
+#else
+// posix function
 #include <string.h>
 inline char* strerror_rp(int therr, char* buf, size_t len)
 {
-	return strerror_r(therr, buf, len);
-}
-#else
-// posix function
-inline char* strerror_rp(int therr, char* buf, size_t len)
-{
-	strerror_r(therr, buf, len);
-	return buf;
+	if(strerror_r(therr, buf, len) == 0)
+		return buf;
+	else
+		return nullptr;
 }
 #endif
 
