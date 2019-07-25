@@ -84,6 +84,6 @@ install(CODE
 
 	if(BUNDLE_DEPS_LIST)
 		include(BundleUtilities)
-		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_LIBS}/version_stub\" \"\${BUNDLE_DEPS_LIST}\" \"\")
+		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_LIBS}/version_stub${CMAKE_EXECUTABLE_SUFFIX}\" \"\${BUNDLE_DEPS_LIST}\" \"\")
 	endif()
 " COMPONENT Runtime)
