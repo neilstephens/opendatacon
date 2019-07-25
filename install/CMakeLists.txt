@@ -72,3 +72,18 @@ set(CPACK_BUNDLE_ICON ${CMAKE_SOURCE_DIR}/install/MacOS/AplicationIcon.icns)
 #set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 #set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)
+
+add_executable(version_stub version.cpp)
+install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_LIBS})
+
+install(CODE
+"
+	function(gp_resolved_file_type_override resolved_file type_var)
+		set(\${type_var} local PARENT_SCOPE)
+	endfunction()
+
+	if(BUNDLE_DEPS_LIST)
+		include(BundleUtilities)
+		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_LIBS}/version_stub\" \"\${BUNDLE_DEPS_LIST}\" \"\")
+	endif()
+" COMPONENT Runtime)
