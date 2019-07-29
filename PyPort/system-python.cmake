@@ -109,6 +109,6 @@ if(NOT USE_PYTHON_SUBMODULE)
 
 
 	#set a variable to use for linking
-	set(PYTHON_LIBRARIES debug python_target optimized python_target )
+	set(PYTHON_LIBRARIES debug ${PYTHON_LIBRARY_DEBUG} optimized ${PYTHON_LIBRARY_RELEASE} )
 
 endif()
