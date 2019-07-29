@@ -92,7 +92,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 			#FIXME:
 			# Appveyor does not have the debug libraries. Point to our copy that we have put into GIT. This issue will be fixed on next Image Release
 			# Remove this and python37_d.lib from GIT when the Appveyor image catches up.
-			message("No debug python lib hack")
+			message("Hack to work around missing Python debug library")
 
 			if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")	# 64 Bit
 				set(platform "x64")
@@ -109,6 +109,6 @@ if(NOT USE_PYTHON_SUBMODULE)
 
 
 	#set a variable to use for linking
-	set(PYTHON_LIBRARIES debug python_target optimized python_target )
+	set(PYTHON_LIBRARIES debug python_target_d optimized python_target )
 
 endif()
