@@ -100,6 +100,8 @@ install:
       # make symlink so absolute paths work within docker
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
+      # replace ldd with docker wrapper (so BundleUtilities might work)
+      sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd) 
       # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
@@ -131,6 +133,7 @@ install:
       docker exec -i $DOCK cp -a /opt/rh/rh-python35/root/usr /mnt/build/sysroot/opt/rh/rh-python35/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
+      sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd)
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
@@ -141,7 +144,7 @@ install:
       sudo dpkg --add-architecture i386
       sudo apt-get update
       sudo apt-get install -y lib32stdc++-5-dev libstdc++-5-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 socat:i386 
-      sudo apt-get install -y python3.5-minimal:i386 
+      sudo apt-get install -y python3.5:i386 
       sudo apt-get install -y python3.5-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
