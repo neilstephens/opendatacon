@@ -450,6 +450,15 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				continue;
 			}
 
+			//Create a logger if we haven't already
+			if(!odc::spdlog_get(libname))
+			{
+				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
+					odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+				pLibLogger->set_level(spdlog::level::trace);
+				odc::spdlog_register_logger(pLibLogger);
+			}
+
 			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of DataPort
 			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
@@ -469,15 +478,6 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
-			}
-
-			//Create a logger if we haven't already
-			if(!odc::spdlog_get(libname))
-			{
-				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
-					odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-				pLibLogger->set_level(spdlog::level::trace);
-				odc::spdlog_register_logger(pLibLogger);
 			}
 
 			auto port_cleanup = [=](DataPort* port)

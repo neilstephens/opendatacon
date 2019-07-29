@@ -31,14 +31,16 @@ endif()
 #find microhttpd headers
 find_path(HTTPD_INCLUDE_PATH microhttpd.h
 	PATHS ${MICROHTTPD_HOME}/include ${MICROHTTPD_HOME}/local/include
-	NO_DEFAULT_PATH)
+	NO_DEFAULT_PATH
+	CMAKE_FIND_ROOT_PATH_BOTH)
 mark_as_advanced(FORCE HTTPD_INCLUDE_PATH)
 
 #import the microhttpd lib
 find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
 	PATHS ${MICROHTTPD_HOME}/lib ${MICROHTTPD_HOME}/local/lib
 	PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
-	NO_DEFAULT_PATH)
+	NO_DEFAULT_PATH
+	CMAKE_FIND_ROOT_PATH_BOTH)
 add_library(httpd_target UNKNOWN IMPORTED)
 set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
 
@@ -53,7 +55,7 @@ if(PACKAGE_LIBMICROHTTPD)
 	if(WIN32)
 		get_filename_component(HTTPD_LIB_DIR ${HTTPD_LIB} DIRECTORY)
 		file(GLOB HTTPD_DLLS "${HTTPD_LIB_DIR}/../bin/*.dll")
-		install(FILES ${HTTPD_DLLS} DESTINATION ${INSTALLDIR_LIBS})
+		install(FILES ${HTTPD_DLLS} DESTINATION ${INSTALLDIR_MODULES})
 	endif()
 endif()
 
@@ -64,3 +66,11 @@ target_link_libraries(${PROJECT_NAME} ODC httpd_target)
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
 
+if(PACKAGE_SYSTEM_LIBS)
+	install(CODE
+	"
+		set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+			\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}
+		)
+	")
+endif()

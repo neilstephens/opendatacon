@@ -44,9 +44,10 @@
 #include <iomanip>
 #include <exception>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/Platform.h>
+#include <whereami++.h>
 #include "PyPort.h"
-
-
+#include <Python.h>
 
 using namespace odc;
 
@@ -296,7 +297,25 @@ PythonInitWrapper::PythonInitWrapper()
 		// Load our odc module exposing our internal methods to python (i.e. loggin commands)
 		ImportODCModule();
 
+		#ifdef PYTHON_LIBDIR
+		auto exepath = whereami::getExecutablePath();
+		std::string newpythonpath = exepath.dirname() + "/lib/" PYTHON_LIBDIR;
+		newpythonpath += ":" + exepath.dirname() + "/../lib/" PYTHON_LIBDIR;
+		if(auto pythonpath = getenv("PYTHONPATH"))
+			newpythonpath += ":" + exepath.dirname() + ":" + pythonpath;
+
+		PlatformSetEnv("PYTHONPATH",newpythonpath.c_str(),1);
+		#endif
+
 		Py_Initialize(); // Get the Python interpreter running
+
+		#ifndef PYTHON_34_ORLESS
+		//FIXME: can't log properly because this is static constructor and log doesn't exist
+		//	use static atomic_flag and static weak_ptr ctor guard like DNP3Manager instead
+		//LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
+		if (auto log = odc::spdlog_get("opendatacon"))
+			log->debug("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
+		#endif
 
 		// Now execute some commands to get the environment ready.
 		if (PyRun_SimpleString("import sys") != 0)
@@ -429,7 +448,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	if (pyClass && PyCallable_Check(pyClass))
 	{
 		auto pyArgs = PyTuple_New(2);
-		auto pyguid = PyLong_FromUnsignedLongLong((uint64_t)this); // Pass a this pointer into our constructor, so we can idenify ourselves on calls back into C land
+		auto pyguid = PyLong_FromVoidPtr(this); // Pass a this pointer into our constructor, so we can idenify ourselves on calls back into C land
 		auto pyObjectName = PyUnicode_FromString(PortName.c_str());
 		PyTuple_SetItem(pyArgs, 0, pyguid);
 		PyTuple_SetItem(pyArgs, 1, pyObjectName);

@@ -58,16 +58,17 @@ branches:
     - master
     - /^release\/.*$/
     - /^[0-9]+\.[0-9]+\.[0-9]+.*$/
+    - /^feature\/.*$/
 
 dist: xenial
 
 install:
+  - export SRC_DIR=$(pwd)
   - mkdir -p build/install && cd build
   - export INSTALL_PREFIX=$(pwd)/install
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew install libmodbus libmicrohttpd socat
-      #export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     elif [ -z "$DOCKER_BUILD" ]; then
       # Not a docker build, just normal linux
       sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev python3.5 python3.5-dev
@@ -78,26 +79,32 @@ install:
       # Install qemu-static and the arm cross compiler into the travis host
       #
       sudo apt-get install -y qemu-user qemu-user-static g++-arm-linux-gnueabihf
-      # Remove Python3 as much as possible, then we will "find" the armhf version which is copied into our sysroot folder instead of the x86 version
-      sudo apt-get remove  python3 python3.5 python3-dev libpython3-dev python3.5-dev libpython3.5-dev
       #
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
       # -ti maintain a terminal, the docker image is jessie:latest
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
       # Install the arm versions of dependencies into the QEMU user image
-      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc" 
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3.4 python3.4-dev" 
       mkdir sysroot
-      # Copy /usr to sysroot in the docker image
-      docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
+      # Copy headers and libs to sysroot from within the docker image
+      docker exec -i $DOCK sh -c '
+        mkdir -p /mnt/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
+        cp -a /usr/include/*/*/pyconfig.h /mnt/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
+        cp -a /usr/include/microhttpd.h /mnt/build/sysroot/usr/include/
+        cp -a /usr/include/modbus /mnt/build/sysroot/usr/include/
+        cp -a /usr/include/python* /mnt/build/sysroot/usr/include/
+        cp -a /usr/lib /mnt/build/sysroot/usr/
+      '
+      # make symlink so absolute paths work within docker
+      docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
+      docker exec -i $DOCK ln -s /mnt $SRC_DIR
       # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake"
-      # Create a link so the python.h file can find the appropriate platform python.h file.
-      sudo ln -s "$(pwd)/sysroot/usr/include/arm-linux-gnueabihf" sysroot/usr/include/python3.4m/arm-linux-gnueabihf 
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
     fi
   - |
     if [ "$DOCKER_BUILD" == "OEL" ]; then
@@ -108,26 +115,26 @@ install:
         curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
         rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm     
-        # To get Python3.5 we need the software collections repo, and scl tools. The final command is to activate Python2.5 in bash
+        # To get Python3.5 we need the software collections repo, and scl tools.
         yum install -y oracle-softwarecollection-release-el6
-        yum install -y scl-utils rh-python35
-        scl enable rh-python35 bash
-        #
-        yum install -y libmicrohttpd-devel socat
-       '
+        /usr/bin/ol_yum_configure.sh
+        yum install -y scl-utils rh-python35 rh-python35-python-devel
+        yum install -y libmicrohttpd-devel glibc-devel
+      '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
       export EL6_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
       export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
-      # Create a symlink to the x86_64-linux-gnu/python3.5m so the python include file can find it. This is in the Ubuntu build host.
-      sudo ln -s /usr/include/x86_64-linux-gnu /usr/include/python3.5m/x86_64-linux-gnu
-      mkdir sysroot
+      mkdir -p sysroot/opt/rh/rh-python35/root
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
+      docker exec -i $DOCK cp -a /opt/rh/rh-python35/root/usr /mnt/build/sysroot/opt/rh/rh-python35/root/
+      docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
+      docker exec -i $DOCK ln -s /mnt $SRC_DIR
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/opt/rh/rh-python35/root/usr"
     fi
   - |
     if [ "$DOCKER_BUILD" == "i386" ]; then
@@ -137,9 +144,11 @@ install:
       sudo apt-get install -y python3.5-minimal:i386 
       sudo apt-get install -y python3.5-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
+      docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
+      docker exec -i $DOCK ln -s /mnt $SRC_DIR
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
     fi
 
 script:
@@ -151,7 +160,7 @@ script:
   - $RUN install/bin/DNP3Port_tests -d yes
   - $RUN install/bin/MD3Port_tests error -d yes
   - $RUN install/bin/CBPort_tests error -d yes
- # - $RUN install/bin/PyPort_tests error -d yes
+  - $RUN install/bin/PyPort_tests error -d yes
   - $STOP
 
 deploy:
