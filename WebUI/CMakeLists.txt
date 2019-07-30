@@ -50,12 +50,10 @@ mark_as_advanced(FORCE HTTPD_LIB)
 #include in install/packaging
 option(PACKAGE_LIBMICROHTTPD "Package libmicrohttpd in c-pack installer" ON)
 if(PACKAGE_LIBMICROHTTPD)
-	file_w_symlinks(file_w_links "${HTTPD_LIB}")
-	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS})
+	set(PACK_NAMES microhttpd libmicrohttpd)
 	if(WIN32)
 		get_filename_component(HTTPD_LIB_DIR ${HTTPD_LIB} DIRECTORY)
-		file(GLOB HTTPD_DLLS "${HTTPD_LIB_DIR}/../bin/*.dll")
-		install(FILES ${HTTPD_DLLS} DESTINATION ${INSTALLDIR_MODULES})
+		set(HTTP_DLL_DIR ${HTTPD_LIB_DIR}/../bin)
 	endif()
 endif()
 
@@ -66,11 +64,15 @@ target_link_libraries(${PROJECT_NAME} ODC httpd_target)
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
 
-if(PACKAGE_SYSTEM_LIBS)
-	install(CODE
-	"
-		set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-			\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}${CMAKE_SHARED_MODULE_SUFFIX}
-		)
-	")
-endif()
+install(CODE
+"
+	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}${CMAKE_SHARED_MODULE_SUFFIX}
+	)
+	set(BUNDLE_DEPS_FILTERS \${BUNDLE_DEPS_FILTERS}
+		${PACK_NAMES}
+	)
+	set(BUNDLE_DEPS_DIRS \${BUNDLE_DEPS_DIRS}
+		${HTTP_DLL_DIR}
+	)
+")

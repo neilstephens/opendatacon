@@ -76,14 +76,37 @@ include(CPack)
 add_executable(version_stub version.cpp)
 install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_LIBS})
 
+if(PACKAGE_SYSTEM_LIBS)
+	set(BUNDLE_OVERRIDE
+	"
+		function(gp_resolved_file_type_override resolved_file type_var)
+			set(\${type_var} local PARENT_SCOPE)
+		endfunction()
+	")
+else()
+	set(BUNDLE_OVERRIDE
+	"
+		function(gp_resolved_file_type_override resolved_file type_var)
+			foreach(filter \${BUNDLE_DEPS_FILTERS})
+				if(resolved_file MATCHES \"\${filter}\")
+					set(\${type_var} local PARENT_SCOPE)
+				endif()
+			endforeach()
+		endfunction()
+	")
+endif()
+
 install(CODE
 "
-	function(gp_resolved_file_type_override resolved_file type_var)
-		set(\${type_var} local PARENT_SCOPE)
-	endfunction()
+	${BUNDLE_OVERRIDE}
 
 	if(BUNDLE_DEPS_LIST)
 		include(BundleUtilities)
+
+		foreach(dep \${BUNDLE_DEPS_LIST})
+			LIST_PREREQUISITES(\${dep} 1 0 1)
+		endforeach()
+
 		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_LIBS}/version_stub${CMAKE_EXECUTABLE_SUFFIX}\" \"\${BUNDLE_DEPS_LIST}\" \"\")
 	endif()
 " COMPONENT Runtime)

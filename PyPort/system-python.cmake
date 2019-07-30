@@ -16,7 +16,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 		file(GLOB_RECURSE PYTHON_H ${PYTHON_HOME}/*Python.h)
 	endif()
 	message("Globbed '${PYTHON_H}'")
-	string(REGEX MATCH "([^;]*)[/]+include[/]+(python3.([0-9])+m)" PYTHON_VER "${PYTHON_H}")
+	string(REGEX MATCH "([^;]*)[/]+include[/]+(python3.([0-9])+)m" PYTHON_VER "${PYTHON_H}")
 	if(PYTHON_VER)
 		set(PYTHON_HOME_DISCOVERED ${CMAKE_MATCH_1})
 		set(PYTHON_VER ${CMAKE_MATCH_2})
@@ -31,7 +31,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 	endif()
 
 	find_path(PYTHON_INCLUDE_DIRS Python.h
-		PATHS ${PYTHON_HOME}/include/${PYTHON_VER}
+		PATHS ${PYTHON_HOME}/include/${PYTHON_VER}m
 		NO_DEFAULT_PATH
 		CMAKE_FIND_ROOT_PATH_BOTH)
 
@@ -65,8 +65,8 @@ if(NOT USE_PYTHON_SUBMODULE)
 
 	#import the python lib
 	find_library(PYTHON_LIBRARY_RELEASE
-		NAMES ${PYTHON_VER}
-			lib${PYTHON_VER}
+		NAMES ${PYTHON_VER}m
+			lib${PYTHON_VER}m
 			libpython${PYTHON_NUM}
 			python${PYTHON_NUM}
 		PATHS ${PYTHON_HOME}/lib ${PYTHON_HOME}/libs ${PYTHON_HOME}/local/lib ${PYTHON_HOME}/lib64 ${PYTHON_HOME}/local/lib64
@@ -78,8 +78,8 @@ if(NOT USE_PYTHON_SUBMODULE)
 
 	#import the debug python lib
 	find_library(PYTHON_LIBRARY_DEBUG
-		NAMES ${PYTHON_VER}${PYTHON_DEBUG_POSTFIX}
-			lib${PYTHON_VER}${PYTHON_DEBUG_POSTFIX}
+		NAMES ${PYTHON_VER}m${PYTHON_DEBUG_POSTFIX}
+			lib${PYTHON_VER}m${PYTHON_DEBUG_POSTFIX}
 			libpython${PYTHON_NUM}${PYTHON_DEBUG_POSTFIX}
 			python${PYTHON_NUM}${PYTHON_DEBUG_POSTFIX}
 		PATHS ${PYTHON_HOME}/lib ${PYTHON_HOME}/libs ${PYTHON_HOME}/local/lib ${PYTHON_HOME}/lib64 ${PYTHON_HOME}/local/lib64
@@ -107,8 +107,31 @@ if(NOT USE_PYTHON_SUBMODULE)
 	add_library(python_target_d UNKNOWN IMPORTED)
 	set_property(TARGET python_target_d PROPERTY IMPORTED_LOCATION "${PYTHON_LIBRARY_DEBUG}")
 
-
 	#set a variable to use for linking
 	set(PYTHON_LIBRARIES debug python_target_d optimized python_target )
+
+	#include in install/packaging
+	option(PACKAGE_PYTHON "Package python libs in c-pack installer" ON)
+	if(PACKAGE_PYTHON)
+		set(PACK_NAMES python)
+		find_path(PYTHON_STDLIB_DIR _pydecimal.py
+			PATHS ${PYTHON_HOME}/lib/${PYTHON_VER} ${PYTHON_HOME}/Lib
+			NO_DEFAULT_PATH
+			CMAKE_FIND_ROOT_PATH_BOTH)
+		if(PYTHON_STDLIB_DIR)
+			if(NOT PYTHON_NUM)
+				set(PYTHON_NUM 3${PYTHON_MINOR_VER})
+			endif()
+			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_LIBS}/Python${PYTHON_NUM})
+			add_definitions(-DPYTHON_LIBDIR="Python${PYTHON_NUM}")
+			add_custom_target(copy-python-files ALL
+				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python36
+			)
+		else()
+			message("Warning: can't find Python std lib dir to package")
+		endif()
+	endif()
+
+
 
 endif()
