@@ -127,6 +127,11 @@ if(NOT USE_PYTHON_SUBMODULE)
 			add_custom_target(copy-python-files ALL
 				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python36
 			)
+			file(GLOB_RECURSE PYTHON_EXES ${PYTHON_STDLIB_DIR}/*.exe)
+			foreach(python_exe ${PYTHON_EXES})
+				get_filename_component(PYTHON_EXE_NAME ${python_exe} NAME)
+				set(PYTHON_EXE_NAMES ${PYTHON_EXE_NAMES} ${PYTHON_EXE_NAME})
+			endforeach()
 		else()
 			message("Warning: can't find Python std lib dir to package")
 		endif()

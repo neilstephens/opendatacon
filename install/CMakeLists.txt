@@ -118,6 +118,6 @@ install(CODE
 			LIST_PREREQUISITES(\${dep} 1 0 1)
 		endforeach()
 
-		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/version_stub${CMAKE_EXECUTABLE_SUFFIX}\" \"\${BUNDLE_DEPS_LIST}\" \"\${BUNDLE_DEPS_DIRS}\")
+		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}/version_stub${CMAKE_EXECUTABLE_SUFFIX}\" \"\${BUNDLE_DEPS_LIST}\" \"\${BUNDLE_DEPS_DIRS}\" IGNORE_ITEM \"\${BUNDLE_IGNORE_ITEMS}\")
 	endif()
 " COMPONENT Runtime)
