@@ -53,7 +53,7 @@ if(PACKAGE_LIBMICROHTTPD)
 	set(PACK_NAMES microhttpd libmicrohttpd)
 	if(WIN32)
 		get_filename_component(HTTPD_LIB_DIR ${HTTPD_LIB} DIRECTORY)
-		set(HTTP_DLL_DIR ${HTTPD_LIB_DIR}/../bin)
+		set(HTTP_DLL_DIR ${MICROHTTPD_HOME}/bin)
 	endif()
 endif()
 
