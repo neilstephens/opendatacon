@@ -107,6 +107,6 @@ install(CODE
 			LIST_PREREQUISITES(\${dep} 1 0 1)
 		endforeach()
 
-		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_LIBS}/version_stub${CMAKE_EXECUTABLE_SUFFIX}\" \"\${BUNDLE_DEPS_LIST}\" \"\")
+		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/version_stub${CMAKE_EXECUTABLE_SUFFIX}\" \"\${BUNDLE_DEPS_LIST}\" \"\")
 	endif()
 " COMPONENT Runtime)
