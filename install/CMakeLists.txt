@@ -74,7 +74,7 @@ set(CPACK_BUNDLE_ICON ${CMAKE_SOURCE_DIR}/install/MacOS/AplicationIcon.icns)
 include(CPack)
 
 add_executable(version_stub version.cpp)
-install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_LIBS})
+install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 
 if(PACKAGE_SYSTEM_LIBS)
 	set(BUNDLE_OVERRIDE
