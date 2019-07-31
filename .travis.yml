@@ -71,7 +71,7 @@ install:
       brew install libmodbus libmicrohttpd socat
     elif [ -z "$DOCKER_BUILD" ]; then
       # Not a docker build, just normal linux
-      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev libpython3.6-dev
+      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev python3.5 python3.5-dev
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     fi
   - |
@@ -86,7 +86,7 @@ install:
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
       # Install the arm versions of dependencies into the QEMU user image
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev" 
-      docker exec -i $DOCK sh -c "apt-get install -y libpython3.4-dev" 
+      docker exec -i $DOCK sh -c "apt-get install -y python3.4 python3.4-dev" 
       mkdir sysroot
       # Copy headers and libs to sysroot from within the docker image
       docker exec -i $DOCK sh -c '
