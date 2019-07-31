@@ -33,8 +33,8 @@ mark_as_advanced(FORCE PYTHON_LIBRARY_RELEASE)
 mark_as_advanced(FORCE PYTHON_LIBRARIES)
 
 foreach(lib_file ${PYTHON_LIBRARY_DEBUG} ${PYTHON_LIBRARY_RELEASE})
-	get_filename_component(lib_dir lib_file DIRECTORY)
-	set(PYTHON_LIBRARY_DIRS ${PYTHON_LIBRARY_DIRS} lib_dir)
+	get_filename_component(lib_dir ${lib_file} DIRECTORY)
+	set(PYTHON_LIBRARY_DIRS ${PYTHON_LIBRARY_DIRS} ${lib_dir})
 endforeach()
 
 message("Python Include Dirs ${PYTHON_INCLUDE_DIRS}")
