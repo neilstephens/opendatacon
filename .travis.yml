@@ -132,6 +132,8 @@ install:
       mkdir -p sysroot/opt/rh/rh-python35/root
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
+      #make symbolic link to what ldd produces
+      docker exec -i $DOCK ln -rs libpython3.5m.so /opt/rh/rh-python35/root/usr/lib64/libpython3.5m.so.rh-python35-1.0
       docker exec -i $DOCK cp -a /opt/rh/rh-python35/root/usr /mnt/build/sysroot/opt/rh/rh-python35/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
