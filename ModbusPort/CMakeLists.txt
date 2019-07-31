@@ -51,6 +51,9 @@ mark_as_advanced(FORCE MODBUS_LIB)
 option(PACKAGE_LIBMODBUS "Package libmodbus in c-pack installer" ON)
 if(PACKAGE_LIBMODBUS)
 	set(PACK_NAMES modbus libmodbus)
+	if(WIN32)
+		get_filename_component(MODBUS_DLL_DIR ${MODBUS_LIB} DIRECTORY)
+	endif()
 endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
@@ -67,5 +70,8 @@ install(CODE
 	)
 	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
 		${PACK_NAMES}
+	)
+	set(BUNDLE_DEPS_DIRS \${BUNDLE_DEPS_DIRS}
+		${MODBUS_DLL_DIR}
 	)
 ")
