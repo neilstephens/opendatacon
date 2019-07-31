@@ -93,7 +93,7 @@ else()
 	set(BUNDLE_OVERRIDE
 	"
 		function(gp_resolved_file_type_override resolved_file type_var)
-			if(resolved_file MATCHES ${CMAKE_FIND_ROOT_PATH})
+			if(resolved_file MATCHES \"^${CMAKE_FIND_ROOT_PATH}/?(usr/)?lib\")
 				set(\${type_var} system PARENT_SCOPE)
 			endif()
 			foreach(filter \${BUNDLE_DEPS_FILTERIN})
