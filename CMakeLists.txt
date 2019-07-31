@@ -66,32 +66,32 @@ option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, PyPort
 option(USE_ASIO_SUBMODULE "Use git submodule to download asio header library" ON)
 option(USE_SPDLOG_SUBMODULE "Use git submodule to download spdlog header library" ON)
 
-set(TESTS OFF CACHE BOOL "Build tests"					)
-set(WEBUI OFF CACHE BOOL "Build the http(s) web user interface"	)
-set(DNP3PORT OFF CACHE BOOL "Build DNP3 Port"				)
-set(JSONPORT OFF CACHE BOOL "Build JSON Port"				)
-set(PYPORT OFF CACHE BOOL "Build Python Port"				)
-set(MODBUSPORT OFF CACHE BOOL "Build Modbus Port"			)
-set(SIMPORT OFF CACHE BOOL "Build Simulation Port"			)
-set(MD3PORT OFF CACHE BOOL "Build MD3 Port"				)
-set(CBPORT OFF CACHE BOOL "Build Conitel-Baker Port"				)
-set(CONSOLEUI OFF CACHE BOOL "Build the console user interface"	)
+set(TESTS OFF CACHE BOOL "Build tests")
+set(WEBUI OFF CACHE BOOL "Build the http(s) web user interface")
+set(DNP3PORT OFF CACHE BOOL "Build DNP3 Port")
+set(JSONPORT OFF CACHE BOOL "Build JSON Port")
+set(PYPORT OFF CACHE BOOL "Build Python Port")
+set(MODBUSPORT OFF CACHE BOOL "Build Modbus Port")
+set(SIMPORT OFF CACHE BOOL "Build Simulation Port")
+set(MD3PORT OFF CACHE BOOL "Build MD3 Port")
+set(CBPORT OFF CACHE BOOL "Build Conitel-Baker Port")
+set(CONSOLEUI OFF CACHE BOOL "Build the console user interface")
 
 # other options off-by-default that you can enable
 option(WERROR "Set all warnings to errors" OFF)
 option(COVERAGE "Builds the libraries with coverage info for gcov" OFF)
 
 if(FULL)
-	set(TESTS ON CACHE BOOL "Build tests"				   	FORCE)
-	set(WEBUI ON CACHE BOOL "Build the http(s) web user interface"	FORCE)
-	set(DNP3PORT ON CACHE BOOL "Build DNP3 Port"			   	FORCE)
-	set(JSONPORT ON CACHE BOOL "Build JSON Port"			   	FORCE)
-	set(PYPORT ON CACHE BOOL "Build Python Port"			   	FORCE)
-	set(MODBUSPORT ON CACHE BOOL "Build Modbus Port"		   	FORCE)
-	set(SIMPORT ON CACHE BOOL "Build Simulation Port"		   	FORCE)
-	set(MD3PORT ON CACHE BOOL "Build MD3 Port"			   	FORCE)
-	set(CBPORT ON CACHE BOOL "Build Conitel-Baker Port"			   	FORCE)
-	set(CONSOLEUI ON CACHE BOOL "Build the console user interface"	FORCE)
+	set(TESTS ON CACHE BOOL "Build tests" FORCE)
+	set(WEBUI ON CACHE BOOL "Build the http(s) web user interface" FORCE)
+	set(DNP3PORT ON CACHE BOOL "Build DNP3 Port" FORCE)
+	set(JSONPORT ON CACHE BOOL "Build JSON Port" FORCE)
+	set(PYPORT ON CACHE BOOL "Build Python Port" FORCE)
+	set(MODBUSPORT ON CACHE BOOL "Build Modbus Port" FORCE)
+	set(SIMPORT ON CACHE BOOL "Build Simulation Port" FORCE)
+	set(MD3PORT ON CACHE BOOL "Build MD3 Port" FORCE)
+	set(CBPORT ON CACHE BOOL "Build Conitel-Baker Port" FORCE)
+	set(CONSOLEUI ON CACHE BOOL "Build the console user interface" FORCE)
 endif()
 
 # IDE configuration
@@ -113,6 +113,12 @@ if(WIN32)
 	
 	# Postfix for debug builds
 	SET(CMAKE_DEBUG_POSTFIX "d")
+	install(CODE
+	"
+		if(\"\${CMAKE_INSTALL_CONFIG_NAME}\" STREQUAL \"Debug\")
+			set(BUNDLE_LIB_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+		endif()
+	")
 	
 	#min max macro rubbish
 	add_definitions(-DNOMINMAX)
