@@ -50,12 +50,9 @@ mark_as_advanced(FORCE MODBUS_LIB)
 #include in install/packaging
 option(PACKAGE_LIBMODBUS "Package libmodbus in c-pack installer" ON)
 if(PACKAGE_LIBMODBUS)
-	file_w_symlinks(file_w_links "${MODBUS_LIB}")
-	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS})
+	set(PACK_NAMES modbus libmodbus)
 	if(WIN32)
-		get_filename_component(MODBUS_DIR ${MODBUS_LIB} DIRECTORY)
-		get_filename_component(MODBUS_BASE ${MODBUS_LIB} NAME_WE)
-		install(FILES "${MODBUS_DIR}/${MODBUS_BASE}.dll" DESTINATION ${INSTALLDIR_MODULES})
+		get_filename_component(MODBUS_DLL_DIR ${MODBUS_LIB} DIRECTORY)
 	endif()
 endif()
 
@@ -66,11 +63,15 @@ target_link_libraries(${PROJECT_NAME} ODC modbus_target)
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
 
-if(PACKAGE_SYSTEM_LIBS)
-	install(CODE
-	"
-		set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-			\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}
-		)
-	")
-endif()
+install(CODE
+"
+	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+	)
+	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
+		${PACK_NAMES}
+	)
+	set(BUNDLE_DEPS_DIRS \${BUNDLE_DEPS_DIRS}
+		${MODBUS_DLL_DIR}
+	)
+")

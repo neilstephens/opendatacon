@@ -363,7 +363,8 @@ PythonInitWrapper::PythonInitWrapper()
 
 		#ifdef PYTHON_LIBDIR
 		auto exepath = whereami::getExecutablePath();
-		std::string newpythonpath = exepath.dirname() + "/lib/" PYTHON_LIBDIR;
+		std::string newpythonpath = exepath.dirname() + "/" PYTHON_LIBDIR;
+		newpythonpath += ":" + exepath.dirname() + "/lib/" PYTHON_LIBDIR;
 		newpythonpath += ":" + exepath.dirname() + "/../lib/" PYTHON_LIBDIR;
 		if(auto pythonpath = getenv("PYTHONPATH"))
 			newpythonpath += ":" + exepath.dirname() + ":" + pythonpath;

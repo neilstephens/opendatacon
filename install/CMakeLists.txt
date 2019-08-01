@@ -74,16 +74,53 @@ set(CPACK_BUNDLE_ICON ${CMAKE_SOURCE_DIR}/install/MacOS/AplicationIcon.icns)
 include(CPack)
 
 add_executable(version_stub version.cpp)
-install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_LIBS})
+install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_SHARED})
+
+if(PACKAGE_SYSTEM_LIBS)
+	set(BUNDLE_OVERRIDE
+	"
+		function(gp_resolved_file_type_override resolved_file type_var)
+			foreach(filter \${BUNDLE_DEPS_FILTEROUT})
+				if(resolved_file MATCHES \"\${filter}\")
+					set(\${type_var} system PARENT_SCOPE)
+				else()
+					set(\${type_var} local PARENT_SCOPE)
+				endif()
+			endforeach()
+		endfunction()
+	")
+else()
+	set(BUNDLE_OVERRIDE
+	"
+		function(gp_resolved_file_type_override resolved_file type_var)
+			if(resolved_file MATCHES \"^${CMAKE_FIND_ROOT_PATH}/?(usr/)?lib\")
+				set(\${type_var} system PARENT_SCOPE)
+			endif()
+			foreach(filter \${BUNDLE_DEPS_FILTERIN})
+				if(resolved_file MATCHES \"\${filter}\")
+					set(\${type_var} local PARENT_SCOPE)
+				endif()
+			endforeach()
+			foreach(filter \${BUNDLE_DEPS_FILTEROUT})
+				if(resolved_file MATCHES \"\${filter}\")
+					set(\${type_var} system PARENT_SCOPE)
+				endif()
+			endforeach()
+		endfunction()
+	")
+endif()
 
 install(CODE
 "
-	function(gp_resolved_file_type_override resolved_file type_var)
-		set(\${type_var} local PARENT_SCOPE)
-	endfunction()
+	${BUNDLE_OVERRIDE}
 
 	if(BUNDLE_DEPS_LIST)
 		include(BundleUtilities)
-		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_LIBS}/version_stub${CMAKE_EXECUTABLE_SUFFIX}\" \"\${BUNDLE_DEPS_LIST}\" \"\")
+
+		foreach(dep \${BUNDLE_DEPS_LIST})
+			LIST_PREREQUISITES(\${dep} 1 0 1)
+		endforeach()
+
+		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}/version_stub${CMAKE_EXECUTABLE_SUFFIX}\" \"\${BUNDLE_DEPS_LIST}\" \"\${BUNDLE_DEPS_DIRS}\" IGNORE_ITEM \"\${BUNDLE_IGNORE_ITEMS}\")
 	endif()
 " COMPONENT Runtime)

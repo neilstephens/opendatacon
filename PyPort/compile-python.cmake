@@ -66,12 +66,15 @@ if(USE_PYTHON_SUBMODULE)
 
 	include(${PYTHON_BUILD}/share/python3.6/PythonConfig.cmake)
 	set(PYTHON_LIBRARIES libpython-static)
-	install(DIRECTORY ${PYTHON_BUILD}/install/lib/python3.6 DESTINATION ${INSTALLDIR_LIBS})
-	add_definitions(-DPYTHON_LIBDIR="python3.6")
-
+	install(DIRECTORY ${PYTHON_BUILD}/install/lib/python3.6/ DESTINATION ${INSTALLDIR_LIBS}/Python36)
+	add_definitions(-DPYTHON_LIBDIR="Python36")
 	add_custom_target(copy-python-files ALL
-		COMMAND cmake -E copy_directory ${PYTHON_BUILD}/install/lib/python3.6 ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/python3.6
+		COMMAND cmake -E copy_directory ${PYTHON_BUILD}/install/lib/python3.6 ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python36
 		DEPENDS build_python
 	)
-
+	file(GLOB_RECURSE PYTHON_EXES ${PYTHON_BUILD}/install/lib/python3.6/*.exe)
+	foreach(python_exe ${PYTHON_EXES})
+		get_filename_component(PYTHON_EXE_NAME ${python_exe} NAME)
+		set(PYTHON_EXE_NAMES ${PYTHON_EXE_NAMES} ${PYTHON_EXE_NAME})
+	endforeach()
 endif()

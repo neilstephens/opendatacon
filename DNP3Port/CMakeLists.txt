@@ -116,13 +116,13 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
 	mark_as_advanced(FORCE ${component}_lib ${component}_dlib)
 
-	#include in install/packaging
-	file_w_symlinks(file_w_links "${${component}_lib}") #resolve symlinks
-	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
-	file_w_symlinks(file_w_links "${${component}_dlib}") #resolve symlinks
-	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
-
 endforeach()
+
+#include in install/packaging
+option(PACKAGE_DNP3 "Package opendnp3 libs in c-pack installer" ON)
+if(PACKAGE_DNP3)
+	set(PACK_NAMES openpal opendnp3 asiopal asiodnp3)
+endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 if(TARGET build_dnp3)
@@ -134,11 +134,12 @@ target_link_libraries(${PROJECT_NAME} ${asiodnp3_libs} ${asiopal_libs} ${opendnp
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
 
-if(PACKAGE_SYSTEM_LIBS)
-	install(CODE
-	"
-		set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-			\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}
-		)
-	")
-endif()
+install(CODE
+"
+	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+	)
+	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
+		${PACK_NAMES}
+	)
+")
