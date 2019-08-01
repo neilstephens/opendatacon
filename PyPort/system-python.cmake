@@ -7,10 +7,10 @@ if(NOT USE_PYTHON_SUBMODULE)
 	endif()
 
 	#find python headers
-	file(GLOB_RECURSE PYTHON_H ${CMAKE_FIND_ROOT_PATH}/${PYTHON_HOME}/*Python.h)
+	file(GLOB_RECURSE PYTHON_H ${CMAKE_FIND_ROOT_PATH}${PYTHON_HOME}/*Python.h)
 	if(PYTHON_H)
 		message("Found Python.h using CMAKE_FIND_ROOT_PATH")
-		set(TOP_INCLUDE ${CMAKE_FIND_ROOT_PATH}/${PYTHON_HOME}/include)
+		set(TOP_INCLUDE ${CMAKE_FIND_ROOT_PATH}${PYTHON_HOME}/include)
 	else()
 		set(TOP_INCLUDE ${PYTHON_HOME}/include)
 		file(GLOB_RECURSE PYTHON_H ${PYTHON_HOME}/*Python.h)
@@ -22,16 +22,16 @@ if(NOT USE_PYTHON_SUBMODULE)
 		set(PYTHON_VER ${CMAKE_MATCH_2})
 		set(PYTHON_MINOR_VER ${CMAKE_MATCH_3})
 		message("Version string: ${PYTHON_VER}")
-		if(PYTHON_HOME_DISCOVERED EQUAL PYTHON_HOME)
+		if("${PYTHON_HOME_DISCOVERED}" STREQUAL "${PYTHON_HOME}")
 			message("PYTHON_HOME confirmed")
 		else()
-			message("Warning: resetting PYTHON_HOME to ${PYTHON_HOME_DISCOVERED}")
+			message("Warning: resetting PYTHON_HOME (${PYTHON_HOME}) to (${PYTHON_HOME_DISCOVERED})")
 			set(PYTHON_HOME ${PYTHON_HOME_DISCOVERED})
 		endif()
 	endif()
 
 	find_path(PYTHON_INCLUDE_DIRS Python.h
-		PATHS ${PYTHON_HOME}/include/${PYTHON_VER}m ${PYTHON_HOME}/include/
+		PATHS ${PYTHON_HOME}/include/${PYTHON_VER}m ${PYTHON_HOME}/include
 		NO_DEFAULT_PATH
 		CMAKE_FIND_ROOT_PATH_BOTH)
 
