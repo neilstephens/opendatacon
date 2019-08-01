@@ -50,7 +50,7 @@ mark_as_advanced(FORCE HTTPD_LIB)
 #include in install/packaging
 option(PACKAGE_LIBMICROHTTPD "Package libmicrohttpd in c-pack installer" ON)
 if(PACKAGE_LIBMICROHTTPD)
-	set(PACK_NAMES microhttpd libmicrohttpd)
+	set(PACK_NAMES microhttpd libmicrohttpd gcrypt gnutls gpg)
 	if(WIN32)
 		get_filename_component(HTTPD_LIB_DIR ${HTTPD_LIB} DIRECTORY)
 		set(HTTP_DLL_DIR ${MICROHTTPD_HOME}/bin)
