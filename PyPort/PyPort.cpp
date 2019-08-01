@@ -531,12 +531,26 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		return;
 	}
 
-	python_strand->dispatch([&, event, SenderName, pStatusCallback]()
-		{
-			CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
+	if (MyConf->pyEventsAreQueued)
+	{
+		// Use a concurrent queue to buffer the events into Python. If the events are queued, then the python code is responsible
+		// for periodically processing them and emptying the queue.
+		pWrapper->QueueEvent(odc::ToString(event->GetEventType()),
+			event->GetIndex(),
+			event->GetTimestamp(),
+			ToString(event->GetQuality()),
+			event->GetPayloadString(),
+			SenderName);
+	}
+	else
+	{
+		python_strand->dispatch([&, event, SenderName, pStatusCallback]()
+			{
+				CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
 
-			PostCallbackCall(pStatusCallback, result);
-		});
+				PostCallbackCall(pStatusCallback, result);
+			});
+	}
 }
 void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 {
@@ -639,5 +653,7 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyHTTPAddr = JSONRoot["IP"].asString();
 	if (JSONRoot.isMember("Port"))
 		MyConf->pyHTTPPort = JSONRoot["Port"].asString();
+	if (JSONRoot.isMember("EventsAreQueued"))
+		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
 
 }

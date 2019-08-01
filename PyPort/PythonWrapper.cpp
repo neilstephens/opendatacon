@@ -49,6 +49,7 @@
 #include "PyPort.h"
 #include <Python.h>
 
+
 using namespace odc;
 
 PythonInitWrapper PythonWrapper::PythonInit;
@@ -105,7 +106,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		if (!PyArg_ParseTuple(args, "LIs:log", &guid, &logtype, &message))
 		{
 			PythonWrapper::PyErrOutput();
-			return NULL;
+			Py_RETURN_NONE;
 		}
 
 		std::string WholeMessage = "pyLog - ";
@@ -156,7 +157,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		LOGERROR("Excception Caught in odc_log - {}", e.what());
 	}
 	// Return a PyObject return value, in this case "none".
-	return Py_BuildValue("");
+	Py_RETURN_NONE;
 }
 
 // This is an extension method that we have provided to our embedded Python. It will post an event into the ODC bus.
@@ -171,12 +172,11 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 		const char* Quality;
 		uint64_t guid;
 
-
 		// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
 		if (!PyArg_ParseTuple(args, "LsIss:PublishEvent", &guid, &EventType, &ODCIndex, &Quality, &Payload))
 		{
 			PythonWrapper::PyErrOutput();
-			return NULL;
+			Py_RETURN_NONE; // This will throw an execption in the python code.
 		}
 
 		// Work out which instance of our PyWrapper is talking to us.
@@ -220,7 +220,7 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 		if (!PyArg_ParseTuple(args, "LII:SetTimer", &guid, &id, &delay))
 		{
 			PythonWrapper::PyErrOutput();
-			return NULL;
+			Py_RETURN_NONE;
 		}
 
 		// Work out which instance of our PyWrapper is talking to us.
@@ -247,13 +247,77 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 		LOGERROR("Excception Caught in odc_SetTimer - {}", e.what());
 	}
 	// Return a PyObject return value, in this case "none".
-	return Py_BuildValue("");
+	Py_RETURN_NONE;
+}
+
+// This is an extension method that we have provided to our embedded Python. It will post an event into the ODC bus.
+// It is static, so we have to work out which instance of the PythonWrapper class should handle it.
+static PyObject* odc_GetNextEvent(PyObject* self, PyObject* args)
+{
+	try
+	{
+		uint64_t guid;
+
+		// Now parse the arguments provided
+		if (!PyArg_ParseTuple(args, "L:GetNextEvent", &guid))
+		{
+			PythonWrapper::PyErrOutput();
+			Py_RETURN_NONE; // This will throw an execption in the python code.
+		}
+
+		// Work out which instance of our PyWrapper is talking to us.
+		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
+
+		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
+
+		if (thisPyWrapper != nullptr)
+		{
+			// Will create an async wait and call the Python code at the correct time.
+			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
+			// The PyPort ensures that pyWrapper is managed within a strand
+			EventQueueType eq;
+			if (!thisPyWrapper->DequeueEvent(eq))
+			{
+				// Queue is empty - dont do anything - the python code will test for empty string eventtype
+			}
+			//LOGDEBUG("GetNextEvent {}, {}, {}, {}, {}, {}", eq.EventType, eq.Index, eq.Quality, eq.Payload, eq.Sender, eq.TimeStamp);
+
+			auto pyArgs = PyTuple_New(6);
+			auto pyEventType = PyUnicode_FromString(eq.EventType.c_str()); // String Event Type
+			auto pyIndex = PyLong_FromUnsignedLong(eq.Index);
+			auto pyTime = PyLong_FromUnsignedLongLong(eq.TimeStamp);   // msSinceEpoch
+			auto pyQuality = PyUnicode_FromString(eq.Quality.c_str()); // String quality flags
+			auto pyPayload = PyUnicode_FromString(eq.Payload.c_str());
+			auto pySender = PyUnicode_FromString(eq.Sender.c_str());
+
+			// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
+			PyTuple_SetItem(pyArgs, 0, pyEventType);
+			PyTuple_SetItem(pyArgs, 1, pyIndex);
+			PyTuple_SetItem(pyArgs, 2, pyTime);
+			PyTuple_SetItem(pyArgs, 3, pyQuality);
+			PyTuple_SetItem(pyArgs, 4, pyPayload);
+			PyTuple_SetItem(pyArgs, 5, pySender);
+
+			return pyArgs;
+		}
+		else
+		{
+			LOGDEBUG("odc.GetNextEvent called from Python code for unknown PyPort object - ignored");
+		}
+	}
+	catch (std::exception& e)
+	{
+		LOGERROR("Excception Caught in odc_GetNextEvent() - {}", e.what());
+	}
+
+	Py_RETURN_NONE; // This will throw an execption in the python code.
 }
 
 static PyMethodDef odcMethods[] = {
 	{"log", odc_log, METH_VARARGS, "Process a log message, level and string message"},
 	{"PublishEvent", odc_PublishEvent, METH_VARARGS, "Publish ODC event to subscribed ports"},
 	{"SetTimer", odc_SetTimer, METH_VARARGS, "Set a Timer Callback up"},
+	{"GetNextEvent", odc_GetNextEvent, METH_VARARGS, "Get the next event from the queue - return None if empty"},
 	{NULL, NULL, 0, NULL}
 };
 
@@ -329,6 +393,16 @@ PythonInitWrapper::PythonInitWrapper()
 			LOGERROR("Unable to append to sys path in python sys library");
 			return;
 		}
+
+		//TODO: The debug version of the python dll looks in a different .zip file for all installed .cimpl files.
+		// For the confluence-kafka library the code only exists in the release version of the zip file.
+		// We could potentially add the release zip file to the path, but I am not sure if this would stuff other things up.
+		// Not sure how this would work with the compiled version of the python library.
+
+		std::wstring path = Py_GetPath();
+		std::string spath(path.begin(), path.end());
+		LOGDEBUG("Current Python sys.path - {}",spath);
+
 		PyDateTime_IMPORT;
 
 		// Initialize threads and release GIL (saving it as well):
@@ -564,7 +638,27 @@ void PythonWrapper::Disable()
 	}
 }
 
+// This is not synced with the strand when called. So the queue needs to be multi-producer capable
+void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index, odc::msSinceEpoch_t TimeStamp,
+	const std::string& Quality, const std::string& Payload, const std::string& Sender)
+{
+	EventQueueType item(EventType, Index, TimeStamp, Quality, Payload, Sender);
+	if (!EventQueue.try_enqueue(item))
+	{
+		LOGERROR("Failed to enqueue item into Event queue - insufficient memory. Queue Size {}",EventQueue.size_approx());
+	}
+}
+
+bool PythonWrapper::DequeueEvent(EventQueueType& eq)
+{
+	EventQueue.try_dequeue(eq);
+	// The default constructor for the queue item has empty strings and zero time stamps.
+	// If the dequeue fails, they remain at default values. So use that to return true on success.
+	return (eq.EventType != "");
+}
+
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.
+// This method is synced with the asio strand in PyPort
 CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName)
 {
 	try
@@ -749,7 +843,7 @@ void PythonWrapper::PyErrOutput()
 				PythonWrapper::DumpStackTrace();
 			}
 		}
-		PyErr_Restore(ptype, pvalue, ptraceback); //TODO: Do we need to do this or DECREF the variables?
+		PyErr_Restore(ptype, pvalue, ptraceback); // Do we need to do this or DECREF the variables? This seems to work.
 	}
 }
 

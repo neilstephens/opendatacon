@@ -42,8 +42,7 @@ class SimPortClass:
     def LogWarn(self, message ):
         odc.log(self.guid, Warn, message )
     def LogCritical(self, message ):
-        odc.log(self.guid,Critical, message )
-
+        odc.log(self.guid,Critical, message )    
 
     # Mandatory Methods that are called by ODC PyPort
 
@@ -86,6 +85,14 @@ class SimPortClass:
 
         # Now extract what is needed for this instance, or just reference the ConfigDict when needed.
         kafkaserver = "{}:{}".format(self.ConfigDict["BrokerIP"],self.ConfigDict["BrokerPort"])
+
+        # The acks can be 0, 1, 2 etc or all. It is the number of nodes that have to have written the message before we get acknoledgement.
+        # So a value of 0 is fire and forget. etc.
+        # Details of what can be passed see: https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
+        #
+        # Really interesting discussion of how to loose messages in Kafka (but also how not to loose messages!)
+        # https://jack-vanlightly.com/blog/2018/9/14/how-to-lose-messages-on-a-kafka-cluster-part1
+        #
         conf = {'bootstrap.servers': kafkaserver, 'client.id': 'OpenDataCon', 'default.topic.config': {'acks': 'all'}}
         self.producer = Producer(conf)        
         return
@@ -94,7 +101,9 @@ class SimPortClass:
         """ This is called from ODC once ODC is ready for us to be fully operational - normally after Build is complete"""
         self.LogDebug("Port Operational - {}".format(datetime.now().isoformat(" ")))
         # This is only done once - will self restart from the timer callback.
-        odc.SetTimer(self.guid, 1, 2000)    # Start the timer cycle
+        odc.SetTimer(self.guid, 1, 500)    # Start the timer cycle
+
+        odc.SetTimer(self.guid, 2, 100)    # Start the timer cycle
         return
 
     def Enable(self):
@@ -129,8 +138,8 @@ class SimPortClass:
         """ Called once for each message produced to indicate delivery result. Triggered by poll() or flush(). """
         if err is not None:
             self.LogError('Message delivery failed: {}'.format(err))
-        else:
-            self.LogDebug('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
+        #else:
+        #    self.LogDebug('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
 
     # Needs to return True or False, which will be translated into CommandStatus::SUCCESS or CommandStatus::UNDEFINED
     # EventType (string) Index (int), Time (msSinceEpoch), Quality (string) Payload (string) Sender (string)
@@ -152,7 +161,11 @@ class SimPortClass:
 
             # Potentially check this call - we could run out of memory if nothing is going to Kafka.
             #TODO There is a maximum number of messages that can be set.
-            self.producer.produce(self.ConfigDict["Topic"], value=json.dumps(messagevalue), callback=self.delivery_report)
+            try:
+                self.producer.produce(self.ConfigDict["Topic"], value=json.dumps(messagevalue), callback=self.delivery_report)
+             
+            except BufferError:
+                self.LogError("Kafka Producer Queue is full ({} messages awaiting delivery)".format(len(self.producer)))
             
         else:
             self.LogError("Could not find PITag for Point {}, {} - {}".format(Sender,EventType,Index))
@@ -160,14 +173,53 @@ class SimPortClass:
         # Always return True - we processed the message - even if we could not pass it to Kafka.     
         return True
 
+    def millisdiff(self, starttimedate):
+        dt = datetime.now() - starttimedate
+        ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+        return ms
+
     # Will be called at the appropriate time by the ASIO handler system. Will be passed an id for the timeout, 
     # so you can have multiple timers running.
     def TimerHandler(self,TimerId):
         # self.LogDebug("TimerHander: ID {}, {}".format(TimerId, self.guid))
 
+        self.producer.poll(0)   # Do any waiting processing, but dont wait!
+        thresholdcount = 10000
+
         if (TimerId == 1):
-            self.producer.flush()    # We can potentially get held up here? So dont do in the Event method.
-            odc.SetTimer(self.guid, 1, 500)    # Make it so we fire again in .5 second.
+            EventCount = 1
+            starttime = datetime.now()
+
+            # Get Events from the queue and process them, up until we have an empty queue or 100 entries OR
+            # The local producer queue has 100 entries in it.
+            # Then trigger the kafka library to send them.
+            while ((EventCount < thresholdcount) and (len(self.producer) < thresholdcount)):
+                EventCount += 1
+                EventType, Index, Time, Quality, Payload, Sender = odc.GetNextEvent(self.guid)
+
+                # The EventType will be an empty string if the queue is empty.
+                if (len(EventType) == 0):
+                    break
+
+                # We already have the event method written to handle this so just use. 
+                # This means the config file flag can swap between the two processes with no code changes
+                self.EventHandler(EventType, Index, Time, Quality, Payload, Sender)
+                self.producer.poll(0)   # Do any waiting processing, but dont wait!
+
+            self.LogDebug("Kafka Produced {} messages. Kafka queue size {}. Execution time {} msec".format(EventCount,len(self.producer),self.millisdiff(starttime)))
+
+            # If we have pushed the maxiumum number of events in, we need to go faster...
+            # If the producer queue hits the limit, this means the kafka cluster is not keeping up.
+            if EventCount < thresholdcount:
+                odc.SetTimer(self.guid, 1, 500)    # Make it so we fire again in .5 second.
+            else:
+                odc.SetTimer(self.guid, 1, 250)
+
+        # Can use timer 2 to run poll() more frequently. Must be started in Operational()
+        # Running poll more often does not seem to make a difference.
+        if (TimerId == 2):
+            odc.SetTimer(self.guid, 2, 100)
+
         return
 
     # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets

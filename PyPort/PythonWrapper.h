@@ -33,11 +33,41 @@
 #include <unordered_set>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
+#include "concurrentqueue.h"
 
 using namespace odc;
 
 typedef std::function<void (uint32_t, uint32_t)> SetTimerFnType;
 typedef std::function<void ( const char*, uint32_t, const char*, const char*)> PublishEventCallFnType;
+
+// Class to store the evnt as a stringified version, mainly so that when Python is retreving these records, it does minimal processing.
+class EventQueueType
+{
+public:
+	EventQueueType(const std::string& _EventType, const size_t _Index, odc::msSinceEpoch_t _TimeStamp,
+		const std::string& _Quality, const std::string& _Payload, const std::string& _Sender):
+		EventType(_EventType),
+		Index(_Index),
+		TimeStamp(_TimeStamp),
+		Quality(_Quality),
+		Payload(_Payload),
+		Sender(_Sender)
+	{};
+	EventQueueType():
+		EventType(""),
+		Index(0),
+		TimeStamp(0),
+		Quality(""),
+		Payload(""),
+		Sender("")
+	{};
+	std::string EventType;
+	size_t Index;
+	odc::msSinceEpoch_t TimeStamp;
+	std::string Quality;
+	std::string Payload;
+	std::string Sender;
+};
 
 class PythonInitWrapper
 {
@@ -52,6 +82,12 @@ private:
 	friend class PythonInitWrapper;
 	static PythonInitWrapper PythonInit;
 
+	//TODO: Do we need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
+	// Would dothe limit using an atomic int - we dont need an "exact" maximum...
+	const size_t MaximumQueueSize = 5000*1000; // 5 million
+
+	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);
+
 public:
 	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
 	~PythonWrapper();
@@ -61,7 +97,12 @@ public:
 	void PortOperational(); // Called when Build is complete.
 	void Enable();
 	void Disable();
-	CommandStatus Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
+
+	CommandStatus Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName);
+	void QueueEvent(const std::string& EventType, const size_t Index, odc::msSinceEpoch_t TimeStamp, const std::string& Quality, const std::string& Payload, const std::string& Sender);
+
+	bool DequeueEvent(EventQueueType& eq);
+
 	void CallTimerHandler(uint32_t id);
 	std::string RestHandler(const std::string& url, const std::string& content);
 
@@ -85,6 +126,8 @@ public:
 	}
 
 private:
+
+
 	void StoreWrapperMapping()
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);

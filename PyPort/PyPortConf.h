@@ -39,7 +39,8 @@ public:
 		pyModuleName("PyPortSim"),
 		pyClassName("SimPortClass"),
 		pyHTTPAddr("localhost"),
-		pyHTTPPort("8000")
+		pyHTTPPort("8000"),
+		pyEventsAreQueued(false)
 	{
 		//pPointConf.reset(new PyPointConf(FileName, ConfOverrides));
 	}
@@ -48,6 +49,7 @@ public:
 	std::string pyClassName;
 	std::string pyHTTPAddr;
 	std::string pyHTTPPort;
+	bool pyEventsAreQueued;
 
 	//std::unique_ptr<PyPointConf> pPointConf;
 };
