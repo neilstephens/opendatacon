@@ -297,17 +297,27 @@ PythonInitWrapper::PythonInitWrapper()
 		ImportODCModule();
 
 		#ifdef PYTHON_LIBDIR
-		auto exepath = whereami::getExecutablePath();
-		std::string newpythonpath = exepath.dirname() + "/" PYTHON_LIBDIR;
-		newpythonpath += ":" + exepath.dirname() + "/lib/" PYTHON_LIBDIR;
-		newpythonpath += ":" + exepath.dirname() + "/../lib/" PYTHON_LIBDIR;
+		//We've packaged python locally - so we need to enable the python code to find the files
+		//whereami::getModulePath() returns the path to libODC (because that's where the code is compiled)
+		auto pythonhome = whereami::getModulePath().dirname() + "/" + PYTHON_LIBDIR;
+		PlatformSetEnv("PYTHONHOME",pythonhome.c_str(),1);
+		if (auto log = odc::spdlog_get("opendatacon"))
+			log->debug("Set PYTHONHOME env var to: '{}'",pythonhome);
+
+		std::string newpythonpath;
 		if(auto pythonpath = getenv("PYTHONPATH"))
-			newpythonpath += ":" + exepath.dirname() + ":" + pythonpath;
+			newpythonpath = pythonhome+OSPATHSEP+pythonpath;
+		else
+			newpythonpath = pythonhome;
 
 		PlatformSetEnv("PYTHONPATH",newpythonpath.c_str(),1);
+		if (auto log = odc::spdlog_get("opendatacon"))
+			log->debug("Set PYTHONPATH env var to: '{}'",newpythonpath);
 		#endif
 
 		Py_Initialize(); // Get the Python interpreter running
+		if (auto log = odc::spdlog_get("opendatacon"))
+			log->debug("Initilised Python");
 
 		#ifndef PYTHON_34_ORLESS
 		//FIXME: can't log properly because this is static constructor and log doesn't exist
@@ -323,12 +333,14 @@ PythonInitWrapper::PythonInitWrapper()
 			LOGERROR("Unable to import python sys library");
 			return;
 		}
+
 		// Append current working directory to the sys.path variable - so we ca find the module.
 		if (PyRun_SimpleString("sys.path.append(\".\")") != 0)
 		{
 			LOGERROR("Unable to append to sys path in python sys library");
 			return;
 		}
+
 		PyDateTime_IMPORT;
 
 		// Initialize threads and release GIL (saving it as well):

@@ -125,7 +125,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_LIBS}/Python${PYTHON_NUM})
 			add_definitions(-DPYTHON_LIBDIR="Python${PYTHON_NUM}")
 			add_custom_target(copy-python-files ALL
-				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python36
+				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}
 			)
 			file(GLOB_RECURSE PYTHON_EXES ${PYTHON_STDLIB_DIR}/*.exe)
 			foreach(python_exe ${PYTHON_EXES})
