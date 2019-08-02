@@ -439,11 +439,17 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE(expectedresponse == callresp);
 
 	}
+	LOGDEBUG("Tests Complete, starting teardown");
 	PythonPort->Disable();
 	PythonPort2->Disable();
+	WaitIOS(IOS, 1);
+	LOGDEBUG("Ports Disabled");
 
 	STOP_IOS();
+	LOGDEBUG("IOS Stopped");
+
 	STANDARD_TEST_TEARDOWN();
+	LOGDEBUG("Test Teardown complete");
 }
 
 }

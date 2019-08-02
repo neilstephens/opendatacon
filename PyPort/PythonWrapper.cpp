@@ -330,14 +330,7 @@ static PyObject* PyInit_odc(void)
 	return PyModule_Create(&odcModule);
 }
 
-// Load the module into the python interpreter before we initialise it.
-void ImportODCModule()
-{
-	if (PyImport_AppendInittab("odc", &PyInit_odc) != 0)
-	{
-		LOGERROR("Unable to import odc module to Python Interpreter");
-	}
-}
+
 
 #ifdef _MSC_VER
 #pragma endregion
@@ -350,13 +343,28 @@ PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn
 	PythonPortPublishEventCallFn(PublishEventCallFn)
 {}
 
+#define LOGDEBUGODC(...) \
+	if (auto log = odc::spdlog_get("opendatacon")) \
+		log->debug(__VA_ARGS__);
+#define LOGERRORODC(...) \
+	if (auto log = odc::spdlog_get("opendatacon")) \
+		log->error(__VA_ARGS__);
+
+// Load the module into the python interpreter before we initialise it.
+void ImportODCModule()
+{
+	if (PyImport_AppendInittab("odc", &PyInit_odc) != 0)
+	{
+		LOGERRORODC("Unable to import odc module to Python Interpreter");
+	}
+}
 
 // Startup the interpreter - need to have matching tear down in destructor.
 PythonInitWrapper::PythonInitWrapper()
 {
 	try
 	{
-		LOGDEBUG("Py_Initialize");
+		LOGDEBUGODC("Py_Initialize");
 
 		// Load our odc module exposing our internal methods to python (i.e. loggin commands)
 		ImportODCModule();
@@ -377,21 +385,19 @@ PythonInitWrapper::PythonInitWrapper()
 		#ifndef PYTHON_34_ORLESS
 		//FIXME: can't log properly because this is static constructor and log doesn't exist
 		//	use static atomic_flag and static weak_ptr ctor guard like DNP3Manager instead
-		//LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
-		if (auto log = odc::spdlog_get("opendatacon"))
-			log->debug("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
+		LOGDEBUGODC("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
 		#endif
 
 		// Now execute some commands to get the environment ready.
 		if (PyRun_SimpleString("import sys") != 0)
 		{
-			LOGERROR("Unable to import python sys library");
+			LOGERRORODC("Unable to import python sys library");
 			return;
 		}
 		// Append current working directory to the sys.path variable - so we can find the module.
 		if (PyRun_SimpleString("sys.path.append(\".\")") != 0)
 		{
-			LOGERROR("Unable to append to sys path in python sys library");
+			LOGERRORODC("Unable to append to sys path in python sys library");
 			return;
 		}
 
@@ -402,20 +408,20 @@ PythonInitWrapper::PythonInitWrapper()
 
 		std::wstring path = Py_GetPath();
 		std::string spath(path.begin(), path.end());
-		LOGDEBUG("Current Python sys.path - {}",spath);
+		LOGDEBUGODC("Current Python sys.path - {}",spath);
 
 		PyDateTime_IMPORT;
 
 		// Initialize threads and release GIL (saving it as well):
 		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
 		if (!PyGILState_Check())
-			LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
+			LOGERRORODC("About to release and save our GIL state - but apparently we dont have a GIL lock...");
 
 		PythonWrapper::threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught during pyInitialize() - {}", e.what());
+		LOGERRORODC("Exception Caught during pyInitialize() - {}", e.what());
 	}
 }
 
@@ -423,23 +429,23 @@ PythonInitWrapper::PythonInitWrapper()
 // https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
 PythonInitWrapper::~PythonInitWrapper()
 {
-	LOGDEBUG("Py_Finalize");
+	LOGDEBUGODC("Py_Finalize");
 	// Restore the state as it was after we called Initialize()
-	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
+	LOGDEBUGODC("About to Finalize - Have GIL {} ", PyGILState_Check());
 	// Supposed to acquire the GIL and restore the state...
 	PyEval_RestoreThread(PythonWrapper::threadState);
-	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
+	LOGDEBUGODC("About to Finalize - Have GIL {} ", PyGILState_Check());
 
 	//	GetPythonGIL g; //TODO If we do this we hang, if we dont we get an error saying we dont have the GIL...
 	try
 	{
 		//TODO This try/catch does not work, as when Py_Finalize() fails, it calls abort - which we cannot catch.
 		//			if (!Py_FinalizeEx())
-		LOGERROR("Python Py_Finalize() Failed");
+		LOGERRORODC("Python Py_Finalize() Failed");
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught calling Py_FinalizeEx() - {}", e.what());
+		LOGERRORODC("Exception Caught calling Py_FinalizeEx() - {}", e.what());
 	}
 }
 
