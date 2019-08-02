@@ -300,6 +300,9 @@ PythonInitWrapper::PythonInitWrapper()
 		//We've packaged python locally - so we need to enable the python code to find the files
 		//whereami::getModulePath() returns the path to libODC (because that's where the code is compiled)
 		auto pythonhome = whereami::getModulePath().dirname() + "/" + PYTHON_LIBDIR;
+		#ifdef PYTHON_LIBDIRPLAT
+		pythonhome += OSPATHSEP+pythonhome+"/"+PYTHON_LIBDIRPLAT;
+		#endif
 		PlatformSetEnv("PYTHONHOME",pythonhome.c_str(),1);
 		if (auto log = odc::spdlog_get("opendatacon"))
 			log->debug("Set PYTHONHOME env var to: '{}'",pythonhome);

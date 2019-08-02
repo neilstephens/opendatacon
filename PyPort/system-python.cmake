@@ -119,11 +119,22 @@ if(NOT USE_PYTHON_SUBMODULE)
 			NO_DEFAULT_PATH
 			CMAKE_FIND_ROOT_PATH_BOTH)
 		if(PYTHON_STDLIB_DIR)
+			message("Found Python stdlib dir: '${PYTHON_STDLIB_DIR}'")
 			if(NOT PYTHON_NUM)
 				set(PYTHON_NUM 3${PYTHON_MINOR_VER})
 			endif()
 			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_LIBS}/Python${PYTHON_NUM})
 			add_definitions(-DPYTHON_LIBDIR="Python${PYTHON_NUM}")
+			file(GLOB_RECURSE PLATFORMPATH
+				RELATIVE ${PYTHON_STDLIB_DIR}
+				${PYTHON_STDLIB_DIR}/*/_sysconfigdata_m.py)
+			if(PLATFORMPATH MATCHES "(^[^;]*)/_sysconfigdata_m.py")
+				add_definitions(-DPYTHON_LIBDIRPLAT="${CMAKE_MATCH_1}")
+				message("Found separate platform python dir: '${CMAKE_MATCH_1}'")
+			elseif(WIN32)
+				add_definitions(-DPYTHON_LIBDIRPLAT="plat-win")
+				message("Separate platform python dir: 'plat-win'")
+			endif()
 			add_custom_target(copy-python-files ALL
 				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}
 			)
