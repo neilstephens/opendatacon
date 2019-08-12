@@ -7,10 +7,10 @@ if(NOT USE_PYTHON_SUBMODULE)
 	endif()
 
 	#find python headers
-	file(GLOB_RECURSE PYTHON_H ${CMAKE_FIND_ROOT_PATH}/${PYTHON_HOME}/*Python.h)
+	file(GLOB_RECURSE PYTHON_H ${CMAKE_FIND_ROOT_PATH}${PYTHON_HOME}/*Python.h)
 	if(PYTHON_H)
 		message("Found Python.h using CMAKE_FIND_ROOT_PATH")
-		set(TOP_INCLUDE ${CMAKE_FIND_ROOT_PATH}/${PYTHON_HOME}/include)
+		set(TOP_INCLUDE ${CMAKE_FIND_ROOT_PATH}${PYTHON_HOME}/include)
 	else()
 		set(TOP_INCLUDE ${PYTHON_HOME}/include)
 		file(GLOB_RECURSE PYTHON_H ${PYTHON_HOME}/*Python.h)
@@ -22,16 +22,16 @@ if(NOT USE_PYTHON_SUBMODULE)
 		set(PYTHON_VER ${CMAKE_MATCH_2})
 		set(PYTHON_MINOR_VER ${CMAKE_MATCH_3})
 		message("Version string: ${PYTHON_VER}")
-		if(PYTHON_HOME_DISCOVERED EQUAL PYTHON_HOME)
+		if("${PYTHON_HOME_DISCOVERED}" STREQUAL "${PYTHON_HOME}")
 			message("PYTHON_HOME confirmed")
 		else()
-			message("Warning: resetting PYTHON_HOME to ${PYTHON_HOME_DISCOVERED}")
+			message("Warning: resetting PYTHON_HOME (${PYTHON_HOME}) to (${PYTHON_HOME_DISCOVERED})")
 			set(PYTHON_HOME ${PYTHON_HOME_DISCOVERED})
 		endif()
 	endif()
 
 	find_path(PYTHON_INCLUDE_DIRS Python.h
-		PATHS ${PYTHON_HOME}/include/${PYTHON_VER}m ${PYTHON_HOME}/include/
+		PATHS ${PYTHON_HOME}/include/${PYTHON_VER}m ${PYTHON_HOME}/include
 		NO_DEFAULT_PATH
 		CMAKE_FIND_ROOT_PATH_BOTH)
 
@@ -113,19 +113,27 @@ if(NOT USE_PYTHON_SUBMODULE)
 	#include in install/packaging
 	option(PACKAGE_PYTHON "Package python libs in c-pack installer" ON)
 	if(PACKAGE_PYTHON)
-		set(PACK_NAMES python)
+		set(PACK_NAMES python expat zlib tinfo sqlite readline ncurses mpdec lzma ffi db5 bz2)
 		find_path(PYTHON_STDLIB_DIR _pydecimal.py
 			PATHS ${PYTHON_HOME}/lib/${PYTHON_VER} ${PYTHON_HOME}/Lib
 			NO_DEFAULT_PATH
 			CMAKE_FIND_ROOT_PATH_BOTH)
 		if(PYTHON_STDLIB_DIR)
+			message("Found Python stdlib dir: '${PYTHON_STDLIB_DIR}'")
 			if(NOT PYTHON_NUM)
 				set(PYTHON_NUM 3${PYTHON_MINOR_VER})
 			endif()
-			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_LIBS}/Python${PYTHON_NUM})
+			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_SHARED}/Python${PYTHON_NUM})
 			add_definitions(-DPYTHON_LIBDIR="Python${PYTHON_NUM}")
+			file(GLOB_RECURSE PLATFORMPATH
+				RELATIVE ${PYTHON_STDLIB_DIR}
+				${PYTHON_STDLIB_DIR}/*/_sysconfigdata_m.py)
+			if(PLATFORMPATH MATCHES "(^[^;]*)/_sysconfigdata_m.py")
+				add_definitions(-DPYTHON_LIBDIRPLAT="${CMAKE_MATCH_1}")
+				message("Found separate platform python dir: '${CMAKE_MATCH_1}'")
+			endif()
 			add_custom_target(copy-python-files ALL
-				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python36
+				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}
 			)
 			file(GLOB_RECURSE PYTHON_EXES ${PYTHON_STDLIB_DIR}/*.exe)
 			foreach(python_exe ${PYTHON_EXES})

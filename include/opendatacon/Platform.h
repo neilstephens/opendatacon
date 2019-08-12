@@ -101,6 +101,7 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 {
 	_putenv_s(var, val);
 }
+const std::string OSPATHSEP = ";";
 
 #else
 #include <dlfcn.h>
@@ -150,6 +151,7 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 {
 	setenv(var, val, overwrite);
 }
+const std::string OSPATHSEP = ":";
 
 #endif
 
