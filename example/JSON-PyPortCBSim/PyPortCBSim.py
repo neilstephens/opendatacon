@@ -131,7 +131,7 @@ class SimPortClass:
 
     # Return a string indicating what the two binary bits mean
     def GetCombinedState(self,Bit1, Bit0):
-        CBState = [["MaintenanceZeros","Closed"],["Open","FaultOnes"]]
+        CBState = [["Maintenance","Closed"],["Open","Fault"]]
         return CBState[Bit1][Bit0]
 
     def SetState(self, Json, CBNumber, CBStateBit, State):
@@ -249,8 +249,12 @@ class SimPortClass:
                 jPayload = {}
                 jPayload = json.loads(content)
 
-                self.SetCombinedState(self.ConfigDict["Binaries"], jPayload["CBNumber"], jPayload["CBState"])
+                if type(jPayload["CBNumber"]) is str:
+                    CBNumber = int(jPayload["CBNumber"])
+                else:
+                    CBNumber = jPayload["CBNumber"]
 
+                self.SetCombinedState(self.ConfigDict["Binaries"], CBNumber, jPayload["CBState"])
                 Response["Result"] = "OK"
 
                 # Any changes that were made to the state, triggered events when they were made.
@@ -260,7 +264,8 @@ class SimPortClass:
                 return ""
 
         except (RuntimeError, TypeError, NameError, Exception) as e:
-            print("Exception - {}".format(e))
+            self.LogError("Exception - {}".format(e))
+            Response["Result"] = "Exception - {}".format(e)
             return ""
 
         return json.dumps(Response)
