@@ -150,10 +150,10 @@ void WriteStartLoggingMessage(std::string TestName)
 		std::cout << "Error PyPort Logger not operational";
 
 /*	if (auto odclogger = odc::spdlog_get("opendatacon"))
-            odclogger->info(msg);
-      else
-            std::cout << "Error opendatacon Logger not operational";
-            */
+                  odclogger->info(msg);
+        else
+                  std::cout << "Error opendatacon Logger not operational";
+                  */
 }
 void TestSetup(std::string TestName, bool writeconffiles = true)
 {
@@ -442,11 +442,13 @@ TEST_CASE("Py.TestsUsingPython")
 	LOGDEBUG("Tests Complete, starting teardown");
 	PythonPort->Disable();
 	PythonPort2->Disable();
-	WaitIOS(IOS, 1);
+	WaitIOS(IOS, 2);
 	LOGDEBUG("Ports Disabled");
 
 	STOP_IOS();
 	LOGDEBUG("IOS Stopped");
+
+	WaitIOS(IOS, 1);
 
 	STANDARD_TEST_TEARDOWN();
 	LOGDEBUG("Test Teardown complete");
