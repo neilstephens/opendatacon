@@ -43,7 +43,7 @@ class CBPointTableAccess
 {
 public:
 	CBPointTableAccess();
-	void Build(const bool isoutstation, odc::asio_service & IOS);
+	void Build(const bool isoutstation, odc::asio_service & IOS, unsigned int SOEQueueSize, std::shared_ptr<std::atomic_bool> SOEDataLostFlag);
 
 	// The add to point table functions add to both the ODC and MD3 Map.
 	// The Conitel Baker methods require that a
@@ -128,5 +128,7 @@ protected:
 
 	bool IsOutstation = true;
 	std::shared_ptr<StrandProtectedQueue<CBBinaryPoint>> pBinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events.
+	// Define the special SOE buffer overflow point, so that it can be added to the SOE queue if the buffer overflows. The only thing that gets changed is the time.
+	CBBinaryPoint queuefullpt = CBBinaryPoint(0, 0, 1, PayloadLocationType(), BinaryPointType::DIG, true, 127);
 };
 #endif

@@ -33,7 +33,7 @@
 #include "CBMasterPort.h"
 
 
-CBMasterPort::CBMasterPort(const std::string &aName, const std::string &aConfFilename, const Json::Value &aConfOverrides):
+CBMasterPort::CBMasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	CBPort(aName, aConfFilename, aConfOverrides),
 	PollScheduler(nullptr)
 {
@@ -42,13 +42,13 @@ CBMasterPort::CBMasterPort(const std::string &aName, const std::string &aConfFil
 
 	IsOutStation = false;
 
-	LOGDEBUG("CBMaster Constructor - {} - {} Overrides - {}",aName, aConfFilename, over);
+	LOGDEBUG("CBMaster Constructor - {} - {} Overrides - {}", aName, aConfFilename, over);
 }
 
 CBMasterPort::~CBMasterPort()
 {
 	Disable();
-	CBConnection::RemoveMaster(pConnection,MyConf->mAddrConf.OutstationAddr);
+	CBConnection::RemoveMaster(pConnection, MyConf->mAddrConf.OutstationAddr);
 }
 
 void CBMasterPort::Enable()
@@ -62,7 +62,7 @@ void CBMasterPort::Enable()
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Problem opening connection TCP : {} : {}",Name, e.what());
+		LOGERROR("Problem opening connection TCP : {} : {}", Name, e.what());
 		return;
 	}
 }
@@ -107,13 +107,13 @@ void CBMasterPort::Build()
 	MasterCommandProtectedData.CurrentCommandTimeoutTimer = pIOS->make_steady_timer();
 	MasterCommandStrand = pIOS->make_strand();
 
-	// Need a couple of things passed to the point table.
-	MyPointConf->PointTable.Build(IsOutStation, *pIOS);
+	// Need a couple of things passed to the point table. SOEQueue not actually used.
+	MyPointConf->PointTable.Build(IsOutStation, *pIOS, 5, SOEDataLostFlag);
 
 	// Creates internally if necessary, returns a token for the connection
-	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP,MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
+	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
-	CBConnection::AddMaster(pConnection,MyConf->mAddrConf.OutstationAddr,
+	CBConnection::AddMaster(pConnection, MyConf->mAddrConf.OutstationAddr,
 		std::bind(&CBMasterPort::ProcessCBMessage, this, std::placeholders::_1),
 		std::bind(&CBMasterPort::SocketStateHandler, this, std::placeholders::_1),
 		MyPointConf->IsBakerDevice);
@@ -132,7 +132,7 @@ void CBMasterPort::Build()
 	//	PollScheduler->Start(); // This is started and stopped in the socket state handler
 }
 
-void CBMasterPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
+void CBMasterPort::SendCBMessage(const CBMessage_t& CompleteCBMessage)
 {
 	if (CompleteCBMessage.size() == 0)
 	{
@@ -155,7 +155,7 @@ void CBMasterPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 // If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
 // This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 // Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
-void CBMasterPort::QueueCBCommand(const CBMessage_t &CompleteCBMessage, SharedStatusCallback_t pStatusCallback)
+void CBMasterPort::QueueCBCommand(const CBMessage_t& CompleteCBMessage, SharedStatusCallback_t pStatusCallback)
 {
 	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post.
 		{
@@ -174,7 +174,7 @@ void CBMasterPort::QueueCBCommand(const CBMessage_t &CompleteCBMessage, SharedSt
 		});
 }
 // Handle the many single block command messages better
-void CBMasterPort::QueueCBCommand(const CBBlockData &SingleBlockCBMessage, SharedStatusCallback_t pStatusCallback)
+void CBMasterPort::QueueCBCommand(const CBBlockData& SingleBlockCBMessage, SharedStatusCallback_t pStatusCallback)
 {
 	CBMessage_t CommandCBMessage;
 	CommandCBMessage.push_back(SingleBlockCBMessage);
@@ -183,7 +183,7 @@ void CBMasterPort::QueueCBCommand(const CBBlockData &SingleBlockCBMessage, Share
 
 
 // Just schedule the callback, don't want to do it in a strand protected section.
-void CBMasterPort::PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c)
+void CBMasterPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c)
 {
 	if (pStatusCallback != nullptr)
 	{
@@ -234,7 +234,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				// If you want a resend command and not send the same command again, allow the following line.
 				// DoResendCommand = true;
 
-				LOGDEBUG("Sending Retry on command :{}",GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode))
+				LOGDEBUG("Sending Retry on command :{}", GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode))
 			}
 			else
 			{
@@ -284,13 +284,13 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 
 			std::chrono::milliseconds endtime = MasterCommandProtectedData.TimerExpireTime;
 
-			MasterCommandProtectedData.CurrentCommandTimeoutTimer->async_wait([&,endtime](asio::error_code err_code)
+			MasterCommandProtectedData.CurrentCommandTimeoutTimer->async_wait([&, endtime](asio::error_code err_code)
 				{
 					if (err_code != asio::error::operation_aborted)
 					{
 					// We need strand protection for the variables, so this will queue another chunk of work below.
 					// If we get an answer in the delay this causes, no big deal - the length of the timeout will kind of jitter.
-					      MasterCommandStrand->dispatch([&,endtime]()
+					      MasterCommandStrand->dispatch([&, endtime]()
 							{
 								// The checking of the expire time is another way to make sure that we have not cancelled the timer. We really need to make sure that if
 								// we have cancelled the timer and this callback is called, that we do NOT take any action!
@@ -343,7 +343,7 @@ void CBMasterPort::ClearCBCommandQueue()
 // but then the actual reply might be in the following message and we would never re-sync.
 // If we timeout on (some) commands, we can ask the OutStation to resend the last command response.
 // We would have to limit how many times we could do this without giving up.
-void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
+void CBMasterPort::ProcessCBMessage(CBMessage_t& CompleteCBMessage)
 {
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 
@@ -360,12 +360,12 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 
 			CBBlockData Header = CompleteCBMessage[0];
 
-			LOGDEBUG("CB Master received a response to sending cmd {} On Station Address - {}", GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode),std::to_string(Header.GetStationAddress()));
+			LOGDEBUG("CB Master received a response to sending cmd {} On Station Address - {}", GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode), std::to_string(Header.GetStationAddress()));
 
 			// If we have an error, we have to wait for the timeout to occur, there may be another packet in behind which is the correct one. If we bail now we may never re-synchronise.
 			if (Header.GetStationAddress() == 0)
 			{
-			      LOGERROR("Received broadcast return message - address 0 - ignoring - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()),std::to_string(Header.GetStationAddress()));
+			      LOGERROR("Received broadcast return message - address 0 - ignoring - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
 			      return;
 			}
 			if (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr)
@@ -375,7 +375,7 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			}
 			if (Header.GetFunctionCode() != MasterCommandProtectedData.CurrentFunctionCode)
 			{
-			      LOGERROR("Received a message with the wrong (non-matching) function code - ignoring - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()),std::to_string(Header.GetStationAddress()));
+			      LOGERROR("Received a message with the wrong (non-matching) function code - ignoring - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
 			      return;
 			}
 
@@ -426,13 +426,13 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 					NotImplemented = true;
 					break;
 				default:
-					LOGERROR("Unknown Message Function - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()) , std::to_string(Header.GetStationAddress()));
+					LOGERROR("Unknown Message Function - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
 					break;
 			}
 
 			if (NotImplemented == true)
 			{
-			      LOGERROR("PendingCommand Function NOT Implemented - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()),std::to_string(Header.GetStationAddress()));
+			      LOGERROR("PendingCommand Function NOT Implemented - {} On Station Address - {}", GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
 			}
 
 			if (success) // Move to the next command. Only other place we do this is in the timeout.
@@ -471,7 +471,7 @@ bool CBMasterPort::ProcessScanRequestReturn(const CBMessage_t& CompleteCBMessage
 
 	auto payloadlocation = PayloadLocationType(1, PayloadABType::PositionB);
 
-	ProccessScanPayload(CompleteCBMessage[0].GetB(), Group,  payloadlocation);
+	ProccessScanPayload(CompleteCBMessage[0].GetB(), Group, payloadlocation);
 
 	for (uint8_t blockindex = 1; blockindex < NumberOfBlocks; blockindex++)
 	{
@@ -490,9 +490,9 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	bool FoundMatch = false;
 	CBTime now = CBNow();
 
-	LOGDEBUG("MA - Group - {} Processing Payload - {} Value 0x{}", std::to_string(group),payloadlocation.to_string() ,to_hexstring(data));
+	LOGDEBUG("MA - Group - {} Processing Payload - {} Value 0x{}", std::to_string(group), payloadlocation.to_string(), to_hexstring(data));
 
-	MyPointConf->PointTable.ForEachMatchingAnalogPoint(group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+	MyPointConf->PointTable.ForEachMatchingAnalogPoint(group, payloadlocation, [&](CBAnalogCounterPoint& pt)
 		{
 			// We have a matching point - there will be 1 or 2, set a flag to indicate we have a match.
 
@@ -510,7 +510,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 			uint32_t ODCIndex = pt.GetIndex();
 			QualityFlags qual = QualityFlags::ONLINE; // CalculateAnalogQuality(enabled, data, now); //TODO: Handle quality better?
 
-			LOGDEBUG("MA - Published Event - Analog - Index {} Value 0x{}", ODCIndex,to_hexstring(data));
+			LOGDEBUG("MA - Published Event - Analog - Index {} Value 0x{}", ODCIndex, to_hexstring(data));
 
 			auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from CB, so add it as soon as possible);
 			event->SetPayload<EventType::Analog>(std::move(data));
@@ -521,7 +521,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 
 	if (!FoundMatch)
 	{
-		MyPointConf->PointTable.ForEachMatchingCounterPoint(group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+		MyPointConf->PointTable.ForEachMatchingCounterPoint(group, payloadlocation, [&](CBAnalogCounterPoint& pt)
 			{
 				// We have a matching point - there will be only 1!!, set a flag to indicate we have a match.
 				pt.SetAnalog(data, now);
@@ -620,7 +620,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	}
 }
 
-void CBMasterPort::SendBinaryEvent(CBBinaryPoint & pt, uint8_t &bitvalue, const CBTime &now)
+void CBMasterPort::SendBinaryEvent(CBBinaryPoint& pt, uint8_t& bitvalue, const CBTime& now)
 {
 	// Only process if the value has changed - otherwise have lots of needless events.
 	if ((pt.GetBinary() != bitvalue) || (pt.GetHasBeenSet() == false))
@@ -663,7 +663,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 
 			size_t ODCIndex = 0;
 
-			if (MyPointConf->PointTable.GetBinaryODCIndexUsingSOE(SOEIndex, ODCIndex))
+			if (MyPointConf->PointTable.GetBinaryODCIndexUsingSOE(SOEIndex, ODCIndex) || (SOEIndex == 127))
 			{
 			      uint8_t bitvalue = soeevnt.ValueBit;
 
@@ -685,11 +685,20 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 				}
 			      CBTime changedtime = GetDayStartTime(Now) + soeevnt.GetTotalMsecTime();
 
-			      QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
-			      LOGDEBUG("Published Binary SOE Event -  SOE Index {} ODC Index {} Bit Value {}", SOEIndex, ODCIndex, bitvalue);
-			      auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(changedtime));
-			      event->SetPayload<EventType::Binary>(bitvalue == 1);
-			      PublishEvent(event);
+			// SOEIndex 127 is the buffer overflow record
+			      if (SOEIndex == 127)
+			      {
+			            LOGERROR("Received a Binary SOE Buffer Overflow Event Record, data was lost at the OutStation");
+			            nOutStationSOEBufferOverflow.clear();
+				}
+			      else
+			      {
+			            QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
+			            LOGDEBUG("Published Binary SOE Event -  SOE Index {} ODC Index {} Bit Value {}", SOEIndex, ODCIndex, bitvalue);
+			            auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(changedtime));
+			            event->SetPayload<EventType::Binary>(bitvalue == 1);
+			            PublishEvent(event);
+				}
 			}
 			else
 			{
@@ -700,7 +709,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 	return true;
 }
 
-bool CBMasterPort::ConvertSOEMessageToBitArray(const CBMessage_t& CompleteCBMessage, std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits )
+bool CBMasterPort::ConvertSOEMessageToBitArray(const CBMessage_t& CompleteCBMessage, std::array<bool, MaxSOEBits>& BitArray, uint32_t& UsedBits)
 {
 	uint8_t NumberOfBlocks = numeric_cast<uint8_t>(CompleteCBMessage.size());
 
@@ -743,7 +752,7 @@ bool CBMasterPort::ConvertSOEMessageToBitArray(const CBMessage_t& CompleteCBMess
 	return true;
 }
 
-void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits> &BitArray, uint32_t &UsedBits, std::function<void(SOEEventFormat &soeevnt)> fn)
+void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits>& BitArray, uint32_t& UsedBits, std::function<void(SOEEventFormat& soeevnt)> fn)
 {
 	// We now have the data in the bit array, now we have to decode into the SOE blocks - 30 or 41 bits long.
 	uint32_t startbit = 0;
@@ -779,7 +788,7 @@ void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits> &BitAr
 			// Less than 24 bits is ok, it was just necessary padding.
 			return;
 		}
-	} while ((newstartbit+30) < UsedBits); // Only keep going if there is space for another message.
+	} while ((newstartbit + 30) < UsedBits); // Only keep going if there is space for another message.
 }
 
 // Checks what we got back against what we sent. We know the function code and address have been checked.
@@ -787,12 +796,12 @@ bool CBMasterPort::CheckResponseHeaderMatch(const CBBlockData& ReceivedHeader, c
 {
 	if (ReceivedHeader.GetGroup() != SentHeader.GetGroup())
 	{
-		LOGDEBUG("Returned Header mismatch on Group {}, {}", ReceivedHeader.GetGroup(),SentHeader.GetGroup());
+		LOGDEBUG("Returned Header mismatch on Group {}, {}", ReceivedHeader.GetGroup(), SentHeader.GetGroup());
 		return false;
 	}
 	if (ReceivedHeader.GetB() != SentHeader.GetB())
 	{
-		LOGDEBUG("Returned Header mismatch on B Data {}, {}", ReceivedHeader.GetB(),SentHeader.GetB());
+		LOGDEBUG("Returned Header mismatch on B Data {}, {}", ReceivedHeader.GetB(), SentHeader.GetB());
 		return false;
 	}
 
@@ -899,7 +908,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 	eventbinary->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
 
 	// Loop through all Binary points.
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &Point)
+	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			eventbinary->SetIndex(index);
@@ -911,7 +920,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 
 	auto eventanalog = std::make_shared<EventInfo>(EventType::AnalogQuality, 0, Name, QualityFlags::COMM_LOST);
 	eventanalog->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
-	MyPointConf->PointTable.ForEachAnalogPoint([&](CBAnalogCounterPoint &Point)
+	MyPointConf->PointTable.ForEachAnalogPoint([&](CBAnalogCounterPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			if (!MyPointConf->PointTable.ResetAnalogValueUsingODCIndex(index)) // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
@@ -924,7 +933,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 	auto eventcounter = std::make_shared<EventInfo>(EventType::CounterQuality, 0, Name, QualityFlags::COMM_LOST);
 	eventcounter->SetPayload<EventType::CounterQuality>(QualityFlags::COMM_LOST);
 
-	MyPointConf->PointTable.ForEachCounterPoint([&](CBAnalogCounterPoint &Point)
+	MyPointConf->PointTable.ForEachCounterPoint([&](CBAnalogCounterPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			if (!MyPointConf->PointTable.ResetCounterValueUsingODCIndex(index)) // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
@@ -939,7 +948,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 void CBMasterPort::SendAllPointEvents()
 {
 	// Quality of ONLINE means the data is GOOD.
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &Point)
+	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			uint8_t meas = Point.GetBinary();
@@ -951,7 +960,7 @@ void CBMasterPort::SendAllPointEvents()
 		});
 
 	// Analogs
-	MyPointConf->PointTable.ForEachAnalogPoint([&](CBAnalogCounterPoint &Point)
+	MyPointConf->PointTable.ForEachAnalogPoint([&](CBAnalogCounterPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			uint16_t meas = Point.GetAnalog();
@@ -965,7 +974,7 @@ void CBMasterPort::SendAllPointEvents()
 		});
 
 	// Counters
-	MyPointConf->PointTable.ForEachCounterPoint([&](CBAnalogCounterPoint &Point)
+	MyPointConf->PointTable.ForEachCounterPoint([&](CBAnalogCounterPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			uint16_t meas = Point.GetAnalog();
@@ -1039,7 +1048,7 @@ void CBMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::stri
 }
 
 
-void CBMasterPort::WriteObject(const ControlRelayOutputBlock& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
+void CBMasterPort::WriteObject(const ControlRelayOutputBlock& command, const uint32_t& index, const SharedStatusCallback_t& pStatusCallback)
 {
 	uint8_t Group = 0;
 	uint8_t Channel = 0;
@@ -1066,10 +1075,10 @@ void CBMasterPort::WriteObject(const ControlRelayOutputBlock& command, const uin
 
 		SendDigitalControlOnCommand(MyConf->mAddrConf.OutstationAddr, Group, Channel, pStatusCallback);
 	}
-	LOGDEBUG("Master received a Binary Control Output Command - Index: {} - {} Group {} Channel {}", index, OnOffString,std::to_string(index), std::to_string(Group), std::to_string(Channel));
+	LOGDEBUG("Master received a Binary Control Output Command - Index: {} - {} Group {} Channel {}", index, OnOffString, std::to_string(index), std::to_string(Group), std::to_string(Channel));
 }
 
-void CBMasterPort::WriteObject(const int16_t &command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
+void CBMasterPort::WriteObject(const int16_t& command, const uint32_t& index, const SharedStatusCallback_t& pStatusCallback)
 {
 	LOGDEBUG("Master received an ANALOG CONTROL Change Command {}", std::to_string(index));
 
@@ -1079,7 +1088,7 @@ void CBMasterPort::WriteObject(const int16_t &command, const uint32_t &index, co
 
 	if (!exists)
 	{
-		LOGDEBUG("Master received an Analog Control ODC Change Command on a point that is not defined {}",std::to_string(index));
+		LOGDEBUG("Master received an Analog Control ODC Change Command on a point that is not defined {}", std::to_string(index));
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
@@ -1104,26 +1113,26 @@ void CBMasterPort::WriteObject(const int16_t &command, const uint32_t &index, co
 }
 
 
-void CBMasterPort::WriteObject(const int32_t & command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
+void CBMasterPort::WriteObject(const int32_t& command, const uint32_t& index, const SharedStatusCallback_t& pStatusCallback)
 {
-	LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event - Index {}, Value {}",index,command);
+	LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event - Index {}, Value {}", index, command);
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
-void CBMasterPort::WriteObject(const float& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
+void CBMasterPort::WriteObject(const float& command, const uint32_t& index, const SharedStatusCallback_t& pStatusCallback)
 {
-	LOGERROR("On Master float Type is not implemented - Index {}, Value {}",index,command);
+	LOGERROR("On Master float Type is not implemented - Index {}, Value {}", index, command);
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
-void CBMasterPort::WriteObject(const double& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
+void CBMasterPort::WriteObject(const double& command, const uint32_t& index, const SharedStatusCallback_t& pStatusCallback)
 {
 
-	LOGDEBUG("Master received unknown double ODC Event - Index {}, Value {}",index,command);
+	LOGDEBUG("Master received unknown double ODC Event - Index {}, Value {}", index, command);
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
 
-void CBMasterPort::SendDigitalControlOnCommand(const uint8_t &StationAddress, const uint8_t &Group, const uint16_t &Channel, const SharedStatusCallback_t &pStatusCallback)
+void CBMasterPort::SendDigitalControlOnCommand(const uint8_t& StationAddress, const uint8_t& Group, const uint16_t& Channel, const SharedStatusCallback_t& pStatusCallback)
 {
 	assert((Channel >= 1) && (Channel <= 12));
 	uint16_t BData = numeric_cast<uint16_t>(1 << (12 - Channel));
@@ -1138,7 +1147,7 @@ void CBMasterPort::SendDigitalControlOnCommand(const uint8_t &StationAddress, co
 	CBBlockData executeblock = CBBlockData(StationAddress, Group, FUNC_EXECUTE_COMMAND, 0, true);
 	QueueCBCommand(executeblock, pStatusCallback);
 }
-void CBMasterPort::SendDigitalControlOffCommand(const uint8_t &StationAddress, const uint8_t &Group, const uint16_t &Channel, const SharedStatusCallback_t &pStatusCallback)
+void CBMasterPort::SendDigitalControlOffCommand(const uint8_t& StationAddress, const uint8_t& Group, const uint16_t& Channel, const SharedStatusCallback_t& pStatusCallback)
 {
 	assert((Channel >= 1) && (Channel <= 12));
 	uint16_t BData = numeric_cast<uint16_t>(1 << (12 - Channel));

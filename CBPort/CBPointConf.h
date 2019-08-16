@@ -46,7 +46,6 @@
 #include "CBUtility.h"
 #include "CBPointTableAccess.h"
 
-
 // Also I have concerns about blocking checks on futures, which would block one of the asio threads - we may only have 4!
 // This guys has some answers:
 // http://code-slim-jim.blogspot.com/2014/07/async-usage-of-futures-and-promises-in.html
@@ -90,6 +89,8 @@ public:
 
 	// If true, the outstation will send responses on the TCP connection without waiting for ODC responses.
 	bool StandAloneOutstation = false;
+
+	unsigned int SOEQueueSize = 500;
 
 	// Time to wait for ODC command to return a result before returning with an error of TIMEOUT. Remember there can be multiple responders!
 	uint32_t CBCommandTimeoutmsec = 5000;

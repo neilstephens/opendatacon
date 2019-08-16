@@ -25,19 +25,18 @@
 */
 
 
-#include "CBPortConf.h"
 #include "CBPointTableAccess.h"
+#include "CBPortConf.h"
 
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const bool isoutstation, odc::asio_service &IOS)
+void CBPointTableAccess::Build(const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<std::atomic_bool> SOEDataLostFlag)
 {
 	IsOutstation = isoutstation;
 	// Setup TimeTagged event queue.
-	// The size (500) does not consume memory, just sets an upper limit to the number of items in the queue.
-
-	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<CBBinaryPoint>(IOS, 500));
+	// The size (default 500) does not consume memory, just sets an upper limit to the number of items in the queue.
+	pBinaryTimeTaggedEventQueue = std::make_shared<StrandProtectedQueue<CBBinaryPoint>>(IOS, SOEQueueSize, SOEDataLostFlag);
 }
 
 #ifdef _MSC_VER
@@ -315,7 +314,8 @@ bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const u
 }
 bool CBPointTableAccess::GetBinaryODCIndexUsingSOE( const uint8_t soeindex, size_t &index)
 {
-	assert(soeindex <= 120);
+	if (soeindex > 120) return false;
+
 	CBBinaryPointMapIterType SOEPointMapIter = BinarySOEPointMap.find(soeindex);
 	if (SOEPointMapIter != BinarySOEPointMap.end())
 	{
@@ -333,9 +333,11 @@ void CBPointTableAccess::AddToDigitalEvents(const CBBinaryPoint &inpt, const uin
 		CBBinaryPoint pt = inpt;
 		pt.SetBinary(meas, eventtime);
 
-		LOGDEBUG("Outstation Added Binary Event to SOE Queue - ODCIndex {}, Value {}", pt.GetIndex(), pt.GetBinary());
+		// Set the queue point value, just so we can set the time. The value does not matter.
+		queuefullpt.SetBinary(1, CBNow());
 
-		pBinaryTimeTaggedEventQueue->async_push(pt);
+		pBinaryTimeTaggedEventQueue->async_push(pt, queuefullpt, odc::spdlog_get("CBPort"));
+		LOGDEBUG("Outstation Added Binary Event to SOE Queue - ODCIndex {}, Value {}", pt.GetIndex(),pt.GetBinary());
 	}
 }
 bool CBPointTableAccess::PeekNextTaggedEventPoint(CBBinaryPoint &pt)

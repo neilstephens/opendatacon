@@ -75,6 +75,7 @@ protected:
 	int Limit(int val, int max);
 	uint8_t Limit(uint8_t val, uint8_t max);
 	ConnectionTokenType pConnection;
+	std::shared_ptr<std::atomic_bool> SOEDataLostFlag;
 };
 
 #endif

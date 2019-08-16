@@ -42,14 +42,17 @@ class StrandProtectedQueue
 {
 public:
 
-	StrandProtectedQueue(odc::asio_service& _io_context, unsigned int _size)
+	StrandProtectedQueue(odc::asio_service& _io_context, unsigned int _size, std::shared_ptr<std::atomic_bool> _SOEDataLostFlag)
 		: size(_size),
 		queue_io_context(_io_context),
-		internal_queue_strand(_io_context.make_strand())
-	{}
+		internal_queue_strand(_io_context.make_strand()),
+		SOEDataLostFlag(_SOEDataLostFlag)
+	{
+		SOEDataLostFlag->store(false);
+	}
 
 	// Return front of queue value
-	bool sync_front(T &retval)
+	bool sync_front(T& retval)
 	{
 		std::promise<T> promise;
 		auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
@@ -148,46 +151,29 @@ public:
 
 		return future.get();
 	}
-	void sync_push(const T &_value)
-	{
-		std::promise<void> voidpromise;
-		auto future = voidpromise.get_future();
 
-		// Dispatch will execute now - if we can, otherwise results in a post
-		internal_queue_strand->dispatch([&]()
+	void async_push(const T& _value, const T& _queuefullvalue, std::shared_ptr<spdlog::logger> log)
+	{
+		// Dispatch will execute now - if we can, otherwise results in a post. Need to copy the _value into the Lambda as it will go out of scope when async_push exits
+		internal_queue_strand->dispatch([&, _value, _queuefullvalue, log]()
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
-				// Only push if we have space
-				if (fifo.size() < size)
+				// If more than one space available, proceed as normal.
+				if (fifo.size() < (size - 1))
 				{
 				      fifo.push(_value);
 				}
-
-				voidpromise.set_value();
-			});
-
-		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
-		while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
-		{
-			if (queue_io_context.stopped() == true)
-			{
-				// If we are closing get out of here.
-				return;
-			}
-			// Our result is not ready, so let ASIO run one work handler. Kind of like a co-operative task switch
-			queue_io_context.poll_one();
-		}
-	}
-	void async_push(const T &_value)
-	{
-		// Dispatch will execute now - if we can, otherwise results in a post. Need to copy the _value into the Lambda as it will go out of scope when async_push exits
-		internal_queue_strand->dispatch([&,_value]()
-			{
-				// This is only called from within the internal_queue_strand, so we are safe.
-				// Only push if we have space
-				if (fifo.size() < size)
+				// If there is only one space left, we need to push the overflow event into the queue.
+				else if (fifo.size() < size)
 				{
-				      fifo.push(_value);
+				      fifo.push(_queuefullvalue);
+				      SOEDataLostFlag->store(true);
+				      if (log) log->debug("Outstation SOE Queue Overflow - Overflow pont (127) added to the queue");
+				}
+				else
+				{
+				// No space - dump
+				      if (log) log->debug("Outstation SOE Queue Overflow - Point dumped");
 				}
 			});
 	}
@@ -197,6 +183,7 @@ private:
 	unsigned int size;
 	odc::asio_service& queue_io_context;
 	std::unique_ptr<asio::io_context::strand> internal_queue_strand;
+	std::shared_ptr<std::atomic_bool> SOEDataLostFlag;
 };
 
 #endif

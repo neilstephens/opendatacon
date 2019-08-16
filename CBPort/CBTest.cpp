@@ -95,6 +95,9 @@ const char *conffile1 = R"001(
 	// Set to false, the OutStation will set up ODC/timeout callbacks/lambdas for ODC responses. If not found will default to false.
 	"StandAloneOutstation" : true,
 
+	// This defaults to 500. Allow setting to a low number so testing full queue is practical.
+	"SOEQueueSize" : 15,
+
 	// Maximum time to wait for CB Master responses to a command and number of times to retry a command.
 	"CBCommandTimeoutmsec" : 3000,
 	"CBCommandRetries" : 1,
@@ -143,7 +146,7 @@ const char *conffile1 = R"001(
 
 	// CONTROL up to 12 bits per group address, Channel 1 to 12. Python simulator used dual points one for trip one for close.
 	"BinaryControls" : [{"Index": 1,  "Group" : 4, "Channel" : 1, "Type" : "CONTROL"},
-                        {"Range" : {"Start" : 10, "Stop" : 21}, "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
+						{"Range" : {"Start" : 10, "Stop" : 21}, "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
 
 	// Setpoint A/B maps from Channel 1 == A, Channel 2 == B
 	"AnalogControls" : [{"Index": 1,  "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
@@ -246,10 +249,10 @@ void WriteStartLoggingMessage(std::string TestName)
 		std::cout << "Error CBPort Logger not operational";
 
 /*	if (auto odclogger = odc::spdlog_get("opendatacon"))
-            odclogger->info(msg);
-      else
-            std::cout << "Error opendatacon Logger not operational";
-            */
+                  odclogger->info(msg);
+        else
+                  std::cout << "Error opendatacon Logger not operational";
+                  */
 }
 void TestSetup(std::string TestName, bool writeconffiles = true)
 {
@@ -861,7 +864,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                            "00080006"
 	                            "00080006"
 	                            "00080006"
-	                            "55580013";
+	                            "00080007";
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -918,7 +921,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "402882b8"
 	                "405a032c"
 	                "40780030"
-	                "55580013";
+	                "80080023";
 	WaitIOS(*IOS, 1);
 
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -953,7 +956,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "402882b8"
 	                "405a032c"
 	                "40780030"
-	                "55580013";
+	                "80080023";
 	WaitIOS(*IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
@@ -975,7 +978,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "402882b8"
 	                "405a032c"
 	                "40780030"
-	                "55580013";
+	                "c0080031";
 	WaitIOS(*IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
@@ -1077,9 +1080,10 @@ TEST_CASE("Station - SOERequest F10")
 
 	WaitIOS(*IOS, 1);
 
-
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) ==   "a903011892a8c9a653080020004e023c0008988490080307");
+	// Trim off the time component of the buffer full command.
+	//std::string s = BuildASCIIHexStringfromBinaryString(Response).substr(0, 32);
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response).substr(0,32) ==   "a903011892a8c9a6530800200049fe80");
 
 	CBOSPort->Disable();
 
@@ -1457,7 +1461,7 @@ TEST_CASE("Master - SOE Request F10")
 		MAoutput << CommandResponse;
 		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(*IOS,3);
+		WaitIOS(*IOS,4);
 
 		// We should now have data available...
 		// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
@@ -1465,18 +1469,21 @@ TEST_CASE("Master - SOE Request F10")
 		// msSinceEpoch_t time = 0x0000016734934659; // 21/11/2018 3:42pm  msSinceEpoch();
 		// This is what generated the SOE data.
 		/*
-		      for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
-		      {
-		            SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0), QualityFlags::ONLINE, time++);
-		      }
-		      SendBinaryEvent(CBOSPort,0, true, QualityFlags::ONLINE, time++);
-		      SendBinaryEvent(CBOSPort, 0, false, QualityFlags::ONLINE, time++);
-		      SendBinaryEvent(CBOSPort, 0, true, QualityFlags::ONLINE, time++);
-		      SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
+		        for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+		        {
+		                  SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0), QualityFlags::ONLINE, time++);
+		        }
+		        SendBinaryEvent(CBOSPort,0, true, QualityFlags::ONLINE, time++);
+		        SendBinaryEvent(CBOSPort, 0, false, QualityFlags::ONLINE, time++);
+		        SendBinaryEvent(CBOSPort, 0, true, QualityFlags::ONLINE, time++);
+		        SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
 		*/
 
+		REQUIRE(MAwrite_buffer.size() == 0); // i.e. Empty!
 		bool DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable();
 		REQUIRE(DataAvailable); // Uses a strand queue with wait for result...
+
+		REQUIRE(CBMAPort->GetOutStationSOEBufferOverflowFlag() == false);
 
 		// Get the list of time tagged events, and check...
 		// There are 16 events in the original conversation, but only 12 fit in the 31 payload locations. Would normally send another command to get the rest of the events.
@@ -1501,6 +1508,35 @@ TEST_CASE("Master - SOE Request F10")
 		REQUIRE(PointList[0xb].GetIndex() == 0xb);
 		REQUIRE(PointList[0xb].GetSOEIndex() == 0xb);
 		REQUIRE(PointList[0xb].GetBinary() == 0);
+
+		///////////////////////////////////////////
+		// Now can we check the overflow record in some way.
+		CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
+
+		WaitIOS(*IOS, 2);
+
+		// Check that the command was formatted correctly.
+		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == DesiredResult);
+
+		MAoutput << BuildBinaryStringFromASCIIHexString("a903011892a8c9a6530800200049fe809a6b7236d0080027"); // Contains an overflow record. How to check...
+
+		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
+
+		WaitIOS(*IOS, 4);
+		REQUIRE(MAwrite_buffer.size() == 0); // i.e. Empty!
+
+		DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable();
+		REQUIRE(DataAvailable); // Uses a strand queue with wait for result...
+
+		REQUIRE(CBMAPort->GetOutStationSOEBufferOverflowFlag() == true);
+
+		// Get the list of time tagged events, and check...
+		// There are 16 events in the original conversation, but only 12 fit in the 31 payload locations. Would normally send another command to get the rest of the events.
+		// The last record flag bit in the last record is not set, indicating more messages.
+
+		PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
+		REQUIRE(PointList.size() == 0x02);
+
 	}
 
 	STOP_IOS();
@@ -1799,147 +1835,147 @@ namespace RTUConnectedTests
 /*
 const char *CBmasterconffile = R"011(
 {
-      "IP" : "172.21.136.80",
-      "Port" : 5001,
-      "OutstationAddr" : 32,
-      "TCPClientServer" : "CLIENT",	// I think we are ignoring this!
-      "LinkNumRetry": 4,
+        "IP" : "172.21.136.80",
+        "Port" : 5001,
+        "OutstationAddr" : 32,
+        "TCPClientServer" : "CLIENT",	// I think we are ignoring this!
+        "LinkNumRetry": 4,
 
-      //-------Point conf--------#
-      // We have two modes for the digital/binary commands. Can be one or the other - not both!
-      "IsBakerDevice" : true,
-      "StandAloneOutstation" : true,
+        //-------Point conf--------#
+        // We have two modes for the digital/binary commands. Can be one or the other - not both!
+        "IsBakerDevice" : true,
+        "StandAloneOutstation" : true,
 
-      // Maximum time to wait for CB Master responses to a command and number of times to retry a command.
-      "CBCommandTimeoutmsec" : 3000,
-      "CBCommandRetries" : 1,
+        // Maximum time to wait for CB Master responses to a command and number of times to retry a command.
+        "CBCommandTimeoutmsec" : 3000,
+        "CBCommandRetries" : 1,
 
-      "PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary", "TimeTaggedDigital" : true },
-                              {"PollRate" : 60000, "ID" : 2, "PointType" : "Analog"},
-                              {"PollRate" : 120000, "ID" :4, "PointType" : "TimeSetCommand"},
-                              {"PollRate" : 180000, "ID" :5, "PointType" : "SystemFlagScan"}],
+        "PollGroups" : [{"PollRate" : 10000, "ID" : 1, "PointType" : "Binary", "TimeTaggedDigital" : true },
+                                            {"PollRate" : 60000, "ID" : 2, "PointType" : "Analog"},
+                                            {"PollRate" : 120000, "ID" :4, "PointType" : "TimeSetCommand"},
+                                            {"PollRate" : 180000, "ID" :5, "PointType" : "SystemFlagScan"}],
 
-      "Binaries" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 16, "Channel" : 0, "PayloadLocation" : 1, "PointType" : "MCA"},
-                        {"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 17, "Channel" : 0,  "PointType" : "MCA"}],
+        "Binaries" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 16, "Channel" : 0, "PayloadLocation" : 1, "PointType" : "MCA"},
+                                    {"Range" : {"Start" : 16, "Stop" : 31}, "Group" : 17, "Channel" : 0,  "PointType" : "MCA"}],
 
-      "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Channel" : 0, "PayloadLocation" : 2}],
+        "Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Group" : 32, "Channel" : 0, "PayloadLocation" : 2}],
 
-      "BinaryControls" : [{"Range" : {"Start" : 100, "Stop" : 115}, "Group" : 192, "Channel" : 0, "PointType" : "MCC"}]
+        "BinaryControls" : [{"Range" : {"Start" : 100, "Stop" : 115}, "Group" : 192, "Channel" : 0, "PointType" : "MCC"}]
 
 })011";
 
 TEST_CASE("RTU - Binary Scan TO CB311 ON 172.21.136.80:5001 CB 0x20")
 {
-      // This is not a REAL TEST, just for testing against a unit. Will always pass..
+        // This is not a REAL TEST, just for testing against a unit. Will always pass..
 
-      // So we have an actual RTU connected to the network we are on, given the parameters in the config file above.
-      STANDARD_TEST_SETUP();
+        // So we have an actual RTU connected to the network we are on, given the parameters in the config file above.
+        STANDARD_TEST_SETUP();
 
-      std::ofstream ofs("CBmasterconffile.conf");
-      if (!ofs) REQUIRE("Could not open CBmasterconffile for writing");
+        std::ofstream ofs("CBmasterconffile.conf");
+        if (!ofs) REQUIRE("Could not open CBmasterconffile for writing");
 
-      ofs << CBmasterconffile;
-      ofs.close();
+        ofs << CBmasterconffile;
+        ofs.close();
 
-      auto CBMAPort = new  CBMasterPort("CBLiveTestMaster", "CBmasterconffile.conf", Json::nullValue);
-      CBMAPort->SetIOS(&IOS);
-      CBMAPort->Build();
+        auto CBMAPort = new  CBMasterPort("CBLiveTestMaster", "CBmasterconffile.conf", Json::nullValue);
+        CBMAPort->SetIOS(&IOS);
+        CBMAPort->Build();
 
-      START_IOS(1);
+        START_IOS(1);
 
-      CBMAPort->Enable();
-      // actual time tagged data a00b22611900 10008fff9000 5b567bee8600 100000009a00 000210b4a600 64240000e100
-      Wait(*IOS, 2); // Allow the connection to come up.
-      //CBMAPort->EnablePolling(false);	// If the connection comes up after this command, it will enable polling!!!
+        CBMAPort->Enable();
+        // actual time tagged data a00b22611900 10008fff9000 5b567bee8600 100000009a00 000210b4a600 64240000e100
+        Wait(*IOS, 2); // Allow the connection to come up.
+        //CBMAPort->EnablePolling(false);	// If the connection comes up after this command, it will enable polling!!!
 
 
-      // Read the current digital state.
+        // Read the current digital state.
 //	CBMAPort->DoPoll(1);
 
-      // Delta Scan up to 15 events, 2 modules. Seq # 10
-      // Digital Scan Data a00b01610100 00001101e100
-      //CBBlockData commandblock = CBBlockData(9, 15, 10, 2); // This resulted in a time out - sequence number related - need to send 0 on start up??
-      //CBMAPort->QueueCBCommand(commandblock, nullptr);
+        // Delta Scan up to 15 events, 2 modules. Seq # 10
+        // Digital Scan Data a00b01610100 00001101e100
+        //CBBlockData commandblock = CBBlockData(9, 15, 10, 2); // This resulted in a time out - sequence number related - need to send 0 on start up??
+        //CBMAPort->QueueCBCommand(commandblock, nullptr);
 
-      // Read the current analog state.
+        // Read the current analog state.
 //	CBMAPort->DoPoll(2);
-      Wait(*IOS, 2);
+        Wait(*IOS, 2);
 
-      // Do a time set command
-      CBMAPort->DoPoll(4);
+        // Do a time set command
+        CBMAPort->DoPoll(4);
 
-      Wait(*IOS, 2);
+        Wait(*IOS, 2);
 
-      // Send a POM command by injecting an ODC event
-      CommandStatus res = CommandStatus::NOT_AUTHORIZED;
-      auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
-            {
-                  LOGDEBUG("Callback on POM command result : {}", std::to_string(static_cast<int>(command_stat)));
-                  res = command_stat;
-            });
+        // Send a POM command by injecting an ODC event
+        CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+        auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+                  {
+                          LOGDEBUG("Callback on POM command result : {}", std::to_string(static_cast<int>(command_stat)));
+                          res = command_stat;
+                  });
 
-      bool point_on = true;
-      uint16_t ODCIndex = 100;
+        bool point_on = true;
+        uint16_t ODCIndex = 100;
 
-      EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-      val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+        EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+        val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
 
-      auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
-      event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+        auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+        event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
-      // Send an ODC DigitalOutput command to the Master.
+        // Send an ODC DigitalOutput command to the Master.
 //	CBMAPort->Event(event, "TestHarness", pStatusCallback);
 
-      Wait(*IOS, 2);
+        Wait(*IOS, 2);
 
 
-      STOP_IOS();
-      STANDARD_TEST_TEARDOWN();
+        STOP_IOS();
+        STANDARD_TEST_TEARDOWN();
 }
 
 TEST_CASE("RTU - GetScanned CB311 ON 172.21.8.111:5001 CB 0x20")
 {
-      // This is not a REAL TEST, just for testing against a unit. Will always pass..
+        // This is not a REAL TEST, just for testing against a unit. Will always pass..
 
-      // So we are pretending to be a standalone RTU given the parameters in the config file above.
-      STANDARD_TEST_SETUP();
+        // So we are pretending to be a standalone RTU given the parameters in the config file above.
+        STANDARD_TEST_SETUP();
 
-      std::ofstream ofs("CBmasterconffile.conf");
-      if (!ofs) REQUIRE("Could not open CBmasterconffile for writing");
+        std::ofstream ofs("CBmasterconffile.conf");
+        if (!ofs) REQUIRE("Could not open CBmasterconffile for writing");
 
-      ofs << CBmasterconffile;
-      ofs.close();
+        ofs << CBmasterconffile;
+        ofs.close();
 
-      Json::Value OSportoverride;
-      OSportoverride["IP"] = "0.0.0.0"; // Bind to everything?? was 172.21.8.111
-      OSportoverride["TCPClientServer"]= "SERVER";
+        Json::Value OSportoverride;
+        OSportoverride["IP"] = "0.0.0.0"; // Bind to everything?? was 172.21.8.111
+        OSportoverride["TCPClientServer"]= "SERVER";
 
-      auto CBOSPort = new  CBOutstationPort("CBLiveTestOutstation", "CBmasterconffile.conf", OSportoverride);
-      CBOSPort->SetIOS(&IOS);
-      CBOSPort->Build();
+        auto CBOSPort = new  CBOutstationPort("CBLiveTestOutstation", "CBmasterconffile.conf", OSportoverride);
+        CBOSPort->SetIOS(&IOS);
+        CBOSPort->Build();
 
-      START_IOS(1);
-      CommandStatus res = CommandStatus::NOT_AUTHORIZED;
-      auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
-            {
-                  res = command_stat;
-            });
+        START_IOS(1);
+        CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+        auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+                  {
+                          res = command_stat;
+                  });
 
-      for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
-      {
-            auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-            event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+        for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
+        {
+                  auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+                  event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
 
-            CBOSPort->Event(event, "TestHarness", pStatusCallback);
-      }
+                  CBOSPort->Event(event, "TestHarness", pStatusCallback);
+        }
 
-      CBOSPort->Enable();
+        CBOSPort->Enable();
 
 
-      Wait(*IOS, 2); // We just run for a period and see if we get connected and scanned.
+        Wait(*IOS, 2); // We just run for a period and see if we get connected and scanned.
 
-      STOP_IOS();
-      STANDARD_TEST_TEARDOWN();
+        STOP_IOS();
+        STANDARD_TEST_TEARDOWN();
 }
 */
 }
