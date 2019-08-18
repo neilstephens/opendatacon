@@ -126,12 +126,11 @@ public:
 	}
 
 private:
-
-
 	void StoreWrapperMapping()
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
 		PyWrappers.emplace((uint64_t)this);
+		LOGDEBUG("Stored python wrapper guid into mapping table - {0:#x}", (uint64_t)this);
 	}
 	void RemoveWrapperMapping()
 	{

@@ -851,7 +851,7 @@ TEST_CASE("Station - ScanRequest F0")
 	std::string Response = "Not Set";
 	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
 
-	// Send the commasnd in as if came from TCP channel
+	// Send the commands in as if came from TCP channel
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -957,7 +957,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "80080023";
-	WaitIOS(*IOS, 1);
+	WaitIOS(*IOS, 2);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -979,7 +979,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "c0080031";
-	WaitIOS(*IOS, 1);
+	WaitIOS(*IOS, 2);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);

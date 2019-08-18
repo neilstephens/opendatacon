@@ -122,7 +122,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		}
 		else
 		{
-			LOGDEBUG("odc.Log called from Python code for unknown PyPort object");
+			LOGDEBUG("odc.Log called from Python code for unknown PyPort object - {0:#x}", (uint64_t)thisPyWrapper);
 		}
 
 		WholeMessage += message;
