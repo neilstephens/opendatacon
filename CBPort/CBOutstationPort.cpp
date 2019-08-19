@@ -104,7 +104,7 @@ void CBOutstationPort::SocketStateHandler(bool state)
 void CBOutstationPort::Build()
 {
 	// Need a couple of things passed to the point table.
-	MyPointConf->PointTable.Build(IsOutStation, *pIOS, MyPointConf->SOEQueueSize, SOEDataLostFlag);
+	MyPointConf->PointTable.Build(IsOutStation, *pIOS, MyPointConf->SOEQueueSize, SOEBufferOverflowFlag);
 
 	// Creates internally if necessary
 	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method

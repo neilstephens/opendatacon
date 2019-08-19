@@ -275,10 +275,10 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				// We have a matching status byte, set a flag to indicate we have a match.
 				LOGDEBUG("Got a Status Byte request at :{} - {}",std::to_string(Group) ,payloadlocation.to_string());
 
-				// We clear this flag when we have reported it to the Master.
-				if (SOEDataLostFlag->load())
+				// Get the current value and clear in the same operation.
+				// Effectively clear this flag when we have reported it to the Master.
+				if (SOEBufferOverflowFlag->exchange(false))
 				{
-				      SOEDataLostFlag->store(false);
 				// Bit 11 SOE Buffer Full
 				      Payload |= (0x1 << 10);
 				}

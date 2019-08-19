@@ -32,7 +32,7 @@
 CBPort::CBPort(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
-	SOEDataLostFlag = std::make_shared<std::atomic_bool>(); // Only really needed for OutStation
+	SOEBufferOverflowFlag = std::make_shared<std::atomic_bool>(false); // Only really needed for OutStation
 
 	//the creation of a new CBPortConf will get the point details
 	pConf = std::make_unique<CBPortConf>(ConfFilename, ConfOverrides);

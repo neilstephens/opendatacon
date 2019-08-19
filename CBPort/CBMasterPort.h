@@ -128,7 +128,7 @@ private:
 	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
-	std::atomic_flag nOutStationSOEBufferOverflow = ATOMIC_VAR_INIT(true);
+	std::atomic_flag nOutStationSOEBufferOverflow; // Initialised in constructor
 	//TODO: Check if we need these Quality Calculations
 	QualityFlags  CalculateBinaryQuality(bool enabled, CBTime time);
 	QualityFlags  CalculateAnalogQuality(bool enabled, uint16_t meas, CBTime time);

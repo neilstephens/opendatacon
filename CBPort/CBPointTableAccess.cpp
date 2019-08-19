@@ -31,12 +31,12 @@
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<std::atomic_bool> SOEDataLostFlag)
+void CBPointTableAccess::Build(const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<std::atomic_bool> SOEBufferOverflowFlag)
 {
 	IsOutstation = isoutstation;
 	// Setup TimeTagged event queue.
 	// The size (default 500) does not consume memory, just sets an upper limit to the number of items in the queue.
-	pBinaryTimeTaggedEventQueue = std::make_shared<StrandProtectedQueue<CBBinaryPoint>>(IOS, SOEQueueSize, SOEDataLostFlag);
+	pBinaryTimeTaggedEventQueue = std::make_shared<StrandProtectedQueue<CBBinaryPoint>>(IOS, SOEQueueSize, SOEBufferOverflowFlag);
 }
 
 #ifdef _MSC_VER
