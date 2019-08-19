@@ -910,6 +910,8 @@ TEST_CASE("Station - ScanRequest F0")
 	SendBinaryEvent(CBOSPort, 13, false);
 	SendBinaryEvent(CBOSPort, 14, true);
 
+	WaitIOS(*IOS, 1);
+
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // Scan Data Group 3 - analog values and digitals have now changed. No SOE overflow, SOE Data Available in RSW
@@ -942,6 +944,8 @@ TEST_CASE("Station - ScanRequest F0")
 	std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	SendBinaryEvent(CBOSPort, 14, true);
 
+	WaitIOS(*IOS, 1);
+
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // Scan Data Group 3 - analog values and digitals have now changed. No SOE overflow, SOE Data Available in RSW
@@ -957,7 +961,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "80080023";
-	WaitIOS(*IOS, 2);
+	WaitIOS(*IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -966,6 +970,8 @@ TEST_CASE("Station - ScanRequest F0")
 	SendBinaryEvent(CBOSPort, 12, true);
 	SendBinaryEvent(CBOSPort, 13, false);
 	SendBinaryEvent(CBOSPort, 14, false); // Only 1 change, need 2 to trigger
+
+	WaitIOS(*IOS, 1);
 
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
@@ -979,7 +985,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "c0080031"; // The SOE buffer overflow bit should be set here...
-	WaitIOS(*IOS, 2);
+	WaitIOS(*IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -1439,104 +1445,107 @@ TEST_CASE("Master - SOE Request F10")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("Test actual returned data for F10 SOE Scan");
+	for (int i = 0; i < 10; i++)
 	{
-		MAResponse = "Not Set";
+		INFO("Test actual returned data for F10 SOE Scan");
+		{
+			MAResponse = "Not Set";
 
-		// Send an SOE Scan Command from the Master
-		uint8_t Group = 5;
-		CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
+			// Send an SOE Scan Command from the Master
+			uint8_t Group = 5;
+			CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
 
-		WaitIOS(*IOS, 2);
+			WaitIOS(*IOS, 2);
 
-		// Check that the command was formatted correctly.
-		const std::string DesiredResult = "a9500005";
-		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == DesiredResult);
+			// Check that the command was formatted correctly.
+			const std::string DesiredResult = "a9500005";
+			REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == DesiredResult);
 
-		// Add some junk to the front to test the TCP Framing code. Then send an almost complete message (which will be dumped), then send the actual message.
-		std::string CommandResponse = BuildBinaryStringFromASCIIHexString("024670")+
-		                              BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a0200089884")+
-		                              BuildBinaryStringFromASCIIHexString("a903011892a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
+			// Add some junk to the front to test the TCP Framing code. Then send an almost complete message (which will be dumped), then send the actual message.
+			std::string CommandResponse = BuildBinaryStringFromASCIIHexString("024670") +
+			                              BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a0200089884") +
+			                              BuildBinaryStringFromASCIIHexString("a903011892a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
 
-		MAoutput << CommandResponse;
-		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
+			MAoutput << CommandResponse;
+			CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(*IOS,4);
+			WaitIOS(*IOS, 4);
 
-		// We should now have data available...
-		// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
-		// It should match what we created in the Station test - the day part of the times will match, that actual day will not - we add the current day to get a "full" time
-		// msSinceEpoch_t time = 0x0000016734934659; // 21/11/2018 3:42pm  msSinceEpoch();
-		// This is what generated the SOE data.
-		/*
-		            for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
-		            {
-		                          SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0), QualityFlags::ONLINE, time++);
-		            }
-		            SendBinaryEvent(CBOSPort,0, true, QualityFlags::ONLINE, time++);
-		            SendBinaryEvent(CBOSPort, 0, false, QualityFlags::ONLINE, time++);
-		            SendBinaryEvent(CBOSPort, 0, true, QualityFlags::ONLINE, time++);
-		            SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
-		*/
+			// We should now have data available...
+			// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
+			// It should match what we created in the Station test - the day part of the times will match, that actual day will not - we add the current day to get a "full" time
+			// msSinceEpoch_t time = 0x0000016734934659; // 21/11/2018 3:42pm  msSinceEpoch();
+			// This is what generated the SOE data.
+			/*
+			                  for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+			                  {
+			                                      SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0), QualityFlags::ONLINE, time++);
+			                  }
+			                  SendBinaryEvent(CBOSPort,0, true, QualityFlags::ONLINE, time++);
+			                  SendBinaryEvent(CBOSPort, 0, false, QualityFlags::ONLINE, time++);
+			                  SendBinaryEvent(CBOSPort, 0, true, QualityFlags::ONLINE, time++);
+			                  SendBinaryEvent(CBOSPort, 12, true, QualityFlags::ONLINE, time++);
+			*/
 
-		REQUIRE(MAwrite_buffer.size() == 0); // i.e. Empty!
-		bool DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable();
-		REQUIRE(DataAvailable); // Uses a strand queue with wait for result...
+			REQUIRE(MAwrite_buffer.size() == 0); // i.e. Empty!
+			bool DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable();
+			REQUIRE(DataAvailable); // Uses a strand queue with wait for result...
 
-		REQUIRE(CBMAPort->GetOutStationSOEBufferOverflowFlag() == false);
+			REQUIRE(CBMAPort->GetOutStationSOEBufferOverflowFlag() == false);
 
-		// Get the list of time tagged events, and check...
-		// There are 16 events in the original conversation, but only 12 fit in the 31 payload locations. Would normally send another command to get the rest of the events.
-		// The last record flag bit in the last record is not set, indicating more messages.
+			// Get the list of time tagged events, and check...
+			// There are 16 events in the original conversation, but only 12 fit in the 31 payload locations. Would normally send another command to get the rest of the events.
+			// The last record flag bit in the last record is not set, indicating more messages.
 
-		std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
-		REQUIRE(PointList.size() == 0x0C);
+			std::vector<CBBinaryPoint> PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
+			REQUIRE(PointList.size() == 0x0C);
 
-		REQUIRE(PointList[0x0].GetIndex() == 0);
-		REQUIRE(PointList[0x0].GetBinary() == 1);
+			REQUIRE(PointList[0x0].GetIndex() == 0);
+			REQUIRE(PointList[0x0].GetBinary() == 1);
 
-		CBTime ChangedTime = GetTimeOfDayOnly(PointList[0x0].GetChangedTime());
-		REQUIRE(ChangedTime == 0x1024659);
+			CBTime ChangedTime = GetTimeOfDayOnly(PointList[0x0].GetChangedTime());
+			REQUIRE(ChangedTime == 0x1024659);
 
-		REQUIRE(PointList[0x01].GetIndex() == 1);
-		REQUIRE(PointList[0x01].GetSOEIndex() == 1);
-		REQUIRE(PointList[0x01].GetBinary() == 0);
+			REQUIRE(PointList[0x01].GetIndex() == 1);
+			REQUIRE(PointList[0x01].GetSOEIndex() == 1);
+			REQUIRE(PointList[0x01].GetBinary() == 0);
 
-		ChangedTime = GetTimeOfDayOnly(PointList[0x01].GetChangedTime());
-		REQUIRE(ChangedTime == 0x1024659+1);
+			ChangedTime = GetTimeOfDayOnly(PointList[0x01].GetChangedTime());
+			REQUIRE(ChangedTime == 0x1024659 + 1);
 
-		REQUIRE(PointList[0xb].GetIndex() == 0xb);
-		REQUIRE(PointList[0xb].GetSOEIndex() == 0xb);
-		REQUIRE(PointList[0xb].GetBinary() == 0);
+			REQUIRE(PointList[0xb].GetIndex() == 0xb);
+			REQUIRE(PointList[0xb].GetSOEIndex() == 0xb);
+			REQUIRE(PointList[0xb].GetBinary() == 0);
 
-		///////////////////////////////////////////
-		// Now can we check the overflow record in some way.
-		CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
+			///////////////////////////////////////////
+			// Now can we check the overflow record in some way.
+			CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
 
-		WaitIOS(*IOS, 2);
+			WaitIOS(*IOS, 2);
 
-		// Check that the command was formatted correctly.
-		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == DesiredResult);
+			// Check that the command was formatted correctly.
+			REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == DesiredResult);
 
-		MAoutput << BuildBinaryStringFromASCIIHexString("a903011892a8c9a6530800200049fe809a6b7236d0080027"); // Contains an overflow record. How to check...
+			MAoutput << BuildBinaryStringFromASCIIHexString("a903011892a8c9a6530800200049fe809a6b7236d0080027"); // Contains an overflow record. How to check...
 
-		CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
+			CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(*IOS, 4);
-		REQUIRE(MAwrite_buffer.size() == 0); // i.e. Empty!
+			WaitIOS(*IOS, 4);
+			REQUIRE(MAwrite_buffer.size() == 0); // i.e. Empty!
 
-		DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable();
-		REQUIRE(DataAvailable); // Uses a strand queue with wait for result...
+			DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable();
+			REQUIRE(DataAvailable); // Uses a strand queue with wait for result...
 
-		REQUIRE(CBMAPort->GetOutStationSOEBufferOverflowFlag() == true);
+			REQUIRE(CBMAPort->GetOutStationSOEBufferOverflowFlag() == true);
 
-		// Get the list of time tagged events, and check...
-		// There are 16 events in the original conversation, but only 12 fit in the 31 payload locations. Would normally send another command to get the rest of the events.
-		// The last record flag bit in the last record is not set, indicating more messages.
+			// Get the list of time tagged events, and check...
+			// There are 16 events in the original conversation, but only 12 fit in the 31 payload locations. Would normally send another command to get the rest of the events.
+			// The last record flag bit in the last record is not set, indicating more messages.
 
-		PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
-		REQUIRE(PointList.size() == 0x02);
+			PointList = CBOSPort->GetPointTable()->DumpTimeTaggedPointList();
+			REQUIRE(PointList.size() == 0x02);
 
+		}
 	}
 
 	STOP_IOS();
