@@ -129,13 +129,17 @@ private:
 	void StoreWrapperMapping()
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
-		PyWrappers.emplace((uint64_t)this);
-		LOGDEBUG("Stored python wrapper guid into mapping table - {0:#x}", (uint64_t)this);
+		uint64_t guid = (uint64_t)this;
+		if (sizeof(uintptr_t) == 4) guid &= 0x00000000FFFFFFFF; // Stop sign extension
+		PyWrappers.emplace(guid);
+		LOGDEBUG("Stored python wrapper guid into mapping table - {0:#x}", guid);
 	}
 	void RemoveWrapperMapping()
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
-		PyWrappers.erase((uint64_t)this);
+		uint64_t guid = (uint64_t)this;
+		if (sizeof(uintptr_t) == 4) guid &= 0x00000000FFFFFFFF; // Stop sign extension
+		PyWrappers.erase(guid);
 	}
 
 	PyObject* GetFunction(PyObject* pyInstance, const std::string& sFunction);
