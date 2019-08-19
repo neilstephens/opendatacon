@@ -32,6 +32,7 @@
 #define NONVSTESTING
 
 #include <cstdint>
+#include <shared_mutex>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 
@@ -109,6 +110,33 @@ OT numeric_cast(const ST value)
 {
 	return static_cast<OT>(value);
 }
+
+class protected_bool
+{
+public:
+	protected_bool(): val(false) {};
+	protected_bool(bool _val): val(_val) {};
+	bool getandset(bool newval)
+	{
+		std::unique_lock<std::shared_mutex> lck(m);
+		bool retval = val;
+		val = newval;
+		return retval;
+	}
+	void set(bool newval)
+	{
+		std::unique_lock<std::shared_mutex> lck(m);
+		val = newval;
+	}
+	bool get(void)
+	{
+		std::shared_lock<std::shared_mutex> lck(m);
+		return val;
+	}
+private:
+	std::shared_mutex m;
+	bool val;
+};
 
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
 enum BinaryPointType { DIG, MCA, MCB, MCC, BINCONTROL }; // Inputs and outputs

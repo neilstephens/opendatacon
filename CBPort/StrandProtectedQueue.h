@@ -42,13 +42,13 @@ class StrandProtectedQueue
 {
 public:
 
-	StrandProtectedQueue(odc::asio_service& _io_context, unsigned int _size, std::shared_ptr<std::atomic_bool> _SOEDataLostFlag)
+	StrandProtectedQueue(odc::asio_service& _io_context, unsigned int _size, std::shared_ptr<protected_bool> _SOEDataLostFlag)
 		: size(_size),
 		queue_io_context(_io_context),
 		internal_queue_strand(_io_context.make_strand()),
 		SOEBufferOverflowFlag(_SOEDataLostFlag)
 	{
-		SOEBufferOverflowFlag->store(false);
+		SOEBufferOverflowFlag->set(false);
 	}
 
 	// Return front of queue value
@@ -167,7 +167,7 @@ public:
 				else if (fifo.size() < size)
 				{
 				      fifo.push(_queuefullvalue);
-				      SOEBufferOverflowFlag->store(true);
+				      SOEBufferOverflowFlag->set(true);
 				      if (log) log->debug("Outstation SOE Queue Overflow - Overflow pont (127) added to the queue");
 				}
 				else
@@ -183,7 +183,7 @@ private:
 	unsigned int size;
 	odc::asio_service& queue_io_context;
 	std::unique_ptr<asio::io_context::strand> internal_queue_strand;
-	std::shared_ptr<std::atomic_bool> SOEBufferOverflowFlag;
+	std::shared_ptr<protected_bool> SOEBufferOverflowFlag;
 };
 
 #endif

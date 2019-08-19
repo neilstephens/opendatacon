@@ -37,7 +37,6 @@ CBMasterPort::CBMasterPort(const std::string& aName, const std::string& aConfFil
 	CBPort(aName, aConfFilename, aConfOverrides),
 	PollScheduler(nullptr)
 {
-	nOutStationSOEBufferOverflow.test_and_set(); // Clear this flag on startup.
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
 
@@ -690,7 +689,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 			      if (SOEIndex == 127)
 			      {
 			            LOGERROR("Received a Binary SOE Buffer Overflow Event Record, data was lost at the OutStation");
-			            nOutStationSOEBufferOverflow.clear();
+			            OutStationSOEBufferOverflow.set(true);
 				}
 			      else
 			      {

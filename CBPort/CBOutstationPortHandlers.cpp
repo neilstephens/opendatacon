@@ -277,7 +277,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 
 				// Get the current value and clear in the same operation.
 				// Effectively clear this flag when we have reported it to the Master.
-				if (SOEBufferOverflowFlag->exchange(false))
+				if (SOEBufferOverflowFlag->getandset(false))
 				{
 				// Bit 11 SOE Buffer Full
 				      Payload |= (0x1 << 10);

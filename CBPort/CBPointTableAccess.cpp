@@ -31,7 +31,7 @@
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<std::atomic_bool> SOEBufferOverflowFlag)
+void CBPointTableAccess::Build(const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag)
 {
 	IsOutstation = isoutstation;
 	// Setup TimeTagged event queue.
