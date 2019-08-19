@@ -118,23 +118,23 @@ public:
 	protected_bool(bool _val): val(_val) {};
 	bool getandset(bool newval)
 	{
-		std::unique_lock<std::shared_mutex> lck(m);
+		std::unique_lock<std::shared_timed_mutex> lck(m);
 		bool retval = val;
 		val = newval;
 		return retval;
 	}
 	void set(bool newval)
 	{
-		std::unique_lock<std::shared_mutex> lck(m);
+		std::unique_lock<std::shared_timed_mutex> lck(m);
 		val = newval;
 	}
 	bool get(void)
 	{
-		std::shared_lock<std::shared_mutex> lck(m);
+		std::shared_lock<std::shared_timed_mutex> lck(m);
 		return val;
 	}
 private:
-	std::shared_mutex m;
+	std::shared_timed_mutex m;
 	bool val;
 };
 
