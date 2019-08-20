@@ -451,6 +451,7 @@ TEST_CASE("Py.TestsUsingPython")
 	}
 	LOGDEBUG("Tests Complete, starting teardown");
 	FLUSH();
+
 	PythonPort->Disable();
 	PythonPort2->Disable();
 	WaitIOS(IOS, 2);
@@ -459,7 +460,7 @@ TEST_CASE("Py.TestsUsingPython")
 	STOP_IOS();
 	LOGDEBUG("IOS Stopped");
 
-	WaitIOS(IOS, 1);
+	WaitIOS(IOS, 3);
 
 	STANDARD_TEST_TEARDOWN();
 	LOGDEBUG("Test Teardown complete");
