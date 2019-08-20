@@ -72,11 +72,19 @@ build_script:
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target INSTALL
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target PACKAGE
 test_script:
-- cmd: '%cmake_builddir%\install\ODC_tests.exe -d yes'
-- cmd: '%cmake_builddir%\install\DNP3Port_tests.exe -d yes'
-- cmd: '%cmake_builddir%\install\MD3Port_tests.exe -d yes'
-- cmd: '%cmake_builddir%\install\CBPort_tests.exe error -d yes'
-- cmd: '%cmake_builddir%\install\PyPort_tests.exe debug -d yes'
+#- cmd: '%cmake_builddir%\install\ODC_tests.exe -d yes'
+#- cmd: '%cmake_builddir%\install\DNP3Port_tests.exe -d yes'
+#- cmd: '%cmake_builddir%\install\MD3Port_tests.exe -d yes'
+#- cmd: '%cmake_builddir%\install\CBPort_tests.exe error -d yes'
+- ps: |?
+      cd $($env:CMAKE_BUILDDIR)?
+      cd install?
+      .\PyPort_tests.exe @('debug', '-d', 'yes') -s -r junit -o .\junit_test_results.xml?
+      $testresult = $LastExitCode?
+      $wc = New-Object 'System.Net.WebClient'?
+      $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\junit_test_results.xml))?
+      $host.SetShouldExit($testresult)   
+#- cmd: '%cmake_builddir%\install\PyPort_tests.exe debug -d yes'
 
 artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
