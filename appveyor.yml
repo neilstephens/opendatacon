@@ -14,7 +14,7 @@ os: Visual Studio 2017
 #       build configuration       #
 #---------------------------------#
 configuration:
-  - Release
+#  - Release
   - Debug
 
 environment:
@@ -23,10 +23,10 @@ environment:
       cpu_bits: 32
       python_inst: C:\Python37
       cmake_builddir: build-win32
-    - platform: x64
-      cpu_bits: 64
-      python_inst: C:\Python37-x64
-      cmake_builddir: build-win64
+#    - platform: x64
+#      cpu_bits: 64
+#      python_inst: C:\Python37-x64
+#      cmake_builddir: build-win64
  
 clone_folder: C:\projects\opendatacon
   
@@ -73,13 +73,15 @@ build_script:
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target PACKAGE
 test_script:
 - ps: >-
-      cd $($env:CMAKE_BUILDDIR)?
-      cd install?
-      .\PyPort_tests.exe debug -d yes -s -r junit -o .\junit_test_results.xml?
-      $testresult = $LastExitCode?
-      $wc = New-Object 'System.Net.WebClient'?
-      $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\junit_test_results.xml))?
-      $host.SetShouldExit($testresult)   
+      cd $($env:CMAKE_BUILDDIR)
+      cd install
+      ls
+      .\PyPort_tests.exe debug -d yes -s -r junit -o .\junit_test_results.xml
+      $testresult = $LastExitCode
+      ls
+      $wc = New-Object 'System.Net.WebClient'
+      $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\junit_test_results.xml))
+      $host.SetShouldExit($testresult)
 #- cmd: '%cmake_builddir%\install\ODC_tests.exe -d yes'
 #- cmd: '%cmake_builddir%\install\DNP3Port_tests.exe -d yes'
 #- cmd: '%cmake_builddir%\install\MD3Port_tests.exe -d yes'
