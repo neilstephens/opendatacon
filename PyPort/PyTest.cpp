@@ -351,7 +351,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 
-		WaitIOS(IOS, 1);
+		WaitIOS(IOS, 2);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 		res = CommandStatus::UNDEFINED;
@@ -362,7 +362,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		WaitIOS(IOS, 1);
+		WaitIOS(IOS, 2);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 		std::string url("http://testserver/thisport/cb?test=harold");
@@ -415,7 +415,7 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
 
-		WaitIOS(IOS, 1);
+		WaitIOS(IOS, 2);
 
 		callresp = "";
 
