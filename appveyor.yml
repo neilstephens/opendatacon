@@ -72,7 +72,7 @@ build_script:
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target INSTALL
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target PACKAGE
 test_script:
-- ps: >-
+- ps: |
       cd $($env:CMAKE_BUILDDIR)
       cd install
       ls
