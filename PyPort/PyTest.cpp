@@ -181,15 +181,8 @@ void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
 }
 void CommandLineLoggingCleanup()
 {
-	if (auto cblogger = odc::spdlog_get("PyPort"))
-	{
-		cblogger->info("Testing Complete");
-		cblogger->flush();
-	}
-	if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->flush();
-
-	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
+	odc::spdlog_flush_all();
+	odc::spdlog_drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
 
 void RunIOSForXSeconds(std::shared_ptr<odc::asio_service> IOS, unsigned int seconds)
@@ -325,9 +318,7 @@ TEST_CASE("Py.TestEventStringConversions")
 	STANDARD_TEST_TEARDOWN();
 }
 
-#define FLUSH() \
-	if (auto log = odc::spdlog_get("PyPort")) \
-	{ log->flush();   WaitIOS(IOS, 1); }
+#define FLUSH() {odc::spdlog_flush_all(); }
 
 
 TEST_CASE("Py.TestsUsingPython")
