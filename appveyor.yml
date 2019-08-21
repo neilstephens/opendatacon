@@ -76,13 +76,14 @@ test_script:
 #- cmd: '%cmake_builddir%\install\DNP3Port_tests.exe -d yes'
 #- cmd: '%cmake_builddir%\install\MD3Port_tests.exe -d yes'
 #- cmd: '%cmake_builddir%\install\CBPort_tests.exe error -d yes'
+- message: %cmake_builddir%\install
+- cmd: ls %cmake_builddir%\install
 - cmd: '%cmake_builddir%\install\PyPort_tests.exe debug -d yes'
 
 # Failed tests we want to capture the log file outputs.
 on_finish:
-- cmd: ls
-- cmd: ls install
-- ps: Push-AppveyorArtifact pyporttest.log
+- cmd: ls %cmake_builddir%\install
+- ps: Push-AppveyorArtifact $($env:CMAKE_BUILDDIR)\install\pyporttest.log
 
 artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
