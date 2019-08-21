@@ -71,6 +71,7 @@ build_script:
 - cmd: cmake --build %cmake_builddir% --config %configuration%
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target INSTALL
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target PACKAGE
+
 test_script:
 #- cmd: '%cmake_builddir%\install\ODC_tests.exe -d yes'
 #- cmd: '%cmake_builddir%\install\DNP3Port_tests.exe -d yes'
@@ -80,8 +81,8 @@ test_script:
 
 # Failed tests we want to capture the log file outputs.
 on_finish:
-- echo Scanning build folder for all files - %cmake_builddir%
-- cmd: ls -lR %cmake_builddir%
+- echo Scanning project folder for all files - C:\projects\opendatacon
+- cmd: ls -oR --group-directories-first C:\projects\opendatacon
 - ps: Get-ChildItem $env:CMAKE_BUILDDIR\install\*.log | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 #- ps: Push-AppveyorArtifact $env:CMAKE_BUILDDIR\install\cbporttest.log
 #- ps: Push-AppveyorArtifact $env:CMAKE_BUILDDIR\install\pyporttest.log
@@ -90,8 +91,6 @@ artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
     name: Releases
 
-  - path: $(cmake_builddir)\install\*.txt
-    name: testlogs
 
 deploy:
   release: 'opendatacon $(APPVEYOR_REPO_TAG_NAME)'
