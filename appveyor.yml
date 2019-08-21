@@ -76,7 +76,7 @@ test_script:
 #- cmd: '%cmake_builddir%\install\DNP3Port_tests.exe -d yes'
 #- cmd: '%cmake_builddir%\install\MD3Port_tests.exe -d yes'
 #- cmd: '%cmake_builddir%\install\CBPort_tests.exe error -d yes'
-- message: %cmake_builddir%\install
+- echo %cmake_builddir%\install
 - cmd: ls %cmake_builddir%\install
 - cmd: '%cmake_builddir%\install\PyPort_tests.exe debug -d yes'
 
