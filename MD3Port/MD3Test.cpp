@@ -220,7 +220,7 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 	#else
 	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
 	#endif
-	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("testslog.txt", true);
+	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("md3porttest.log", true);
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
