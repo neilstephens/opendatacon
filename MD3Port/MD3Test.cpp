@@ -285,6 +285,14 @@ void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
 }
 void CommandLineLoggingCleanup()
 {
+	if (auto cblogger = odc::spdlog_get("MD3Port"))
+	{
+		cblogger->info("Testing Complete");
+		cblogger->flush();
+	}
+	if (auto odclogger = odc::spdlog_get("opendatacon"))
+		odclogger->flush();
+
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
 // A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
