@@ -81,7 +81,7 @@ test_script:
 # Failed tests we want to capture the log file outputs.
 on_finish:
 - echo Scanning build folder for all files - %cmake_builddir%
-- cmd: ls -lr %cmake_builddir%
+- cmd: ls -lR %cmake_builddir%
 - ps: Get-ChildItem $env:CMAKE_BUILDDIR\install\*.log | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 #- ps: Push-AppveyorArtifact $env:CMAKE_BUILDDIR\install\cbporttest.log
 #- ps: Push-AppveyorArtifact $env:CMAKE_BUILDDIR\install\pyporttest.log
