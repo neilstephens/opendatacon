@@ -75,9 +75,9 @@ test_script:
 - ps: |
       cd $($env:CMAKE_BUILDDIR)
       cd install
-      .\PyPort_tests.exe debug -d yes -s -r junit -o .\junit_test_results.xml
+      $output = .\PyPort_tests.exe debug -d yes -s -r junit -o .\junit_test_results.xml
       $testresult = $LastExitCode
-      ls
+      $output
       $wc = New-Object 'System.Net.WebClient'
       $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\junit_test_results.xml))
       $host.SetShouldExit($testresult)
