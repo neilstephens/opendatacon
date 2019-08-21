@@ -84,7 +84,7 @@ on_finish:
 - echo Scanning project folder for all files - C:\projects\opendatacon
 - cmd: ls -oR --group-directories-first C:\projects\opendatacon > dirlist.txt
 - ps: Push-AppveyorArtifact dirlist.txt -FileName ProjectDirectoryListing.txt
-- ps: Get-ChildItem $env:CMAKE_BUILDDIR\install\*.log | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+- ps: Get-ChildItem C:\projects\opendatacon\*.log | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 #- ps: Push-AppveyorArtifact $env:CMAKE_BUILDDIR\install\cbporttest.log
 #- ps: Push-AppveyorArtifact $env:CMAKE_BUILDDIR\install\pyporttest.log
 
