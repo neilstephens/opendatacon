@@ -77,7 +77,9 @@ test_script:
 #- cmd: '%cmake_builddir%\install\MD3Port_tests.exe -d yes'
 #- cmd: '%cmake_builddir%\install\CBPort_tests.exe error -d yes'
 - cmd: '%cmake_builddir%\install\PyPort_tests.exe debug -d yes'
-- ps: Push-AppveyorArtifact $($env:CMAKE_BUILDDIR)\install\pyporttest.log
+- cmd: ls
+- cmd: ls install
+- ps: Push-AppveyorArtifact pyporttest.log
 
 artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
