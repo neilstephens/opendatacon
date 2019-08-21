@@ -81,7 +81,8 @@ test_script:
 artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
     name: Releases
-    path: $(cmake_builddir)\install\*.txt
+
+  - path: $(cmake_builddir)\install\*.txt
     name: testlogs
 
 deploy:
