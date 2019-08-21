@@ -43,6 +43,7 @@
 #include <vector>
 #include <fstream>
 #include <stdio.h>
+#include <whereami++.h>
 #ifdef WIN32
 #include <direct.h>
 #define PathSeparator "\\"
@@ -135,24 +136,28 @@ void PyPort::Build()
 {
 	LOGDEBUG("PyPort Build called for {}", Name);
 
-	// Check that the Python Module is available to load.
+	// Check that the Python Module is available to load in either the current path, or the path to the executing program
 	std::string CurrentPath(GetCurrentWorkingDir());
 	std::string FullModuleFilename(CurrentPath + PathSeparator + MyConf->pyModuleName+".py");
 
-	#ifdef SCOTTPYTHONCODEPATH
-	// For my dev code, try where I have it!
-	CurrentPath = "C:\\Users\\scott\\Documents\\Scott\\Company Work\\AusGrid\\PyPort\\PythonCode";
-	FullModuleFilename = CurrentPath + PathSeparator + MyConf->pyModuleName + ".py";
-	#endif
-
 	if (fileexists(FullModuleFilename))
 	{
-		LOGDEBUG("Found Python Module {}", FullModuleFilename);
+		LOGDEBUG("Found Python Module in current directory {}", FullModuleFilename);
 	}
 	else
 	{
-		LOGERROR("Could not find Python Module {}", FullModuleFilename);
-		return;
+		std::string ExePath = whereami::getExecutablePath().dirname();
+		FullModuleFilename = ExePath + PathSeparator + MyConf->pyModuleName + ".py";
+
+		if (fileexists(FullModuleFilename))
+		{
+			LOGDEBUG("Found Python Module in exe directory {}", FullModuleFilename);
+		}
+		else
+		{
+			LOGERROR("Could not find Python Module {} in {} or {}", MyConf->pyModuleName + ".py", CurrentPath, ExePath);
+			return;
+		}
 	}
 	// Only 1 strand per ODC system. Must wait until build as pIOS is not available in the constructor
 	std::call_once(PyPort::python_strand_flag,[this]()

@@ -75,18 +75,16 @@ build_script:
 test_script:
 #- cmd: '%cmake_builddir%\install\ODC_tests.exe -d yes'
 #- cmd: '%cmake_builddir%\install\DNP3Port_tests.exe -d yes'
-#- cmd: '%cmake_builddir%\install\MD3Port_tests.exe -d yes'
+#- cmd: '%cmake_builddir%\install\MD3Port_tests.exe debug -d yes'
 - cmd: '%cmake_builddir%\install\CBPort_tests.exe debug -d yes'
 - cmd: '%cmake_builddir%\install\PyPort_tests.exe debug -d yes'
 
-# Failed tests we want to capture the log file outputs.
+# Capture the log file outputs so we can debug failed tests.
 on_finish:
 - echo Scanning project folder for all files - C:\projects\opendatacon
 - cmd: ls -oR --group-directories-first C:\projects\opendatacon > dirlist.txt
 - ps: Push-AppveyorArtifact dirlist.txt -FileName ProjectDirectoryListing.txt
 - ps: Get-ChildItem C:\projects\opendatacon\*.log | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
-#- ps: Push-AppveyorArtifact $env:CMAKE_BUILDDIR\install\cbporttest.log
-#- ps: Push-AppveyorArtifact $env:CMAKE_BUILDDIR\install\pyporttest.log
 
 artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
