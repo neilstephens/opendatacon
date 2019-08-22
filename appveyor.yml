@@ -14,7 +14,7 @@ os: Visual Studio 2017
 #       build configuration       #
 #---------------------------------#
 configuration:
-#  - Release
+  - Release
   - Debug
 
 environment:

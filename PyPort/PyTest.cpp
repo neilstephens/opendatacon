@@ -366,7 +366,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		WaitIOS(IOS, 2);
+		WaitIOS(IOS, 3);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 		std::string url("http://testserver/thisport/cb?test=harold");
