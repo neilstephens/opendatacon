@@ -318,8 +318,6 @@ TEST_CASE("Py.TestEventStringConversions")
 	STANDARD_TEST_TEARDOWN();
 }
 
-#define FLUSH() {odc::spdlog_flush_all(); }
-
 
 TEST_CASE("Py.TestsUsingPython")
 {
@@ -332,9 +330,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 	START_IOS(4);
 
-	LOGINFO("ASIO Threads Running");
-
-	WaitIOS(IOS, 2); // Allow build to run
+	WaitIOS(IOS, 1); // Allow build to run
 
 	PythonPort->Enable();
 	PythonPort2->Enable();
@@ -359,7 +355,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 
-		WaitIOS(IOS, 2);
+		WaitIOS(IOS, 3);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 		res = CommandStatus::UNDEFINED;
