@@ -339,6 +339,8 @@ TEST_CASE("Py.TestsUsingPython")
 	PythonPort->Enable();
 	PythonPort2->Enable();
 
+	LOGINFO("Ports Enabled");
+
 	WaitIOS(IOS, 1);
 
 	INFO("SendBinaryAndAnalogEvents")
