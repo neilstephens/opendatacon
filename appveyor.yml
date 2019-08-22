@@ -78,9 +78,9 @@ test_script:
 #- cmd: '%cmake_builddir%\install\MD3Port_tests.exe debug -d yes'
 #- cmd: '%cmake_builddir%\install\CBPort_tests.exe debug -d yes'
 # Remove python from the path
--ps : >-
+- ps: >-
         $env:path = $env:path -replace "C:\\.*[Pp]ython.*?;", ""
-- cmd : set Path
+- cmd: set Path
 - cmd: '%cmake_builddir%\install\PyPort_tests.exe debug -d yes'
 
 # Capture the log file outputs so we can debug failed tests.
