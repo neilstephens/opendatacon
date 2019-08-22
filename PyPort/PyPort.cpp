@@ -138,11 +138,13 @@ void PyPort::Build()
 
 	// Check that the Python Module is available to load in either the current path, or the path to the executing program
 	std::string CurrentPath(GetCurrentWorkingDir());
+	std::string PyModPath;
 	std::string FullModuleFilename(CurrentPath + PathSeparator + MyConf->pyModuleName+".py");
 
 	if (fileexists(FullModuleFilename))
 	{
 		LOGDEBUG("Found Python Module in current directory {}", FullModuleFilename);
+		PyModPath = CurrentPath;
 	}
 	else
 	{
@@ -152,6 +154,7 @@ void PyPort::Build()
 		if (fileexists(FullModuleFilename))
 		{
 			LOGDEBUG("Found Python Module in exe directory {}", FullModuleFilename);
+			PyModPath = ExePath;
 		}
 		else
 		{
@@ -167,7 +170,7 @@ void PyPort::Build()
 		});
 
 	// Every call to pWrapper should be strand protected.
-	python_strand->dispatch([&, CurrentPath]()
+	python_strand->dispatch([&, PyModPath]()
 		{
 			// If first time constructor is called, will instansiate the interpreter.
 			// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
@@ -177,7 +180,7 @@ void PyPort::Build()
 			try
 			{
 			// Python code is loaded and class created, __init__ called.
-			      pWrapper->Build("PyPort", CurrentPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name);
+			      pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name);
 
 			      pWrapper->Config(JSONMain, JSONOverride);
 			      LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
