@@ -79,8 +79,7 @@ test_script:
 #- cmd: '%cmake_builddir%\install\CBPort_tests.exe debug -d yes'
 # Remove python from the path
 -ps : >-
-    $env:path = $env:path -replace "C:\\.*[Pp]ython.*?;", ""
-# Show the current path
+        $env:path = $env:path -replace "C:\\.*[Pp]ython.*?;", ""
 - cmd : set Path
 - cmd: '%cmake_builddir%\install\PyPort_tests.exe debug -d yes'
 
