@@ -512,7 +512,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	pyModule = PyImport_Import(pyUniCodeModuleName);
 	if (pyModule == nullptr)
 	{
-		LOGERROR("Could not load Python Module - {}", pyLoadModuleName);
+		LOGERROR("Could not load Python Module - {} from {}", pyLoadModuleName, pyPathName);
 		PyErrOutput();
 		throw std::runtime_error("Could not load Python Module");
 	}

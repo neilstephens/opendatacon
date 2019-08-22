@@ -31,8 +31,6 @@ environment:
 clone_folder: C:\projects\opendatacon
   
 init:
-# Display RDP connection details at start of build
-- ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 install:
 - ps: >-
