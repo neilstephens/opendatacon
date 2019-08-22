@@ -359,7 +359,6 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 
-		FLUSH();
 		WaitIOS(IOS, 2);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
@@ -371,7 +370,6 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		FLUSH();
 		WaitIOS(IOS, 2);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
@@ -386,7 +384,7 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort->RestHandler(url, "", pResponseCallback);
 
 		LOGDEBUG("Response {}", sres);
-		FLUSH();
+
 		WaitIOS(IOS, 2);
 		REQUIRE(sres == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
 
@@ -406,7 +404,7 @@ TEST_CASE("Py.TestsUsingPython")
 		WaitIOS(IOS, 5);
 	}
 
-	FLUSH();
+
 	INFO("WebServerTest")
 	{
 		std::string hroot = "http://localhost:10000";
@@ -452,7 +450,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 	}
 	LOGDEBUG("Tests Complete, starting teardown");
-	FLUSH();
+
 
 	PythonPort->Disable();
 	PythonPort2->Disable();
