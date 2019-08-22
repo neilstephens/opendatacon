@@ -217,6 +217,20 @@ void WaitIOS(std::shared_ptr<odc::asio_service> IOS, int seconds)
 	timer->expires_from_now(std::chrono::seconds(seconds));
 	timer->wait();
 }
+bool WaitIOSResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, std::atomic<CommandStatus>& res, CommandStatus InitialValue)
+{
+	auto timer = IOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
+	size_t cnt = MaxWaitSeconds * 20;                      // 50 msec * 20 = 1 second
+	while (cnt-- > 0)
+	{
+		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(50));
+		timer->wait();
+		if (res != InitialValue)
+			return true; // Value changed
+	}
+	return false; // Timed out
+}
 
 
 // Don't like using macros, but we use the same test set up almost every time.
@@ -318,7 +332,6 @@ TEST_CASE("Py.TestEventStringConversions")
 	STANDARD_TEST_TEARDOWN();
 }
 
-
 TEST_CASE("Py.TestsUsingPython")
 {
 	// So do all the tests that involve using the Python Interpreter in one test, as we dont seem to be able to close it down correctly
@@ -342,7 +355,7 @@ TEST_CASE("Py.TestsUsingPython")
 	INFO("SendBinaryAndAnalogEvents")
 	{
 
-		CommandStatus res = CommandStatus::UNDEFINED;
+		std::atomic<CommandStatus> res { CommandStatus::UNDEFINED };
 		auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&](CommandStatus command_stat)
 			{
 				res = command_stat;
@@ -355,7 +368,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 
-		WaitIOS(IOS, 3);
+		WaitIOSResult(IOS, 3, res, CommandStatus::UNDEFINED);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 		res = CommandStatus::UNDEFINED;
@@ -366,7 +379,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		WaitIOS(IOS, 3);
+		WaitIOSResult(IOS, 3, res, CommandStatus::UNDEFINED);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 		std::string url("http://testserver/thisport/cb?test=harold");
