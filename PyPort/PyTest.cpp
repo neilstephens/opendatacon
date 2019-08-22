@@ -332,12 +332,13 @@ TEST_CASE("Py.TestsUsingPython")
 
 	START_IOS(4);
 
+	LOGINFO("ASIO Threads Running");
+
 	WaitIOS(IOS, 2); // Allow build to run
 
 	PythonPort->Enable();
 	PythonPort2->Enable();
 
-	FLUSH();
 	WaitIOS(IOS, 1);
 
 	INFO("SendBinaryAndAnalogEvents")
