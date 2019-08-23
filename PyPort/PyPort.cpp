@@ -169,14 +169,14 @@ void PyPort::Build()
 			PyPort::python_strand = pIOS->make_strand();
 		});
 
-	// Every call to pWrapper should be strand protected.
+	// Every call to pWrapper should be strand protected. NOTE ASIO is not running here...
 	python_strand->dispatch([&, PyModPath]()
 		{
 			// If first time constructor is called, will instansiate the interpreter.
 			// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
 			// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
-			pWrapper.reset(new PythonWrapper(this->Name, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
-				std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+			pWrapper = std::make_unique<PythonWrapper>(this->Name, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
+				std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 			try
 			{
 			// Python code is loaded and class created, __init__ called.
@@ -188,7 +188,7 @@ void PyPort::Build()
 			      PortOperational = true;
 			      LOGDEBUG("Port Operational {}", Name);
 
-			      pWrapper->PortOperational(); // Tell our Python code that we are ready to roll.
+			      pWrapper->PortOperational(); // Tell our Python code that we are ready to roll - except we may not be enabled!
 			}
 			catch (std::exception& e)
 			{

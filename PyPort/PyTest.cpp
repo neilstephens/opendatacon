@@ -337,24 +337,25 @@ TEST_CASE("Py.TestsUsingPython")
 	// So do all the tests that involve using the Python Interpreter in one test, as we dont seem to be able to close it down correctly
 	// and start it again. Not great, but not a massive problem under normal use cases.
 
+	// The ODC startup process is Build, Start IOS, then Enable posts. So we are doing that right.
+	// However in build we are telling our Python script we are operational - have to assume not enabled!
 	STANDARD_TEST_SETUP();
 	TEST_PythonPort(Json::nullValue);
 	TEST_PythonPort2(Json::nullValue);
 
 	START_IOS(4);
 
-	WaitIOS(IOS, 1); // Allow build to run
+	WaitIOS(IOS, 2); // Allow build to run
 
 	PythonPort->Enable();
 	PythonPort2->Enable();
 
 	LOGINFO("Ports Enabled");
 
-	WaitIOS(IOS, 1);
+	WaitIOS(IOS, 2);
 
 	INFO("SendBinaryAndAnalogEvents")
 	{
-
 		std::atomic<CommandStatus> res { CommandStatus::UNDEFINED };
 		auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&](CommandStatus command_stat)
 			{
