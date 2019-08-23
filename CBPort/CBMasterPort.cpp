@@ -53,23 +53,21 @@ CBMasterPort::~CBMasterPort()
 
 void CBMasterPort::Enable()
 {
-	if (enabled) return;
+	if (enabled.exchange(true)) return;
 	try
 	{
 		CBConnection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
-
-		enabled = true;
 	}
 	catch (std::exception& e)
 	{
 		LOGERROR("Problem opening connection TCP : {} : {}", Name, e.what());
+		enabled = false;
 		return;
 	}
 }
 void CBMasterPort::Disable()
 {
-	if (!enabled) return;
-	enabled = false;
+	if (!enabled.exchange(false)) return;
 
 	CBConnection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }

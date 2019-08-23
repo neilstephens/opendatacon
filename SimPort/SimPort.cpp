@@ -49,9 +49,8 @@ void SimPort::Enable()
 {
 	pEnableDisableSync->post([&]()
 		{
-			if(!enabled)
+			if(!enabled.exchange(true))
 			{
-			      enabled = true;
 			      PortUp();
 			}
 		});
@@ -60,9 +59,8 @@ void SimPort::Disable()
 {
 	pEnableDisableSync->post([&]()
 		{
-			if(enabled)
+			if(enabled.exchange(false))
 			{
-			      enabled = false;
 			      PortDown();
 			}
 		});

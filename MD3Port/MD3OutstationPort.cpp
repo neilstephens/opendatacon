@@ -64,22 +64,21 @@ MD3OutstationPort::~MD3OutstationPort()
 
 void MD3OutstationPort::Enable()
 {
-	if (enabled) return;
+	if (enabled.exchange(true)) return;
 	try
 	{
 		MD3Connection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
-		enabled = true;
 	}
 	catch (std::exception& e)
 	{
 		LOGERROR("Problem opening connection : " + Name + " : " + e.what());
+		enabled = false;
 		return;
 	}
 }
 void MD3OutstationPort::Disable()
 {
-	if (!enabled) return;
-	enabled = false;
+	if (!enabled.exchange(false)) return;
 
 	MD3Connection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
