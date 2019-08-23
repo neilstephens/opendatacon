@@ -185,10 +185,15 @@ void PyPort::Build()
 			      pWrapper->Config(JSONMain, JSONOverride);
 			      LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
 
-			      PortOperational = true;
-			      LOGDEBUG("Port Operational {}", Name);
+			// Tell our Python code that we are ready to roll - once ASIO is started.
+			// The post should not be executed until the asio threads are started and RUN called
+			      python_strand->post([&, PyModPath]()
+					{
+						PortOperational = true;
+						LOGDEBUG("Port Operational {}", Name);
 
-			      pWrapper->PortOperational(); // Tell our Python code that we are ready to roll - except we may not be enabled!
+						pWrapper->PortOperational();
+					});
 			}
 			catch (std::exception& e)
 			{

@@ -340,11 +340,11 @@ TEST_CASE("Py.TestsUsingPython")
 	// The ODC startup process is Build, Start IOS, then Enable posts. So we are doing that right.
 	// However in build we are telling our Python script we are operational - have to assume not enabled!
 	STANDARD_TEST_SETUP();
-	START_IOS(4);
 
 	TEST_PythonPort(Json::nullValue);
 	TEST_PythonPort2(Json::nullValue);
 
+	START_IOS(4);
 	WaitIOS(IOS, 2); // Allow build to run
 
 	PythonPort->Enable();
