@@ -346,7 +346,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 	WaitIOS(IOS, 2); // Allow build to run - even though ios is not running yet???
 
-	START_IOS(2);
+	START_IOS(4);
 	WaitIOS(IOS, 2);
 
 	PythonPort->Enable();
