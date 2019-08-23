@@ -344,8 +344,10 @@ TEST_CASE("Py.TestsUsingPython")
 	TEST_PythonPort(Json::nullValue);
 	TEST_PythonPort2(Json::nullValue);
 
-	START_IOS(4);
-	WaitIOS(IOS, 2); // Allow build to run
+	WaitIOS(IOS, 2); // Allow build to run - even though ios is not running yet???
+
+	START_IOS(1);
+	WaitIOS(IOS, 2);
 
 	PythonPort->Enable();
 	PythonPort2->Enable();
