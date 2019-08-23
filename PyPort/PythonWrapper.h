@@ -83,7 +83,7 @@ private:
 	static PythonInitWrapper PythonInit;
 
 	//TODO: Do we need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
-	// Would dothe limit using an atomic int - we dont need an "exact" maximum...
+	// Would do the limit using an atomic int - we dont need an "exact" maximum...
 	const size_t MaximumQueueSize = 5000*1000; // 5 million
 
 	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);

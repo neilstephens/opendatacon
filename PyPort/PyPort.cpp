@@ -272,8 +272,8 @@ void PyPort::Build()
 
 void PyPort::Enable()
 {
-	if (enabled) return;
-	enabled = true;
+	// If already true, return - otherwise set to true
+	if (enabled.exchange(true)) return;
 
 	ServerManager::StartConnection(pServer);
 
@@ -291,8 +291,8 @@ void PyPort::Enable()
 
 void PyPort::Disable()
 {
-	if (!enabled) return;
-	enabled = false;
+	// If already false, return - otherwise set to false.
+	if (!enabled.exchange(false)) return;
 
 	// Leaves handlers in place, so can be restarted without re-adding handlers
 	ServerManager::StopConnection(pServer);
