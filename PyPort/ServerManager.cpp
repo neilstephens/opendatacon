@@ -34,7 +34,8 @@
 
 
 std::unordered_map<std::string, std::weak_ptr<ServerManager>> ServerManager::ServerMap;
-std::mutex ServerManager::MapMutex; // Control access
+
+std::mutex ServerManager::ManagementMutex; // Allow only one management operation at a time. Not a performance issue
 
 
 ServerTokenType::~ServerTokenType()
@@ -45,7 +46,7 @@ ServerManager::ServerManager(std::shared_ptr<odc::asio_service> apIOS, const std
 	EndPoint(aEndPoint),
 	Port(aPort)
 {
-
+	// This is only called by the method below, which is already protected.
 	pServer = std::make_shared<http::server>(pIOS, EndPoint, Port);
 
 	InternalServerID = MakeServerID(aEndPoint, aPort);
@@ -56,9 +57,9 @@ ServerManager::ServerManager(std::shared_ptr<odc::asio_service> apIOS, const std
 // Static Method
 ServerTokenType ServerManager::AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint,     const std::string& aPort)
 {
-	std::string ServerID = MakeServerID(aEndPoint, aPort);
+	std::unique_lock<std::mutex> lck(ServerManager::ManagementMutex); // Only allow one static op at a time
 
-	std::unique_lock<std::mutex> lck(ServerManager::MapMutex); // Access the Map - only here and in the destructor do we do this.
+	std::string ServerID = MakeServerID(aEndPoint, aPort);
 
 	// Only add if does not exist, or has expired
 	std::shared_ptr<ServerManager> pSM;
@@ -78,6 +79,7 @@ ServerTokenType ServerManager::AddConnection(std::shared_ptr<odc::asio_service> 
 
 void ServerManager::StartConnection(const ServerTokenType& ServerTok)
 {
+	std::unique_lock<std::mutex> lck(ServerManager::ManagementMutex); // Only allow one static op at a time
 	if (auto pServerMgr = ServerTok.pServerManager)
 	{
 		pServerMgr->pServer->start(); // Ok to call if already running
@@ -90,6 +92,7 @@ void ServerManager::StartConnection(const ServerTokenType& ServerTok)
 
 void ServerManager::StopConnection(const ServerTokenType& ServerTok)
 {
+	std::unique_lock<std::mutex> lck(ServerManager::ManagementMutex); // Only allow one static op at a time
 	if (auto pServerMgr = ServerTok.pServerManager)
 	{
 		pServerMgr->pServer->stop(); // Ok to call if already stopped
@@ -102,6 +105,7 @@ void ServerManager::StopConnection(const ServerTokenType& ServerTok)
 
 void ServerManager::AddHandler(const ServerTokenType& ServerTok, const std::string &urlpattern, http::pHandlerCallbackType urihandler)
 {
+	std::unique_lock<std::mutex> lck(ServerManager::ManagementMutex); // Only allow one static op at a time
 	if (auto pServerMgr = ServerTok.pServerManager)
 	{
 		pServerMgr->pServer->register_handler(urlpattern, urihandler); // Will overwrite if duplicate
@@ -114,6 +118,3 @@ void ServerManager::AddHandler(const ServerTokenType& ServerTok, const std::stri
 
 ServerManager::~ServerManager()
 {}
-
-
-

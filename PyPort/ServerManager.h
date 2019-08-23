@@ -95,7 +95,7 @@ private:
 
 	// A list of ServerManagers, so that we can find if one for out port/address combination already exists.
 	static std::unordered_map<std::string, std::weak_ptr<ServerManager>> ServerMap;
-	static std::mutex MapMutex; // Control access to the map - add connection and remove connection.
+	static std::mutex ManagementMutex; // Control managment access (controls access to the map and static instance creation)
 };
 #endif
 
