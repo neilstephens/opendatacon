@@ -344,10 +344,10 @@ TEST_CASE("Py.TestsUsingPython")
 	TEST_PythonPort(Json::nullValue);
 	TEST_PythonPort2(Json::nullValue);
 
-	WaitIOS(IOS, 2); // Allow build to run - even though ios is not running yet???
+	//WaitIOS(IOS, 2); // Allow build to run - even though ios is not running yet???
 
-	START_IOS(4);
-	WaitIOS(IOS, 2);
+	START_IOS(32);
+//	WaitIOS(IOS, 2);
 
 	PythonPort->Enable();
 	PythonPort2->Enable();
@@ -371,7 +371,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 
-		WaitIOSResult(IOS, 3, res, CommandStatus::UNDEFINED);
+		WaitIOSResult(IOS, 4, res, CommandStatus::UNDEFINED);
 		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
 
 		res = CommandStatus::UNDEFINED;
