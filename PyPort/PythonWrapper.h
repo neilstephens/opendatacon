@@ -74,19 +74,12 @@ class PythonInitWrapper
 public:
 	PythonInitWrapper();
 	~PythonInitWrapper();
+private:
+	static PyThreadState* threadState;
 };
 
 class PythonWrapper
 {
-private:
-	friend class PythonInitWrapper;
-	static PythonInitWrapper PythonInit;
-
-	//TODO: Do we need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
-	// Would do the limit using an atomic int - we dont need an "exact" maximum...
-	const size_t MaximumQueueSize = 5000*1000; // 5 million
-
-	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);
 
 public:
 	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
@@ -148,7 +141,14 @@ private:
 	// Keep track of each PyWrapper so static methods can get access to the correct PyPort instance
 	static std::unordered_set<uint64_t> PyWrappers;
 	static std::shared_timed_mutex WrapperHashMutex;
-	static PyThreadState* threadState;
+
+	static PythonInitWrapper PythonInit;
+
+	//TODO: Do we need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
+	// Would do the limit using an atomic int - we dont need an "exact" maximum...
+	const size_t MaximumQueueSize = 5000 * 1000; // 5 million
+
+	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.
 	PyObject* pyModule = nullptr;

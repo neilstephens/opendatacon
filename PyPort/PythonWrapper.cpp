@@ -53,9 +53,10 @@
 using namespace odc;
 
 PythonInitWrapper PythonWrapper::PythonInit;
+PyThreadState* PythonInitWrapper::threadState;
+
 std::unordered_set<uint64_t> PythonWrapper::PyWrappers;
 std::shared_timed_mutex PythonWrapper::WrapperHashMutex;
-PyThreadState* PythonWrapper::threadState;
 
 // Wrap getting/releasing the GIL to be bullet proof.
 class GetPythonGIL
@@ -429,7 +430,7 @@ PythonInitWrapper::PythonInitWrapper()
 		if (!PyGILState_Check())
 			LOGERRORODC("About to release and save our GIL state - but apparently we dont have a GIL lock...");
 
-		PythonWrapper::threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
+		threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 	}
 	catch (std::exception& e)
 	{
@@ -445,7 +446,7 @@ PythonInitWrapper::~PythonInitWrapper()
 	// Restore the state as it was after we called Initialize()
 	LOGDEBUGODC("About to Finalize - Have GIL {} ", PyGILState_Check());
 	// Supposed to acquire the GIL and restore the state...
-	PyEval_RestoreThread(PythonWrapper::threadState);
+	PyEval_RestoreThread(threadState);
 	LOGDEBUGODC("About to Finalize - Have GIL {} ", PyGILState_Check());
 
 	//	GetPythonGIL g; //TODO If we do this we hang, if we dont we get an error saying we dont have the GIL...

@@ -353,7 +353,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 	LOGINFO("Ports Enabled");
 
-	WaitIOS(IOS, 2);
+	WaitIOS(IOS, 3);
 
 	INFO("SendBinaryAndAnalogEvents")
 	{
