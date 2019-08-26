@@ -203,7 +203,7 @@ void RunIOSForXSeconds(std::shared_ptr<odc::asio_service> IOS, unsigned int seco
 }
 std::thread *StartIOSThread(std::shared_ptr<odc::asio_service> IOS)
 {
-	return new std::thread([&] { IOS->run(); });
+	return new std::thread([IOS] { IOS->run(); });
 }
 void StopIOSThread(std::shared_ptr<odc::asio_service> IOS, std::thread *runthread)
 {

@@ -101,6 +101,10 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 {
 	_putenv_s(var, val);
 }
+inline const char* PlatformGetEnv(const char* var)
+{
+	return getenv(var);
+}
 const std::string OSPATHSEP = ";";
 
 #else

@@ -55,8 +55,8 @@ class SimPortClass:
     def Config(self, MainJSON, OverrideJSON):
         """ The JSON values are passed as strings (stripped of comments), which we then load into a dictionary for processing
         Note that this does not handle Inherits JSON entries correctly (Inherits is effectily an Include file entry)"""
-        self.LogDebug("Passed Main JSON Config information - Len {} , {}".format(len(MainJSON),MainJSON))
-        self.LogDebug("Passed Override JSON Config information - Len {} , {}".format(len(OverrideJSON), OverrideJSON))
+        #self.LogDebug("Passed Main JSON Config information - Len {} , {}".format(len(MainJSON),MainJSON))
+        #self.LogDebug("Passed Override JSON Config information - Len {} , {}".format(len(OverrideJSON), OverrideJSON))
 
         # Load JSON into Dicts
         Override = {}

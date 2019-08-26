@@ -390,6 +390,11 @@ PythonInitWrapper::PythonInitWrapper()
 		LOGDEBUGODC("Set PYTHONPATH env var to: '{}'",newpythonpath);
 		#endif
 
+		/* If you run into troubles with 32/64 bit both installed, replace the path in the debugger option is VS with the path to the required Pythn libs and it will work
+		      like this:
+		      Environment  path=c:\Python37-32;c:\Python37-32\dlls;c:\python37-32\scripts\;$(LocalDebuggerEnvironment)
+		*/
+
 		Py_Initialize(); // Get the Python interpreter running
 		LOGDEBUGODC("Initilised Python");
 
