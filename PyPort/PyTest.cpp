@@ -265,6 +265,14 @@ bool WaitIOSResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, s
 	auto PythonPort2 = std::make_shared<PyPort>("TestMaster2", conffilename1, overridejson); \
 	PythonPort2->SetIOS(IOS);      \
 	PythonPort2->Build();
+#define TEST_PythonPort3(overridejson)\
+	auto PythonPort3 = std::make_shared<PyPort>("TestMaster3", conffilename1, overridejson); \
+	PythonPort3->SetIOS(IOS);      \
+	PythonPort3->Build();
+#define TEST_PythonPort4(overridejson)\
+	auto PythonPort4 = std::make_shared<PyPort>("TestMaster4", conffilename1, overridejson); \
+	PythonPort4->SetIOS(IOS);      \
+	PythonPort4->Build();
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -343,6 +351,8 @@ TEST_CASE("Py.TestsUsingPython")
 
 	TEST_PythonPort(Json::nullValue);
 	TEST_PythonPort2(Json::nullValue);
+	TEST_PythonPort3(Json::nullValue);
+	TEST_PythonPort4(Json::nullValue);
 
 	//WaitIOS(IOS, 2); // Allow build to run - even though ios is not running yet???
 	START_IOS();
@@ -350,10 +360,12 @@ TEST_CASE("Py.TestsUsingPython")
 
 	PythonPort->Enable();
 	PythonPort2->Enable();
+	PythonPort3->Enable();
+	PythonPort4->Enable();
 
 	LOGINFO("Ports Enabled");
 
-	WaitIOS(IOS, 3);
+	WaitIOS(IOS, 5);
 
 	INFO("SendBinaryAndAnalogEvents")
 	{
@@ -368,9 +380,14 @@ TEST_CASE("Py.TestsUsingPython")
 		auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
 		boolevent->SetPayload<EventType::Binary>(std::move(val));
 
+		LOGINFO("Sending Binary Events");
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
+		PythonPort2->Event(boolevent, "TestHarness2", nullptr);
+		PythonPort3->Event(boolevent, "TestHarness3", nullptr);
+		PythonPort4->Event(boolevent, "TestHarness4", nullptr);
 
-		WaitIOSResult(IOS, 4, res, CommandStatus::UNDEFINED);
+		if (!WaitIOSResult(IOS, 6, res, CommandStatus::UNDEFINED))
+			REQUIRE("" == "Command Status Update timed out");
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
 		res = CommandStatus::UNDEFINED;
@@ -381,7 +398,8 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		WaitIOSResult(IOS, 3, res, CommandStatus::UNDEFINED);
+		if (!WaitIOSResult(IOS, 6, res, CommandStatus::UNDEFINED))
+			REQUIRE("" == "Command Status Update timed out");
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
 /*		std::string url("http://testserver/thisport/cb?test=harold");
@@ -467,6 +485,8 @@ TEST_CASE("Py.TestsUsingPython")
 
 	PythonPort->Disable();
 	PythonPort2->Disable();
+	PythonPort3->Disable();
+	PythonPort4->Disable();
 	WaitIOS(IOS, 1);
 	LOGDEBUG("Ports Disabled");
 
