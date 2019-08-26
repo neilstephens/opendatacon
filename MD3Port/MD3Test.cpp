@@ -3178,7 +3178,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 
 		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
 
-		Wait(*IOS, 1);
+		Wait(*IOS, 2);
 
 		// Check there is no resend of the command - we must have got an OK packet.
 		REQUIRE(MAResponse == "Not Set");
