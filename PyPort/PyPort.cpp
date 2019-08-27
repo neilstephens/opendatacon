@@ -124,7 +124,7 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 PyPort::~PyPort()
 {
 	LOGDEBUG("Destructing PyPort");
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational, Python Destructor ignored", Name);
 		return;
@@ -189,7 +189,7 @@ void PyPort::Build()
 			// The post should not be executed until the asio threads are started and RUN called
 			      python_strand->post([&, PyModPath]()
 					{
-						PortOperational = true;
+						PortOperational.store(true);
 						LOGDEBUG("Port Operational {}", Name);
 
 						pWrapper->PortOperational();
@@ -277,9 +277,22 @@ void PyPort::Enable()
 
 	ServerManager::StartConnection(pServer);
 
-	if (!PortOperational)
+	auto timer = pIOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
+	size_t MaxWaitToBecomeOperationalSeconds = 10;
+	size_t loopwaitmsec = 100;
+	size_t loopcnt = MaxWaitToBecomeOperationalSeconds * 1000 / loopwaitmsec;
+
+	while (!PortOperational.load() && (loopcnt-- > 0))
 	{
-		LOGDEBUG("PyPort {} not operational when trying to enable", Name);
+		// Delay in here for a maximum period for the port to become operational.
+		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(loopwaitmsec));
+		timer->wait();
+	}
+
+	if (!PortOperational.load())
+	{
+		LOGDEBUG("PyPort {} not operational when trying to enable, and we exceed maximum time for it to startup - {} seconds.", Name, MaxWaitToBecomeOperationalSeconds);
 		return;
 	}
 
@@ -297,7 +310,7 @@ void PyPort::Disable()
 	// Leaves handlers in place, so can be restarted without re-adding handlers
 	ServerManager::StopConnection(pServer);
 
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational during port disable", Name);
 		return;
@@ -538,7 +551,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational, Event from {} ignored", Name, SenderName);
 		return;
@@ -572,7 +585,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 		LOGDEBUG("PyPort {} not enabled, SetTimer call ignored", Name);
 		return;
 	}
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational, SetTimer call ignored", Name);
 		return;
@@ -603,7 +616,7 @@ void PyPort::RestHandler(const std::string& url, const std::string& content, Res
 		PostResponseCallbackCall(pResponseCallback, "Error Port not enabled");
 		return;
 	}
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational, Restful Request ignored", Name);
 		PostResponseCallbackCall(pResponseCallback, "Error Port not opeational");

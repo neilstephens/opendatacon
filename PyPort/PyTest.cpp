@@ -396,7 +396,6 @@ TEST_CASE("Py.TestsUsingPython")
 	TEST_PythonPort4(Json::nullValue);
 
 	START_IOS();
-	WaitIOS(IOS, 2);
 
 	PythonPort->Enable();
 	PythonPort2->Enable();
