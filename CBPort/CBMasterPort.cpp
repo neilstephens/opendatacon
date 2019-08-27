@@ -185,7 +185,7 @@ void CBMasterPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCa
 {
 	if (pStatusCallback != nullptr)
 	{
-		pIOS->post([&, pStatusCallback, c]()
+		pIOS->post([pStatusCallback, c]()
 			{
 				(*pStatusCallback)(c);
 			});

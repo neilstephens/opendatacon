@@ -195,7 +195,7 @@ void MD3MasterPort::PostCallbackCall(const odc::SharedStatusCallback_t &pStatusC
 {
 	if (pStatusCallback != nullptr)
 	{
-		pIOS->post([&, pStatusCallback, c]()
+		pIOS->post([pStatusCallback, c]()
 			{
 				(*pStatusCallback)(c);
 			});
