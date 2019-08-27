@@ -86,7 +86,6 @@ public:
 	std::unique_ptr<asio::ip::udp::resolver> make_udp_resolver();
 	std::unique_ptr<asio::ip::udp::socket> make_udp_socket();
 
-	asio::io_service* ReallyWantTheIOSPtr() { return unwrap_this; }
 private:
 	asio::io_service* const unwrap_this = static_cast<asio::io_service*>(this);
 };
