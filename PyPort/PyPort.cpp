@@ -589,7 +589,6 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 					{
 						pWrapper->CallTimerHandler(id);
 					});
-
 			}
 		});
 }

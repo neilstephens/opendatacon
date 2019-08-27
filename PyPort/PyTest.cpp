@@ -341,6 +341,21 @@ TEST_CASE("Py.TestEventStringConversions")
 	STANDARD_TEST_TEARDOWN();
 }
 
+bool WaitIOSFnResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, std::function<bool()>Result)
+{
+	auto timer = IOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
+	size_t cnt = MaxWaitSeconds * 20;                      // 50 msec * 20 = 1 second
+	while (cnt-- > 0)
+	{
+		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(50));
+		timer->wait();
+		if (Result())
+			return true; // Value changed
+	}
+	return false; // Timed out
+}
+
 TEST_CASE("Py.TestsUsingPython")
 {
 	// So do all the tests that involve using the Python Interpreter in one test, as we dont seem to be able to close it down correctly
@@ -363,9 +378,15 @@ TEST_CASE("Py.TestsUsingPython")
 	PythonPort3->Enable();
 	PythonPort4->Enable();
 
+	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
+	if (!WaitIOSFnResult(IOS, 10, [&]()
+		{
+			return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
+		}))
+	{
+		REQUIRE("" == "Waiting for Ports to Enable timed out");
+	}
 	LOGINFO("Ports Enabled");
-
-	WaitIOS(IOS, 5);
 
 	INFO("SendBinaryAndAnalogEvents")
 	{
