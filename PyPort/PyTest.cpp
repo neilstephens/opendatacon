@@ -231,7 +231,47 @@ bool WaitIOSResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, s
 	}
 	return false; // Timed out
 }
+bool WaitIOSFnResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, std::function<bool()>Result)
+{
+	auto timer = IOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
+	size_t cnt = MaxWaitSeconds * 20;                      // 50 msec * 20 = 1 second
+	while (cnt-- > 0)
+	{
+		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(50));
+		timer->wait();
+		if (Result())
+			return true; // Value changed
+	}
+	return false; // Timed out
+}
 
+class protected_string
+{
+public:
+	protected_string(): val("") {};
+	protected_string(std::string _val): val(_val.c_str()) {};
+	std::string  getandset(std::string newval)
+	{
+		std::unique_lock<std::shared_timed_mutex> lck(m);
+		std::string retval = val.c_str();
+		val = newval.c_str();
+		return retval;
+	}
+	void set(std::string newval)
+	{
+		std::unique_lock<std::shared_timed_mutex> lck(m);
+		val = newval.c_str();
+	}
+	std::string get(void)
+	{
+		std::shared_lock<std::shared_timed_mutex> lck(m);
+		return val.c_str();
+	}
+private:
+	std::shared_timed_mutex m;
+	std::string val;
+};
 
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP(threadcount)\
@@ -341,21 +381,6 @@ TEST_CASE("Py.TestEventStringConversions")
 	STANDARD_TEST_TEARDOWN();
 }
 
-bool WaitIOSFnResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, std::function<bool()>Result)
-{
-	auto timer = IOS->make_steady_timer();
-	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
-	size_t cnt = MaxWaitSeconds * 20;                      // 50 msec * 20 = 1 second
-	while (cnt-- > 0)
-	{
-		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(50));
-		timer->wait();
-		if (Result())
-			return true; // Value changed
-	}
-	return false; // Timed out
-}
-
 TEST_CASE("Py.TestsUsingPython")
 {
 	// So do all the tests that involve using the Python Interpreter in one test, as we dont seem to be able to close it down correctly
@@ -363,7 +388,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 	// The ODC startup process is Build, Start IOS, then Enable posts. So we are doing that right.
 	// However in build we are telling our Python script we are operational - have to assume not enabled!
-	STANDARD_TEST_SETUP(8); // Threads
+	STANDARD_TEST_SETUP(4); // Threads
 
 	TEST_PythonPort(Json::nullValue);
 	TEST_PythonPort2(Json::nullValue);
@@ -407,7 +432,7 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort3->Event(boolevent, "TestHarness3", nullptr);
 		PythonPort4->Event(boolevent, "TestHarness4", nullptr);
 
-		if (!WaitIOSResult(IOS, 8, res, CommandStatus::UNDEFINED))
+		if (!WaitIOSResult(IOS, 12, res, CommandStatus::UNDEFINED))
 			REQUIRE("" == "Command Status Update timed out");
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
@@ -419,24 +444,24 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		if (!WaitIOSResult(IOS, 8, res, CommandStatus::UNDEFINED))
+		if (!WaitIOSResult(IOS, 10, res, CommandStatus::UNDEFINED))
 			REQUIRE("" == "Command Status Update timed out");
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
 		std::string url("http://testserver/thisport/cb?test=harold");
-		std::string sres;
+		protected_string sres("");
 
 		auto pResponseCallback = std::make_shared<std::function<void(std::string url)>>([&](std::string response)
 			{
-				sres = response;
+				sres.set(response);
 			});
 
+		// Direct inject web request to python code - we get response back from python module PyPortSim.py
 		PythonPort->RestHandler(url, "", pResponseCallback);
 
-		LOGDEBUG("Response {}", sres);
-
 		WaitIOS(IOS, 2);
-		REQUIRE(sres == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
+		LOGDEBUG("Response {}", sres.get());
+		REQUIRE(sres.get() == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
 
 		// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.
 		PythonPort->SetTimer(120, 1200);
@@ -450,8 +475,9 @@ TEST_CASE("Py.TestsUsingPython")
 			PythonPort->RestHandler(url, "", pResponseCallback);
 		}
 
-		// Wait - we should see the timer callback triggered.
-		WaitIOS(IOS, 5);
+		// Wait - we should see the timer callback triggered and no crashes!
+		WaitIOS(IOS, 7);
+		LOGDEBUG("Last Response {}", sres.get());
 	}
 
 	INFO("WebServerTest")
@@ -473,8 +499,6 @@ TEST_CASE("Py.TestsUsingPython")
 
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
-
-		WaitIOS(IOS, 2);
 
 		callresp = "";
 
