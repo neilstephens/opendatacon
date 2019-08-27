@@ -528,13 +528,18 @@ TEST_CASE("Py.TestsUsingPython")
 	PythonPort2->Disable();
 	PythonPort3->Disable();
 	PythonPort4->Disable();
-	WaitIOS(IOS, 1);
+
+	if (!WaitIOSFnResult(IOS, 10, [&]()
+		{
+			return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
+		}))
+	{
+		REQUIRE("" == "Waiting for Ports to be disabled timed out");
+	}
 	LOGDEBUG("Ports Disabled");
 
-	STOP_IOS();
+	STOP_IOS(); // Wait in here for all threads to stop.
 	LOGDEBUG("IOS Stopped");
-
-	WaitIOS(IOS, 1);
 
 	STANDARD_TEST_TEARDOWN();
 	LOGDEBUG("Test Teardown complete");
