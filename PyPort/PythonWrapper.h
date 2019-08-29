@@ -33,24 +33,53 @@
 #include <unordered_set>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
+#include "concurrentqueue.h"
 
 using namespace odc;
 
 typedef std::function<void (uint32_t, uint32_t)> SetTimerFnType;
 typedef std::function<void ( const char*, uint32_t, const char*, const char*)> PublishEventCallFnType;
 
+// Class to store the evnt as a stringified version, mainly so that when Python is retreving these records, it does minimal processing.
+class EventQueueType
+{
+public:
+	EventQueueType(const std::string& _EventType, const size_t _Index, odc::msSinceEpoch_t _TimeStamp,
+		const std::string& _Quality, const std::string& _Payload, const std::string& _Sender):
+		EventType(_EventType),
+		Index(_Index),
+		TimeStamp(_TimeStamp),
+		Quality(_Quality),
+		Payload(_Payload),
+		Sender(_Sender)
+	{};
+	EventQueueType():
+		EventType(""),
+		Index(0),
+		TimeStamp(0),
+		Quality(""),
+		Payload(""),
+		Sender("")
+	{};
+	std::string EventType;
+	size_t Index;
+	odc::msSinceEpoch_t TimeStamp;
+	std::string Quality;
+	std::string Payload;
+	std::string Sender;
+};
+
 class PythonInitWrapper
 {
 public:
 	PythonInitWrapper();
 	~PythonInitWrapper();
+private:
+	static PyThreadState* threadState;
 };
 
 class PythonWrapper
 {
-private:
-	friend class PythonInitWrapper;
-	static PythonInitWrapper PythonInit;
 
 public:
 	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
@@ -58,9 +87,15 @@ public:
 	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
 		const std::string& pyClassName, const std::string& PortName);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
+	void PortOperational(); // Called when Build is complete.
 	void Enable();
 	void Disable();
-	CommandStatus Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
+
+	CommandStatus Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName);
+	void QueueEvent(const std::string& EventType, const size_t Index, odc::msSinceEpoch_t TimeStamp, const std::string& Quality, const std::string& Payload, const std::string& Sender);
+
+	bool DequeueEvent(EventQueueType& eq);
+
 	void CallTimerHandler(uint32_t id);
 	std::string RestHandler(const std::string& url, const std::string& content);
 
@@ -68,6 +103,7 @@ public:
 	PublishEventCallFnType GetPythonPortPublishEventCallFn() { return PythonPortPublishEventCallFn; }; // Protect set access, only allow get.
 
 	static void PyErrOutput();
+	static void DumpStackTrace();
 
 	std::string Name;
 
@@ -86,12 +122,17 @@ private:
 	void StoreWrapperMapping()
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
-		PyWrappers.emplace((uint64_t)this);
+		uint64_t guid = (uint64_t)this;
+		if (sizeof(uintptr_t) == 4) guid &= 0x00000000FFFFFFFF; // Stop sign extension
+		PyWrappers.emplace(guid);
+		LOGDEBUG("Stored python wrapper guid into mapping table - {0:#x}", guid);
 	}
 	void RemoveWrapperMapping()
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
-		PyWrappers.erase((uint64_t)this);
+		uint64_t guid = (uint64_t)this;
+		if (sizeof(uintptr_t) == 4) guid &= 0x00000000FFFFFFFF; // Stop sign extension
+		PyWrappers.erase(guid);
 	}
 
 	PyObject* GetFunction(PyObject* pyInstance, const std::string& sFunction);
@@ -100,12 +141,20 @@ private:
 	// Keep track of each PyWrapper so static methods can get access to the correct PyPort instance
 	static std::unordered_set<uint64_t> PyWrappers;
 	static std::shared_timed_mutex WrapperHashMutex;
-	static PyThreadState* threadState;
+
+	static PythonInitWrapper PythonInit;
+
+	//TODO: Do we need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
+	// Would do the limit using an atomic int - we dont need an "exact" maximum...
+	const size_t MaximumQueueSize = 5000 * 1000; // 5 million
+
+	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.
 	PyObject* pyModule = nullptr;
 	PyObject* pyInstance = nullptr;
 	PyObject* pyFuncConfig = nullptr;
+	PyObject* pyFuncOperational = nullptr;
 	PyObject* pyFuncEnable = nullptr;
 	PyObject* pyFuncDisable = nullptr;
 	PyObject* pyFuncEvent = nullptr;

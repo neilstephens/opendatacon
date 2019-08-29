@@ -41,8 +41,7 @@ class SimPortClass:
         odc.log(self.guid,Critical, message )
 
 
-    # Mandatory Methods that are called by ODC PyPort
-
+    # Required Method
     def __init__(self, odcportguid, objectname):
         self.objectname = objectname    # Documentation/error use only.
         self.guid = odcportguid         # So that when we call an odc method, ODC can work out which pyport to hand it too. 
@@ -52,11 +51,12 @@ class SimPortClass:
         self.LogDebug("SimPortClass Init Called - {}".format(objectname))       
         return
 
+    # Required Method
     def Config(self, MainJSON, OverrideJSON):
         """ The JSON values are passed as strings (stripped of comments), which we then load into a dictionary for processing
         Note that this does not handle Inherits JSON entries correctly (Inherits is effectily an Include file entry)"""
-        self.LogDebug("Passed Main JSON Config information - Len {} , {}".format(len(MainJSON),MainJSON))
-        self.LogDebug("Passed Override JSON Config information - Len {} , {}".format(len(OverrideJSON), OverrideJSON))
+        #self.LogDebug("Passed Main JSON Config information - Len {} , {}".format(len(MainJSON),MainJSON))
+        #self.LogDebug("Passed Override JSON Config information - Len {} , {}".format(len(OverrideJSON), OverrideJSON))
 
         # Load JSON into Dicts
         Override = {}
@@ -80,11 +80,19 @@ class SimPortClass:
         # Now extract what is needed for this instance, or just reference the ConfigDict when needed.
         return
 
+    # Required Method
+    def Operational(self):
+        """ This is called from ODC once ODC is ready for us to be fully operational - normally after Build is complete"""
+        self.LogDebug("Port Operational - {}".format(datetime.now().isoformat(" ")))
+        return
+
+    # Required Method
     def Enable(self):
         self.LogTrace("Enabled - {}".format(datetime.now().isoformat(" ")))
         self.enabled = True;
         return
 
+    # Required Method
     def Disable(self):
         self.LogDebug("Disabled - {}".format(datetime.now().isoformat(" ")))
         self.enabled = False
@@ -94,7 +102,7 @@ class SimPortClass:
     # EventType (string) Index (int), Time (msSinceEpoch), Quality (string) Payload (string) Sender (string)
     # There is no callback available, the ODC code expects this method to return without delay.
     def EventHandler(self,EventType, Index, Time, Quality, Payload, Sender):
-        self.LogDebug("EventHander: {}, {}, {} {} - {}".format(self.guid,Sender,Index,EventType,Payload))
+        self.LogTrace("EventHander: {}, {}, {} {} - {}".format(self.guid,Sender,Index,EventType,Payload))
 
         if (EventType == "Binary"):
             self.LogDebug("Event is a Binary")
@@ -107,7 +115,7 @@ class SimPortClass:
     # Will be called at the appropriate time by the ASIO handler system. Will be passed an id for the timeout, 
     # so you can have multiple timers running.
     def TimerHandler(self,TimerId):
-        self.LogDebug("TimerHander: ID {}, {}".format(TimerId, self.guid))
+        self.LogTrace("TimerHander: ID {}, {}".format(TimerId, self.guid))
         return
 
     # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
@@ -117,7 +125,7 @@ class SimPortClass:
     #
     # We return the response that we want sent back to the caller. This will be a JSON string. A null string would be an error.
     def RestRequestHandler(self, url, content):
-        self.LogDebug("RestRequestHander: {}".format(url))
+        self.LogTrace("RestRequestHander: {}".format(url))
         
 
         Response = {}   # Empty Dict
@@ -128,6 +136,6 @@ class SimPortClass:
 
         odc.SetTimer(self.guid, self.i, 1001-self.i)    # Set a timer to go off in a period less than a second
         self.i = self.i + 1
-        self.LogDebug("RestRequestHander: Sent Set Timer Command {}".format(self.i))
+        self.LogTrace("RestRequestHander: Sent Set Timer Command {}".format(self.i))
 
         return json.dumps(Response)

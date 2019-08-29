@@ -104,6 +104,7 @@ public:
 
 	// Testing use only
 	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
+	bool GetOutStationSOEBufferOverflowFlag() { return OutStationSOEBufferOverflow.getandset(false); };
 private:
 
 	std::unique_ptr<asio::io_service::strand> MasterCommandStrand;
@@ -125,10 +126,9 @@ private:
 	bool ConvertSOEMessageToBitArray(const CBMessage_t & CompleteCBMessage, std::array<bool, MaxSOEBits>& BitArray, uint32_t & UsedBits);
 	void ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits>& BitArray, uint32_t &UsedBits, std::function<void(SOEEventFormat&soeevt)> fn);
 	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);
-	bool CheckResponseMessageMatch(const CBMessage_t& ReceivedMsg, const CBMessage_t& SentMsg);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
-
+	protected_bool OutStationSOEBufferOverflow{ false }; // Initialised in constructor
 	//TODO: Check if we need these Quality Calculations
 	QualityFlags  CalculateBinaryQuality(bool enabled, CBTime time);
 	QualityFlags  CalculateAnalogQuality(bool enabled, uint16_t meas, CBTime time);

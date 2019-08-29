@@ -80,29 +80,19 @@ const char *conffile1 = R"001(
 	// Python Module/Class/Method name definitions
 	"ModuleName" : "PyPortSim",
 	"ClassName": "SimPortClass",
+		
+	// The point definitions are only proccessed by the Python code. Any events sent to PyPort by ODC will be passed on.
+	"Binaries" : 
+	[	
+		{"Index" : 0, "CBNumber" : 1, "SimType" : "CBStateBit0", "State": 0},	// Half of a dual bit binary Open 10, Closed 01, Fault 00 or 11 (Is this correct?)
+		{"Index" : 1, "CBNumber" : 1, "SimType" : "CBStateBit1", "State": 1}	// Half of a dual bit binary. State is starting state.
+	],
 
-	//-------Point conf--------Pass this through to the Python code to deal with
-
-	"PollGroups" : [{"ID" : 1, "PollRate" : 10000, "Group" : 3, "PollType" : "Scan"},
-					{"ID" : 2, "PollRate" : 20000, "Group" : 3, "PollType" : "SOEScan"},
-					{"ID" : 3, "PollRate" : 120000, "PollType" : "TimeSetCommand"}],
-
-	"Binaries" : [	{"Range" : {"Start" : 0, "Stop" : 11}, "Group" : 3, "PayloadLocation": "1B", "Channel" : 1, "Type" : "DIG", "SOE" : {"Group": 5, "Index" : 0} },
-					{"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
-					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB"},
-					{"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC" }],
-
-	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
-					{"Index" : 1, "Group" : 3, "PayloadLocation": "3B","Channel" : 1, "Type":"ANA"},
-					{"Index" : 2, "Group" : 3, "PayloadLocation": "4A","Channel" : 1, "Type":"ANA"},
-					{"Index" : 3, "Group" : 3, "PayloadLocation": "4B","Channel" : 1, "Type":"ANA6"},
-					{"Index" : 4, "Group" : 3, "PayloadLocation": "4B","Channel" : 2, "Type":"ANA6"}],
-
-	"BinaryControls" : [{"Index": 1,  "Group" : 4, "Channel" : 1, "Type" : "CONTROL"},
-                        {"Range" : {"Start" : 10, "Stop" : 21}, "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
-
-	"AnalogControls" : [{"Index": 1,  "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}]
-
+	"BinaryControls" : 
+	[
+		{"Index": 0, "CBNumber" : 1, "CBCommand":"Trip"},		// Trip pulse
+		{"Index": 1, "CBNumber" : 1, "CBCommand":"Close"}		// Close pulse
+	]
 })001";
 
 
@@ -133,7 +123,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 	#else
 	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
 	#endif
-	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("testslog.txt", true);
+	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("pyporttest.log", true);
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
@@ -160,10 +150,10 @@ void WriteStartLoggingMessage(std::string TestName)
 		std::cout << "Error PyPort Logger not operational";
 
 /*	if (auto odclogger = odc::spdlog_get("opendatacon"))
-            odclogger->info(msg);
-      else
-            std::cout << "Error opendatacon Logger not operational";
-            */
+                  odclogger->info(msg);
+        else
+                  std::cout << "Error opendatacon Logger not operational";
+                  */
 }
 void TestSetup(std::string TestName, bool writeconffiles = true)
 {
@@ -191,15 +181,16 @@ void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
 }
 void CommandLineLoggingCleanup()
 {
-	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
+	odc::spdlog_flush_all();
+	odc::spdlog_drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
 
-void RunIOSForXSeconds(std::shared_ptr<asio::io_service> IOS, unsigned int seconds)
+void RunIOSForXSeconds(std::shared_ptr<odc::asio_service> IOS, unsigned int seconds)
 {
 	// We dont have to consider the timer going out of scope in this use case.
-	Timer_t timer(*IOS);
-	timer.expires_from_now(std::chrono::seconds(seconds));
-	timer.async_wait([IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
+	auto timer = IOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::seconds(seconds));
+	timer->async_wait([&IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
 		{
 			// If there was no more work, the asio::io_context will exit from the IOS.run() below.
 			// However something is keeping it running, so use the stop command to force the issue.
@@ -212,7 +203,7 @@ void RunIOSForXSeconds(std::shared_ptr<asio::io_service> IOS, unsigned int secon
 }
 std::thread *StartIOSThread(std::shared_ptr<odc::asio_service> IOS)
 {
-	return new std::thread([&] { IOS->run(); });
+	return new std::thread([IOS] { IOS->run(); });
 }
 void StopIOSThread(std::shared_ptr<odc::asio_service> IOS, std::thread *runthread)
 {
@@ -220,18 +211,73 @@ void StopIOSThread(std::shared_ptr<odc::asio_service> IOS, std::thread *runthrea
 	runthread->join(); // Wait for it to exit
 	delete runthread;
 }
-void WaitIOS(std::shared_ptr<odc::asio_service>IOS, int seconds)
+void WaitIOS(std::shared_ptr<odc::asio_service> IOS, int seconds)
 {
 	auto timer = IOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::seconds(seconds));
 	timer->wait();
 }
+bool WaitIOSResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, std::atomic<CommandStatus>& res, CommandStatus InitialValue)
+{
+	auto timer = IOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
+	size_t cnt = MaxWaitSeconds * 20;                      // 50 msec * 20 = 1 second
+	while (cnt-- > 0)
+	{
+		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(50));
+		timer->wait();
+		if (res != InitialValue)
+			return true; // Value changed
+	}
+	return false; // Timed out
+}
+bool WaitIOSFnResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, std::function<bool()>Result)
+{
+	auto timer = IOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
+	size_t cnt = MaxWaitSeconds * 20;                      // 50 msec * 20 = 1 second
+	while (cnt-- > 0)
+	{
+		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(50));
+		timer->wait();
+		if (Result())
+			return true; // Value changed
+	}
+	return false; // Timed out
+}
 
+class protected_string
+{
+public:
+	protected_string(): val("") {};
+	protected_string(std::string _val): val(_val.c_str()) {};
+	std::string  getandset(std::string newval)
+	{
+		std::unique_lock<std::shared_timed_mutex> lck(m);
+		std::string retval = val.c_str();
+		val = newval.c_str();
+		return retval;
+	}
+	void set(std::string newval)
+	{
+		std::unique_lock<std::shared_timed_mutex> lck(m);
+		val = newval.c_str();
+	}
+	std::string get(void)
+	{
+		std::shared_lock<std::shared_timed_mutex> lck(m);
+		return val.c_str();
+	}
+private:
+	std::shared_timed_mutex m;
+	std::string val;
+};
 
 // Don't like using macros, but we use the same test set up almost every time.
-#define STANDARD_TEST_SETUP()\
+#define STANDARD_TEST_SETUP(threadcount)\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	auto IOS = std::make_shared<odc::asio_service>(4); // Max 4 threads
+	const int ThreadCount = threadcount; \
+	auto IOS = std::make_shared<odc::asio_service>(ThreadCount);
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
@@ -240,12 +286,11 @@ void WaitIOS(std::shared_ptr<odc::asio_service>IOS, int seconds)
 #define STANDARD_TEST_TEARDOWN()\
 	TestTearDown();\
 
-#define START_IOS(threadcount) \
+#define START_IOS() \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
-	const int ThreadCount = threadcount; \
-	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(IOS);
+	std::thread *pThread[ThreadCount]; \
+	for (int i = 0; i < ThreadCount; i++) pThread[i] = StartIOSThread(IOS);
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
@@ -260,6 +305,14 @@ void WaitIOS(std::shared_ptr<odc::asio_service>IOS, int seconds)
 	auto PythonPort2 = std::make_shared<PyPort>("TestMaster2", conffilename1, overridejson); \
 	PythonPort2->SetIOS(IOS);      \
 	PythonPort2->Build();
+#define TEST_PythonPort3(overridejson)\
+	auto PythonPort3 = std::make_shared<PyPort>("TestMaster3", conffilename1, overridejson); \
+	PythonPort3->SetIOS(IOS);      \
+	PythonPort3->Build();
+#define TEST_PythonPort4(overridejson)\
+	auto PythonPort4 = std::make_shared<PyPort>("TestMaster4", conffilename1, overridejson); \
+	PythonPort4->SetIOS(IOS);      \
+	PythonPort4->Build();
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -284,9 +337,10 @@ void CheckEventStringConversions(std::shared_ptr<EventInfo> inevent)
 	REQUIRE(ToString(pubevent->GetQuality()) == QualityStr);
 	REQUIRE(pubevent->GetPayloadString() == PayloadStr);
 }
+
 TEST_CASE("Py.TestEventStringConversions")
 {
-	STANDARD_TEST_SETUP();
+	STANDARD_TEST_SETUP(4);
 
 	uint32_t ODCIndex = 1001;
 
@@ -332,22 +386,35 @@ TEST_CASE("Py.TestsUsingPython")
 	// So do all the tests that involve using the Python Interpreter in one test, as we dont seem to be able to close it down correctly
 	// and start it again. Not great, but not a massive problem under normal use cases.
 
-	STANDARD_TEST_SETUP();
+	// The ODC startup process is Build, Start IOS, then Enable posts. So we are doing that right.
+	// However in build we are telling our Python script we are operational - have to assume not enabled!
+	STANDARD_TEST_SETUP(4); // Threads
+
 	TEST_PythonPort(Json::nullValue);
 	TEST_PythonPort2(Json::nullValue);
+	TEST_PythonPort3(Json::nullValue);
+	TEST_PythonPort4(Json::nullValue);
 
-	START_IOS(4);
-
-	WaitIOS(IOS, 2); // Allow build to run
+	START_IOS();
 
 	PythonPort->Enable();
 	PythonPort2->Enable();
+	PythonPort3->Enable();
+	PythonPort4->Enable();
 
-	WaitIOS(IOS, 1);
+	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
+	if (!WaitIOSFnResult(IOS, 10, [&]()
+		    {
+			    return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
+		    }))
+	{
+		REQUIRE("" == "Waiting for Ports to Enable timed out");
+	}
+	LOGINFO("Ports Enabled");
+
 	INFO("SendBinaryAndAnalogEvents")
 	{
-
-		CommandStatus res = CommandStatus::UNDEFINED;
+		std::atomic<CommandStatus> res{ CommandStatus::UNDEFINED };
 		auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&](CommandStatus command_stat)
 			{
 				res = command_stat;
@@ -358,10 +425,15 @@ TEST_CASE("Py.TestsUsingPython")
 		auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
 		boolevent->SetPayload<EventType::Binary>(std::move(val));
 
+		LOGINFO("Sending Binary Events");
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
+		PythonPort2->Event(boolevent, "TestHarness2", nullptr);
+		PythonPort3->Event(boolevent, "TestHarness3", nullptr);
+		PythonPort4->Event(boolevent, "TestHarness4", nullptr);
 
-		WaitIOS(IOS, 1);
-		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+		if (!WaitIOSResult(IOS, 12, res, CommandStatus::UNDEFINED))
+			REQUIRE("" == "Command Status Update timed out");
+		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
 		res = CommandStatus::UNDEFINED;
 		double fval = 100.1;
@@ -371,22 +443,24 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		WaitIOS(IOS, 1);
-		REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set.
+		if (!WaitIOSResult(IOS, 10, res, CommandStatus::UNDEFINED))
+			REQUIRE("" == "Command Status Update timed out");
+		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
 		std::string url("http://testserver/thisport/cb?test=harold");
-		std::string sres;
+		protected_string sres("");
 
 		auto pResponseCallback = std::make_shared<std::function<void(std::string url)>>([&](std::string response)
 			{
-				sres = response;
+				sres.set(response);
 			});
 
+		// Direct inject web request to python code - we get response back from python module PyPortSim.py
 		PythonPort->RestHandler(url, "", pResponseCallback);
 
-		LOGDEBUG("Response {}", sres);
 		WaitIOS(IOS, 2);
-		REQUIRE(sres == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
+		LOGDEBUG("Response {}", sres.get());
+		REQUIRE(sres.get() == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
 
 		// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.
 		PythonPort->SetTimer(120, 1200);
@@ -400,8 +474,9 @@ TEST_CASE("Py.TestsUsingPython")
 			PythonPort->RestHandler(url, "", pResponseCallback);
 		}
 
-		// Wait - we should see the timer callback triggered.
-		WaitIOS(IOS, 5);
+		// Wait - we should see the timer callback triggered and no crashes!
+		WaitIOS(IOS, 7);
+		LOGDEBUG("Last Response {}", sres.get());
 	}
 
 	INFO("WebServerTest")
@@ -423,8 +498,6 @@ TEST_CASE("Py.TestsUsingPython")
 
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
-
-		WaitIOS(IOS, 1);
 
 		callresp = "";
 
@@ -448,11 +521,28 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE(expectedresponse == callresp);
 
 	}
+
+	LOGDEBUG("Tests Complete, starting teardown");
+
 	PythonPort->Disable();
 	PythonPort2->Disable();
+	PythonPort3->Disable();
+	PythonPort4->Disable();
 
-	STOP_IOS();
+	if (!WaitIOSFnResult(IOS, 10, [&]()
+		    {
+			    return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
+		    }))
+	{
+		REQUIRE("" == "Waiting for Ports to be disabled timed out");
+	}
+	LOGDEBUG("Ports Disabled");
+
+	STOP_IOS(); // Wait in here for all threads to stop.
+	LOGDEBUG("IOS Stopped");
+
 	STANDARD_TEST_TEARDOWN();
+	LOGDEBUG("Test Teardown complete");
 }
 
 }

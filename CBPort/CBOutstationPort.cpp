@@ -64,22 +64,21 @@ CBOutstationPort::~CBOutstationPort()
 
 void CBOutstationPort::Enable()
 {
-	if (enabled) return;
+	if (enabled.exchange(true)) return;
 	try
 	{
 		CBConnection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
-		enabled = true;
 	}
 	catch (std::exception& e)
 	{
 		LOGERROR("Problem opening connection : " + Name + " : " + e.what());
+		enabled = false;
 		return;
 	}
 }
 void CBOutstationPort::Disable()
 {
-	if (!enabled) return;
-	enabled = false;
+	if (!enabled.exchange(false)) return;
 
 	CBConnection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
@@ -104,7 +103,7 @@ void CBOutstationPort::SocketStateHandler(bool state)
 void CBOutstationPort::Build()
 {
 	// Need a couple of things passed to the point table.
-	MyPointConf->PointTable.Build(IsOutStation, *pIOS);
+	MyPointConf->PointTable.Build(IsOutStation, *pIOS, MyPointConf->SOEQueueSize, SOEBufferOverflowFlag);
 
 	// Creates internally if necessary
 	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method

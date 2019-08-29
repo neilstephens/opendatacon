@@ -59,6 +59,8 @@ public:
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the CBConnection.
 
+	// Testing use only
+	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 protected:
 
 	TCPClientServer ClientOrServer();
@@ -73,6 +75,7 @@ protected:
 	int Limit(int val, int max);
 	uint8_t Limit(uint8_t val, uint8_t max);
 	ConnectionTokenType pConnection;
+	std::shared_ptr<protected_bool> SOEBufferOverflowFlag;
 };
 
 #endif

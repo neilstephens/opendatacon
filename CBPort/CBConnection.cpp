@@ -221,7 +221,7 @@ void CBConnection::Open(const ConnectionTokenType &ConnectionTok)
 
 void CBConnection::Open()
 {
-	if (enabled) return;
+	if (enabled.exchange(true)) return;
 
 	try
 	{
@@ -229,12 +229,12 @@ void CBConnection::Open()
 			throw std::runtime_error("Socket manager uninitialised for - " + InternalChannelID);
 
 		pSockMan->Open();
-		enabled = true;
 		LOGDEBUG("ConnectionTok Opened: {}", InternalChannelID);
 	}
 	catch (std::exception& e)
 	{
 		LOGERROR("Problem opening connection :{} - {}",InternalChannelID, e.what());
+		enabled = false;
 		return;
 	}
 }
@@ -253,8 +253,7 @@ void CBConnection::Close(const ConnectionTokenType &ConnectionTok)
 
 void CBConnection::Close()
 {
-	if (!enabled) return;
-	enabled = false;
+	if (!enabled.exchange(false)) return;
 
 	if (!pSockMan) // Could be empty if a connection was never added (opened)
 		return;

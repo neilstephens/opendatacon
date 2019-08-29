@@ -220,7 +220,7 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 	#else
 	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
 	#endif
-	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("testslog.txt", true);
+	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("md3porttest.log", true);
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
@@ -285,7 +285,8 @@ void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
 }
 void CommandLineLoggingCleanup()
 {
-	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
+	odc::spdlog_flush_all();
+	odc::spdlog_drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
 // A little helper function to make the formatting of the required strings simpler, so we can cut and paste from WireShark.
 // Takes a hex string in the format of "FF120D567200" and turns it into the actual hex equivalent string
@@ -3177,7 +3178,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 
 		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
 
-		Wait(*IOS, 1);
+		Wait(*IOS, 2);
 
 		// Check there is no resend of the command - we must have got an OK packet.
 		REQUIRE(MAResponse == "Not Set");

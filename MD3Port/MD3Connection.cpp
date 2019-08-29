@@ -192,7 +192,7 @@ void MD3Connection::Open(const ConnectionTokenType &ConnectionTok)
 
 void MD3Connection::Open()
 {
-	if (enabled) return;
+	if (enabled.exchange(true)) return;
 
 	try
 	{
@@ -200,12 +200,12 @@ void MD3Connection::Open()
 			throw std::runtime_error("Socket manager uninitialised for - " + ChannelID);
 
 		pSockMan->Open();
-		enabled = true;
 		LOGDEBUG("Connection Opened: " + ChannelID);
 	}
 	catch (std::exception& e)
 	{
 		LOGERROR("Problem opening connection : " + ChannelID + " - " + e.what());
+		enabled = false;
 		return;
 	}
 }
@@ -225,8 +225,7 @@ void MD3Connection::Close(const ConnectionTokenType &ConnectionTok)
 
 void MD3Connection::Close()
 {
-	if (!enabled) return;
-	enabled = false;
+	if (!enabled.exchange(false)) return;
 
 	if (!pSockMan) // Could be empty if a connection was never added (opened)
 		return;

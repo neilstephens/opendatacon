@@ -121,6 +121,11 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 		CBCommandTimeoutmsec = JSONRoot["CBCommandTimeoutmsec"].asUInt();
 		LOGDEBUG("Conf processed - CBCommandTimeoutmsec - {}", std::to_string(CBCommandTimeoutmsec));
 	}
+	if (JSONRoot.isMember("SOEQueueSize"))
+	{
+		SOEQueueSize = JSONRoot["SOEQueueSize"].asUInt();
+		LOGDEBUG("Conf processed - SOEQueueSize - {}", std::to_string(SOEQueueSize));
+	}
 	if (JSONRoot.isMember("CBCommandRetries"))
 	{
 		CBCommandRetries = JSONRoot["CBCommandRetries"].asUInt();

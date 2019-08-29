@@ -31,7 +31,7 @@ environment:
 clone_folder: C:\projects\opendatacon
   
 init:
-    
+
 install:
 - ps: >-
     If (-not (Test-Path C:\libmodbus\libmodbus)){
@@ -71,16 +71,26 @@ build_script:
 - cmd: cmake --build %cmake_builddir% --config %configuration%
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target INSTALL
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target PACKAGE
+
 test_script:
 - cmd: '%cmake_builddir%\install\ODC_tests.exe -d yes'
 - cmd: '%cmake_builddir%\install\DNP3Port_tests.exe -d yes'
-- cmd: '%cmake_builddir%\install\MD3Port_tests.exe -d yes'
-- cmd: '%cmake_builddir%\install\CBPort_tests.exe error -d yes'
-- cmd: '%cmake_builddir%\install\PyPort_tests.exe error -d yes'
+- cmd: '%cmake_builddir%\install\MD3Port_tests.exe debug -d yes'
+- cmd: '%cmake_builddir%\install\CBPort_tests.exe debug -d yes'
+- cmd: '%cmake_builddir%\install\PyPort_tests.exe debug -d yes'
+
+# Capture the log file outputs so we can debug failed tests.
+on_finish:
+- echo Scanning project folder for all files - C:\projects\opendatacon
+- cmd: ls -oR --group-directories-first C:\projects\opendatacon > dirlist.txt
+- ps: Push-AppveyorArtifact dirlist.txt -FileName ProjectDirectoryListing.txt
+- ps: Get-ChildItem C:\projects\opendatacon\*.log | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+#- ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 artifacts:
   - path: $(cmake_builddir)\opendatacon-*.*.*-*-*-*-*-*.exe
     name: Releases
+
 
 deploy:
   release: 'opendatacon $(APPVEYOR_REPO_TAG_NAME)'
@@ -93,5 +103,3 @@ deploy:
   tag: $(APPVEYOR_REPO_TAG_NAME)
   on:
     appveyor_repo_tag: true
-
-

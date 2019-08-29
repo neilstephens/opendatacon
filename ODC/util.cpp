@@ -40,6 +40,11 @@ std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool()
 	return spdlog::thread_pool();
 }
 
+void spdlog_flush_all()
+{
+	spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) {l->flush(); });
+}
+
 void spdlog_register_logger(std::shared_ptr<spdlog::logger> logger)
 {
 	return spdlog::register_logger(logger);

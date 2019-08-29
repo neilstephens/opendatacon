@@ -42,17 +42,11 @@ class StrandProtectedQueue
 {
 public:
 
-	StrandProtectedQueue(odc::asio_service& _io_service, unsigned int _size)
+	StrandProtectedQueue(odc::asio_service& _io_context, unsigned int _size)
 		: size(_size),
-		io_service(_io_service),
-		internal_queue_strand(_io_service.make_strand())
+		queue_io_context(_io_context),
+		internal_queue_strand(_io_context.make_strand())
 	{}
-/*	StrandProtectedQueue()
-            : io_service(nullptr),
-            size(256),
-            internal_queue_strand(nullptr)
-      {}
-*/
 
 	// Return front of queue value
 	bool sync_front(T &retval)
@@ -81,13 +75,13 @@ public:
 		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
 		while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
 		{
-			if (io_service.stopped() == true)
+			if (queue_io_context.stopped() == true)
 			{
 				// If we are closing get out of here. Dont worry about the result.
 				return false;
 			}
 			// Our result is not ready, so let ASIO run one work handler. Kind of like a co-operative task switch
-			io_service.poll_one();
+			queue_io_context.poll_one();
 		}
 
 		retval = future.get();
@@ -118,13 +112,13 @@ public:
 		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
 		while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
 		{
-			if (io_service.stopped() == true)
+			if (queue_io_context.stopped() == true)
 			{
 				// If we are closing get out of here. Dont worry about the result.
 				return false;
 			}
 			// Our result is not ready, so let ASIO run one work handler. Kind of like a co-operative task switch
-			io_service.poll_one();
+			queue_io_context.poll_one();
 		}
 
 		return future.get();
@@ -143,13 +137,13 @@ public:
 		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
 		while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
 		{
-			if (io_service.stopped() == true)
+			if (queue_io_context.stopped() == true)
 			{
 				// If we are closing get out of here. Dont worry about the result.
 				return false;
 			}
 			// Our result is not ready, so let ASIO run one work handler. Kind of like a co-operative task switch
-			io_service.poll_one();
+			queue_io_context.poll_one();
 		}
 
 		return future.get();
@@ -175,13 +169,13 @@ public:
 		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
 		while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
 		{
-			if (io_service.stopped() == true)
+			if (queue_io_context.stopped() == true)
 			{
 				// If we are closing get out of here.
 				return;
 			}
 			// Our result is not ready, so let ASIO run one work handler. Kind of like a co-operative task switch
-			io_service.poll_one();
+			queue_io_context.poll_one();
 		}
 	}
 	void async_push(const T &_value)
@@ -201,7 +195,7 @@ public:
 private:
 	std::queue<T> fifo;
 	unsigned int size;
-	odc::asio_service& io_service;
+	odc::asio_service& queue_io_context;
 	std::unique_ptr<asio::io_service::strand> internal_queue_strand;
 };
 

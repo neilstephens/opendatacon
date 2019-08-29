@@ -33,18 +33,8 @@
 #include "CBPointTableAccess.h"
 #include "CBConnection.h"
 
-// Megadata System Flag register definition bits
-#define SYSTEMPOWERUPFLAGBIT 15
-#define SYSTEMTIMEINCORRECTFLAGBIT 14
-#define FILEUPLOADPENDINGFLAGBIT 13
-
 enum TCPClientServer { CLIENT, SERVER };
 enum server_type_t { ONDEMAND, PERSISTENT, MANUAL };
-
-enum class SerialParity: char
-{
-	NONE='N',EVEN='E',ODD='O'
-};
 
 struct CBAddrConf
 {

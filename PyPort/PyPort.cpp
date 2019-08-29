@@ -43,6 +43,7 @@
 #include <vector>
 #include <fstream>
 #include <stdio.h>
+#include <whereami++.h>
 #ifdef WIN32
 #include <direct.h>
 #define PathSeparator "\\"
@@ -123,7 +124,7 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 PyPort::~PyPort()
 {
 	LOGDEBUG("Destructing PyPort");
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational, Python Destructor ignored", Name);
 		return;
@@ -135,24 +136,31 @@ void PyPort::Build()
 {
 	LOGDEBUG("PyPort Build called for {}", Name);
 
-	// Check that the Python Module is available to load.
+	// Check that the Python Module is available to load in either the current path, or the path to the executing program
 	std::string CurrentPath(GetCurrentWorkingDir());
+	std::string PyModPath;
 	std::string FullModuleFilename(CurrentPath + PathSeparator + MyConf->pyModuleName+".py");
-
-	#ifdef SCOTTPYTHONCODEPATH
-	// For my dev code, try where I have it!
-	CurrentPath = "C:\\Users\\scott\\Documents\\Scott\\Company Work\\AusGrid\\PyPort\\PythonCode";
-	FullModuleFilename = CurrentPath + PathSeparator + MyConf->pyModuleName + ".py";
-	#endif
 
 	if (fileexists(FullModuleFilename))
 	{
-		LOGDEBUG("Found Python Module {}", FullModuleFilename);
+		LOGDEBUG("Found Python Module in current directory {}", FullModuleFilename);
+		PyModPath = CurrentPath;
 	}
 	else
 	{
-		LOGERROR("Could not find Python Module {}", FullModuleFilename);
-		return;
+		std::string ExePath = whereami::getExecutablePath().dirname();
+		FullModuleFilename = ExePath + PathSeparator + MyConf->pyModuleName + ".py";
+
+		if (fileexists(FullModuleFilename))
+		{
+			LOGDEBUG("Found Python Module in exe directory {}", FullModuleFilename);
+			PyModPath = ExePath;
+		}
+		else
+		{
+			LOGERROR("Could not find Python Module {} in {} or {}", MyConf->pyModuleName + ".py", CurrentPath, ExePath);
+			return;
+		}
 	}
 	// Only 1 strand per ODC system. Must wait until build as pIOS is not available in the constructor
 	std::call_once(PyPort::python_strand_flag,[this]()
@@ -161,29 +169,37 @@ void PyPort::Build()
 			PyPort::python_strand = pIOS->make_strand();
 		});
 
-	// Every call to pWrapper should be strand protected.
-	python_strand->dispatch([&, CurrentPath]()
+	// Every call to pWrapper should be strand protected. NOTE ASIO is not running here...
+	python_strand->dispatch([&, PyModPath]()
 		{
 			// If first time constructor is called, will instansiate the interpreter.
 			// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
 			// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
-			pWrapper.reset(new PythonWrapper(this->Name, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
-					std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+			pWrapper = std::make_unique<PythonWrapper>(this->Name, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
+				std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 			try
 			{
 			// Python code is loaded and class created, __init__ called.
-			      pWrapper->Build("PyPort", CurrentPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name);
+			      pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name);
 
 			      pWrapper->Config(JSONMain, JSONOverride);
 			      LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
+
+			// Tell our Python code that we are ready to roll - once ASIO is started.
+			// The post should not be executed until the asio threads are started and RUN called
+			      python_strand->post([&, PyModPath]()
+					{
+						PortOperational.store(true);
+						LOGDEBUG("Port Operational {}", Name);
+
+						pWrapper->PortOperational();
+					});
 			}
 			catch (std::exception& e)
 			{
 			      LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
 			      return;
 			}
-			PortOperational = true;
-			LOGDEBUG("Port Operational {}", Name);
 		});
 
 	pServer = ServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new ServerManager if required
@@ -256,14 +272,27 @@ void PyPort::Build()
 
 void PyPort::Enable()
 {
-	if (enabled) return;
-	enabled = true;
+	// If already true, return - otherwise set to true
+	if (enabled.exchange(true)) return;
 
 	ServerManager::StartConnection(pServer);
 
-	if (!PortOperational)
+	auto timer = pIOS->make_steady_timer();
+	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
+	size_t MaxWaitToBecomeOperationalSeconds = 10;
+	size_t loopwaitmsec = 100;
+	size_t loopcnt = MaxWaitToBecomeOperationalSeconds * 1000 / loopwaitmsec;
+
+	while (!PortOperational.load() && (loopcnt-- > 0))
 	{
-		LOGDEBUG("PyPort {} not operational when trying to enable", Name);
+		// Delay in here for a maximum period for the port to become operational.
+		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(loopwaitmsec));
+		timer->wait();
+	}
+
+	if (!PortOperational.load())
+	{
+		LOGDEBUG("PyPort {} not operational when trying to enable, and we exceed maximum time for it to startup - {} seconds.", Name, MaxWaitToBecomeOperationalSeconds);
 		return;
 	}
 
@@ -275,13 +304,13 @@ void PyPort::Enable()
 
 void PyPort::Disable()
 {
-	if (!enabled) return;
-	enabled = false;
+	// If already false, return - otherwise set to false.
+	if (!enabled.exchange(false)) return;
 
 	// Leaves handlers in place, so can be restarted without re-adding handlers
 	ServerManager::StopConnection(pServer);
 
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational during port disable", Name);
 		return;
@@ -522,18 +551,32 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational, Event from {} ignored", Name, SenderName);
 		return;
 	}
 
-	python_strand->dispatch([&, event, SenderName, pStatusCallback]()
-		{
-			CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
+	if (MyConf->pyEventsAreQueued)
+	{
+		// Use a concurrent queue to buffer the events into Python. If the events are queued, then the python code is responsible
+		// for periodically processing them and emptying the queue.
+		pWrapper->QueueEvent(odc::ToString(event->GetEventType()),
+			event->GetIndex(),
+			event->GetTimestamp(),
+			ToString(event->GetQuality()),
+			event->GetPayloadString(),
+			SenderName);
+	}
+	else
+	{
+		python_strand->dispatch([&, event, SenderName, pStatusCallback]()
+			{
+				CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
 
-			PostCallbackCall(pStatusCallback, result);
-		});
+				PostCallbackCall(pStatusCallback, result);
+			});
+	}
 }
 void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 {
@@ -542,7 +585,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 		LOGDEBUG("PyPort {} not enabled, SetTimer call ignored", Name);
 		return;
 	}
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational, SetTimer call ignored", Name);
 		return;
@@ -559,7 +602,6 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 					{
 						pWrapper->CallTimerHandler(id);
 					});
-
 			}
 		});
 }
@@ -574,7 +616,7 @@ void PyPort::RestHandler(const std::string& url, const std::string& content, Res
 		PostResponseCallbackCall(pResponseCallback, "Error Port not enabled");
 		return;
 	}
-	if (!PortOperational)
+	if (!PortOperational.load())
 	{
 		LOGDEBUG("PyPort {} not operational, Restful Request ignored", Name);
 		PostResponseCallbackCall(pResponseCallback, "Error Port not opeational");
@@ -636,5 +678,7 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyHTTPAddr = JSONRoot["IP"].asString();
 	if (JSONRoot.isMember("Port"))
 		MyConf->pyHTTPPort = JSONRoot["Port"].asString();
+	if (JSONRoot.isMember("EventsAreQueued"))
+		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
 
 }

@@ -35,6 +35,7 @@
 
 
 #include "PythonWrapper.h"
+#include <frameobject.h>
 #include <chrono>
 #include <ctime>
 #include <exception>
@@ -48,12 +49,14 @@
 #include "PyPort.h"
 #include <Python.h>
 
+
 using namespace odc;
 
 PythonInitWrapper PythonWrapper::PythonInit;
+PyThreadState* PythonInitWrapper::threadState;
+
 std::unordered_set<uint64_t> PythonWrapper::PyWrappers;
 std::shared_timed_mutex PythonWrapper::WrapperHashMutex;
-PyThreadState* PythonWrapper::threadState;
 
 // Wrap getting/releasing the GIL to be bullet proof.
 class GetPythonGIL
@@ -104,7 +107,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		if (!PyArg_ParseTuple(args, "LIs:log", &guid, &logtype, &message))
 		{
 			PythonWrapper::PyErrOutput();
-			return NULL;
+			Py_RETURN_NONE;
 		}
 
 		std::string WholeMessage = "pyLog - ";
@@ -120,7 +123,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		}
 		else
 		{
-			LOGDEBUG("odc.Log called from Python code for unknown PyPort object");
+			LOGDEBUG("odc.Log called from Python code for unknown PyPort object - {0:#x}", guid);
 		}
 
 		WholeMessage += message;
@@ -155,7 +158,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		LOGERROR("Excception Caught in odc_log - {}", e.what());
 	}
 	// Return a PyObject return value, in this case "none".
-	return Py_BuildValue("");
+	Py_RETURN_NONE;
 }
 
 // This is an extension method that we have provided to our embedded Python. It will post an event into the ODC bus.
@@ -170,12 +173,11 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 		const char* Quality;
 		uint64_t guid;
 
-
 		// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
 		if (!PyArg_ParseTuple(args, "LsIss:PublishEvent", &guid, &EventType, &ODCIndex, &Quality, &Payload))
 		{
 			PythonWrapper::PyErrOutput();
-			return NULL;
+			Py_RETURN_NONE; // This will throw an execption in the python code.
 		}
 
 		// Work out which instance of our PyWrapper is talking to us.
@@ -219,7 +221,7 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 		if (!PyArg_ParseTuple(args, "LII:SetTimer", &guid, &id, &delay))
 		{
 			PythonWrapper::PyErrOutput();
-			return NULL;
+			Py_RETURN_NONE;
 		}
 
 		// Work out which instance of our PyWrapper is talking to us.
@@ -232,7 +234,7 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
 			// The PyPort ensures that pyWrapper is managed within a strand
-			LOGDEBUG("Python SetTimer ID: {}, Delay {}", id, delay);
+			//LOGTRACE("Python SetTimer ID: {}, Delay {}", id, delay);
 			auto fn = thisPyWrapper->GetPythonPortSetTimerFn();
 			fn(id, delay);
 		}
@@ -246,13 +248,77 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 		LOGERROR("Excception Caught in odc_SetTimer - {}", e.what());
 	}
 	// Return a PyObject return value, in this case "none".
-	return Py_BuildValue("");
+	Py_RETURN_NONE;
+}
+
+// This is an extension method that we have provided to our embedded Python. It will post an event into the ODC bus.
+// It is static, so we have to work out which instance of the PythonWrapper class should handle it.
+static PyObject* odc_GetNextEvent(PyObject* self, PyObject* args)
+{
+	try
+	{
+		uint64_t guid;
+
+		// Now parse the arguments provided
+		if (!PyArg_ParseTuple(args, "L:GetNextEvent", &guid))
+		{
+			PythonWrapper::PyErrOutput();
+			Py_RETURN_NONE; // This will throw an execption in the python code.
+		}
+
+		// Work out which instance of our PyWrapper is talking to us.
+		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
+
+		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
+
+		if (thisPyWrapper != nullptr)
+		{
+			// Will create an async wait and call the Python code at the correct time.
+			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
+			// The PyPort ensures that pyWrapper is managed within a strand
+			EventQueueType eq;
+			if (!thisPyWrapper->DequeueEvent(eq))
+			{
+				// Queue is empty - dont do anything - the python code will test for empty string eventtype
+			}
+			//LOGDEBUG("GetNextEvent {}, {}, {}, {}, {}, {}", eq.EventType, eq.Index, eq.Quality, eq.Payload, eq.Sender, eq.TimeStamp);
+
+			auto pyArgs = PyTuple_New(6);
+			auto pyEventType = PyUnicode_FromString(eq.EventType.c_str()); // String Event Type
+			auto pyIndex = PyLong_FromUnsignedLong(eq.Index);
+			auto pyTime = PyLong_FromUnsignedLongLong(eq.TimeStamp);   // msSinceEpoch
+			auto pyQuality = PyUnicode_FromString(eq.Quality.c_str()); // String quality flags
+			auto pyPayload = PyUnicode_FromString(eq.Payload.c_str());
+			auto pySender = PyUnicode_FromString(eq.Sender.c_str());
+
+			// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
+			PyTuple_SetItem(pyArgs, 0, pyEventType);
+			PyTuple_SetItem(pyArgs, 1, pyIndex);
+			PyTuple_SetItem(pyArgs, 2, pyTime);
+			PyTuple_SetItem(pyArgs, 3, pyQuality);
+			PyTuple_SetItem(pyArgs, 4, pyPayload);
+			PyTuple_SetItem(pyArgs, 5, pySender);
+
+			return pyArgs;
+		}
+		else
+		{
+			LOGDEBUG("odc.GetNextEvent called from Python code for unknown PyPort object - ignored");
+		}
+	}
+	catch (std::exception& e)
+	{
+		LOGERROR("Excception Caught in odc_GetNextEvent() - {}", e.what());
+	}
+
+	Py_RETURN_NONE; // This will throw an execption in the python code.
 }
 
 static PyMethodDef odcMethods[] = {
 	{"log", odc_log, METH_VARARGS, "Process a log message, level and string message"},
 	{"PublishEvent", odc_PublishEvent, METH_VARARGS, "Publish ODC event to subscribed ports"},
 	{"SetTimer", odc_SetTimer, METH_VARARGS, "Set a Timer Callback up"},
+	{"GetNextEvent", odc_GetNextEvent, METH_VARARGS, "Get the next event from the queue - return None if empty"},
 	{NULL, NULL, 0, NULL}
 };
 
@@ -265,14 +331,7 @@ static PyObject* PyInit_odc(void)
 	return PyModule_Create(&odcModule);
 }
 
-// Load the module into the python interpreter before we initialise it.
-void ImportODCModule()
-{
-	if (PyImport_AppendInittab("odc", &PyInit_odc) != 0)
-	{
-		LOGERROR("Unable to import odc module to Python Interpreter");
-	}
-}
+
 
 #ifdef _MSC_VER
 #pragma endregion
@@ -285,13 +344,28 @@ PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn
 	PythonPortPublishEventCallFn(PublishEventCallFn)
 {}
 
+#define LOGDEBUGODC(...) \
+	if (auto log = odc::spdlog_get("opendatacon")) \
+		log->debug(__VA_ARGS__);
+#define LOGERRORODC(...) \
+	if (auto log = odc::spdlog_get("opendatacon")) \
+		log->error(__VA_ARGS__);
+
+// Load the module into the python interpreter before we initialise it.
+void ImportODCModule()
+{
+	if (PyImport_AppendInittab("odc", &PyInit_odc) != 0)
+	{
+		LOGERRORODC("Unable to import odc module to Python Interpreter");
+	}
+}
 
 // Startup the interpreter - need to have matching tear down in destructor.
 PythonInitWrapper::PythonInitWrapper()
 {
 	try
 	{
-		LOGDEBUG("Py_Initialize");
+		LOGDEBUGODC("Py_Initialize");
 
 		// Load our odc module exposing our internal methods to python (i.e. loggin commands)
 		ImportODCModule();
@@ -304,8 +378,7 @@ PythonInitWrapper::PythonInitWrapper()
 		pythonhome += OSPATHSEP+pythonhome+"/"+PYTHON_LIBDIRPLAT;
 		#endif
 		PlatformSetEnv("PYTHONHOME",pythonhome.c_str(),1);
-		if (auto log = odc::spdlog_get("opendatacon"))
-			log->debug("Set PYTHONHOME env var to: '{}'",pythonhome);
+		LOGDEBUGODC("Set PYTHONHOME env var to: '{}'",pythonhome);
 
 		std::string newpythonpath;
 		if(auto pythonpath = getenv("PYTHONPATH"))
@@ -314,48 +387,49 @@ PythonInitWrapper::PythonInitWrapper()
 			newpythonpath = pythonhome;
 
 		PlatformSetEnv("PYTHONPATH",newpythonpath.c_str(),1);
-		if (auto log = odc::spdlog_get("opendatacon"))
-			log->debug("Set PYTHONPATH env var to: '{}'",newpythonpath);
+		LOGDEBUGODC("Set PYTHONPATH env var to: '{}'",newpythonpath);
 		#endif
 
 		Py_Initialize(); // Get the Python interpreter running
-		if (auto log = odc::spdlog_get("opendatacon"))
-			log->debug("Initilised Python");
+		LOGDEBUGODC("Initilised Python");
 
 		#ifndef PYTHON_34_ORLESS
 		//FIXME: can't log properly because this is static constructor and log doesn't exist
 		//	use static atomic_flag and static weak_ptr ctor guard like DNP3Manager instead
-		//LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
-		if (auto log = odc::spdlog_get("opendatacon"))
-			log->debug("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
+		LOGDEBUGODC("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
 		#endif
 
 		// Now execute some commands to get the environment ready.
 		if (PyRun_SimpleString("import sys") != 0)
 		{
-			LOGERROR("Unable to import python sys library");
+			LOGERRORODC("Unable to import python sys library");
 			return;
 		}
 
-		// Append current working directory to the sys.path variable - so we ca find the module.
+		// Append current working directory to the sys.path variable - so we can find the module.
 		if (PyRun_SimpleString("sys.path.append(\".\")") != 0)
 		{
-			LOGERROR("Unable to append to sys path in python sys library");
+			LOGERRORODC("Unable to append to sys path in python sys library");
 			return;
 		}
+
+		// Log the Python path for debugging
+		std::wstring path = Py_GetPath();
+		std::string spath(path.begin(), path.end());
+		LOGDEBUGODC("Current Python sys.path - {}",spath);
 
 		PyDateTime_IMPORT;
 
 		// Initialize threads and release GIL (saving it as well):
 		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
 		if (!PyGILState_Check())
-			LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
+			LOGERRORODC("About to release and save our GIL state - but apparently we dont have a GIL lock...");
 
-		PythonWrapper::threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
+		threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught during pyInitialize() - {}", e.what());
+		LOGERRORODC("Exception Caught during pyInitialize() - {}", e.what());
 	}
 }
 
@@ -363,23 +437,23 @@ PythonInitWrapper::PythonInitWrapper()
 // https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
 PythonInitWrapper::~PythonInitWrapper()
 {
-	LOGDEBUG("Py_Finalize");
+	LOGDEBUGODC("Py_Finalize");
 	// Restore the state as it was after we called Initialize()
-	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
+	LOGDEBUGODC("About to Finalize - Have GIL {} ", PyGILState_Check());
 	// Supposed to acquire the GIL and restore the state...
-	PyEval_RestoreThread(PythonWrapper::threadState);
-	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
+	PyEval_RestoreThread(threadState);
+	LOGDEBUGODC("About to Finalize - Have GIL {} ", PyGILState_Check());
 
 	//	GetPythonGIL g; //TODO If we do this we hang, if we dont we get an error saying we dont have the GIL...
 	try
 	{
 		//TODO This try/catch does not work, as when Py_Finalize() fails, it calls abort - which we cannot catch.
 		//			if (!Py_FinalizeEx())
-		LOGERROR("Python Py_Finalize() Failed");
+		LOGERRORODC("Python Py_Finalize() Failed");
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught calling Py_FinalizeEx() - {}", e.what());
+		LOGERRORODC("Exception Caught calling Py_FinalizeEx() - {}", e.what());
 	}
 }
 
@@ -394,6 +468,7 @@ PythonWrapper::~PythonWrapper()
 
 		Py_XDECREF(pyFuncConfig);
 		Py_XDECREF(pyFuncEvent);
+		Py_XDECREF(pyFuncOperational);
 		Py_XDECREF(pyFuncEnable);
 		Py_XDECREF(pyFuncDisable);
 		Py_XDECREF(pyTimerHandler);
@@ -433,7 +508,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	pyModule = PyImport_Import(pyUniCodeModuleName);
 	if (pyModule == nullptr)
 	{
-		LOGERROR("Could not load Python Module - {}", pyLoadModuleName);
+		LOGERROR("Could not load Python Module - {} from {}", pyLoadModuleName, pyPathName);
 		PyErrOutput();
 		throw std::runtime_error("Could not load Python Module");
 	}
@@ -489,6 +564,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
 
 	pyFuncConfig = GetFunction(pyInstance, "Config");
+	pyFuncOperational = GetFunction(pyInstance, "Operational");
 	pyFuncEnable = GetFunction(pyInstance, "Enable");
 	pyFuncDisable = GetFunction(pyInstance, "Disable");
 	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
@@ -515,7 +591,26 @@ void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONO
 	if (pyResult) Py_DECREF(pyResult);
 	Py_DECREF(pyArgs);
 }
-
+void PythonWrapper::PortOperational()
+{
+	try
+	{
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error - Interpreter Closing Down in PortOperational");
+			return;
+		}
+		auto pyArgs = PyTuple_New(0);
+		PyObject* pyResult = PyCall(pyFuncOperational, pyArgs); // No passed variables, assume no delayed return
+		if (pyResult) Py_DECREF(pyResult);
+		Py_DECREF(pyArgs);
+	}
+	catch (std::exception& e)
+	{
+		LOGERROR("Exception Caught calling pyPortOperational() - {}", e.what());
+	}
+}
 void PythonWrapper::Enable()
 {
 	try
@@ -558,7 +653,27 @@ void PythonWrapper::Disable()
 	}
 }
 
+// This is not synced with the strand when called. So the queue needs to be multi-producer capable
+void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index, odc::msSinceEpoch_t TimeStamp,
+	const std::string& Quality, const std::string& Payload, const std::string& Sender)
+{
+	EventQueueType item(EventType, Index, TimeStamp, Quality, Payload, Sender);
+	if (!EventQueue.try_enqueue(item))
+	{
+		LOGERROR("Failed to enqueue item into Event queue - insufficient memory. Queue Size {}",EventQueue.size_approx());
+	}
+}
+
+bool PythonWrapper::DequeueEvent(EventQueueType& eq)
+{
+	EventQueue.try_dequeue(eq);
+	// The default constructor for the queue item has empty strings and zero time stamps.
+	// If the dequeue fails, they remain at default values. So use that to return true on success.
+	return (eq.EventType != "");
+}
+
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.
+// This method is synced with the asio strand in PyPort
 CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName)
 {
 	try
@@ -654,7 +769,7 @@ std::string PythonWrapper::RestHandler(const std::string& url, const std::string
 		PyTuple_SetItem(pyArgs, 0, pyurl);
 		PyTuple_SetItem(pyArgs, 1, pycontent);
 
-		PyObject* pyResult = PyCall(pyRestHandler, pyArgs); // No passed variables
+		PyObject* pyResult = PyCall(pyRestHandler, pyArgs);
 
 		Py_DECREF(pyArgs);
 
@@ -693,6 +808,31 @@ PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sF
 	return pyFunc;
 }
 
+void PythonWrapper::DumpStackTrace()
+{
+	PyThreadState* tstate = PyThreadState_GET();
+	if (NULL != tstate && NULL != tstate->frame)
+	{
+		PyFrameObject* frame = tstate->frame;
+
+		LOGERROR("Python stack trace:");
+		while (NULL != frame)
+		{
+			// int line = frame->f_lineno;
+			/*
+			 frame->f_lineno will not always return the correct line number
+			 you need to call PyCode_Addr2Line().
+			*/
+			int line = PyCode_Addr2Line(frame->f_code, frame->f_lasti);
+			const char* filename = PyUnicode_AsUTF8(frame->f_code->co_filename);
+			const char* funcname = PyUnicode_AsUTF8(frame->f_code->co_name);
+			printf("    %s(%d): %s\n", filename, line, funcname);
+			LOGERROR(fmt::format("Trace : {}({}): {}", filename, line, funcname));
+			frame = frame->f_back;
+		}
+	}
+}
+
 void PythonWrapper::PyErrOutput()
 {
 	//TODO Look at https://stackoverflow.com/questions/1796510/accessing-a-python-traceback-from-the-c-api
@@ -709,15 +849,16 @@ void PythonWrapper::PyErrOutput()
 		if (pstr)
 		{
 			const char* err_msg = PyUnicode_AsUTF8(pstr);
+			const char* trace_msg = "";
 			Py_DECREF(pstr);
 
 			if (err_msg)
 			{
-				std::cout << "Python Error " << err_msg << std::endl;
 				LOGERROR("Python Error {}", err_msg);
+				PythonWrapper::DumpStackTrace();
 			}
 		}
-		PyErr_Restore(ptype, pvalue, ptraceback); //TODO: Do we need to do this or DECREF the variables?
+		PyErr_Restore(ptype, pvalue, ptraceback); // Do we need to do this or DECREF the variables? This seems to work.
 	}
 }
 

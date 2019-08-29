@@ -40,6 +40,9 @@
 //#define SCOTTPYTHONCODEPATH
 
 // Hide some of the code to make Logging cleaner
+#define LOGTRACE(...) \
+	if (auto log = odc::spdlog_get("PyPort")) \
+		log->trace(__VA_ARGS__);
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("PyPort")) \
 		log->debug(__VA_ARGS__);

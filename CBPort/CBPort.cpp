@@ -32,8 +32,10 @@
 CBPort::CBPort(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
+	SOEBufferOverflowFlag = std::make_shared<protected_bool>(false); // Only really needed for OutStation
+
 	//the creation of a new CBPortConf will get the point details
-	pConf.reset(new CBPortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<CBPortConf>(ConfFilename, ConfOverrides);
 
 	// Just to save a lot of dereferencing..
 	MyConf = static_cast<CBPortConf*>(this->pConf.get());

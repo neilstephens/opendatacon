@@ -15,3 +15,8 @@ def PublishEvent(guid, EventType, ODCIndex, Quality, PayLoad ):
 def SetTimer(guid, id, milliseconds):
     print("SetTimer - Guid - {} - ID {} - Delay - {}".format(guid, id, milliseconds))
     return
+
+# "L:GetNextEvent"
+def GetNextEvent(guid):
+    print("GetNextEvent - Guid - {} ".format(guid))
+    return  "Binary",0,0,"|ONLINE|","1","Dummy"

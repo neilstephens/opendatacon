@@ -160,6 +160,33 @@ enum class ControlCode : uint8_t
 //TODO: make these ToString functions faster
 //	use hash map cache
 #define ENUMSTRING(A,E,B) if(A == E::B) return #B;
+
+inline std::string ToString(const CommandStatus cc)
+{
+	ENUMSTRING(cc, CommandStatus,SUCCESS )
+	ENUMSTRING(cc, CommandStatus,TIMEOUT)
+	ENUMSTRING(cc, CommandStatus,NO_SELECT)
+	ENUMSTRING(cc, CommandStatus,FORMAT_ERROR)
+	ENUMSTRING(cc, CommandStatus,NOT_SUPPORTED)
+	ENUMSTRING(cc, CommandStatus,ALREADY_ACTIVE)
+	ENUMSTRING(cc, CommandStatus,HARDWARE_ERROR)
+	ENUMSTRING(cc, CommandStatus,LOCAL)
+	ENUMSTRING(cc, CommandStatus,TOO_MANY_OPS)
+	ENUMSTRING(cc, CommandStatus,NOT_AUTHORIZED)
+	ENUMSTRING(cc, CommandStatus,AUTOMATION_INHIBIT)
+	ENUMSTRING(cc, CommandStatus,PROCESSING_LIMITED)
+	ENUMSTRING(cc, CommandStatus,OUT_OF_RANGE)
+	ENUMSTRING(cc, CommandStatus,DOWNSTREAM_LOCAL)
+	ENUMSTRING(cc, CommandStatus,ALREADY_COMPLETE)
+	ENUMSTRING(cc, CommandStatus,BLOCKED)
+	ENUMSTRING(cc, CommandStatus,CANCELLED)
+	ENUMSTRING(cc, CommandStatus,BLOCKED_OTHER_MASTER)
+	ENUMSTRING(cc, CommandStatus,DOWNSTREAM_FAIL)
+	ENUMSTRING(cc, CommandStatus,NON_PARTICIPATING)
+	ENUMSTRING(cc, CommandStatus,UNDEFINED)
+	return "<no_string_representation>";
+}
+
 inline std::string ToString(const ControlCode cc)
 {
 	ENUMSTRING(cc,ControlCode,NUL                  )

@@ -54,23 +54,21 @@ MD3MasterPort::~MD3MasterPort()
 
 void MD3MasterPort::Enable()
 {
-	if (enabled) return;
+	if (enabled.exchange(true)) return;
 	try
 	{
 		MD3Connection::Open(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
-
-		enabled = true;
 	}
 	catch (std::exception& e)
 	{
 		LOGERROR("Problem opening connection TCP : " + Name + " : " + e.what());
+		enabled = false;
 		return;
 	}
 }
 void MD3MasterPort::Disable()
 {
-	if (!enabled) return;
-	enabled = false;
+	if (!enabled.exchange(false)) return;
 
 	MD3Connection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
@@ -197,7 +195,7 @@ void MD3MasterPort::PostCallbackCall(const odc::SharedStatusCallback_t &pStatusC
 {
 	if (pStatusCallback != nullptr)
 	{
-		pIOS->post([&, pStatusCallback, c]()
+		pIOS->post([pStatusCallback, c]()
 			{
 				(*pStatusCallback)(c);
 			});

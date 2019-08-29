@@ -61,6 +61,7 @@ public:
 	void SetTimer(uint32_t id, uint32_t delayms);
 	void RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback);
 	void PublishEventCall(const std::string &EventTypeStr, uint32_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
+	bool IsOperational() { return PortOperational.load(); };
 
 	// Utility/Testing
 	static bool GetEventTypeFromStringName(const std::string StrEventType, EventType& EventTypeResult);
@@ -82,7 +83,7 @@ private:
 	std::string JSONOverride;
 
 	ServerTokenType pServer;
-	bool PortOperational = false;
+	std::atomic_bool PortOperational{ false };
 
 	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
 	static std::shared_ptr<asio::io_context::strand> python_strand;
