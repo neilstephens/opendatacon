@@ -115,8 +115,6 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
-
 		if (thisPyWrapper != nullptr)
 		{
 			WholeMessage += thisPyWrapper->Name + " - ";
@@ -183,8 +181,6 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
-
 		if (thisPyWrapper != nullptr)
 		{
 			// Will create an async wait and call the Python code at the correct time.
@@ -227,8 +223,6 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
-
 		if (thisPyWrapper != nullptr)
 		{
 			// Will create an async wait and call the Python code at the correct time.
@@ -268,8 +262,6 @@ static PyObject* odc_GetNextEvent(PyObject* self, PyObject* args)
 
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
-
-		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
 
 		if (thisPyWrapper != nullptr)
 		{
@@ -849,7 +841,6 @@ void PythonWrapper::PyErrOutput()
 		if (pstr)
 		{
 			const char* err_msg = PyUnicode_AsUTF8(pstr);
-			const char* trace_msg = "";
 			Py_DECREF(pstr);
 
 			if (err_msg)

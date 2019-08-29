@@ -122,7 +122,7 @@ private:
 	void StoreWrapperMapping()
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
-		uint64_t guid = (uint64_t)this;
+		uint64_t guid = reinterpret_cast<uint64_t>(this);
 		if (sizeof(uintptr_t) == 4) guid &= 0x00000000FFFFFFFF; // Stop sign extension
 		PyWrappers.emplace(guid);
 		LOGDEBUG("Stored python wrapper guid into mapping table - {0:#x}", guid);
@@ -130,7 +130,7 @@ private:
 	void RemoveWrapperMapping()
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(PythonWrapper::WrapperHashMutex);
-		uint64_t guid = (uint64_t)this;
+		uint64_t guid = reinterpret_cast<uint64_t>(this);
 		if (sizeof(uintptr_t) == 4) guid &= 0x00000000FFFFFFFF; // Stop sign extension
 		PyWrappers.erase(guid);
 	}

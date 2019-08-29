@@ -43,20 +43,14 @@ TEST_CASE(SUITE("EventTypes"))
 
 		//construct
 		std::shared_ptr<EventInfo> event;
-		REQUIRE_NOTHROW([&]()
-			{
-				event = std::make_shared<EventInfo>(event_type);
-			} ());
+		REQUIRE_NOTHROW(event = std::make_shared<EventInfo>(event_type););
 
 		//set default payload
 		REQUIRE_NOTHROW(event->SetPayload());
 
 		//copy
 		std::shared_ptr<EventInfo> event_copy;
-		REQUIRE_NOTHROW([&]()
-			{
-				event_copy = std::make_shared<EventInfo>(*event);
-			} ());
+		REQUIRE_NOTHROW(event_copy = std::make_shared<EventInfo>(*event););
 
 		//destruct
 		REQUIRE_NOTHROW(event.reset());
