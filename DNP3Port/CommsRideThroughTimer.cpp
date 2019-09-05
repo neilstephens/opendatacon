@@ -51,14 +51,14 @@ void CommsRideThroughTimer::Trigger()
 			self->RideThroughInProgress = true;
 			self->pCommsRideThroughTimer->expires_from_now(std::chrono::milliseconds(self->Timeoutms));
 			self->pCommsRideThroughTimer->async_wait(self->pTimerAccessStrand->wrap([weak_self](asio::error_code err)
-				{
-					auto self = weak_self.lock();
-					if(!self)
-						return;
-					if(self->RideThroughInProgress)
-						self->CommsBadCB();
-					self->RideThroughInProgress = false;
-				}));
+					{
+						auto self = weak_self.lock();
+						if(!self)
+							return;
+						if(self->RideThroughInProgress)
+							self->CommsBadCB();
+						self->RideThroughInProgress = false;
+					}));
 		});
 }
 

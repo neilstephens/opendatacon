@@ -107,37 +107,37 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 	std::shared_ptr<asio::io_service::strand> pCB_sync = pIOS->make_strand();
 	return std::make_shared<std::function<void (CommandStatus status)>>
 		       (pCB_sync->wrap(
-		[work,
-		 pCB_sync,
-		 pCombinedStatus,
-		 pExecCount,
-		 cb_number,
-		 pStatusCallback](CommandStatus status)
-		{
-			if(*pCombinedStatus == CommandStatus::UNDEFINED)
-				return;
+				 [work,
+				  pCB_sync,
+				  pCombinedStatus,
+				  pExecCount,
+				  cb_number,
+				  pStatusCallback](CommandStatus status)
+				 {
+					 if(*pCombinedStatus == CommandStatus::UNDEFINED)
+						 return;
 
-			if(++(*pExecCount) == 1)
-			{
-			      *pCombinedStatus = status;
-			      if(*pCombinedStatus == CommandStatus::UNDEFINED)
-			      {
-			            (*pStatusCallback)(*pCombinedStatus);
-			            return;
-				}
-			}
-			else if(status != *pCombinedStatus)
-			{
-			      *pCombinedStatus = CommandStatus::UNDEFINED;
-			      (*pStatusCallback)(*pCombinedStatus);
-			      return;
-			}
+					 if(++(*pExecCount) == 1)
+					 {
+					       *pCombinedStatus = status;
+					       if(*pCombinedStatus == CommandStatus::UNDEFINED)
+					       {
+					             (*pStatusCallback)(*pCombinedStatus);
+					             return;
+						 }
+					 }
+					 else if(status != *pCombinedStatus)
+					 {
+					       *pCombinedStatus = CommandStatus::UNDEFINED;
+					       (*pStatusCallback)(*pCombinedStatus);
+					       return;
+					 }
 
-			if(*pExecCount >= cb_number)
-			{
-			      (*pStatusCallback)(*pCombinedStatus);
-			}
-		}));
+					 if(*pExecCount >= cb_number)
+					 {
+					       (*pStatusCallback)(*pCombinedStatus);
+					 }
+				 }));
 }
 
 }

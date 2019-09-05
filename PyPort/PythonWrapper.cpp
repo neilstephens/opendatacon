@@ -115,8 +115,6 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
-
 		if (thisPyWrapper != nullptr)
 		{
 			WholeMessage += thisPyWrapper->Name + " - ";
@@ -183,8 +181,6 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
-
 		if (thisPyWrapper != nullptr)
 		{
 			// Will create an async wait and call the Python code at the correct time.
@@ -227,8 +223,6 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
-
 		if (thisPyWrapper != nullptr)
 		{
 			// Will create an async wait and call the Python code at the correct time.
@@ -268,8 +262,6 @@ static PyObject* odc_GetNextEvent(PyObject* self, PyObject* args)
 
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
-
-		//LOGDEBUG("Lookup pyObject: {:#x}, {:#x}", guid, (uint64_t)thisPyWrapper);
 
 		if (thisPyWrapper != nullptr)
 		{
@@ -417,11 +409,6 @@ PythonInitWrapper::PythonInitWrapper()
 			LOGERRORODC("Unable to append to sys path in python sys library");
 			return;
 		}
-
-		//TODO: The debug version of the python dll looks in a different .zip file for all installed .cimpl files.
-		// For the confluence-kafka library the code only exists in the release version of the zip file.
-		// We could potentially add the release zip file to the path, but I am not sure if this would stuff other things up.
-		// Not sure how this would work with the compiled version of the python library.
 
 		// Log the Python path for debugging
 		std::wstring path = Py_GetPath();
@@ -859,7 +846,6 @@ void PythonWrapper::PyErrOutput()
 		if (pstr)
 		{
 			const char* err_msg = PyUnicode_AsUTF8(pstr);
-			const char* trace_msg = "";
 			Py_DECREF(pstr);
 
 			if (err_msg)

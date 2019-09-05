@@ -18,49 +18,48 @@ typedef WHEREAMI_STRING_T whereami_string_t;
   #define WHEREAMI_CXX11
 #endif
 
-namespace whereami
-{
+namespace whereami {
 
-class whereami_path_t
-{
-public:
-	#if defined(WHEREAMI_CXX11)
-	operator whereami_string_t() &&;
-	operator whereami_string_t() const &;
-	#else
-	operator const whereami_string_t&() const;
-	#endif
-	whereami_string_t dirname() const;
-	whereami_string_t basename() const;
+  class whereami_path_t
+  {
+    public:
+#if defined(WHEREAMI_CXX11)
+    operator whereami_string_t() &&;
+    operator whereami_string_t() const &;
+#else
+    operator const whereami_string_t&() const;
+#endif
+    whereami_string_t dirname() const;
+    whereami_string_t basename() const;
 
-private:
-	whereami_path_t();
+    private:
+    whereami_path_t();
 
-	#if defined(WHEREAMI_CXX11)
-	whereami_path_t(whereami_string_t&& path, int dirname_length) noexcept;
-	#else
-	whereami_path_t(whereami_string_t& path, int dirname_length);
-	#endif
+#if defined(WHEREAMI_CXX11)
+    whereami_path_t(whereami_string_t&& path, int dirname_length) noexcept;
+#else
+    whereami_path_t(whereami_string_t& path, int dirname_length);
+#endif
 
-	friend whereami_path_t getExecutablePath();
-	friend whereami_path_t getModulePath();
-	#if !defined(WHEREAMI_DISABLE_OSTREAM)
-	friend std::ostream& operator<<(std::ostream& os, const whereami_path_t& path);
-	#endif
+    friend whereami_path_t getExecutablePath();
+    friend whereami_path_t getModulePath();
+#if !defined(WHEREAMI_DISABLE_OSTREAM)
+    friend std::ostream& operator<<(std::ostream& os, const whereami_path_t& path);
+#endif
 
-	whereami_string_t path;
-	int dirname_length;
-};
+    whereami_string_t path;
+    int dirname_length;
+  };
 
-/**
- * Returns the path to the current executable.
- */
-whereami_path_t getExecutablePath();
+  /**
+   * Returns the path to the current executable.
+   */
+  whereami_path_t getExecutablePath();
 
-/**
- * Returns the path to the current module.
- */
-whereami_path_t getModulePath();
+  /**
+   * Returns the path to the current module.
+   */
+  whereami_path_t getModulePath();
 
 } // namespace whereami
 

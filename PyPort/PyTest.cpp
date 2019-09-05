@@ -402,14 +402,17 @@ TEST_CASE("Py.TestsUsingPython")
 	PythonPort3->Enable();
 	PythonPort4->Enable();
 
+
 	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
-	if (!WaitIOSFnResult(IOS, 10, [&]()
+	REQUIRE_NOTHROW(
+		if (!WaitIOSFnResult(IOS, 10, [&]()
+			    {
+				    return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
+			    }))
 		{
-			return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
-		}))
-	{
-		REQUIRE("" == "Waiting for Ports to Enable timed out");
-	}
+			throw std::runtime_error("Waiting for Ports to Enable timed out");
+		}
+		);
 	LOGINFO("Ports Enabled");
 
 	INFO("SendBinaryAndAnalogEvents")
@@ -431,8 +434,10 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort3->Event(boolevent, "TestHarness3", nullptr);
 		PythonPort4->Event(boolevent, "TestHarness4", nullptr);
 
-		if (!WaitIOSResult(IOS, 12, res, CommandStatus::UNDEFINED))
-			REQUIRE("" == "Command Status Update timed out");
+		REQUIRE_NOTHROW(
+			if (!WaitIOSResult(IOS, 12, res, CommandStatus::UNDEFINED))
+				throw std::runtime_error("Command Status Update timed out");
+			);
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
 		res = CommandStatus::UNDEFINED;
@@ -443,8 +448,10 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		if (!WaitIOSResult(IOS, 10, res, CommandStatus::UNDEFINED))
-			REQUIRE("" == "Command Status Update timed out");
+		REQUIRE_NOTHROW(
+			if (!WaitIOSResult(IOS, 10, res, CommandStatus::UNDEFINED))
+				throw("Command Status Update timed out");
+			);
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
 		std::string url("http://testserver/thisport/cb?test=harold");
@@ -529,13 +536,16 @@ TEST_CASE("Py.TestsUsingPython")
 	PythonPort3->Disable();
 	PythonPort4->Disable();
 
-	if (!WaitIOSFnResult(IOS, 10, [&]()
+	REQUIRE_NOTHROW
+	(
+		if (!WaitIOSFnResult(IOS, 10, [&]()
+			    {
+				    return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
+			    }))
 		{
-			return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
-		}))
-	{
-		REQUIRE("" == "Waiting for Ports to be disabled timed out");
-	}
+			throw("Waiting for Ports to be disabled timed out");
+		}
+	);
 	LOGDEBUG("Ports Disabled");
 
 	STOP_IOS(); // Wait in here for all threads to stop.
