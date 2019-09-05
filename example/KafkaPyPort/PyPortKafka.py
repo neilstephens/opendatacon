@@ -6,6 +6,10 @@ import math
 from datetime import datetime, timezone
 import odc
 # getting a problem loading Kafka module - [No module named 'confluent_kafka.cimpl']
+# This is due the .cimpl file being installed into the release library .zip file, so is not fund under debug builds.
+# Could just copy the C:\Python37\python37.zip to C:\Python37\python37_d.zip, or just use release ODC.
+# Also could get this error if running an "embedded" python ODC build. The library has to be iinstalled into that embedded python.
+# Not sure how to do that yet.
 from confluent_kafka import Producer, Consumer, KafkaError
 
 # Logging Levels
