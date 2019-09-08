@@ -178,7 +178,10 @@ deploy:
   name: "opendatacon ${TRAVIS_TAG}"
   skip_cleanup: true
   on:
+    # Remove the next 3 lines for "normal" operation and put tags back on
     branch: develop
+    draft: true
+    overwrite: true
     #tags: true
     compiler: gcc
   # Upload testing log  files for all builds - ideally only when a build fails. Searches recursively for all .log files.
@@ -192,5 +195,7 @@ deploy:
   draft: true
   on:
     branch: develop
+    draft: true
+    overwrite: true
     compiler: gcc    
 
