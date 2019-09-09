@@ -176,14 +176,15 @@ deploy:
   file_glob: true
   file: opendatacon-*.*.*-*-*-*-*-*.sh
   name: "opendatacon ${TRAVIS_TAG}"
+  draft: true   # Take this out for normal operation
   skip_cleanup: true
+  overwrite: true
   on:
-    # Remove the next 3 lines for "normal" operation and put tags back on
+    # Remove the next line for "normal" operation and put tags back on
     branch: develop
-    draft: true
-    overwrite: true
     #tags: true
     compiler: gcc
+    
   # Upload testing log  files for all builds - ideally only when a build fails. Searches recursively for all .log files.
   provider: releases
   api_key:
@@ -193,9 +194,8 @@ deploy:
   name: "opendatacon_logs ${TRAVIS_TAG}"
   skip_cleanup: true
   draft: true
+  overwrite: true
   on:
     branch: develop
-    draft: true
-    overwrite: true
     compiler: gcc    
 
