@@ -410,10 +410,17 @@ PythonInitWrapper::PythonInitWrapper()
 			return;
 		}
 
-		// Log the Python path for debugging
+		// Log the Python path for debugging (also write to a small file for running test code)
 		std::wstring path = Py_GetPath();
 		std::string spath(path.begin(), path.end());
 		LOGDEBUGODC("Current Python sys.path - {}",spath);
+
+		std::ofstream pythonpathfile;
+		pythonpathfile.open("pythonpath.log");
+		pythonpathfile << "Current Python sys.path - ";
+		pythonpathfile << spath;
+		pythonpathfile << "\n";
+		pythonpathfile.close();
 
 		PyDateTime_IMPORT;
 
