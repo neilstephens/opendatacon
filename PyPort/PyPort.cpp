@@ -180,7 +180,7 @@ void PyPort::Build()
 			try
 			{
 			// Python code is loaded and class created, __init__ called.
-			      pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name);
+			      pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
 
 			      pWrapper->Config(JSONMain, JSONOverride);
 			      LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
@@ -678,7 +678,11 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyHTTPAddr = JSONRoot["IP"].asString();
 	if (JSONRoot.isMember("Port"))
 		MyConf->pyHTTPPort = JSONRoot["Port"].asString();
+
+	//TODO: The following two parameters should always be set to the same value. If different throw an exception as the conf file is wrong!
 	if (JSONRoot.isMember("EventsAreQueued"))
 		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
+	if (JSONRoot.isMember("GlobalUseSystemPython"))
+		MyConf->GlobalUseSystemPython = JSONRoot["GlobalUseSystemPython"].asBool(); // Defaults to OFF
 
 }

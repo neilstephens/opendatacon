@@ -52,7 +52,6 @@
 
 using namespace odc;
 
-PythonInitWrapper PythonWrapper::PythonInit;
 PyThreadState* PythonInitWrapper::threadState;
 
 std::unordered_set<uint64_t> PythonWrapper::PyWrappers;
@@ -336,51 +335,49 @@ PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn
 	PythonPortPublishEventCallFn(PublishEventCallFn)
 {}
 
-#define LOGDEBUGODC(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->debug(__VA_ARGS__);
-#define LOGERRORODC(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->error(__VA_ARGS__);
-
 // Load the module into the python interpreter before we initialise it.
 void ImportODCModule()
 {
 	if (PyImport_AppendInittab("odc", &PyInit_odc) != 0)
 	{
-		LOGERRORODC("Unable to import odc module to Python Interpreter");
+		LOGERROR("Unable to import odc module to Python Interpreter");
 	}
 }
 
 // Startup the interpreter - need to have matching tear down in destructor.
-PythonInitWrapper::PythonInitWrapper()
+PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 {
 	try
 	{
-		LOGDEBUGODC("Py_Initialize");
+		LOGDEBUG("Py_Initialize");
 
 		// Load our odc module exposing our internal methods to python (i.e. loggin commands)
 		ImportODCModule();
 
-		#ifdef PYTHON_LIBDIR
-		//We've packaged python locally - so we need to enable the python code to find the files
-		//whereami::getModulePath() returns the path to libODC (because that's where the code is compiled)
-		auto pythonhome = whereami::getModulePath().dirname() + "/" + PYTHON_LIBDIR;
-		#ifdef PYTHON_LIBDIRPLAT
-		pythonhome += OSPATHSEP+pythonhome+"/"+PYTHON_LIBDIRPLAT;
-		#endif
-		PlatformSetEnv("PYTHONHOME",pythonhome.c_str(),1);
-		LOGDEBUGODC("Set PYTHONHOME env var to: '{}'",pythonhome);
+		if (!GlobalUseSystemPython) // Use ODC built python instead - what we do for the tests in CI
+		{
+			#ifdef PYTHON_LIBDIR
+			//We've packaged python locally - so we need to enable the python code to find the files
+			//whereami::getModulePath() returns the path to libODC (because that's where the code is compiled)
+			auto pythonhome = whereami::getModulePath().dirname() + "/" + PYTHON_LIBDIR;
+			#ifdef PYTHON_LIBDIRPLAT
+			pythonhome += OSPATHSEP + pythonhome + "/" + PYTHON_LIBDIRPLAT;
+			#endif
+			PlatformSetEnv("PYTHONHOME", pythonhome.c_str(), 1);
+			LOGDEBUG("Set PYTHONHOME env var to: '{}'", pythonhome);
 
-		std::string newpythonpath;
-		if(auto pythonpath = getenv("PYTHONPATH"))
-			newpythonpath = pythonhome+OSPATHSEP+pythonpath;
-		else
-			newpythonpath = pythonhome;
+			std::string newpythonpath;
+			if (auto pythonpath = getenv("PYTHONPATH"))
+				newpythonpath = pythonhome + OSPATHSEP + pythonpath;
+			else
+				newpythonpath = pythonhome;
 
-		PlatformSetEnv("PYTHONPATH",newpythonpath.c_str(),1);
-		LOGDEBUGODC("Set PYTHONPATH env var to: '{}'",newpythonpath);
-		#endif
+			PlatformSetEnv("PYTHONPATH", newpythonpath.c_str(), 1);
+			LOGDEBUG("Set PYTHONPATH env var to: '{}'", newpythonpath);
+			#else
+			LOGERROR("OpenDataCon was built without linked in Python support, must be run in UseSystemPython mode - use the follwing in the Python Port config file - GlobalUseSystemPython = true")
+			#endif
+		}
 
 		/* If you run into troubles with 32/64 bit both installed, replace the path in the debugger option is VS with the path to the required Pythn libs and it will work
 		      like this:
@@ -388,52 +385,43 @@ PythonInitWrapper::PythonInitWrapper()
 		*/
 
 		Py_Initialize(); // Get the Python interpreter running
-		LOGDEBUGODC("Initilised Python");
+		LOGDEBUG("Initilised Python");
 
 		#ifndef PYTHON_34_ORLESS
-		//FIXME: can't log properly because this is static constructor and log doesn't exist
-		//	use static atomic_flag and static weak_ptr ctor guard like DNP3Manager instead
-		LOGDEBUGODC("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
+		LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
 		#endif
 
 		// Now execute some commands to get the environment ready.
 		if (PyRun_SimpleString("import sys") != 0)
 		{
-			LOGERRORODC("Unable to import python sys library");
+			LOGERROR("Unable to import python sys library");
 			return;
 		}
 
 		// Append current working directory to the sys.path variable - so we can find the module.
 		if (PyRun_SimpleString("sys.path.append(\".\")") != 0)
 		{
-			LOGERRORODC("Unable to append to sys path in python sys library");
+			LOGERROR("Unable to append to sys path in python sys library");
 			return;
 		}
 
 		// Log the Python path for debugging (also write to a small file for running test code)
 		std::wstring path = Py_GetPath();
 		std::string spath(path.begin(), path.end());
-		LOGDEBUGODC("Current Python sys.path - {}",spath);
-
-		std::ofstream pythonpathfile;
-		pythonpathfile.open("pythonpath.log");
-		pythonpathfile << "Current Python sys.path - ";
-		pythonpathfile << spath;
-		pythonpathfile << "\n";
-		pythonpathfile.close();
+		LOGDEBUG("Current Python sys.path - {}",spath);
 
 		PyDateTime_IMPORT;
 
 		// Initialize threads and release GIL (saving it as well):
 		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
 		if (!PyGILState_Check())
-			LOGERRORODC("About to release and save our GIL state - but apparently we dont have a GIL lock...");
+			LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
 
 		threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 	}
 	catch (std::exception& e)
 	{
-		LOGERRORODC("Exception Caught during pyInitialize() - {}", e.what());
+		LOGERROR("Exception Caught during pyInitialize() - {}", e.what());
 	}
 }
 
@@ -441,23 +429,23 @@ PythonInitWrapper::PythonInitWrapper()
 // https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
 PythonInitWrapper::~PythonInitWrapper()
 {
-	LOGDEBUGODC("Py_Finalize");
+	LOGDEBUG("Py_Finalize");
 	// Restore the state as it was after we called Initialize()
-	LOGDEBUGODC("About to Finalize - Have GIL {} ", PyGILState_Check());
+	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
 	// Supposed to acquire the GIL and restore the state...
 	PyEval_RestoreThread(threadState);
-	LOGDEBUGODC("About to Finalize - Have GIL {} ", PyGILState_Check());
+	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
 
 	//	GetPythonGIL g; //TODO If we do this we hang, if we dont we get an error saying we dont have the GIL...
 	try
 	{
 		//TODO This try/catch does not work, as when Py_Finalize() fails, it calls abort - which we cannot catch.
 		//			if (!Py_FinalizeEx())
-		LOGERRORODC("Python Py_Finalize() Failed");
+		LOGERROR("Python Py_Finalize() Failed");
 	}
 	catch (std::exception& e)
 	{
-		LOGERRORODC("Exception Caught calling Py_FinalizeEx() - {}", e.what());
+		LOGERROR("Exception Caught calling Py_FinalizeEx() - {}", e.what());
 	}
 }
 
@@ -489,8 +477,30 @@ PythonWrapper::~PythonWrapper()
 }
 
 void PythonWrapper::Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
-	const std::string& pyClassName, const std::string& PortName)
+	const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython)
 {
+	// First we make sure there is a gobal instance of PythonInitWrapper
+	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
+	static std::weak_ptr<PythonInitWrapper> weak_mgr;
+
+	// If we're the first/only one on the scene, init the PythonInitWrapper
+	if (!init_flag.test_and_set(std::memory_order_acquire))
+	{
+		//make a custom deleter for the PythonInitWrapper that will also clear the init flag
+		auto deinit_del = [](PythonInitWrapper* mgr_ptr)
+					{init_flag.clear(); delete mgr_ptr; };
+		this->PyMgr = std::shared_ptr<PythonInitWrapper>(
+			new PythonInitWrapper(GlobalUseSystemPython),
+			deinit_del);
+		weak_mgr = this->PyMgr;
+	}
+	else
+	{
+		//otherwise just make sure it's finished initialising and take a shared_ptr
+		while (!(this->PyMgr = weak_mgr.lock()))
+		{} //init happens very seldom, so spin lock is good
+	}
+
 	// Throws exceptions on fail
 	// ImportModuleAndCreateClassInstance
 	GetPythonGIL g;

@@ -72,7 +72,7 @@ public:
 class PythonInitWrapper
 {
 public:
-	PythonInitWrapper();
+	PythonInitWrapper(bool GlobalUseSystemPython);
 	~PythonInitWrapper();
 private:
 	static PyThreadState* threadState;
@@ -84,8 +84,7 @@ class PythonWrapper
 public:
 	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
 	~PythonWrapper();
-	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
-		const std::string& pyClassName, const std::string& PortName);
+	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName, const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
 	void PortOperational(); // Called when Build is complete.
 	void Enable();
@@ -142,7 +141,7 @@ private:
 	static std::unordered_set<uint64_t> PyWrappers;
 	static std::shared_timed_mutex WrapperHashMutex;
 
-	static PythonInitWrapper PythonInit;
+	std::shared_ptr<PythonInitWrapper> PyMgr;
 
 	//TODO: Do we need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
 	// Would do the limit using an atomic int - we dont need an "exact" maximum...

@@ -40,7 +40,8 @@ public:
 		pyClassName("SimPortClass"),
 		pyHTTPAddr("localhost"),
 		pyHTTPPort("8000"),
-		pyEventsAreQueued(false)
+		pyEventsAreQueued(false),
+		GlobalUseSystemPython(false)
 	{
 		//pPointConf.reset(new PyPointConf(FileName, ConfOverrides));
 	}
@@ -50,6 +51,7 @@ public:
 	std::string pyHTTPAddr;
 	std::string pyHTTPPort;
 	bool pyEventsAreQueued;
+	bool GlobalUseSystemPython;
 
 	//std::unique_ptr<PyPointConf> pPointConf;
 };
