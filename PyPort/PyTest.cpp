@@ -143,21 +143,22 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 }
 void WriteStartLoggingMessage(std::string TestName)
 {
-	std::string msg = "Logging for '"+TestName+"' started..";
+	std::string msg = "Logging for '" + TestName + "' started..";
 
 	if (auto pylogger = odc::spdlog_get("PyPort"))
 	{
 		pylogger->info("------------------");
-		pylogger->info(msg);
+		pylogger->info("PyPort Logger Message "+msg);
 	}
 	else
 		std::cout << "Error PyPort Logger not operational";
 
-/*	if (auto odclogger = odc::spdlog_get("opendatacon"))
-                  odclogger->info(msg);
-        else
-                  std::cout << "Error opendatacon Logger not operational";
-                  */
+	if (auto odclogger = odc::spdlog_get("opendatacon"))
+	{
+		odclogger->info("opendatacon Logger Message "+msg);
+	}
+	else
+		std::cout << "Error opendatacon Logger not operational";
 }
 void TestSetup(std::string TestName, bool writeconffiles = true)
 {
@@ -281,7 +282,7 @@ private:
 #define STANDARD_TEST_SETUP(threadcount)\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
 	const int ThreadCount = threadcount; \
-	auto IOS = std::make_shared<odc::asio_service>(ThreadCount);
+	std::shared_ptr<odc::asio_service> IOS = std::make_shared<odc::asio_service>(ThreadCount);
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
