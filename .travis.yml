@@ -176,13 +176,9 @@ deploy:
   file_glob: true
   file: opendatacon-*.*.*-*-*-*-*-*.sh
   name: "opendatacon ${TRAVIS_TAG}"
-  draft: true   # Take this out for normal operation
   skip_cleanup: true
-  overwrite: true
   on:
-    # Remove the next line for "normal" operation and put tags back on
-    branch: develop
-    #tags: true
+    tags: true
     compiler: gcc
     
   # Upload testing log  files for all builds - ideally only when a build fails. Searches recursively for all .log files.
@@ -191,7 +187,8 @@ deploy:
     secure:    15MT0ZY2lVjvl7cdz+h6RFVTIYpFHuMsNAoIwJwI4iLQdj9ybdq4t9VrqkMZ7THlhgoYXYJKbXmPJmmt8/s1x5tktkbhdu2AU3e0sOYluO8ciBUvBUt5Jak6DAZB6Anjvj/tQqJb5nldnAfZmgnK/5A1Qyn33GBpnb6j2W4hiINR88zPMNpk0q2MF2VKdcFDLgNgbwDgfwEKcWbuxNJ0/g6aJDfS6aSyqPnAX8S/fS0arJmdMwIiAiiVKLBtyD5L6PVhbeP+pPaFD+uEuB+hSyO2tTEl827J78Fe4PgWkmd6xuTkCcObvK90vOv+1sXHA+2mIUbpvceREtM6E2uiofTzhEvoNPd4MYbmk9EMbmofsjorM5807F/Lx3yT7bcn2SjFMbDT7KSvFXLFD2HPLURHKFQ7cveYU+4KofVNhR8jWSOgDYljIskLUrycaysKqs2LD+sgBL9j/9O8HZTJx0nG5juBuHZcKon775T097CDMJFu9GbEw808GDcmX85dZDg1xlldNZAtB1CBw+kYrsApqSv8QWeVSANsNpJf9IvdszQRaLjvalKohDLEA7M1QRcaDpjXzTMz3+bqEokjUgmbLSlzjxuWoMv5PfRZHXPJDBVPnECyoXbF8+b89xHQgLUnr598S3uZEWNB2BcSEky2qjoaUqeJQeeD/AUDY1Y=
   file_glob: true
   file: ./**/*.log
-  name: "opendatacon_logs ${TRAVIS_TAG}"
+  file: opendatacon-*.sh
+  name: "opendatacon_draft ${TRAVIS_TAG}"
   skip_cleanup: true
   draft: true
   overwrite: true
