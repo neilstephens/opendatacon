@@ -115,6 +115,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 	ofs.close();
 }
 
+// Changed so that the log_level only changes the console logging level. Want the log file to always be debug
 void SetupLoggers(spdlog::level::level_enum log_level)
 {
 	// So create the log sink first - can be more than one and add to a vector.
@@ -127,13 +128,16 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
+	file_sink->set_level(spdlog::level::level_enum::debug);
+	console_sink->set_level(log_level);
+
 	auto pLibLogger = std::make_shared<spdlog::logger>("PyPort", begin(sinks), end(sinks));
-	pLibLogger->set_level(log_level);
+	pLibLogger->set_level(spdlog::level::level_enum::debug);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
-	pODCLogger->set_level(log_level);
+	pODCLogger->set_level(spdlog::level::level_enum::debug);
 	odc::spdlog_register_logger(pODCLogger);
 
 }
@@ -406,9 +410,9 @@ TEST_CASE("Py.TestsUsingPython")
 	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
 	REQUIRE_NOTHROW(
 		if (!WaitIOSFnResult(IOS, 10, [&]()
-			    {
-				    return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
-			    }))
+			{
+				return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
+			}))
 		{
 			throw std::runtime_error("Waiting for Ports to Enable timed out");
 		}
@@ -539,9 +543,9 @@ TEST_CASE("Py.TestsUsingPython")
 	REQUIRE_NOTHROW
 	(
 		if (!WaitIOSFnResult(IOS, 10, [&]()
-			    {
-				    return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
-			    }))
+			{
+				return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
+			}))
 		{
 			throw("Waiting for Ports to be disabled timed out");
 		}
