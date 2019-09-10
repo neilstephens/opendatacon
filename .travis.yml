@@ -122,7 +122,8 @@ install:
         # To get Python3.6 we need the software collections repo, and scl tools.
         yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
-        yum install -y scl-utils scl-utils-build rh-python36 rh-python36-python-devel
+        yum install -y scl-utils scl-utils-build 
+        yum install -y rh-python36 rh-python36-python-devel
         yum install -y libmicrohttpd-devel glibc-devel
       '
       sudo pip install gdown
@@ -134,6 +135,7 @@ install:
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
       #make symbolic link to what ldd produces
+      docker exec -i $DOCK ls -l /opt/rh/rh-python36/root/usr/lib64/
       docker exec -i $DOCK ln -rs libpython3.6m.so /opt/rh/rh-python36/root/usr/lib64/libpython3.6m.so.rh-python36-1.0
       docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
