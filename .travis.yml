@@ -112,7 +112,7 @@ install:
     fi
   - |
     if [ "$DOCKER_BUILD" == "OEL" ]; then
-      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti library/oraclelinux:7.7)
+      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti library/oraclelinux:7.6)
       docker exec -i $DOCK sh -c '
         # load dependencies into docker image so that tests can be run
         curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm
@@ -127,9 +127,9 @@ install:
       '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
-      tar xzf x86_64-RHEL77-linux-gnu.tar.gz
-      export EL7_CC=$(pwd)/x86_64-RHEL77-linux-gnu/bin/x86_64-RHEL77-linux-gnu-gcc
-      export EL7_CXX=$(pwd)/x86_64-RHEL77-linux-gnu/bin/x86_64-RHEL77-linux-gnu-g++ 
+      tar xzf x86_64-RHEL76-linux-gnu.tar.gz
+      export EL7_CC=$(pwd)/x86_64-RHEL76-linux-gnu/bin/x86_64-RHEL76-linux-gnu-gcc
+      export EL7_CXX=$(pwd)/x86_64-RHEL76-linux-gnu/bin/x86_64-RHEL76-linux-gnu-g++ 
       mkdir -p sysroot/opt/rh/rh-python36/root
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
@@ -172,7 +172,7 @@ script:
 deploy:
   provider: releases
   api_key:
-    secure:    15MT0ZY2lVjvl7cdz+h6RFVTIYpFHuMsNAoIwJwI4iLQdj9ybdq4t9VrqkMZ7THlhgoYXYJKbXmPJmmt8/s1x5tktkbhdu2AU3e0sOYluO8ciBUvBUt5Jak6DAZB6Anjvj/tQqJb5nldnAfZmgnK/5A1Qyn33GBpnb6j2W4hiINR88zPMNpk0q2MF2VKdcFDLgNgbwDgfwEKcWbuxNJ0/g6aJDfS6aSyqPnAX8S/fS0arJmdMwIiAiiVKLBtyD5L6PVhbeP+pPaFD+uEuB+hSyO2tTEl827J78Fe4PgWkmd6xuTkCcObvK90vOv+1sXHA+2mIUbpvceREtM6E2uiofTzhEvoNPd4MYbmk9EMbmofsjorM5807F/Lx3yT7bcn2SjFMbDT7KSvFXLFD2HPLURHKFQ7cveYU+4KofVNhR8jWSOgDYljIskLUrycaysKqs2LD+sgBL9j/9O8HZTJx0nG5juBuHZcKon775T097CDMJFu9GbEw808GDcmX85dZDg1xlldNZAtB1CBw+kYrsApqSv8QWeVSANsNpJf9IvdszQRaLjvalKohDLEA7M1QRcaDpjXzTMz3+bqEokjUgmbLSlzjxuWoMv5PfRZHXPJDBVPnECyoXbF8+b89xHQgLUnr598S3uZEWNB2BcSEky2qjoaUqeJQeeD/AUDY1Y=
+    secure:    15MT0ZY2lVjvl7cdz+h6RFVTIYpFHuMsNAoIwJwI4iLQdj9ybdq4t9VrqkMZ7THlhgoYXYJKbXmPJmmt8/s1x5tktkbhdu2AU3e0sOYluO8ciBUvBUt5Jak6DAZB6Anjvj/tQqJb5nldnAfZmgnK/5A1Qyn33GBpnb6j2W4hiINR88zPMNpk0q2MF2VKdcFDLgNgbwDgfwEKcWbuxNJ0/g6aJDfS6aSyqPnAX8S/fS0arJmdMwIiAiiVKLBtyD5L6PVhbeP+pPaFD+uEuB+hSyO2tTEl827J78Fe4PgWkmd6xuTkCcObvK90vOv+1sXHA+2mIUbpvceREtM6E2uiofTzhEvoNPd4MYbmk9EMbmofsjorM5807F/Lx3yT7bcn2SjFMbDT7KSvFXLFD2HPLURHKFQ7cveYU+4KofVNhR8jWSOgDYljIskLUrycaysKqs2LD+sgBL9j/9O8HZTJx0nG5juBuHZcKon765T097CDMJFu9GbEw808GDcmX85dZDg1xlldNZAtB1CBw+kYrsApqSv8QWeVSANsNpJf9IvdszQRaLjvalKohDLEA7M1QRcaDpjXzTMz3+bqEokjUgmbLSlzjxuWoMv5PfRZHXPJDBVPnECyoXbF8+b89xHQgLUnr598S3uZEWNB2BcSEky2qjoaUqeJQeeD/AUDY1Y=
   file_glob: true
   file: opendatacon-*.*.*-*-*-*-*-*.sh
   name: "opendatacon ${TRAVIS_TAG}"
@@ -184,7 +184,7 @@ deploy:
   # Upload testing log  files for all builds - ideally only when a build fails. Searches recursively for all .log files.
   provider: releases
   api_key:
-    secure:    15MT0ZY2lVjvl7cdz+h6RFVTIYpFHuMsNAoIwJwI4iLQdj9ybdq4t9VrqkMZ7THlhgoYXYJKbXmPJmmt8/s1x5tktkbhdu2AU3e0sOYluO8ciBUvBUt5Jak6DAZB6Anjvj/tQqJb5nldnAfZmgnK/5A1Qyn33GBpnb6j2W4hiINR88zPMNpk0q2MF2VKdcFDLgNgbwDgfwEKcWbuxNJ0/g6aJDfS6aSyqPnAX8S/fS0arJmdMwIiAiiVKLBtyD5L6PVhbeP+pPaFD+uEuB+hSyO2tTEl827J78Fe4PgWkmd6xuTkCcObvK90vOv+1sXHA+2mIUbpvceREtM6E2uiofTzhEvoNPd4MYbmk9EMbmofsjorM5807F/Lx3yT7bcn2SjFMbDT7KSvFXLFD2HPLURHKFQ7cveYU+4KofVNhR8jWSOgDYljIskLUrycaysKqs2LD+sgBL9j/9O8HZTJx0nG5juBuHZcKon775T097CDMJFu9GbEw808GDcmX85dZDg1xlldNZAtB1CBw+kYrsApqSv8QWeVSANsNpJf9IvdszQRaLjvalKohDLEA7M1QRcaDpjXzTMz3+bqEokjUgmbLSlzjxuWoMv5PfRZHXPJDBVPnECyoXbF8+b89xHQgLUnr598S3uZEWNB2BcSEky2qjoaUqeJQeeD/AUDY1Y=
+    secure:    15MT0ZY2lVjvl7cdz+h6RFVTIYpFHuMsNAoIwJwI4iLQdj9ybdq4t9VrqkMZ7THlhgoYXYJKbXmPJmmt8/s1x5tktkbhdu2AU3e0sOYluO8ciBUvBUt5Jak6DAZB6Anjvj/tQqJb5nldnAfZmgnK/5A1Qyn33GBpnb6j2W4hiINR88zPMNpk0q2MF2VKdcFDLgNgbwDgfwEKcWbuxNJ0/g6aJDfS6aSyqPnAX8S/fS0arJmdMwIiAiiVKLBtyD5L6PVhbeP+pPaFD+uEuB+hSyO2tTEl827J78Fe4PgWkmd6xuTkCcObvK90vOv+1sXHA+2mIUbpvceREtM6E2uiofTzhEvoNPd4MYbmk9EMbmofsjorM5807F/Lx3yT7bcn2SjFMbDT7KSvFXLFD2HPLURHKFQ7cveYU+4KofVNhR8jWSOgDYljIskLUrycaysKqs2LD+sgBL9j/9O8HZTJx0nG5juBuHZcKon765T097CDMJFu9GbEw808GDcmX85dZDg1xlldNZAtB1CBw+kYrsApqSv8QWeVSANsNpJf9IvdszQRaLjvalKohDLEA7M1QRcaDpjXzTMz3+bqEokjUgmbLSlzjxuWoMv5PfRZHXPJDBVPnECyoXbF8+b89xHQgLUnr598S3uZEWNB2BcSEky2qjoaUqeJQeeD/AUDY1Y=
   file_glob: true
   file: 
     - ./**/*.log
