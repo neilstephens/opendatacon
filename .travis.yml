@@ -114,7 +114,7 @@ install:
     if [ "$DOCKER_BUILD" == "OEL" ]; then
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti library/oraclelinux:7.6)
       docker exec -i $DOCK sh -c '
-        yum install -y oracle-epel-release-el7
+        yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
         yum repolist
         yum install -y scl-utils libmicrohttpd-devel glibc-devel iso-codes redhat-rpm-config
@@ -128,8 +128,8 @@ install:
         curl -O http://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
         rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
         
-        # Install Python 3, which is 3.6.8-10
-        yum install -y python3
+        # Install Python 36, which is 3.6.8-10
+        yum install -y rh-python36 rh-python36-python-devel
       '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
@@ -140,17 +140,17 @@ install:
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
       #make symbolic link to what ldd produces
-      docker exec -i $DOCK ls -l /lib/python3.6/ #lib? var?
-      docker exec -i $DOCK ls -l /lib64/python3.6/ #lib? var?
-      #docker exec -i $DOCK ln -rs libpython3.6m.so /opt/rh/rh-python36/root/usr/lib64/libpython3.6m.so.rh-python36-1.0
-      #docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
+      #docker exec -i $DOCK ls -l /lib/python3.6/ #lib? var?
+      #docker exec -i $DOCK ls -l /lib64/python3.6/ #lib? var?
+      docker exec -i $DOCK ln -rs libpython3.6m.so /opt/rh/rh-python36/root/usr/lib64/libpython3.6m.so.rh-python36-1.0
+      docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd)
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/usr"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/opt/rh/rh-python36/root/usr"
     fi
   - |
     if [ "$DOCKER_BUILD" == "i386" ]; then
