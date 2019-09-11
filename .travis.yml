@@ -144,10 +144,11 @@ install:
       #make symbolic link to what ldd produces
       #docker exec -i $DOCK ls -l /lib/python3.6/ #lib? var?
       #docker exec -i $DOCK ls -l /lib64/python3.6/ #lib? var?
-      docker exec -i $DOCK ln -rsnf libpython3.6m.so /opt/rh/rh-python36/root/usr/lib64/libpython3.6m.so.rh-python36-1.0
+      docker exec -i $DOCK ln -rs libpython3.6m.so /opt/rh/rh-python36/root/usr/lib64/libpython3.6m.so.rh-python36-1.0
       docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
+      ls -l sysroot/opt/rh/rh-python36/root/usr/lib64/*.so
       sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd)
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
