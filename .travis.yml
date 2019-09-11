@@ -130,7 +130,6 @@ install:
         curl -O https://public-yum.oracle.com/repo/OracleLinux/OL7/optional/latest/x86_64/getPackage/libmicrohttpd-devel-0.9.33-2.el7.x86_64.rpm
         rpm -i libmicrohttpd-devel-0.9.33-2.el7.x86_64.rpm
         
-        # Install Python 36, which is 3.6.8-10
         yum install -y rh-python36 rh-python36-python-devel
       '
       sudo pip install gdown
@@ -141,10 +140,7 @@ install:
       mkdir -p sysroot/opt/rh/rh-python36/root
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
-      #make symbolic link to what ldd produces
-      #docker exec -i $DOCK ls -l /lib/python3.6/ #lib? var?
       #docker exec -i $DOCK ls -l /opt/rh/rh-python36/root/usr/lib64/libpython* 
-      #docker exec -i $DOCK ln -rs libpython3.6m.so /opt/rh/rh-python36/root/usr/lib64/libpython3.6m.so.rh-python36-1.0
       docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
