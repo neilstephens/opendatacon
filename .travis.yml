@@ -117,7 +117,7 @@ install:
         yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
         yum repolist
-        yum install -y scl-utils libmicrohttpd-devel glibc-devel iso-codes redhat-rpm-config
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config
         
         # load dependencies into docker image so that tests can be run
         curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm
@@ -127,6 +127,8 @@ install:
         # To get Python3.6 we need scl-util-build tools.
         curl -O http://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
         rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
+        curl -O https://public-yum.oracle.com/repo/OracleLinux/OL7/optional/latest/x86_64/getPackage/libmicrohttpd-devel-0.9.33-2.el7.x86_64.rpm
+        rpm -i libmicrohttpd-devel-0.9.33-2.el7.x86_64.rpm
         
         # Install Python 36, which is 3.6.8-10
         yum install -y rh-python36 rh-python36-python-devel
@@ -134,8 +136,8 @@ install:
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
-      export EL6_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
-      export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
+      export EL7_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
+      export EL7_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
       mkdir -p sysroot/opt/rh/rh-python36/root
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
@@ -150,7 +152,7 @@ install:
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/opt/rh/rh-python36/root/usr"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el7-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/opt/rh/rh-python36/root/usr"
     fi
   - |
     if [ "$DOCKER_BUILD" == "i386" ]; then
