@@ -117,7 +117,7 @@ install:
         yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
         yum repolist
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd
         
         # load dependencies into docker image so that tests can be run
         curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm
