@@ -116,6 +116,7 @@ install:
       docker exec -i $DOCK sh -c '
         yum install -y oracle-epel-release-el7
         /usr/bin/ol_yum_configure.sh
+        yum repolist
         yum install -y scl-utils libmicrohttpd-devel glibc-devel iso-codes redhat-rpm-config
         
         # load dependencies into docker image so that tests can be run
@@ -139,18 +140,17 @@ install:
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
       #make symbolic link to what ldd produces
-      docker exec -i $DOCK ls -lR /lib/python3.6/ #lib? var?
-      docker exec -i $DOCK ls -lR /lib64/python3.6/ #lib? var?
-      docker exec -i $DOCK ls -lR /bin/python3.6/
-      docker exec -i $DOCK ln -rs libpython3.6m.so /opt/rh/rh-python36/root/usr/lib64/libpython3.6m.so.rh-python36-1.0
-      docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
+      docker exec -i $DOCK ls -l /lib/python3.6/ #lib? var?
+      docker exec -i $DOCK ls -l /lib64/python3.6/ #lib? var?
+      #docker exec -i $DOCK ln -rs libpython3.6m.so /opt/rh/rh-python36/root/usr/lib64/libpython3.6m.so.rh-python36-1.0
+      #docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd)
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/opt/rh/rh-python36/root/usr"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/usr"
     fi
   - |
     if [ "$DOCKER_BUILD" == "i386" ]; then
