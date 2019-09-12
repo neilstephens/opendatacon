@@ -547,13 +547,13 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 {
 	if (!enabled)
 	{
-		LOGDEBUG("PyPort {} not enabled, Event from {} ignored", Name, SenderName);
+		LOGTRACE("PyPort {} not enabled, Event from {} ignored", Name, SenderName);
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
 	if (!PortOperational.load())
 	{
-		LOGDEBUG("PyPort {} not operational, Event from {} ignored", Name, SenderName);
+		LOGTRACE("PyPort {} not operational, Event from {} ignored", Name, SenderName);
 		return;
 	}
 
