@@ -131,6 +131,7 @@ install:
         rpm -i libmicrohttpd-devel-0.9.33-2.el7.x86_64.rpm
         
         yum install -y rh-python36 rh-python36-python-devel
+        python3 --version
       '
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
