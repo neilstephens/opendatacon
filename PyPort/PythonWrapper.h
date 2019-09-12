@@ -33,7 +33,15 @@
 #include <unordered_set>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
+
+// Choose the event queue type
+#define QUEUETYPE PRODCONS
+
+#if (QUEUETYPE == PRODCONS)
+#include "producerconsumerqueue.h"
+#else
 #include "concurrentqueue.h"
+#endif
 
 using namespace odc;
 
@@ -145,9 +153,14 @@ private:
 
 	//TODO: Do we need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
 	// Would do the limit using an atomic int - we dont need an "exact" maximum...
-	const size_t MaximumQueueSize = 5000 * 1000; // 5 million
+	const size_t MaximumQueueSize = 1000000; // 1 million
 
+	#if (QUEUETYPE == PRODCONS)
+	ProducerConsumerQueue<EventQueueType> EventQueue;
+	#else
 	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);
+	#endif
+
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.
 	PyObject* pyModule = nullptr;

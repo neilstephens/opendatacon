@@ -333,7 +333,9 @@ PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn
 	Name(aName),
 	PythonPortSetTimerFn(SetTimerFn),
 	PythonPortPublishEventCallFn(PublishEventCallFn)
-{}
+{
+	EventQueue.SetSize(MaximumQueueSize);
+}
 
 // Load the module into the python interpreter before we initialise it.
 void ImportODCModule()
@@ -667,23 +669,39 @@ void PythonWrapper::Disable()
 	}
 }
 
+// these two methods are the only ones that touch the event queue. So to change the queue, do it here.
 // This is not synced with the strand when called. So the queue needs to be multi-producer capable
 void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index, odc::msSinceEpoch_t TimeStamp,
 	const std::string& Quality, const std::string& Payload, const std::string& Sender)
 {
 	EventQueueType item(EventType, Index, TimeStamp, Quality, Payload, Sender);
-	if (!EventQueue.try_enqueue(item))
+	#if (QUEUETYPE == PRODCONS)
+	bool result = EventQueue.Push(item);
+	#else
+	bool result = EventQueue.try_enqueue(item);
+	#endif
+
+	if (!result)
 	{
-		LOGERROR("Failed to enqueue item into Event queue - insufficient memory. Queue Size {}",EventQueue.size_approx());
+		#if (QUEUETYPE == PRODCONS)
+		uint32_t qsize = EventQueue.Size();
+		#else
+		uint32_t qsize = EventQueue.size_approx();
+		#endif
+		LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}",qsize);
 	}
 }
 
 bool PythonWrapper::DequeueEvent(EventQueueType& eq)
 {
+	#if (QUEUETYPE == PRODCONS)
+	return EventQueue.Pop(eq);
+	#else
 	EventQueue.try_dequeue(eq);
 	// The default constructor for the queue item has empty strings and zero time stamps.
 	// If the dequeue fails, they remain at default values. So use that to return true on success.
 	return (eq.EventType != "");
+	#endif
 }
 
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.

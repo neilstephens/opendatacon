@@ -32,9 +32,9 @@ matrix:
 #      services:
 #        - docker
     #OEL7 Release
-    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
-      services:
-        - docker
+#    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
+#       services:
+#        - docker
     #OEL7 Debug
 #    - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
 #      services:

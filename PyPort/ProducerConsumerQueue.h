@@ -36,11 +36,27 @@ template <class T>
 class ProducerConsumerQueue
 {
 private:
-	const uint32_t MaxSize = 255; // MD3 maximum event queue size
+	size_t MaxSize;
 	std::queue<T> Queue;
 	std::shared_timed_mutex m;
 
 public:
+	ProducerConsumerQueue(size_t _MaxSize=100): MaxSize(_MaxSize)
+	{}
+
+	// Mutex cannot be copied for obvious reasons.
+	ProducerConsumerQueue& operator=(const ProducerConsumerQueue& src)
+	{
+		Queue = src.Queue;
+		MaxSize = src.MaxSize;
+		return *this;
+	}
+
+	void SetSize(size_t _MaxSize)
+	{
+		MaxSize = _MaxSize;
+	}
+
 	bool Peek(T& item)
 	{
 		std::shared_lock<std::shared_timed_mutex> lck(m);
