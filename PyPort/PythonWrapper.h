@@ -38,7 +38,7 @@
 #define QUEUETYPE PRODCONS
 
 #if (QUEUETYPE == PRODCONS)
-#include "producerconsumerqueue.h"
+#include "ProducerConsumerQueue.h"
 #else
 #include "concurrentqueue.h"
 #endif
