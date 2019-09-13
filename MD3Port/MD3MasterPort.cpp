@@ -412,7 +412,19 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 					if (Header.GetFunctionCode() == DIGITAL_NO_CHANGE_REPLY)
 						success = ProcessDigitalNoChangeReturn(Header, CompleteMD3Message);
 					else if (Header.GetFunctionCode() == DIGITAL_CHANGE_OF_STATE_TIME_TAGGED)
-						success = ProcessDigitalScan(Header, CompleteMD3Message);
+					{
+					      success = ProcessDigitalScan(Header, CompleteMD3Message);
+					      if (success)
+					      {
+					// We should trigger another scan command. Will continue until we get a DIGITAL_NO_CHANGE_REPLY or an error
+
+					            uint8_t TaggedEventCount = 15; // Assuming there are. Will not send if there are not!
+					            uint8_t Modules = 15;          // Get as many as we can...
+
+					            auto commandblock = MD3BlockFn11MtoS(Header.GetStationAddress(), TaggedEventCount, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
+					            QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
+						}
+					}
 					break;
 				case DIGITAL_UNCONDITIONAL:
 					if (Header.GetFunctionCode() == DIGITAL_NO_CHANGE_REPLY)
