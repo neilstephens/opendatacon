@@ -73,9 +73,10 @@ install:
     elif [ -z "$DOCKER_BUILD" ]; then
       # Not a docker build, just normal linux
       sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev 
-      sudo apt-get remove -y python3.5 python3.5-dev
       echo "Python3 Version"
       python3 --version      
+      update-alternatives --list python
+      ls /usr/bin/python*
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic" # -DPYTHON_HOME=/usr/lib/python3.7"
     fi
   - |
