@@ -80,6 +80,8 @@ const char *conffile1 = R"001(
 	// Python Module/Class/Method name definitions
 	"ModuleName" : "PyPortSim",
 	"ClassName": "SimPortClass",
+	"EventsAreQueued": false,
+	"GlobalUseSystemPython": false,
 		
 	// The point definitions are only proccessed by the Python code. Any events sent to PyPort by ODC will be passed on.
 	"Binaries" : 
@@ -546,6 +548,117 @@ TEST_CASE("Py.TestsUsingPython")
 		if (!WaitIOSFnResult(IOS, 10, [&]()
 			{
 				return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
+			}))
+		{
+			throw("Waiting for Ports to be disabled timed out");
+		}
+	);
+	LOGDEBUG("Ports Disabled");
+
+	STOP_IOS(); // Wait in here for all threads to stop.
+	LOGDEBUG("IOS Stopped");
+
+	STANDARD_TEST_TEARDOWN();
+	LOGDEBUG("Test Teardown complete");
+}
+
+TEST_CASE("Py.TestEventStringConversions")
+{
+	STANDARD_TEST_SETUP(4);
+
+	uint32_t ODCIndex = 1001;
+
+	INFO("ConnectState")
+	{
+		ConnectState state = ConnectState::CONNECTED;
+		auto odcevent = std::make_shared<EventInfo>(EventType::ConnectState, 0, "Testing");
+		odcevent->SetPayload<EventType::ConnectState>(std::move(state));
+
+		CheckEventStringConversions(odcevent);
+	}
+	INFO("Binary")
+	{
+		bool val = true;
+		auto odcevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", QualityFlags::RESTART);
+		odcevent->SetPayload<EventType::Binary>(std::move(val));
+
+		CheckEventStringConversions(odcevent);
+	}
+	INFO("Analog")
+	{
+		double fval = 100.1;
+		auto odcevent = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, "Testing", QualityFlags::ONLINE);
+		odcevent->SetPayload<EventType::Analog>(std::move(fval));
+
+		CheckEventStringConversions(odcevent);
+	}
+	INFO("ControlRelayOutputBlock")
+	{
+		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+		val.functionCode = ControlCode::LATCH_ON; // ControlCode::LATCH_OFF;
+		auto odcevent = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness", QualityFlags::RESTART | QualityFlags::ONLINE);
+		odcevent->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+		CheckEventStringConversions(odcevent);
+	}
+	//TODO: The rest of the Payload types that we need to handle
+	STANDARD_TEST_TEARDOWN();
+}
+
+TEST_CASE("Py.TestEventQueueUsingPython")
+{
+	// The ODC startup process is Build, Start IOS, then Enable posts. So we are doing that right.
+	// However in build we are telling our Python script we are operational - have to assume not enabled!
+	STANDARD_TEST_SETUP(4); // Threads
+
+	Json::Value portoverride;
+	portoverride["EventsAreQueued"] = static_cast<Json::UInt>(0);
+	TEST_PythonPort(portoverride);
+
+	START_IOS();
+
+	PythonPort->Enable();
+
+
+	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
+	REQUIRE_NOTHROW(
+		if (!WaitIOSFnResult(IOS, 10, [&]()
+			{
+				return (PythonPort->Enabled());
+			}))
+		{
+			throw std::runtime_error("Waiting for Port to Enable timed out");
+		}
+		);
+	LOGINFO("Ports Enabled");
+
+
+	std::atomic<CommandStatus> res{ CommandStatus::UNDEFINED };
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&](CommandStatus command_stat)
+		{
+			res = command_stat;
+		});
+
+	LOGINFO("Sending Binary Events");
+	for (int ODCIndex = 1; ODCIndex < 2000; ODCIndex++ )
+	{
+		bool val = (ODCIndex % 2 == 0);
+		auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
+		boolevent->SetPayload<EventType::Binary>(std::move(val));
+		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
+	}
+
+	WaitIOS(IOS, 7);
+
+	LOGDEBUG("Tests Complete, starting teardown");
+
+	PythonPort->Disable();
+
+	REQUIRE_NOTHROW
+	(
+		if (!WaitIOSFnResult(IOS, 10, [&]()
+			{
+				return (!PythonPort->Enabled());
 			}))
 		{
 			throw("Waiting for Ports to be disabled timed out");

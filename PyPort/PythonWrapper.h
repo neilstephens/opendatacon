@@ -35,7 +35,7 @@
 #include <opendatacon/DataPort.h>
 
 // Choose the event queue type
-//#define PDQUEUETYPE
+#define PDQUEUETYPE
 
 #ifdef PDQUEUETYPE
 #include "ProducerConsumerQueue.h"
