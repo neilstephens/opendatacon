@@ -334,7 +334,9 @@ PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn
 	PythonPortSetTimerFn(SetTimerFn),
 	PythonPortPublishEventCallFn(PublishEventCallFn)
 {
+	#ifdef PDQUEUETYPE
 	EventQueue.SetSize(MaximumQueueSize);
+	#endif
 }
 
 // Load the module into the python interpreter before we initialise it.
@@ -675,7 +677,7 @@ void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index,
 	const std::string& Quality, const std::string& Payload, const std::string& Sender)
 {
 	EventQueueType item(EventType, Index, TimeStamp, Quality, Payload, Sender);
-	#if (QUEUETYPE == PRODCONS)
+	#ifdef PDQUEUETYPE
 	bool result = EventQueue.Push(item);
 	#else
 	bool result = EventQueue.try_enqueue(item);
@@ -683,7 +685,7 @@ void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index,
 
 	if (!result)
 	{
-		#if (QUEUETYPE == PRODCONS)
+		#ifdef PDQUEUETYPE
 		uint32_t qsize = EventQueue.Size();
 		#else
 		uint32_t qsize = EventQueue.size_approx();
@@ -694,7 +696,7 @@ void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index,
 
 bool PythonWrapper::DequeueEvent(EventQueueType& eq)
 {
-	#if (QUEUETYPE == PRODCONS)
+	#ifdef PDQUEUETYPE
 	return EventQueue.Pop(eq);
 	#else
 	EventQueue.try_dequeue(eq);

@@ -35,9 +35,9 @@
 #include <opendatacon/DataPort.h>
 
 // Choose the event queue type
-#define QUEUETYPE PRODCONS
+//#define PDQUEUETYPE
 
-#if (QUEUETYPE == PRODCONS)
+#ifdef PDQUEUETYPE
 #include "ProducerConsumerQueue.h"
 #else
 #include "concurrentqueue.h"
@@ -155,7 +155,7 @@ private:
 	// Would do the limit using an atomic int - we dont need an "exact" maximum...
 	const size_t MaximumQueueSize = 1000000; // 1 million
 
-	#if (QUEUETYPE == PRODCONS)
+	#ifdef PDQUEUETYPE
 	ProducerConsumerQueue<EventQueueType> EventQueue;
 	#else
 	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);
