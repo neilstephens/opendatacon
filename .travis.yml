@@ -7,46 +7,46 @@ git:
   
 addons:
   apt:
-    #update: true #Just updates the list of packages could add packages here if desired!
+    update: true #Just updates the list of packages could add packages here if desired!
 
 os:
   - linux
-#  - osx
+  - osx
 
 compiler:
   - gcc
-#  - clang
+  - clang
 
 env:
   - BUILD_CONFIG=Release
-#  - BUILD_CONFIG=Debug
+  - BUILD_CONFIG=Debug
   
 matrix:
   include: #extra matrix entries for docker builds
     #Rpi Release
-#    - env: BUILD_CONFIG=Release DOCKER_BUILD=Rpi
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=Rpi
+      services:
+        - docker
     #Rpi Debug
-#    - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
+      services:
+        - docker
     #OEL7 Release
-#    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
-#       services:
-#        - docker
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
+       services:
+        - docker
     #OEL7 Debug
-#    - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
+      services:
+        - docker
     #i686 Release
-#    - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
+      services:
+        - docker
     #i686 Debug
-#    - env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
+      services:
+        - docker
   exclude:
     #Travis docs say on osx gcc is an alias for clang anyway
     - os: osx
@@ -181,6 +181,7 @@ script:
   - $STOP
 
 deploy:
+  # Only do a git deploy on a tagged release.
   provider: releases
   api_key:
     secure:    15MT0ZY2lVjvl7cdz+h6RFVTIYpFHuMsNAoIwJwI4iLQdj9ybdq4t9VrqkMZ7THlhgoYXYJKbXmPJmmt8/s1x5tktkbhdu2AU3e0sOYluO8ciBUvBUt5Jak6DAZB6Anjvj/tQqJb5nldnAfZmgnK/5A1Qyn33GBpnb6j2W4hiINR88zPMNpk0q2MF2VKdcFDLgNgbwDgfwEKcWbuxNJ0/g6aJDfS6aSyqPnAX8S/fS0arJmdMwIiAiiVKLBtyD5L6PVhbeP+pPaFD+uEuB+hSyO2tTEl827J78Fe4PgWkmd6xuTkCcObvK90vOv+1sXHA+2mIUbpvceREtM6E2uiofTzhEvoNPd4MYbmk9EMbmofsjorM5807F/Lx3yT7bcn2SjFMbDT7KSvFXLFD2HPLURHKFQ7cveYU+4KofVNhR8jWSOgDYljIskLUrycaysKqs2LD+sgBL9j/9O8HZTJx0nG5juBuHZcKon775T097CDMJFu9GbEw808GDcmX85dZDg1xlldNZAtB1CBw+kYrsApqSv8QWeVSANsNpJf9IvdszQRaLjvalKohDLEA7M1QRcaDpjXzTMz3+bqEokjUgmbLSlzjxuWoMv5PfRZHXPJDBVPnECyoXbF8+b89xHQgLUnr598S3uZEWNB2BcSEky2qjoaUqeJQeeD/AUDY1Y=
@@ -192,7 +193,7 @@ deploy:
     tags: true
     compiler: gcc
     
-  # Upload testing log  files for all builds - ideally only when a build fails. Searches recursively for all .log files.
+  # Upload testing log files and deploy packages for all develop builds. Searches recursively for all .log files.
   provider: releases
   api_key:
     secure:    15MT0ZY2lVjvl7cdz+h6RFVTIYpFHuMsNAoIwJwI4iLQdj9ybdq4t9VrqkMZ7THlhgoYXYJKbXmPJmmt8/s1x5tktkbhdu2AU3e0sOYluO8ciBUvBUt5Jak6DAZB6Anjvj/tQqJb5nldnAfZmgnK/5A1Qyn33GBpnb6j2W4hiINR88zPMNpk0q2MF2VKdcFDLgNgbwDgfwEKcWbuxNJ0/g6aJDfS6aSyqPnAX8S/fS0arJmdMwIiAiiVKLBtyD5L6PVhbeP+pPaFD+uEuB+hSyO2tTEl827J78Fe4PgWkmd6xuTkCcObvK90vOv+1sXHA+2mIUbpvceREtM6E2uiofTzhEvoNPd4MYbmk9EMbmofsjorM5807F/Lx3yT7bcn2SjFMbDT7KSvFXLFD2HPLURHKFQ7cveYU+4KofVNhR8jWSOgDYljIskLUrycaysKqs2LD+sgBL9j/9O8HZTJx0nG5juBuHZcKon775T097CDMJFu9GbEw808GDcmX85dZDg1xlldNZAtB1CBw+kYrsApqSv8QWeVSANsNpJf9IvdszQRaLjvalKohDLEA7M1QRcaDpjXzTMz3+bqEokjUgmbLSlzjxuWoMv5PfRZHXPJDBVPnECyoXbF8+b89xHQgLUnr598S3uZEWNB2BcSEky2qjoaUqeJQeeD/AUDY1Y=
