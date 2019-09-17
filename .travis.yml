@@ -7,7 +7,7 @@ git:
   
 addons:
   apt:
-    update: true #Just updates the list of packages could add packages here if desired!
+    update: true
 
 os:
   - linux
@@ -33,7 +33,7 @@ matrix:
         - docker
     #OEL7 Release
     - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
-       services:
+      services:
         - docker
     #OEL7 Debug
     - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
