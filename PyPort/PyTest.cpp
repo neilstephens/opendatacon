@@ -523,19 +523,17 @@ TEST_CASE("Py.TestsUsingPython")
 
 		LOGDEBUG("GET http://localhost:10000/TestMaster We got back {}", callresp);
 
-		expectedresponse = "Content-Length: 37\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\", \"processedevents\": 2}";
-
 		REQUIRE(res);
-		REQUIRE(expectedresponse == callresp);
+		REQUIRE(callresp.find("\"processedevents\": 2") != std::string::npos);
+		REQUIRE(callresp.find("\"test\": \"GET\"") != std::string::npos);
 
 		res = DoHttpRequst("localhost", "10000", "/TestMaster2", callresp);
 
 		LOGDEBUG("GET http://localhost:10000/TestMaster2 We got back {}", callresp);
 
-		expectedresponse = "Content-Length: 37\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\", \"processedevents\": 1}";
-
 		REQUIRE(res);
-		REQUIRE(expectedresponse == callresp);
+		REQUIRE(callresp.find("\"processedevents\": 1") != std::string::npos);
+		REQUIRE(callresp.find("\"test\": \"GET\"") != std::string::npos);
 	}
 
 	LOGDEBUG("Starting teardown ports 1-4");
