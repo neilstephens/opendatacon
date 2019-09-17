@@ -335,9 +335,7 @@ PythonWrapper::PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio
 	PythonPortSetTimerFn(SetTimerFn),
 	PythonPortPublishEventCallFn(PublishEventCallFn)
 {
-	#ifdef PDQUEUETYPE
 	EventQueue = std::make_shared<SpecialEventQueue<EventQueueType>>(pIOS, MaximumQueueSize);
-	#endif
 }
 
 // Load the module into the python interpreter before we initialise it.
@@ -390,7 +388,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 		*/
 
 		Py_Initialize(); // Get the Python interpreter running
-		LOGDEBUG("Initilised Python");
+		LOGDEBUG("Initialised Python");
 
 		#ifndef PYTHON_34_ORLESS
 		LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
@@ -413,10 +411,18 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 		// Log the Python path for debugging (also write to a small file for running test code)
 		std::wstring path = Py_GetPath();
 		std::string spath(path.begin(), path.end());
-		LOGDEBUG("Current Python sys.path - {}",spath);
+		LOGERROR("Current Python sys.path - {}",spath);
 
 		PyDateTime_IMPORT;
 
+		/* Kafka load test
+		if (PyRun_SimpleString("import confluent_kafka") != 0)
+		{
+		      LOGERROR("Unable to import python confluent_kafka library");
+		      PythonWrapper::PyErrOutput();
+		      return;
+		}
+		*/
 		// Initialize threads and release GIL (saving it as well):
 		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
 		if (!PyGILState_Check())
@@ -678,37 +684,22 @@ void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index,
 	const std::string& Quality, const std::string& Payload, const std::string& Sender)
 {
 	EventQueueType item(EventType, Index, TimeStamp, Quality, Payload, Sender);
-	#ifdef PDQUEUETYPE
 	bool result = EventQueue->async_push(item);
-	#else
-	bool result = EventQueue.try_enqueue(item);
-	#endif
 
 	if (!result)
 	{
-		#ifdef PDQUEUETYPE
 		uint32_t qsize = EventQueue->Size();
-		#else
-		uint32_t qsize = EventQueue.size_approx();
-		#endif
 		LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}",qsize);
 	}
 }
 
 bool PythonWrapper::DequeueEvent(EventQueueType& eq)
 {
-	#ifdef PDQUEUETYPE
 	std::shared_ptr<EventQueueType> data = EventQueue->pop();
 	if (data == nullptr)
 		return false;
 	eq = *data;
 	return true;
-	#else
-	EventQueue.try_dequeue(eq);
-	// The default constructor for the queue item has empty strings and zero time stamps.
-	// If the dequeue fails, they remain at default values. So use that to return true on success.
-	return (eq.EventType != "");
-	#endif
 }
 
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.

@@ -33,15 +33,8 @@
 #include <unordered_set>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
-
-// Choose the event queue type
-#define PDQUEUETYPE
-
-#ifdef PDQUEUETYPE
 #include "SpecialEventQueue.h"
-#else
-#include "concurrentqueue.h"
-#endif
+
 
 using namespace odc;
 
@@ -104,11 +97,7 @@ public:
 	bool DequeueEvent(EventQueueType& eq);
 	size_t GetEventQueueSize()
 	{
-		#ifdef PDQUEUETYPE
 		return EventQueue->Size();
-		#else
-		return EventQueue.size();
-		#endif
 	}
 
 	void CallTimerHandler(uint32_t id);
@@ -163,12 +152,7 @@ private:
 	// We need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
 	const size_t MaximumQueueSize = 1000000; // 1 million
 
-	#ifdef PDQUEUETYPE
 	std::shared_ptr<SpecialEventQueue<EventQueueType>> EventQueue;
-	#else
-	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);
-	#endif
-
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.
 	PyObject* pyModule = nullptr;
