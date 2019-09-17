@@ -38,7 +38,7 @@
 #define PDQUEUETYPE
 
 #ifdef PDQUEUETYPE
-#include "ProducerConsumerQueue.h"
+#include "SpecialEventQueue.h"
 #else
 #include "concurrentqueue.h"
 #endif
@@ -90,7 +90,7 @@ class PythonWrapper
 {
 
 public:
-	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
+	PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio_service> _pIOS, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
 	~PythonWrapper();
 	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName, const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
@@ -102,6 +102,14 @@ public:
 	void QueueEvent(const std::string& EventType, const size_t Index, odc::msSinceEpoch_t TimeStamp, const std::string& Quality, const std::string& Payload, const std::string& Sender);
 
 	bool DequeueEvent(EventQueueType& eq);
+	size_t GetEventQueueSize()
+	{
+		#ifdef PDQUEUETYPE
+		return EventQueue->Size();
+		#else
+		return EventQueue.size();
+		#endif
+	}
 
 	void CallTimerHandler(uint32_t id);
 	std::string RestHandler(const std::string& url, const std::string& content);
@@ -150,13 +158,13 @@ private:
 	static std::shared_timed_mutex WrapperHashMutex;
 
 	std::shared_ptr<PythonInitWrapper> PyMgr;
+	std::shared_ptr<odc::asio_service> pIOS;
 
-	//TODO: Do we need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
-	// Would do the limit using an atomic int - we dont need an "exact" maximum...
+	// We need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
 	const size_t MaximumQueueSize = 1000000; // 1 million
 
 	#ifdef PDQUEUETYPE
-	ProducerConsumerQueue<EventQueueType> EventQueue;
+	std::shared_ptr<SpecialEventQueue<EventQueueType>> EventQueue;
 	#else
 	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);
 	#endif

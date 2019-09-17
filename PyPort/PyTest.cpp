@@ -320,6 +320,10 @@ private:
 	auto PythonPort4 = std::make_shared<PyPort>("TestMaster4", conffilename1, overridejson); \
 	PythonPort4->SetIOS(IOS);      \
 	PythonPort4->Build();
+#define TEST_PythonPort5(overridejson)\
+	auto PythonPort5 = std::make_shared<PyPort>("TestMaster5", conffilename1, overridejson); \
+	PythonPort5->SetIOS(IOS);      \
+	PythonPort5->Build();
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -519,24 +523,22 @@ TEST_CASE("Py.TestsUsingPython")
 
 		LOGDEBUG("GET http://localhost:10000/TestMaster We got back {}", callresp);
 
-		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
+		expectedresponse = "Content-Length: 37\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\", \"processedevents\": 2}";
 
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
-
 
 		res = DoHttpRequst("localhost", "10000", "/TestMaster2", callresp);
 
 		LOGDEBUG("GET http://localhost:10000/TestMaster2 We got back {}", callresp);
 
-		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
+		expectedresponse = "Content-Length: 37\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\", \"processedevents\": 1}";
 
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
-
 	}
 
-	LOGDEBUG("Tests Complete, starting teardown");
+	LOGDEBUG("Starting teardown ports 1-4");
 
 	PythonPort->Disable();
 	PythonPort2->Disable();
@@ -553,118 +555,124 @@ TEST_CASE("Py.TestsUsingPython")
 			throw("Waiting for Ports to be disabled timed out");
 		}
 	);
-	LOGDEBUG("Ports Disabled");
+	LOGDEBUG("Ports1-4 Disabled");
 
-	STOP_IOS(); // Wait in here for all threads to stop.
-	LOGDEBUG("IOS Stopped");
-
-	STANDARD_TEST_TEARDOWN();
-	LOGDEBUG("Test Teardown complete");
-}
-
-TEST_CASE("Py.TestEventStringConversions")
-{
-	STANDARD_TEST_SETUP(4);
-
-	uint32_t ODCIndex = 1001;
-
-	INFO("ConnectState")
+	INFO("QueuedEvents")
 	{
-		ConnectState state = ConnectState::CONNECTED;
-		auto odcevent = std::make_shared<EventInfo>(EventType::ConnectState, 0, "Testing");
-		odcevent->SetPayload<EventType::ConnectState>(std::move(state));
+		Json::Value portoverride;
+		portoverride["EventsAreQueued"] = static_cast<Json::UInt>(1);
+		TEST_PythonPort5(portoverride);
 
-		CheckEventStringConversions(odcevent);
-	}
-	INFO("Binary")
-	{
-		bool val = true;
-		auto odcevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", QualityFlags::RESTART);
-		odcevent->SetPayload<EventType::Binary>(std::move(val));
-
-		CheckEventStringConversions(odcevent);
-	}
-	INFO("Analog")
-	{
-		double fval = 100.1;
-		auto odcevent = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, "Testing", QualityFlags::ONLINE);
-		odcevent->SetPayload<EventType::Analog>(std::move(fval));
-
-		CheckEventStringConversions(odcevent);
-	}
-	INFO("ControlRelayOutputBlock")
-	{
-		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-		val.functionCode = ControlCode::LATCH_ON; // ControlCode::LATCH_OFF;
-		auto odcevent = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness", QualityFlags::RESTART | QualityFlags::ONLINE);
-		odcevent->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
-
-		CheckEventStringConversions(odcevent);
-	}
-	//TODO: The rest of the Payload types that we need to handle
-	STANDARD_TEST_TEARDOWN();
-}
-
-TEST_CASE("Py.TestEventQueueUsingPython")
-{
-	// The ODC startup process is Build, Start IOS, then Enable posts. So we are doing that right.
-	// However in build we are telling our Python script we are operational - have to assume not enabled!
-	STANDARD_TEST_SETUP(4); // Threads
-
-	Json::Value portoverride;
-	portoverride["EventsAreQueued"] = static_cast<Json::UInt>(0);
-	TEST_PythonPort(portoverride);
-
-	START_IOS();
-
-	PythonPort->Enable();
-
-
-	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
-	REQUIRE_NOTHROW(
-		if (!WaitIOSFnResult(IOS, 10, [&]()
+		PythonPort5->Enable();
+		// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
+		REQUIRE_NOTHROW(
+			if (!WaitIOSFnResult(IOS, 10, [&]()
+				{
+					return (PythonPort5->Enabled());
+				}))
 			{
-				return (PythonPort->Enabled());
-			}))
-		{
-			throw std::runtime_error("Waiting for Port to Enable timed out");
-		}
+				throw std::runtime_error("Waiting for Ports to Enable timed out");
+			}
+			);
+
+		LOGINFO("Port5 Enabled");
+
+
+		IOS->post([&]()
+			{
+				LOGINFO("Sending Binary Events 1");
+				for (int ODCIndex = 1; ODCIndex <= 5000; ODCIndex++)
+				{
+				      bool val = (ODCIndex % 2 == 0);
+				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing1");
+				      boolevent->SetPayload<EventType::Binary>(std::move(val));
+				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				}
+				LOGINFO("Sending Binary Events 1 Done");
+			});
+		IOS->post([&]()
+			{
+				LOGINFO("Sending Binary Events 2");
+				for (int ODCIndex = 5001; ODCIndex <= 9000; ODCIndex++)
+				{
+				      bool val = (ODCIndex % 2 == 0);
+				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
+				      boolevent->SetPayload<EventType::Binary>(std::move(val));
+				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				}
+				LOGINFO("Sending Binary Events 2 Done");
+			});
+		IOS->post([&]()
+			{
+				LOGINFO("Sending Binary Events 3");
+				for (int ODCIndex = 9001; ODCIndex <= 12000; ODCIndex++)
+				{
+				      bool val = (ODCIndex % 2 == 0);
+				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
+				      boolevent->SetPayload<EventType::Binary>(std::move(val));
+				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				}
+				LOGINFO("Sending Binary Events 3 Done");
+			});
+		IOS->post([&]()
+			{
+				LOGINFO("Sending Binary Events 4");
+				for (int ODCIndex = 12001; ODCIndex <= 15000; ODCIndex++)
+				{
+				      bool val = (ODCIndex % 2 == 0);
+				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
+				      boolevent->SetPayload<EventType::Binary>(std::move(val));
+				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				}
+				LOGINFO("Sending Binary Events 4 Done");
+			});
+
+		WaitIOS(IOS, 2);
+
+		// Check that the PyPortSim module has processed the number of events that we have sent?
+		// Query through the Restful interface
+		std::string callresp = "";
+
+		bool resp = DoHttpRequst("localhost", "10000", "/TestMaster5", callresp);
+
+		REQUIRE(resp);
+
+		LOGDEBUG("GET http://localhost:10000/TestMaster5 We got back {}", callresp);
+
+		std::string matchstr("json\r\n\n");
+		size_t pos = callresp.find(matchstr);
+		REQUIRE(pos != std::string::npos);
+
+
+		std::string jsonstr = callresp.substr(pos + matchstr.length());
+		Json::Value root;
+		Json::Reader reader;
+		bool parsingSuccessful = reader.parse(jsonstr, root);
+		REQUIRE(parsingSuccessful);
+
+		uint32_t ProcessedEvents = root["processedevents"].asUInt();
+		LOGDEBUG("The PyPortSim Code Processed {} Events", ProcessedEvents);
+
+		size_t QueueSize = PythonPort5->GetEventQueueSize();
+
+		REQUIRE(ProcessedEvents == 14999);
+		REQUIRE(QueueSize == 1);
+
+		LOGDEBUG("Tests Complete, starting teardown");
+
+		PythonPort5->Disable();
+		REQUIRE_NOTHROW
+		(
+			if (!WaitIOSFnResult(IOS, 10, [&]()
+				{
+					return (!PythonPort->Enabled());
+				}))
+			{
+				throw("Waiting for Ports to be disabled timed out");
+			}
 		);
-	LOGINFO("Ports Enabled");
-
-
-	std::atomic<CommandStatus> res{ CommandStatus::UNDEFINED };
-	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&](CommandStatus command_stat)
-		{
-			res = command_stat;
-		});
-
-	LOGINFO("Sending Binary Events");
-	for (int ODCIndex = 1; ODCIndex < 2000; ODCIndex++ )
-	{
-		bool val = (ODCIndex % 2 == 0);
-		auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
-		boolevent->SetPayload<EventType::Binary>(std::move(val));
-		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
+		LOGDEBUG("Port5 Disabled");
 	}
-
-	WaitIOS(IOS, 7);
-
-	LOGDEBUG("Tests Complete, starting teardown");
-
-	PythonPort->Disable();
-
-	REQUIRE_NOTHROW
-	(
-		if (!WaitIOSFnResult(IOS, 10, [&]()
-			{
-				return (!PythonPort->Enabled());
-			}))
-		{
-			throw("Waiting for Ports to be disabled timed out");
-		}
-	);
-	LOGDEBUG("Ports Disabled");
 
 	STOP_IOS(); // Wait in here for all threads to stop.
 	LOGDEBUG("IOS Stopped");

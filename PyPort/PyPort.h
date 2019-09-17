@@ -73,6 +73,8 @@ public:
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
 
+	size_t GetEventQueueSize() { return pWrapper->GetEventQueueSize(); }
+
 protected:
 	// Worker function to try and clean up the code...
 	PyPortConf* MyConf;

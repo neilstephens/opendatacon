@@ -329,13 +329,14 @@ static PyObject* PyInit_odc(void)
 #pragma region Startup/Setup Functions
 #endif
 
-PythonWrapper::PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn):
+PythonWrapper::PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio_service> _pIOS, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn):
 	Name(aName),
+	pIOS(_pIOS),
 	PythonPortSetTimerFn(SetTimerFn),
 	PythonPortPublishEventCallFn(PublishEventCallFn)
 {
 	#ifdef PDQUEUETYPE
-	EventQueue.SetSize(MaximumQueueSize);
+	EventQueue = std::make_shared<SpecialEventQueue<EventQueueType>>(pIOS, MaximumQueueSize);
 	#endif
 }
 
@@ -678,7 +679,7 @@ void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index,
 {
 	EventQueueType item(EventType, Index, TimeStamp, Quality, Payload, Sender);
 	#ifdef PDQUEUETYPE
-	bool result = EventQueue.Push(item);
+	bool result = EventQueue->async_push(item);
 	#else
 	bool result = EventQueue.try_enqueue(item);
 	#endif
@@ -686,7 +687,7 @@ void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index,
 	if (!result)
 	{
 		#ifdef PDQUEUETYPE
-		uint32_t qsize = EventQueue.Size();
+		uint32_t qsize = EventQueue->Size();
 		#else
 		uint32_t qsize = EventQueue.size_approx();
 		#endif
@@ -697,7 +698,11 @@ void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index,
 bool PythonWrapper::DequeueEvent(EventQueueType& eq)
 {
 	#ifdef PDQUEUETYPE
-	return EventQueue.Pop(eq);
+	std::shared_ptr<EventQueueType> data = EventQueue->pop();
+	if (data == nullptr)
+		return false;
+	eq = *data;
+	return true;
 	#else
 	EventQueue.try_dequeue(eq);
 	// The default constructor for the queue item has empty strings and zero time stamps.

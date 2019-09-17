@@ -46,9 +46,10 @@ class SimPortClass:
         self.objectname = objectname    # Documentation/error use only.
         self.guid = odcportguid         # So that when we call an odc method, ODC can work out which pyport to hand it too. 
         self.Enabled = False;
-        self.i = 0
+        self.i = 2
         self.ConfigDict = {}      # Config Dictionary
-        self.LogDebug("SimPortClass Init Called - {}".format(objectname))       
+        self.LogDebug("SimPortClass Init Called - {}".format(objectname))
+        self.processedevents = 0
         return
 
     # Required Method
@@ -84,12 +85,13 @@ class SimPortClass:
     def Operational(self):
         """ This is called from ODC once ODC is ready for us to be fully operational - normally after Build is complete"""
         self.LogDebug("Port Operational - {}".format(datetime.now().isoformat(" ")))
+        odc.SetTimer(self.guid, 1, 250)     #250 msec
         return
 
     # Required Method
     def Enable(self):
         self.LogTrace("Enabled - {}".format(datetime.now().isoformat(" ")))
-        self.enabled = True;
+        self.enabled = True;        
         return
 
     # Required Method
@@ -103,6 +105,8 @@ class SimPortClass:
     # There is no callback available, the ODC code expects this method to return without delay.
     def EventHandler(self,EventType, Index, Time, Quality, Payload, Sender):
         self.LogTrace("EventHander: {}, {}, {} {} - {}".format(self.guid,Sender,Index,EventType,Payload))
+        
+        self.processedevents += 1
 
         if (EventType == "Binary"):
             self.LogDebug("Event is a Binary")
@@ -116,6 +120,18 @@ class SimPortClass:
     # so you can have multiple timers running.
     def TimerHandler(self,TimerId):
         self.LogTrace("TimerHander: ID {}, {}".format(TimerId, self.guid))
+
+        if (TimerId == 1):
+            # Get Events from the queue and process them 
+            while (True):
+                EventType, Index, Time, Quality, Payload, Sender = odc.GetNextEvent(self.guid)
+
+                # The EventType will be an empty string if the queue is empty.
+                if (len(EventType) == 0):
+                    break
+                self.processedevents += 1     # Python is single threaded, so no concurrency issues (unless specipically enabled for multi)
+
+            odc.SetTimer(self.guid, 1, 250)     #250 msec
         return
 
     # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
@@ -126,11 +142,11 @@ class SimPortClass:
     # We return the response that we want sent back to the caller. This will be a JSON string. A null string would be an error.
     def RestRequestHandler(self, url, content):
         self.LogTrace("RestRequestHander: {}".format(url))
-        
 
         Response = {}   # Empty Dict
         if ("GET" in url):
             Response["test"] = "GET"
+            Response["processedevents"] = self.processedevents
         else:
             Response["test"] = "POST"
 

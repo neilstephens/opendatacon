@@ -175,7 +175,7 @@ void PyPort::Build()
 			// If first time constructor is called, will instansiate the interpreter.
 			// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
 			// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
-			pWrapper = std::make_unique<PythonWrapper>(this->Name, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
+			pWrapper = std::make_unique<PythonWrapper>(this->Name, pIOS, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
 				std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 			try
 			{
