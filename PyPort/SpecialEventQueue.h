@@ -44,7 +44,7 @@ private:
 public:
 		std::shared_ptr<node> next; // Points "up" the queue from tail to head
 		std::shared_ptr<T> data;
-		node(std::shared_ptr<T> _data): data(_data), next(nullptr)
+		node(std::shared_ptr<T> _data): next(nullptr), data(_data)
 		{}
 	};
 
@@ -58,12 +58,12 @@ public:
 
 public:
 	SpecialEventQueue(std::shared_ptr<odc::asio_service> _pIOS, size_t _maxsize)
-		: maxsize(_maxsize),
-		pIOS(_pIOS),
-		internal_queue_strand(pIOS->make_strand()),
+		: head(nullptr),
+		tail(nullptr),
 		size(0),
-		head(nullptr),
-		tail(nullptr)
+		maxsize(_maxsize),
+		pIOS(_pIOS),
+		internal_queue_strand(pIOS->make_strand())
 	{}
 
 	size_t Size() { return size.load(); }
@@ -103,7 +103,7 @@ public:
 					}
 				});
 		}
-		catch (const std::exception& e)
+		catch (const std::exception)
 		{
 			// Must be a memory allocation failure.
 			return false;

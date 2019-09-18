@@ -276,7 +276,7 @@ static PyObject* odc_GetNextEvent(PyObject* self, PyObject* args)
 
 			auto pyArgs = PyTuple_New(6);
 			auto pyEventType = PyUnicode_FromString(eq.EventType.c_str()); // String Event Type
-			auto pyIndex = PyLong_FromUnsignedLong(eq.Index);
+			auto pyIndex = PyLong_FromSize_t(eq.Index);
 			auto pyTime = PyLong_FromUnsignedLongLong(eq.TimeStamp);   // msSinceEpoch
 			auto pyQuality = PyUnicode_FromString(eq.Quality.c_str()); // String quality flags
 			auto pyPayload = PyUnicode_FromString(eq.Payload.c_str());
@@ -688,7 +688,7 @@ void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index,
 
 	if (!result)
 	{
-		uint32_t qsize = EventQueue->Size();
+		size_t qsize = EventQueue->Size();
 		LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}",qsize);
 	}
 }
@@ -717,7 +717,7 @@ CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> odcevent, co
 		}
 		auto pyArgs = PyTuple_New(6);
 		auto pyEventType = PyUnicode_FromString(odc::ToString(odcevent->GetEventType()).c_str()); // String Event Type
-		auto pyIndex = PyLong_FromUnsignedLong(odcevent->GetIndex());
+		auto pyIndex = PyLong_FromSize_t(odcevent->GetIndex());
 		auto pyTime = PyLong_FromUnsignedLongLong(odcevent->GetTimestamp());             // msSinceEpoch
 		auto pyQuality = PyUnicode_FromString(ToString(odcevent->GetQuality()).c_str()); // String quality flags
 		auto pyPayload = PyUnicode_FromString(odcevent->GetPayloadString().c_str());

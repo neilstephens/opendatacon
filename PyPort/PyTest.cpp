@@ -337,7 +337,7 @@ void CheckEventStringConversions(std::shared_ptr<EventInfo> inevent)
 	std::string EventTypeStr = odc::ToString(inevent->GetEventType());
 	std::string QualityStr = ToString(inevent->GetQuality());
 	std::string PayloadStr = inevent->GetPayloadString();
-	uint32_t ODCIndex = inevent->GetIndex();
+	size_t ODCIndex = inevent->GetIndex();
 
 	// Create a new event from those strings
 	std::shared_ptr<EventInfo> pubevent = PyPort::CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr, "Testing");
@@ -625,7 +625,7 @@ TEST_CASE("Py.TestsUsingPython")
 				LOGINFO("Sending Binary Events 4 Done");
 			});
 
-		WaitIOS(IOS, 2);
+		WaitIOS(IOS, 5);
 
 		// Check that the PyPortSim module has processed the number of events that we have sent?
 		// Query through the Restful interface
@@ -644,9 +644,11 @@ TEST_CASE("Py.TestsUsingPython")
 
 		std::string jsonstr = callresp.substr(pos + matchstr.length());
 		Json::Value root;
-		Json::Reader reader;
-		bool parsingSuccessful = reader.parse(jsonstr, root);
-		REQUIRE(parsingSuccessful);
+		Json::CharReaderBuilder jsonReader;
+		std::string errs;
+		std::stringstream jsonstream(jsonstr);
+
+		REQUIRE(Json::parseFromStream(jsonReader, jsonstream, &root, &errs));
 
 		uint32_t ProcessedEvents = root["processedevents"].asUInt();
 		LOGDEBUG("The PyPortSim Code Processed {} Events", ProcessedEvents);

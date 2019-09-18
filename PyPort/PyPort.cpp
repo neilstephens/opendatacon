@@ -402,7 +402,7 @@ bool PyPort::GetConnectStateFromStringName(const std::string StrConnectState, Co
 	return false;
 }
 
-std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
+std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, size_t & ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
 {
 	EventType EventTypeResult;
 	if (!GetEventTypeFromStringName(EventTypeStr, EventTypeResult))
@@ -530,7 +530,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 // We pass this method string values for fields (from Python) parse them and create the ODC event then send it.
 // A pointer to this method is passed to the Wrapper class so it can be called when we get information from the Python code.
 // We are not passing a callback - just nullstr. So dont expect feedback.
-void PyPort::PublishEventCall(const std::string &EventTypeStr, uint32_t ODCIndex,  const std::string &QualityStr, const std::string &PayloadStr )
+void PyPort::PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex,  const std::string &QualityStr, const std::string &PayloadStr )
 {
 	//LOGDEBUG("PyPort Publish Event {}, {}, {}, {}", EventTypeStr, ODCIndex, QualityStr, PayloadStr);
 
