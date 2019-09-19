@@ -392,6 +392,18 @@ TEST_CASE("Py.TestEventStringConversions")
 	STANDARD_TEST_TEARDOWN();
 }
 
+uint32_t GetProcessedEventsFromJSON(std::string jsonstr)
+{
+	Json::Value root;
+	Json::CharReaderBuilder jsonReader;
+	std::string errs;
+	std::stringstream jsonstream(jsonstr);
+
+	if (!Json::parseFromStream(jsonReader, jsonstream, &root, &errs))
+		return -1;
+	return root["processedevents"].asUInt();
+}
+
 TEST_CASE("Py.TestsUsingPython")
 {
 	// So do all the tests that involve using the Python Interpreter in one test, as we dont seem to be able to close it down correctly
@@ -625,7 +637,7 @@ TEST_CASE("Py.TestsUsingPython")
 				LOGINFO("Sending Binary Events 4 Done");
 			});
 
-		WaitIOS(IOS, 8);
+		WaitIOS(IOS, 5);
 
 		// Check that the PyPortSim module has processed the number of events that we have sent?
 		// Query through the Restful interface
@@ -641,18 +653,25 @@ TEST_CASE("Py.TestsUsingPython")
 		size_t pos = callresp.find(matchstr);
 		REQUIRE(pos != std::string::npos);
 
+		uint32_t ProcessedEvents = GetProcessedEventsFromJSON(callresp.substr(pos + matchstr.length()));
 
-		std::string jsonstr = callresp.substr(pos + matchstr.length());
-		Json::Value root;
-		Json::CharReaderBuilder jsonReader;
-		std::string errs;
-		std::stringstream jsonstream(jsonstr);
-
-		REQUIRE(Json::parseFromStream(jsonReader, jsonstream, &root, &errs));
-
-		uint32_t ProcessedEvents = root["processedevents"].asUInt();
 		LOGDEBUG("The PyPortSim Code Processed {} Events", ProcessedEvents);
 
+		if (ProcessedEvents != 14999)
+		{
+			WaitIOS(IOS, 10); // Wait longer for RPI build to run!!!
+
+			resp = DoHttpRequst("localhost", "10000", "/TestMaster5", callresp);
+			REQUIRE(resp);
+
+			LOGDEBUG("GET http://localhost:10000/TestMaster5 We got back {}", callresp);
+
+			size_t pos = callresp.find(matchstr);
+			REQUIRE(pos != std::string::npos);
+			ProcessedEvents = GetProcessedEventsFromJSON(callresp.substr(pos + matchstr.length()));
+
+			LOGDEBUG("The PyPortSim Code Processed {} Events", ProcessedEvents);
+		}
 		size_t QueueSize = PythonPort5->GetEventQueueSize();
 
 		REQUIRE(ProcessedEvents == 14999);
