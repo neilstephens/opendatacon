@@ -11,11 +11,11 @@ addons:
 
 os:
   - linux
-#  - osx
+  - osx
 
 compiler:
   - gcc
-#  - clang
+  - clang
 
 env:
   - BUILD_CONFIG=Release
@@ -32,25 +32,25 @@ matrix:
       services:
         - docker
     #OEL7 Release
-#    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
+      services:
+        - docker
     #OEL7 Debug
-#    - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
+      services:
+        - docker
     #i686 Release
-#    - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
+      services:
+        - docker
     #i686 Debug
-#    - env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
-#      services:
-#        - docker
+    - env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
+      services:
+        - docker
   exclude:
     #Travis docs say on osx gcc is an alias for clang anyway
-#    - os: osx
-#      compiler: clang
+    - os: osx
+      compiler: clang
 
 branches:
   only:
