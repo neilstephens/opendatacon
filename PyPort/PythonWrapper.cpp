@@ -411,7 +411,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 		// Log the Python path for debugging (also write to a small file for running test code)
 		std::wstring path = Py_GetPath();
 		std::string spath(path.begin(), path.end());
-		LOGERROR("Current Python sys.path - {}",spath);
+		LOGCRITICAL("Current Python sys.path - {}",spath);
 
 		PyDateTime_IMPORT;
 

@@ -55,5 +55,8 @@
 #define LOGINFO(...) \
 	if (auto log = odc::spdlog_get("PyPort")) \
 		log->info(__VA_ARGS__);
+#define LOGCRITICAL(...) \
+	if (auto log = odc::spdlog_get("PyPort")) \
+		log->critical(__VA_ARGS__);
 
 #endif /* PY_H_ */
