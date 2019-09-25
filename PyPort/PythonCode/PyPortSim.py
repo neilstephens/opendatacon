@@ -48,7 +48,7 @@ class SimPortClass:
         self.Enabled = False;
         self.i = 2
         self.ConfigDict = {}      # Config Dictionary
-        self.LogDebug("SimPortClass Init Called - {}".format(objectname))
+        self.LogDebug("*********** SimPortClass Init Called - File Version 1.001 - {}".format(objectname))
         self.processedevents = 0
         return
 
@@ -122,6 +122,7 @@ class SimPortClass:
         self.LogTrace("TimerHander: ID {}, {}".format(TimerId, self.guid))
 
         if (TimerId == 1):
+            self.LogDebug("TimerHander: Event Queue Size {}".format(odc.GetEventQueueSize(self.guid)))
             # Get Events from the queue and process them 
             while (True):
                 EventType, Index, Time, Quality, Payload, Sender = odc.GetNextEvent(self.guid)

@@ -26,8 +26,7 @@ conf = """{"Binaries": [{"CBNumber": 1, "Index": 0, "SimType": "CBStateBit0", "S
     # The point name definitions must match the string versions of the ODC
     # types to match.
 kafkaconf = """{
-    "BrokerIP" : "127.0.0.1",
-    "BrokerPort" : 9092,
+    "bootstrap.servers" : "127.0.0.1:9092",
     "SocketTimeout" : 10000,
     "Topic" : "Test",
 
@@ -180,8 +179,6 @@ print("Start")
 #StimulateDirectly() # Can use this to call code within this single Python program for simpler
 # debugging and testing.
 #KafkaProduceTest()
-#StimulatePyPortKafkaDirectly()
-KafkaConsumeTest()
+StimulatePyPortKafkaDirectly()
+#KafkaConsumeTest()
 print("Done")
-
-

@@ -20,3 +20,8 @@ def SetTimer(guid, id, milliseconds):
 def GetNextEvent(guid):
     print("GetNextEvent - Guid - {} ".format(guid))
     return  "Binary",0,0,"|ONLINE|","1","Dummy"
+
+# "L:GetEventQueueSize"
+def GetEventQueueSize(guid):
+    print("GetEventQueueSize - Guid - {} ".format(guid))
+    return  181

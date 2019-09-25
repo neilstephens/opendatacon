@@ -202,6 +202,43 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 	return Py_BuildValue("i", 1);
 }
 
+// This is an extension method that we have provided to our embedded Python. It get the current EventQueue length.
+// It is static, so we have to work out which instance of the PythonWrapper class should handle it.
+static PyObject* odc_GetEventQueueSize(PyObject* self, PyObject* args)
+{
+	try
+	{
+		uint64_t guid;
+
+		// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
+		if (!PyArg_ParseTuple(args, "L:PublishEvent", &guid))
+		{
+			PythonWrapper::PyErrOutput();
+			Py_RETURN_NONE; // This will throw an execption in the python code.
+		}
+
+		// Work out which instance of our PyWrapper is talking to us.
+		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
+
+		if (thisPyWrapper != nullptr)
+		{
+			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
+			// The PyPort ensures that pyWrapper is managed within a strand
+			size_t QueueSize = thisPyWrapper->GetEventQueueSize();
+			return Py_BuildValue("i", QueueSize);
+		}
+		else
+		{
+			LOGDEBUG("odc.GetEventQueueSize called from Python code for unknown PyPort object - ignored");
+		}
+	}
+	catch (std::exception& e)
+	{
+		LOGERROR("Excception Caught in odc_GetEventQueueSize() - {}", e.what());
+	}
+	// Return a PyObject return value. True is 1
+	return Py_BuildValue("i",0);
+}
 // This is an extension method that we have provided to our embedded Python. It will post an event into the ODC bus.
 // It is static, so we have to work out which instance of the PythonWrapper class should handle it.
 static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
@@ -310,6 +347,7 @@ static PyMethodDef odcMethods[] = {
 	{"PublishEvent", odc_PublishEvent, METH_VARARGS, "Publish ODC event to subscribed ports"},
 	{"SetTimer", odc_SetTimer, METH_VARARGS, "Set a Timer Callback up"},
 	{"GetNextEvent", odc_GetNextEvent, METH_VARARGS, "Get the next event from the queue - return None if empty"},
+	{"GetEventQueueSize", odc_GetEventQueueSize, METH_VARARGS, "How many elements are there in the event queue - return None if empty"},
 	{NULL, NULL, 0, NULL}
 };
 
