@@ -81,6 +81,7 @@ const char *conffile1 = R"001(
 	"ModuleName" : "PyPortSim",
 	"ClassName": "SimPortClass",
 	"EventsAreQueued": false,
+	"QueueFormatString": "{{\"Tag\" : \"{0}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Quality\" : \"{3}\", \"TS\" : \"{2}\"}}",
 	"GlobalUseSystemPython": false,
 		
 	// The point definitions are only proccessed by the Python code. Any events sent to PyPort by ODC will be passed on.

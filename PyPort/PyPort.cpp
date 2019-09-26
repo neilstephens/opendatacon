@@ -604,15 +604,21 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		// But if we are searching for PITags that will not be found, that would work but be expensive time wise.
 
 		std::string isotimestamp = getISOCurrentTimestampUTC_from_msSinceEpoch_t(event->GetTimestamp());
-
-		std::string jsonevent = fmt::format("{{\"Tag\" : \"{0}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Qual\" : \"{3}\", \"TS\" : \"{2}\"}}",
-			odc::ToString(event->GetEventType()), // 0
-			event->GetIndex(),                    // 1
-			isotimestamp,                         // 2
-			ToString(event->GetQuality()),        // 3
-			event->GetPayloadString(),            // 4
-			SenderName );                         // 5
-		pWrapper->QueueEvent(jsonevent);
+		try
+		{
+			std::string jsonevent = fmt::format(MyConf->pyQueueFormatString,
+				odc::ToString(event->GetEventType()), // 0
+				event->GetIndex(),                    // 1
+				isotimestamp,                         // 2
+				ToString(event->GetQuality()),        // 3
+				event->GetPayloadString(),            // 4
+				SenderName);                          // 5
+			pWrapper->QueueEvent(jsonevent);
+		}
+		catch(std::exception& e)
+		{
+			LOGCRITICAL("Queue Formatting String Parsing Failure {}, {}", e.what(), MyConf->pyQueueFormatString);
+		}
 	}
 	else
 	{
@@ -721,10 +727,12 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("Port"))
 		MyConf->pyHTTPPort = JSONRoot["Port"].asString();
 
-	//TODO: The following two parameters should always be set to the same value. If different throw an exception as the conf file is wrong!
+	if (JSONRoot.isMember("QueueFormatString"))
+		MyConf->pyQueueFormatString = JSONRoot["QueueFormatString"].asString();
 	if (JSONRoot.isMember("EventsAreQueued"))
 		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
+
+	//TODO: The following parameter should always be set to the same value. If different throw an exception as the conf file is wrong!
 	if (JSONRoot.isMember("GlobalUseSystemPython"))
 		MyConf->GlobalUseSystemPython = JSONRoot["GlobalUseSystemPython"].asBool(); // Defaults to OFF
-
 }
