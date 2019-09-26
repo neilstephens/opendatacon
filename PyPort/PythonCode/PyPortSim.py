@@ -122,17 +122,18 @@ class SimPortClass:
         self.LogTrace("TimerHander: ID {}, {}".format(TimerId, self.guid))
 
         if (TimerId == 1):
-            self.LogDebug("TimerHander: Event Queue Size {}".format(odc.GetEventQueueSize(self.guid)))
+            #currentqueuesize = odc.GetEventQueueSize(self.guid)
+            #self.LogDebug("TimerHander: Event Queue Size {}".format(currentqueuesize))
             # Get Events from the queue and process them 
             while (True):
-                EventType, Index, Time, Quality, Payload, Sender = odc.GetNextEvent(self.guid)
+                JsonEvent, empty = odc.GetNextEvent(self.guid)
 
-                # The EventType will be an empty string if the queue is empty.
-                if (len(EventType) == 0):
+                if (empty == True):
                     break
                 self.processedevents += 1     # Python is single threaded, so no concurrency issues (unless specipically enabled for multi)
 
-            odc.SetTimer(self.guid, 1, 250)     #250 msec
+            odc.SetTimer(self.guid, 1, 250)     #250 msec - timer 1 restarts itself!
+
         return
 
     # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
@@ -150,6 +151,8 @@ class SimPortClass:
             Response["processedevents"] = self.processedevents
         else:
             Response["test"] = "POST"
+        # Just to make sure it gets called and the call succeeds.
+        currentqueuesize = odc.GetEventQueueSize(self.guid)
 
         odc.SetTimer(self.guid, self.i, 1001-self.i)    # Set a timer to go off in a period less than a second
         self.i = self.i + 1

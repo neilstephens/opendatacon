@@ -587,7 +587,6 @@ TEST_CASE("Py.TestsUsingPython")
 
 		LOGINFO("Port5 Enabled");
 
-
 		IOS->post([&]()
 			{
 				LOGINFO("Sending Binary Events 1");

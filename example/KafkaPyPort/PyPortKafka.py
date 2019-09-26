@@ -57,10 +57,20 @@ class SimPortClass:
         self.MessageIndex = 0
         self.LastMessageIndex = self.MessageIndex
         self.StartTimeSeconds = time.time()
+        self.timestart = 1.1 # Used for profiling, setup as a float
+        self.measuretimeus = 0
+        self.measuretimeus2 = 0
         self.ConfigDict = {}      # Config Dictionary
         self.LogDebug("PyPortKafka - SimPortClass Init Called - {}".format(objectname))
         self.LogDebug("Python sys.path - {}".format(sys.path))
         return
+
+        # time.perf_counter_ns() (3.6 up) gives the time including include sleeps time.process_time() is overall time.
+    def timeusstart(self):
+         self.timestart = time.perf_counter() #float fractions of a second 
+
+    def timeusstop(self):
+        return int((time.perf_counter()-self.timestart)*1000000)
 
     def Config(self, MainJSON, OverrideJSON):
         """ The JSON values are passed as strings (stripped of comments), which we then load into a dictionary for processing
@@ -125,21 +135,21 @@ class SimPortClass:
 
     # Look for the matching PITag for this point. If we dont find it return False.
     # This is going to get called a lot, so may need to be optimised.
-    def GetPITag(self, EventType, ODCIndex):
-
+#    def GetPITag(self, EventType, ODCIndex):
+#
         # TODO Split this on startup, so we dont do it every time.
-        Json = self.ConfigDict.get(EventType,"")    # If no configured points for a point type, return empty Json
+#        Json = self.ConfigDict.get(EventType,"")    # If no configured points for a point type, return empty Json
 
-        if (len(Json)==0):
-            self.LogError("Can't find point definitions for {} types".format(EventType))
-            return ""
+#        if (len(Json)==0):
+#            self.LogError("Can't find point definitions for {} types".format(EventType))
+#            return ""
 
         #TODO Do we need a faster way of doing this? Potentially 10,000 points or more.
-        for x in Json:
-            if(x["Index"] == ODCIndex):
-                return x["PITag"]       # we have a match!
+#        for x in Json:
+#            if(x["Index"] == ODCIndex):
+#                return x["PITag"]       # we have a match!
 
-        return ""
+#        return ""
 
     def delivery_report(self, err, msg):
         """ Called once for each message produced to indicate delivery result. Triggered by poll() or flush(). """
@@ -147,29 +157,6 @@ class SimPortClass:
             self.LogError('Message delivery failed: {}'.format(err))
         #else:
         #    self.LogDebug('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
-
-    def KafkaProcessEvent(self, EventType, Index, Payload, Quality, Sender, Time):
-        # Concerned about the speed of this method - may need to time it, so we know if it is an issue.
-        PITag = self.GetPITag(EventType, Index)
-
-        if (len(PITag)):
-            # We have a PITag so send to Kafka
-            # TimeDate Needs to be "2019-07-17T01:34:20.072Z" ISO8601 format.
-            ISOTimeStamp = "{}.{:03}Z".format(datetime.fromtimestamp(Time/1000,timezone.utc).strftime("%FT%T"), Time%1000)
-            messagevalue = {"Tag" : PITag, "Idx" : self.MessageIndex, "Val" : Payload, "Qual" : Quality, "TS" : ISOTimeStamp}
-            self.MessageIndex = self.MessageIndex + 1   # This is just so we can reconstruct message order after retreiving data from Kafka
-
-            # Deal with buffer oveflow - we could run out of memory if nothing is going to Kafka.
-            try:
-                self.producer.produce(self.topic, value=json.dumps(messagevalue), callback=self.delivery_report)
-
-            except BufferError:
-                self.LogError("Kafka Producer Queue is full ({} messages awaiting delivery)".format(len(self.producer)))
-                return False
-
-        else:
-            self.LogError("Could not find PITag for Point {}, {} - {}".format(Sender,EventType,Index))
-        return True
 
     # Needs to return True or False, which will be translated into CommandStatus::SUCCESS or CommandStatus::UNDEFINED
     # EventType (string) Index (int), Time (msSinceEpoch), Quality (string) Payload (string) Sender (string)
@@ -180,7 +167,7 @@ class SimPortClass:
         if (EventType == "ConnectState"):
             return True
 
-        self.KafkaProcessEvent(EventType, Index, Payload, Quality, Sender, Time)
+        self.LogError("Events must be queued {}".format(EventType))
 
         # Always return True - we processed the message - even if we could not pass it to Kafka.
         return True
@@ -204,29 +191,40 @@ class SimPortClass:
             shortwaitmsec = 5
             EventCount = 1
             starttime = datetime.now()
+            self.measuretimeus = 0
+            self.measuretimeus2 = 0
 
-            # Get Events from the queue and process them, up until we have an empty queue or 100 entries OR
-            # The local producer queue has 100 entries in it.
+            # Get Events from the queue and process them, up until we have an empty queue or MaxMessageCount entries 
             # Then trigger the kafka library to send them.
-            # TODO Profile this code
-            while ((EventCount < MaxMessageCount)):# and (len(self.producer) < MaxMessageCount)):
+
+            while ((EventCount < MaxMessageCount)):
                 EventCount += 1
-                EventType, Index, Time, Quality, Payload, Sender = odc.GetNextEvent(self.guid)
+
+                self.timeusstart()
+                ### Takes about 8.4usec per call (approx) on DEV server
+                JsonEventstr, empty = odc.GetNextEvent(self.guid)
+                self.measuretimeus += self.timeusstop()
 
                 # The EventType will be an empty string if the queue is empty.
-                if (len(EventType) == 0):
+                if (empty == True):
                     break
 
-                if self.KafkaProcessEvent(EventType, Index, Payload, Quality, Sender, Time) == False:
-                    # We have had a buffer overflow
-                    self.LogDebug("Kafka Buffer Overflow")
+                try:
+                    self.timeusstart()
+                    # 45msec/5000 so 9usec/record.
+                    # Can we only get a single delivery report per block of up to 5000 mesages?
+                    self.producer.produce(self.topic, value=JsonEventstr, callback=self.delivery_report)
+                    self.measuretimeus2 += self.timeusstop()
+
+                except BufferError:
+                    self.LogError("Kafka Producer Queue is full ({} messages awaiting delivery)".format(len(self.producer)))
                     break
 
                 if (EventCount % 100 == 0):
                     self.producer.poll(0)   # Do any waiting processing, but dont wait!
-            
+
             EventQueueSize = odc.GetEventQueueSize(self.guid);
-            self.LogDebug("Kafka Produced {} messages. Kafka queue size {}. ODC Event queue size {} Execution time {} msec".format(EventCount,len(self.producer),EventQueueSize,self.millisdiff(starttime)))
+            self.LogDebug("Kafka Produced {} messages. Kafka queue size {}. ODC Event queue size {} Execution time {} msec Timed code {}, {} us".format(EventCount,len(self.producer),EventQueueSize,self.millisdiff(starttime),self.measuretimeus,self.measuretimeus2))
 
             # If we have pushed the maxiumum number of events in, we need to go faster...
             # If the producer queue hits the limit, this means the kafka cluster is not keeping up.

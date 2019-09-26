@@ -42,33 +42,33 @@ typedef std::function<void (uint32_t, uint32_t)> SetTimerFnType;
 typedef std::function<void ( const char*, uint32_t, const char*, const char*)> PublishEventCallFnType;
 
 // Class to store the evnt as a stringified version, mainly so that when Python is retreving these records, it does minimal processing.
-class EventQueueType
+/*class EventQueueType
 {
 public:
-	EventQueueType(const std::string& _EventType, const size_t _Index, odc::msSinceEpoch_t _TimeStamp,
-		const std::string& _Quality, const std::string& _Payload, const std::string& _Sender):
-		EventType(_EventType),
-		Index(_Index),
-		TimeStamp(_TimeStamp),
-		Quality(_Quality),
-		Payload(_Payload),
-		Sender(_Sender)
-	{};
-	EventQueueType():
-		EventType(""),
-		Index(0),
-		TimeStamp(0),
-		Quality(""),
-		Payload(""),
-		Sender("")
-	{};
-	std::string EventType;
-	size_t Index;
-	odc::msSinceEpoch_t TimeStamp;
-	std::string Quality;
-	std::string Payload;
-	std::string Sender;
-};
+      EventQueueType(const std::string& _EventType, const size_t _Index, odc::msSinceEpoch_t _TimeStamp,
+            const std::string& _Quality, const std::string& _Payload, const std::string& _Sender):
+            EventType(_EventType),
+            Index(_Index),
+            TimeStamp(_TimeStamp),
+            Quality(_Quality),
+            Payload(_Payload),
+            Sender(_Sender)
+      {};
+      EventQueueType():
+            EventType(""),
+            Index(0),
+            TimeStamp(0),
+            Quality(""),
+            Payload(""),
+            Sender("")
+      {};
+      std::string EventType;
+      size_t Index;
+      odc::msSinceEpoch_t TimeStamp;
+      std::string Quality;
+      std::string Payload;
+      std::string Sender;
+};*/
 
 class PythonInitWrapper
 {
@@ -92,9 +92,9 @@ public:
 	void Disable();
 
 	CommandStatus Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName);
-	void QueueEvent(const std::string& EventType, const size_t Index, odc::msSinceEpoch_t TimeStamp, const std::string& Quality, const std::string& Payload, const std::string& Sender);
+	void QueueEvent(const std::string& jsonevent);
 
-	bool DequeueEvent(EventQueueType& eq);
+	bool DequeueEvent(std::string& eq);
 	size_t GetEventQueueSize()
 	{
 		return EventQueue->Size();
@@ -152,7 +152,7 @@ private:
 	// We need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
 	const size_t MaximumQueueSize = 1000000; // 1 million
 
-	std::shared_ptr<SpecialEventQueue<EventQueueType>> EventQueue;
+	std::shared_ptr<SpecialEventQueue<std::string>> EventQueue;
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.
 	PyObject* pyModule = nullptr;

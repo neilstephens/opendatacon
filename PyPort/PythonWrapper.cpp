@@ -114,7 +114,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		if (thisPyWrapper != nullptr)
+		if (thisPyWrapper)
 		{
 			WholeMessage += thisPyWrapper->Name + " - ";
 		}
@@ -180,7 +180,7 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		if (thisPyWrapper != nullptr)
+		if (thisPyWrapper)
 		{
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
@@ -220,7 +220,7 @@ static PyObject* odc_GetEventQueueSize(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		if (thisPyWrapper != nullptr)
+		if (thisPyWrapper)
 		{
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
 			// The PyPort ensures that pyWrapper is managed within a strand
@@ -259,7 +259,7 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		if (thisPyWrapper != nullptr)
+		if (thisPyWrapper)
 		{
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
@@ -293,39 +293,28 @@ static PyObject* odc_GetNextEvent(PyObject* self, PyObject* args)
 		if (!PyArg_ParseTuple(args, "L:GetNextEvent", &guid))
 		{
 			PythonWrapper::PyErrOutput();
-			Py_RETURN_NONE; // This will throw an execption in the python code.
+			// Will cause Pyhton exception
+			Py_RETURN_NONE;
 		}
 
 		// Work out which instance of our PyWrapper is talking to us.
 		PythonWrapper* thisPyWrapper = PythonWrapper::GetThisFromPythonSelf(guid);
 
-		if (thisPyWrapper != nullptr)
+		if (thisPyWrapper)
 		{
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
 			// The PyPort ensures that pyWrapper is managed within a strand
-			EventQueueType eq;
-			if (!thisPyWrapper->DequeueEvent(eq))
-			{
-				// Queue is empty - dont do anything - the python code will test for empty string eventtype
-			}
-			//LOGDEBUG("GetNextEvent {}, {}, {}, {}, {}, {}", eq.EventType, eq.Index, eq.Quality, eq.Payload, eq.Sender, eq.TimeStamp);
+			std::string eq = "";
+			bool empty = !thisPyWrapper->DequeueEvent(eq);
+			//LOGDEBUG("GetNextEvent {}", eq);
 
-			auto pyArgs = PyTuple_New(6);
-			auto pyEventType = PyUnicode_FromString(eq.EventType.c_str()); // String Event Type
-			auto pyIndex = PyLong_FromSize_t(eq.Index);
-			auto pyTime = PyLong_FromUnsignedLongLong(eq.TimeStamp);   // msSinceEpoch
-			auto pyQuality = PyUnicode_FromString(eq.Quality.c_str()); // String quality flags
-			auto pyPayload = PyUnicode_FromString(eq.Payload.c_str());
-			auto pySender = PyUnicode_FromString(eq.Sender.c_str());
-
+			auto pyArgs = PyTuple_New(2);
+			auto pyJSONType = PyUnicode_FromString(eq.c_str()); // json string
+			auto pyEmpty = PyBool_FromLong(empty);
 			// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
-			PyTuple_SetItem(pyArgs, 0, pyEventType);
-			PyTuple_SetItem(pyArgs, 1, pyIndex);
-			PyTuple_SetItem(pyArgs, 2, pyTime);
-			PyTuple_SetItem(pyArgs, 3, pyQuality);
-			PyTuple_SetItem(pyArgs, 4, pyPayload);
-			PyTuple_SetItem(pyArgs, 5, pySender);
+			PyTuple_SetItem(pyArgs, 0, pyJSONType);
+			PyTuple_SetItem(pyArgs, 1, pyEmpty);
 
 			return pyArgs;
 		}
@@ -373,7 +362,7 @@ PythonWrapper::PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio
 	PythonPortSetTimerFn(SetTimerFn),
 	PythonPortPublishEventCallFn(PublishEventCallFn)
 {
-	EventQueue = std::make_shared<SpecialEventQueue<EventQueueType>>(pIOS, MaximumQueueSize);
+	EventQueue = std::make_shared<SpecialEventQueue<std::string>>(pIOS, MaximumQueueSize);
 }
 
 // Load the module into the python interpreter before we initialise it.
@@ -518,7 +507,7 @@ PythonWrapper::~PythonWrapper()
 		RemoveWrapperMapping();
 		Py_XDECREF(pyInstance);
 
-		if (pyModule != nullptr)
+		if (pyModule)
 		{
 			Py_DECREF(pyModule);
 		}
@@ -718,11 +707,9 @@ void PythonWrapper::Disable()
 
 // these two methods are the only ones that touch the event queue. So to change the queue, do it here.
 // This is not synced with the strand when called. So the queue needs to be multi-producer capable
-void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index, odc::msSinceEpoch_t TimeStamp,
-	const std::string& Quality, const std::string& Payload, const std::string& Sender)
+void PythonWrapper::QueueEvent(const std::string& jsonevent)
 {
-	EventQueueType item(EventType, Index, TimeStamp, Quality, Payload, Sender);
-	bool result = EventQueue->async_push(item);
+	bool result = EventQueue->async_push(jsonevent);
 
 	if (!result)
 	{
@@ -731,9 +718,9 @@ void PythonWrapper::QueueEvent(const std::string& EventType, const size_t Index,
 	}
 }
 
-bool PythonWrapper::DequeueEvent(EventQueueType& eq)
+bool PythonWrapper::DequeueEvent(std::string& eq)
 {
-	std::shared_ptr<EventQueueType> data = EventQueue->pop();
+	std::shared_ptr<std::string> data = EventQueue->pop();
 	if (data == nullptr)
 		return false;
 	eq = *data;
