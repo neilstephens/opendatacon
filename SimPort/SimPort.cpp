@@ -142,8 +142,12 @@ void SimPort::SpawnEvent(size_t index, double mean, double std_dev, unsigned int
 
 	//Send an event out
 	//change value around mean
-	std::normal_distribution<double> distribution(mean, std_dev);
-	double val = distribution(RandNumGenerator);
+	double val = mean;
+	if (std_dev != 0.0)
+	{
+		std::normal_distribution<double> distribution(mean, std_dev);
+		val = distribution(RandNumGenerator);
+	}
 	auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
 	event->SetPayload<EventType::Analog>(std::move(val));
 	PublishEvent(event);

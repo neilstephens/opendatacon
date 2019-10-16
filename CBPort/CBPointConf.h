@@ -63,7 +63,7 @@ using namespace odc;
 class CBPointConf: public ConfigParser
 {
 public:
-	CBPointConf(const std::string& FileName, const Json::Value& ConfOverrides);
+	CBPointConf(const std::string& _FileName, const Json::Value& ConfOverrides);
 
 	// JSON File section processing commands
 	void ProcessElements(const Json::Value& JSONRoot) override;
@@ -96,5 +96,6 @@ public:
 	uint32_t CBCommandTimeoutmsec = 5000;
 	// How many times do we retry a command, before we give up and move onto the next one?
 	uint32_t CBCommandRetries = 3;
+	const std::string FileName;
 };
 #endif
