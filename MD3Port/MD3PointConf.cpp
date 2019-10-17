@@ -37,10 +37,11 @@
 
 using namespace odc;
 
-MD3PointConf::MD3PointConf(const std::string & FileName, const Json::Value& ConfOverrides):
-	ConfigParser(FileName, ConfOverrides)
+MD3PointConf::MD3PointConf(const std::string & _FileName, const Json::Value& ConfOverrides):
+	ConfigParser(_FileName, ConfOverrides),
+	FileName(_FileName)
 {
-	LOGDEBUG("Conf processing file - "+FileName);
+	LOGDEBUG("Conf processing file - {}",FileName);
 	ProcessFile(); // This should call process elements below?
 }
 
@@ -50,118 +51,125 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot.isObject()) return;
 
 	// Root level Configuration values
-	LOGDEBUG("Conf processing");
+	LOGDEBUG("MD3 Conf processing");
 
-	// PollGroups must be processed first
-	if (JSONRoot.isMember("PollGroups"))
+	try
 	{
-		const auto PollGroups = JSONRoot["PollGroups"];
-		ProcessPollGroups(PollGroups);
-	}
+		// PollGroups must be processed first
+		if (JSONRoot.isMember("PollGroups"))
+		{
+			const auto PollGroups = JSONRoot["PollGroups"];
+			ProcessPollGroups(PollGroups);
+		}
 
-	if (JSONRoot.isMember("Analogs"))
-	{
-		const auto Analogs = JSONRoot["Analogs"];
-		LOGDEBUG("Conf processed - Analog Points");
-		ProcessAnalogCounterPoints(Analog, Analogs);
-	}
-	if (JSONRoot.isMember("Counters"))
-	{
-		const auto Counters = JSONRoot["Counters"];
-		LOGDEBUG("Conf processed - Counter Points");
-		ProcessAnalogCounterPoints(Counter, Counters);
-	}
-	if (JSONRoot.isMember("AnalogControls"))
-	{
-		const auto AnalogControls = JSONRoot["AnalogControls"];
-		LOGDEBUG("Conf processed - AnalogControls");
-		ProcessAnalogCounterPoints(AnalogControl, AnalogControls);
-	}
+		if (JSONRoot.isMember("Analogs"))
+		{
+			const auto Analogs = JSONRoot["Analogs"];
+			LOGDEBUG("Conf processed - Analog Points");
+			ProcessAnalogCounterPoints(Analog, Analogs);
+		}
+		if (JSONRoot.isMember("Counters"))
+		{
+			const auto Counters = JSONRoot["Counters"];
+			LOGDEBUG("Conf processed - Counter Points");
+			ProcessAnalogCounterPoints(Counter, Counters);
+		}
+		if (JSONRoot.isMember("AnalogControls"))
+		{
+			const auto AnalogControls = JSONRoot["AnalogControls"];
+			LOGDEBUG("Conf processed - AnalogControls");
+			ProcessAnalogCounterPoints(AnalogControl, AnalogControls);
+		}
 
-	if (JSONRoot.isMember("Binaries"))
-	{
-		const auto Binaries = JSONRoot["Binaries"];
-		LOGDEBUG("Conf processed - Binary Points");
-		ProcessBinaryPoints(Binary, Binaries);
-	}
+		if (JSONRoot.isMember("Binaries"))
+		{
+			const auto Binaries = JSONRoot["Binaries"];
+			LOGDEBUG("Conf processed - Binary Points");
+			ProcessBinaryPoints(Binary, Binaries);
+		}
 
-	if (JSONRoot.isMember("BinaryControls"))
-	{
-		const auto BinaryControls = JSONRoot["BinaryControls"];
-		LOGDEBUG("Conf processed -Binary Controls");
-		ProcessBinaryPoints(BinaryControl, BinaryControls);
-	}
+		if (JSONRoot.isMember("BinaryControls"))
+		{
+			const auto BinaryControls = JSONRoot["BinaryControls"];
+			LOGDEBUG("Conf processed -Binary Controls");
+			ProcessBinaryPoints(BinaryControl, BinaryControls);
+		}
 
 
-	// TimeSet Point Configuration
-	if (JSONRoot.isMember("TimeSetPoint") && JSONRoot["TimeSetPoint"].isMember("Index"))
-	{
-		TimeSetPoint.first = double(0); // Default to 0 - we know as unset - will never be used in operation.
-		TimeSetPoint.second = JSONRoot["TimeSetPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - TimeSetPoint - " + std::to_string(TimeSetPoint.second));
-	}
+		// TimeSet Point Configuration
+		if (JSONRoot.isMember("TimeSetPoint") && JSONRoot["TimeSetPoint"].isMember("Index"))
+		{
+			TimeSetPoint.first = double(0); // Default to 0 - we know as unset - will never be used in operation.
+			TimeSetPoint.second = JSONRoot["TimeSetPoint"]["Index"].asUInt();
+			LOGDEBUG("Conf processed - TimeSetPoint - {}",TimeSetPoint.second);
+		}
 
-	// SystemSignOnPoint Point Configuration
-	if (JSONRoot.isMember("SystemSignOnPoint") && JSONRoot["SystemSignOnPoint"].isMember("Index"))
-	{
-		SystemSignOnPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-		SystemSignOnPoint.second = JSONRoot["SystemSignOnPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - SystemSignOnPoint - " + std::to_string(SystemSignOnPoint.second));
-	}
+		// SystemSignOnPoint Point Configuration
+		if (JSONRoot.isMember("SystemSignOnPoint") && JSONRoot["SystemSignOnPoint"].isMember("Index"))
+		{
+			SystemSignOnPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
+			SystemSignOnPoint.second = JSONRoot["SystemSignOnPoint"]["Index"].asUInt();
+			LOGDEBUG("Conf processed - SystemSignOnPoint - {}",SystemSignOnPoint.second);
+		}
 
-	// FreezeResetCountersPoint Point Configuration
-	if (JSONRoot.isMember("FreezeResetCountersPoint") && JSONRoot["FreezeResetCountersPoint"].isMember("Index"))
-	{
-		FreezeResetCountersPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-		FreezeResetCountersPoint.second = JSONRoot["FreezeResetCountersPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - FreezeResetCountersPoint - " + std::to_string(FreezeResetCountersPoint.second));
-	}
+		// FreezeResetCountersPoint Point Configuration
+		if (JSONRoot.isMember("FreezeResetCountersPoint") && JSONRoot["FreezeResetCountersPoint"].isMember("Index"))
+		{
+			FreezeResetCountersPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
+			FreezeResetCountersPoint.second = JSONRoot["FreezeResetCountersPoint"]["Index"].asUInt();
+			LOGDEBUG("Conf processed - FreezeResetCountersPoint - {}",FreezeResetCountersPoint.second);
+		}
 
-	// POMControlPoint Point Configuration
-	if (JSONRoot.isMember("POMControlPoint") && JSONRoot["POMControlPoint"].isMember("Index"))
-	{
-		POMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-		POMControlPoint.second = JSONRoot["POMControlPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - POMControlPoint - " + std::to_string(POMControlPoint.second));
-	}
+		// POMControlPoint Point Configuration
+		if (JSONRoot.isMember("POMControlPoint") && JSONRoot["POMControlPoint"].isMember("Index"))
+		{
+			POMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
+			POMControlPoint.second = JSONRoot["POMControlPoint"]["Index"].asUInt();
+			LOGDEBUG("Conf processed - POMControlPoint - {}",POMControlPoint.second);
+		}
 
-	// DOMControlPoint Point Configuration
-	if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
-	{
-		DOMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-		DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
-		LOGDEBUG("Conf processed - DOMControlPoint - " + std::to_string(DOMControlPoint.second));
-	}
+		// DOMControlPoint Point Configuration
+		if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
+		{
+			DOMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
+			DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
+			LOGDEBUG("Conf processed - DOMControlPoint - ",DOMControlPoint.second);
+		}
 
-	if (JSONRoot.isMember("NewDigitalCommands"))
-	{
-		NewDigitalCommands = JSONRoot["NewDigitalCommands"].asBool();
-		LOGDEBUG("Conf processed - NewDigitalCommands - " + std::to_string(NewDigitalCommands));
+		if (JSONRoot.isMember("NewDigitalCommands"))
+		{
+			NewDigitalCommands = JSONRoot["NewDigitalCommands"].asBool();
+			LOGDEBUG("Conf processed - NewDigitalCommands - {}",NewDigitalCommands);
+		}
+		if (JSONRoot.isMember("OverrideOldTimeStamps"))
+		{
+			OverrideOldTimeStamps = JSONRoot["OverrideOldTimeStamps"].asBool();
+			LOGDEBUG("Conf processed - OverrideOldTimeStamps - {}",OverrideOldTimeStamps);
+		}
+		if (JSONRoot.isMember("UpdateAnalogCounterTimeStamps"))
+		{
+			OverrideOldTimeStamps = JSONRoot["UpdateAnalogCounterTimeStamps"].asBool();
+			LOGDEBUG("Conf processed - UpdateAnalogCounterTimeStamps - {}",UpdateAnalogCounterTimeStamps);
+		}
+		if (JSONRoot.isMember("StandAloneOutstation"))
+		{
+			StandAloneOutstation = JSONRoot["StandAloneOutstation"].asBool();
+			LOGDEBUG("Conf processed - StandAloneOutstation - {}",StandAloneOutstation);
+		}
+		if (JSONRoot.isMember("MD3CommandTimeoutmsec"))
+		{
+			MD3CommandTimeoutmsec = JSONRoot["MD3CommandTimeoutmsec"].asUInt();
+			LOGDEBUG("Conf processed - MD3CommandTimeoutmsec - {}",MD3CommandTimeoutmsec);
+		}
+		if (JSONRoot.isMember("MD3CommandRetries"))
+		{
+			MD3CommandRetries = JSONRoot["MD3CommandRetries"].asUInt();
+			LOGDEBUG("Conf processed - MD3CommandRetries - {}",MD3CommandRetries);
+		}
 	}
-	if (JSONRoot.isMember("OverrideOldTimeStamps"))
+	catch (const std::exception& e)
 	{
-		OverrideOldTimeStamps = JSONRoot["OverrideOldTimeStamps"].asBool();
-		LOGDEBUG("Conf processed - OverrideOldTimeStamps - " + std::to_string(OverrideOldTimeStamps));
-	}
-	if (JSONRoot.isMember("UpdateAnalogCounterTimeStamps"))
-	{
-		OverrideOldTimeStamps = JSONRoot["UpdateAnalogCounterTimeStamps"].asBool();
-		LOGDEBUG("Conf processed - UpdateAnalogCounterTimeStamps - " + std::to_string(UpdateAnalogCounterTimeStamps));
-	}
-	if (JSONRoot.isMember("StandAloneOutstation"))
-	{
-		StandAloneOutstation = JSONRoot["StandAloneOutstation"].asBool();
-		LOGDEBUG("Conf processed - StandAloneOutstation - " + std::to_string(StandAloneOutstation));
-	}
-	if (JSONRoot.isMember("MD3CommandTimeoutmsec"))
-	{
-		MD3CommandTimeoutmsec = JSONRoot["MD3CommandTimeoutmsec"].asUInt();
-		LOGDEBUG("Conf processed - MD3CommandTimeoutmsec - " + std::to_string(MD3CommandTimeoutmsec));
-	}
-	if (JSONRoot.isMember("MD3CommandRetries"))
-	{
-		MD3CommandRetries = JSONRoot["MD3CommandRetries"].asUInt();
-		LOGDEBUG("Conf processed - MD3CommandRetries - " + std::to_string(MD3CommandRetries));
+		LOGERROR("Exception Caught while processing {}, {} - configuration not loaded", FileName, e.what());
 	}
 	LOGDEBUG("End Conf processing");
 }
@@ -175,17 +183,17 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 	{
 		if (!JSONNode[n].isMember("ID"))
 		{
-			LOGERROR("Poll group missing ID : "+JSONNode[n].toStyledString() );
+			LOGERROR("Poll group missing ID : {}",JSONNode[n].toStyledString() );
 			continue;
 		}
 		if (!JSONNode[n].isMember("PollRate"))
 		{
-			LOGERROR("Poll group missing PollRate : "+ JSONNode[n].toStyledString());
+			LOGERROR("Poll group missing PollRate : {}", JSONNode[n].toStyledString());
 			continue;
 		}
 		if (!JSONNode[n].isMember("PointType"))
 		{
-			LOGERROR("Poll group missing PollType (Binary, Analog or TimeSetCommand, NewTimeSetCommand, SystemFlagScan) : "+ JSONNode[n].toStyledString());
+			LOGERROR("Poll group missing PollType (Binary, Analog or TimeSetCommand, NewTimeSetCommand, SystemFlagScan) : {}", JSONNode[n].toStyledString());
 			continue;
 		}
 
@@ -194,13 +202,13 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 
 		if (PollGroupID == 0)
 		{
-			LOGERROR("Poll group 0 is reserved (do not poll) : "+ JSONNode[n].toStyledString());
+			LOGERROR("Poll group 0 is reserved (do not poll) : {}", JSONNode[n].toStyledString());
 			continue;
 		}
 
 		if (PollGroups.count(PollGroupID) > 0)
 		{
-			LOGERROR("Duplicate poll group ignored : "+ JSONNode[n].toStyledString());
+			LOGERROR("Duplicate poll group ignored : {}", JSONNode[n].toStyledString());
 			continue;
 		}
 
@@ -239,7 +247,8 @@ void MD3PointConf::ProcessPollGroups(const Json::Value & JSONNode)
 			TimeTaggedDigital = JSONNode[n]["TimeTaggedDigital"].asBool();
 		}
 
-		LOGDEBUG("Conf processed - PollGroup - " + std::to_string(PollGroupID) + " Rate " + std::to_string(pollrate) + " Type " + std::to_string(polltype) + " TimeTaggedDigital " + std::to_string(TimeTaggedDigital) + " Force Unconditional Command " + std::to_string(ForceUnconditional));
+		LOGDEBUG("Conf processed - PollGroup - {}, Rate {}, Type {}, TimeTaggedDigital {}, Force Unconditional Command {}",
+			PollGroupID, pollrate, polltype, TimeTaggedDigital, ForceUnconditional);
 		PollGroups.emplace(std::piecewise_construct, std::forward_as_tuple(PollGroupID), std::forward_as_tuple(PollGroupID, pollrate, polltype, ForceUnconditional, TimeTaggedDigital));
 	}
 	LOGDEBUG("Conf processing - PollGroups - Finished");
@@ -272,7 +281,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 		}
 		else
 		{
-			LOGERROR(BinaryName+" A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : "+ JSONNode[n].toStyledString());
+			LOGERROR("{} A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : {}", BinaryName ,JSONNode[n].toStyledString());
 			start = 1;
 			stop = 0;
 			error = true;
@@ -287,7 +296,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 			module = JSONNode[n]["Module"].asUInt();
 		else
 		{
-			LOGERROR(BinaryName + " A point needs an \"Module\" : "+JSONNode[n].toStyledString());
+			LOGERROR("{} A point needs an \"Module\" : {}", BinaryName ,JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -295,7 +304,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 			offset = JSONNode[n]["Offset"].asUInt();
 		else
 		{
-			LOGERROR(BinaryName + " A point needs an \"Offset\" : "+ JSONNode[n].toStyledString());
+			LOGERROR("{} A point needs an \"Offset\" : {}", BinaryName, JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -312,13 +321,13 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 				pointtype = POMOUTPUT;
 			else
 			{
-				LOGERROR(BinaryName + " A point needs a valid \"PointType\" : " + JSONNode[n].toStyledString());
+				LOGERROR("{} A point needs a valid \"PointType\" : {}", BinaryName, JSONNode[n].toStyledString());
 				error = true;
 			}
 		}
 		else
 		{
-			LOGERROR(BinaryName + " A point needs an \"PointType\" : " + JSONNode[n].toStyledString());
+			LOGERROR("{} A point needs an \"PointType\" : {}", BinaryName, JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -354,7 +363,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 					{
 						if (PollGroups.count(pollgroup) == 0)
 						{
-							LOGERROR(BinaryName + " Poll Group Must Be Defined for use in a Binary point : "+ JSONNode[n].toStyledString());
+							LOGERROR("{} Poll Group Must Be Defined for use in a Binary point : {}", BinaryName, JSONNode[n].toStyledString());
 						}
 						else
 						{
@@ -391,7 +400,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 		}
 		else
 		{
-			LOGERROR("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : "+ JSONNode[n].toStyledString());
+			LOGERROR("An analog/counter point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : {}", JSONNode[n].toStyledString());
 			start = 1;
 			stop = 0;
 			error = true;
@@ -405,7 +414,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 			module = JSONNode[n]["Module"].asUInt();
 		else
 		{
-			LOGERROR("A point needs an \"Module\" : "+ JSONNode[n].toStyledString());
+			LOGERROR("A point needs an \"Module\" : {}", JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -413,7 +422,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 			offset = JSONNode[n]["Offset"].asUInt();
 		else
 		{
-			LOGERROR("A point needs an \"Offset\" : "+ JSONNode[n].toStyledString());
+			LOGERROR("A point needs an \"Offset\" : {}", JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -452,7 +461,7 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 					{
 						if (PollGroups.count(pollgroup) == 0)
 						{
-							LOGERROR("Poll Group Must Be Defined for use in an Analog/Counter point : " + JSONNode[n].toStyledString());
+							LOGERROR("Poll Group Must Be Defined for use in an Analog/Counter point : {}",JSONNode[n].toStyledString());
 						}
 						else
 						{
@@ -460,11 +469,11 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 							// Assume second is 0 the first time it is referenced?
 							uint16_t channels = PollGroups[pollgroup].ModuleAddresses[moduleaddress];
 							PollGroups[pollgroup].ModuleAddresses[moduleaddress] = channels + 1;
-							LOGDEBUG("Added Point " + std::to_string(moduleaddress) + ", " + std::to_string(channel) + " To Poll Group " + std::to_string(pollgroup));
+							LOGDEBUG("Added Point {}, {} To Poll Group {}",moduleaddress, channel,pollgroup);
 
 							if (PollGroups[pollgroup].ModuleAddresses.size() > 1)
 							{
-								LOGERROR("Analog or Counter Poll group " + std::to_string(pollgroup) + "is configured for more than one MD3 Module address. To scan another address, another poll group must be used.");
+								LOGERROR("Analog or Counter Poll group {} is configured for more than one MD3 Module address. To scan another address, another poll group must be used.",pollgroup);
 							}
 						}
 					}

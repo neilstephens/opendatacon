@@ -266,7 +266,7 @@ void WriteStartLoggingMessage(std::string TestName)
 void TestSetup(bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
-	SetupLoggers();
+	SetupLoggers(spdlog::level::level_enum::debug);
 	#endif
 
 	if (writeconffiles)
@@ -3778,9 +3778,8 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	Wait(*IOS, 2); // Allow the connection to come up.
 	//MD3MAPort->EnablePolling(false);	// If the connection comes up after this command, it will enable polling!!!
 
-
 	// Read the current digital state.
-//	MD3MAPort->DoPoll(1);
+	MD3MAPort->DoPoll(1);
 
 	// Delta Scan up to 15 events, 2 modules. Seq # 10
 	// Digital Scan Data a00b01610100 00001101e100
@@ -3788,8 +3787,8 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	//MD3MAPort->QueueMD3Command(commandblock, nullptr);
 
 	// Read the current analog state.
-//	MD3MAPort->DoPoll(2);
-	Wait(*IOS, 2);
+	MD3MAPort->DoPoll(2);
+	Wait(*IOS, 5);
 
 	// Do a time set command
 	MD3MAPort->DoPoll(4);
@@ -3814,7 +3813,7 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
 	// Send an ODC DigitalOutput command to the Master.
-//	MD3MAPort->Event(event, "TestHarness", pStatusCallback);
+	MD3MAPort->Event(event, "TestHarness", pStatusCallback);
 
 	Wait(*IOS, 2);
 

@@ -66,9 +66,10 @@ inline char ToChar(uint8_t v)
 template <class T>
 std::string to_hexstring(T val)
 {
-	std::stringstream sstream;
-	sstream << std::hex << val;
-	return sstream.str();
+	return fmt::format("{:#06x}",val);
+	//std::stringstream sstream;
+	//sstream << std::hex << val;
+	//return sstream.str();
 }
 template <class T>
 std::string to_binstring(T val)
