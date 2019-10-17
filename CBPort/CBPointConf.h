@@ -96,6 +96,6 @@ public:
 	uint32_t CBCommandTimeoutmsec = 5000;
 	// How many times do we retry a command, before we give up and move onto the next one?
 	uint32_t CBCommandRetries = 3;
-	const std::string FileName;
+	std::string FileName;
 };
 #endif
