@@ -42,7 +42,7 @@ CBMasterPort::CBMasterPort(const std::string& aName, const std::string& aConfFil
 
 	IsOutStation = false;
 
-	LOGDEBUG("CBMaster Constructor - {} - {} Overrides - {}", aName, aConfFilename, over);
+	LOGDEBUG("CBMaster Constructor - {} ", aName);
 }
 
 CBMasterPort::~CBMasterPort()

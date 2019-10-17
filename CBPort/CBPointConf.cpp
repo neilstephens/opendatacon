@@ -244,7 +244,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 	{
 		try
 		{
-			LOGDEBUG("Digital processing {}, {} ", n, JSONNode[n].toStyledString());
+			//LOGDEBUG("Digital processing {}, {} ", n, JSONNode[n].toStyledString());
 
 			bool error = false;
 			uint32_t start, stop; // Will set index from these later
