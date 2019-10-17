@@ -637,7 +637,7 @@ TEST_CASE("Py.TestsUsingPython")
 				LOGINFO("Sending Binary Events 4 Done");
 			});
 
-		WaitIOS(IOS, 5);
+		WaitIOS(IOS, 6);
 
 		// Check that the PyPortSim module has processed the number of events that we have sent?
 		// Query through the Restful interface
