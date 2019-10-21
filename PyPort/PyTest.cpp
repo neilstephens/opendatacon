@@ -81,20 +81,24 @@ const char *conffile1 = R"001(
 	"ModuleName" : "PyPortSim",
 	"ClassName": "SimPortClass",
 	"EventsAreQueued": false,
-	"QueueFormatString": "{{\"Tag\" : \"{0}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Quality\" : \"{3}\", \"TS\" : \"{2}\"}}",
+	"OnlyQueueEventsWithTags": false,
+	"QueueFormatString": "{{\"Tag\" : \"{6}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Quality\" : \"{3}\", \"TS\" : \"{2}\"}}", // Valid fmt.print string
 	"GlobalUseSystemPython": false,
-		
+
 	// The point definitions are only proccessed by the Python code. Any events sent to PyPort by ODC will be passed on.
-	"Binaries" : 
-	[	
-		{"Index" : 0, "CBNumber" : 1, "SimType" : "CBStateBit0", "State": 0},	// Half of a dual bit binary Open 10, Closed 01, Fault 00 or 11 (Is this correct?)
-		{"Index" : 1, "CBNumber" : 1, "SimType" : "CBStateBit1", "State": 1}	// Half of a dual bit binary. State is starting state.
+	"Binaries" :
+	[
+		{"Index" : 0, "CBNumber" : 1, "SimType" : "CBStateBit0", "State": 0, "Tag": "Test0" },	// Half of a dual bit binary Open 10, Closed 01, Fault 00 or 11 (Is this correct?)
+		{"Index" : 1, "CBNumber" : 1, "SimType" : "CBStateBit1", "State": 1, "Tag": "Test1" },	// Half of a dual bit binary. State is starting state.
+		{"Index" : 2, "Tag": "Test2" },
+		{"Index" : 3, "Tag": "Test3" },
+		{"Index" : 4, "Tag": "Test4" }
 	],
 
-	"BinaryControls" : 
+	"BinaryControls" :
 	[
-		{"Index": 0, "CBNumber" : 1, "CBCommand":"Trip"},		// Trip pulse
-		{"Index": 1, "CBNumber" : 1, "CBCommand":"Close"}		// Close pulse
+		{"Index": 0, "CBNumber" : 1, "CBCommand":"Trip", "Tag": "Test3" },		// Trip pulse
+		{"Index": 1, "CBNumber" : 1, "CBCommand":"Close", "Tag": "Test4" }		// Close pulse
 	]
 })001";
 
@@ -577,7 +581,7 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort5->Enable();
 		// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
 		REQUIRE_NOTHROW(
-			if (!WaitIOSFnResult(IOS, 10, [&]()
+			if (!WaitIOSFnResult(IOS, 11, [&]()
 				{
 					return (PythonPort5->Enabled());
 				}))
@@ -659,7 +663,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		if (ProcessedEvents != 14999)
 		{
-			WaitIOS(IOS, 10); // Wait longer for RPI build to run!!!
+			WaitIOS(IOS, 11); // Wait longer for RPI build to run!!!
 
 			resp = DoHttpRequst("localhost", "10000", "/TestMaster5", callresp);
 			REQUIRE(resp);
@@ -682,7 +686,7 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort5->Disable();
 		REQUIRE_NOTHROW
 		(
-			if (!WaitIOSFnResult(IOS, 10, [&]()
+			if (!WaitIOSFnResult(IOS, 11, [&]()
 				{
 					return (!PythonPort->Enabled());
 				}))

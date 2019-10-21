@@ -922,7 +922,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 		{
 			uint32_t index = Point.GetIndex();
 			if (!MyPointConf->PointTable.ResetAnalogValueUsingODCIndex(index)) // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
-				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(index));
+				LOGERROR("Tried to set the value for an invalid analog point index {}, {}",Name, index);
 
 			eventanalog->SetIndex(index);
 			PublishEvent(eventanalog);
@@ -935,7 +935,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 		{
 			uint32_t index = Point.GetIndex();
 			if (!MyPointConf->PointTable.ResetCounterValueUsingODCIndex(index)) // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
-				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(index));
+				LOGERROR("Tried to set the value for an invalid analog point index {}, {}",Name, index);
 
 			eventcounter->SetIndex(index);
 			PublishEvent(eventcounter);

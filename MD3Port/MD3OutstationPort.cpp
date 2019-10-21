@@ -201,7 +201,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		{
 			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
-			LOGDEBUG("OS - Received Event - Analog - Index {} Value {}",ODCIndex, to_hexstring(analogmeas));
+			LOGTRACE("OS - Received Event - Analog - Index {} Value {}",ODCIndex, to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
 			{
 				LOGERROR("Tried to set the value for an invalid analog point index {}",ODCIndex);

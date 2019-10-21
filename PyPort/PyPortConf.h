@@ -42,6 +42,7 @@ public:
 		pyHTTPPort("8000"),
 		pyQueueFormatString("{{\"Tag\" : \"{0}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Qual\" : \"{3}\", \"TS\" : \"{2}\"}}"),
 		pyEventsAreQueued(false),
+		pyOnlyQueueEventsWithTags(false),
 		GlobalUseSystemPython(false)
 	{
 		//pPointConf.reset(new PyPointConf(FileName, ConfOverrides));
@@ -53,6 +54,7 @@ public:
 	std::string pyHTTPPort;
 	std::string pyQueueFormatString;
 	bool pyEventsAreQueued;
+	bool pyOnlyQueueEventsWithTags;
 	bool GlobalUseSystemPython;
 
 	//std::unique_ptr<PyPointConf> pPointConf;

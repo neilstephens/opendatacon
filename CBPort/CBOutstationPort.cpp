@@ -71,7 +71,7 @@ void CBOutstationPort::Enable()
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Problem opening connection : " + Name + " : " + e.what());
+		LOGERROR("Problem opening connection : {} : {}", Name, e.what());
 		enabled = false;
 		return;
 	}
@@ -195,10 +195,10 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 			// ODC Analog is a double by default...
 			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
-			LOGDEBUG("OS - Received Event - Analog - Index {}  Value 0x{}",std::to_string(ODCIndex), to_hexstring(analogmeas));
+			LOGTRACE("OS - Received Event - Analog - Index {}  Value 0x{}",ODCIndex, to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
 			{
-				LOGERROR("Tried to set the value for an invalid analog point index " + std::to_string(ODCIndex));
+				LOGERROR("Tried to set the value for an invalid analog point index {}, {}", SenderName,ODCIndex);
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
@@ -207,10 +207,10 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		{
 			uint16_t countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
-			LOGDEBUG("OS - Received Event - Counter - Index {}  Value 0x{}", std::to_string(ODCIndex), to_hexstring(countermeas));
+			LOGDEBUG("OS - Received Event - Counter - Index {}  Value 0x{}", ODCIndex, to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))
 			{
-				LOGERROR("Tried to set the value for an invalid counter point index " + std::to_string(ODCIndex));
+				LOGERROR("Tried to set the value for an invalid counter point index {} {}", SenderName,ODCIndex);
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
@@ -221,7 +221,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 			CBTime eventtime = event->GetTimestamp();
 			uint8_t meas = event->GetPayload<EventType::Binary>();
 
-			LOGDEBUG("OS - Received Event - Binary - Index {}, Bit Value {}",std::to_string(ODCIndex),std::to_string(meas));
+			LOGDEBUG("OS - Received Event - Binary - Index {}, Bit Value {}",ODCIndex,meas);
 
 			// Check that the passed time is within 30 minutes of the actual time, if not use the current time
 			if (MyPointConf->OverrideOldTimeStamps)
@@ -229,13 +229,13 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 				if (abs(static_cast<int64_t>(now / 1000) - static_cast<int64_t>(eventtime / 1000)) < 60 * 30)
 				{
 					eventtime = now; // msec since epoch.
-					LOGDEBUG("Binary time tag value is too far from current time (>30min) changing to current time. Point index {}",std::to_string(ODCIndex));
+					LOGDEBUG("Binary time tag value is too far from current time (>30min) changing to current time. Point index {}",ODCIndex);
 				}
 			}
 
 			if (!MyPointConf->PointTable.SetBinaryValueUsingODCIndex(ODCIndex, meas, eventtime))
 			{
-				LOGERROR("Tried to set the value for an invalid binary point index " + std::to_string(ODCIndex));
+				LOGERROR("Tried to set the value for an invalid binary point index {} {}", SenderName,ODCIndex);
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 
@@ -268,7 +268,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 			{
 				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(MISSINGVALUE)))
 				{
-					LOGERROR("Tried to set the failure value for an invalid analog point index " + std::to_string(ODCIndex));
+					LOGERROR("Tried to set the failure value for an invalid analog point index {} {}", SenderName,ODCIndex);
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
 				}
 			}
@@ -280,7 +280,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 			{
 				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(MISSINGVALUE)))
 				{
-					LOGERROR("Tried to set the failure value for an invalid counter point index " + std::to_string(ODCIndex));
+					LOGERROR("Tried to set the failure value for an invalid counter point index {} {}", SenderName,ODCIndex);
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
 				}
 			}

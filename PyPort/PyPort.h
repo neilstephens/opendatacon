@@ -45,6 +45,8 @@ using namespace odc;
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
+enum PointType { Binary = 0, Analog = 1, BinaryControl = 2};
+
 class PyPort: public DataPort
 {
 
@@ -73,6 +75,8 @@ public:
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
 
 	size_t GetEventQueueSize() { return pWrapper->GetEventQueueSize(); }
+	std::string GetTagValue(EventType Eventt, size_t Index);
+	void ProcessPoints(PointType ptype, const Json::Value& JSONNode);
 
 protected:
 	// Worker function to try and clean up the code...
@@ -82,6 +86,9 @@ private:
 	std::unique_ptr<PythonWrapper> pWrapper;
 	std::string JSONMain;
 	std::string JSONOverride;
+	std::unordered_map<size_t, std::string> AnalogMap;
+	std::unordered_map<size_t, std::string> BinaryMap;
+	std::unordered_map<size_t, std::string> BinaryControlMap;
 
 	ServerTokenType pServer;
 

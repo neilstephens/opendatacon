@@ -563,6 +563,28 @@ std::string getISOCurrentTimestampUTC_from_msSinceEpoch_t(const odc::msSinceEpoc
 	return "Error";
 }
 
+std::string PyPort::GetTagValue(EventType Eventt, size_t Index)
+{
+	// The unordered_maps lookup reading do not need to be protected, they are threadsafe for this
+	// The Event handler calling this is multithreaded, so there will be concurrent access.
+	if (Eventt == EventType::Analog)
+	{
+		auto search = AnalogMap.find(Index);
+		return (search != AnalogMap.end()) ? search->second : "";
+	}
+	if (Eventt == EventType::Binary)
+	{
+		auto search = BinaryMap.find(Index);
+		return (search != BinaryMap.end()) ? search->second : "";
+	}
+	if (Eventt == EventType::ControlRelayOutputBlock)
+	{
+		auto search = BinaryControlMap.find(Index);
+		return (search != BinaryControlMap.end()) ? search->second : "";
+	}
+	return "";
+}
+
 // So we have received an event from the ODC message bus - it will be Control or Connect events.
 // So basically the Event mechanism is agnostinc. You can be a producer of control events and a consumer of data events, or the reverse, or in some odd cases -
 // A consumer of both types of events (this means you are just a listener on a conversation between two other devices.)
@@ -580,40 +602,29 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		// Use a concurrent queue to buffer the events into Python. If the events are queued, then the python code is responsible
 		// for periodically processing them and emptying the queue. Send as a json string
 
-		// PITags - this was the python code - convert to c++ - have to load the mapping in the conf file - bit kafka specific....
-		/* # Look for the matching PITag for this point.If we dont find it return False.
-		# This is going to get called a lot, so may need to be optimised.
-		    def GetPITag(self, EventType, ODCIndex) :
-
-		# TODO Split this on startup, so we dont do it every time.
-		        Json = self.ConfigDict.get(EventType, "")    # If no configured points for a point type, return empty Json
-
-		        if (len(Json)==0):
-		            self.LogError("Can't find point definitions for {} types".format(EventType))
-		            return ""
-
-		#TODO Do we need a faster way of doing this ? Potentially 10, 000 points or more.
-		        for x in Json :
-		            if(x["Index"] == ODCIndex):
-		                return x["PITag"]       # we have a match!
-
-		        return ""
-		*/
+		// So in the config file a point can have a "Tag" value. If this is present, we save it in a hash with an ODCIndex.
+		// We do a lookup on the index to get the tag, which is then part of the queued event.
 
 		// Also probably need an event filter defined in the conf file - events not to queue?
-		// But if we are searching for PITags that will not be found, that would work but be expensive time wise.
 
 		std::string isotimestamp = getISOCurrentTimestampUTC_from_msSinceEpoch_t(event->GetTimestamp());
 		try
 		{
-			std::string jsonevent = fmt::format(MyConf->pyQueueFormatString,
-				odc::ToString(event->GetEventType()), // 0
-				event->GetIndex(),                    // 1
-				isotimestamp,                         // 2
-				ToString(event->GetQuality()),        // 3
-				event->GetPayloadString(),            // 4
-				SenderName);                          // 5
+			std::string TagValue = GetTagValue(event->GetEventType(),event->GetIndex());
+
+			if (MyConf->pyOnlyQueueEventsWithTags && (TagValue == ""))
+				return; // If only queue events that have tags, and we dont have a tag, return
+
+			std::string jsonevent = fmt::format(MyConf->pyQueueFormatString, // How the string will be formatted - can leave values below out if desired!
+				odc::ToString(event->GetEventType()),                      // 0
+				event->GetIndex(),                                         // 1
+				isotimestamp,                                              // 2
+				ToString(event->GetQuality()),                             // 3
+				event->GetPayloadString(),                                 // 4
+				SenderName,                                                // 5
+				TagValue);                                                 // 6
 			pWrapper->QueueEvent(jsonevent);
+			LOGDEBUG("Queued Event {}", jsonevent);
 		}
 		catch(std::exception& e)
 		{
@@ -731,8 +742,72 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyQueueFormatString = JSONRoot["QueueFormatString"].asString();
 	if (JSONRoot.isMember("EventsAreQueued"))
 		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
+	if (JSONRoot.isMember("OnlyQueueEventsWithTags"))
+		MyConf->pyOnlyQueueEventsWithTags = JSONRoot["OnlyQueueEventsWithTags"].asBool();
 
 	//TODO: The following parameter should always be set to the same value. If different throw an exception as the conf file is wrong!
 	if (JSONRoot.isMember("GlobalUseSystemPython"))
 		MyConf->GlobalUseSystemPython = JSONRoot["GlobalUseSystemPython"].asBool(); // Defaults to OFF
+
+	if (JSONRoot.isMember("Analogs"))
+	{
+		const auto Analogs = JSONRoot["Analogs"];
+		LOGDEBUG("Conf processed - Analog Points");
+		ProcessPoints(Analog, Analogs);
+	}
+	if (JSONRoot.isMember("Binaries"))
+	{
+		const auto Binaries = JSONRoot["Binaries"];
+		LOGDEBUG("Conf processed - Binary Points");
+		ProcessPoints(Binary, Binaries);
+	}
+
+	if (JSONRoot.isMember("BinaryControls"))
+	{
+		const auto BinaryControls = JSONRoot["BinaryControls"];
+		LOGDEBUG("Conf processed - Binary Controls");
+		ProcessPoints(BinaryControl, BinaryControls);
+	}
+}
+
+// This method loads both Analog and Counter/Timers. They look functionally similar in CB
+void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
+{
+	std::string Name("None");
+
+	if (ptype == Analog)
+		Name = "Analog";
+	if (ptype == Binary)
+		Name = "Binary";
+	if (ptype == BinaryControl)
+		Name = "BinaryControl";
+
+	LOGDEBUG("Conf processing - {}", Name);
+	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
+	{
+		size_t index = 0;
+
+		if (JSONNode[n].isMember("Index"))
+		{
+			index = JSONNode[n]["Index"].asUInt();
+		}
+		else
+		{
+			throw std::invalid_argument("A point needs an \"Index\" : " + JSONNode[n].toStyledString());
+		}
+
+		if (JSONNode[n].isMember("Tag"))
+		{
+			std::string Tag = JSONNode[n]["Tag"].asString();
+
+			// We have an index and a tag, so add to the hash.
+			if (ptype == Analog)
+				AnalogMap.emplace(std::make_pair(index, Tag));
+			if (ptype == Binary)
+				BinaryMap.emplace(std::make_pair(index, Tag));
+			if (ptype == BinaryControl)
+				BinaryControlMap.emplace(std::make_pair(index, Tag));
+		}
+	}
+	LOGDEBUG("Conf processing - {} - Finished",Name);
 }

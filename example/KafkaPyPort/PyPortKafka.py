@@ -201,7 +201,7 @@ class SimPortClass:
                 EventCount += 1
 
                 self.timeusstart()
-                ### Takes about 8.4usec per call (approx) on DEV server
+                ### Takes about 3.2usec (old 8.4usec) per call (approx) on DEV server
                 JsonEventstr, empty = odc.GetNextEvent(self.guid)
                 self.measuretimeus += self.timeusstop()
 
@@ -211,7 +211,7 @@ class SimPortClass:
 
                 try:
                     self.timeusstart()
-                    # 45msec/5000 so 9usec/record.
+                    # Now 32msec/5000, about 5usec per record. (old 45msec/5000 so 9usec/record)
                     # Can we only get a single delivery report per block of up to 5000 mesages?
                     self.producer.produce(self.topic, value=JsonEventstr, callback=self.delivery_report)
                     self.measuretimeus2 += self.timeusstop()
