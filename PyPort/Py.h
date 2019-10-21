@@ -59,7 +59,8 @@
 	if (auto log = odc::spdlog_get("PyPort")) \
 		log->critical(__VA_ARGS__);
 #define LOGSTRAND(...)
-//if (auto log = odc::spdlog_get("PyPort")) \
-//    //	log->critical(__VA_ARGS__);
+/*if (auto log = odc::spdlog_get("PyPort")) \
+            log->critical(__VA_ARGS__);
+*/
 
 #endif /* PY_H_ */

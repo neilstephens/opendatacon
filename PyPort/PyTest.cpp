@@ -663,7 +663,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		if (ProcessedEvents != 14999)
 		{
-			WaitIOS(IOS, 11); // Wait longer for RPI build to run!!!
+			WaitIOS(IOS, 15); // Wait longer for RPI build to run!!!
 
 			resp = DoHttpRequst("localhost", "10000", "/TestMaster5", callresp);
 			REQUIRE(resp);
