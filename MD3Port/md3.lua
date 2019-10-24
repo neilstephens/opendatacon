@@ -83,13 +83,13 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	local pktlen = buffer:reported_length_remaining()
 	local functionname = functionnames[buffer(1,1):uint()]
 	
-	debug("entered the md3 dissector");
+	--debug("entered the md3 dissector");
 	
 	-- Check to see if we actually have an MD3 packet
 	-- Some out of order TCP packets don't get called for the dissector, so they are MD3 but don't get classified....
 
 	if ((pktlen % 6) ~= 0) then
-	debug("Exited md3 dissector - not mod 6");
+	--debug("Exited md3 dissector - not mod 6");
 		return 0	-- Not an MD3 Packet, must be *6
 	end
 	

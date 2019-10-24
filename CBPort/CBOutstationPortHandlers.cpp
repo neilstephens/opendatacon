@@ -172,7 +172,7 @@ void CBOutstationPort::ScanRequest(CBBlockData &Header)
 	SendCBMessage(ResponseCBMessage);
 }
 
-void CBOutstationPort::BuildScanRequestResponseData(uint8_t Group, std::vector<uint16_t> &BlockValues)
+void CBOutstationPort::BuildScanRequestResponseData(uint8_t Group, std::vector<uint16_t>& BlockValues)
 {
 	// We now have to collect all the current values for this group.
 	// Search for the group and payload location, and if we have data process it. We have to search 3 lists and the RST table to get what we need
@@ -180,7 +180,10 @@ void CBOutstationPort::BuildScanRequestResponseData(uint8_t Group, std::vector<u
 
 	uint8_t MaxBlockNum = 1; // If the following fails, we just respond with an empty single block.
 
-	MyPointConf->PointTable.GetMaxPayload(Group, MaxBlockNum);
+	if (!MyPointConf->PointTable.GetMaxPayload(Group, MaxBlockNum))
+	{
+		LOGERROR("{}- Tried to get the payload count for a group ({}) that has no payload defined - check the configuration", Name, Group);
+	}
 
 	// Block 1B will always need a value. 1A is always emtpy - used for group/station/function
 	PayloadLocationType payloadlocationB(1, PayloadABType::PositionB);

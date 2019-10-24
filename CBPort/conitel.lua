@@ -1,19 +1,5 @@
 --Define the strings for the functions
-functionnames = {
-	[0] = "Scan Data",
-	[1] = "Execute Command",
-	[2] = "Trip",
-	[3] = "Setpoint A",
-	[4] = "Close",
-	[5] = "Setpoint B",
-	[8] = "Reset RTU",
-	[9] = "Master Station Request",
-	[10] = "Send New SOE",
-	[11] = "Repeat SOE",
-	[13] = "Unit Raise / Lower",
-	[14] = "Freeze and Scan Accumulators",
-	[15] = "Freeze, Scan and Reset Accumulators"
-	}
+
 
 BCH = {0x12,0x9,0x16,0xB,0x17,0x19,0x1E,0xF,0x15,0x18,0xC,0x6,0x3,
        0x13,0x1B,0x1F,0x1D,0x1C,0xE,0x7,0x11,0x1A,0xD,0x14,0xA,0x5}
@@ -40,7 +26,22 @@ f.soedata = ProtoField.uint8("conitel.soedata", "SOE")
 function conitel_proto.dissector(buffer,pinfo,tree)
 
 	local pktlen = buffer:reported_length_remaining()
-
+	local functionnames = {
+	[0] = "Scan Data",
+	[1] = "Execute Command",
+	[2] = "Trip",
+	[3] = "Setpoint A",
+	[4] = "Close",
+	[5] = "Setpoint B",
+	[8] = "Reset RTU",
+	[9] = "Master Station Request",
+	[10] = "Send New SOE",
+	[11] = "Repeat SOE",
+	[13] = "Unit Raise / Lower",
+	[14] = "Freeze and Scan Accumulators",
+	[15] = "Freeze, Scan and Reset Accumulators"
+	}
+	
 	--debug("entered the conitel dissector");
 
 	-- Check to see if we actually have an conitel packet
@@ -65,10 +66,11 @@ function conitel_proto.dissector(buffer,pinfo,tree)
 	local station = buffer(0,1):bitfield(4,4)
 
 	-- Just a double check we are getting the same thing...
-	--debug("Function " .. conitelfunction .. " - " .. GetFunction(block));
-	--debug("Station " .. station .. " - " .. GetStation(block));
-	--debug("Group " .. group .. " - " .. GetGroup(block));
-
+	--print("Function " .. conitelfunction .. " - " .. GetFunction(block));
+	--print("Station " .. station .. " - " .. GetStation(block));
+	--print("Group " .. group .. " - " .. GetGroup(block));
+	--print("Function Name" .. functionnames[0]);
+	
 	if ( functionname == nil) then
 		functionname = "Unknown conitel Function"	-- Not an conitel Packet
 	end

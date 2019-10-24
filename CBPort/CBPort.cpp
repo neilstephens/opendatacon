@@ -30,7 +30,8 @@
 #include "CBPortConf.h"
 
 CBPort::CBPort(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
-	DataPort(aName, aConfFilename, aConfOverrides)
+	DataPort(aName, aConfFilename, aConfOverrides),
+	Name(aName)
 {
 	SOEBufferOverflowFlag = std::make_shared<protected_bool>(false); // Only really needed for OutStation
 

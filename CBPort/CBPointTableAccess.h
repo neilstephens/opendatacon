@@ -96,7 +96,7 @@ public:
 	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
 	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn);
 
-	void GetMaxPayload(uint8_t group, uint8_t &blockcount);
+	bool GetMaxPayload(uint8_t group, uint8_t &blockcount);
 
 	// Public only for testing
 	static uint16_t GetCBPointMapIndex(const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation); // Group/Payload/Channel

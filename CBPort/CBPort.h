@@ -76,6 +76,7 @@ protected:
 	uint8_t Limit(uint8_t val, uint8_t max);
 	ConnectionTokenType pConnection;
 	std::shared_ptr<protected_bool> SOEBufferOverflowFlag;
+	std::string Name;
 };
 
 #endif

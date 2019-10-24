@@ -529,14 +529,14 @@ void CBPointTableAccess::ForEachMatchingStatusByte(const uint8_t & group, const 
 	}
 }
 
-void CBPointTableAccess::GetMaxPayload(uint8_t group, uint8_t & blockcount)
+bool CBPointTableAccess::GetMaxPayload(uint8_t group, uint8_t & blockcount)
 {
 	if (MaxiumPayloadPerGroupMap.count(group) == 0)
 	{
-		LOGERROR("Tried to get the payload count for a group (" + std::to_string(group) + ") that has no payload");
-		return;
+		return false;
 	}
 	blockcount = MaxiumPayloadPerGroupMap[group];
+	return true;
 }
 
 void CBPointTableAccess::ForEachBinaryPoint(std::function<void(CBBinaryPoint &pt)> fn)
