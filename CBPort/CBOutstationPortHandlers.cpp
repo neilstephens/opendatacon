@@ -310,7 +310,7 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 	std::string cmd = "Trip";
 	if (pCommand == PendingCommandType::CommandType::Close) cmd = "Close";
 
-	LOGDEBUG("OS - {} PendingCommand - Fn2/4",cmd);
+	LOGDEBUG("OS - {} PendingCommand - Fn2/4, Group {}",cmd, Header.GetGroup());
 
 	uint8_t group = Header.GetGroup();
 	PendingCommands[group].Data = Header.GetB();
@@ -394,14 +394,15 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 {
 	// Now if there is a command to be executed - do so
-	LOGDEBUG("OS - ExecuteCommand - Fn1");
+	LOGDEBUG("OS - ExecuteCommand - Fn1, Group {}", Header.GetGroup());
 
 	// Find a matching PendingCommand (by Group)
 	PendingCommandType &PendingCommand = PendingCommands[Header.GetGroup()];
 
 	if (CBNow() > PendingCommand.ExpiryTime)
 	{
-		LOGDEBUG("Received an Execute Command, but the current command had expired");
+		CBTime TimeDelta = CBNow() - PendingCommand.ExpiryTime;
+		LOGDEBUG("Received an Execute Command, but the current command had expired - time delta {} msec", TimeDelta);
 		//TODO: "Received an Execute Command, but the current command had expired" - Correct?
 		return;
 	}

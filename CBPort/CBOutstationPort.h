@@ -94,7 +94,7 @@ public:
 
 	enum CommandType { None, Trip, Close, SetA, SetB };
 
-	const CBTime CommandValidTimemsec = 10000; // PendingCommand valid for 10 seconds..
+	const CBTime CommandValidTimemsec = 30000; // PendingCommand valid for 30 seconds..
 	CommandType Command = None;
 	uint16_t Data = 0;
 	CBTime ExpiryTime = 0; // If we dont receive the execute before this time, it will not be executed
