@@ -182,7 +182,8 @@ void CBOutstationPort::BuildScanRequestResponseData(uint8_t Group, std::vector<u
 
 	if (!MyPointConf->PointTable.GetMaxPayload(Group, MaxBlockNum))
 	{
-		LOGERROR("{}- Tried to get the payload count for a group ({}) that has no payload defined - check the configuration", Name, Group);
+		// The DNMS has a habit of scanning groups with no data - why - who knows. So not an error worth reporting in this case.
+		LOGDEBUG("{}- Tried to get the payload count for a group ({}) that has no payload defined - check the configuration", Name, Group);
 	}
 
 	// Block 1B will always need a value. 1A is always emtpy - used for group/station/function
