@@ -396,22 +396,45 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 	// Now if there is a command to be executed - do so
 	LOGDEBUG("OS - ExecuteCommand - Fn1, Group {}", Header.GetGroup());
 
-	// Find a matching PendingCommand (by Group)
-	PendingCommandType &PendingCommand = PendingCommands[Header.GetGroup()];
+	if (MyPointConf->IsBakerDevice && (Header.GetGroup() == 0))
+	{
+		LOGDEBUG("OS - ExecuteCommand - Fn1 - Doing Baker Global Execute");
+		// Baker (well DNMS) seems to use group 0 to execute any Command regardless of the group.
+		bool success = true;
+		for (int i = 0; i < 16; i++)
+		{
+			if (!ExecuteCommandOnGroup(PendingCommands[i], i, false))
+				success = false;
+		}
+	}
+	else
+	{
+		if (!ExecuteCommandOnGroup(PendingCommands[Header.GetGroup()], Header.GetGroup(), true))
+			return;
+	}
 
-	if (CBNow() > PendingCommand.ExpiryTime)
+	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), 0, true);
+	CBMessage_t ResponseCBMessage;
+	ResponseCBMessage.push_back(firstblock);
+	SendCBMessage(ResponseCBMessage);
+}
+
+bool CBOutstationPort::ExecuteCommandOnGroup(PendingCommandType& PendingCommand, uint8_t Group, bool singlecommand)
+{
+	bool success = true;
+
+	if ((CBNow() > PendingCommand.ExpiryTime) && (PendingCommand.Command != PendingCommandType::CommandType::None))
 	{
 		CBTime TimeDelta = CBNow() - PendingCommand.ExpiryTime;
 		LOGDEBUG("Received an Execute Command, but the current command had expired - time delta {} msec", TimeDelta);
-		//TODO: "Received an Execute Command, but the current command had expired" - Correct?
-		return;
+		return false;
 	}
 
-	bool success = false;
 	switch (PendingCommand.Command)
 	{
 		case PendingCommandType::CommandType::None:
-			LOGDEBUG("Received an Execute Command, but there is no current command");
+			if (singlecommand)
+				LOGDEBUG("Received an Execute Command, but there is no current command");
 			break;
 
 		case PendingCommandType::CommandType::Trip:
@@ -420,9 +443,9 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 			int SetBit = GetSetBit(PendingCommand.Data, 12);
 			bool point_on = false; // Trip is OFF??
 			if (SetBit != -1)
-				success = ExecuteBinaryControl(Header.GetGroup(), numeric_cast<uint8_t>(SetBit+1), point_on);
+				success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(SetBit + 1), point_on);
 			else
-				LOGERROR("Recevied a Trip command, but no bit was set in the data {}",PendingCommand.Data);
+				LOGERROR("Recevied a Trip command, but no bit was set in the data {}", PendingCommand.Data);
 		}
 		break;
 
@@ -433,22 +456,22 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 			bool point_on = true; // Trip is OFF??
 
 			if (SetBit != -1)
-				success = ExecuteBinaryControl(Header.GetGroup(), numeric_cast<uint8_t>(SetBit+1), point_on);
+				success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(SetBit + 1), point_on);
 			else
-				LOGERROR("Recevied a Close command, but no bit was set in the data {}",PendingCommand.Data);
+				LOGERROR("Recevied a Close command, but no bit was set in the data {}", PendingCommand.Data);
 		}
 		break;
 
 		case PendingCommandType::CommandType::SetA:
 		{
 			LOGDEBUG("Received an Execute Command, SetA");
-			success = ExecuteAnalogControl(Header.GetGroup(), 1, PendingCommand.Data);
+			success = ExecuteAnalogControl(Group, 1, PendingCommand.Data);
 		}
 		break;
 		case PendingCommandType::CommandType::SetB:
 		{
 			LOGDEBUG("Received an Execute Command, SetB");
-			success = ExecuteAnalogControl(Header.GetGroup(), 2, PendingCommand.Data);
+			success = ExecuteAnalogControl(Group, 2, PendingCommand.Data);
 		}
 		break;
 	}
@@ -456,12 +479,8 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 	PendingCommand.Command = PendingCommandType::CommandType::None;
 
 	//There is no way to respond using the bool success to indicate sucess or failure
-	LOGDEBUG("We failed in the execute command, but have no way to send back this error {}",success);
-
-	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), 0, true);
-	CBMessage_t ResponseCBMessage;
-	ResponseCBMessage.push_back(firstblock);
-	SendCBMessage(ResponseCBMessage);
+	if (!success)
+		LOGDEBUG("We failed in the execute command, but have no way to send back this error ");
 }
 
 // Called when we get a Conitel Execute Command on an already setup trip/close command.

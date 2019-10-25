@@ -128,6 +128,7 @@ public:
 	void FuncTripClose(CBBlockData & Header, PendingCommandType::CommandType pCommand);
 	void FuncSetAB(CBBlockData & Header, PendingCommandType::CommandType pCommand);
 	void ExecuteCommand(CBBlockData & Header);
+	bool ExecuteCommandOnGroup(PendingCommandType& PendingCommand, uint8_t Group, bool singlecommand);
 	bool ExecuteBinaryControl(uint8_t group, uint8_t Channel, bool point_on);
 	bool ExecuteAnalogControl(uint8_t group, uint8_t Channel, uint16_t data);
 	void FuncMasterStationRequest(CBBlockData &Header, CBMessage_t &CompleteCBMessage);
