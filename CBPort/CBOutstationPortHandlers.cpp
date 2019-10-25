@@ -401,15 +401,18 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 		LOGDEBUG("OS - ExecuteCommand - Fn1 - Doing Baker Global Execute");
 		// Baker (well DNMS) seems to use group 0 to execute any Command regardless of the group.
 		bool success = true;
-		for (int i = 0; i < 16; i++)
+		for (uint8_t i = 0; i < 16; i++)
 		{
 			if (!ExecuteCommandOnGroup(PendingCommands[i], i, false))
 				success = false;
+			PendingCommands[i].Command = PendingCommandType::CommandType::None;
 		}
 	}
 	else
 	{
-		if (!ExecuteCommandOnGroup(PendingCommands[Header.GetGroup()], Header.GetGroup(), true))
+		bool success = ExecuteCommandOnGroup(PendingCommands[Header.GetGroup()], Header.GetGroup(), true);
+		PendingCommands[Header.GetGroup()].Command = PendingCommandType::CommandType::None;
+		if (!success)
 			return;
 	}
 
@@ -419,7 +422,7 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 	SendCBMessage(ResponseCBMessage);
 }
 
-bool CBOutstationPort::ExecuteCommandOnGroup(PendingCommandType& PendingCommand, uint8_t Group, bool singlecommand)
+bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCommand, uint8_t Group, bool singlecommand)
 {
 	bool success = true;
 
@@ -475,8 +478,6 @@ bool CBOutstationPort::ExecuteCommandOnGroup(PendingCommandType& PendingCommand,
 		}
 		break;
 	}
-
-	PendingCommand.Command = PendingCommandType::CommandType::None;
 
 	//There is no way to respond using the bool success to indicate sucess or failure
 	if (!success)
