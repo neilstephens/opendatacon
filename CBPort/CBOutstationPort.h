@@ -151,7 +151,7 @@ public:
 	uint8_t CountBinaryBlocksWithChanges();
 
 	// Testing use only
-	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group]; } // Return a copy, cannot be changed
+	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group & 0x0F]; } // Return a copy, cannot be changed
 private:
 
 	bool DigitalChangedFlagCalculationMethod(void);

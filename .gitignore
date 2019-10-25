@@ -17,3 +17,6 @@ MD3Port/uncrustify_here.pl
 
 cmake-build-debug-mingw/
 .vs/
+CBPort/uncrustifywithtabs.cfg
+CBPort/uncrustify_here.pl
+CBPort/uncrustify.cfg

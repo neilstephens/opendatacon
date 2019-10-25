@@ -1157,6 +1157,7 @@ TEST_CASE("Station - CONTROL Commands")
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
 	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	WaitIOS(*IOS, 1);
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1179,6 +1180,7 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+	WaitIOS(*IOS, 1);
 
 	DesiredResult = "19300033";
 
@@ -1200,6 +1202,7 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+	WaitIOS(*IOS, 1);
 
 	DesiredResult = "2930009d";
 
@@ -1218,6 +1221,7 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+	WaitIOS(*IOS, 1);
 
 	DesiredResult = "19300033";
 
@@ -1239,6 +1243,7 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+	WaitIOS(*IOS, 1);
 
 	DesiredResult = "3935552d";
 
@@ -1257,6 +1262,7 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+	WaitIOS(*IOS, 1);
 
 	DesiredResult = "19300033";
 
@@ -1267,6 +1273,67 @@ TEST_CASE("Station - CONTROL Commands")
 	CBOSPort->GetPointTable()->GetAnalogControlValueUsingODCIndex(ODCIndex, res16, hasbeenset);
 	REQUIRE(res16 == BData);
 	REQUIRE(hasbeenset == true);
+
+	STANDARD_TEST_TEARDOWN();
+}
+
+TEST_CASE("Station - Baker Global CONTROL Command")
+{
+	STANDARD_TEST_SETUP();
+	Json::Value portoverride;
+	portoverride["IsBakerDevice"] = true;
+	TEST_CBOSPort(portoverride);
+
+	CBOSPort->Enable();
+
+	uint8_t station = 9;
+	uint8_t group = 3;
+	uint16_t BData = 1;
+	CBBlockData commandblock = CBBlockData(group, station, FUNC_CLOSE, BData, true); // Station/Group swapped for Baker
+	// Trip is OPEN or OFF
+
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+	output << commandblock.ToBinaryString();
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+
+	// Send the PendingCommand
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+	WaitIOS(*IOS, 1);
+
+	std::string DesiredResult = "43900083";
+
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult); // OK PendingCommand
+
+	// Access the pending command in the OutStation, and check it is set to what we think it should be.
+	PendingCommandType pc = CBOSPort->GetPendingCommand(group);
+	REQUIRE(pc.Command == PendingCommandType::CommandType::Close);
+	REQUIRE(pc.Data == BData);
+
+	// Now send the excecute command.
+	commandblock = CBBlockData( 0, station, FUNC_EXECUTE_COMMAND, 0, true); // Station/Group swapped for Baker
+	output << commandblock.ToBinaryString();
+
+	Response = "Not Set";
+
+	// Send the PendingCommand
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+	WaitIOS(*IOS, 1);
+
+	DesiredResult = "10900031";
+
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+
+	uint8_t res;
+	bool hasbeenset;
+	size_t ODCIndex = 21;
+	CBOSPort->GetPointTable()->GetBinaryControlValueUsingODCIndex(ODCIndex, res, hasbeenset);
+	REQUIRE(res == 1);
+	REQUIRE(hasbeenset == true);
+
 
 	STANDARD_TEST_TEARDOWN();
 }
