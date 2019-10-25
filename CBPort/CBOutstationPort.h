@@ -164,7 +164,7 @@ private:
 	CBMessage_t LastSentCBMessage;
 	CBMessage_t LastSentSOEMessage; // For SOE specific resend commands.
 
-	PendingCommandType PendingCommands[15]; // Store a potential pending command for each group.
+	PendingCommandType PendingCommands[16+1]; // Store a potential pending command for each group.
 };
 
 #endif
