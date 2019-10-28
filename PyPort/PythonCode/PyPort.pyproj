@@ -5,7 +5,7 @@
     <ProjectGuid>3f5f09d1-984a-4869-b6af-610056ba0e32</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>PyPortTestMain.py</StartupFile>
-    <SearchPath>..\..\example\KafkaPyPort;..\..\example\JSON-PyPortCBSim</SearchPath>
+    <SearchPath>..\..\example\KafkaPyPort;..\..\example\JSON-PyPortCBSim;..\..\example\JSON-PyPortRtuSim</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>PyPort</Name>
@@ -23,6 +23,9 @@
   <ItemGroup>
     <Compile Include="..\..\example\JSON-PyPortCBSim\PyPortCBSim.py">
       <Link>LinkedFiles\PyPortCBSim.py</Link>
+    </Compile>
+    <Compile Include="..\..\example\JSON-PyPortRtuSim\PyPortRtuSim.py">
+      <Link>LinkedFiles\PyPortRtuSim.py</Link>
     </Compile>
     <Compile Include="..\..\example\KafkaPyPort\PyPortKafka.py">
       <Link>LinkedFiles\PyPortKafka.py</Link>

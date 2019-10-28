@@ -9,7 +9,7 @@
 # suitable test arguments
 import odc
 import PyPortSim
-import PyPortCBSim
+import PyPortRtuSim
 import PyPortKafka
 import requests
 import json
@@ -19,9 +19,40 @@ from confluent_kafka import Producer, Consumer, KafkaError
 
 print("Staring Run")
 
-conf = """{"Binaries": [{"CBNumber": 1, "Index": 0, "SimType": "CBStateBit0", "State": 0}, {"CBNumber": 1, "Index": 1, "SimType": "CBStateBit1", "State": 1}],
-    "BinaryControls": [{"CBCommand": "Trip", "CBNumber": 1, "Index": 0}, {"CBCommand": "Close", "CBNumber": 1, "Index": 1}],
-    "ClassName": "SimPortClass", "IP": "localhost", "ModuleName": "PyPortCBSim", "Port": 10000} """
+conf = """{
+            "IP" : "localhost",
+            "Port" : 10000,
+
+            "ModuleName" : "PyPortRtuSim",
+            "ClassName": "SimPortClass",
+
+            "Analogs" :
+            [
+                {"Index": 0, "Type" : "Sim", "Mean" : 500, "StdDev" : 1.2, "UpdateRate" : 60000, "Value": 1024 },
+                {"Index": 1, "Type" : "TapChanger", "Number" : 1, "Value": 6}
+            ]
+            ,
+            "Binaries" :
+            [
+                {"Index": 0, "Type" : "CB", "Number" : 1, "BitID" : 0, "Value": 0},
+                {"Index": 1, "Type" : "CB", "Number" : 1, "BitID" : 1, "Value": 1},
+
+                {"Index": 2, "Type" : "TapChanger", "Number" : 2, "BitID" : 0, "Value": 0},
+                {"Index": 3, "Type" : "TapChanger", "Number" : 2, "BitID" : 1, "Value": 0},
+                {"Index": 4, "Type" : "TapChanger", "Number" : 2, "BitID" : 2, "Value": 1},
+                {"Index": 5, "Type" : "TapChanger", "Number" : 2, "BitID" : 3, "Value": 0}
+            ]
+            ,
+            "BinaryControls" :
+            [
+                {"Index": 0, "Type" : "CB", "Number" : 1, "Command":"Trip"},
+                {"Index": 1, "Type" : "CB", "Number" : 1, "Command":"Close"},
+                {"Index": 2, "Type" : "TapChanger", "Number" : 1, "FB": "ANA", "Command":"TapUp"},
+                {"Index": 3, "Type" : "TapChanger", "Number" : 1, "FB": "ANA", "Command":"TapDown"},
+                {"Index": 4, "Type" : "TapChanger", "Number" : 2, "FB": "BCD", "Command":"TapUp"},
+                {"Index": 5, "Type" : "TapChanger", "Number" : 2, "FB": "BCD", "Command":"TapDown"}
+            ]
+        } """
 
     # The point name definitions must match the string versions of the ODC
     # types to match.
@@ -48,13 +79,13 @@ OverrideJSON = """{"Port" : 11111,"ModuleName" : "PyPortSimModified","PollGroups
 def StimulateViaHttp():
     requesttimeout = 10
     try:
-        r = requests.get('http://localhost:10000/PyPortCBSim/status?CBNumber=1', timeout=requesttimeout)
+        r = requests.get('http://localhost:10000/PyPortRtuSim/status?Type=CB&Number=1', timeout=requesttimeout)
 
         print('Response is {0}'.format(json.dumps(r.json())))
 
-        payload = {"CBNumber" : 1, "CBState" : "Fault"}
+        payload = {"Type" : "CB", "Number" : 1, "State" : "Fault"}
 
-        r = requests.post('http://localhost:10000/PyPortCBSim/set', json=payload, timeout=requesttimeout)
+        r = requests.post('http://localhost:10000/PyPortRtuSim/set', json=payload, timeout=requesttimeout)
         print('Response is {0}'.format(r.text))
 
         print('Response is {0}'.format(json.dumps(r.json())))
@@ -96,7 +127,7 @@ def SendAnalogTestEvent(x):
 # Main Section
 def StimulateDirectly():
     guid = 12345678
-    x = PyPortCBSim.SimPortClass(guid, "TestInstance")
+    x = PyPortRtuSim.SimPortClass(guid, "TestInstance")
     x.Config(conf, "")
     x.Enable()
     x.Operational()
@@ -174,11 +205,10 @@ def StimulatePyPortKafkaDirectly():
 
 
 print("Start")
-#StimulateViaHttp() # Requires the PyPortCBSim.py file to be running in
-#OpenDataCon
-#StimulateDirectly() # Can use this to call code within this single Python program for simpler
+#StimulateViaHttp() # Requires the PyPortCBSim.py file to be running in OpenDataCon
+StimulateDirectly() # Can use this to call code within this single Python program for simpler
 # debugging and testing.
 #KafkaProduceTest()
-StimulatePyPortKafkaDirectly()
+#StimulatePyPortKafkaDirectly()
 #KafkaConsumeTest()
 print("Done")
