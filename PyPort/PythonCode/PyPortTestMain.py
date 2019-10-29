@@ -13,46 +13,12 @@ import PyPortRtuSim
 import PyPortKafka
 import requests
 import json
+import re
 # There is also a kafka-python library that can be used as well.  Different
 # syntax though.
 from confluent_kafka import Producer, Consumer, KafkaError
 
 print("Staring Run")
-
-conf = """{
-            "IP" : "localhost",
-            "Port" : 10000,
-
-            "ModuleName" : "PyPortRtuSim",
-            "ClassName": "SimPortClass",
-
-            "Analogs" :
-            [
-                {"Index": 0, "Type" : "Sim", "Mean" : 500, "StdDev" : 1.2, "UpdateRate" : 60000, "Value": 1024 },
-                {"Index": 1, "Type" : "TapChanger", "Number" : 1, "Value": 6}
-            ]
-            ,
-            "Binaries" :
-            [
-                {"Index": 0, "Type" : "CB", "Number" : 1, "BitID" : 0, "Value": 0},
-                {"Index": 1, "Type" : "CB", "Number" : 1, "BitID" : 1, "Value": 1},
-
-                {"Index": 2, "Type" : "TapChanger", "Number" : 2, "BitID" : 0, "Value": 0},
-                {"Index": 3, "Type" : "TapChanger", "Number" : 2, "BitID" : 1, "Value": 0},
-                {"Index": 4, "Type" : "TapChanger", "Number" : 2, "BitID" : 2, "Value": 1},
-                {"Index": 5, "Type" : "TapChanger", "Number" : 2, "BitID" : 3, "Value": 0}
-            ]
-            ,
-            "BinaryControls" :
-            [
-                {"Index": 0, "Type" : "CB", "Number" : 1, "Command":"Trip"},
-                {"Index": 1, "Type" : "CB", "Number" : 1, "Command":"Close"},
-                {"Index": 2, "Type" : "TapChanger", "Number" : 1, "FB": "ANA", "Command":"TapUp"},
-                {"Index": 3, "Type" : "TapChanger", "Number" : 1, "FB": "ANA", "Command":"TapDown"},
-                {"Index": 4, "Type" : "TapChanger", "Number" : 2, "FB": "BCD", "Command":"TapUp"},
-                {"Index": 5, "Type" : "TapChanger", "Number" : 2, "FB": "BCD", "Command":"TapDown"}
-            ]
-        } """
 
     # The point name definitions must match the string versions of the ODC
     # types to match.
@@ -80,14 +46,15 @@ def StimulateViaHttp():
     requesttimeout = 10
     try:
         r = requests.get('http://localhost:10000/PyPortRtuSim/status?Type=CB&Number=1', timeout=requesttimeout)
-
         print('Response is {0}'.format(json.dumps(r.json())))
 
         payload = {"Type" : "CB", "Number" : 1, "State" : "Fault"}
 
         r = requests.post('http://localhost:10000/PyPortRtuSim/set', json=payload, timeout=requesttimeout)
-        print('Response is {0}'.format(r.text))
+        print('Response is {0}'.format(json.dumps(r.json())))
 
+        payload = {"Type" : "TapChanger", "Number" : 1, "Value" : 10}
+        r = requests.post('http://localhost:10000/PyPortRtuSim/set', json=payload, timeout=requesttimeout)
         print('Response is {0}'.format(json.dumps(r.json())))
 
     except requests.exceptions.RequestException as e:
@@ -95,7 +62,7 @@ def StimulateViaHttp():
 
 def SendControlTestEvent(x):
     EventType = "ControlRelayOutputBlock"
-    Index = 0
+    Index = 0           # 0 to 5
     Time = 0x0000016bfd90f002
     Quality = "|ONLINE|"
     Payload = "|PULSE_ON|Count 1|ON 100ms|OFF 100ms|"
@@ -105,20 +72,20 @@ def SendControlTestEvent(x):
 
 def SendBinaryTestEvent(x):
     EventType = "Binary"
-    Index = 1
+    Index = 6
     Time = 0x0000016bfd90e5a8
     Quality = "|ONLINE|"
-    Payload = "1"
+    Payload = "0"
     Sender = "Test"
     res = x.EventHandler(EventType, Index, Time, Quality, Payload, Sender)
     print("Event Result - {}".format(res))
 
 def SendAnalogTestEvent(x):
     EventType = "Analog"
-    Index = 1
+    Index = 0
     Time = 0x0000016bfd90e5a8        # 2019-07-17T01:34:20.072Z
     Quality = "|ONLINE|"
-    Payload = "1"
+    Payload = "444"
     Sender = "Test"
     res = x.EventHandler(EventType, Index, Time, Quality, Payload, Sender)
     print("Event Result - {}".format(res))
@@ -126,21 +93,105 @@ def SendAnalogTestEvent(x):
 
 # Main Section
 def StimulateDirectly():
-    guid = 12345678
-    x = PyPortRtuSim.SimPortClass(guid, "TestInstance")
-    x.Config(conf, "")
-    x.Enable()
-    x.Operational()
 
-    SendBinaryTestEvent(x)
+    # Load the part of the config file that we need, then pass it in as a string.
+    # Need to strip comments as Python json handling does not like them!
+    f=open(r"C:\Users\scott\Documents\Scott\Company Work\AusGrid\example\JSON-PyPortRtuSim\opendatacon.conf", "r")
+    if f.mode != 'r':
+        print("Failed to open opendatacon.conf file - exiting")
+        return
 
-    resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortCBSim/status?CBNumber=1","")
-    print("JSON Response {}".format(resjson))
+    confsection = f.read()
+    f.close()
 
-    payload = {"CBNumber" : 1, "CBState" : "Closed"}
-    resjson = x.RestRequestHandler("POST http://localhost:10000/PyPortCBSim/set",json.dumps(payload))
-    print("JSON Response {}".format(resjson))
-    return guid, payload, resjson, x
+    confsection = re.sub(r"//\s*([^\r\n]+)", r" ", confsection)  # Remove single line comments
+    jsondict = json.loads(confsection)
+    rtusimsect = {}
+    for d in jsondict["Ports"]:
+        if d["Name"] == "PyPortRtuSim":
+            # We have the one we want.
+            rtusimsect = d["ConfOverrides"]
+
+    if rtusimsect:
+        guid = 12345678
+        x = PyPortRtuSim.SimPortClass(guid, "TestInstance")
+        x.Config(json.dumps(rtusimsect), "")
+        x.Enable()
+        x.Operational()
+
+        # Circuit Breakers
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=CB&Number=1","")
+        assert (resjson == r'{"Bit0": 0, "Bit1": 1, "State": "Open"}'), "Request to get CB 1 current state failed"
+
+        payload = {"Type" : "CB","Number" : 1, "State" : "Closed"}
+        resjson = x.RestRequestHandler("POST http://localhost:10000/PyPortRtuSim/set",json.dumps(payload))
+        assert (resjson == r'{"Result": "OK"}'), "POST to CB 1 - Closed Failed"
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=CB&Number=1","")
+        assert (resjson == r'{"Bit0": 1, "Bit1": 0, "State": "Closed"}'), "Request to get CB 1 current state failed"
+
+        SendControlTestEvent(x) #Trip on 0
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=CB&Number=1","")
+        assert (resjson == r'{"Bit0": 0, "Bit1": 1, "State": "Open"}'), "Request to get CB 1 current state failed"
+
+        # Analogs
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=Analog&Number=0","")
+        assert (resjson == r'{"State": 1024}'), "Request to get Analog 0 current state failed"
+
+        payload = {"Type" : "Analog","Number" : 0, "State" : 333}
+        resjson = x.RestRequestHandler("POST http://localhost:10000/PyPortRtuSim/set",json.dumps(payload))
+        assert (resjson == r'{"Result": "OK"}'), "POST to Analog 0 - 333 Failed"
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=Analog&Number=0","")
+        assert (resjson == r'{"State": 333}'), "Request to get Analog 0 current state failed"
+
+        SendAnalogTestEvent(x)
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=Analog&Number=0","")
+        assert (resjson == r'{"State": 444}'), "Request to get Analog 0 current state failed"
+
+        #Binary
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=Binary&Number=6","")
+        assert (resjson == r'{"State": 0}'), "Request to get Binary 0 current state failed"
+
+        payload = {"Type" : "Binary", "Number" : 6, "State" : 1}
+        resjson = x.RestRequestHandler("POST http://localhost:10000/PyPortRtuSim/set",json.dumps(payload))
+        assert (resjson == r'{"Result": "OK"}'), "POST to Binary 6 - 1 Failed"
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=Binary&Number=6","")
+        assert (resjson == r'{"State": 1}'), "Request to get Binary 6 current state failed"
+
+        SendBinaryTestEvent(x)
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=Binary&Number=6","")
+        assert (resjson == r'{"State": 0}'), "Request to get Binary 0 current state failed"
+
+        # TapChanger 1
+        payload = {"Type" : "TapChanger", "Number" : 1, "State" : 10}
+        resjson = x.RestRequestHandler("POST http://localhost:10000/PyPortRtuSim/set",json.dumps(payload))
+        assert (resjson == r'{"Result": "OK"}'), "POST to TapChanger 1 - Value 10 Failed"
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=1","")
+        assert (resjson == r'{"State": 10}'), "Request to get TapChanger 1 current state failed"
+
+        # TapChanger 2
+        payload = {"Type" : "TapChanger", "Number" : 2, "State" : 12}
+        resjson = x.RestRequestHandler("POST http://localhost:10000/PyPortRtuSim/set",json.dumps(payload))
+        assert (resjson == r'{"Result": "OK"}'), "POST to TapChanger 2 - Value 10 Failed"
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=2","")
+        assert (resjson == r'{"State": 12}'), "Request to get TapChanger 2 current state failed"
+
+        # Analog Sim updates
+        x.UpdateAnalogSimValues(10)
+        x.UpdateAnalogSimValues(10)
+        x.UpdateAnalogSimValues(60)    # This one will trigger a time out and fire off events and do change calculations
+
+    else:
+        print("Failed to find PyPortRtuSim .conf file section")
+
+    return
 
 # Kafka Test Code
 def KafkaConsumeTest():
