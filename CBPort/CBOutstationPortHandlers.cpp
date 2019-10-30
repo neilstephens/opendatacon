@@ -482,6 +482,7 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 	//There is no way to respond using the bool success to indicate sucess or failure
 	if (!success)
 		LOGDEBUG("We failed in the execute command, but have no way to send back this error ");
+	return success;
 }
 
 // Called when we get a Conitel Execute Command on an already setup trip/close command.
@@ -698,7 +699,7 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 		uint16_t payload = 0;
 		for (size_t i = 0; i < 12; i++)
 		{
-			size_t bitindex = block * 12 + i;
+			size_t bitindex = (size_t)block * 12 + i;
 			if (bitindex >= MaxSOEBits)
 			{
 				LOGERROR("ConvertBitArrayToPayloadWords - bit index exceeded {}!! {}", MaxSOEBits, bitindex);

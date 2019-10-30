@@ -1158,7 +1158,6 @@ TEST_CASE("Station - CONTROL Commands")
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
 	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
-	WaitIOS(*IOS, 1);
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1181,7 +1180,6 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
-	WaitIOS(*IOS, 1);
 
 	DesiredResult = "19300033";
 
@@ -1203,7 +1201,6 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
-	WaitIOS(*IOS, 1);
 
 	DesiredResult = "2930009d";
 
@@ -1222,7 +1219,6 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
-	WaitIOS(*IOS, 1);
 
 	DesiredResult = "19300033";
 
@@ -1244,7 +1240,6 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
-	WaitIOS(*IOS, 1);
 
 	DesiredResult = "3935552d";
 
@@ -1263,7 +1258,6 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
-	WaitIOS(*IOS, 1);
 
 	DesiredResult = "19300033";
 
@@ -1785,7 +1779,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort->Event(event, "TestHarness", pStatusCallback);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(*IOS, 4);
+	WaitIOS(*IOS, 5);
 
 	REQUIRE(res == CommandStatus::SUCCESS);
 
