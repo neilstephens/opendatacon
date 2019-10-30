@@ -60,16 +60,6 @@ def StimulateViaHttp():
     except requests.exceptions.RequestException as e:
         print("Exception - {}".format(e))
 
-def SendControlTestEvent(x):
-    EventType = "ControlRelayOutputBlock"
-    Index = 0           # 0 to 5
-    Time = 0x0000016bfd90f002
-    Quality = "|ONLINE|"
-    Payload = "|PULSE_ON|Count 1|ON 100ms|OFF 100ms|"
-    Sender = "Test"
-    res = x.EventHandler(EventType, Index, Time, Quality, Payload, Sender)
-    print("Event Result - {}".format(res))
-
 def SendBinaryTestEvent(x):
     EventType = "Binary"
     Index = 6
@@ -89,6 +79,16 @@ def SendAnalogTestEvent(x):
     Sender = "Test"
     res = x.EventHandler(EventType, Index, Time, Quality, Payload, Sender)
     print("Event Result - {}".format(res))
+
+def SendControlPulseEvent(x, Index):
+    EventType = "ControlRelayOutputBlock"
+    Time = 0x0000016bfd90f002
+    Quality = "|ONLINE|"
+    Payload = "|PULSE_ON|Count 1|ON 100ms|OFF 100ms|"
+    Sender = "Test"
+    res = x.EventHandler(EventType, Index, Time, Quality, Payload, Sender)
+    print("Event Result - {}".format(res))
+
 
 
 # Main Section
@@ -130,10 +130,15 @@ def StimulateDirectly():
         resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=CB&Number=1","")
         assert (resjson == r'{"Bit0": 1, "Bit1": 0, "State": "Closed"}'), "Request to get CB 1 current state failed"
 
-        SendControlTestEvent(x) #Trip on 0
+        SendControlPulseEvent(x,0) #Trip
 
         resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=CB&Number=1","")
         assert (resjson == r'{"Bit0": 0, "Bit1": 1, "State": "Open"}'), "Request to get CB 1 current state failed"
+
+        SendControlPulseEvent(x,1) #Close
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=CB&Number=1","")
+        assert (resjson == r'{"Bit0": 1, "Bit1": 0, "State": "Closed"}'), "Request to get CB 1 current state failed"
 
         # Analogs
         resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=Analog&Number=0","")
@@ -175,13 +180,56 @@ def StimulateDirectly():
         resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=1","")
         assert (resjson == r'{"State": 10}'), "Request to get TapChanger 1 current state failed"
 
+        SendControlPulseEvent(x,2)  # TapUp for TC 1
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=1","")
+        assert (resjson == r'{"State": 11}'), "Request to get TapChanger 1 current state failed"
+
+        SendControlPulseEvent(x,3)  # TapDown for TC 1
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=1","")
+        assert (resjson == r'{"State": 10}'), "Request to get TapChanger 1 current state failed"
+
         # TapChanger 2
         payload = {"Type" : "TapChanger", "Number" : 2, "State" : 12}
         resjson = x.RestRequestHandler("POST http://localhost:10000/PyPortRtuSim/set",json.dumps(payload))
-        assert (resjson == r'{"Result": "OK"}'), "POST to TapChanger 2 - Value 10 Failed"
+        assert (resjson == r'{"Result": "OK"}'), "POST to TapChanger 2 - Value 12 Failed"
 
         resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=2","")
         assert (resjson == r'{"State": 12}'), "Request to get TapChanger 2 current state failed"
+
+        SendControlPulseEvent(x,4)  # TapUp for TC 2
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=2","")
+        assert (resjson == r'{"State": 13}'), "Request to get TapChanger 2 current state failed"
+
+        SendControlPulseEvent(x,4)  # TapUp for TC 2
+        SendControlPulseEvent(x,4)  # TapUp for TC 2
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=2","")
+        assert (resjson == r'{"State": 15}'), "Request to get TapChanger 2 current state failed"
+
+        SendControlPulseEvent(x,4)  # TapUp for TC 2
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=2","")
+        assert (resjson == r'{"State": 15}'), "Request to get TapChanger 2 current state failed"
+
+        SendControlPulseEvent(x,5)  # TapDown for TC 2
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=2","")
+        assert (resjson == r'{"State": 14}'), "Request to get TapChanger 2 current state failed"
+
+        payload = {"Type" : "TapChanger", "Number" : 2, "State" : 1}
+        resjson = x.RestRequestHandler("POST http://localhost:10000/PyPortRtuSim/set",json.dumps(payload))
+        assert (resjson == r'{"Result": "OK"}'), "POST to TapChanger 2 - Value 1 Failed"
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=2","")
+        assert (resjson == r'{"State": 1}'), "Request to get TapChanger 2 current state failed"
+
+        SendControlPulseEvent(x,5)  # TapDown for TC 2
+
+        resjson = x.RestRequestHandler("GET http://localhost:10000/PyPortRtuSim/status?Type=TapChanger&Number=2","")
+        assert (resjson == r'{"State": 1}'), "Request to get TapChanger 2 current state failed"
 
         # Analog Sim updates
         x.UpdateAnalogSimValues(10)

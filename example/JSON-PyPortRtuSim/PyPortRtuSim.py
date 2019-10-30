@@ -309,7 +309,7 @@ class SimPortClass:
             self.SetTapChangerValue(Number,val,FBType)
         return
 
-    def TapChangerTapDown( self, Number, Type, Min ):
+    def TapChangerTapDown( self, Number, FBType, Min ):
         # Does the tapdown command and limits the value to the minimum allowed.
         self.LogDebug("TapDownCommand")
         val = self.GetTapChangerValue(Number,FBType)
@@ -355,49 +355,54 @@ class SimPortClass:
     def EventHandler(self,EventType, Index, Time, Quality, Payload, Sender):
         self.LogDebug("EventHander: {}, {}, {} {} {} - {}".format(self.guid,Sender,Index,EventType,Quality,Payload))
 
-        if (EventType == "ConnectState"):
-            self.LogDebug("ConnectState Event {}".format(Payload))  #PORT_UP/CONNECTED/DISCONNECTED/PORT_DOWN
-            if (Payload == "CONNECTED") :
-                self.SendInitialState()
-            return True
+        try:
+            if (EventType == "ConnectState"):
+                self.LogDebug("ConnectState Event {}".format(Payload))  #PORT_UP/CONNECTED/DISCONNECTED/PORT_DOWN
+                if (Payload == "CONNECTED") :
+                    self.SendInitialState()
+                return True
 
-        if not re.search("ONLINE",Quality):
-            self.LogDebug("Quality not ONLINE, ignoring event")
-            return True;
+            if not re.search("ONLINE",Quality):
+                self.LogDebug("Quality not ONLINE, ignoring event")
+                return True;
 
-        if (EventType == "ControlRelayOutputBlock"):
-            # Need to work out which Circuit Breaker and what command
+            if (EventType == "ControlRelayOutputBlock"):
+                # Need to work out which Circuit Breaker and what command
 
-            x = self.GetControlDetailsUsingIndex(Index)
-            if x["Type"] == "CB":
-                # {"Index": 0, "Type" : "CB", "Number" : 1, "Command":"Trip"},
-                if x["Command"] == "Trip":
-                    self.CBSetState( x["Number"], "Open")
-                elif x["Command"] == "Close":
-                    self.CBSetState( x["Number"], "Closed")
+                x = self.GetControlDetailsUsingIndex(Index)
+                if x["Type"] == "CB":
+                    # {"Index": 0, "Type" : "CB", "Number" : 1, "Command":"Trip"},
+                    if x["Command"] == "Trip":
+                        self.CBSetState( x["Number"], "Open")
+                    elif x["Command"] == "Close":
+                        self.CBSetState( x["Number"], "Closed")
+                    else:
+                        self.LogDebug("Command received not recognised - {}".format(x["Command"]))
+
+                elif x["Type"] == "TapChanger":
+                    # {"Index": 2, "Type" : "TapChanger", "Number" : 1, "FB": "ANA", "Max": 32, "Command":"TapUp"},
+                    self.LogDebug("Tap Changer")
+                    if x["Command"] == "TapUp":
+                        self.TapChangerTapUp( x["Number"], x["FB"], x["Max"] )
+                    elif x["Command"] == "TapDown":
+                        self.TapChangerTapDown( x["Number"], x["FB"], x["Min"] )
+                    else:
+                        self.LogDebug("Command received not recognised - {}".format(x["Command"]))
                 else:
-                    self.LogDebug("Command received not recognised - {}".format(x["Command"]))
+                    self.LogDebug("Command type received not recognised - {}".format(x["Type"]))
 
-            elif x["Type"] == "TapChanger":
-                # {"Index": 2, "Type" : "TapChanger", "Number" : 1, "FB": "ANA", "Max": 32, "Command":"TapUp"},
-                self.LogDebug("Tap Changer")
-                if x["Command"] == "TapUp":
-                    self.TapChangerTapUp( x["Number"], x["FB"], x["Max"] )
-                elif x["Command"] == "TapDown":
-                    self.TapChangerTapDown( x["Number"], x["FB"], x["Min"] )
-                else:
-                    self.LogDebug("Command received not recognised - {}".format(x["Command"]))
+            elif (EventType == "Analog"):
+                self.SetAnalogValueUsingIndex(Index,Payload)
+
+            elif (EventType == "Binary"):
+                self.SetBinaryValueUsingIndex(Index,Payload)
+
             else:
-                self.LogDebug("Command type received not recognised - {}".format(x["Type"]))
+                self.LogDebug("Event is not one we are interested in - Ignoring")
 
-        elif (EventType == "Analog"):
-            self.SetAnalogValueUsingIndex(Index,Payload)
-
-        elif (EventType == "Binary"):
-            self.SetBinaryValueUsingIndex(Index,Payload)
-
-        else:
-            self.LogDebug("Event is not one we are interested in - Ignoring")
+        except (RuntimeError, TypeError, NameError, Exception) as e:
+            self.LogError("Exception - {}".format(e))
+            return False
 
         # Any changes that were made to the state, triggered events when they were made.
         return True
