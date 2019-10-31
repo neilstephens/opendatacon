@@ -20,3 +20,6 @@ cmake-build-debug-mingw/
 CBPort/uncrustifywithtabs.cfg
 CBPort/uncrustify_here.pl
 CBPort/uncrustify.cfg
+odcbuild.sh
+go.sh
+get.sh
