@@ -64,6 +64,19 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	if(Interfaces.empty() && DataPorts.empty() && DataConnectors.empty())
 		throw std::runtime_error("No objects to manage");
 
+	for(auto& conn : DataConnectors)
+		conn.second->SetIOS(pIOS);
+
+	std::unordered_map<std::string,std::shared_ptr<IUIResponder>> PortResponders;
+	for(auto& port : DataPorts)
+	{
+		port.second->SetIOS(pIOS);
+		auto ResponderPair = port.second->GetUIResponder();
+		//if it's a different, valid responder pair, store it
+		if(ResponderPair.second && PortResponders.count(ResponderPair.first) == 0)
+			PortResponders.insert(ResponderPair);
+	}
+
 	for(auto& interface : Interfaces)
 	{
 		interface.second->AddCommand("shutdown",[this](std::stringstream& ss)
@@ -87,11 +100,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		interface.second->AddResponder("DataPorts", DataPorts);
 		interface.second->AddResponder("DataConnectors", DataConnectors);
 		interface.second->AddResponder("Plugins", Interfaces);
+		for(auto& ResponderPair : PortResponders)
+			interface.second->AddResponder(ResponderPair.first, *ResponderPair.second);
 	}
-	for(auto& port : DataPorts)
-		port.second->SetIOS(pIOS);
-	for(auto& conn : DataConnectors)
-		conn.second->SetIOS(pIOS);
 }
 
 DataConcentrator::~DataConcentrator()

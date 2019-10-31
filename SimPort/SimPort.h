@@ -29,10 +29,12 @@
 
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
+#include <shared_mutex>
 #include <random>
 
 using namespace odc;
 
+class SimPortCollection;
 class SimPort: public DataPort
 {
 public:
@@ -42,8 +44,11 @@ public:
 	void Disable() final;
 	void Build() final;
 	void ProcessElements(const Json::Value& JSONRoot) final;
-
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
+	std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder() final;
+
+	bool Force(const std::string &type, const std::string &index, const std::string &value, const std::string &quality);
+	bool Release(const std::string& type, const std::string& index);
 
 private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
@@ -53,6 +58,10 @@ private:
 	void SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t pTimer, rand_t seed);
 	void PortUp();
 	void PortDown();
+
+	std::shared_ptr<SimPortCollection> SimCollection;
+
+	std::shared_timed_mutex ConfMutex;
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	std::mt19937 RandNumGenerator;

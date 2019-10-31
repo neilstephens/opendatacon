@@ -30,6 +30,7 @@
 #include <opendatacon/IOTypes.h>
 #include "SimPort.h"
 #include "SimPortConf.h"
+#include "SimPortCollection.h"
 
 inline unsigned int random_interval(const unsigned int& average_interval, rand_t& seed)
 {
@@ -40,8 +41,30 @@ inline unsigned int random_interval(const unsigned int& average_interval, rand_t
 
 //Implement DataPort interface
 SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
-	DataPort(Name, File, Overrides)
+	DataPort(Name, File, Overrides),
+	SimCollection(nullptr)
 {
+
+	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
+	static std::weak_ptr<SimPortCollection> weak_collection;
+
+	//if we're the first/only one on the scene,
+	// init the SimPortCollection
+	if(!init_flag.test_and_set(std::memory_order_acquire))
+	{
+		//make a custom deleter for the DNP3Manager that will also clear the init flag
+		auto deinit_del = [](SimPortCollection* collection_ptr)
+					{init_flag.clear(); delete collection_ptr;};
+		this->SimCollection = std::shared_ptr<SimPortCollection>(new SimPortCollection(), deinit_del);
+		weak_collection = this->SimCollection;
+	}
+	//otherwise just make sure it's finished initialising and take a shared_ptr
+	else
+	{
+		while (!(this->SimCollection = weak_collection.lock()))
+		{} //init happens very seldom, so spin lock is good
+	}
+
 	pConf.reset(new SimPortConf());
 	ProcessFile();
 }
@@ -68,9 +91,87 @@ void SimPort::Disable()
 		});
 }
 
+std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
+{
+	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
+}
+
+bool SimPort::Force(const std::string& type, const std::string& index, const std::string& value, const std::string& quality)
+{
+	size_t idx; double val;
+	try
+	{
+		idx = std::stoi(index);
+		val = std::stod(value);
+	}
+	catch(std::invalid_argument e)
+	{
+		return false;
+	}
+
+	if(type == "Binary")
+	{
+		{ //lock scope
+			auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+			pConf->BinaryForcedStates[idx] = true;
+		}
+		auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,QualityFlags::ONLINE);
+		bool valb = (val >= 1);
+		event->SetPayload<EventType::Binary>(std::move(valb));
+		PublishEvent(event);
+	}
+	else if(type == "Analog")
+	{
+		{ //lock scope
+			auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+			pConf->AnalogForcedStates[idx] = true;
+		}
+		auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,QualityFlags::ONLINE);
+		event->SetPayload<EventType::Analog>(std::move(val));
+		PublishEvent(event);
+	}
+	else
+		return false;
+
+	return true;
+}
+
+bool SimPort::Release(const std::string& type, const std::string& index)
+{
+	size_t idx;
+	try
+	{
+		idx = std::stoi(index);
+	}
+	catch(std::invalid_argument e)
+	{
+		return false;
+	}
+
+	if(type == "Binary")
+	{
+		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+		pConf->BinaryForcedStates[idx] = false;
+	}
+	else if(type == "Analog")
+	{
+		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+		pConf->AnalogForcedStates[idx] = false;
+	}
+	else
+		return false;
+
+	return true;
+}
+
 void SimPort::PortUp()
 {
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+	std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
 	for(auto index : pConf->AnalogIndicies)
 	{
 		//send initial event
@@ -142,13 +243,21 @@ void SimPort::SpawnEvent(size_t index, double mean, double std_dev, unsigned int
 	//Restart the timer
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 
-	//Send an event out
-	//change value around mean
-	std::normal_distribution<double> distribution(mean, std_dev);
-	double val = distribution(RandNumGenerator);
-	auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
-	event->SetPayload<EventType::Analog>(std::move(val));
-	PublishEvent(event);
+	{ //lock scope
+		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+
+		if(!pConf->AnalogForcedStates[index])
+		{
+			//Send an event out
+			//change value around mean
+			std::normal_distribution<double> distribution(mean, std_dev);
+			double val = distribution(RandNumGenerator);
+			auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
+			event->SetPayload<EventType::Analog>(std::move(val));
+			PublishEvent(event);
+		}
+	}
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
@@ -165,10 +274,18 @@ void SimPort::SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t
 	//Restart the timer
 	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
 
-	//Send an event out
-	auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
-	event->SetPayload<EventType::Binary>(std::move(val));
-	PublishEvent(event);
+	{ //lock scope
+		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+
+		if(!pConf->BinaryForcedStates[index])
+		{
+			//Send an event out
+			auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
+			event->SetPayload<EventType::Binary>(std::move(val));
+			PublishEvent(event);
+		}
+	}
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
@@ -183,11 +300,14 @@ void SimPort::SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t
 void SimPort::Build()
 {
 	pEnableDisableSync = pIOS->make_strand();
+	auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
+	this->SimCollection->Add(shared_this,this->Name);
 }
 
 void SimPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 
 	if(JSONRoot.isMember("Analogs"))
 	{
@@ -447,6 +567,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	auto index = event->GetIndex();
 	auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+	std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
 	for(auto i : pConf->ControlIndicies)
 	{
 		if(i == index)

@@ -34,7 +34,7 @@
 #include "IUIResponder.h"
 
 template <class T>
-class ResponderMap: public std::unordered_map<std::string, std::unique_ptr<T,std::function<void(T*)>> >, public IUIResponder
+class ResponderMap: public std::unordered_map<std::string, T >, public IUIResponder
 {
 public:
 	ResponderMap()
@@ -68,9 +68,9 @@ public:
 	}
 	~ResponderMap() override {}
 
-	std::vector<T*> GetTargets(const ParamCollection& params)
+	std::vector<T> GetTargets(const ParamCollection& params)
 	{
-		std::vector<T*> targets;
+		std::vector<T> targets;
 
 		if (params.count("Target"))
 		{
@@ -85,7 +85,7 @@ public:
 				{
 					if(std::regex_match(pName_n_pVal.first, reg))
 					{
-						targets.push_back(pName_n_pVal.second.get());
+						targets.push_back(pName_n_pVal.second);
 					}
 				}
 			}
@@ -133,13 +133,13 @@ public:
 		return targets;
 	}
 
-	T* GetTarget(const ParamCollection& params)
+	T GetTarget(const ParamCollection& params)
 	{
 		if (params.count("Target") && this->count(params.at("Target")))
 		{
-			return this->at(params.at("Target")).get();
+			return this->at(params.at("Target"));
 		}
-		return nullptr;
+		return T();
 	}
 
 };

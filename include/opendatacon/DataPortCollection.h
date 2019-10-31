@@ -34,7 +34,7 @@
 namespace odc
 {
 
-class DataPortCollection: public ResponderMap<DataPort>
+class DataPortCollection: public ResponderMap< std::shared_ptr<DataPort> >
 {
 public:
 	DataPortCollection()

@@ -60,9 +60,11 @@ public:
 
 	std::vector<uint32_t> BinaryIndicies;
 	std::map<size_t, bool> BinaryStartVals;
+	std::map<size_t, bool> BinaryForcedStates;
 	std::map<size_t, unsigned int> BinaryUpdateIntervalms;
 	std::vector<uint32_t> AnalogIndicies;
 	std::map<size_t, double> AnalogStartVals;
+	std::map<size_t, bool> AnalogForcedStates;
 	std::map<size_t, unsigned int> AnalogUpdateIntervalms;
 	std::map<size_t, double> AnalogStdDevs;
 	std::vector<uint32_t> ControlIndicies;
