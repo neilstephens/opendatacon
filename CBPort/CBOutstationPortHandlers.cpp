@@ -117,12 +117,12 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 			break;
 
 		default:
-			LOGERROR("Unknown PendingCommand Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+			LOGERROR("{} Unknown PendingCommand Function - {} On Station Address - {}",Name, Header.GetFunctionCode(), Header.GetStationAddress());
 			break;
 	}
 	if (NotImplemented == true)
 	{
-		LOGERROR("PendingCommand Function NOT Implemented - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+		LOGERROR("{} PendingCommand Function NOT Implemented - {} On Station Address - {}",Name,Header.GetFunctionCode(),Header.GetStationAddress());
 	}
 }
 
@@ -132,7 +132,7 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 
 void CBOutstationPort::ScanRequest(CBBlockData &Header)
 {
-	LOGDEBUG("OS - ScanRequest - Fn0");
+	LOGDEBUG("{} - ScanRequest - Fn0",Name);
 
 	// Assemble the block values A and B in order ready to be placed into the response message.
 	std::vector<uint16_t> BlockValues;
@@ -266,7 +266,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				}
 				else
 				{
-				      LOGERROR("Unhandled Binary Point type - no valid value returned");
+				      LOGERROR("{} Unhandled Binary Point type {} - no valid value returned",Name, pt.GetPointType());
 				}
 				FoundMatch = true;
 			});
@@ -296,7 +296,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	}
 	if (!FoundMatch)
 	{
-		LOGDEBUG("Failed to find a payload for: {} Setting to zero",payloadlocation.to_string() );
+		LOGDEBUG("{} Failed to find a payload for: {} Setting to zero",Name, payloadlocation.to_string() );
 	}
 	return Payload;
 }
@@ -310,7 +310,7 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 	std::string cmd = "Trip";
 	if (pCommand == PendingCommandType::CommandType::Close) cmd = "Close";
 
-	LOGDEBUG("OS - {} PendingCommand - Fn2/4, Group {}",cmd, Header.GetGroup());
+	LOGDEBUG("{} - {} PendingCommand - Fn2/4, Group {}",Name, cmd, Header.GetGroup());
 
 	uint8_t group = Header.GetGroup();
 	PendingCommands[group].Data = Header.GetB();
@@ -324,14 +324,14 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 		if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
 		{
 			PendingCommands[group].Command = PendingCommandType::CommandType::None;
-			LOGDEBUG("FuncTripClose - Could not find an ODC BinaryControl to match Group {}, channel {} - Not responding to Master", Header.GetGroup(), Channel);
+			LOGDEBUG("{} FuncTripClose - Could not find an ODC BinaryControl to match Group {}, channel {} - Not responding to Master",Name, Header.GetGroup(), Channel);
 			return;
 		}
 
 		PendingCommands[group].Command = pCommand;
 		PendingCommands[group].ExpiryTime = CBNow() + PendingCommands[group].CommandValidTimemsec;
 
-		LOGDEBUG("OS - Got a valid {} PendingCommand, Data {}",cmd, PendingCommands[group].Data);
+		LOGDEBUG("{} Got a valid {} PendingCommand, Data {}",Name, cmd, PendingCommands[group].Data);
 
 		auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommands[group].Data, true);
 
@@ -346,7 +346,7 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 		PendingCommands[group].Command = PendingCommandType::CommandType::None;
 
 		// Error - dont reply..
-		LOGERROR("OS - More than one or no bit set in a {} PendingCommand - Not responding to master",cmd);
+		LOGERROR("{} More than one or no bit set in a {} PendingCommand - Not responding to master",Name, cmd);
 	}
 }
 
@@ -364,7 +364,7 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 		cmd = "SetB";
 	}
 
-	LOGDEBUG("OS - {} PendingCommand - Fn3/5", cmd);
+	LOGDEBUG("{} -{} PendingCommand - Fn3 / 5", Name, cmd);
 	uint8_t group = Header.GetGroup();
 
 	// Also now check that this is actually a valid CONTROL point.
@@ -372,7 +372,7 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 	if (!MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
 	{
 		PendingCommands[group].Command = PendingCommandType::CommandType::None;
-		LOGDEBUG("FuncSetAB - Could not find an ODC AnalogControl to match Group {}, channel {} - Not responding to Master", group, Channel);
+		LOGDEBUG("{} FuncSetAB - Could not find an ODC AnalogControl to match Group {}, channel {} - Not responding to Master",Name, group, Channel);
 		return;
 	}
 
@@ -380,7 +380,7 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 	PendingCommands[group].ExpiryTime = CBNow() + PendingCommands[group].CommandValidTimemsec;
 	PendingCommands[group].Data = Header.GetB();
 
-	LOGDEBUG("OS - Got a valid {} PendingCommand, Data {}", cmd, PendingCommands[group].Data);
+	LOGDEBUG("{} - Got a valid {} PendingCommand, Data {}", Name, cmd, PendingCommands[group].Data);
 
 	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommands[group].Data, true);
 
@@ -394,11 +394,9 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 {
 	// Now if there is a command to be executed - do so
-	LOGDEBUG("OS - ExecuteCommand - Fn1, Group {}", Header.GetGroup());
-
 	if (MyPointConf->IsBakerDevice && (Header.GetGroup() == 0))
 	{
-		LOGDEBUG("OS - ExecuteCommand - Fn1 - Doing Baker Global Execute");
+		LOGDEBUG("{} ExecuteCommand - Fn1 - Doing Baker Global Execute",Name);
 		// Baker (well DNMS) seems to use group 0 to execute any Command regardless of the group.
 		bool success = true;
 		for (uint8_t i = 0; i < 16; i++)
@@ -410,6 +408,7 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 	}
 	else
 	{
+		LOGDEBUG("{} ExecuteCommand - Fn1, Group {}", Name, Header.GetGroup());
 		bool success = ExecuteCommandOnGroup(PendingCommands[Header.GetGroup()], Header.GetGroup(), true);
 		PendingCommands[Header.GetGroup()].Command = PendingCommandType::CommandType::None;
 		if (!success)
@@ -429,7 +428,7 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 	if ((CBNow() > PendingCommand.ExpiryTime) && (PendingCommand.Command != PendingCommandType::CommandType::None))
 	{
 		CBTime TimeDelta = CBNow() - PendingCommand.ExpiryTime;
-		LOGDEBUG("Received an Execute Command, but the current command had expired - time delta {} msec", TimeDelta);
+		LOGDEBUG("{} Received an Execute Command, but the current command had expired - time delta {} msec", Name, TimeDelta);
 		return false;
 	}
 
@@ -437,43 +436,43 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 	{
 		case PendingCommandType::CommandType::None:
 			if (singlecommand)
-				LOGDEBUG("Received an Execute Command, but there is no current command");
+				LOGDEBUG("{} Received an Execute Command, but there is no current command",Name);
 			break;
 
 		case PendingCommandType::CommandType::Trip:
 		{
-			LOGDEBUG("Received an Execute Command, Trip");
+			LOGDEBUG("{} Received an Execute Command, Trip",Name);
 			int SetBit = GetSetBit(PendingCommand.Data, 12);
 			bool point_on = false; // Trip is OFF??
 			if (SetBit != -1)
 				success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(SetBit + 1), point_on);
 			else
-				LOGERROR("Recevied a Trip command, but no bit was set in the data {}", PendingCommand.Data);
+				LOGERROR("{} Recevied a Trip command, but no bit was set in the data {}", Name, PendingCommand.Data);
 		}
 		break;
 
 		case PendingCommandType::CommandType::Close:
 		{
-			LOGDEBUG("Received an Execute Command, Close");
+			LOGDEBUG("{} Received an Execute Command, Close",Name);
 			int SetBit = GetSetBit(PendingCommand.Data, 12);
 			bool point_on = true; // Trip is OFF??
 
 			if (SetBit != -1)
 				success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(SetBit + 1), point_on);
 			else
-				LOGERROR("Recevied a Close command, but no bit was set in the data {}", PendingCommand.Data);
+				LOGERROR("{} Recevied a Close command, but no bit was set in the data {}", Name, PendingCommand.Data);
 		}
 		break;
 
 		case PendingCommandType::CommandType::SetA:
 		{
-			LOGDEBUG("Received an Execute Command, SetA");
+			LOGDEBUG("{} Received an Execute Command, SetA",Name);
 			success = ExecuteAnalogControl(Group, 1, PendingCommand.Data);
 		}
 		break;
 		case PendingCommandType::CommandType::SetB:
 		{
-			LOGDEBUG("Received an Execute Command, SetB");
+			LOGDEBUG("{} Received an Execute Command, SetB",Name);
 			success = ExecuteAnalogControl(Group, 2, PendingCommand.Data);
 		}
 		break;
@@ -481,7 +480,7 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 
 	//There is no way to respond using the bool success to indicate sucess or failure
 	if (!success)
-		LOGDEBUG("We failed in the execute command, but have no way to send back this error ");
+		LOGDEBUG("{} We failed in the execute command, but have no way to send back this error ",Name);
 	return success;
 }
 
@@ -492,7 +491,7 @@ bool CBOutstationPort::ExecuteBinaryControl(uint8_t group, uint8_t channel, bool
 
 	if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(group, channel, ODCIndex))
 	{
-		LOGDEBUG("Could not find an ODC BinaryControl to match Group {}, channel {}", group, channel);
+		LOGDEBUG("{} Could not find an ODC BinaryControl to match Group {}, channel {}", Name, group, channel);
 		return false;
 	}
 
@@ -517,7 +516,7 @@ bool CBOutstationPort::ExecuteAnalogControl(uint8_t group, uint8_t channel, uint
 
 	if (!MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(group, channel, ODCIndex))
 	{
-		LOGDEBUG("Could not find an ODC AnalogControl to match Group {}, channel {}", group, channel);
+		LOGDEBUG("{} Could not find an ODC AnalogControl to match Group {}, channel {}", Name, group, channel);
 		return false;
 	}
 
@@ -537,7 +536,7 @@ bool CBOutstationPort::ExecuteAnalogControl(uint8_t group, uint8_t channel, uint
 }
 void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_t & CompleteCBMessage)
 {
-	LOGDEBUG("OS - MasterStationRequest - Fn9 - Code {}", Header.GetGroup());
+	LOGDEBUG("{} - MasterStationRequest - Fn9 - Code {}", Name, Header.GetGroup());
 	// The purpose of this function is determined by Group Number
 	switch (Header.GetGroup())
 	{
@@ -616,14 +615,14 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 
 void CBOutstationPort::FuncReSendSOEResponse(CBBlockData & Header)
 {
-	LOGDEBUG("OS - ReSendSOEResponse - FnB - Code {}", Header.GetGroup());
+	LOGDEBUG("{} - ReSendSOEResponse - FnB - Code {}",Name, Header.GetGroup());
 
 	SendCBMessage(LastSentSOEMessage);
 }
 
 void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 {
-	LOGDEBUG("OS - SendSOEResponse - FnA - Code {}", Header.GetGroup());
+	LOGDEBUG("{} - SendSOEResponse - FnA - Code {}", Name, Header.GetGroup());
 
 	CBMessage_t ResponseCBMessage;
 
@@ -653,7 +652,7 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 		ConvertPayloadWordsToCBMessage(Header, PayloadWords, ResponseCBMessage);
 	}
 	if (ResponseCBMessage.size() > 16)
-		LOGERROR("Too many packets in ResponseCBMessage in Outstation SOE Response - fatal error");
+		LOGERROR("{} Too many packets in ResponseCBMessage in Outstation SOE Response - fatal error",Name);
 
 	//LOGDEBUG("Station F10 Response Packet {}", BuildASCIIHexStringfromCBMessage(ResponseCBMessage));
 
@@ -788,7 +787,7 @@ void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 	ssin = (CompleteCBMessage[1].GetA() & 0x0F) << 2 | ((CompleteCBMessage[1].GetB() >> 10) & 0x03);
 	msecin = (CompleteCBMessage[1].GetB() & 0x03FF);
 
-	LOGDEBUG("Received Time Set Command {}:{}:{}:{}, Current Time {}:{}:{}:{}", hhin, mmin, ssin, msecin, hh, mm, ss, msec);
+	LOGDEBUG("{} Received Time Set Command {}:{}:{}:{}, Current Time {}:{}:{}:{}",Name, hhin, mmin, ssin, msecin, hh, mm, ss, msec);
 
 	// We just echo back what we were sent. This is what is expected.
 	ResponseCBMessage.push_back(CompleteCBMessage[0]);
