@@ -109,6 +109,12 @@ bool SimPort::Force(const std::string& type, const std::string& index, const std
 		return false;
 	}
 
+	QualityFlags Q;
+	if(quality == "")
+		Q = QualityFlags::ONLINE;
+	else if(!GetQualityFlagsFromStringName(quality, Q))
+		return false;
+
 	if(type == "Binary")
 	{
 		{ //lock scope
@@ -116,7 +122,7 @@ bool SimPort::Force(const std::string& type, const std::string& index, const std
 			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 			pConf->BinaryForcedStates[idx] = true;
 		}
-		auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,QualityFlags::ONLINE);
+		auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,Q);
 		bool valb = (val >= 1);
 		event->SetPayload<EventType::Binary>(std::move(valb));
 		PublishEvent(event);
@@ -128,7 +134,7 @@ bool SimPort::Force(const std::string& type, const std::string& index, const std
 			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 			pConf->AnalogForcedStates[idx] = true;
 		}
-		auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,QualityFlags::ONLINE);
+		auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q);
 		event->SetPayload<EventType::Analog>(std::move(val));
 		PublishEvent(event);
 	}
@@ -592,13 +598,17 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 							case ControlCode::CLOSE_PULSE_ON:
 							case ControlCode::TRIP_PULSE_ON:
 							{
-								PublishEvent(fb.on_value);
+								if(!pConf->BinaryForcedStates[fb.on_value->GetIndex()])
+									PublishEvent(fb.on_value);
 								pTimer_t pTimer = pIOS->make_steady_timer();
 								pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
 								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
 									{
 										//FIXME: check err_code?
-										PublishEvent(fb.off_value);
+										auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+										std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+										if(!pConf->BinaryForcedStates[fb.off_value->GetIndex()])
+											PublishEvent(fb.off_value);
 									});
 								//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
 								break;
@@ -619,7 +629,8 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 									log->trace("{}: Control {}: Latch on feedback to Binary {}.",
 										Name, index,fb.on_value->GetIndex());
 								fb.on_value->SetTimestamp();
-								PublishEvent(fb.on_value);
+								if(!pConf->BinaryForcedStates[fb.on_value->GetIndex()])
+									PublishEvent(fb.on_value);
 								break;
 							case ControlCode::LATCH_OFF:
 							case ControlCode::TRIP_PULSE_ON:
@@ -628,7 +639,8 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 									log->trace("{}: Control {}: Latch off feedback to Binary {}.",
 										Name, index,fb.off_value->GetIndex());
 								fb.off_value->SetTimestamp();
-								PublishEvent(fb.off_value);
+								if(!pConf->BinaryForcedStates[fb.off_value->GetIndex()])
+									PublishEvent(fb.off_value);
 								break;
 							default:
 								(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
