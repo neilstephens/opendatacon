@@ -64,7 +64,7 @@ public:
 	void RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback);
 	void PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
 
-	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
+	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
 
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;

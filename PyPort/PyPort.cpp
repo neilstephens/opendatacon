@@ -331,7 +331,7 @@ void PyPort::Disable()
 		});
 }
 
-std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
+std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
 {
 	EventType EventTypeResult;
 	if (!GetEventTypeFromStringName(EventTypeStr, EventTypeResult))
