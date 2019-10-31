@@ -64,12 +64,7 @@ public:
 	void RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback);
 	void PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
 
-	// Utility/Testing
-	static bool GetEventTypeFromStringName(const std::string StrEventType, EventType& EventTypeResult);
-	static bool GetControlCodeFromStringName(const std::string StrControlCode, ControlCode& ControlCodeResult);
-	static bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult);
-	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, size_t & ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
-	static bool GetQualityFlagsFromStringName(const std::string StrQuality, QualityFlags& QualityResult);
+	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
 
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
