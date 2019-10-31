@@ -64,11 +64,7 @@ public:
 	bool IsOperational() { return PortOperational.load(); };
 
 	// Utility/Testing
-	static bool GetEventTypeFromStringName(const std::string StrEventType, EventType& EventTypeResult);
-	static bool GetControlCodeFromStringName(const std::string StrControlCode, ControlCode& ControlCodeResult);
-	static bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult);
 	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
-	static bool GetQualityFlagsFromStringName(const std::string StrQuality, QualityFlags& QualityResult);
 
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
