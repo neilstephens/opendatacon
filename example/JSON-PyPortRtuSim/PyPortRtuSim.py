@@ -224,15 +224,15 @@ class SimPortClass:
                     x["Timer"] -= secs*1000;
                     if (x["Timer"] <= 0):
                         #Timer expired! Send Event
-                        x["Timer"] = x[ "UpdateRate"];
+                        x["Timer"] = x["UpdateIntervalms"];
 
                         self.UpdateAnalogValue(x,secs)
 
                 else:
-                    if ("UpdateRate" in x):
-                        if (x["UpdateRate"] != 0):   # If 0 or not a field, do not do updates.
+                    if ("UpdateIntervalms" in x):
+                        if (x["UpdateIntervalms"] != 0):   # If 0 or not a field, do not do updates.
                             # Need to randomise the start count down period so they dont fire all at once.
-                            x["Timer"] = numpy.random.randint(0,x["UpdateRate"])
+                            x["Timer"] = numpy.random.randint(0,x["UpdateIntervalms"])
         return
 
     # Return a string indicating what the two binary bits mean
@@ -388,6 +388,9 @@ class SimPortClass:
                         self.TapChangerTapDown( x["Number"], x["FB"], x["Min"] )
                     else:
                         self.LogDebug("Command received not recognised - {}".format(x["Command"]))
+                elif x["Type"] == "CONTROL":
+                    # The old style control does not go anywhere.
+                    self.LogDebug("CONTROL Signal")
                 else:
                     self.LogDebug("Command type received not recognised - {}".format(x["Type"]))
 
