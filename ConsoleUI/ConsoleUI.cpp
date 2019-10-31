@@ -329,14 +329,10 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 		target_list = pResponder->ExecuteCommand("List", params)["Items"];
 	}
 
-	std::string pName;
-	std::string pVal;
-	while(args)
-	{
-		extract_delimited_string("\"'`",args,pName);
-		extract_delimited_string("\"'`",args,pVal);
-		params[pName] = pVal;
-	}
+	int arg_num = 0;
+	std::string Val;
+	while(extract_delimited_string("\"'`",args,Val))
+		params[std::to_string(arg_num++)] = Val;
 
 	if(target_list.size() > 0) //there was a list resolved
 	{

@@ -32,7 +32,7 @@
 #include "IUI.h"
 
 
-class InterfaceCollection: public ResponderMap<IUI>
+class InterfaceCollection: public ResponderMap< std::shared_ptr<IUI> >
 {
 public:
 	InterfaceCollection()
