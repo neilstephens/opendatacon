@@ -277,7 +277,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 		MyPointConf->PointTable.ForEachMatchingStatusByte(Group, payloadlocation, [&](void)
 			{
 				// We have a matching status byte, set a flag to indicate we have a match.
-				LOGDEBUG("Got a Status Byte request at :{} - {}",std::to_string(Group) ,payloadlocation.to_string());
+				LOGDEBUG("{} Got a Status Byte request at :{} - {}",Name, Group ,payloadlocation.to_string());
 
 				// Get the current value and clear in the same operation.
 				// Effectively clear this flag when we have reported it to the Master.
@@ -545,7 +545,7 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 		case MASTER_SUB_FUNC_SPARE2:
 		case MASTER_SUB_FUNC_SPARE3:
 			// Not used, we do not respond;
-			LOGERROR("Received Unused Master Command Function - {} ",Header.GetGroup());
+			LOGERROR("{} Received Unused Master Command Function - {} ",Name, Header.GetGroup());
 			break;
 
 		case MASTER_SUB_FUNC_TESTRAM:
@@ -555,7 +555,7 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 
 			// We respond as if everything is OK - we just send back what we got. One block only.
 			EchoReceivedHeaderToMaster(Header);
-			LOGDEBUG("Received TEST Master Command Function - {}, no action, but we reply", Header.GetGroup());
+			LOGDEBUG("{} Received TEST Master Command Function - {}, no action, but we reply", Name, Header.GetGroup());
 			break;
 
 		case MASTER_SUB_FUNC_SEND_TIME_UPDATES:
@@ -571,44 +571,44 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 			}
 			else
 			{
-				LOGERROR("Received Illegal MASTER_SUB_FUNC_SEND_TIME_UPDATES Command - Index {}, Blocks {}, Message Size {} ", DataIndex, NumberOfBlocksInMessage, CompleteCBMessage.size());
+				LOGERROR("{} Received Illegal MASTER_SUB_FUNC_SEND_TIME_UPDATES Command - Index {}, Blocks {}, Message Size {} ", Name, DataIndex, NumberOfBlocksInMessage, CompleteCBMessage.size());
 			}
 		}
 		break;
 
 		case MASTER_SUB_FUNC_RETRIEVE_REMOTE_STATUS_WORD:
 			EchoReceivedHeaderToMaster(Header);
-			LOGDEBUG("Received Get Remote Status Master Command Function - {}, no action, but we reply", Header.GetGroup());
+			LOGDEBUG("{} Received Get Remote Status Master Command Function - {}, no action, but we reply", Name, Header.GetGroup());
 			break;
 
 		case MASTER_SUB_FUNC_RETREIVE_INPUT_CIRCUIT_DATA:
-			LOGERROR("Received Input Circuit Data Master Command Function - {}, not implemented", Header.GetGroup());
+			LOGERROR("{} Received Input Circuit Data Master Command Function - {}, not implemented", Name, Header.GetGroup());
 			break;
 
 		case MASTER_SUB_FUNC_TIME_CORRECTION_FACTOR_ESTABLISHMENT: // Also send Comms Stats, 2nd option
 			EchoReceivedHeaderToMaster(Header);
-			LOGDEBUG("Received Time Correction Factor Master Command Function - {}, no action, but we reply", Header.GetGroup());
+			LOGDEBUG("{} Received Time Correction Factor Master Command Function - {}, no action, but we reply", Name, Header.GetGroup());
 			break;
 
 		case MASTER_SUB_FUNC_REPEAT_PREVIOUS_TRANSMISSION:
-			LOGDEBUG("Resending Last Message as a Repeat Last Transmission - {}", CBMessageAsString(LastSentCBMessage));
+			LOGDEBUG("{} Resending Last Message as a Repeat Last Transmission - {}", CBMessageAsString(LastSentCBMessage));
 			ResendLastCBMessage();
 			break;
 
 		case MASTER_SUB_FUNC_SET_LOOPBACKS:
-			LOGERROR("Received Input Circuit Data Master Command Function - {}, not implemented", Header.GetGroup());
+			LOGERROR("{} Received Input Circuit Data Master Command Function - {}, not implemented", Name, Header.GetGroup());
 			break;
 
 		case MASTER_SUB_FUNC_RESET_RTU_WARM:
-			LOGERROR("Received Warm Restart Master Command Function - {}, not implemented", Header.GetGroup());
+			LOGERROR("{} Received Warm Restart Master Command Function - {}, not implemented", Name, Header.GetGroup());
 			break;
 
 		case MASTER_SUB_FUNC_RESET_RTU_COLD:
-			LOGERROR("Received Cold Restart Master Command Function - {}, not implemented", Header.GetGroup());
+			LOGERROR("{} Received Cold Restart Master Command Function - {}, not implemented", Name, Header.GetGroup());
 			break;
 
 		default:
-			LOGERROR("Unknown PendingCommand Function - " + std::to_string(Header.GetFunctionCode()) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
+			LOGERROR("{} Unknown PendingCommand Function - {} On Station Address - {}", Name, Header.GetFunctionCode(),Header.GetStationAddress());
 			break;
 	}
 }
@@ -690,7 +690,7 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 	uint8_t BlockCount = UsedBits / 12 + ((UsedBits % 12 == 0) ? 0 : 1);
 	if (BlockCount > 31)
 	{
-		LOGERROR("ConvertBitArrayToPayloadWords - blockcount exceeded 31!! {}", BlockCount);
+		LOGERROR("{} ConvertBitArrayToPayloadWords - blockcount exceeded 31!! {}",Name, BlockCount);
 		BlockCount = 31;
 	}
 	for (uint8_t block = 0; block < BlockCount; block++)
@@ -701,7 +701,7 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 			size_t bitindex = (size_t)block * 12 + i;
 			if (bitindex >= MaxSOEBits)
 			{
-				LOGERROR("ConvertBitArrayToPayloadWords - bit index exceeded {}!! {}", MaxSOEBits, bitindex);
+				LOGERROR("{} ConvertBitArrayToPayloadWords - bit index exceeded {}!! {}", Name, MaxSOEBits, bitindex);
 				break; // Dont do any more bits!
 			}
 			payload |= ShiftLeftResult16Bits(BitArray[bitindex] ? 1 : 0, 11 - i);
@@ -733,7 +733,7 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 			if (UsedBits <= MaxSOEBits)
 				BitArray[UsedBits - 1] = true; // This index is safe as to get to here there must have been at least one SOE processed.
 			else
-				LOGERROR("BuildPackedEventBitArray UsedBits Exceeded MaxSOEBits");
+				LOGERROR("{} BuildPackedEventBitArray UsedBits Exceeded MaxSOEBits",Name);
 			break;
 		}
 
