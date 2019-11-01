@@ -132,7 +132,7 @@ void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 
 void CBOutstationPort::ScanRequest(CBBlockData &Header)
 {
-	LOGDEBUG("{} - ScanRequest - Fn0",Name);
+	LOGDEBUG("{} - ScanRequest - Fn0 - Group {}",Name, Header.GetGroup());
 
 	// Assemble the block values A and B in order ready to be placed into the response message.
 	std::vector<uint16_t> BlockValues;
@@ -255,6 +255,10 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				      uint8_t result;
 				      bool MCS;
 				      pt.GetBinaryAndMCFlagWithFlagReset(result, MCS);
+
+				      if (pt.GetPointType() == MCA)
+						result = !result; // MCA point on the wire is inverted.
+
 				      if (result == 1)
 				      {
 				            Payload |= ShiftLeftResult16Bits(1, 10 - (ch - 1) * 2); // ch 1 to 6
@@ -443,7 +447,7 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 		{
 			LOGDEBUG("{} Received an Execute Command, Trip",Name);
 			int SetBit = GetSetBit(PendingCommand.Data, 12);
-			bool point_on = false; // Trip is OFF??
+			bool point_on = false; // Trip is OFF - causes OPEN = 0
 			if (SetBit != -1)
 				success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(SetBit + 1), point_on);
 			else
@@ -455,7 +459,7 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 		{
 			LOGDEBUG("{} Received an Execute Command, Close",Name);
 			int SetBit = GetSetBit(PendingCommand.Data, 12);
-			bool point_on = true; // Trip is OFF??
+			bool point_on = true; // CLOSE is ON, causes CLOSED = 1
 
 			if (SetBit != -1)
 				success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(SetBit + 1), point_on);

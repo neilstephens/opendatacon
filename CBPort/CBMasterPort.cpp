@@ -563,6 +563,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 						      uint8_t cos = (data >> (11 - (ch - 1) * 2)) & 0x0001;
 						      LOGDEBUG("{} - MCA Block Received - Chan {} - Value {} - COS {}", Name, ch, bitvalue, cos);
 
+						      bitvalue = !bitvalue; // For MCA the bit value is inverted!!!!
 						      SendBinaryEvent(pt, bitvalue, now);
 
 						      FoundMatch = true;
