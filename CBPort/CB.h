@@ -290,8 +290,8 @@ public:
 		HasBeenSet = true;
 		ChangedTime = ctime;
 
-		if ((PointType == MCA)  && (Binary==1) && (b == 0)) MomentaryChangeStatus = true;   // Only set on 1-->0 transition
-		if ((PointType == MCB)  && (Binary == 0) && (b == 1)) MomentaryChangeStatus = true; // Only set on 0-->1 transition
+		if ((PointType == MCA) && (Binary == 1) && (b == 0)) MomentaryChangeStatus = true;  // Only set on 1-->0 transition
+		if ((PointType == MCB) && (Binary == 0) && (b == 1)) MomentaryChangeStatus = true;  // Only set on 0-->1 transition
 		if ((PointType == MCC) && (Changed) && (Binary != b)) MomentaryChangeStatus = true; // The normal changed flag was already set, and then we got another change.
 
 		Changed = (Binary != b);

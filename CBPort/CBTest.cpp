@@ -861,7 +861,7 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Check the command is formatted correctly
 	std::string DesiredResult = "0937ffaa" // Echoed block plus data 1B
-	                            "54080030" // Data 2A and 2B
+	                            "14080022" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
 	                            "00080006"
@@ -908,9 +908,9 @@ TEST_CASE("Station - ScanRequest F0")
 	WaitIOS(*IOS, 1);
 
 	// MCA,MCB,MCC Set to starting values
-	SendBinaryEvent(CBOSPort, 12, true);
-	SendBinaryEvent(CBOSPort, 13, false);
-	SendBinaryEvent(CBOSPort, 14, true);
+	SendBinaryEvent(CBOSPort, 12, true);  //CLOSED // MCA inverted on the wire!!
+	SendBinaryEvent(CBOSPort, 13, false); //OPEN
+	SendBinaryEvent(CBOSPort, 14, true);  //CLOSED
 
 	WaitIOS(*IOS, 1);
 
@@ -920,7 +920,7 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = "09355516" // Echoed block plus data 1B
-	                "44080026" // Data 2A and 2B
+	                "04080034" // Data 2A and 2B
 	                "400a00b6"
 	                "402882b8"
 	                "405a032c"
@@ -930,9 +930,10 @@ TEST_CASE("Station - ScanRequest F0")
 
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
-	// Test the MC bit types.
-	// MCA - The change bit is set when the input changes from open to closed (1-->0). The status bit is 0 when the contact is CLOSED.
-	// MCB - The change bit is set when the input changes from closed to open (0-->1). The status bit is 0 when the contact is OPEN.
+	// Test the MC bit types. Note 1 is generally CLOSED (true), 0 is OPEN(false)
+	// Note that for MCA below, we only INVERT the bit when it is on the wire. For input and output through the interface OPEN and CLOSED are normal
+	// MCA - The change bit is set when the input changes from closed to open (1-->0). The status bit is 0 when the contact is CLOSED. (Opposite to NORMAL!)
+	// MCB - The change bit is set when the input changes from open to closed (0-->1). The status bit is 0 when the contact is OPEN.
 	// MCC - The change bit is set when the input has gone through more than one change of state. The status bit is 0 when the contact is OPEN.
 
 	// {"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
@@ -940,9 +941,9 @@ TEST_CASE("Station - ScanRequest F0")
 	// {"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC"}],
 
 	// Now make changes to trigger the change flags being set
-	SendBinaryEvent(CBOSPort, 12, false);
-	SendBinaryEvent(CBOSPort, 13, true);
-	SendBinaryEvent(CBOSPort, 14, false); // Cause more than one change.
+	SendBinaryEvent(CBOSPort, 12, false); // OPEN // MCA inverted on the wire!!
+	SendBinaryEvent(CBOSPort, 13, true);  // CLOSED
+	SendBinaryEvent(CBOSPort, 14, false); // OPEN // Cause more than one change.
 	std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	SendBinaryEvent(CBOSPort, 14, true);
 
@@ -953,11 +954,9 @@ TEST_CASE("Station - ScanRequest F0")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // Scan Data Group 3 - analog values and digitals have now changed. No SOE overflow, SOE Data Available in RSW
 
 	// We are setting Channels 1,2,3. So should be the bits Change1, Status1, Change2, Status2, Change3, Status3.
-	// The 2A block was 0x880 Ch 1 = 1, Ch 2 = 0, Ch 3 = 1
-	// It becomes 0x780 Ch1 = 0 S1 =1, Ch2=1,S2 =1,Ch3=1,S3 =1
-	// Finally 0x800	ch1=1,ch2=0,ch3=0
+	// Look at block 2A (first 3 hex chars on second line
 	DesiredResult = "09355516" // Echoed block plus data 1B
-	                "bc080004" // Data 2A and 2B
+	                "fc080016" // Data 2A and 2B
 	                "400a00b6"
 	                "402882b8"
 	                "405a032c"
@@ -969,7 +968,7 @@ TEST_CASE("Station - ScanRequest F0")
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 	// Now do the changes that do not trigger the change bits being set.
-	SendBinaryEvent(CBOSPort, 12, true);
+	SendBinaryEvent(CBOSPort, 12, true); // MCA inverted on the wire!!
 	SendBinaryEvent(CBOSPort, 13, false);
 	SendBinaryEvent(CBOSPort, 14, false); // Only 1 change, need 2 to trigger
 
@@ -981,7 +980,7 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = "09355516" // Echoed block plus data 1B
-	                "40080014" // Data 2A and 2B
+	                "00080006" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "402882b8"
 	                "405a032c"
@@ -1391,7 +1390,7 @@ TEST_CASE("Master - Scan Request F0")
 
 	// From the outstation test above!!
 	std::string Payload = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                                    "01480028" // Data 2A and 2B
+		                                                    "fc080016" // Data 2A and 2B
 		                                                    "400a00b6"
 		                                                    "402882b8"
 		                                                    "405a032c"
@@ -1427,13 +1426,21 @@ TEST_CASE("Master - Scan Request F0")
 		REQUIRE(res == (1024 + ODCIndex));
 	}
 
+	bool changed;
+	uint8_t res8;
 	for (size_t ODCIndex = 0; ODCIndex < 12; ODCIndex++)
 	{
-		bool changed;
-		uint8_t res;
-		CBMAPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res, changed, hasbeenset);
-		REQUIRE(res == ((ODCIndex + 1) % 2));
+		CBMAPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res8, changed, hasbeenset);
+		REQUIRE(res8 == ((ODCIndex + 1) % 2));
 	}
+	// The packet makes all bits below set(on the wire - Dig 12 is MCA which is inverted on the wire,
+	// The change bit is relative to the last known value, not the change bit sent on the wire. This is an ODC limitation.
+	CBMAPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(12, res8, changed, hasbeenset);
+	REQUIRE(res8 == 0);
+	CBMAPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(13, res8, changed, hasbeenset);
+	REQUIRE(res8 == 1);
+	CBMAPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(14, res8, changed, hasbeenset);
+	REQUIRE(res8 == 1);
 
 	// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 	// Need to give ASIO time to process them?

@@ -259,11 +259,11 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				      if (pt.GetPointType() == MCA)
 						result = !result; // MCA point on the wire is inverted.
 
-				      if (result == 1)
+				      if (result == 1) // Status
 				      {
 				            Payload |= ShiftLeftResult16Bits(1, 10 - (ch - 1) * 2); // ch 1 to 6
 					}
-				      if (MCS)
+				      if (MCS) // Change Flag
 				      {
 				            Payload |= ShiftLeftResult16Bits(1, 11 - (ch - 1) * 2); // ch 1 to 6
 					}

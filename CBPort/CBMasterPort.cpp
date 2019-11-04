@@ -556,6 +556,8 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 						}
 						break;
 
+					// Not that we get CHANGE information from the packet, but ODC has no mechanism for dealing with this. We can only send events
+					// to other ports through the connectors. If we were a "real" scada master, we might use this information in a different way.
 					case MCA:
 						{
 						                                                                 // The Change state cannot be handled in ODC, it will be handled by the actual value changes
