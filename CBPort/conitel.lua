@@ -1,6 +1,3 @@
---Define the strings for the functions
-
-
 BCH = {0x12,0x9,0x16,0xB,0x17,0x19,0x1E,0xF,0x15,0x18,0xC,0x6,0x3,
        0x13,0x1B,0x1F,0x1D,0x1C,0xE,0x7,0x11,0x1A,0xD,0x14,0xA,0x5}
 
@@ -26,6 +23,7 @@ f.soedata = ProtoField.uint8("conitel.soedata", "SOE")
 function conitel_proto.dissector(buffer,pinfo,tree)
 
 	local pktlen = buffer:reported_length_remaining()
+	--Define the strings for the functions
 	local functionnames = {
 	[0] = "Scan Data",
 	[1] = "Execute Command",
@@ -144,8 +142,14 @@ function conitel_proto.dissector(buffer,pinfo,tree)
 
 	--	local datalenleaf = subtree:add("Data Length : " ..  pktlen)
 	local blockleaf = subtree:add("Payload Data")
-	blockleaf:add("1B " .. string.format("0x%03x",GetBlockA(buffer(0,4):uint())))
-
+	local block1b = GetBlockB(buffer(0,4):uint())
+	
+	if ((conitelfunction == 2) or (conitelfunction == 4)) then
+		blockleaf:add("1B " .. string.format("0x%03x",block1b) .. " Conitel Channel " .. string.format("0%d",12 - GetSetBitIndex(block1b,12)))
+	else
+		blockleaf:add("1B " .. string.format("0x%03x",block1b))
+	end
+	
 	for blk = 1, blockcount-1,1
 	do
 		local block = buffer(blk*4,4):uint()
@@ -246,6 +250,18 @@ function ExtractBits(payloads, payloadbitindex, numberofbits)
 	end
 	print("Result, numbits "..result..", "..numberofbits)
 	return result, payloadbitindex
+end
+
+function GetSetBitIndex( payload, maxbit )
+	-- Will return the first set bit, if none set returns -1
+	for bit = maxbit-1, 0 ,-1
+	do
+		local bitvalue = bit32.band(bit32.rshift(payload,bit), 0x01)
+		if bitvalue == 1 then
+			return bit -- A bit was set
+		end
+	end
+	return -1
 end
 
 function GetBit(payloads, payloadbitindex, bitleftshift)
