@@ -47,24 +47,26 @@ public:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 	std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder() final;
 
-	bool Force(const std::string &type, const std::string &index, const std::string &value, const std::string &quality);
-	bool Release(const std::string& type, const std::string& index);
+	bool UILoad(const std::string &type, const std::string &index, const std::string &value, const std::string &quality, const bool force);
+	bool UIRelease(const std::string& type, const std::string& index);
+	bool UISetUpdateInterval(const std::string& type, const std::string& index, const std::string& period);
 
 private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	typedef std::shared_ptr<Timer_t> pTimer_t;
-	std::vector<pTimer_t> Timers;
-	void SpawnEvent(size_t index, double mean, double std_dev, unsigned int interval, pTimer_t pTimer, rand_t seed);
-	void SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t pTimer, rand_t seed);
+	std::unordered_map<std::string, pTimer_t> Timers;
+	void SpawnAnalogEvent(size_t index);
+	void SpawnBinaryEvent(size_t index, bool val);
 	void PortUp();
 	void PortDown();
+	std::vector<uint32_t> IndexesFromString(const std::string& index_str, const std::string &type);
 
 	std::shared_ptr<SimPortCollection> SimCollection;
 
 	std::shared_timed_mutex ConfMutex;
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
-	std::mt19937 RandNumGenerator;
+	static thread_local std::mt19937 RandNumGenerator;
 };
 
 #endif // SIMPORT_H

@@ -39,12 +39,11 @@ class SimPortCollection: public ResponderMap< std::weak_ptr<SimPort> >
 public:
 	SimPortCollection()
 	{
-		this->AddCommand("ForcePoint", [this](const ParamCollection &params) -> const Json::Value
+		this->AddCommand("SetUpdateInterval", [this](const ParamCollection &params) -> const Json::Value
 			{
 				//param 0: Point Type
 				//param 1: Point Index
-				//param 2: Value
-				//param 3: Optional Quality
+				//param 2: Update Rate in ms
 				auto target = GetTarget(params).lock();
 				if(!target)
 					return IUIResponder::GenerateResult("No SimPort matched");
@@ -55,15 +54,23 @@ public:
 				}
 				auto type = params.at("0");
 				auto index = params.at("1");
-				auto value = params.at("2");
-				std::string quality = "";
-				if(params.count("3") != 0)
-					quality = params.at("3");
-				if(target->Force(type,index,value,quality))
+				auto period = params.at("2");
+				if(target->UISetUpdateInterval(type,index,period))
 					return IUIResponder::GenerateResult("Success");
 				else
 					return IUIResponder::GenerateResult("Bad parameter");
-			},"Overrides the value of a point and returns if the operation was succesful. Syntax: 'ForcePoint <SimPort|Regex> <PointType> <Index> <Value> [<Quality>]");
+			},"Set the average update interval of point(s) and returns if the operation was succesful. Syntax: 'SetUpdateInterval <SimPort|Regex> <PointType> <Index|Regex|CommaList> <Period(ms)>");
+
+		this->AddCommand("SendEvent", [this](const ParamCollection &params) -> const Json::Value
+			{
+				return this->PointCommand(params, false);
+			},"Sends an event(s) without overriding point(s) and returns if the operation was succesful. Syntax: 'SendEvent <SimPort|Regex> <PointType> <Index|Regex|CommaList> <Value> [<Quality>]");
+
+		this->AddCommand("ForcePoint", [this](const ParamCollection &params) -> const Json::Value
+			{
+				return this->PointCommand(params, true);
+			},"Overrides the value of point(s) and returns if the operation was succesful. Syntax: 'ForcePoint <SimPort|Regex> <PointType> <Index|Regex|CommaList> <Value> [<Quality>]");
+
 		this->AddCommand("ReleasePoint", [this](const ParamCollection &params) -> const Json::Value
 			{
 				//param 0: Point Type
@@ -78,12 +85,36 @@ public:
 				}
 				auto type = params.at("0");
 				auto index = params.at("1");
-				if(target->Release(type,index))
+				if(target->UIRelease(type,index))
 					return IUIResponder::GenerateResult("Success");
 				else
 					return IUIResponder::GenerateResult("Bad parameter");
-			},"Removes override from a point and returns if the operation was succesful. Syntax: 'ReleasePoint <SimPort|Regex> <PointType> <Index>");
-
+			},"Removes override from point(s) and returns if the operation was succesful. Syntax: 'ReleasePoint <SimPort|Regex> <PointType> <Index|Regex|CommaList>");
+	}
+	const Json::Value PointCommand (const ParamCollection &params, const bool force)
+	{
+		//param 0: Point Type
+		//param 1: Point Index
+		//param 2: Value
+		//param 3: Optional Quality
+		auto target = GetTarget(params).lock();
+		if(!target)
+			return IUIResponder::GenerateResult("No SimPort matched");
+		//check mandatory params are there
+		if(params.count("0") == 0 || params.count("1") == 0 || params.count("2") == 0)
+		{
+			return IUIResponder::GenerateResult("Bad parameter");
+		}
+		auto type = params.at("0");
+		auto index = params.at("1");
+		auto value = params.at("2");
+		std::string quality = "";
+		if(params.count("3") != 0)
+			quality = params.at("3");
+		if(target->UILoad(type,index,value,quality,force))
+			return IUIResponder::GenerateResult("Success");
+		else
+			return IUIResponder::GenerateResult("Bad parameter");
 	}
 	void Add(std::shared_ptr<SimPort> p, const std::string& Name)
 	{

@@ -32,12 +32,7 @@
 #include "SimPortConf.h"
 #include "SimPortCollection.h"
 
-inline unsigned int random_interval(const unsigned int& average_interval, rand_t& seed)
-{
-	//random interval - uniform distribution, minimum 1ms
-	auto ret_val = (unsigned int)((2*average_interval-2)*ZERO_TO_ONE(seed)+1.5); //the .5 is for rounding down
-	return ret_val;
-}
+thread_local std::mt19937 SimPort::RandNumGenerator = std::mt19937(std::random_device()());
 
 //Implement DataPort interface
 SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
@@ -96,18 +91,83 @@ std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
 }
 
-bool SimPort::Force(const std::string& type, const std::string& index, const std::string& value, const std::string& quality)
+std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
 {
-	size_t idx; double val;
+	std::vector<uint32_t> indexes;
+	std::vector<uint32_t> allowed_indexes;
+	if(type == "Analog")
+	{
+		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+		allowed_indexes = pConf->AnalogIndicies;
+	}
+	else if(type == "Binary")
+	{
+		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+		allowed_indexes = pConf->BinaryIndicies;
+	}
+	else
+		return indexes;
+
+	//Check for comma separated list
+	std::regex comma_regx("^([0-9]+)(?:,([0-9]+))*$");
+	std::smatch comma_matches;
+	if(std::regex_search(index_str, comma_matches, comma_regx))
+	{
+		for(size_t i = 0; i < comma_matches.size(); ++i)
+		{
+			size_t idx;
+			try
+			{
+				idx = std::stoi(comma_matches[i].str());
+			}
+			catch(std::exception e)
+			{
+				continue;
+			}
+			for(auto allowed : allowed_indexes)
+			{
+				if(idx == allowed)
+				{
+					indexes.push_back(idx);
+					break;
+				}
+			}
+		}
+	}
+	else //Not comma seaparated list
+	{//use it as a regex
+		try
+		{
+			std::regex ind_regex(index_str,std::regex::extended);
+			for(auto allowed : allowed_indexes)
+			{
+				if(std::regex_match(std::to_string(allowed),ind_regex))
+					indexes.push_back(allowed);
+			}
+		}
+		catch(std::exception e)
+		{}
+	}
+	return indexes;
+}
+
+bool SimPort::UILoad(const std::string& type, const std::string& index, const std::string& value, const std::string& quality, const bool force)
+{
+	double val;
 	try
 	{
-		idx = std::stoi(index);
 		val = std::stod(value);
 	}
-	catch(std::invalid_argument e)
+	catch(std::exception e)
 	{
 		return false;
 	}
+
+	auto indexes = IndexesFromString(index,type);
+	if(!indexes.size())
+		return false;
 
 	QualityFlags Q;
 	if(quality == "")
@@ -117,26 +177,34 @@ bool SimPort::Force(const std::string& type, const std::string& index, const std
 
 	if(type == "Binary")
 	{
-		{ //lock scope
-			auto pConf = static_cast<SimPortConf*>(this->pConf.get());
-			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			pConf->BinaryForcedStates[idx] = true;
+		for(auto idx : indexes)
+		{
+			if(force)
+			{ //lock scope
+				auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+				pConf->BinaryForcedStates[idx] = true;
+			}
+			auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,Q);
+			bool valb = (val >= 1);
+			event->SetPayload<EventType::Binary>(std::move(valb));
+			PublishEvent(event);
 		}
-		auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,Q);
-		bool valb = (val >= 1);
-		event->SetPayload<EventType::Binary>(std::move(valb));
-		PublishEvent(event);
 	}
 	else if(type == "Analog")
 	{
-		{ //lock scope
-			auto pConf = static_cast<SimPortConf*>(this->pConf.get());
-			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			pConf->AnalogForcedStates[idx] = true;
+		for(auto idx : indexes)
+		{
+			if(force)
+			{ //lock scope
+				auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+				pConf->AnalogForcedStates[idx] = true;
+			}
+			auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q);
+			event->SetPayload<EventType::Analog>(std::move(val));
+			PublishEvent(event);
 		}
-		auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q);
-		event->SetPayload<EventType::Analog>(std::move(val));
-		PublishEvent(event);
 	}
 	else
 		return false;
@@ -144,29 +212,107 @@ bool SimPort::Force(const std::string& type, const std::string& index, const std
 	return true;
 }
 
-bool SimPort::Release(const std::string& type, const std::string& index)
+bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& index, const std::string& period)
 {
-	size_t idx;
+	unsigned int delta;
 	try
 	{
-		idx = std::stoi(index);
+		delta = std::stoi(period);
 	}
-	catch(std::invalid_argument e)
+	catch(std::exception e)
 	{
 		return false;
 	}
 
+	auto indexes = IndexesFromString(index,type);
+	if(!indexes.size())
+		return false;
+
 	if(type == "Binary")
 	{
-		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-		pConf->BinaryForcedStates[idx] = false;
+		for(auto idx : indexes)
+		{
+			{ //lock scope
+				auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+				if(!pConf->BinaryStartVals.count(idx))
+					return false;
+				pConf->BinaryUpdateIntervalms[idx] = delta;
+			}
+			auto pTimer = Timers.at("Binary"+std::to_string(idx));
+			if(!delta) //zero means no updates
+			{
+				pTimer->cancel();
+			}
+			else
+			{
+				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*delta)(RandNumGenerator);
+				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
+				pTimer->async_wait([=](asio::error_code err_code)
+					{
+						if(enabled && !err_code)
+							SpawnBinaryEvent(idx,false);
+					});
+			}
+		}
 	}
 	else if(type == "Analog")
 	{
-		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-		pConf->AnalogForcedStates[idx] = false;
+		for(auto idx : indexes)
+		{
+			{ //lock scope
+				auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+				if(!pConf->AnalogStartVals.count(idx))
+					return false;
+				pConf->AnalogUpdateIntervalms[idx] = delta;
+			}
+			auto pTimer = Timers.at("Analog"+std::to_string(idx));
+			if(!delta) //zero means no updates
+			{
+				pTimer->cancel();
+			}
+			else
+			{
+				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*delta)(RandNumGenerator);
+				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
+				pTimer->async_wait([=](asio::error_code err_code)
+					{
+						if(enabled && !err_code)
+							SpawnAnalogEvent(idx);
+					});
+			}
+		}
+	}
+	else
+		return false;
+
+	return true;
+}
+
+bool SimPort::UIRelease(const std::string& type, const std::string& index)
+{
+	auto indexes = IndexesFromString(index,type);
+	if(!indexes.size())
+		return false;
+
+	if(type == "Binary")
+	{
+		for(auto idx : indexes)
+		{
+			auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+			pConf->BinaryForcedStates[idx] = false;
+		}
+	}
+	else if(type == "Analog")
+	{
+		for(auto idx : indexes)
+		{
+			auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+			pConf->AnalogForcedStates[idx] = false;
+		}
 	}
 	else
 		return false;
@@ -177,61 +323,58 @@ bool SimPort::Release(const std::string& type, const std::string& index)
 void SimPort::PortUp()
 {
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
-	std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 	for(auto index : pConf->AnalogIndicies)
 	{
 		//send initial event
-		auto mean = pConf->AnalogStartVals.count(index) ? pConf->AnalogStartVals[index] : 0;
+		auto mean = pConf->AnalogStartVals.count(index) ? pConf->AnalogStartVals.at(index) : 0;
+		pConf->AnalogStartVals[index] = mean;
 		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Analog>(std::move(mean));
 		PublishEvent(event);
+
+		pTimer_t pTimer = pIOS->make_steady_timer();
+		Timers["Analog"+std::to_string(index)] = pTimer;
 
 		//queue up a timer if it has an update interval
 		if(pConf->AnalogUpdateIntervalms.count(index))
 		{
 			auto interval = pConf->AnalogUpdateIntervalms[index];
-			auto std_dev = pConf->AnalogStdDevs.count(index) ? pConf->AnalogStdDevs[index] : (mean ? (pConf->default_std_dev_factor*mean) : 20);
+			auto std_dev = pConf->AnalogStdDevs.count(index) ? pConf->AnalogStdDevs.at(index) : (mean ? (pConf->default_std_dev_factor*mean) : 20);
+			pConf->AnalogStdDevs[index] = std_dev;
 
-			pTimer_t pTimer = pIOS->make_steady_timer();
-			Timers.push_back(pTimer);
-
-			//use a heap pointer as a random seed
-			auto seed = (rand_t)((intptr_t)(pTimer.get()));
-
-			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
+			auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*interval)(RandNumGenerator);
+			pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 			pTimer->async_wait([=](asio::error_code err_code)
 				{
-					//FIXME: check err_code?
-					if(enabled)
-						SpawnEvent(index, mean, std_dev, interval, pTimer, seed);
+					if(enabled && !err_code)
+						SpawnAnalogEvent(index);
 				});
 		}
 	}
 	for(auto index : pConf->BinaryIndicies)
 	{
 		//send initial event
-		auto val = pConf->BinaryStartVals.count(index) ? pConf->BinaryStartVals[index] : false;
+		auto val = pConf->BinaryStartVals.count(index) ? pConf->BinaryStartVals.at(index) : false;
+		pConf->BinaryStartVals[index] = val;
 		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Binary>(std::move(val));
 		PublishEvent(event);
+
+		pTimer_t pTimer = pIOS->make_steady_timer();
+		Timers["Binary"+std::to_string(index)] = pTimer;
 
 		//queue up a timer if it has an update interval
 		if(pConf->BinaryUpdateIntervalms.count(index))
 		{
 			auto interval = pConf->BinaryUpdateIntervalms[index];
 
-			pTimer_t pTimer = pIOS->make_steady_timer();
-			Timers.push_back(pTimer);
-
-			//use a heap pointer as a random seed
-			auto seed = (rand_t)((intptr_t)(pTimer.get()));
-
-			pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
+			auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*interval)(RandNumGenerator);
+			pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 			pTimer->async_wait([=](asio::error_code err_code)
 				{
-					//FIXME: check err_code?
-					if(enabled)
-						SpawnEvent(index, val, interval, pTimer, seed);
+					if(enabled && !err_code)
+						SpawnBinaryEvent(index, !val);
 				});
 		}
 	}
@@ -240,65 +383,67 @@ void SimPort::PortUp()
 void SimPort::PortDown()
 {
 	for(auto pTimer : Timers)
-		pTimer->cancel();
+		pTimer.second->cancel();
 	Timers.clear();
 }
 
-void SimPort::SpawnEvent(size_t index, double mean, double std_dev, unsigned int interval, pTimer_t pTimer, rand_t seed)
+void SimPort::SpawnAnalogEvent(size_t index)
 {
+	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+	std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+	auto pTimer = Timers.at("Analog"+std::to_string(index));
+	auto interval = pConf->AnalogUpdateIntervalms.at(index);
+	auto mean = pConf->AnalogStartVals.at(index);
+	auto std_dev = pConf->AnalogStdDevs.at(index);
+
 	//Restart the timer
-	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
+	auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*interval)(RandNumGenerator);
+	pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 
-	{ //lock scope
-		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-
-		if(!pConf->AnalogForcedStates[index])
-		{
-			//Send an event out
-			//change value around mean
-			std::normal_distribution<double> distribution(mean, std_dev);
-			double val = distribution(RandNumGenerator);
-			auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
-			event->SetPayload<EventType::Analog>(std::move(val));
-			PublishEvent(event);
-		}
+	if(!pConf->AnalogForcedStates[index])
+	{
+		//Send an event out
+		//change value around mean
+		std::normal_distribution<double> distribution(mean, std_dev);
+		double val = distribution(RandNumGenerator);
+		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
+		event->SetPayload<EventType::Analog>(std::move(val));
+		PublishEvent(event);
 	}
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
 		{
-			//FIXME: check err_code?
-			if(enabled)
-				SpawnEvent(index,mean,std_dev,interval,pTimer,seed);
+			if(enabled && !err_code)
+				SpawnAnalogEvent(index);
 			//else - break timer cycle
 		});
 }
 
-void SimPort::SpawnEvent(size_t index, bool val, unsigned int interval, pTimer_t pTimer, rand_t seed)
+void SimPort::SpawnBinaryEvent(size_t index, bool val)
 {
+	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+	std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+	auto pTimer = Timers.at("Binary"+std::to_string(index));
+	auto interval = pConf->BinaryUpdateIntervalms.at(index);
+
 	//Restart the timer
-	pTimer->expires_from_now(std::chrono::milliseconds(random_interval(interval, seed)));
+	auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*interval)(RandNumGenerator);
+	pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 
-	{ //lock scope
-		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-
-		if(!pConf->BinaryForcedStates[index])
-		{
-			//Send an event out
-			auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
-			event->SetPayload<EventType::Binary>(std::move(val));
-			PublishEvent(event);
-		}
+	if(!pConf->BinaryForcedStates[index])
+	{
+		//Send an event out
+		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
+		event->SetPayload<EventType::Binary>(std::move(val));
+		PublishEvent(event);
 	}
 
 	//wait til next time
 	pTimer->async_wait([=](asio::error_code err_code)
 		{
-			//FIXME: check err_code?
-			if(enabled)
-				SpawnEvent(index,!val,interval,pTimer,seed);
+			if(enabled && !err_code)
+				SpawnBinaryEvent(index,!val);
 			//else - break timer cycle
 		});
 }
