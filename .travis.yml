@@ -11,7 +11,7 @@ addons:
 
 os:
   - linux
-  - osx
+  #- osx
 
 compiler:
   - gcc
