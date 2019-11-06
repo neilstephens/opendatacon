@@ -238,8 +238,10 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				{
 				      if (pt.GetBinary() == 1)
 				      {
-				                                                          // ch 1 to 12
-				            Payload |= ShiftLeftResult16Bits(1, 12 - ch); // ch 1 TO 12, Just have to OR, we know it was zero initially.
+				            if (MyPointConf->IsBakerDevice)
+							Payload |= ShiftLeftResult16Bits(1, ch - 1); // ch 12 TO 1,
+				            else
+							Payload |= ShiftLeftResult16Bits(1, 12 - ch); // ch 1 TO 12, Just have to OR, we know it was zero initially.
 					}
 				}
 				else if ((pt.GetPointType() == MCA) || (pt.GetPointType() == MCB) || (pt.GetPointType() == MCC))
@@ -261,11 +263,17 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 
 				      if (result == 1) // Status
 				      {
-				            Payload |= ShiftLeftResult16Bits(1, 10 - (ch - 1) * 2); // ch 1 to 6
+				            if (MyPointConf->IsBakerDevice)
+							Payload |= ShiftLeftResult16Bits(1, 1 + (ch - 1) * 2); // ch 1 value is Bit 1
+				            else
+							Payload |= ShiftLeftResult16Bits(1, 10 - (ch - 1) * 2); // ch 1 value is bit 10
 					}
 				      if (MCS) // Change Flag
 				      {
-				            Payload |= ShiftLeftResult16Bits(1, 11 - (ch - 1) * 2); // ch 1 to 6
+				            if (MyPointConf->IsBakerDevice)
+							Payload |= ShiftLeftResult16Bits(1, (ch - 1) * 2); // ch 1 status is Bit 0
+				            else
+							Payload |= ShiftLeftResult16Bits(1, 11 - (ch - 1) * 2); // ch 1 status is bit 11
 					}
 				}
 				else
@@ -324,6 +332,10 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 	{
 		// Check that this is actually a valid CONTROL point.
 		uint8_t Channel = 1 + numeric_cast<uint8_t>(GetSetBit(PendingCommands[group].Data, 12));
+
+		if (MyPointConf->IsBakerDevice)
+			Channel = 13 - Channel; // 1 to 12, Baker reverse control bit order - only used to check if valid here
+
 		size_t ODCIndex;
 		if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(group, Channel, ODCIndex))
 		{
@@ -446,25 +458,30 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 		case PendingCommandType::CommandType::Trip:
 		{
 			LOGDEBUG("{} Received an Execute Command, Trip",Name);
-			int SetBit = GetSetBit(PendingCommand.Data, 12);
-			bool point_on = false; // Trip is OFF - causes OPEN = 0
-			if (SetBit != -1)
-				success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(SetBit + 1), point_on);
-			else
+			int Channel = 1 + GetSetBit(PendingCommand.Data, 12);
+			if (Channel == 0)
 				LOGERROR("{} Recevied a Trip command, but no bit was set in the data {}", Name, PendingCommand.Data);
+
+			if (MyPointConf->IsBakerDevice)
+				Channel = 13 - Channel; // 1 to 12, Baker reverse control bit order
+
+			bool point_on = false; // Trip is OFF - causes OPEN = 0
+			success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(Channel), point_on);
 		}
 		break;
 
 		case PendingCommandType::CommandType::Close:
 		{
 			LOGDEBUG("{} Received an Execute Command, Close",Name);
-			int SetBit = GetSetBit(PendingCommand.Data, 12);
-			bool point_on = true; // CLOSE is ON, causes CLOSED = 1
-
-			if (SetBit != -1)
-				success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(SetBit + 1), point_on);
-			else
+			int Channel = 1 + GetSetBit(PendingCommand.Data, 12);
+			if (Channel == 0)
 				LOGERROR("{} Recevied a Close command, but no bit was set in the data {}", Name, PendingCommand.Data);
+
+			if (MyPointConf->IsBakerDevice)
+				Channel = 13 - Channel; // 1 to 12, Baker reverse control bit order
+
+			bool point_on = true; // CLOSE is ON, causes CLOSED = 1
+			success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(Channel), point_on);
 		}
 		break;
 

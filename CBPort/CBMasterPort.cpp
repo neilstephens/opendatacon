@@ -547,7 +547,11 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 				{
 					case DIG:
 						{
-						      uint8_t bitvalue = (data >> (12 - ch)) & 0x0001;
+						      int bitshift = 12 - ch;
+						      if (MyPointConf->IsBakerDevice)
+								bitshift = ch - 1; // 0 to 11, Baker reverse bit order
+
+						      uint8_t bitvalue = (data >> bitshift) & 0x0001;
 						      LOGDEBUG("{} - DIG Block Received - Chan {} - Value {}", Name, ch, bitvalue);
 
 						      SendBinaryEvent(pt, bitvalue, now);
@@ -556,41 +560,26 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 						}
 						break;
 
-					// Not that we get CHANGE information from the packet, but ODC has no mechanism for dealing with this. We can only send events
+					// Note that we get CHANGE information from the packet, but ODC has no mechanism for dealing with this. We can only send events
 					// to other ports through the connectors. If we were a "real" scada master, we might use this information in a different way.
 					case MCA:
-						{
-						                                                                 // The Change state cannot be handled in ODC, it will be handled by the actual value changes
-						      uint8_t bitvalue = (data >> (10 - (ch - 1) * 2)) & 0x0001; // Bit 11 is COS, Bit 10 is Value. Bit 1 is COS, Bit 0 is value
-						      uint8_t cos = (data >> (11 - (ch - 1) * 2)) & 0x0001;
-						      LOGDEBUG("{} - MCA Block Received - Chan {} - Value {} - COS {}", Name, ch, bitvalue, cos);
-
-						      bitvalue = !bitvalue; // For MCA the bit value is inverted!!!!
-						      SendBinaryEvent(pt, bitvalue, now);
-
-						      FoundMatch = true;
-						}
-						break;
-
 					case MCB:
-						{
-						                                                                 // The Change state cannot be handled in ODC, it will be handled by the actual value changes
-						      uint8_t bitvalue = (data >> (10 - (ch - 1) * 2)) & 0x0001; // Bit 11 is COS, Bit 10 is Value. Bit 1 is COS, Bit 0 is value
-						      uint8_t cos = (data >> (11 - (ch - 1) * 2)) & 0x0001;
-						      LOGDEBUG("{} - MCB Block Received - Chan {} - Value {} - COS {}", Name, ch, bitvalue, cos);
-
-						      SendBinaryEvent(pt, bitvalue, now);
-
-						      FoundMatch = true;
-						}
-						break;
-
 					case MCC:
 						{
-						                                                                 // The Change state cannot be handled in ODC, it will be handled by the actual value changes
-						      uint8_t bitvalue = (data >> (10 - (ch - 1) * 2)) & 0x0001; // Bit 11 is COS, Bit 10 is Value. Bit 1 is COS, Bit 0 is value
-						      uint8_t cos = (data >> (11 - (ch - 1) * 2)) & 0x0001;
-						      LOGDEBUG("{} - MCC Block Received - Chan {} - Value {} - COS {}", Name,ch, bitvalue, cos);
+						      int bitshiftval = (10 - (ch - 1) * 2);
+						      int bitshiftcos = (11 - (ch - 1) * 2);
+						      if (MyPointConf->IsBakerDevice)
+						      {
+						            bitshiftval = 1 + (ch - 1) * 2; // Baker reverse bit order
+						            bitshiftcos = (ch - 1) * 2;
+							}
+						                                                         // The Change state cannot be handled in ODC, it will be handled by the actual value changes
+						      uint8_t bitvalue = (data >> bitshiftval) & 0x0001; // Bit 11 is COS, Bit 10 is Value. Bit 1 is COS, Bit 0 is value
+						      uint8_t cos = (data >> bitshiftcos) & 0x0001;
+						      LOGDEBUG("{} - {} Block Received - Chan {} - Value {} - COS {}", Name, pt.GetPointTypeName(), ch, bitvalue, cos);
+
+						      if (pt.GetPointType() == MCA)
+								bitvalue = !bitvalue; // For MCA the bit value is inverted!!!!
 
 						      SendBinaryEvent(pt, bitvalue, now);
 
@@ -1136,7 +1125,12 @@ void CBMasterPort::WriteObject(const double& command, const uint32_t& index, con
 void CBMasterPort::SendDigitalControlOnCommand(const uint8_t& StationAddress, const uint8_t& Group, const uint16_t& Channel, const SharedStatusCallback_t& pStatusCallback)
 {
 	assert((Channel >= 1) && (Channel <= 12));
-	uint16_t BData = numeric_cast<uint16_t>(1 << (12 - Channel));
+	int bitshift = (12 - Channel);
+
+	if (MyPointConf->IsBakerDevice)
+		bitshift = Channel - 1;
+
+	uint16_t BData = numeric_cast<uint16_t>(1 << bitshift);
 
 	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_CLOSE, BData, true); // Trip is OPEN or OFF
 	QueueCBCommand(commandblock, nullptr);
@@ -1151,8 +1145,12 @@ void CBMasterPort::SendDigitalControlOnCommand(const uint8_t& StationAddress, co
 void CBMasterPort::SendDigitalControlOffCommand(const uint8_t& StationAddress, const uint8_t& Group, const uint16_t& Channel, const SharedStatusCallback_t& pStatusCallback)
 {
 	assert((Channel >= 1) && (Channel <= 12));
-	uint16_t BData = numeric_cast<uint16_t>(1 << (12 - Channel));
+	int bitshift = (12 - Channel);
 
+	if (MyPointConf->IsBakerDevice)
+		bitshift = Channel - 1;
+
+	uint16_t BData = numeric_cast<uint16_t>(1 << bitshift);
 	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_TRIP, BData, true); // Trip is OPEN or OFF
 	QueueCBCommand(commandblock, nullptr);
 

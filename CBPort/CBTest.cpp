@@ -1271,6 +1271,179 @@ TEST_CASE("Station - CONTROL Commands")
 	STANDARD_TEST_TEARDOWN();
 }
 
+TEST_CASE("Station - Baker ScanRequest F0")
+{
+	// So we send a Scan F0 packet to the Outstation, it responds with the data in the point table.
+	// Then we update the data in the point table, scan again and check the data we get back.
+	STANDARD_TEST_SETUP();
+	Json::Value portoverride;
+	portoverride["IsBakerDevice"] = true;
+	TEST_CBOSPort(portoverride);
+
+	START_IOS(2);
+
+	CBOSPort->Enable();
+
+	uint8_t station = 3;
+	uint8_t group = 9;
+	CBBlockData commandblock(station, group, FUNC_SCAN_DATA, 0, true);
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+
+
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			res = command_stat;
+		});
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+
+	// Send the commands in as if came from TCP channel
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	WaitIOS(*IOS, 2);
+
+	// Check the command is formatted correctly
+	std::string DesiredResult = "0397ff8a" // Echoed block plus data 1B
+	                            "02880010" // Data 2A and 2B
+	                            "00080006"
+	                            "00080006"
+	                            "00080006"
+	                            "00080006"
+	                            "00080007";
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+
+
+	// Call the Event functions to set the CB table data to what we are expecting to get back.
+	// Write to the analog registers that we are going to request the values for.
+	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event->SetPayload<EventType::Analog>(std::move(1024 + ODCIndex));
+
+		CBOSPort->Event(event, "TestHarness", pStatusCallback);
+		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
+	}
+	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
+		event->SetPayload<EventType::Analog>(std::move(1 + ODCIndex));
+
+		CBOSPort->Event(event, "TestHarness", pStatusCallback);
+		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
+	}
+	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
+		event->SetPayload<EventType::Counter>(std::move(numeric_cast<unsigned int>(1024 + ODCIndex)));
+
+		CBOSPort->Event(event, "TestHarness", pStatusCallback);
+
+		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
+	}
+
+	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
+	{
+		SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0));
+	}
+
+	WaitIOS(*IOS, 1);
+
+	// MCA,MCB,MCC Set to starting values
+	SendBinaryEvent(CBOSPort, 12, true);  //CLOSED // MCA inverted on the wire!!
+	SendBinaryEvent(CBOSPort, 13, false); //OPEN
+	SendBinaryEvent(CBOSPort, 14, true);  //CLOSED
+
+	WaitIOS(*IOS, 1);
+
+	Response = "Not Set";
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // Scan Data Group 3 - analog values and digitals have now changed. No SOE overflow, SOE Data Available in RSW
+
+	// Should now get different data!
+	DesiredResult = "0392aab8" // Echoed block plus data 1B
+	                "0208003a" // Data 2A and 2B
+	                "400a00b6"
+	                "402882b8"
+	                "405a032c"
+	                "40780030"
+	                "80080023";
+	WaitIOS(*IOS, 1);
+
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+
+	// Test the MC bit types. Note 1 is generally CLOSED (true), 0 is OPEN(false)
+	// Note that for MCA below, we only INVERT the bit when it is on the wire. For input and output through the interface OPEN and CLOSED are normal
+	// MCA - The change bit is set when the input changes from closed to open (1-->0). The status bit is 0 when the contact is CLOSED. (Opposite to NORMAL!)
+	// MCB - The change bit is set when the input changes from open to closed (0-->1). The status bit is 0 when the contact is OPEN.
+	// MCC - The change bit is set when the input has gone through more than one change of state. The status bit is 0 when the contact is OPEN.
+
+	// {"Index" : 12, "Group" : 3, "PayloadLocation": "2A", "Channel" : 1, "Type" : "MCA"},
+	// {"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB"},
+	// {"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC"}],
+
+	// Now make changes to trigger the change flags being set
+	SendBinaryEvent(CBOSPort, 12, false); // OPEN // MCA inverted on the wire!!
+	SendBinaryEvent(CBOSPort, 13, true);  // CLOSED
+	SendBinaryEvent(CBOSPort, 14, false); // OPEN // Cause more than one change.
+	std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	SendBinaryEvent(CBOSPort, 14, true);
+
+	WaitIOS(*IOS, 1);
+
+	Response = "Not Set";
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // Scan Data Group 3 - analog values and digitals have now changed. No SOE overflow, SOE Data Available in RSW
+
+	// We are setting Channels 1,2,3. So should be the bits Change1, Status1, Change2, Status2, Change3, Status3.
+	// Look at block 2A (first 3 hex chars on second line
+	DesiredResult = "0392aab8" // Echoed block plus data 1B
+	                "03f8002a" // Data 2A and 2B
+	                "400a00b6"
+	                "402882b8"
+	                "405a032c"
+	                "40780030"
+	                "80080023";
+	WaitIOS(*IOS, 1);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+
+	// Now do the changes that do not trigger the change bits being set.
+	SendBinaryEvent(CBOSPort, 12, true); // MCA inverted on the wire!!
+	SendBinaryEvent(CBOSPort, 13, false);
+	SendBinaryEvent(CBOSPort, 14, false); // Only 1 change, need 2 to trigger
+
+	WaitIOS(*IOS, 1);
+
+	Response = "Not Set";
+	output << commandblock.ToBinaryString();
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // Scan Data Group 3 - analog values and digitals have now changed. SOE overflow should be set, SOE Data Available in RSW
+
+	// Should now get different data!
+	DesiredResult = "0392aab8" // Echoed block plus data 1B
+	                "00080006" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
+	                "400a00b6"
+	                "402882b8"
+	                "405a032c"
+	                "40780030"
+	                "c0080031"; // The SOE buffer overflow bit should be set here...
+	WaitIOS(*IOS, 1);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+
+	CBOSPort->Disable();
+
+	STOP_IOS();
+	STANDARD_TEST_TEARDOWN();
+}
 TEST_CASE("Station - Baker Global CONTROL Command")
 {
 	STANDARD_TEST_SETUP();
@@ -1282,7 +1455,7 @@ TEST_CASE("Station - Baker Global CONTROL Command")
 
 	uint8_t station = 9;
 	uint8_t group = 3;
-	uint16_t BData = 1;
+	uint16_t BData = 0x800;
 	CBBlockData commandblock = CBBlockData(group, station, FUNC_CLOSE, BData, true); // Station/Group swapped for Baker
 	// Trip is OPEN or OFF
 
@@ -1298,7 +1471,7 @@ TEST_CASE("Station - Baker Global CONTROL Command")
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
 	WaitIOS(*IOS, 1);
 
-	std::string DesiredResult = "43900083";
+	std::string DesiredResult = "43940031";
 
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult); // OK PendingCommand
 
@@ -1327,7 +1500,6 @@ TEST_CASE("Station - Baker Global CONTROL Command")
 	CBOSPort->GetPointTable()->GetBinaryControlValueUsingODCIndex(ODCIndex, res, hasbeenset);
 	REQUIRE(res == 1);
 	REQUIRE(hasbeenset == true);
-
 
 	STANDARD_TEST_TEARDOWN();
 }

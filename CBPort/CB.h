@@ -29,7 +29,7 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-#define NONVSTESTING
+//#define NONVSTESTING
 
 #include <cstdint>
 #include <shared_mutex>
@@ -273,6 +273,18 @@ public:
 	~CBBinaryPoint();
 
 	BinaryPointType GetPointType() const { return PointType; }
+	std::string GetPointTypeName() const
+	{
+		switch (PointType)
+		{
+			case DIG: return "DIG";
+			case MCA: return "MCA";
+			case MCB: return "MCB";
+			case MCC: return "MCC";
+			case BINCONTROL: return "BINCONTROL";
+		}
+		return "UNKNOWN";
+	}
 
 	uint8_t GetBinary() { std::unique_lock<std::mutex> lck(PointMutex); return Binary; }
 

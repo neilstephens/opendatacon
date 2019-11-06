@@ -41,10 +41,10 @@ public:
 	bool Event(std::shared_ptr<EventInfo> event) override
 	{
 		thread_local std::mt19937 RandNumGenerator = std::mt19937(std::random_device()());
-		auto random_number = std::uniform_int_distribution<unsigned int>(0, 100)(RandNumGenerator);
+		uint16_t random_number = std::uniform_int_distribution<unsigned int>(0, 100)(RandNumGenerator);
 		if(event->GetEventType() != EventType::Analog)
 			return true;
-		event->SetPayload<EventType::Analog>(random_number);
+		event->SetPayload<EventType::Analog>(std::move(random_number));
 		return true;
 	}
 };
