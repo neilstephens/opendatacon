@@ -41,6 +41,7 @@ CBPointConf::CBPointConf(const std::string & _FileName, const Json::Value& ConfO
 	ConfigParser(_FileName, ConfOverrides),
 	FileName(_FileName)
 {
+	PointTable.SetName(FileName); // Just to make error messages better on parsing. Remove .conf
 	LOGDEBUG("Conf processing file - {}",FileName);
 	ProcessFile(); // This should call process elements below?
 }
@@ -51,7 +52,7 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot.isObject()) return;
 
 	// Root level Configuration values
-	LOGDEBUG("Conf processing");
+	LOGDEBUG("{} processing",FileName);
 
 	try
 	{
@@ -139,7 +140,7 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 	{
 		LOGERROR("Exception Caught while processing {}, {} - configuration not loaded", FileName, e.what() );
 	}
-	LOGDEBUG("End Conf processing");
+	LOGDEBUG("{} End  processing",FileName);
 }
 
 // This method must be processed before points are loaded

@@ -43,6 +43,7 @@ class CBPointTableAccess
 {
 public:
 	CBPointTableAccess();
+	void SetName(std::string _Name) { Name = _Name; };
 	void Build(const std::string _Name, bool isoutstation, odc::asio_service & IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag);
 
 	// The add to point table functions add to both the ODC and MD3 Map.
