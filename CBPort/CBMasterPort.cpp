@@ -106,7 +106,7 @@ void CBMasterPort::Build()
 	MasterCommandStrand = pIOS->make_strand();
 
 	// Need a couple of things passed to the point table. SOEQueue not actually used.
-	MyPointConf->PointTable.Build(IsOutStation, *pIOS, 5, SOEBufferOverflowFlag);
+	MyPointConf->PointTable.Build(Name, IsOutStation, *pIOS, 5, SOEBufferOverflowFlag);
 
 	// Creates internally if necessary, returns a token for the connection
 	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method

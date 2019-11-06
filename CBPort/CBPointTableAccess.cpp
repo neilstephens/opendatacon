@@ -31,8 +31,9 @@
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag)
+void CBPointTableAccess::Build(const std::string _Name, const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag)
 {
+	Name = _Name;
 	IsOutstation = isoutstation;
 	// Setup TimeTagged event queue.
 	// The size (default 500) does not consume memory, just sets an upper limit to the number of items in the queue.
@@ -82,7 +83,7 @@ bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const u
 
 	if (AnalogODCPointMap.find(index) != AnalogODCPointMap.end())
 	{
-		LOGWARN("Warning Duplicate Analog ODC Index : " + std::to_string(index));
+		LOGWARN("{} Warning Duplicate Analog ODC Index : {}",Name,index);
 		AnalogCBPointMap[CBIndex] = AnalogODCPointMap[index]; //TODO: This will cause problems as the point has a group variable that will not be correct...do we need a group list?
 	}
 	else
