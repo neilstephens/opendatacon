@@ -410,11 +410,11 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 {
 	// Now if there is a command to be executed - do so
+	bool success = true;
 	if (MyPointConf->IsBakerDevice && (Header.GetGroup() == 0))
 	{
 		LOGDEBUG("{} ExecuteCommand - Fn1 - Doing Baker Global Execute",Name);
 		// Baker (well DNMS) seems to use group 0 to execute any Command regardless of the group.
-		bool success = true;
 		for (uint8_t i = 0; i < 16; i++)
 		{
 			if (!ExecuteCommandOnGroup(PendingCommands[i], i, false))
@@ -427,10 +427,12 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 		LOGDEBUG("{} ExecuteCommand - Fn1, Group {}", Name, Header.GetGroup());
 		bool success = ExecuteCommandOnGroup(PendingCommands[Header.GetGroup()], Header.GetGroup(), true);
 		PendingCommands[Header.GetGroup()].Command = PendingCommandType::CommandType::None;
-		if (!success)
-			return;
 	}
 
+	if (!success)
+		return;
+
+	// Don't respond if we failed.
 	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), 0, true);
 	CBMessage_t ResponseCBMessage;
 	ResponseCBMessage.push_back(firstblock);
