@@ -97,6 +97,7 @@ public:
 		//param 1: Point Index
 		//param 2: Value
 		//param 3: Optional Quality
+		//param 4: Optional Timestamp
 		auto target = GetTarget(params).lock();
 		if(!target)
 			return IUIResponder::GenerateResult("No SimPort matched");
@@ -111,7 +112,10 @@ public:
 		std::string quality = "";
 		if(params.count("3") != 0)
 			quality = params.at("3");
-		if(target->UILoad(type,index,value,quality,force))
+		std::string ts = "";
+		if(params.count("4") != 0)
+			ts = params.at("4");
+		if(target->UILoad(type,index,value,quality,ts,force))
 			return IUIResponder::GenerateResult("Success");
 		else
 			return IUIResponder::GenerateResult("Bad parameter");
