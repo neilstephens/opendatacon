@@ -47,7 +47,7 @@ public:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 	std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder() final;
 
-	bool UILoad(const std::string &type, const std::string &index, const std::string &value, const std::string &quality, const bool force);
+	bool UILoad(const std::string &type, const std::string &index, const std::string &value, const std::string &quality, const std::string &timestamp, const bool force);
 	bool UIRelease(const std::string& type, const std::string& index);
 	bool UISetUpdateInterval(const std::string& type, const std::string& index, const std::string& period);
 

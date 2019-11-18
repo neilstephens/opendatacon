@@ -153,7 +153,7 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 	return indexes;
 }
 
-bool SimPort::UILoad(const std::string& type, const std::string& index, const std::string& value, const std::string& quality, const bool force)
+bool SimPort::UILoad(const std::string& type, const std::string& index, const std::string& value, const std::string& quality, const std::string& timestamp, const bool force)
 {
 	double val;
 	try
@@ -175,6 +175,21 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 	else if(!GetQualityFlagsFromStringName(quality, Q))
 		return false;
 
+	msSinceEpoch_t ts;
+	if(timestamp == "")
+		ts = msSinceEpoch();
+	else
+	{
+		try
+		{
+			ts = std::stoull(timestamp);
+		}
+		catch(std::exception e)
+		{
+			return false;
+		}
+	}
+
 	if(type == "Binary")
 	{
 		for(auto idx : indexes)
@@ -185,7 +200,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 				pConf->BinaryForcedStates[idx] = true;
 			}
-			auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,Q);
+			auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,Q,ts);
 			bool valb = (val >= 1);
 			event->SetPayload<EventType::Binary>(std::move(valb));
 			PublishEvent(event);
@@ -201,7 +216,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 				pConf->AnalogForcedStates[idx] = true;
 			}
-			auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q);
+			auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q,ts);
 			event->SetPayload<EventType::Analog>(std::move(val));
 			PublishEvent(event);
 		}
