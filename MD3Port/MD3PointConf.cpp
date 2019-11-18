@@ -291,6 +291,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 		uint32_t offset = 0;
 		uint32_t pollgroup = 0;
 		BinaryPointType pointtype = BASICINPUT;
+		std::string pointtypestring;
 
 		if (JSONNode[n].isMember("Module"))
 			module = JSONNode[n]["Module"].asUInt();
@@ -310,7 +311,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 
 		if (JSONNode[n].isMember("PointType"))
 		{
-			std::string pointtypestring = JSONNode[n]["PointType"].asString();
+			pointtypestring = JSONNode[n]["PointType"].asString();
 			if (pointtypestring == "BASICINPUT")
 				pointtype = BASICINPUT;
 			else if (pointtypestring == "TIMETAGGEDINPUT")
@@ -345,6 +346,7 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 
 				bool res = false;
 
+				LOGDEBUG("Adding a {} - Index: {} Module: {} Channel: {}  Point Type : {}", BinaryName, index, moduleaddress, channel, pointtypestring);
 				if (ptype == Binary)
 				{
 					res = PointTable.AddBinaryPointToPointTable(index, moduleaddress, channel, pointtype, pollgroup);

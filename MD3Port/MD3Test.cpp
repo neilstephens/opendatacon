@@ -2004,7 +2004,7 @@ TEST_CASE("Station - POMControlFn17")
 	MD3OSPort->Enable();
 
 	//  Station 0x7C
-	MD3BlockFn17MtoS commandblock(0x7C, 37, 1);
+	MD3BlockFn17MtoS commandblock(0x7C, 37, 15);
 
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
@@ -2020,7 +2020,7 @@ TEST_CASE("Station - POMControlFn17")
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f25014d00");
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f250f7900");
 
 	REQUIRE(Response == DesiredResult); // OK Command
 
@@ -2032,7 +2032,7 @@ TEST_CASE("Station - POMControlFn17")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e25515300");
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e255f6700");
 
 	REQUIRE(Response == DesiredResult2); // Control/Scan Rejected Command
 
@@ -2883,11 +2883,10 @@ TEST_CASE("Master - DOM and POM Tests")
 				res = command_stat;
 			});
 
-		bool point_on = true;
 		uint16_t ODCIndex = 116;
 
 		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-		val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+		val.functionCode = ControlCode::PULSE_ON;
 
 		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
 		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
