@@ -29,7 +29,7 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-#define NONVSTESTING
+//#define NONVSTESTING
 
 #include <cstdint>
 #include <shared_mutex>
@@ -83,7 +83,7 @@ typedef std::shared_ptr<Timer_t> pTimer_t;
 
 typedef uint64_t CBTime; // msec since epoch, utc, most time functions are uint64_t
 
-CBTime CBNow();
+CBTime CBNowUTC();
 
 const CBTime CBTimeOneDay = 1000 * 60 * 60 * 24;
 const CBTime CBTimeOneHour = 1000 * 60 * 60;

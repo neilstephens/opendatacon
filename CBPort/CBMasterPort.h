@@ -100,6 +100,7 @@ public:
 	void DoPoll(uint32_t payloadlocation);
 	void SendF0ScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
 	void SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback);
+	static void BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t& CompleteCBMessage);
 	void SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
 
 	// Testing use only

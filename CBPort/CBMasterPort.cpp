@@ -486,7 +486,7 @@ bool CBMasterPort::ProcessScanRequestReturn(const CBMessage_t& CompleteCBMessage
 void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLocationType payloadlocation)
 {
 	bool FoundMatch = false;
-	CBTime now = CBNow();
+	CBTime now = CBNowUTC();
 
 	LOGDEBUG("{} - Group - {} Processing Payload - {} Value 0x{}", Name, group, payloadlocation.to_string(), to_hexstring(data));
 
@@ -665,7 +665,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 			// If it is not, it must be a midnight rollover. i.e. Event Hour == 23, Current Hour == 0
 			// So if this occurs, the day must have been yesterday...
 
-			      CBTime Now = CBNow();
+			      CBTime Now = CBNowUTC();
 
 			      if (GetHour(Now) > soeevnt.Hour)
 			      {
@@ -880,11 +880,30 @@ void CBMasterPort::SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback)
 {
 	CBMessage_t CompleteCBMessage;
 
-	CBPort::BuildUpdateTimeMessage(MyConf->mAddrConf.OutstationAddr, CBNow(), CompleteCBMessage);
+	BuildUpdateTimeMessage(MyConf->mAddrConf.OutstationAddr, CBNowUTC(), CompleteCBMessage);
 
 	QueueCBCommand(CompleteCBMessage, pStatusCallback);
 }
+// This message is constructed by the Master to send the time to the RTU
+void CBMasterPort::BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t& CompleteCBMessage)
+{
+	uint8_t hh;
+	uint8_t mm;
+	uint8_t ss;
+	uint16_t msec;
 
+	to_hhmmssmmfromCBtime(cbtime, hh, mm, ss, msec);
+
+	uint16_t P1B, P2A, P2B;
+
+	PackageTimePayload(hh, mm, ss, msec, P1B, P2A, P2B);
+
+	auto firstblock = CBBlockData(StationAddress, MASTER_SUB_FUNC_SEND_TIME_UPDATES, FUNC_MASTER_STATION_REQUEST, P1B, false);
+	auto secondblock = CBBlockData(P2A, P2B, true);
+
+	CompleteCBMessage.push_back(firstblock);
+	CompleteCBMessage.push_back(secondblock);
+}
 void CBMasterPort::SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback)
 {
 	CBBlockData sendcommandblock(MyConf->mAddrConf.OutstationAddr, group, FUNC_SEND_NEW_SOE, 0, true);

@@ -123,9 +123,13 @@ std::string to_binstring(T val)
 }
 
 // Create an ASCII string version of the time from the CB time - which is msec since epoch.
-std::string to_timestringfromCBtime(CBTime _time);
+std::string to_LOCALtimestringfromCBtime(CBTime _time);
+std::string to_stringfromCBtime(CBTime _time);
+std::string to_stringfromhhmmssmsec(uint8_t hh, uint8_t mm, uint8_t ss, uint16_t msec);
 
 void to_hhmmssmmfromCBtime(CBTime _time, uint8_t &hh, uint8_t &mm, uint8_t &ss, uint16_t &msec);
+void DecodeTimePayload(uint16_t P1B, uint16_t P2A, uint16_t P2B, uint8_t& hhin, uint8_t& mmin, uint8_t& ssin, uint16_t& msecin);
+void PackageTimePayload(uint8_t hh, uint8_t mm, uint8_t ss, uint16_t msec, uint16_t& P1B, uint16_t& P2A, uint16_t& P2B);
 
 // Return the current UTC offset in minutes.
 int tz_offset();

@@ -345,7 +345,7 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 		}
 
 		PendingCommands[group].Command = pCommand;
-		PendingCommands[group].ExpiryTime = CBNow() + PendingCommands[group].CommandValidTimemsec;
+		PendingCommands[group].ExpiryTime = CBNowUTC() + PendingCommands[group].CommandValidTimemsec;
 
 		LOGDEBUG("{} Got a valid {} PendingCommand, Data {}",Name, cmd, PendingCommands[group].Data);
 
@@ -393,7 +393,7 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 	}
 
 	PendingCommands[group].Command = pCommand;
-	PendingCommands[group].ExpiryTime = CBNow() + PendingCommands[group].CommandValidTimemsec;
+	PendingCommands[group].ExpiryTime = CBNowUTC() + PendingCommands[group].CommandValidTimemsec;
 	PendingCommands[group].Data = Header.GetB();
 
 	LOGDEBUG("{} - Got a valid {} PendingCommand, Data {}", Name, cmd, PendingCommands[group].Data);
@@ -443,9 +443,9 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 {
 	bool success = true;
 
-	if ((CBNow() > PendingCommand.ExpiryTime) && (PendingCommand.Command != PendingCommandType::CommandType::None))
+	if ((CBNowUTC() > PendingCommand.ExpiryTime) && (PendingCommand.Command != PendingCommandType::CommandType::None))
 	{
-		CBTime TimeDelta = CBNow() - PendingCommand.ExpiryTime;
+		CBTime TimeDelta = CBNowUTC() - PendingCommand.ExpiryTime;
 		LOGDEBUG("{} Received an Execute Command, but the current command had expired - time delta {} msec", Name, TimeDelta);
 		return false;
 	}
@@ -519,7 +519,7 @@ bool CBOutstationPort::ExecuteBinaryControl(uint8_t group, uint8_t channel, bool
 	}
 
 	// Set our output value. Only really used for testing
-	MyPointConf->PointTable.SetBinaryControlValueUsingODCIndex(ODCIndex, point_on, CBNow());
+	MyPointConf->PointTable.SetBinaryControlValueUsingODCIndex(ODCIndex, point_on, CBNowUTC());
 
 	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 	val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
@@ -544,7 +544,7 @@ bool CBOutstationPort::ExecuteAnalogControl(uint8_t group, uint8_t channel, uint
 	}
 
 	// Set our output value. Only really used for testing
-	MyPointConf->PointTable.SetAnalogControlValueUsingODCIndex(ODCIndex, data, CBNow());
+	MyPointConf->PointTable.SetAnalogControlValueUsingODCIndex(ODCIndex, data, CBNowUTC());
 
 	EventTypePayload<EventType::AnalogOutputInt16>::type val;
 	val.first = numeric_cast<short>(data);
@@ -803,19 +803,13 @@ void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 	uint8_t ss, ssin;
 	uint16_t msec, msecin;
 
-	to_hhmmssmmfromCBtime(CBNow(), hh, mm, ss, msec);
+	DecodeTimePayload(CompleteCBMessage[0].GetB(), CompleteCBMessage[1].GetA(), CompleteCBMessage[1].GetB(),hhin, mmin, ssin, msecin);
 
-	hhin = (CompleteCBMessage[0].GetB() & 0x07) << 2 | ((CompleteCBMessage[1].GetA() >> 10) & 0x03);
-	mmin = ((CompleteCBMessage[1].GetA() >> 4) & 0x03F);
-	ssin = (CompleteCBMessage[1].GetA() & 0x0F) << 2 | ((CompleteCBMessage[1].GetB() >> 10) & 0x03);
-	msecin = (CompleteCBMessage[1].GetB() & 0x03FF);
-
-	LOGDEBUG("{} Received Time Set Command {}:{}:{}:{}, Current Time {}:{}:{}:{}",Name, hhin, mmin, ssin, msecin, hh, mm, ss, msec);
+	LOGDEBUG("{} Received Time Set Command {}, Current UTC Time {}",Name, to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), to_stringfromCBtime(CBNowUTC()));
 
 	// We just echo back what we were sent. This is what is expected.
 	ResponseCBMessage.push_back(CompleteCBMessage[0]);
 	ResponseCBMessage.push_back(CompleteCBMessage[1]);
-
 
 	SendCBMessage(ResponseCBMessage);
 }

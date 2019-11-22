@@ -125,14 +125,14 @@ bool iequals(const std::string& a, const std::string& b)
 		});
 }
 
-CBTime CBNow()
+CBTime CBNowUTC()
 {
 	// To get the time to pass through ODC events. CB Uses UTC time in commands - as you would expect.
 	return static_cast<CBTime>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 }
 
 // Create an ASCII string version of the time from the CB time - which is msec since epoch.
-std::string to_timestringfromCBtime(CBTime _time)
+std::string to_LOCALtimestringfromCBtime(CBTime _time)
 {
 	time_t tp = _time / 1000; // time_t is normally seconds since epoch. We deal in msec!
 
@@ -145,20 +145,47 @@ std::string to_timestringfromCBtime(CBTime _time)
 	}
 	return "Time Conversion Problem";
 }
+std::string to_stringfromCBtime(CBTime _time)
+{
+	uint8_t hhin;
+	uint8_t mmin;
+	uint8_t ssin;
+	uint16_t msecin;
+	to_hhmmssmmfromCBtime( _time, hhin, mmin, ssin, msecin);
+
+	return to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin);
+}
+std::string to_stringfromhhmmssmsec(uint8_t hh, uint8_t mm, uint8_t ss, uint16_t msec )
+{
+	std::string res = fmt::format("{}:{}:{}.{}", hh, mm, ss, msec);
+
+	return res;
+}
+// CBTime is msec since epoch
 void to_hhmmssmmfromCBtime(CBTime _time, uint8_t &hh, uint8_t &mm, uint8_t &ss, uint16_t &msec)
 {
-	time_t tp = _time / 1000; // time_t is normally seconds since epoch. We deal in msec!
 	msec = _time % 1000;
-
-	std::tm* t = std::gmtime(&tp);
-	if (t != nullptr)
-	{
-		hh = numeric_cast<uint8_t>(t->tm_hour);
-		mm = numeric_cast<uint8_t>(t->tm_min);
-		ss = numeric_cast<uint8_t>(t->tm_sec);
-	}
+	_time = _time / 1000;
+	ss = numeric_cast<uint8_t>(_time % 60);
+	_time = _time / 60;
+	mm = numeric_cast<uint8_t>(_time % 60);
+	_time = _time / 60;
+	hh = numeric_cast<uint8_t>(_time % 24);
 }
 
+void DecodeTimePayload(uint16_t P1B, uint16_t P2A, uint16_t P2B, uint8_t& hhin, uint8_t& mmin, uint8_t& ssin, uint16_t& msecin)
+{
+	hhin = (P1B & 0x07) << 2 | ((P2A >> 10) & 0x03);
+	mmin = ((P2A >> 4) & 0x03F);
+	ssin = (P2A & 0x0F) << 2 | ((P2B >> 10) & 0x03);
+	msecin = (P2B & 0x03FF);
+}
+void PackageTimePayload(uint8_t hh, uint8_t mm, uint8_t ss, uint16_t msec, uint16_t& P1B, uint16_t& P2A, uint16_t& P2B)
+{
+	P1B = ((hh >> 2) & 0x07) | 0x20;                                                                       // The 2 is the number of blocks.	// Top 3 bits of hh
+	P2A = ShiftLeftResult16Bits(hh & 0x03, 10) | ShiftLeftResult16Bits(mm & 0x3F, 4) | ((ss >> 2) & 0x0F); // Bottom 2 bits of hh, 6 bits of mm, top 4 bits of ss
+	P2B = ShiftLeftResult16Bits(ss & 0x03, 10) | (msec & 0x3ff);                                           // bottom 2 bits of ss, 10 bits of msec
+}
 int tz_offset()
 {
 	time_t when = std::time(nullptr);

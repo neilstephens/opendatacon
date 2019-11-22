@@ -55,7 +55,6 @@ public:
 
 	// Public only for UnitTesting
 	virtual void SendCBMessage(const CBMessage_t& CompleteCBMessage);
-	static void BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t & CompleteCBMessage);
 	void SetSendTCPDataFn(std::function<void(std::string)> Send);
 	void InjectSimulatedTCPMessage(buf_t & readbuf); // Equivalent of the callback handler in the CBConnection.
 

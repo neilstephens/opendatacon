@@ -229,7 +229,7 @@ bool CBPointTableAccess::SetCounterValueUsingODCIndex(const size_t index, const 
 	ODCAnalogCounterPointMapIterType ODCPointMapIter = CounterODCPointMap.find(index);
 	if (ODCPointMapIter != CounterODCPointMap.end())
 	{
-		ODCPointMapIter->second->SetAnalog(meas, CBNow());
+		ODCPointMapIter->second->SetAnalog(meas, CBNowUTC());
 		return true;
 	}
 	return false;
@@ -260,7 +260,7 @@ bool CBPointTableAccess::SetAnalogValueUsingODCIndex(const size_t index, const u
 	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
-		ODCPointMapIter->second->SetAnalog(meas, CBNow());
+		ODCPointMapIter->second->SetAnalog(meas, CBNowUTC());
 		return true;
 	}
 	return false;
@@ -335,7 +335,7 @@ void CBPointTableAccess::AddToDigitalEvents(const CBBinaryPoint &inpt, const uin
 		pt.SetBinary(meas, eventtime);
 
 		// Set the queue point value, just so we can set the time. The value does not matter.
-		queuefullpt.SetBinary(1, CBNow());
+		queuefullpt.SetBinary(1, CBNowUTC());
 
 		pBinaryTimeTaggedEventQueue->async_push(pt, queuefullpt, odc::spdlog_get("CBPort"));
 		LOGDEBUG("{} Outstation Added Binary Event to SOE Queue - ODCIndex {}, Value {}",Name, pt.GetIndex(),pt.GetBinary());

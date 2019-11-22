@@ -125,25 +125,5 @@ void CBPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 	}
 	CBConnection::Write(pConnection,CompleteCBMessage);
 }
-// This message is constructed by the Master and the RTU in response.
-void CBPort::BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t & CompleteCBMessage)
-{
-	uint8_t hh;
-	uint8_t mm;
-	uint8_t ss;
-	uint16_t msec;
 
-	to_hhmmssmmfromCBtime(cbtime, hh, mm, ss, msec);
-
-	uint16_t FirstDataB = ((hh >> 2) & 0x07) | 0x20; // The 2 is the number of blocks.	// Top 3 bits of hh
-	auto firstblock = CBBlockData(StationAddress, MASTER_SUB_FUNC_SEND_TIME_UPDATES, FUNC_MASTER_STATION_REQUEST, FirstDataB, false);
-
-	uint16_t DataA = ShiftLeftResult16Bits(hh & 0x03, 10) | ShiftLeftResult16Bits(mm & 0x3F, 4) | ((ss >> 2) & 0x0F); // Bottom 2 bits of hh, 6 bits of mm, top 4 bits of ss
-	uint16_t DataB = ShiftLeftResult16Bits(ss & 0x03, 10) | (msec & 0x3ff);                                           // bottom 2 bits of ss, 10 bits of msec
-
-	auto secondblock = CBBlockData(DataA, DataB, true);
-
-	CompleteCBMessage.push_back(firstblock);
-	CompleteCBMessage.push_back(secondblock);
-}
 

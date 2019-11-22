@@ -217,7 +217,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		}
 		case EventType::Binary:
 		{
-			CBTime now = CBNow(); // msec since epoch.
+			CBTime now = CBNowUTC(); // msec since epoch.
 			CBTime eventtime = event->GetTimestamp();
 			uint8_t meas = event->GetPayload<EventType::Binary>();
 

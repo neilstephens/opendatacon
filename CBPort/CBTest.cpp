@@ -480,7 +480,7 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 
 	CBMessage_t CompleteCBMessage;
 
-	CBPort::BuildUpdateTimeMessage(address, cbtime, CompleteCBMessage);
+	CBMasterPort::BuildUpdateTimeMessage(address, cbtime, CompleteCBMessage);
 
 	REQUIRE(CompleteCBMessage.size() == 2);
 
@@ -493,6 +493,33 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 	REQUIRE(B1Data == 0x00fb);
 	REQUIRE(CompleteCBMessage[0].IsEndOfMessageBlock() == false);
 	REQUIRE(CompleteCBMessage[1].IsEndOfMessageBlock() == true);
+
+	uint8_t hhin;
+	uint8_t mmin;
+	uint8_t ssin;
+	uint16_t msecin;
+
+	DecodeTimePayload(B0Data, A1Data, B1Data, hhin, mmin, ssin, msecin);
+
+	uint64_t rxdmsec = (((uint64_t)hhin * 60 + (uint64_t)mmin) * 60 + (uint64_t)ssin)*1000 + (uint64_t)msecin;
+
+	// We have to remove (mod) the cbtime by msec in a day to get the expected value.
+	cbtime = cbtime % (1000 * 60 * 60 * 24);
+	REQUIRE(rxdmsec == cbtime);
+
+	// Decode an actual packet.
+	// The Ethernet Epoch Frame time is 1560896915.562135000 seconds
+	// The packet data is 1B - 0x022, 2A - 0x1c9, 2B - 0x121
+	// Arrival Time : Jun 19, 2019 08 : 28 : 35.562135000 AUS Eastern Standard Time
+
+	DecodeTimePayload(0x022, 0x1c9, 0x121, hhin, mmin, ssin, msecin);
+	uint64_t epochtimemsecsfull = 1560896915562;
+	uint64_t epochtimemsecs = epochtimemsecsfull % (1000 * 60 * 60 * 24);
+
+	rxdmsec = (((uint64_t)hhin * 60 + (uint64_t)mmin) * 60 + (uint64_t)ssin) * 1000 + (uint64_t)msecin;
+
+	LOGDEBUG("Received Time Set Command, Decoded {}, {} msec, PacketStamp {}, {} msec", to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), rxdmsec, to_stringfromCBtime(epochtimemsecsfull),epochtimemsecs);
+
 	STANDARD_TEST_TEARDOWN();
 }
 TEST_CASE("Util - SOEEventFormat")
