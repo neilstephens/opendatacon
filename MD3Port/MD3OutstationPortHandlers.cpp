@@ -1503,7 +1503,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40MtoS &Header)
 	}
 }
 // Function 43
-void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &CompleteMD3Message)
+void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS& Header, MD3Message_t& CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
@@ -1516,57 +1516,54 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS &Header, MD3Message_t &Co
 	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
 	// Non-zero will be a fail.
 
-	LOGDEBUG("{} - DoSetdateTime",Name);
-
 	if ((CompleteMD3Message.size() != 2) && (Header.GetStationAddress() != 0))
 	{
 		SendControlOrScanRejected(Header); // If we did not get two blocks, then send back a command rejected message.
 		return;
 	}
 
-	MD3BlockData &timedateblock = CompleteMD3Message[1];
+	MD3BlockData& timedateblock = CompleteMD3Message[1];
 
 	// If date time is within a window of now, accept. Otherwise send command rejected.
 	uint64_t msecsinceepoch = static_cast<uint64_t>(timedateblock.GetData()) * 1000 + Header.GetMilliseconds();
 
-	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
-	uint64_t currenttime = MD3Now();
+	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1
+	uint64_t currenttime = MD3NowUTC();
 
-	if (abs(static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime)) > 30000) // Set window as +-30 seconds
+	// So when adjusting SOE times, just add the Offset to the Clock (current time)
+	SOETimeOffsetMinutes = (static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime))/60/1000;
+
+	LOGDEBUG("{} DoSetDateTime Time {}, Current UTC Time {} - SOE Offset Now Set to {} minutes", Name, to_timestringfromMD3time(msecsinceepoch), to_timestringfromMD3time(currenttime), SOETimeOffsetMinutes);
+
+	// This is the time set pass through ODC command - which if nothing is listening to the port, does nothing!!
+
+	uint32_t ODCIndex = MyPointConf->TimeSetPoint.second;
+	MyPointConf->TimeSetPoint.first = numeric_cast<double>(msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
+
+	EventTypePayload<EventType::AnalogOutputDouble64>::type val;
+	val.first = MyPointConf->TimeSetPoint.first;
+
+	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
+	event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
+
+	// If StandAloneOutstation, dont wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
+
+	// This does a PublishCommand and waits for the result - or times out.
+	if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
+	{
+		if (Header.GetStationAddress() != 0)
+			SendControlOK(Header);
+	}
+	else
 	{
 		if (Header.GetStationAddress() != 0)
 			SendControlOrScanRejected(Header);
 	}
-	else
-	{
-		uint32_t ODCIndex = MyPointConf->TimeSetPoint.second;
-		MyPointConf->TimeSetPoint.first = numeric_cast<double>(msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
-
-		EventTypePayload<EventType::AnalogOutputDouble64>::type val;
-		val.first = MyPointConf->TimeSetPoint.first;
-
-		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
-		event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
-
-		// If StandAloneOutstation, don\92t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-		bool waitforresult = !MyPointConf->StandAloneOutstation;
-
-		// This does a PublishCommand and waits for the result - or times out.
-		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
-		{
-			if (Header.GetStationAddress() != 0)
-				SendControlOK(Header);
-		}
-		else
-		{
-			if (Header.GetStationAddress() != 0)
-				SendControlOrScanRejected(Header);
-		}
-		SystemFlags.TimePacketReceived();
-	}
+	SystemFlags.TimePacketReceived();
 }
 // Function 44
-void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t &CompleteMD3Message)
+void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS& Header, MD3Message_t& CompleteMD3Message)
 {
 	// We have three blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
@@ -1579,7 +1576,7 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t 
 	// Really comes down to success - which we want to be we have an answer - not that the request was queued..
 	// Non-zero will be a fail.
 
-	LOGDEBUG("{} - DoSetdateTimeNew",Name);
+	LOGDEBUG("{} - DoSetdateTimeNew", Name);
 
 	if ((CompleteMD3Message.size() != 3) && (Header.GetStationAddress() != 0))
 	{
@@ -1587,48 +1584,45 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS &Header, MD3Message_t 
 		return;
 	}
 
-	MD3BlockData &timedateblock = CompleteMD3Message[1];
+	MD3BlockData& timedateblock = CompleteMD3Message[1];
 
 	// If date time is within a window of now, accept. Otherwise send command rejected.
 	uint64_t msecsinceepoch = static_cast<uint64_t>(timedateblock.GetData()) * 1000 + Header.GetMilliseconds();
 
 	// Not used for now...
-	// MD3BlockData &utcoffsetblock = CompleteMD3Message[2];
-	// int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
+	MD3BlockData& utcoffsetblock = CompleteMD3Message[2];
+	int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
-	uint64_t currenttime = MD3Now();
+	uint64_t currenttime = MD3NowUTC();
 
-	if (abs(static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime)) > 30000) // Set window as +-30 seconds
+	// So when adjusting SOE times, just add the Offset to the Clock (current time)
+	SOETimeOffsetMinutes = (static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime)) / 60 / 1000;
+
+	LOGDEBUG("{} DoSetDateTimeNew Time {}, Rxd UTC Offset {}, Current UTC Time {} - SOE Offset Now Set to {} minutes", Name, to_timestringfromMD3time(msecsinceepoch), utcoffsetminutes, to_timestringfromMD3time(currenttime), SOETimeOffsetMinutes);
+
+	uint32_t ODCIndex = MyPointConf->TimeSetPointNew.second;
+	MyPointConf->TimeSetPointNew.first = numeric_cast<double>(msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
+
+	EventTypePayload<EventType::AnalogOutputDouble64>::type val;
+	val.first = MyPointConf->TimeSetPointNew.first;
+
+	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
+	event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
+
+	// If StandAloneOutstation, dont wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
+	bool waitforresult = !MyPointConf->StandAloneOutstation;
+
+	// This does a PublishCommand and waits for the result - or times out.
+	if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
 	{
 		if (Header.GetStationAddress() != 0)
-			SendControlOrScanRejected(Header);
+			SendControlOK(Header);
 	}
 	else
 	{
-		uint32_t ODCIndex = MyPointConf->TimeSetPointNew.second;
-		MyPointConf->TimeSetPointNew.first = numeric_cast<double>(msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
-
-		EventTypePayload<EventType::AnalogOutputDouble64>::type val;
-		val.first = MyPointConf->TimeSetPointNew.first;
-
-		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
-		event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
-
-		// If StandAloneOutstation, don\92t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-		bool waitforresult = !MyPointConf->StandAloneOutstation;
-
-		// This does a PublishCommand and waits for the result - or times out.
-		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
-		{
-			if (Header.GetStationAddress() != 0)
-				SendControlOK(Header);
-		}
-		else
-		{
-			if (Header.GetStationAddress() != 0)
-				SendControlOrScanRejected(Header);
-		}
+		if (Header.GetStationAddress() != 0)
+			SendControlOrScanRejected(Header);
 	}
 	SystemFlags.TimePacketReceived();
 }

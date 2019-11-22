@@ -569,7 +569,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 
 	// Search to see if the first value is a counter or analog
 	bool FirstModuleIsCounterModule = MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres,hasbeenset);
-	MD3Time now = MD3Now();
+	MD3Time now = MD3NowUTC();
 
 	for (uint8_t i = 0; i < Channels; i++)
 	{
@@ -662,7 +662,7 @@ bool MD3MasterPort::ProcessAnalogDeltaScanReturn(MD3BlockFormatted & Header, con
 
 	// Search to see if the first value is a counter or analog
 	bool FirstModuleIsCounterModule = MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres,hasbeenset);
-	MD3Time now = MD3Now();
+	MD3Time now = MD3NowUTC();
 
 	for (uint8_t i = 0; i < Channels; i++)
 	{
@@ -739,7 +739,7 @@ bool MD3MasterPort::ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, cons
 		// Search to see if the first value is a counter or analog
 		bool FirstModuleIsCounterModule = MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres, hasbeenset);
 
-		MD3Time now = MD3Now();
+		MD3Time now = MD3NowUTC();
 
 		for (uint8_t i = 0; i < Channels; i++)
 		{
@@ -841,7 +841,7 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 			else
 			{
 				LOGDEBUG("Received a Fn 11 Data Block - Module : {} Data : {} Data : {}",ModuleAddress,to_hexstring(ModuleData),to_binstring(ModuleData));
-				MD3Time eventtime = MD3Now();
+				MD3Time eventtime = MD3NowUTC();
 
 				GenerateODCEventsFromMD3ModuleWord(ModuleData, ModuleAddress, eventtime);
 			}
@@ -1292,7 +1292,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 		case  TimeSetCommand:
 		{
 			// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
-			uint64_t currenttime = MD3Now();
+			uint64_t currenttime = MD3NowUTC();
 
 			LOGDEBUG("Poll Issued a TimeDate Command");
 			SendTimeDateChangeCommand(currenttime, nullptr);
@@ -1302,7 +1302,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 		case NewTimeSetCommand:
 		{
 			// Send a time set command to the OutStation, TimeChange command (Fn 43) UTC Time
-			uint64_t currenttime = MD3Now();
+			uint64_t currenttime = MD3NowUTC();
 
 			LOGDEBUG("Poll Issued a NewTimeDate Command");
 			int utcoffsetminutes = tz_offset();

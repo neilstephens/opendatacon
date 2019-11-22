@@ -154,6 +154,7 @@ private:
 
 	bool DigitalChangedFlagCalculationMethod(void);
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);
+	int SOETimeOffsetMinutes = 0;
 
 	OutstationSystemFlags SystemFlags;
 

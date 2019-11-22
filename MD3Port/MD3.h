@@ -29,7 +29,7 @@
 
 // If we are compiling for external testing (or production) define this.
 // If we are using VS and its test framework, don't define this.
-#define NONVSTESTING
+//#define NONVSTESTING
 
 // regex to find long winded LOG commands \{a[1-5]\}
 
@@ -62,7 +62,7 @@ typedef std::shared_ptr<Timer_t> pTimer_t;
 
 typedef uint64_t MD3Time; // msec since epoch, utc, most time functions are uint64_t
 
-MD3Time MD3Now();
+MD3Time MD3NowUTC();
 
 // We use for signed/unsigned conversions, where we know we will not have problems.
 // Static casting all over the place still produces a lot of gcc warning messages.

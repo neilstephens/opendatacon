@@ -1627,7 +1627,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	//-----------------------------------------
 	// Need to test the code path where the delta between two records is > 31.999 seconds.
 	// Cheat and write directly to the HRER queue
-	MD3Time changedtime = MD3Now();
+	MD3Time changedtime = MD3NowUTC();
 
 	MD3BinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true, changedtime);
 	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, static_cast<MD3Time>(changedtime + 32000));
@@ -1657,7 +1657,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	commandblock = MD3BlockFn9(0x7C, true, 5, 0, true, true);
 	output << commandblock.ToBinaryString();
 
-	uint64_t currenttime = MD3Now();
+	uint64_t currenttime = MD3NowUTC();
 	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000), true );
 	output << datablock.ToBinaryString();
 
@@ -2257,7 +2257,7 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = MD3Now();
+	uint64_t currenttime = MD3NowUTC();
 
 	// TimeChange command (Fn 43), Station 0x7C
 	MD3BlockFn43MtoS commandblock(0x7C, currenttime % 1000);
@@ -2302,7 +2302,7 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = MD3Now();
+	uint64_t currenttime = MD3NowUTC();
 
 	// TimeChange command (Fn 44), Station 0x7C
 	MD3BlockFn44MtoS commandblock(0x7C, currenttime % 1000);
@@ -2438,7 +2438,7 @@ TEST_CASE("Station - System Flag Scan Test")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = MD3Now();
+	uint64_t currenttime = MD3NowUTC();
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
 	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
@@ -3188,7 +3188,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 		// So we post time change command to the outstation, which should then go to the Master, which should then send a timechange command out on TCP.
 		// If the Outstation is standalone, it will not wait for the ODC response.
 		// "TimeSetPoint" : {"Index" : 100000},
-		uint64_t currenttime = MD3Now(); // 0x1111222233334444;
+		uint64_t currenttime = MD3NowUTC(); // 0x1111222233334444;
 
 		// TimeChange command (Fn 43), Station 0x7C
 		MD3BlockFn43MtoS commandblock(0x7C, currenttime % 1000);
