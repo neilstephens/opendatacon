@@ -767,10 +767,18 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
 		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? 1 : 0;
 		PackedEvent.QualityBit = 0;
+
 		CBTime TimeDelta = CurrentPoint.GetChangedTime() - LastPointTime;
 
 		bool FirstEvent = (LastPointTime == 0);
 		LastPointTime = CurrentPoint.GetChangedTime();
+
+		if (FirstEvent)
+		{
+			// Adjust by the OffsetMinutes. Only necessary for the first record, as everything else after this is just a delta anyway in msec.
+			// The SOETimeOffsetMinutes can be +/- so need integer addition (not uint)
+			TimeDelta = (int64_t)TimeDelta + (int64_t)(SOETimeOffsetMinutes * 60 * 1000);
+		}
 
 		PackedEvent.SetTimeFields(TimeDelta, FirstEvent);
 
@@ -793,7 +801,8 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 	for (uint32_t i = UsedBits; i < MaxSOEBits; i++)
 		BitArray[i] = false;
 }
-// We do not update the time, just echo message - assume UTC time of day in milliseconds since 1970 (CBTime()).
+// We use this to calculate an offset, which is then used when packaging up the SOE time stamps (added or subtracted)
+// just echo message - normally it is UTC time of day in milliseconds since 1970 (CBTime()). Could be any time zone in practice.
 void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 {
 	CBMessage_t ResponseCBMessage;
@@ -803,9 +812,17 @@ void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 	uint8_t ss, ssin;
 	uint16_t msec, msecin;
 
-	DecodeTimePayload(CompleteCBMessage[0].GetB(), CompleteCBMessage[1].GetA(), CompleteCBMessage[1].GetB(),hhin, mmin, ssin, msecin);
+	// Get the machine UTC time.
+	to_hhmmssmmfromCBtime(CBNowUTC(), hh, mm, ss, msec);
 
-	LOGDEBUG("{} Received Time Set Command {}, Current UTC Time {}",Name, to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), to_stringfromCBtime(CBNowUTC()));
+	DecodeTimePayload(CompleteCBMessage[0].GetB(), CompleteCBMessage[1].GetA(), CompleteCBMessage[1].GetB(),hhin, mmin, ssin, msecin);
+	// Work out the offset (in minutes) from the sent time. We assume the Master and ODC will have NTP time sync, so really about adjusting for time zone only.
+	// Value can be +/-
+	int16_t SetMinutes = hhin * 60 + mmin + (ssin > 30 ? 1 : 0);
+	int16_t ClockMinutes = hh * 60 + mm + (ss > 30 ? 1 : 0);
+	SOETimeOffsetMinutes = SetMinutes - ClockMinutes; // So when adjusting SOE times, just add the Offset to the Clock
+
+	LOGDEBUG("{} Received Time Set Command {}, Current UTC Time {} - SOE Offset Now Set to {} minutes",Name, to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), to_stringfromCBtime(CBNowUTC()), SOETimeOffsetMinutes);
 
 	// We just echo back what we were sent. This is what is expected.
 	ResponseCBMessage.push_back(CompleteCBMessage[0]);

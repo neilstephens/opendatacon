@@ -1062,7 +1062,6 @@ TEST_CASE("Station - SOERequest F10")
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == "a9000039"); // Echoed block plus
 
-
 	// Call the Event functions to put some SOE data into the queue ODC Binaries 0 to 12 will capture SOE data.
 	// For testing we need to fix the time so that we dont get changing data on every pass.
 	msSinceEpoch_t time = 0x0000016734934659; // 21/11/2018 3:42pm  msSinceEpoch();
@@ -1164,6 +1163,7 @@ TEST_CASE("Station - BinaryEvent")
 
 	STANDARD_TEST_TEARDOWN();
 }
+
 
 TEST_CASE("Station - CONTROL Commands")
 {
@@ -1919,12 +1919,23 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 		});
 
 	// Send an ODC DigitalOutput command to the Master.
-	CBMAPort->SendFn9TimeUpdate(pStatusCallback);
+	CBMAPort->SendFn9TimeUpdate(pStatusCallback, -10);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(*IOS, 4);
+	WaitIOS(*IOS, 2);
 
 	REQUIRE(res == CommandStatus::SUCCESS);
+
+	REQUIRE(CBOSPort->GetSOEOffsetMinutes() == -10);
+
+	CBMAPort->SendFn9TimeUpdate(pStatusCallback, 15);
+
+	// Wait for it to go to the OutStation and Back again
+	WaitIOS(*IOS, 2);
+
+	REQUIRE(res == CommandStatus::SUCCESS);
+
+	REQUIRE(CBOSPort->GetSOEOffsetMinutes() == 15);
 
 	CBOSPort->Disable();
 	CBMAPort->Disable();

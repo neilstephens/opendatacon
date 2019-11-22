@@ -876,11 +876,12 @@ void CBMasterPort::SendF0ScanCommand(uint8_t group, SharedStatusCallback_t pStat
 	CBBlockData sendcommandblock(MyConf->mAddrConf.OutstationAddr, group, FUNC_SCAN_DATA, 0, true);
 	QueueCBCommand(sendcommandblock, pStatusCallback);
 }
-void CBMasterPort::SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback)
+// The timeoffset minutes setting is purely for testing
+void CBMasterPort::SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback, int TimeOffsetMinutes)
 {
 	CBMessage_t CompleteCBMessage;
 
-	BuildUpdateTimeMessage(MyConf->mAddrConf.OutstationAddr, CBNowUTC(), CompleteCBMessage);
+	BuildUpdateTimeMessage(MyConf->mAddrConf.OutstationAddr, (uint64_t)((int64_t)CBNowUTC()+(int64_t)(TimeOffsetMinutes*60*1000)), CompleteCBMessage);
 
 	QueueCBCommand(CompleteCBMessage, pStatusCallback);
 }

@@ -152,10 +152,12 @@ public:
 
 	// Testing use only
 	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group & 0x0F]; } // Return a copy, cannot be changed
+	int GetSOEOffsetMinutes() { return SOETimeOffsetMinutes; }
 private:
 
 	bool DigitalChangedFlagCalculationMethod(void);
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);
+	int SOETimeOffsetMinutes = 0;
 
 	OutstationSystemFlags SystemFlags;
 
