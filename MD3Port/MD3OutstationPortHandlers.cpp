@@ -820,8 +820,9 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCou
 
 		if (EventCount == 0)
 		{
-			// First packet is the time/date block
-			uint32_t FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000);
+			// First packet is the time/date block - adjust for SOEOffset (handles local utc time translation)
+			// We dont currently do anything with the timezone sent in a 44 command
+			uint32_t FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000 + SOETimeOffsetMinutes*60);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
 			LastPointmsec = CurrentPoint.GetChangedTime() - CurrentPoint.GetChangedTime() % 1000; // The first one is seconds only. Later events have actual msec
@@ -1531,9 +1532,18 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS& Header, MD3Message_t& Co
 	uint64_t currenttime = MD3NowUTC();
 
 	// So when adjusting SOE times, just add the Offset to the Clock (current time)
-	SOETimeOffsetMinutes = (static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime))/60/1000;
+	SOETimeOffsetMinutes = round(((msecsinceepoch > currenttime ) ? msecsinceepoch - currenttime : currenttime - msecsinceepoch )/(60.0*1000.0));
+	if (msecsinceepoch < currenttime)
+		SOETimeOffsetMinutes = -SOETimeOffsetMinutes;
 
-	LOGDEBUG("{} DoSetDateTime Time {}, Current UTC Time {} - SOE Offset Now Set to {} minutes", Name, to_timestringfromMD3time(msecsinceepoch), to_timestringfromMD3time(currenttime), SOETimeOffsetMinutes);
+	LOGDEBUG("{} DoSetDateTime Time {}, Current UTC Time {} - SOE Offset Now Set to {} minutes", Name, to_stringfromMD3time(msecsinceepoch), to_stringfromMD3time(currenttime), SOETimeOffsetMinutes);
+
+	if (abs(SOETimeOffsetMinutes) > 24 * 60)
+	{
+		// If the abs time offset > 24 hours, ignore!
+		SendControlOrScanRejected(Header); // If we did not get two blocks, then send back a command rejected message.
+		return;
+	}
 
 	// This is the time set pass through ODC command - which if nothing is listening to the port, does nothing!!
 
@@ -1591,15 +1601,25 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS& Header, MD3Message_t&
 
 	// Not used for now...
 	MD3BlockData& utcoffsetblock = CompleteMD3Message[2];
-	int utcoffsetminutes = (int)utcoffsetblock.GetFirstWord();
+	int16_t utcoffsetminutes = (int16_t)utcoffsetblock.GetFirstWord();
 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
 	uint64_t currenttime = MD3NowUTC();
 
 	// So when adjusting SOE times, just add the Offset to the Clock (current time)
-	SOETimeOffsetMinutes = (static_cast<int64_t>(msecsinceepoch) - static_cast<int64_t>(currenttime)) / 60 / 1000;
+	SOETimeOffsetMinutes = round(((msecsinceepoch > currenttime) ? msecsinceepoch - currenttime : currenttime - msecsinceepoch) / (60.0 * 1000.0));
+	if (msecsinceepoch < currenttime)
+		SOETimeOffsetMinutes = -SOETimeOffsetMinutes;
 
-	LOGDEBUG("{} DoSetDateTimeNew Time {}, Rxd UTC Offset {}, Current UTC Time {} - SOE Offset Now Set to {} minutes", Name, to_timestringfromMD3time(msecsinceepoch), utcoffsetminutes, to_timestringfromMD3time(currenttime), SOETimeOffsetMinutes);
+	LOGDEBUG("{} DoSetDateTime Time {} UTC, Offset {} min, Current UTC Time {} - SOE Offset Now Set to {} minutes",
+		Name, to_stringfromMD3time(msecsinceepoch), utcoffsetminutes, to_stringfromMD3time(currenttime), SOETimeOffsetMinutes);
+
+	if (abs(SOETimeOffsetMinutes) > 24 * 60)
+	{
+		// If the abs time offset > 24 hours, ignore!
+		SendControlOrScanRejected(Header); // If we did not get two blocks, then send back a command rejected message.
+		return;
+	}
 
 	uint32_t ODCIndex = MyPointConf->TimeSetPointNew.second;
 	MyPointConf->TimeSetPointNew.first = numeric_cast<double>(msecsinceepoch); // Fit the 64 bit int into the 64 bit float.

@@ -79,7 +79,8 @@ std::string to_binstring(T val)
 	return sstream.str();
 }
 // Create an ASCII string version of the time from the MD3 time - which is msec since epoch.
-std::string to_timestringfromMD3time(MD3Time _time);
+std::string to_LOCALtimestringfromMD3time(MD3Time _time);
+std::string to_stringfromMD3time(MD3Time _time);
 // Return the current UTC offset in minutes.
 int tz_offset();
 

@@ -1047,7 +1047,7 @@ TEST_CASE("MD3Block - Fn43")
 	REQUIRE(b43_b2.CheckSumPasses());
 
 	MD3Time timebase = static_cast<uint64_t>(b43_b2.GetData()) * 1000 + b43_t1.GetMilliseconds(); //MD3Time msec since Epoch.
-	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
 
 	TestTearDown();
 }
@@ -1062,7 +1062,7 @@ TEST_CASE("MD3Block - Fn44")
 	TestSetup(false);
 
 	MD3Time timebase = static_cast<uint64_t>(0x5ad6b75f) * 1000 + (0x252 & 0x03FF); //MD3Time msec since Epoch.
-	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
 
 	MD3BlockFn44MtoS b44(0x38, 999);
 	REQUIRE(b44.GetMilliseconds() == 999);
@@ -1084,7 +1084,7 @@ TEST_CASE("MD3Block - Fn44")
 
 	int UTCOffset = b44_b3.GetFirstWord();
 	timebase = static_cast<uint64_t>(b44_b2.GetData()) * 1000 + b44_t1.GetMilliseconds(); //MD3Time msec since Epoch.
-	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase)+ " UTC Offset Minutes "+std::to_string(UTCOffset));
+	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase)+ " UTC Offset Minutes "+std::to_string(UTCOffset));
 	TestTearDown();
 }
 TEST_CASE("MD3Block - Fn15 OK Packet")
@@ -1825,7 +1825,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	RBlock = MD3BlockData(BlockString);
 
 	MD3Time timebase = static_cast<uint64_t>(RBlock.GetData()) * 1000; //MD3Time msec since Epoch.
-	LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+	LOGDEBUG("Fn11 TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
 	REQUIRE(timebase == 0x0000016338b6d400ULL);
 
 	// Then 4 COS blocks.
@@ -2257,6 +2257,11 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+
 	uint64_t currenttime = MD3NowUTC();
 
 	// TimeChange command (Fn 43), Station 0x7C
@@ -2268,10 +2273,6 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 
 	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000),true);
 	output << datablock.ToBinaryString();
-
-	// Hook the output function with a lambda
-	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2290,6 +2291,30 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response[0] == ToChar(0xFC));
 	REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
+
+	// Now do again with a 10 hour offset - just use the same msec as first command. Does not matter for this test.
+	output << commandblock.ToBinaryString();
+	MD3BlockData datablock3(static_cast<uint32_t>(currenttime / 1000 + 10*60*60), true); // Current time + 10 hours (in seconds)
+	output << datablock3.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
+	REQUIRE(MD3OSPort->GetSOEOffsetMinutes() == 10*60);
+
+	// Now do again with a -9 hour offset - just use the same msec as first command. Does not matter for this test.
+	output << commandblock.ToBinaryString();
+	MD3BlockData datablock4(static_cast<uint32_t>(currenttime / 1000 - 9 * 60 * 60), true); // Current time - 9 hours (in seconds)
+	output << datablock4.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
+	REQUIRE(MD3OSPort->GetSOEOffsetMinutes() == -9 * 60);
 
 	TestTearDown();
 }
@@ -2315,8 +2340,8 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	output << datablock.ToBinaryString();
 
 	int UTCOffsetMinutes = -600;
-	MD3BlockData datablock2(static_cast<uint32_t>(UTCOffsetMinutes<<16), true);
-	output << datablock2.ToBinaryString();
+	MD3BlockData datablockofs(static_cast<uint32_t>(UTCOffsetMinutes<<16), true);
+	output << datablockofs.ToBinaryString();
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
@@ -2329,16 +2354,44 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	REQUIRE(Response[0] == ToChar(0xFC));
 	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
 
+
 	// Now do again with a bodgy time.
 	output << commandblock.ToBinaryString();
-	datablock2 = MD3BlockData(static_cast<uint32_t>(1000), true); // Nonsensical time
+	MD3BlockData datablock2(static_cast<uint32_t>(1000)); // Nonsensical time
 	output << datablock2.ToBinaryString();
+	output << datablockofs.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response[0] == ToChar(0xFC));
 	REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
+
+	// Now do again with a 10 hour offset - just use the same msec as first command. Does not matter for this test.
+	output << commandblock.ToBinaryString();
+	MD3BlockData datablock3(static_cast<uint32_t>(currenttime / 1000 - 9 * 60 * 60)); // Current time + 10 hours (in seconds)
+	output << datablock3.ToBinaryString();
+	output << datablockofs.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
+	REQUIRE(MD3OSPort->GetSOEOffsetMinutes() == -9 * 60);
+
+	// Now do again with a -9 hour offset - just use the same msec as first command. Does not matter for this test.
+	output << commandblock.ToBinaryString();
+	MD3BlockData datablock4(static_cast<uint32_t>(currenttime / 1000 - 9 * 60 * 60)); // Current time - 9 hours (in seconds)
+	output << datablock4.ToBinaryString();
+	output << datablockofs.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
+	REQUIRE(MD3OSPort->GetSOEOffsetMinutes() == -9 * 60);
 
 	TestTearDown();
 }

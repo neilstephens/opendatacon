@@ -122,7 +122,7 @@ MD3Time MD3NowUTC()
 }
 
 // Create an ASCII string version of the time from the MD3 time - which is msec since epoch.
-std::string to_timestringfromMD3time(MD3Time _time)
+std::string to_LOCALtimestringfromMD3time(MD3Time _time)
 {
 	time_t tp = _time/1000; // time_t is normally seconds since epoch. We deal in msec!
 
@@ -134,6 +134,18 @@ std::string to_timestringfromMD3time(MD3Time _time)
 		return std::string(timestr);
 	}
 	return "Time Conversion Problem";
+}
+std::string to_stringfromMD3time(MD3Time _time)
+{
+	uint16_t msec = _time % 1000;
+	_time = _time / 1000;
+	uint8_t ss = numeric_cast<uint8_t>(_time % 60);
+	_time = _time / 60;
+	uint8_t mm = numeric_cast<uint8_t>(_time % 60);
+	_time = _time / 60;
+	uint8_t hh = numeric_cast<uint8_t>(_time % 24);
+
+	return fmt::format("{}:{}:{}.{}", hh, mm, ss, msec);
 }
 int tz_offset()
 {
