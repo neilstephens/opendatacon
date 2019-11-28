@@ -2111,7 +2111,7 @@ TEST_CASE("Station - DOMControlFn19")
 	TestTearDown();
 }
 
-TEST_CASE("Station - InputPointControlFn20") //TODO: Input Point Control
+TEST_CASE("Station - InputPointControlFn20")
 {
 	// One of the few multi-block commands - the request can be 2 or 3 blocks
 	// The 3 block version is an analog set point control, which is difficult to deal with...
