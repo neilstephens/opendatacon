@@ -31,6 +31,8 @@
 #include <opendatacon/DataPortConf.h>
 #include <opendatacon/IOTypes.h>
 
+using namespace odc;
+
 //DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
 //We can generalise, and come up with a simpler superset:
 //	-have an arbitrary length list of outputs
