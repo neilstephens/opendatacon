@@ -1566,29 +1566,75 @@ void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const ui
 	else if(PointType == POMOUTPUT)
 	{
 		// POM Point
-		// The POM output is a single output selection, value 0 to 15 which represents a TRIP 0-7 and CLOSE 8-15 for the up to 8 points in a POM module.
+		// The POM output is a single output selection, value 0 to 15
 		// We don't have to remember state here as we are sending only one bit.
-		uint8_t outputselection = 0;
+		uint8_t outputselection = Channel;
 
-		if ((command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
+		if ((command.functionCode == ControlCode::PULSE_OFF) || (command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
 		{
 			// OFF Command
-			outputselection = Channel+8;
 			OnOffString = "OFF";
 		}
 		else
 		{
 			// ON Command  --> ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
-			outputselection = Channel;
 			OnOffString = "ON";
 		}
 
 		LOGDEBUG("Master received a POM ODC Change Command - Index: {} - {}  Module/Channel{}/{}",index,OnOffString,ModuleAddress,Channel);
 		SendPOMOutputCommand(MyConf->mAddrConf.OutstationAddr, ModuleAddress, outputselection, pStatusCallback);
 	}
+	else if (PointType == DIMOUTPUT)
+	{
+		// POM Point
+		// The POM output is a single output selection, value 0 to 15 which represents a TRIP 0-7 and CLOSE 8-15 for the up to 8 points in a POM module.
+		// We don't have to remember state here as we are sending only one bit.
+		uint8_t outputselection = Channel;
+
+		if ((command.functionCode == ControlCode::PULSE_OFF) || (command.functionCode == ControlCode::LATCH_OFF) || (command.functionCode == ControlCode::TRIP_PULSE_ON))
+		{
+			// OFF Command
+			OnOffString = "OFF";
+		}
+		else
+		{
+			// ON Command  --> ControlCode::PULSE_CLOSE || ControlCode::PULSE || ControlCode::LATCH_ON
+			OnOffString = "ON";
+		}
+		DIMControlSelectionType action = DIMControlSelectionType::ON;
+
+		switch (command.functionCode)
+		{
+			case ControlCode::PULSE_OFF:
+				action = DIMControlSelectionType::TRIP;
+				break;
+			case ControlCode::TRIP_PULSE_ON:
+				action = DIMControlSelectionType::TRIP;
+				break;
+			case ControlCode::LATCH_OFF:
+				action = DIMControlSelectionType::OFF;
+				break;
+
+			case ControlCode::PULSE_ON:
+				action = DIMControlSelectionType::CLOSE;
+				break;
+			case ControlCode::CLOSE_PULSE_ON:
+				action = DIMControlSelectionType::CLOSE;
+				break;
+			case ControlCode::LATCH_ON:
+				action = DIMControlSelectionType::ON;
+				break;
+
+			default: LOGERROR("{} - DIM Input Point Control does not support this ODC Control Value ",Name,ToString(command.functionCode));
+				return;
+		}
+
+		LOGDEBUG("Master received a DIM ODC Change Command - Index: {} - {} - {} Module/Channel{}/{}", index, OnOffString, ToString(action), ModuleAddress, Channel);
+		SendDIMOutputCommand(MyConf->mAddrConf.OutstationAddr, ModuleAddress, outputselection, action, 0, pStatusCallback);
+	}
 	else
 	{
-		LOGDEBUG("Master received Binary Output ODC Event on a point not defined as DOM or POM {}",index);
+		LOGDEBUG("Master received Binary Output ODC Event on a point not defined as DOM, DIM or POM {}",index);
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 		return;
 	}
@@ -1597,9 +1643,21 @@ void MD3MasterPort::WriteObject(const ControlRelayOutputBlock& command, const ui
 void MD3MasterPort::WriteObject(const int16_t & command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
 {
 	// AOM Command
-	LOGDEBUG("Master received a AOM ODC Change Command {}",index);
+	uint8_t ModuleAddress = 0;
+	uint8_t Channel = 0;
+	bool exists = MyPointConf->PointTable.GetAnalogControlMD3IndexUsingODCIndex(index, ModuleAddress, Channel);
 
-//TODO: Finish AOM command	SendDOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputFromSecondBlock(BlockData), pStatusCallback);
+	if (!exists)
+	{
+		LOGDEBUG("Master received an AOM or DIM Analog ODC Change Command on a point that is not defined {}", index);
+		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
+		return;
+	}
+	DIMControlSelectionType action = DIMControlSelectionType::ON;
+
+	LOGDEBUG("Master received a AOM ODC Change Command - Index: {} - {} Module/Channel{}/{}", index, ToString(action), ModuleAddress, Channel);
+
+	SendDIMOutputCommand(MyConf->mAddrConf.OutstationAddr, ModuleAddress, Channel, action, 0, pStatusCallback);
 
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
 }
@@ -1692,6 +1750,29 @@ void MD3MasterPort::SendPOMOutputCommand(const uint8_t &StationAddress, const ui
 	MD3Message_t Cmd;
 	Cmd.push_back(commandblock);
 	Cmd.push_back(datablock);
+	QueueMD3Command(Cmd, pStatusCallback);
+}
+void MD3MasterPort::SendDIMOutputCommand(const uint8_t& StationAddress, const uint8_t& ModuleAddress, const uint8_t& outputselection, const DIMControlSelectionType controlselect, const uint16_t outputdata, const SharedStatusCallback_t& pStatusCallback)
+{
+	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, outputselection, controlselect);
+
+	MD3Message_t Cmd;
+	Cmd.push_back(commandblock);
+
+	if (commandblock.GetControlSelection() == SETPOINT) // Analog Setpoint command
+	{
+		MD3BlockData datablock = commandblock.GenerateSecondBlock(false);
+		Cmd.push_back(datablock);
+		// Three block message
+		MD3BlockData datablock2 = commandblock.GenerateThirdBlock(outputdata);
+		Cmd.push_back(datablock2);
+	}
+	else
+	{
+		MD3BlockData datablock = commandblock.GenerateSecondBlock(true);
+		Cmd.push_back(datablock);
+	}
+
 	QueueMD3Command(Cmd, pStatusCallback);
 }
 void MD3MasterPort::SendAOMOutputCommand(const uint8_t &StationAddress, const uint8_t &ModuleAddress, const uint8_t &Channel, const uint16_t &value, const SharedStatusCallback_t &pStatusCallback)

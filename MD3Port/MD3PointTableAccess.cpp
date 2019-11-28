@@ -451,7 +451,6 @@ uint16_t MD3PointTableAccess::CollectModuleBitsIntoWordandResetChangeFlags(const
 
 		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres, changed)) // Reading this clears the changed bit
 		{
-			//TODO: Check the bit order here of the binaries
 			wordres |= static_cast<uint16_t>(bitres) << (15 - j);
 		}
 	}
@@ -467,7 +466,6 @@ uint16_t MD3PointTableAccess::CollectModuleBitsIntoWord(const uint8_t ModuleAddr
 
 		if (GetBinaryValueUsingMD3Index(ModuleAddress, j, bitres)) // Reading this clears the changed bit
 		{
-			//TODO: Check the bit order here of the binaries
 			wordres |= static_cast<uint16_t>(bitres) << (15 - j);
 		}
 	}
@@ -519,7 +517,17 @@ bool MD3PointTableAccess::GetAnalogControlODCIndexUsingMD3Index(const uint16_t m
 	}
 	return false;
 }
-
+bool MD3PointTableAccess::GetAnalogControlMD3IndexUsingODCIndex(const size_t index, uint8_t& module, uint8_t& channel)
+{
+	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogControlODCPointMap.find(index);
+	if (ODCPointMapIter != AnalogControlODCPointMap.end())
+	{
+		module = ODCPointMapIter->second->GetModuleAddress();
+		channel = ODCPointMapIter->second->GetChannel();
+		return true;
+	}
+	return false;
+}
 // Dumps the points out in a list, only used for UnitTests
 std::vector<MD3BinaryPoint> MD3PointTableAccess::DumpTimeTaggedPointList()
 {

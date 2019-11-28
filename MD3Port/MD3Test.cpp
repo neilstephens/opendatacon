@@ -143,6 +143,7 @@ const char *conffile1 = R"001(
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0, "PollGroup" : 2}],
 
 	"BinaryControls" : [{"Index": 80,  "Module" : 33, "Offset" : 0, "PointType" : "DOMOUTPUT"},
+						{"Index": 81,  "Module" : 34, "Offset" : 0, "PointType" : "DIMOUTPUT"},
 						{"Range" : {"Start" : 100, "Stop" : 115}, "Module" : 37, "Offset" : 0, "PointType" : "DOMOUTPUT"},
 						{"Range" : {"Start" : 116, "Stop" : 123}, "Module" : 38, "Offset" : 0, "PointType" : "POMOUTPUT"}],
 
@@ -232,27 +233,14 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
 	pODCLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pODCLogger);
-
-	std::string msg = "Logging for this test started..";
-
-	if (auto md3logger = odc::spdlog_get("MD3Port"))
-		md3logger->info(msg);
-	else
-		std::cout << "Error MD3Port Logger not operational";
-
-	if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->info(msg);
-	else
-		std::cout << "Error opendatacon Logger not operational";
 }
 void WriteStartLoggingMessage(std::string TestName)
 {
 	std::string msg = "Logging for '" + TestName + "' started..";
-
-	if (auto cblogger = odc::spdlog_get("CBPort"))
+	if (auto md3logger = odc::spdlog_get("MD3Port"))
 	{
-		cblogger->info("------------------");
-		cblogger->info(msg);
+		md3logger->info("------------------");
+		md3logger->info(msg);
 	}
 	else
 		std::cout << "Error MD3Port Logger not operational";
@@ -972,7 +960,7 @@ TEST_CASE("MD3Block - Fn20")
 	uint8_t ControlSelection = commandblocktest.GetControlSelection(); //9;
 	uint8_t ChannelSelection = commandblocktest.GetChannelSelection(); //5;
 
-	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ControlSelection, ChannelSelection);
+	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress,  ChannelSelection, ControlSelection);
 
 	std::string DesiredResult = BuildHexStringFromASCIIHexString("1e140c951e00");
 	std::string ActualResult = commandblock.ToBinaryString();
@@ -2126,6 +2114,7 @@ TEST_CASE("Station - DOMControlFn19")
 TEST_CASE("Station - InputPointControlFn20") //TODO: Input Point Control
 {
 	// One of the few multi-block commands - the request can be 2 or 3 blocks
+	// The 3 block version is an analog set point control, which is difficult to deal with...
 	// This is an example from where 32 is written out to an RTU to cause an auto reclose - in a local control routine
 	// Master -> 1e140c951e0061f36a95960000200fdff600
 	// RTU Response -> 9e0f0c054a00
@@ -2134,34 +2123,50 @@ TEST_CASE("Station - InputPointControlFn20") //TODO: Input Point Control
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 	//  Station 0x7C
 	uint8_t StationAddress = 0x7C;
-	uint8_t ModuleAddress = 39;
-	uint8_t ControlSelection = 9;
-	uint8_t ChannelSelection = 5;
-	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ControlSelection, ChannelSelection);
+	uint8_t ModuleAddress = 34;
+	DIMControlSelectionType ControlSelection = DIMControlSelectionType::TRIP;
+	uint8_t ChannelSelection = 0;
+	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ChannelSelection, ControlSelection);
 
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
 	output << commandblock.ToBinaryString();
 
-	MD3BlockData datablock1 = commandblock.GenerateSecondBlock(false); // Not last block
+	MD3BlockData datablock1 = commandblock.GenerateSecondBlock(true);
 	output << datablock1.ToBinaryString();
-
-	MD3BlockData datablock2 = commandblock.GenerateThirdBlock(0x20); // Control value is 32
-	output << datablock2.ToBinaryString();
-
-	// Hook the output function with a lambda
-	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f27956600");
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f22104200");
 
 	REQUIRE(Response == DesiredResult); // OK Command
+
+	//***** Now Test AnalogSetPoint Control on DIM
+	ModuleAddress = 39;
+	ControlSelection = DIMControlSelectionType::SETPOINT;
+	ChannelSelection = 5;
+	MD3BlockFn20MtoS commandblock2(StationAddress, ModuleAddress, ChannelSelection, ControlSelection);
+	output << commandblock2.ToBinaryString();
+
+	datablock1 = commandblock2.GenerateSecondBlock(false); // Not last block
+	output << datablock1.ToBinaryString();
+
+	MD3BlockData datablock2 = commandblock2.GenerateThirdBlock(0x20); // Control value is 32
+	output << datablock2.ToBinaryString();
+
+	// Send the Command
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0f27554600");
+
+	REQUIRE(Response == DesiredResult2); // OK Command
 
 	TestTearDown();
 }

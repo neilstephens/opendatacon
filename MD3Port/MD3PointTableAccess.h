@@ -87,6 +87,7 @@ public:
 	bool GetBinaryControlMD3IndexUsingODCIndex(const size_t index, uint8_t & module, uint8_t & channel, BinaryPointType & pointtype);
 
 	bool GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t & index);
+	bool GetAnalogControlMD3IndexUsingODCIndex(const size_t index, uint8_t& module, uint8_t& channel);
 
 	void ForEachBinaryPoint(std::function<void(MD3BinaryPoint &pt)>);
 	void ForEachAnalogPoint(std::function<void(MD3AnalogCounterPoint&pt)> fn);

@@ -1172,7 +1172,7 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 		failed = true;
 	}
 
-	// Check that the control point is defined, otherwise return a fail.
+	// Check that the control point is defined (and get the index), otherwise return a fail.
 	size_t ODCIndex = 0;
 	failed = MyPointConf->PointTable.GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection(), ODCIndex) ? failed : true;
 
@@ -1199,17 +1199,14 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 
 	if (MyPointConf->POMControlPoint.second == 0) // If NO pass through, then do normal operation
 	{
-		// Module contains 0 to 7 channels..
-		if (MyPointConf->PointTable.GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetOutputSelection() , ODCIndex))
-		{
-			EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-			val.functionCode = ControlCode::PULSE_ON;
+		// Module contains 0 to 15 channels..
+		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+		val.functionCode = ControlCode::PULSE_ON; // Always pulse on for POM control!
 
-			auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
-			event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
+		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
-			success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
-		}
+		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
 	}
 
 	// If the index is !=0, then the pass through is active. So success depends on the pass through
@@ -1334,14 +1331,11 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 }
 
 
-// AOM is ANALOG output control.
-void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS &Header, MD3Message_t &CompleteMD3Message)
+
+void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message_t& CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
-	// We have to pass the command to ODC, then set up a lambda to handle the sending of the response - when we get it.
-
-	LOGDEBUG("{} - DoInputPointControl",Name);
 
 	bool failed = false;
 
@@ -1366,6 +1360,33 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS &Header, MD3Message
 			failed = true;
 		}
 	}
+	if ((CompleteMD3Message.size() == 2) && (Header.GetControlSelection() == SETPOINT))
+	{
+		failed = true;
+		LOGERROR("{} - DoInputPointControl, Failed received a SETPOINT command, but only 2 blocks - should be 3", Name);
+	}
+
+	// Check that the control point is defined, otherwise return a fail.
+	size_t ODCIndex = 0;
+	if (Header.GetControlSelection() == SETPOINT)
+	{
+		// If it is a set point, we consider it an analog control...
+		if (!MyPointConf->PointTable.GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannelSelection(), ODCIndex))
+		{
+			LOGDEBUG("{} - DoInputPointControl - Could not find matching analog control point - Address {}, Control {}, Channel {}", Name, Header.GetModuleAddress(), ToString(Header.GetControlSelection()), Header.GetChannelSelection());
+			failed = true;
+		}
+	}
+	else
+	{
+		if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannelSelection(), ODCIndex))
+		{
+			LOGDEBUG("{} - DoInputPointControl - Could not find matching point - Address {}, Control {}, Channel {}", Name, Header.GetModuleAddress(), ToString(Header.GetControlSelection()), Header.GetChannelSelection());
+			failed = true;
+		}
+	}
+	// We just treat this as a slightly different form of output control. So we send the same commands to the mapped ODC index.
+	LOGDEBUG("{} - DoInputPointControl - Address {}, Control {}, Channel {}, Blocks {}", Name, Header.GetModuleAddress(), ToString(Header.GetControlSelection()), Header.GetChannelSelection(), CompleteMD3Message.size());
 
 	if (Header.GetStationAddress() == 0)
 	{
@@ -1373,24 +1394,54 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS &Header, MD3Message
 		return;
 	}
 
-	//TODO: Need some extra definitions to support defining the input control point, and will need a custom ODC point to manage the data the comes with this action.
-	/*
-	// Check that the control point is defined, otherwise return a fail.
-	size_t ODCIndex = 0;
-	failed = MyPointConf->PointTable.GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), ODCIndex) ? failed : true;
+	if (failed)
+	{
+		LOGDEBUG("{} - DoInputPointControl, Failed", Name);
+		SendControlOrScanRejected(Header);
+		return;
+	}
 
-	uint16_t output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
 	bool waitforresult = !MyPointConf->StandAloneOutstation;
+	bool success = true;
 
-	EventTypePayload<EventType::AnalogOutputInt16>::type val;
-	val.first = numeric_cast<int16_t>(output);
+	if (Header.GetControlSelection() == SETPOINT) // Analog Setpoint command
+	{
+		uint16_t output = Header.GetOutputFromThirdBlock(CompleteMD3Message[2]);
 
-	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
-	event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
-	*/
-	LOGERROR("Input Point Control NOT COMPLETE in OutStation");
+		EventTypePayload<EventType::AnalogOutputInt16>::type val;
+		val.first = numeric_cast<int16_t>(output);
 
-	if (!failed ) // && (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS))
+		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
+		event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
+		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+	}
+	else
+	{
+		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+		switch (Header.GetControlSelection())
+		{
+			case TRIP: val.functionCode = ControlCode::TRIP_PULSE_ON;
+				break;
+			case CLOSE: val.functionCode = ControlCode::CLOSE_PULSE_ON;
+				break;
+			case RAISE: val.functionCode = ControlCode::PULSE_ON;
+				break;
+			case LOWER: val.functionCode = ControlCode::PULSE_OFF; // No Raise/Lower??
+				break;
+			case SINGLEPOLEOPERATE: val.functionCode = ControlCode::PULSE_ON;
+				break;
+			case OFF: val.functionCode = ControlCode::LATCH_OFF;
+				break;
+			case ON: val.functionCode = ControlCode::LATCH_ON;
+				break;
+		}
+
+		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
+		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+	}
+
+	if (success )
 	{
 		SendControlOK(Header);
 	}

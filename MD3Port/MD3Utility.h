@@ -903,7 +903,7 @@ public:
 		endbyte = parent.GetEndByte();
 	}
 
-	MD3BlockFn20MtoS(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t ControlSelection, uint8_t ChannelSelection)
+	MD3BlockFn20MtoS(uint8_t StationAddress, uint8_t ModuleAddress,  uint8_t ChannelSelection, uint8_t ControlSelection)
 	{
 		bool lastblock = false;
 		bool mastertostation = true;
@@ -924,9 +924,9 @@ public:
 	{
 		return (data >> 8) & 0x0FF;
 	}
-	uint8_t GetControlSelection() const
+	DIMControlSelectionType GetControlSelection() const
 	{
-		return (data >> 4) & 0x0F;
+		return static_cast<DIMControlSelectionType>((data >> 4) & 0x0F);
 	}
 	uint8_t GetChannelSelection() const
 	{

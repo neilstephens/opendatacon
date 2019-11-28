@@ -101,7 +101,7 @@ OT numeric_cast(const ST value)
 // So our Outstation data structure needs to support these modes and addressing/module limits.
 
 
-enum MD3_FUNCTION_CODE
+enum MD3_FUNCTION_CODE : uint8_t
 {
 	ANALOG_UNCONDITIONAL = 5,      // HAS MODULE INFORMATION ATTACHED
 	ANALOG_DELTA_SCAN = 6,         // HAS MODULE INFORMATION ATTACHED
@@ -134,8 +134,35 @@ enum MD3_FUNCTION_CODE
 };
 
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
-enum BinaryPointType { BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT };
+enum BinaryPointType { BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT, DIMOUTPUT };
 enum PollGroupType { BinaryPoints, AnalogPoints, CounterPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
+
+enum DIMControlSelectionType : uint8_t
+{
+	TRIP = 1,
+	CLOSE = 2,
+	RAISE = 3,
+	LOWER = 4,
+	SETPOINT = 5,
+	SINGLEPOLEOPERATE = 6,
+	OFF = 7,
+	ON = 8
+};
+
+#define ENUMSTRING(A,E,B) if(A == E::B) return #B;
+
+inline std::string ToString(const DIMControlSelectionType cc)
+{
+	ENUMSTRING(cc, DIMControlSelectionType, TRIP)
+	ENUMSTRING(cc, DIMControlSelectionType, CLOSE)
+	ENUMSTRING(cc, DIMControlSelectionType, RAISE)
+	ENUMSTRING(cc, DIMControlSelectionType, LOWER)
+	ENUMSTRING(cc, DIMControlSelectionType, SETPOINT)
+	ENUMSTRING(cc, DIMControlSelectionType, SINGLEPOLEOPERATE)
+	ENUMSTRING(cc, DIMControlSelectionType, OFF)
+	ENUMSTRING(cc, DIMControlSelectionType, ON)
+	return "<no_string_representation>";
+}
 
 #define EOMBIT 0x40
 #define FOMBIT 0x80
@@ -154,7 +181,6 @@ enum PollGroupType { BinaryPoints, AnalogPoints, CounterPoints, TimeSetCommand, 
 
 class MD3Point // Abstract Class
 {
-	//TODO: Can we convert protection to strands??
 	/*	NONE              = 0,
 	ONLINE            = 1<<0,
 	RESTART           = 1<<1,

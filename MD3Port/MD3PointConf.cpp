@@ -320,6 +320,8 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 				pointtype = DOMOUTPUT;
 			else if (pointtypestring == "POMOUTPUT")
 				pointtype = POMOUTPUT;
+			else if (pointtypestring == "DIMOUTPUT")
+				pointtype = DIMOUTPUT;
 			else
 			{
 				LOGERROR("{} A point needs a valid \"PointType\" : {}", BinaryName, JSONNode[n].toStyledString());
