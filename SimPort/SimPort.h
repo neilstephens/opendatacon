@@ -33,6 +33,8 @@
 #include <random>
 
 #include "SimPortConf.h"
+#include "sqlite3/sqlite3.h"
+
 using namespace odc;
 
 class SimPortCollection;
@@ -56,6 +58,10 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	typedef std::shared_ptr<Timer_t> pTimer_t;
 	std::unordered_map<std::string, pTimer_t> Timers;
+	typedef std::shared_ptr<sqlite3> pDBConnection;
+	std::unordered_map<std::string, pDBConnection> DBConns;
+	typedef std::shared_ptr<sqlite3_stmt> pDBStatement;
+	std::unordered_map<std::string, pDBStatement> DBStats;
 	void PopulateNextEvent(std::shared_ptr<EventInfo> event);
 	void SpawnEvent(std::shared_ptr<EventInfo> event);
 	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)

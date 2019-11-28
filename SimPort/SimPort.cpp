@@ -31,6 +31,7 @@
 #include "SimPort.h"
 #include "SimPortConf.h"
 #include "SimPortCollection.h"
+#include "sqlite3/sqlite3.h"
 
 thread_local std::mt19937 SimPort::RandNumGenerator = std::mt19937(std::random_device()());
 
@@ -523,6 +524,48 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 
 				if(!exists)
 					pConf->AnalogIndicies.push_back(index);
+
+				if(Analogs[n].isMember("SQLite3File"))
+				{
+					sqlite3* db;
+					const char* filename = Analogs[n]["SQLite3File"].asString().c_str();
+					auto rv = sqlite3_open_v2(filename,&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_SHAREDCACHE,nullptr);
+					if(rv != SQLITE_OK)
+					{
+						if(auto log = odc::spdlog_get("SimPort"))
+							log->error("Failed to open SQLite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
+					}
+					else
+					{
+						auto deleter = [](sqlite3* db){sqlite3_close_v2(db);};
+						DBConns["Analog"+std::to_string(index)] = pDBConnection(db,deleter);
+
+						if(Analogs[n].isMember("SQLite3Query"))
+						{
+							const char* query = Analogs[n]["SQLite3Query"].asString().c_str();
+							int len = Analogs[n]["SQLite3Query"].asString().size();
+							sqlite3_stmt* stmt;
+							const char* tail;
+							auto rv = sqlite3_prepare_v2(db,query,len,&stmt,&tail);
+							if(rv != SQLITE_OK)
+							{
+								if(auto log = odc::spdlog_get("SimPort"))
+									log->error("Failed to prepare SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
+							}
+							else
+							{
+								auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
+								DBStats["Analog"+std::to_string(index)] = pDBStatement(stmt,deleter);
+							}
+						}
+						else
+						{
+							if(auto log = odc::spdlog_get("SimPort"))
+								log->error("'SQLite3Query' parameter required for point : '{}'", Analogs[n].toStyledString());
+						}
+
+					}
+				}
 
 				if(Analogs[n].isMember("StdDev"))
 					pConf->AnalogStdDevs[index] = Analogs[n]["StdDev"].asDouble();
