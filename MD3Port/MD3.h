@@ -139,6 +139,7 @@ enum PollGroupType { BinaryPoints, AnalogPoints, CounterPoints, TimeSetCommand, 
 
 enum DIMControlSelectionType : uint8_t
 {
+	RESERVED_0 = 0,
 	TRIP = 1,
 	CLOSE = 2,
 	RAISE = 3,
@@ -146,13 +147,21 @@ enum DIMControlSelectionType : uint8_t
 	SETPOINT = 5,
 	SINGLEPOLEOPERATE = 6,
 	OFF = 7,
-	ON = 8
+	ON = 8,
+	RESERVED_9 = 9,
+	RESERVED_10 = 10,
+	RESERVED_11 = 11,
+	RESERVED_12 = 12,
+	RESERVED_13 = 13,
+	RESERVED_14 = 14,
+	RESERVED_15 = 15
 };
 
 #define ENUMSTRING(A,E,B) if(A == E::B) return #B;
 
 inline std::string ToString(const DIMControlSelectionType cc)
 {
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_0)
 	ENUMSTRING(cc, DIMControlSelectionType, TRIP)
 	ENUMSTRING(cc, DIMControlSelectionType, CLOSE)
 	ENUMSTRING(cc, DIMControlSelectionType, RAISE)
@@ -161,6 +170,13 @@ inline std::string ToString(const DIMControlSelectionType cc)
 	ENUMSTRING(cc, DIMControlSelectionType, SINGLEPOLEOPERATE)
 	ENUMSTRING(cc, DIMControlSelectionType, OFF)
 	ENUMSTRING(cc, DIMControlSelectionType, ON)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_9)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_10)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_11)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_12)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_13)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_14)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_15)
 	return "<no_string_representation>";
 }
 

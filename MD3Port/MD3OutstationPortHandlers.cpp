@@ -1338,6 +1338,7 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 	// If the Station address is 0x00 - no response, otherwise, Response can be Fn 15 Control OK, or Fn 30 Control or scan rejected
 
 	bool failed = false;
+	uint16_t output = 0;
 
 	// Check all the things we can
 	if (!((CompleteMD3Message.size() == 2) || (CompleteMD3Message.size() == 3)))
@@ -1359,6 +1360,8 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 			// Message verification failed - something was corrupted
 			failed = true;
 		}
+		else
+			output = Header.GetOutputFromThirdBlock(CompleteMD3Message[2]);
 	}
 	if ((CompleteMD3Message.size() == 2) && (Header.GetControlSelection() == SETPOINT))
 	{
@@ -1386,7 +1389,7 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 		}
 	}
 	// We just treat this as a slightly different form of output control. So we send the same commands to the mapped ODC index.
-	LOGDEBUG("{} - DoInputPointControl - Address {}, Control {}, Channel {}, Blocks {}", Name, Header.GetModuleAddress(), ToString(Header.GetControlSelection()), Header.GetChannelSelection(), CompleteMD3Message.size());
+	LOGDEBUG("{} - DoInputPointControl - Address {}, Control {}, Channel {}, Blocks {}, Output {}", Name, Header.GetModuleAddress(), ToString(Header.GetControlSelection()), Header.GetChannelSelection(), CompleteMD3Message.size(),output);
 
 	if (Header.GetStationAddress() == 0)
 	{
@@ -1404,20 +1407,34 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 	bool waitforresult = !MyPointConf->StandAloneOutstation;
 	bool success = true;
 
-	if (Header.GetControlSelection() == SETPOINT) // Analog Setpoint command
+	if (CompleteMD3Message.size() == 3)
 	{
-		uint16_t output = Header.GetOutputFromThirdBlock(CompleteMD3Message[2]);
+		if (Header.GetControlSelection() == SETPOINT) // Analog Setpoint command
+		{
+			EventTypePayload<EventType::AnalogOutputInt16>::type val;
+			val.first = numeric_cast<int16_t>(output);
 
-		EventTypePayload<EventType::AnalogOutputInt16>::type val;
-		val.first = numeric_cast<int16_t>(output);
-
-		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
-		event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
-		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+			auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
+			event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
+			success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+		}
+		else
+		{
+			// Think is a trigger for a LPC routine on the RTU.
+			// The code below pretends to work in a simulator setting - but cannot be correct.
+			// Need to understand what the code is, where it is stored in DNMS and how to respond.
+			LOGDEBUG("{} - DoInputPointControl, Warning - received a reserved Control Code - taking a default acton", Name);
+			EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+			val.functionCode = ControlCode::PULSE_ON;
+			auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
+			event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+			success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+		}
 	}
 	else
 	{
 		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+
 		switch (Header.GetControlSelection())
 		{
 			case TRIP: val.functionCode = ControlCode::TRIP_PULSE_ON;
@@ -1433,6 +1450,9 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 			case OFF: val.functionCode = ControlCode::LATCH_OFF;
 				break;
 			case ON: val.functionCode = ControlCode::LATCH_ON;
+				break;
+
+			default: val.functionCode = ControlCode::PULSE_ON;
 				break;
 		}
 
