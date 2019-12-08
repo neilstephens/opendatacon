@@ -217,6 +217,12 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 {
 	bool DoResendCommand = false;
 
+	// Can't do anything if we are not enabled/connected.
+	if (!enabled)
+	{
+		LOGERROR("{} Master trying to SendNextCommand while disabled! ", Name);
+		return;
+	}
 
 	if (!MasterCommandProtectedData.ProcessingCBCommand)
 	{
@@ -345,6 +351,12 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t& CompleteCBMessage)
 {
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 
+	if (!enabled)
+	{
+		LOGERROR("{} Master Received a message while disabled! ", Name);
+		return;
+	}
+
 	//! Anywhere we find that we don't have what we need, return. If we succeed we send the next command at the end of this method.
 	// If the timeout on the command is activated, then the next command will be sent - or resent.
 	// Cant just use by reference, complete message and header will go out of scope...
@@ -352,7 +364,7 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t& CompleteCBMessage)
 		{
 			if (CompleteCBMessage.size() == 0)
 			{
-			      LOGERROR("{} Received a Master to Station message with zero length!!! ",Name);
+			      LOGERROR("{} Received a Station to Master message with zero length!!! ",Name);
 			      return;
 			}
 
