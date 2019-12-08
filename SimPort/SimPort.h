@@ -32,6 +32,9 @@
 #include <shared_mutex>
 #include <random>
 
+#include "SimPortConf.h"
+#include "sqlite3/sqlite3.h"
+
 using namespace odc;
 
 class SimPortCollection;
@@ -55,8 +58,48 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	typedef std::shared_ptr<Timer_t> pTimer_t;
 	std::unordered_map<std::string, pTimer_t> Timers;
-	void SpawnAnalogEvent(size_t index);
-	void SpawnBinaryEvent(size_t index, bool val);
+	typedef std::shared_ptr<sqlite3> pDBConnection;
+	std::unordered_map<std::string, pDBConnection> DBConns;
+	typedef std::shared_ptr<sqlite3_stmt> pDBStatement;
+	std::unordered_map<std::string, pDBStatement> DBStats;
+	void PopulateNextEvent(std::shared_ptr<EventInfo> event);
+	void SpawnEvent(std::shared_ptr<EventInfo> event);
+	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)
+	{
+		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+		double mean, std_dev;
+		{ //lock scope
+			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+			mean = pConf->AnalogStartVals.at(event->GetIndex());
+			std_dev = pConf->AnalogStdDevs.at(event->GetIndex());
+		}
+		//change value around mean
+		std::normal_distribution<double> distribution(mean, std_dev);
+		event->SetPayload<EventType::Analog>(distribution(RandNumGenerator));
+	}
+	inline void StartAnalogEvents(size_t index)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
+		RandomiseAnalog(event);
+		SpawnEvent(event);
+	}
+	inline void StartAnalogEvents(size_t index, double val)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
+		event->SetPayload<EventType::Analog>(std::move(val));
+		SpawnEvent(event);
+	}
+	inline void StartBinaryEvents(size_t index)
+	{
+		std::uniform_int_distribution<bool> distribution(0,1);
+		StartBinaryEvents(index,distribution(RandNumGenerator));
+	}
+	inline void StartBinaryEvents(size_t index, bool val)
+	{
+		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name);
+		event->SetPayload<EventType::Binary>(std::move(val));
+		SpawnEvent(event);
+	}
 	void PortUp();
 	void PortDown();
 	std::vector<uint32_t> IndexesFromString(const std::string& index_str, const std::string &type);

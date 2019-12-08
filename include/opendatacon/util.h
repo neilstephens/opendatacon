@@ -29,14 +29,8 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 
-//fast rough random numbers
-#define CONG(jcong) (jcong = 69069*jcong+1234567)
-#define ZERO_TO_ONE(a) (CONG(a)*2.328306e-10)
-
 namespace odc
 {
-
-typedef uint32_t rand_t;
 
 void spdlog_init_thread_pool(size_t q_size, size_t thread_count);
 std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool();
