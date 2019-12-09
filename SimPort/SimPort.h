@@ -91,8 +91,9 @@ private:
 	}
 	inline void StartBinaryEvents(size_t index)
 	{
-		std::uniform_int_distribution<bool> distribution(0,1);
-		StartBinaryEvents(index,distribution(RandNumGenerator));
+		std::uniform_int_distribution<int> distribution(0,1);
+		bool val = static_cast<bool>(distribution(RandNumGenerator));
+		StartBinaryEvents(index,val);
 	}
 	inline void StartBinaryEvents(size_t index, bool val)
 	{

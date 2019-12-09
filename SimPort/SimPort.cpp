@@ -458,10 +458,11 @@ void SimPort::SpawnEvent(std::shared_ptr<EventInfo> event)
 		return;
 	}
 
-	bool shouldPub;
+	bool shouldPub = true;
 	{ //lock scope
 		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		shouldPub = !ForcedStates[event->GetIndex()];
+		if(ForcedStates.count(event->GetIndex()))
+			shouldPub = !ForcedStates.at(event->GetIndex());
 	}
 	if(shouldPub)
 		PublishEvent(event);
