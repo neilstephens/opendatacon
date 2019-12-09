@@ -544,7 +544,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 				SenderName,                                                // 5
 				TagValue);                                                 // 6
 			pWrapper->QueueEvent(jsonevent);
-			LOGDEBUG("Queued Event {}", jsonevent);
+			LOGTRACE("Queued Event {}", jsonevent);
 		}
 		catch(std::exception& e)
 		{
@@ -669,22 +669,22 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("GlobalUseSystemPython"))
 		MyConf->GlobalUseSystemPython = JSONRoot["GlobalUseSystemPython"].asBool(); // Defaults to OFF
 
-	if (JSONRoot.isMember("Analogs"))
+	if (JSONRoot.isMember("Analog"))
 	{
-		const auto Analogs = JSONRoot["Analogs"];
+		const auto Analogs = JSONRoot["Analog"];
 		LOGDEBUG("Conf processed - Analog Points");
 		ProcessPoints(Analog, Analogs);
 	}
-	if (JSONRoot.isMember("Binaries"))
+	if (JSONRoot.isMember("Binary"))
 	{
-		const auto Binaries = JSONRoot["Binaries"];
+		const auto Binaries = JSONRoot["Binary"];
 		LOGDEBUG("Conf processed - Binary Points");
 		ProcessPoints(Binary, Binaries);
 	}
 
-	if (JSONRoot.isMember("BinaryControls"))
+	if (JSONRoot.isMember("Control"))
 	{
-		const auto BinaryControls = JSONRoot["BinaryControls"];
+		const auto BinaryControls = JSONRoot["Control"];
 		LOGDEBUG("Conf processed - Binary Controls");
 		ProcessPoints(BinaryControl, BinaryControls);
 	}
@@ -700,7 +700,7 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 	if (ptype == Binary)
 		Name = "Binary";
 	if (ptype == BinaryControl)
-		Name = "BinaryControl";
+		Name = "Control";
 
 	LOGDEBUG("Conf processing - {}", Name);
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
@@ -723,10 +723,15 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 			// We have an index and a tag, so add to the hash.
 			if (ptype == Analog)
 				AnalogMap.emplace(std::make_pair(index, Tag));
-			if (ptype == Binary)
+			else if (ptype == Binary)
 				BinaryMap.emplace(std::make_pair(index, Tag));
-			if (ptype == BinaryControl)
+			else if (ptype == BinaryControl)
 				BinaryControlMap.emplace(std::make_pair(index, Tag));
+			else
+			{
+				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
+			}
+			LOGTRACE("Type - {}, Tag - {}, Index - {}", Name, Tag, index);
 		}
 	}
 	LOGDEBUG("Conf processing - {} - Finished",Name);

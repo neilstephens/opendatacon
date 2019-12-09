@@ -67,7 +67,7 @@ class SimPortClass:
 
         # time.perf_counter_ns() (3.6 up) gives the time including include sleeps time.process_time() is overall time.
     def timeusstart(self):
-         self.timestart = time.perf_counter() #float fractions of a second 
+         self.timestart = time.perf_counter() #float fractions of a second
 
     def timeusstop(self):
         return int((time.perf_counter()-self.timestart)*1000000)
@@ -133,24 +133,6 @@ class SimPortClass:
         self.enabled = False
         return
 
-    # Look for the matching PITag for this point. If we dont find it return False.
-    # This is going to get called a lot, so may need to be optimised.
-#    def GetPITag(self, EventType, ODCIndex):
-#
-        # TODO Split this on startup, so we dont do it every time.
-#        Json = self.ConfigDict.get(EventType,"")    # If no configured points for a point type, return empty Json
-
-#        if (len(Json)==0):
-#            self.LogError("Can't find point definitions for {} types".format(EventType))
-#            return ""
-
-        #TODO Do we need a faster way of doing this? Potentially 10,000 points or more.
-#        for x in Json:
-#            if(x["Index"] == ODCIndex):
-#                return x["PITag"]       # we have a match!
-
-#        return ""
-
     def delivery_report(self, err, msg):
         """ Called once for each message produced to indicate delivery result. Triggered by poll() or flush(). """
         if err is not None:
@@ -194,7 +176,7 @@ class SimPortClass:
             self.measuretimeus = 0
             self.measuretimeus2 = 0
 
-            # Get Events from the queue and process them, up until we have an empty queue or MaxMessageCount entries 
+            # Get Events from the queue and process them, up until we have an empty queue or MaxMessageCount entries
             # Then trigger the kafka library to send them.
 
             while ((EventCount < MaxMessageCount)):
