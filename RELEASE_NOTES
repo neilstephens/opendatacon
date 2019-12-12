@@ -1,4 +1,14 @@
-opendatacon version 1.2.1
+opendatacon version 1.3.0
+
+1.3.0
+	- PyPort: Implement your own port in Python!
+	- Optional bundling of system/3rdparty libs in package
+	- Conitel/MD3 fixes
+	- SimPort UI functions
+		- force points
+		- manually send events
+		- change event rates
+	- Other small features/fixes
 
 1.2.2
 	- Conitel (CBPort) improvements and fixes
