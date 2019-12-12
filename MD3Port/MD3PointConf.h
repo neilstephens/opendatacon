@@ -111,5 +111,6 @@ public:
 	uint32_t MD3CommandTimeoutmsec = 5000;
 	// How many times do we retry a command, before we give up and move onto the next one?
 	uint32_t MD3CommandRetries = 3;
+	std::string FileName;
 };
 #endif

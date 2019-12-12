@@ -45,6 +45,8 @@ using namespace odc;
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
+enum PointType { Binary = 0, Analog = 1, BinaryControl = 2};
+
 class PyPort: public DataPort
 {
 
@@ -60,14 +62,16 @@ public:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 	void SetTimer(uint32_t id, uint32_t delayms);
 	void RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback);
-	void PublishEventCall(const std::string &EventTypeStr, uint32_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
-	bool IsOperational() { return PortOperational.load(); };
+	void PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
 
-	// Utility/Testing
-	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
+	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
 
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
+
+	size_t GetEventQueueSize() { return pWrapper->GetEventQueueSize(); }
+	std::string GetTagValue(EventType Eventt, size_t Index);
+	void ProcessPoints(PointType ptype, const Json::Value& JSONNode);
 
 protected:
 	// Worker function to try and clean up the code...
@@ -77,9 +81,11 @@ private:
 	std::unique_ptr<PythonWrapper> pWrapper;
 	std::string JSONMain;
 	std::string JSONOverride;
+	std::unordered_map<size_t, std::string> AnalogMap;
+	std::unordered_map<size_t, std::string> BinaryMap;
+	std::unordered_map<size_t, std::string> BinaryControlMap;
 
 	ServerTokenType pServer;
-	std::atomic_bool PortOperational{ false };
 
 	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
 	static std::shared_ptr<asio::io_context::strand> python_strand;

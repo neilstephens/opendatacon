@@ -94,7 +94,7 @@ public:
 
 	enum CommandType { None, Trip, Close, SetA, SetB };
 
-	const CBTime CommandValidTimemsec = 10000; // PendingCommand valid for 10 seconds..
+	const CBTime CommandValidTimemsec = 30000; // PendingCommand valid for 30 seconds..
 	CommandType Command = None;
 	uint16_t Data = 0;
 	CBTime ExpiryTime = 0; // If we dont receive the execute before this time, it will not be executed
@@ -128,6 +128,7 @@ public:
 	void FuncTripClose(CBBlockData & Header, PendingCommandType::CommandType pCommand);
 	void FuncSetAB(CBBlockData & Header, PendingCommandType::CommandType pCommand);
 	void ExecuteCommand(CBBlockData & Header);
+	bool ExecuteCommandOnGroup(const PendingCommandType &PendingCommand, uint8_t Group, bool singlecommand);
 	bool ExecuteBinaryControl(uint8_t group, uint8_t Channel, bool point_on);
 	bool ExecuteAnalogControl(uint8_t group, uint8_t Channel, uint16_t data);
 	void FuncMasterStationRequest(CBBlockData &Header, CBMessage_t &CompleteCBMessage);
@@ -150,11 +151,13 @@ public:
 	uint8_t CountBinaryBlocksWithChanges();
 
 	// Testing use only
-	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group]; } // Return a copy, cannot be changed
+	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group & 0x0F]; } // Return a copy, cannot be changed
+	int GetSOEOffsetMinutes() { return SOETimeOffsetMinutes; }
 private:
 
 	bool DigitalChangedFlagCalculationMethod(void);
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);
+	int SOETimeOffsetMinutes = 0;
 
 	OutstationSystemFlags SystemFlags;
 
@@ -163,7 +166,7 @@ private:
 	CBMessage_t LastSentCBMessage;
 	CBMessage_t LastSentSOEMessage; // For SOE specific resend commands.
 
-	PendingCommandType PendingCommands[15]; // Store a potential pending command for each group.
+	PendingCommandType PendingCommands[16+1]; // Store a potential pending command for each group.
 };
 
 #endif

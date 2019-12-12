@@ -29,6 +29,7 @@
 
 #include <queue>
 #include <mutex>
+#include <shared_mutex>
 
 // Threadsafe , size limited producer/consumer queue
 template <class T>
@@ -37,12 +38,12 @@ class ProducerConsumerQueue
 private:
 	const uint32_t MaxSize = 255; // MD3 maximum event queue size
 	std::queue<T> Queue;
-	std::mutex Mut;
+	std::shared_timed_mutex m;
 
 public:
 	bool Peek(T& item)
 	{
-		std::unique_lock<std::mutex> lck(Mut);
+		std::shared_lock<std::shared_timed_mutex> lck(m);
 		if (Queue.empty())
 		{
 			return false;
@@ -52,7 +53,7 @@ public:
 	}
 	bool Pop(T& item)
 	{
-		std::unique_lock<std::mutex> lck(Mut);
+		std::shared_lock<std::shared_timed_mutex> lck(m);
 		if (Queue.empty())
 		{
 			return false;
@@ -63,7 +64,7 @@ public:
 	}
 	bool Pop()
 	{
-		std::unique_lock<std::mutex> lck(Mut);
+		std::shared_lock<std::shared_timed_mutex> lck(m);
 		if (Queue.empty())
 		{
 			return false;
@@ -74,7 +75,7 @@ public:
 
 	bool Push(const T& item)
 	{
-		std::unique_lock<std::mutex> lck(Mut);
+		std::shared_lock<std::shared_timed_mutex> lck(m);
 
 		// Limit the number of elements...
 		if (Queue.size() >= MaxSize)
@@ -86,17 +87,17 @@ public:
 
 	bool IsEmpty()
 	{
-		std::unique_lock<std::mutex> lck(Mut);
+		std::shared_lock<std::shared_timed_mutex> lck(m);
 		return Queue.empty();
 	}
 	size_t Size()
 	{
-		std::unique_lock<std::mutex> lck(Mut);
+		std::shared_lock<std::shared_timed_mutex> lck(m);
 		return Queue.size();
 	}
 	bool IsFull()
 	{
-		std::unique_lock<std::mutex> lck(Mut);
+		std::shared_lock<std::shared_timed_mutex> lck(m);
 		return (Queue.size >= MaxSize);
 	}
 };

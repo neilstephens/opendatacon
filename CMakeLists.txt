@@ -17,6 +17,14 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  #
+
+option(SUPPRESS_ZERO_CHECK "Turn off the VS ZERO_CHECK config which runs everytime you build" OFF)
+if(SUPPRESS_ZERO_CHECK)
+	# If you dont want the ZERO_CHECK project in VS have the following line enabled.
+	set(CMAKE_SUPPRESS_REGENERATION true)
+endif()
+
+
 if(WIN32)
 	cmake_minimum_required(VERSION 3.4)
 else()

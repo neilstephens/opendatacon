@@ -66,9 +66,10 @@ inline char ToChar(uint8_t v)
 template <class T>
 std::string to_hexstring(T val)
 {
-	std::stringstream sstream;
-	sstream << std::hex << val;
-	return sstream.str();
+	return fmt::format("{:#06x}",val);
+	//std::stringstream sstream;
+	//sstream << std::hex << val;
+	//return sstream.str();
 }
 template <class T>
 std::string to_binstring(T val)
@@ -78,7 +79,8 @@ std::string to_binstring(T val)
 	return sstream.str();
 }
 // Create an ASCII string version of the time from the MD3 time - which is msec since epoch.
-std::string to_timestringfromMD3time(MD3Time _time);
+std::string to_LOCALtimestringfromMD3time(MD3Time _time);
+std::string to_stringfromMD3time(MD3Time _time);
 // Return the current UTC offset in minutes.
 int tz_offset();
 
@@ -901,7 +903,7 @@ public:
 		endbyte = parent.GetEndByte();
 	}
 
-	MD3BlockFn20MtoS(uint8_t StationAddress, uint8_t ModuleAddress, uint8_t ControlSelection, uint8_t ChannelSelection)
+	MD3BlockFn20MtoS(uint8_t StationAddress, uint8_t ModuleAddress,  uint8_t ChannelSelection, uint8_t ControlSelection)
 	{
 		bool lastblock = false;
 		bool mastertostation = true;
@@ -922,9 +924,9 @@ public:
 	{
 		return (data >> 8) & 0x0FF;
 	}
-	uint8_t GetControlSelection() const
+	DIMControlSelectionType GetControlSelection() const
 	{
-		return (data >> 4) & 0x0F;
+		return static_cast<DIMControlSelectionType>((data >> 4) & 0x0F);
 	}
 	uint8_t GetChannelSelection() const
 	{

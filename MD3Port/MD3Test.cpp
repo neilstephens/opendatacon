@@ -143,6 +143,7 @@ const char *conffile1 = R"001(
 	"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 15}, "Module" : 32, "Offset" : 0, "PollGroup" : 2}],
 
 	"BinaryControls" : [{"Index": 80,  "Module" : 33, "Offset" : 0, "PointType" : "DOMOUTPUT"},
+						{"Index": 81,  "Module" : 34, "Offset" : 0, "PointType" : "DIMOUTPUT"},
 						{"Range" : {"Start" : 100, "Stop" : 115}, "Module" : 37, "Offset" : 0, "PointType" : "DOMOUTPUT"},
 						{"Range" : {"Start" : 116, "Stop" : 123}, "Module" : 38, "Offset" : 0, "PointType" : "POMOUTPUT"}],
 
@@ -232,27 +233,14 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
 	pODCLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pODCLogger);
-
-	std::string msg = "Logging for this test started..";
-
-	if (auto md3logger = odc::spdlog_get("MD3Port"))
-		md3logger->info(msg);
-	else
-		std::cout << "Error MD3Port Logger not operational";
-
-	if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->info(msg);
-	else
-		std::cout << "Error opendatacon Logger not operational";
 }
 void WriteStartLoggingMessage(std::string TestName)
 {
 	std::string msg = "Logging for '" + TestName + "' started..";
-
-	if (auto cblogger = odc::spdlog_get("CBPort"))
+	if (auto md3logger = odc::spdlog_get("MD3Port"))
 	{
-		cblogger->info("------------------");
-		cblogger->info(msg);
+		md3logger->info("------------------");
+		md3logger->info(msg);
 	}
 	else
 		std::cout << "Error MD3Port Logger not operational";
@@ -266,7 +254,7 @@ void WriteStartLoggingMessage(std::string TestName)
 void TestSetup(bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
-	SetupLoggers();
+	SetupLoggers(spdlog::level::level_enum::debug);
 	#endif
 
 	if (writeconffiles)
@@ -972,7 +960,7 @@ TEST_CASE("MD3Block - Fn20")
 	uint8_t ControlSelection = commandblocktest.GetControlSelection(); //9;
 	uint8_t ChannelSelection = commandblocktest.GetChannelSelection(); //5;
 
-	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ControlSelection, ChannelSelection);
+	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress,  ChannelSelection, ControlSelection);
 
 	std::string DesiredResult = BuildHexStringFromASCIIHexString("1e140c951e00");
 	std::string ActualResult = commandblock.ToBinaryString();
@@ -1047,7 +1035,7 @@ TEST_CASE("MD3Block - Fn43")
 	REQUIRE(b43_b2.CheckSumPasses());
 
 	MD3Time timebase = static_cast<uint64_t>(b43_b2.GetData()) * 1000 + b43_t1.GetMilliseconds(); //MD3Time msec since Epoch.
-	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
 
 	TestTearDown();
 }
@@ -1062,7 +1050,7 @@ TEST_CASE("MD3Block - Fn44")
 	TestSetup(false);
 
 	MD3Time timebase = static_cast<uint64_t>(0x5ad6b75f) * 1000 + (0x252 & 0x03FF); //MD3Time msec since Epoch.
-	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
 
 	MD3BlockFn44MtoS b44(0x38, 999);
 	REQUIRE(b44.GetMilliseconds() == 999);
@@ -1084,7 +1072,7 @@ TEST_CASE("MD3Block - Fn44")
 
 	int UTCOffset = b44_b3.GetFirstWord();
 	timebase = static_cast<uint64_t>(b44_b2.GetData()) * 1000 + b44_t1.GetMilliseconds(); //MD3Time msec since Epoch.
-	LOGDEBUG("TimeDate Packet Local : " + to_timestringfromMD3time(timebase)+ " UTC Offset Minutes "+std::to_string(UTCOffset));
+	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase)+ " UTC Offset Minutes "+std::to_string(UTCOffset));
 	TestTearDown();
 }
 TEST_CASE("MD3Block - Fn15 OK Packet")
@@ -1627,7 +1615,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	//-----------------------------------------
 	// Need to test the code path where the delta between two records is > 31.999 seconds.
 	// Cheat and write directly to the HRER queue
-	MD3Time changedtime = MD3Now();
+	MD3Time changedtime = MD3NowUTC();
 
 	MD3BinaryPoint pt1(1, 34, 1, 0, TIMETAGGEDINPUT, 1, true, changedtime);
 	MD3BinaryPoint pt2(2, 34, 2, 0, TIMETAGGEDINPUT, 0, true, static_cast<MD3Time>(changedtime + 32000));
@@ -1657,7 +1645,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	commandblock = MD3BlockFn9(0x7C, true, 5, 0, true, true);
 	output << commandblock.ToBinaryString();
 
-	uint64_t currenttime = MD3Now();
+	uint64_t currenttime = MD3NowUTC();
 	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000), true );
 	output << datablock.ToBinaryString();
 
@@ -1825,7 +1813,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	RBlock = MD3BlockData(BlockString);
 
 	MD3Time timebase = static_cast<uint64_t>(RBlock.GetData()) * 1000; //MD3Time msec since Epoch.
-	LOGDEBUG("Fn11 TimeDate Packet Local : " + to_timestringfromMD3time(timebase));
+	LOGDEBUG("Fn11 TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
 	REQUIRE(timebase == 0x0000016338b6d400ULL);
 
 	// Then 4 COS blocks.
@@ -2004,7 +1992,7 @@ TEST_CASE("Station - POMControlFn17")
 	MD3OSPort->Enable();
 
 	//  Station 0x7C
-	MD3BlockFn17MtoS commandblock(0x7C, 37, 1);
+	MD3BlockFn17MtoS commandblock(0x7C, 37, 15);
 
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
@@ -2020,7 +2008,7 @@ TEST_CASE("Station - POMControlFn17")
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f25014d00");
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f250f7900");
 
 	REQUIRE(Response == DesiredResult); // OK Command
 
@@ -2032,7 +2020,7 @@ TEST_CASE("Station - POMControlFn17")
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e25515300");
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc1e255f6700");
 
 	REQUIRE(Response == DesiredResult2); // Control/Scan Rejected Command
 
@@ -2123,9 +2111,10 @@ TEST_CASE("Station - DOMControlFn19")
 	TestTearDown();
 }
 
-TEST_CASE("Station - InputPointControlFn20") //TODO: Input Point Control
+TEST_CASE("Station - InputPointControlFn20")
 {
 	// One of the few multi-block commands - the request can be 2 or 3 blocks
+	// The 3 block version is an analog set point control, which is difficult to deal with...
 	// This is an example from where 32 is written out to an RTU to cause an auto reclose - in a local control routine
 	// Master -> 1e140c951e0061f36a95960000200fdff600
 	// RTU Response -> 9e0f0c054a00
@@ -2134,34 +2123,50 @@ TEST_CASE("Station - InputPointControlFn20") //TODO: Input Point Control
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 	//  Station 0x7C
 	uint8_t StationAddress = 0x7C;
-	uint8_t ModuleAddress = 39;
-	uint8_t ControlSelection = 9;
-	uint8_t ChannelSelection = 5;
-	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ControlSelection, ChannelSelection);
+	uint8_t ModuleAddress = 34;
+	DIMControlSelectionType ControlSelection = DIMControlSelectionType::TRIP;
+	uint8_t ChannelSelection = 0;
+	MD3BlockFn20MtoS commandblock(StationAddress, ModuleAddress, ChannelSelection, ControlSelection);
 
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
 	output << commandblock.ToBinaryString();
 
-	MD3BlockData datablock1 = commandblock.GenerateSecondBlock(false); // Not last block
+	MD3BlockData datablock1 = commandblock.GenerateSecondBlock(true);
 	output << datablock1.ToBinaryString();
-
-	MD3BlockData datablock2 = commandblock.GenerateThirdBlock(0x20); // Control value is 32
-	output << datablock2.ToBinaryString();
-
-	// Hook the output function with a lambda
-	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
-	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f27956600");
+	const std::string DesiredResult = BuildHexStringFromASCIIHexString("fc0f22104200");
 
 	REQUIRE(Response == DesiredResult); // OK Command
+
+	//***** Now Test AnalogSetPoint Control on DIM
+	ModuleAddress = 39;
+	ControlSelection = DIMControlSelectionType::SETPOINT;
+	ChannelSelection = 5;
+	MD3BlockFn20MtoS commandblock2(StationAddress, ModuleAddress, ChannelSelection, ControlSelection);
+	output << commandblock2.ToBinaryString();
+
+	datablock1 = commandblock2.GenerateSecondBlock(false); // Not last block
+	output << datablock1.ToBinaryString();
+
+	MD3BlockData datablock2 = commandblock2.GenerateThirdBlock(0x20); // Control value is 32
+	output << datablock2.ToBinaryString();
+
+	// Send the Command
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	const std::string DesiredResult2 = BuildHexStringFromASCIIHexString("fc0f27554600");
+
+	REQUIRE(Response == DesiredResult2); // OK Command
 
 	TestTearDown();
 }
@@ -2257,7 +2262,12 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = MD3Now();
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+
+	uint64_t currenttime = MD3NowUTC();
 
 	// TimeChange command (Fn 43), Station 0x7C
 	MD3BlockFn43MtoS commandblock(0x7C, currenttime % 1000);
@@ -2268,10 +2278,6 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 
 	MD3BlockData datablock(static_cast<uint32_t>(currenttime / 1000),true);
 	output << datablock.ToBinaryString();
-
-	// Hook the output function with a lambda
-	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2291,6 +2297,30 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 	REQUIRE(Response[0] == ToChar(0xFC));
 	REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
 
+	// Now do again with a 10 hour offset - just use the same msec as first command. Does not matter for this test.
+	output << commandblock.ToBinaryString();
+	MD3BlockData datablock3(static_cast<uint32_t>(currenttime / 1000 + 10*60*60), true); // Current time + 10 hours (in seconds)
+	output << datablock3.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
+	REQUIRE(MD3OSPort->GetSOEOffsetMinutes() == 10*60);
+
+	// Now do again with a -9 hour offset - just use the same msec as first command. Does not matter for this test.
+	output << commandblock.ToBinaryString();
+	MD3BlockData datablock4(static_cast<uint32_t>(currenttime / 1000 - 9 * 60 * 60), true); // Current time - 9 hours (in seconds)
+	output << datablock4.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
+	REQUIRE(MD3OSPort->GetSOEOffsetMinutes() == -9 * 60);
+
 	TestTearDown();
 }
 TEST_CASE("Station - ChangeTimeDateFn44")
@@ -2302,7 +2332,7 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = MD3Now();
+	uint64_t currenttime = MD3NowUTC();
 
 	// TimeChange command (Fn 44), Station 0x7C
 	MD3BlockFn44MtoS commandblock(0x7C, currenttime % 1000);
@@ -2315,8 +2345,8 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	output << datablock.ToBinaryString();
 
 	int UTCOffsetMinutes = -600;
-	MD3BlockData datablock2(static_cast<uint32_t>(UTCOffsetMinutes<<16), true);
-	output << datablock2.ToBinaryString();
+	MD3BlockData datablockofs(static_cast<uint32_t>(UTCOffsetMinutes<<16), true);
+	output << datablockofs.ToBinaryString();
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
@@ -2329,16 +2359,44 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 	REQUIRE(Response[0] == ToChar(0xFC));
 	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
 
+
 	// Now do again with a bodgy time.
 	output << commandblock.ToBinaryString();
-	datablock2 = MD3BlockData(static_cast<uint32_t>(1000), true); // Nonsensical time
+	MD3BlockData datablock2(static_cast<uint32_t>(1000)); // Nonsensical time
 	output << datablock2.ToBinaryString();
+	output << datablockofs.ToBinaryString();
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response[0] == ToChar(0xFC));
 	REQUIRE(Response[1] == ToChar(30)); // Control/Scan Rejected Command
+
+	// Now do again with a 10 hour offset - just use the same msec as first command. Does not matter for this test.
+	output << commandblock.ToBinaryString();
+	MD3BlockData datablock3(static_cast<uint32_t>(currenttime / 1000 - 9 * 60 * 60)); // Current time + 10 hours (in seconds)
+	output << datablock3.ToBinaryString();
+	output << datablockofs.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
+	REQUIRE(MD3OSPort->GetSOEOffsetMinutes() == -9 * 60);
+
+	// Now do again with a -9 hour offset - just use the same msec as first command. Does not matter for this test.
+	output << commandblock.ToBinaryString();
+	MD3BlockData datablock4(static_cast<uint32_t>(currenttime / 1000 - 9 * 60 * 60)); // Current time - 9 hours (in seconds)
+	output << datablock4.ToBinaryString();
+	output << datablockofs.ToBinaryString();
+
+	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
+
+	// No need to delay to process result, all done in the InjectCommand at call time.
+	REQUIRE(Response[0] == ToChar(0xFC));
+	REQUIRE(Response[1] == ToChar(0x0F)); // OK Command
+	REQUIRE(MD3OSPort->GetSOEOffsetMinutes() == -9 * 60);
 
 	TestTearDown();
 }
@@ -2438,7 +2496,7 @@ TEST_CASE("Station - System Flag Scan Test")
 	TEST_MD3OSPort(Json::nullValue);
 
 	MD3OSPort->Enable();
-	uint64_t currenttime = MD3Now();
+	uint64_t currenttime = MD3NowUTC();
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
 	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
@@ -2883,11 +2941,10 @@ TEST_CASE("Master - DOM and POM Tests")
 				res = command_stat;
 			});
 
-		bool point_on = true;
 		uint16_t ODCIndex = 116;
 
 		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-		val.functionCode = point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+		val.functionCode = ControlCode::PULSE_ON;
 
 		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
 		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
@@ -3189,7 +3246,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 		// So we post time change command to the outstation, which should then go to the Master, which should then send a timechange command out on TCP.
 		// If the Outstation is standalone, it will not wait for the ODC response.
 		// "TimeSetPoint" : {"Index" : 100000},
-		uint64_t currenttime = MD3Now(); // 0x1111222233334444;
+		uint64_t currenttime = MD3NowUTC(); // 0x1111222233334444;
 
 		// TimeChange command (Fn 43), Station 0x7C
 		MD3BlockFn43MtoS commandblock(0x7C, currenttime % 1000);
@@ -3778,9 +3835,8 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	Wait(*IOS, 2); // Allow the connection to come up.
 	//MD3MAPort->EnablePolling(false);	// If the connection comes up after this command, it will enable polling!!!
 
-
 	// Read the current digital state.
-//	MD3MAPort->DoPoll(1);
+	MD3MAPort->DoPoll(1);
 
 	// Delta Scan up to 15 events, 2 modules. Seq # 10
 	// Digital Scan Data a00b01610100 00001101e100
@@ -3788,8 +3844,8 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	//MD3MAPort->QueueMD3Command(commandblock, nullptr);
 
 	// Read the current analog state.
-//	MD3MAPort->DoPoll(2);
-	Wait(*IOS, 2);
+	MD3MAPort->DoPoll(2);
+	Wait(*IOS, 5);
 
 	// Do a time set command
 	MD3MAPort->DoPoll(4);
@@ -3814,7 +3870,7 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
 	// Send an ODC DigitalOutput command to the Master.
-//	MD3MAPort->Event(event, "TestHarness", pStatusCallback);
+	MD3MAPort->Event(event, "TestHarness", pStatusCallback);
 
 	Wait(*IOS, 2);
 

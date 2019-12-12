@@ -91,27 +91,6 @@ class SimPortClass:
                 odc.PublishEvent(self.guid,"Binary",x["Index"],"|ONLINE|",str(x["State"]))  # Need to send this change through as an event
         return
 
-    # Required Method
-    def Operational(self):
-        """ This is called from ODC once ODC is ready for us to be fully operational - normally after Build is complete"""
-        self.LogTrace("Port Operational - {}".format(datetime.now().isoformat(" ")))
-
-        if "Binaries" in self.ConfigDict:
-            self.SendInitialState(self.ConfigDict["Binaries"])
-        return
-
-    # Required Method
-    def Enable(self):
-        self.LogTrace("Enabled - {}".format(datetime.now().isoformat(" ")))
-        self.enabled = True;
-        return
-
-    # Required Method
-    def Disable(self):
-        self.LogDebug("Disabled - {}".format(datetime.now().isoformat(" ")))
-        self.enabled = False
-        return
-
     #-------------------Worker Methods------------------
     # Get the current state for a digital bit, matching by the passed parameters.
     def GetState(self, Json, CBNumber, CBStateBit):
@@ -169,7 +148,26 @@ class SimPortClass:
                 return x["CBNumber"], x["CBCommand"]
         raise Exception("Could not find a matching CBNumber and/or CBCommand field for Index {}}".format(Index))
 
-    #---------------- Response Methods --------------------
+    #---------------- Required Methods --------------------
+    def Operational(self):
+        """ This is called from ODC once ODC is ready for us to be fully operational - normally after Build is complete"""
+        self.LogTrace("Port Operational - {}".format(datetime.now().isoformat(" ")))
+
+        if "Binaries" in self.ConfigDict:
+            self.SendInitialState(self.ConfigDict["Binaries"])
+        return
+
+    # Required Method
+    def Enable(self):
+        self.LogTrace("Enabled - {}".format(datetime.now().isoformat(" ")))
+        self.enabled = True;
+        return
+
+    # Required Method
+    def Disable(self):
+        self.LogDebug("Disabled - {}".format(datetime.now().isoformat(" ")))
+        self.enabled = False
+        return
 
     # Needs to return True or False, which will be translated into CommandStatus::SUCCESS or CommandStatus::UNDEFINED
     # EventType (string) Index (int), Time (msSinceEpoch), Quality (string) Payload (string) Sender (string)
@@ -209,10 +207,12 @@ class SimPortClass:
         self.LogDebug("TimerHander: ID {}, {}".format(TimerId, self.guid))
         return
 
-    # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
-    # called. It will be decoded sufficiently so that it is passed to the correct PythonPort (us)
+    # The Rest response interface - the following method will be called whenever the restful interface
+    # (a single interface for all PythonPorts) gets called.
+    # It will be decoded sufficiently so that it is passed to the correct PythonPort (us)
     #
-    # We return the response that we want sent back to the caller. This will be a JSON string for GET. A null (empty) string will be reported as a bad request by the c++ code.
+    # We return the response that we want sent back to the caller. This will be a JSON string for GET.
+    # A null (empty) string will be reported as a bad request by the c++ code.
     # Required Method
     def RestRequestHandler(self, eurl, content):
 

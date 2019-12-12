@@ -80,18 +80,25 @@ const char *conffile1 = R"001(
 	// Python Module/Class/Method name definitions
 	"ModuleName" : "PyPortSim",
 	"ClassName": "SimPortClass",
-		
+	"EventsAreQueued": false,
+	"OnlyQueueEventsWithTags": false,
+	"QueueFormatString": "{{\"Tag\" : \"{6}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Quality\" : \"{3}\", \"TS\" : \"{2}\"}}", // Valid fmt.print string
+	"GlobalUseSystemPython": false,
+
 	// The point definitions are only proccessed by the Python code. Any events sent to PyPort by ODC will be passed on.
-	"Binaries" : 
-	[	
-		{"Index" : 0, "CBNumber" : 1, "SimType" : "CBStateBit0", "State": 0},	// Half of a dual bit binary Open 10, Closed 01, Fault 00 or 11 (Is this correct?)
-		{"Index" : 1, "CBNumber" : 1, "SimType" : "CBStateBit1", "State": 1}	// Half of a dual bit binary. State is starting state.
+	"Binaries" :
+	[
+		{"Index" : 0, "CBNumber" : 1, "SimType" : "CBStateBit0", "State": 0, "Tag": "Test0" },	// Half of a dual bit binary Open 10, Closed 01, Fault 00 or 11 (Is this correct?)
+		{"Index" : 1, "CBNumber" : 1, "SimType" : "CBStateBit1", "State": 1, "Tag": "Test1" },	// Half of a dual bit binary. State is starting state.
+		{"Index" : 2, "Tag": "Test2" },
+		{"Index" : 3, "Tag": "Test3" },
+		{"Index" : 4, "Tag": "Test4" }
 	],
 
-	"BinaryControls" : 
+	"BinaryControls" :
 	[
-		{"Index": 0, "CBNumber" : 1, "CBCommand":"Trip"},		// Trip pulse
-		{"Index": 1, "CBNumber" : 1, "CBCommand":"Close"}		// Close pulse
+		{"Index": 0, "CBNumber" : 1, "CBCommand":"Trip", "Tag": "Test3" },		// Trip pulse
+		{"Index": 1, "CBNumber" : 1, "CBCommand":"Close", "Tag": "Test4" }		// Close pulse
 	]
 })001";
 
@@ -115,6 +122,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 	ofs.close();
 }
 
+// Changed so that the log_level only changes the console logging level. Want the log file to always be debug
 void SetupLoggers(spdlog::level::level_enum log_level)
 {
 	// So create the log sink first - can be more than one and add to a vector.
@@ -127,33 +135,37 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
+	file_sink->set_level(spdlog::level::level_enum::debug);
+	console_sink->set_level(log_level);
+
 	auto pLibLogger = std::make_shared<spdlog::logger>("PyPort", begin(sinks), end(sinks));
-	pLibLogger->set_level(log_level);
+	pLibLogger->set_level(spdlog::level::level_enum::debug);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
-	pODCLogger->set_level(log_level);
+	pODCLogger->set_level(spdlog::level::level_enum::debug);
 	odc::spdlog_register_logger(pODCLogger);
 
 }
 void WriteStartLoggingMessage(std::string TestName)
 {
-	std::string msg = "Logging for '"+TestName+"' started..";
+	std::string msg = "Logging for '" + TestName + "' started..";
 
 	if (auto pylogger = odc::spdlog_get("PyPort"))
 	{
 		pylogger->info("------------------");
-		pylogger->info(msg);
+		pylogger->info("PyPort Logger Message "+msg);
 	}
 	else
 		std::cout << "Error PyPort Logger not operational";
 
-/*	if (auto odclogger = odc::spdlog_get("opendatacon"))
-                  odclogger->info(msg);
-        else
-                  std::cout << "Error opendatacon Logger not operational";
-                  */
+	if (auto odclogger = odc::spdlog_get("opendatacon"))
+	{
+		odclogger->info("opendatacon Logger Message "+msg);
+	}
+	else
+		std::cout << "Error opendatacon Logger not operational";
 }
 void TestSetup(std::string TestName, bool writeconffiles = true)
 {
@@ -277,7 +289,7 @@ private:
 #define STANDARD_TEST_SETUP(threadcount)\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
 	const int ThreadCount = threadcount; \
-	auto IOS = std::make_shared<odc::asio_service>(ThreadCount);
+	std::shared_ptr<odc::asio_service> IOS = std::make_shared<odc::asio_service>(ThreadCount);
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
@@ -313,6 +325,10 @@ private:
 	auto PythonPort4 = std::make_shared<PyPort>("TestMaster4", conffilename1, overridejson); \
 	PythonPort4->SetIOS(IOS);      \
 	PythonPort4->Build();
+#define TEST_PythonPort5(overridejson)\
+	auto PythonPort5 = std::make_shared<PyPort>("TestMaster5", conffilename1, overridejson); \
+	PythonPort5->SetIOS(IOS);      \
+	PythonPort5->Build();
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -326,7 +342,7 @@ void CheckEventStringConversions(std::shared_ptr<EventInfo> inevent)
 	std::string EventTypeStr = odc::ToString(inevent->GetEventType());
 	std::string QualityStr = ToString(inevent->GetQuality());
 	std::string PayloadStr = inevent->GetPayloadString();
-	uint32_t ODCIndex = inevent->GetIndex();
+	size_t ODCIndex = inevent->GetIndex();
 
 	// Create a new event from those strings
 	std::shared_ptr<EventInfo> pubevent = PyPort::CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr, "Testing");
@@ -379,6 +395,18 @@ TEST_CASE("Py.TestEventStringConversions")
 	}
 	//TODO: The rest of the Payload types that we need to handle
 	STANDARD_TEST_TEARDOWN();
+}
+
+uint32_t GetProcessedEventsFromJSON(std::string jsonstr)
+{
+	Json::Value root;
+	Json::CharReaderBuilder jsonReader;
+	std::string errs;
+	std::stringstream jsonstream(jsonstr);
+
+	if (!Json::parseFromStream(jsonReader, jsonstream, &root, &errs))
+		return -1;
+	return root["processedevents"].asUInt();
 }
 
 TEST_CASE("Py.TestsUsingPython")
@@ -512,24 +540,20 @@ TEST_CASE("Py.TestsUsingPython")
 
 		LOGDEBUG("GET http://localhost:10000/TestMaster We got back {}", callresp);
 
-		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
-
 		REQUIRE(res);
-		REQUIRE(expectedresponse == callresp);
-
+		REQUIRE(callresp.find("\"processedevents\": 2") != std::string::npos);
+		REQUIRE(callresp.find("\"test\": \"GET\"") != std::string::npos);
 
 		res = DoHttpRequst("localhost", "10000", "/TestMaster2", callresp);
 
 		LOGDEBUG("GET http://localhost:10000/TestMaster2 We got back {}", callresp);
 
-		expectedresponse = "Content-Length: 15\r\nContent-Type: application/json\r\n\n{\"test\": \"GET\"}";
-
 		REQUIRE(res);
-		REQUIRE(expectedresponse == callresp);
-
+		REQUIRE(callresp.find("\"processedevents\": 1") != std::string::npos);
+		REQUIRE(callresp.find("\"test\": \"GET\"") != std::string::npos);
 	}
 
-	LOGDEBUG("Tests Complete, starting teardown");
+	LOGDEBUG("Starting teardown ports 1-4");
 
 	PythonPort->Disable();
 	PythonPort2->Disable();
@@ -546,7 +570,132 @@ TEST_CASE("Py.TestsUsingPython")
 			throw("Waiting for Ports to be disabled timed out");
 		}
 	);
-	LOGDEBUG("Ports Disabled");
+	LOGDEBUG("Ports1-4 Disabled");
+
+	INFO("QueuedEvents")
+	{
+		Json::Value portoverride;
+		portoverride["EventsAreQueued"] = static_cast<Json::UInt>(1);
+		TEST_PythonPort5(portoverride);
+
+		PythonPort5->Enable();
+		// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
+		REQUIRE_NOTHROW(
+			if (!WaitIOSFnResult(IOS, 11, [&]()
+				    {
+					    return (PythonPort5->Enabled());
+				    }))
+			{
+				throw std::runtime_error("Waiting for Ports to Enable timed out");
+			}
+			);
+
+		LOGINFO("Port5 Enabled");
+
+		IOS->post([&]()
+			{
+				LOGINFO("Sending Binary Events 1");
+				for (int ODCIndex = 1; ODCIndex <= 5000; ODCIndex++)
+				{
+				      bool val = (ODCIndex % 2 == 0);
+				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing1");
+				      boolevent->SetPayload<EventType::Binary>(std::move(val));
+				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				}
+				LOGINFO("Sending Binary Events 1 Done");
+			});
+		IOS->post([&]()
+			{
+				LOGINFO("Sending Binary Events 2");
+				for (int ODCIndex = 5001; ODCIndex <= 9000; ODCIndex++)
+				{
+				      bool val = (ODCIndex % 2 == 0);
+				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
+				      boolevent->SetPayload<EventType::Binary>(std::move(val));
+				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				}
+				LOGINFO("Sending Binary Events 2 Done");
+			});
+		IOS->post([&]()
+			{
+				LOGINFO("Sending Binary Events 3");
+				for (int ODCIndex = 9001; ODCIndex <= 12000; ODCIndex++)
+				{
+				      bool val = (ODCIndex % 2 == 0);
+				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
+				      boolevent->SetPayload<EventType::Binary>(std::move(val));
+				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				}
+				LOGINFO("Sending Binary Events 3 Done");
+			});
+		IOS->post([&]()
+			{
+				LOGINFO("Sending Binary Events 4");
+				for (int ODCIndex = 12001; ODCIndex <= 15000; ODCIndex++)
+				{
+				      bool val = (ODCIndex % 2 == 0);
+				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
+				      boolevent->SetPayload<EventType::Binary>(std::move(val));
+				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				}
+				LOGINFO("Sending Binary Events 4 Done");
+			});
+
+		WaitIOS(IOS, 6);
+
+		// Check that the PyPortSim module has processed the number of events that we have sent?
+		// Query through the Restful interface
+		std::string callresp = "";
+
+		bool resp = DoHttpRequst("localhost", "10000", "/TestMaster5", callresp);
+
+		REQUIRE(resp);
+
+		LOGDEBUG("GET http://localhost:10000/TestMaster5 We got back {}", callresp);
+
+		std::string matchstr("json\r\n\n");
+		size_t pos = callresp.find(matchstr);
+		REQUIRE(pos != std::string::npos);
+
+		uint32_t ProcessedEvents = GetProcessedEventsFromJSON(callresp.substr(pos + matchstr.length()));
+
+		LOGDEBUG("The PyPortSim Code Processed {} Events", ProcessedEvents);
+
+		if (ProcessedEvents != 14999)
+		{
+			WaitIOS(IOS, 15); // Wait longer for RPI build to run!!!
+
+			resp = DoHttpRequst("localhost", "10000", "/TestMaster5", callresp);
+			REQUIRE(resp);
+
+			LOGDEBUG("GET http://localhost:10000/TestMaster5 We got back {}", callresp);
+
+			size_t pos = callresp.find(matchstr);
+			REQUIRE(pos != std::string::npos);
+			ProcessedEvents = GetProcessedEventsFromJSON(callresp.substr(pos + matchstr.length()));
+
+			LOGDEBUG("The PyPortSim Code Processed {} Events", ProcessedEvents);
+		}
+		size_t QueueSize = PythonPort5->GetEventQueueSize();
+
+		REQUIRE(ProcessedEvents == 14999);
+		REQUIRE(QueueSize == 1);
+
+		LOGDEBUG("Tests Complete, starting teardown");
+
+		PythonPort5->Disable();
+		REQUIRE_NOTHROW
+		(
+			if (!WaitIOSFnResult(IOS, 11, [&]()
+				    {
+					    return (!PythonPort->Enabled());
+				    }))
+			{
+				throw("Waiting for Ports to be disabled timed out");
+			}
+		);
+		LOGDEBUG("Port5 Disabled");
+	}
 
 	STOP_IOS(); // Wait in here for all threads to stop.
 	LOGDEBUG("IOS Stopped");

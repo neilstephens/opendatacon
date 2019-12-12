@@ -124,11 +124,6 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 PyPort::~PyPort()
 {
 	LOGDEBUG("Destructing PyPort");
-	if (!PortOperational.load())
-	{
-		LOGDEBUG("PyPort {} not operational, Python Destructor ignored", Name);
-		return;
-	}
 }
 
 // The ASIO IOS instance is up, our config files have been read and parsed, this is the opportunity to kick off connections and scheduled processes
@@ -172,34 +167,26 @@ void PyPort::Build()
 	// Every call to pWrapper should be strand protected. NOTE ASIO is not running here...
 	python_strand->dispatch([&, PyModPath]()
 		{
+			LOGSTRAND("Entered Strand on Build");
 			// If first time constructor is called, will instansiate the interpreter.
 			// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
 			// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
-			pWrapper = std::make_unique<PythonWrapper>(this->Name, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
+			pWrapper = std::make_unique<PythonWrapper>(this->Name, pIOS, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
 				std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+			LOGDEBUG("pWrapper Created #####");
 			try
 			{
 			// Python code is loaded and class created, __init__ called.
-			      pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name);
+			      pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
 
 			      pWrapper->Config(JSONMain, JSONOverride);
 			      LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
-
-			// Tell our Python code that we are ready to roll - once ASIO is started.
-			// The post should not be executed until the asio threads are started and RUN called
-			      python_strand->post([&, PyModPath]()
-					{
-						PortOperational.store(true);
-						LOGDEBUG("Port Operational {}", Name);
-
-						pWrapper->PortOperational();
-					});
 			}
 			catch (std::exception& e)
 			{
 			      LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
-			      return;
 			}
+			LOGSTRAND("Exit Strand");
 		});
 
 	pServer = ServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new ServerManager if required
@@ -219,22 +206,34 @@ void PyPort::Build()
 
 	ServerManager::AddHandler(pServer, "GET /", roothandler);
 
-	auto gethandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const std::string& content, http::reply& rep)
 		{
 			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
-			std::string result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
 			std::string contenttype = "application/json";
+			std::string result = "";
 
-			if (result.length() > 0)
+			if (!pWrapper)
 			{
-			      rep.status = http::reply::ok;
-			      rep.content.append(result);
+			      LOGERROR("Tried to handle a http callback, but pWrapper is null {} {}", absoluteuri, content);
+			      rep.status = http::reply::not_found;
+			      rep.content.append("You have reached the PyPort Instance with GET on " + Name + " Port has been destructed!!");
+			      contenttype = "text/html";
 			}
 			else
 			{
-			      rep.status = http::reply::not_found;
-			      rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
-			      contenttype = "text/html";
+			      result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
+
+			      if (result.length() > 0)
+			      {
+			            rep.status = http::reply::ok;
+			            rep.content.append(result);
+				}
+			      else
+			      {
+			            rep.status = http::reply::not_found;
+			            rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
+			            contenttype = "text/html";
+				}
 			}
 			rep.headers.resize(2);
 			rep.headers[0].name = "Content-Length";
@@ -273,56 +272,66 @@ void PyPort::Build()
 void PyPort::Enable()
 {
 	// If already true, return - otherwise set to true
-	if (enabled.exchange(true)) return;
+	if (enabled.exchange(true))
+		return;
+
+	// We need to not enable until build has pWrapper created..
+	LOGDEBUG("About to Wait for pWrapper to be created!");
+	while (!pWrapper)
+	{
+		if (pIOS->stopped())
+			return; // Shutting down!
+
+		pIOS->poll_one();
+	}
+	LOGDEBUG("pWrapper is good!");
 
 	ServerManager::StartConnection(pServer);
-
-	auto timer = pIOS->make_steady_timer();
-	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
-	size_t MaxWaitToBecomeOperationalSeconds = 10;
-	size_t loopwaitmsec = 100;
-	size_t loopcnt = MaxWaitToBecomeOperationalSeconds * 1000 / loopwaitmsec;
-
-	while (!PortOperational.load() && (loopcnt-- > 0))
-	{
-		// Delay in here for a maximum period for the port to become operational.
-		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(loopwaitmsec));
-		timer->wait();
-	}
-
-	if (!PortOperational.load())
-	{
-		LOGDEBUG("PyPort {} not operational when trying to enable, and we exceed maximum time for it to startup - {} seconds.", Name, MaxWaitToBecomeOperationalSeconds);
-		return;
-	}
+	std::promise<bool> promise;
+	auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
 	python_strand->dispatch([&]()
 		{
+			LOGSTRAND("Entered Strand on Enable");
 			pWrapper->Enable();
+			promise.set_value(true);
+			pWrapper->PortOperational();
+			LOGDEBUG("Port enabled and  operational 1 {}", Name);
+			LOGSTRAND("Exit Strand");
 		});
+	// Synchronously wait for promise to be fulfilled - pWrapper to be created, we need to poll the ASIO threadpool to do that
+	LOGDEBUG("Entering Port Wait {}", Name);
+	while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+	{
+		if (pIOS->stopped() == true)
+		{
+			// If we are closing get out of here. Dont worry about the result.
+			return;
+		}
+		// Our result is not ready, so let ASIO run one work handler. Kind of like a co-operative task switch
+		pIOS->poll_one();
+	}
+	LOGDEBUG("Port enabled and  operational 2 {}", Name);
 }
 
 void PyPort::Disable()
 {
 	// If already false, return - otherwise set to false.
-	if (!enabled.exchange(false)) return;
+	if (!enabled.exchange(false))
+		return;
 
 	// Leaves handlers in place, so can be restarted without re-adding handlers
 	ServerManager::StopConnection(pServer);
 
-	if (!PortOperational.load())
-	{
-		LOGDEBUG("PyPort {} not operational during port disable", Name);
-		return;
-	}
-
 	python_strand->dispatch([&]()
 		{
+			LOGSTRAND("Entered Strand on Disable");
 			pWrapper->Disable();
+			LOGSTRAND("Exit Strand");
 		});
 }
 
-std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, uint32_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
+std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
 {
 	EventType EventTypeResult;
 	if (!GetEventTypeFromStringName(EventTypeStr, EventTypeResult))
@@ -450,7 +459,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 // We pass this method string values for fields (from Python) parse them and create the ODC event then send it.
 // A pointer to this method is passed to the Wrapper class so it can be called when we get information from the Python code.
 // We are not passing a callback - just nullstr. So dont expect feedback.
-void PyPort::PublishEventCall(const std::string &EventTypeStr, uint32_t ODCIndex,  const std::string &QualityStr, const std::string &PayloadStr )
+void PyPort::PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex,  const std::string &QualityStr, const std::string &PayloadStr )
 {
 	//LOGDEBUG("PyPort Publish Event {}, {}, {}, {}", EventTypeStr, ODCIndex, QualityStr, PayloadStr);
 
@@ -460,6 +469,42 @@ void PyPort::PublishEventCall(const std::string &EventTypeStr, uint32_t ODCIndex
 	if (pubevent)
 		PublishEvent(pubevent);
 }
+std::string getISOCurrentTimestampUTC_from_msSinceEpoch_t(const odc::msSinceEpoch_t& ts)
+{
+	// TimeDate Needs to be "2019-07-17T01:34:20.072Z" ISO8601 format.
+	time_t tp = ts / 1000; // time_t is normally seconds since epoch. We deal in msec!
+	int msec = ts % 1000;
+
+	std::tm* t = std::gmtime(&tp); // So UTC
+	if (t != nullptr)
+	{
+		return fmt::format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z", t->tm_year+1900,t->tm_mon+1,t->tm_mday,t->tm_hour, t->tm_min, t->tm_sec, msec);
+	}
+	return "Error";
+}
+
+std::string PyPort::GetTagValue(EventType Eventt, size_t Index)
+{
+	// The unordered_maps lookup reading do not need to be protected, they are threadsafe for this
+	// The Event handler calling this is multithreaded, so there will be concurrent access.
+	if (Eventt == EventType::Analog)
+	{
+		auto search = AnalogMap.find(Index);
+		return (search != AnalogMap.end()) ? search->second : "";
+	}
+	if (Eventt == EventType::Binary)
+	{
+		auto search = BinaryMap.find(Index);
+		return (search != BinaryMap.end()) ? search->second : "";
+	}
+	if (Eventt == EventType::ControlRelayOutputBlock)
+	{
+		auto search = BinaryControlMap.find(Index);
+		return (search != BinaryControlMap.end()) ? search->second : "";
+	}
+	return "";
+}
+
 // So we have received an event from the ODC message bus - it will be Control or Connect events.
 // So basically the Event mechanism is agnostinc. You can be a producer of control events and a consumer of data events, or the reverse, or in some odd cases -
 // A consumer of both types of events (this means you are just a listener on a conversation between two other devices.)
@@ -467,34 +512,54 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 {
 	if (!enabled)
 	{
-		LOGDEBUG("PyPort {} not enabled, Event from {} ignored", Name, SenderName);
+		LOGTRACE("PyPort {} not enabled, Event from {} ignored", Name, SenderName);
 		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-		return;
-	}
-	if (!PortOperational.load())
-	{
-		LOGDEBUG("PyPort {} not operational, Event from {} ignored", Name, SenderName);
 		return;
 	}
 
 	if (MyConf->pyEventsAreQueued)
 	{
 		// Use a concurrent queue to buffer the events into Python. If the events are queued, then the python code is responsible
-		// for periodically processing them and emptying the queue.
-		pWrapper->QueueEvent(odc::ToString(event->GetEventType()),
-			event->GetIndex(),
-			event->GetTimestamp(),
-			ToString(event->GetQuality()),
-			event->GetPayloadString(),
-			SenderName);
+		// for periodically processing them and emptying the queue. Send as a json string
+
+		// So in the config file a point can have a "Tag" value. If this is present, we save it in a hash with an ODCIndex.
+		// We do a lookup on the index to get the tag, which is then part of the queued event.
+
+		// Also probably need an event filter defined in the conf file - events not to queue?
+
+		std::string isotimestamp = getISOCurrentTimestampUTC_from_msSinceEpoch_t(event->GetTimestamp());
+		try
+		{
+			std::string TagValue = GetTagValue(event->GetEventType(),event->GetIndex());
+
+			if (MyConf->pyOnlyQueueEventsWithTags && (TagValue == ""))
+				return; // If only queue events that have tags, and we dont have a tag, return
+
+			std::string jsonevent = fmt::format(MyConf->pyQueueFormatString, // How the string will be formatted - can leave values below out if desired!
+				odc::ToString(event->GetEventType()),                      // 0
+				event->GetIndex(),                                         // 1
+				isotimestamp,                                              // 2
+				ToString(event->GetQuality()),                             // 3
+				event->GetPayloadString(),                                 // 4
+				SenderName,                                                // 5
+				TagValue);                                                 // 6
+			pWrapper->QueueEvent(jsonevent);
+			LOGTRACE("Queued Event {}", jsonevent);
+		}
+		catch(std::exception& e)
+		{
+			LOGCRITICAL("Queue Formatting String Parsing Failure {}, {}", e.what(), MyConf->pyQueueFormatString);
+		}
 	}
 	else
 	{
 		python_strand->dispatch([&, event, SenderName, pStatusCallback]()
 			{
+				LOGSTRAND("Entered Strand on Event");
 				CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
 
 				PostCallbackCall(pStatusCallback, result);
+				LOGSTRAND("Exit Strand");
 			});
 	}
 }
@@ -505,11 +570,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 		LOGDEBUG("PyPort {} not enabled, SetTimer call ignored", Name);
 		return;
 	}
-	if (!PortOperational.load())
-	{
-		LOGDEBUG("PyPort {} not operational, SetTimer call ignored", Name);
-		return;
-	}
+	//LOGDEBUG("SetTimer call {}, {}, {}", Name, id, delayms);
 
 	pTimer_t timer = pIOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::milliseconds(delayms));
@@ -520,7 +581,9 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 			{
 			      python_strand->dispatch([&, id]()
 					{
+						LOGSTRAND("Entered Strand on SetTimer");
 						pWrapper->CallTimerHandler(id);
+						LOGSTRAND("Exit Strand");
 					});
 			}
 		});
@@ -536,25 +599,21 @@ void PyPort::RestHandler(const std::string& url, const std::string& content, Res
 		PostResponseCallbackCall(pResponseCallback, "Error Port not enabled");
 		return;
 	}
-	if (!PortOperational.load())
-	{
-		LOGDEBUG("PyPort {} not operational, Restful Request ignored", Name);
-		PostResponseCallbackCall(pResponseCallback, "Error Port not opeational");
-		return;
-	}
 
 	python_strand->dispatch([&, url, content, pResponseCallback]()
 		{
+			LOGSTRAND("Entered Strand on RestHandler");
 			std::string result = pWrapper->RestHandler(url,content); // Expect no long processing or waits in the python code to handle this.
 
 			PostResponseCallbackCall(pResponseCallback, result);
+			LOGSTRAND("Exit Strand");
 		});
 }
 
 // Just schedule the callback, don't want to do it in a strand protected section.
 void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c)
 {
-	if (pStatusCallback != nullptr)
+	if (pStatusCallback)
 	{
 		pIOS->post([&, pStatusCallback, c]()
 			{
@@ -564,7 +623,7 @@ void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback
 }
 void PyPort::PostResponseCallbackCall(const ResponseCallback_t & pResponseCallback, const std::string& response)
 {
-	if (pResponseCallback != nullptr)
+	if (pResponseCallback)
 	{
 		pIOS->post([&, pResponseCallback, response]()
 			{
@@ -598,7 +657,82 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyHTTPAddr = JSONRoot["IP"].asString();
 	if (JSONRoot.isMember("Port"))
 		MyConf->pyHTTPPort = JSONRoot["Port"].asString();
+
+	if (JSONRoot.isMember("QueueFormatString"))
+		MyConf->pyQueueFormatString = JSONRoot["QueueFormatString"].asString();
 	if (JSONRoot.isMember("EventsAreQueued"))
 		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
+	if (JSONRoot.isMember("OnlyQueueEventsWithTags"))
+		MyConf->pyOnlyQueueEventsWithTags = JSONRoot["OnlyQueueEventsWithTags"].asBool();
 
+	//TODO: The following parameter should always be set to the same value. If different throw an exception as the conf file is wrong!
+	if (JSONRoot.isMember("GlobalUseSystemPython"))
+		MyConf->GlobalUseSystemPython = JSONRoot["GlobalUseSystemPython"].asBool(); // Defaults to OFF
+
+	if (JSONRoot.isMember("Analog"))
+	{
+		const auto Analogs = JSONRoot["Analog"];
+		LOGDEBUG("Conf processed - Analog Points");
+		ProcessPoints(Analog, Analogs);
+	}
+	if (JSONRoot.isMember("Binary"))
+	{
+		const auto Binaries = JSONRoot["Binary"];
+		LOGDEBUG("Conf processed - Binary Points");
+		ProcessPoints(Binary, Binaries);
+	}
+
+	if (JSONRoot.isMember("Control"))
+	{
+		const auto BinaryControls = JSONRoot["Control"];
+		LOGDEBUG("Conf processed - Binary Controls");
+		ProcessPoints(BinaryControl, BinaryControls);
+	}
+}
+
+// This method loads both Analog and Counter/Timers. They look functionally similar in CB
+void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
+{
+	std::string Name("None");
+
+	if (ptype == Analog)
+		Name = "Analog";
+	if (ptype == Binary)
+		Name = "Binary";
+	if (ptype == BinaryControl)
+		Name = "Control";
+
+	LOGDEBUG("Conf processing - {}", Name);
+	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
+	{
+		size_t index = 0;
+
+		if (JSONNode[n].isMember("Index"))
+		{
+			index = JSONNode[n]["Index"].asUInt();
+		}
+		else
+		{
+			throw std::invalid_argument("A point needs an \"Index\" : " + JSONNode[n].toStyledString());
+		}
+
+		if (JSONNode[n].isMember("Tag"))
+		{
+			std::string Tag = JSONNode[n]["Tag"].asString();
+
+			// We have an index and a tag, so add to the hash.
+			if (ptype == Analog)
+				AnalogMap.emplace(std::make_pair(index, Tag));
+			else if (ptype == Binary)
+				BinaryMap.emplace(std::make_pair(index, Tag));
+			else if (ptype == BinaryControl)
+				BinaryControlMap.emplace(std::make_pair(index, Tag));
+			else
+			{
+				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
+			}
+			LOGTRACE("Type - {}, Tag - {}, Index - {}", Name, Tag, index);
+		}
+	}
+	LOGDEBUG("Conf processing - {} - Finished",Name);
 }

@@ -17,12 +17,12 @@ Critical = 5
 # QualityFlags, ONLINE,RESTART,COMM_LOST,REMOTE_FORCED,LOCAL_FORCE,OVERRANGE,REFERENCE_ERR,ROLLOVER,DISCONTINUITY,CHATTER_FILTER
 # ConnectState, PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN
 # ControlCode, NUL,NUL_CANCEL,PULSE_ON,PULSE_ON_CANCEL,PULSE_OFF,PULSE_OFF_CANCEL,LATCH_ON,LATCH_ON_CANCEL,LATCH_OFF,LATCH_OFF_CANCEL,
-#               CLOSE_PULSE_ON,CLOSE_PULSE_ON_CANCEL,TRIP_PULSE_ON,TRIP_PULSE_ON_CANCEL,UNDEFINED      
+#               CLOSE_PULSE_ON,CLOSE_PULSE_ON_CANCEL,TRIP_PULSE_ON,TRIP_PULSE_ON_CANCEL,UNDEFINED
 
 class SimPortClass:
     ''' Our class to handle an ODC Port. We must have __init__, ProcessJSONConfig, Enable, Disable, EventHander, TimerHandler and
     RestRequestHandler defined, as they will be called by our c/c++ code.
-    ODC publishes some functions to this Module (when run) they are part of the odc module(include). 
+    ODC publishes some functions to this Module (when run) they are part of the odc module(include).
     We currently have odc.log, odc.SetTimer and odc.PublishEvent.
     '''
 
@@ -44,11 +44,12 @@ class SimPortClass:
     # Required Method
     def __init__(self, odcportguid, objectname):
         self.objectname = objectname    # Documentation/error use only.
-        self.guid = odcportguid         # So that when we call an odc method, ODC can work out which pyport to hand it too. 
+        self.guid = odcportguid         # So that when we call an odc method, ODC can work out which pyport to hand it too.
         self.Enabled = False;
-        self.i = 0
+        self.i = 2
         self.ConfigDict = {}      # Config Dictionary
-        self.LogDebug("SimPortClass Init Called - {}".format(objectname))       
+        self.LogDebug("*********** SimPortClass Init Called - File Version 1.002 - {}".format(objectname))
+        self.processedevents = 0
         return
 
     # Required Method
@@ -62,7 +63,7 @@ class SimPortClass:
         Override = {}
         try:
             if len(MainJSON) != 0:
-                self.ConfigDict = json.loads(MainJSON)   
+                self.ConfigDict = json.loads(MainJSON)
             if len(OverrideJSON) != 0:
                 Override = json.loads(OverrideJSON)
         except:
@@ -74,7 +75,7 @@ class SimPortClass:
         # Now use the override config settings to adjust or add to the MainConfig. Only root json values can be adjusted.
         # So you cannot change a single value in a Binary point definition without rewriting the whole "Binaries" json key.
         self.ConfigDict.update(Override)               # Merges with Override doing just that - no recursion into sub dictionaries
-        
+
         self.LogDebug("Combined (Merged) JSON Config {}".format(json.dumps(self.ConfigDict)))
 
         # Now extract what is needed for this instance, or just reference the ConfigDict when needed.
@@ -84,6 +85,7 @@ class SimPortClass:
     def Operational(self):
         """ This is called from ODC once ODC is ready for us to be fully operational - normally after Build is complete"""
         self.LogDebug("Port Operational - {}".format(datetime.now().isoformat(" ")))
+        odc.SetTimer(self.guid, 1, 250)     #250 msec
         return
 
     # Required Method
@@ -104,18 +106,34 @@ class SimPortClass:
     def EventHandler(self,EventType, Index, Time, Quality, Payload, Sender):
         self.LogTrace("EventHander: {}, {}, {} {} - {}".format(self.guid,Sender,Index,EventType,Payload))
 
+        self.processedevents += 1
+
         if (EventType == "Binary"):
             self.LogDebug("Event is a Binary")
         if ("ONLINE" not in Quality):
             self.LogDebug("Event Quality not ONLINE")
-        
+
         odc.PublishEvent(self.guid,EventType,Index,Quality,Payload)  # Echoing Event for testing. Sender, Time auto created in ODC
         return True
 
-    # Will be called at the appropriate time by the ASIO handler system. Will be passed an id for the timeout, 
+    # Will be called at the appropriate time by the ASIO handler system. Will be passed an id for the timeout,
     # so you can have multiple timers running.
     def TimerHandler(self,TimerId):
         self.LogTrace("TimerHander: ID {}, {}".format(TimerId, self.guid))
+
+        if (TimerId == 1):
+            #currentqueuesize = odc.GetEventQueueSize(self.guid)
+            #self.LogDebug("TimerHander: Event Queue Size {}".format(currentqueuesize))
+            # Get Events from the queue and process them
+            while (True):
+                JsonEvent, empty = odc.GetNextEvent(self.guid)
+
+                if (empty == True):
+                    break
+                self.processedevents += 1     # Python is single threaded, so no concurrency issues (unless specipically enabled for multi)
+
+            odc.SetTimer(self.guid, 1, 250)     #250 msec - timer 1 restarts itself!
+
         return
 
     # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
@@ -126,13 +144,15 @@ class SimPortClass:
     # We return the response that we want sent back to the caller. This will be a JSON string. A null string would be an error.
     def RestRequestHandler(self, url, content):
         self.LogTrace("RestRequestHander: {}".format(url))
-        
 
         Response = {}   # Empty Dict
         if ("GET" in url):
             Response["test"] = "GET"
+            Response["processedevents"] = self.processedevents
         else:
             Response["test"] = "POST"
+        # Just to make sure it gets called and the call succeeds.
+        currentqueuesize = odc.GetEventQueueSize(self.guid)
 
         odc.SetTimer(self.guid, self.i, 1001-self.i)    # Set a timer to go off in a period less than a second
         self.i = self.i + 1

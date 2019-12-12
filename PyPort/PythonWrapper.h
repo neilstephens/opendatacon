@@ -33,7 +33,8 @@
 #include <unordered_set>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
-#include "concurrentqueue.h"
+#include "SpecialEventQueue.h"
+
 
 using namespace odc;
 
@@ -41,38 +42,38 @@ typedef std::function<void (uint32_t, uint32_t)> SetTimerFnType;
 typedef std::function<void ( const char*, uint32_t, const char*, const char*)> PublishEventCallFnType;
 
 // Class to store the evnt as a stringified version, mainly so that when Python is retreving these records, it does minimal processing.
-class EventQueueType
+/*class EventQueueType
 {
 public:
-	EventQueueType(const std::string& _EventType, const size_t _Index, odc::msSinceEpoch_t _TimeStamp,
-		const std::string& _Quality, const std::string& _Payload, const std::string& _Sender):
-		EventType(_EventType),
-		Index(_Index),
-		TimeStamp(_TimeStamp),
-		Quality(_Quality),
-		Payload(_Payload),
-		Sender(_Sender)
-	{};
-	EventQueueType():
-		EventType(""),
-		Index(0),
-		TimeStamp(0),
-		Quality(""),
-		Payload(""),
-		Sender("")
-	{};
-	std::string EventType;
-	size_t Index;
-	odc::msSinceEpoch_t TimeStamp;
-	std::string Quality;
-	std::string Payload;
-	std::string Sender;
-};
+      EventQueueType(const std::string& _EventType, const size_t _Index, odc::msSinceEpoch_t _TimeStamp,
+            const std::string& _Quality, const std::string& _Payload, const std::string& _Sender):
+            EventType(_EventType),
+            Index(_Index),
+            TimeStamp(_TimeStamp),
+            Quality(_Quality),
+            Payload(_Payload),
+            Sender(_Sender)
+      {};
+      EventQueueType():
+            EventType(""),
+            Index(0),
+            TimeStamp(0),
+            Quality(""),
+            Payload(""),
+            Sender("")
+      {};
+      std::string EventType;
+      size_t Index;
+      odc::msSinceEpoch_t TimeStamp;
+      std::string Quality;
+      std::string Payload;
+      std::string Sender;
+};*/
 
 class PythonInitWrapper
 {
 public:
-	PythonInitWrapper();
+	PythonInitWrapper(bool GlobalUseSystemPython);
 	~PythonInitWrapper();
 private:
 	static PyThreadState* threadState;
@@ -82,19 +83,22 @@ class PythonWrapper
 {
 
 public:
-	PythonWrapper(const std::string& aName, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
+	PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio_service> _pIOS, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
 	~PythonWrapper();
-	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
-		const std::string& pyClassName, const std::string& PortName);
+	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName, const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
 	void PortOperational(); // Called when Build is complete.
 	void Enable();
 	void Disable();
 
 	CommandStatus Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName);
-	void QueueEvent(const std::string& EventType, const size_t Index, odc::msSinceEpoch_t TimeStamp, const std::string& Quality, const std::string& Payload, const std::string& Sender);
+	void QueueEvent(const std::string& jsonevent);
 
-	bool DequeueEvent(EventQueueType& eq);
+	bool DequeueEvent(std::string& eq);
+	size_t GetEventQueueSize()
+	{
+		return EventQueue->Size();
+	}
 
 	void CallTimerHandler(uint32_t id);
 	std::string RestHandler(const std::string& url, const std::string& content);
@@ -142,13 +146,13 @@ private:
 	static std::unordered_set<uint64_t> PyWrappers;
 	static std::shared_timed_mutex WrapperHashMutex;
 
-	static PythonInitWrapper PythonInit;
+	std::shared_ptr<PythonInitWrapper> PyMgr;
+	std::shared_ptr<odc::asio_service> pIOS;
 
-	//TODO: Do we need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
-	// Would do the limit using an atomic int - we dont need an "exact" maximum...
-	const size_t MaximumQueueSize = 5000 * 1000; // 5 million
+	// We need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
+	const size_t MaximumQueueSize = 1000000; // 1 million
 
-	moodycamel::ConcurrentQueue<EventQueueType> EventQueue = moodycamel::ConcurrentQueue<EventQueueType>(MaximumQueueSize);
+	std::shared_ptr<SpecialEventQueue<std::string>> EventQueue;
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.
 	PyObject* pyModule = nullptr;
