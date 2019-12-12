@@ -425,7 +425,7 @@ void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 	else
 	{
 		LOGDEBUG("{} ExecuteCommand - Fn1, Group {}", Name, Header.GetGroup());
-		bool success = ExecuteCommandOnGroup(PendingCommands[Header.GetGroup()], Header.GetGroup(), true);
+		success = ExecuteCommandOnGroup(PendingCommands[Header.GetGroup()], Header.GetGroup(), true);
 		PendingCommands[Header.GetGroup()].Command = PendingCommandType::CommandType::None;
 	}
 
