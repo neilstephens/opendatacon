@@ -34,7 +34,7 @@ namespace odc
 class TCPstringbuf: public std::stringbuf
 {
 public:
-	void Init(std::shared_ptr<asio::io_service> apIOS,
+	void Init(std::shared_ptr<odc::asio_service> apIOS,
 		bool aisServer,
 		const std::string& aEndPoint,
 		const std::string& aPort
@@ -61,7 +61,7 @@ public:
 		return -1; //fail
 	}
 private:
-	std::shared_ptr<asio::io_service> pIOS;
+	std::shared_ptr<odc::asio_service> pIOS;
 	std::unique_ptr<TCPSocketManager<std::string>> pSockMan;
 };
 

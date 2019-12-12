@@ -45,7 +45,7 @@ class MD3PointTableAccess
 {
 public:
 	MD3PointTableAccess();
-	void Build(const bool isoutstation, const bool newdigitalcommands, asio::io_service & IOS);
+	void Build(const bool isoutstation, const bool newdigitalcommands, odc::asio_service & IOS);
 
 	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const uint32_t & pollgroup);
 	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const uint32_t & pollgroup);
@@ -87,6 +87,7 @@ public:
 	bool GetBinaryControlMD3IndexUsingODCIndex(const size_t index, uint8_t & module, uint8_t & channel, BinaryPointType & pointtype);
 
 	bool GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t & index);
+	bool GetAnalogControlMD3IndexUsingODCIndex(const size_t index, uint8_t& module, uint8_t& channel);
 
 	void ForEachBinaryPoint(std::function<void(MD3BinaryPoint &pt)>);
 	void ForEachAnalogPoint(std::function<void(MD3AnalogCounterPoint&pt)> fn);

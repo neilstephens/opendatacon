@@ -97,6 +97,12 @@ inline std::string LastSystemError()
 	return message;
 }
 
+inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
+{
+	_putenv_s(var, val);
+}
+const std::string OSPATHSEP = ";";
+
 #else
 #include <dlfcn.h>
 const std::string DYNLIBPRE = "lib";
@@ -110,7 +116,7 @@ typedef void* module_ptr;
 inline void* LoadModule(const std::string& a)
 {
 	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
-	return dlopen(a.c_str(), RTLD_LAZY);
+	return dlopen(a.c_str(), RTLD_LAZY|RTLD_LOCAL);
 }
 inline int UnLoadModule(void* handle)
 {
@@ -140,6 +146,13 @@ inline std::string LastSystemError()
 
 	return message;
 }
+
+inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
+{
+	setenv(var, val, overwrite);
+}
+const std::string OSPATHSEP = ":";
+
 #endif
 
 /// Posix file system directory manipulation - e.g. chdir
@@ -164,19 +177,22 @@ inline char* strerror_rp(int therr, char* buf, size_t len)
 	strerror_s(buf, len, therr);
 	return buf;
 }
-#elif defined(_GNU_SOURCE)
-// non-posix GNU-specific function
+//#elif defined(_GNU_SOURCE)
+//// non-posix GNU-specific function
+//#include <string.h>
+//inline char* strerror_rp(int therr, char* buf, size_t len)
+//{
+//	return strerror_r(therr, buf, len);
+//}
+#else
+// posix function
 #include <string.h>
 inline char* strerror_rp(int therr, char* buf, size_t len)
 {
-	return strerror_r(therr, buf, len);
-}
-#else
-// posix function
-inline char* strerror_rp(int therr, char* buf, size_t len)
-{
-	strerror_r(therr, buf, len);
-	return buf;
+	if(strerror_r(therr, buf, len) == 0)
+		return buf;
+	else
+		return nullptr;
 }
 #endif
 

@@ -60,10 +60,10 @@ ConnectionTokenType::~ConnectionTokenType()
 }
 
 MD3Connection::MD3Connection
-	(std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
-	bool aisServer,                           //Whether to act as a server or client
-	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                 //Port to connect to if client, or listen on if server
+	(std::shared_ptr<odc::asio_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                            //Whether to act as a server or client
+	const std::string& aEndPoint,              //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                  //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms):
 	pIOS(apIOS),
 	EndPoint(aEndPoint),
@@ -85,10 +85,10 @@ MD3Connection::MD3Connection
 // Static Method
 ConnectionTokenType MD3Connection::AddConnection
 (
-	std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
-	bool aisServer,                          //Whether to act as a server or client
-	const std::string& aEndPoint,            //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                //Port to connect to if client, or listen on if server
+	std::shared_ptr<odc::asio_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                           //Whether to act as a server or client
+	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                 //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms
 )
 {
@@ -192,7 +192,7 @@ void MD3Connection::Open(const ConnectionTokenType &ConnectionTok)
 
 void MD3Connection::Open()
 {
-	if (enabled) return;
+	if (enabled.exchange(true)) return;
 
 	try
 	{
@@ -200,12 +200,12 @@ void MD3Connection::Open()
 			throw std::runtime_error("Socket manager uninitialised for - " + ChannelID);
 
 		pSockMan->Open();
-		enabled = true;
 		LOGDEBUG("Connection Opened: " + ChannelID);
 	}
 	catch (std::exception& e)
 	{
 		LOGERROR("Problem opening connection : " + ChannelID + " - " + e.what());
+		enabled = false;
 		return;
 	}
 }
@@ -225,8 +225,7 @@ void MD3Connection::Close(const ConnectionTokenType &ConnectionTok)
 
 void MD3Connection::Close()
 {
-	if (!enabled) return;
-	enabled = false;
+	if (!enabled.exchange(false)) return;
 
 	if (!pSockMan) // Could be empty if a connection was never added (opened)
 		return;

@@ -46,7 +46,6 @@
 #include "CBUtility.h"
 #include "CBPointTableAccess.h"
 
-
 // Also I have concerns about blocking checks on futures, which would block one of the asio threads - we may only have 4!
 // This guys has some answers:
 // http://code-slim-jim.blogspot.com/2014/07/async-usage-of-futures-and-promises-in.html
@@ -64,7 +63,7 @@ using namespace odc;
 class CBPointConf: public ConfigParser
 {
 public:
-	CBPointConf(const std::string& FileName, const Json::Value& ConfOverrides);
+	CBPointConf(const std::string& _FileName, const Json::Value& ConfOverrides);
 
 	// JSON File section processing commands
 	void ProcessElements(const Json::Value& JSONRoot) override;
@@ -81,12 +80,6 @@ public:
 
 	std::map<uint32_t, CBPollGroup> PollGroups;
 
-	// System Sign On Configuration - this is a "special" point that is used to pass the systemsignon command through ODC.
-	std::pair<int32_t, uint32_t> SystemSignOnPoint = std::make_pair(int32_t(0),uint32_t(0));
-	std::pair<int32_t, uint32_t> FreezeResetCountersPoint = std::make_pair(int32_t(0), uint32_t(0));
-	std::pair<int32_t, uint32_t> POMControlPoint = std::make_pair(int32_t(0), uint32_t(0));
-	std::pair<int32_t, uint32_t> DOMControlPoint = std::make_pair(int32_t(0), uint32_t(0));
-
 	// Swap the station and group values when the device is a Baker (not Conitel)
 	bool IsBakerDevice = false;
 
@@ -97,9 +90,12 @@ public:
 	// If true, the outstation will send responses on the TCP connection without waiting for ODC responses.
 	bool StandAloneOutstation = false;
 
+	unsigned int SOEQueueSize = 500;
+
 	// Time to wait for ODC command to return a result before returning with an error of TIMEOUT. Remember there can be multiple responders!
 	uint32_t CBCommandTimeoutmsec = 5000;
 	// How many times do we retry a command, before we give up and move onto the next one?
 	uint32_t CBCommandRetries = 3;
+	std::string FileName;
 };
 #endif

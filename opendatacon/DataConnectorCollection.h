@@ -35,7 +35,7 @@
 
 using namespace odc;
 
-class DataConnectorCollection: public ResponderMap<DataConnector>
+class DataConnectorCollection: public ResponderMap<std::shared_ptr<DataConnector>>
 {
 public:
 	DataConnectorCollection()

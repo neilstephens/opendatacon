@@ -97,16 +97,17 @@ endif()
 #find dnp3 headers
 find_path(DNP3_INCLUDE_PATH opendnp3/LogLevels.h
 	PATHS ${DNP3_HOME}/include ${DNP3_HOME}/local/include
-	NO_DEFAULT_PATH)
+	NO_DEFAULT_PATH
+	CMAKE_FIND_ROOT_PATH_BOTH)
 mark_as_advanced(FORCE DNP3_INCLUDE_PATH)
 
 foreach( component openpal opendnp3 asiopal asiodnp3 )
 	# Look for regular libraries
-	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH)
+	find_library(${component}_lib NAMES ${component} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH CMAKE_FIND_ROOT_PATH_BOTH)
 	add_library(${component}_target UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_target PROPERTY IMPORTED_LOCATION "${${component}_lib}")
 	# Look for debug libraries
-	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH)
+	find_library(${component}_dlib NAMES ${component}${CMAKE_DEBUG_POSTFIX} PATHS ${DNP3_HOME}/lib ${DNP3_HOME}/local/lib NO_DEFAULT_PATH CMAKE_FIND_ROOT_PATH_BOTH)
 	add_library(${component}_dtarget UNKNOWN IMPORTED)
 	set_property(TARGET ${component}_dtarget PROPERTY IMPORTED_LOCATION "${${component}_dlib}")
 	#set a variable to use for linking
@@ -115,21 +116,30 @@ foreach( component openpal opendnp3 asiopal asiodnp3 )
 	#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
 	mark_as_advanced(FORCE ${component}_lib ${component}_dlib)
 
-	#include in install/packaging
-	file_w_symlinks(file_w_links "${${component}_lib}") #resolve symlinks
-	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Release" "RelWithDebInfo" "MinSizeRel")
-	file_w_symlinks(file_w_links "${${component}_dlib}") #resolve symlinks
-	install(FILES ${file_w_links} DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug")
-
 endforeach()
+
+#include in install/packaging
+option(PACKAGE_DNP3 "Package opendnp3 libs in c-pack installer" ON)
+if(PACKAGE_DNP3)
+	set(PACK_NAMES openpal opendnp3 asiopal asiodnp3)
+endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 if(TARGET build_dnp3)
 	add_dependencies(${PROJECT_NAME} build_dnp3)
 endif()
 target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_INCLUDE_PATH}")
-target_link_libraries(${PROJECT_NAME} ODC ${asiodnp3_libs} ${asiopal_libs} ${opendnp3_libs} ${openpal_libs})
+target_link_libraries(${PROJECT_NAME} ${asiodnp3_libs} ${asiopal_libs} ${opendnp3_libs} ${openpal_libs} ODC)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
 
+install(CODE
+"
+	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+	)
+	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
+		${PACK_NAMES}
+	)
+")

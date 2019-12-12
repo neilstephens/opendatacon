@@ -104,6 +104,7 @@ public:
 
 	void SendDOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint16_t & outputbits, const SharedStatusCallback_t &pStatusCallback);
 	void SendPOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & outputselection, const SharedStatusCallback_t &pStatusCallback);
+	void SendDIMOutputCommand(const uint8_t& StationAddress, const uint8_t& ModuleAddress, const uint8_t& outputselection, const DIMControlSelectionType controlselect, const uint16_t outputdata, const SharedStatusCallback_t& pStatusCallback);
 	void SendAOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint8_t & Channel, const uint16_t & value, const SharedStatusCallback_t & pStatusCallback);
 
 	// Testing use only

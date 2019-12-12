@@ -48,9 +48,11 @@ ConnectionTokenType::~ConnectionTokenType()
 		if (pConnection.use_count() <= 2)
 		{
 			LOGDEBUG("Use Count On ConnectionTok Shared_ptr down to 2 - Destroying the Map Connection - {}", ChannelID);
+			pConnection->Close();
 			pConnection->RemoveConnectionFromMap();
-			// Now release our shared_ptr - the last one..The CBConnection destructor should now be called.
+			// Now release our shared_ptr - the last one.The CBConnection destructor should now be called.
 			pConnection.reset();
+			LOGDEBUG("Map Connection Destroyed - {}", ChannelID);
 		}
 		else
 		{
@@ -61,10 +63,10 @@ ConnectionTokenType::~ConnectionTokenType()
 
 CBConnection::CBConnection
 (
-	std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
-	bool aisServer,                          //Whether to act as a server or client
-	const std::string& aEndPoint,            //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                //Port to connect to if client, or listen on if server
+	std::shared_ptr<odc::asio_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                           //Whether to act as a server or client
+	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                 //Port to connect to if client, or listen on if server
 	bool isbakerdevice,
 	uint16_t retry_time_ms
 ):
@@ -91,10 +93,10 @@ CBConnection::CBConnection
 // Static Method
 ConnectionTokenType CBConnection::AddConnection
 (
-	std::shared_ptr<asio::io_service> apIOS, //pointer to an asio io_service
-	bool aisServer,                          //Whether to act as a server or client
-	const std::string& aEndPoint,            //IP addr or hostname (to connect to if client, or bind to if server)
-	const std::string& aPort,                //Port to connect to if client, or listen on if server
+	std::shared_ptr<odc::asio_service> apIOS, //pointer to an asio io_service
+	bool aisServer,                           //Whether to act as a server or client
+	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
+	const std::string& aPort,                 //Port to connect to if client, or listen on if server
 	bool isbakerdevice,
 	uint16_t retry_time_ms
 )
@@ -221,7 +223,7 @@ void CBConnection::Open(const ConnectionTokenType &ConnectionTok)
 
 void CBConnection::Open()
 {
-	if (enabled) return;
+	if (enabled.exchange(true)) return;
 
 	try
 	{
@@ -229,12 +231,12 @@ void CBConnection::Open()
 			throw std::runtime_error("Socket manager uninitialised for - " + InternalChannelID);
 
 		pSockMan->Open();
-		enabled = true;
 		LOGDEBUG("ConnectionTok Opened: {}", InternalChannelID);
 	}
 	catch (std::exception& e)
 	{
 		LOGERROR("Problem opening connection :{} - {}",InternalChannelID, e.what());
+		enabled = false;
 		return;
 	}
 }
@@ -253,14 +255,13 @@ void CBConnection::Close(const ConnectionTokenType &ConnectionTok)
 
 void CBConnection::Close()
 {
-	if (!enabled) return;
-	enabled = false;
+	if (!enabled.exchange(false)) return;
 
 	if (!pSockMan) // Could be empty if a connection was never added (opened)
 		return;
 	pSockMan->Close();
 
-	LOGDEBUG("ConnectionTok Closed: {}", InternalChannelID);
+	LOGDEBUG("Connection Closed: {}", InternalChannelID);
 }
 
 CBConnection::~CBConnection()
@@ -268,9 +269,14 @@ CBConnection::~CBConnection()
 	Close();
 
 	if (!pSockMan) // Could be empty if a connection was never added (opened)
+	{
+		LOGDEBUG("Connection Destructor pSockMan null: {}", InternalChannelID);
 		return;
+	}
+	pSockMan->Close();
 
-	pSockMan.reset(); // Release our object - should be done anyway when the shared_ptr is destructed, but just to make sure...
+	pSockMan.reset(); // Release our object - should be done anyway when as soon as we exit this method...
+	LOGDEBUG("Connection Destructor Complete : {}", InternalChannelID);
 }
 
 // Static method
@@ -283,7 +289,7 @@ void CBConnection::Write(const ConnectionTokenType &ConnectionTok,const CBMessag
 	}
 	// Turn the blocks into a binary string.
 
-	if (auto pConnection = ConnectionTok.pConnection)
+	if (auto pConnection = ConnectionTok.pConnection) // Dont do if connection not valid
 	{
 		std::string CBMessageString;
 
@@ -334,7 +340,10 @@ void CBConnection::SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, st
 // We don't need to know who is doing the writing. Just pass to the socket
 void CBConnection::Write(std::string &msg)
 {
-	pSockMan->Write(std::string(msg)); // Strange, it requires the std::string() constructor to be passed otherwise the templating fails.
+	if (pSockMan)
+	{
+		pSockMan->Write(std::string(msg)); // Strange, it requires the std::string() constructor to be passed otherwise the templating fails.
+	}
 }
 //Static method
 void CBConnection::InjectSimulatedTCPMessage(const ConnectionTokenType &ConnectionTok, buf_t&readbuf)
@@ -361,6 +370,12 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 	// We will build a CBMessage until we get the end condition. If we get a new start block, we will have to dump anything in the CBMessage and start again.
 
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
+
+	if (!enabled)
+	{
+		LOGDEBUG("CBConnection called ReadCompletionHandler when not enabled - ignoring");
+		return;
+	}
 
 	while (readbuf.size() > 0)
 	{
@@ -458,7 +473,10 @@ void CBConnection::SocketStateHandler(bool state)
 
 	// Call all the OutStation State Callbacks
 	for (auto it = StateCallbackMap.begin(); it != StateCallbackMap.end(); ++it)
-		it->second(state);
+	{
+		if (it->second) // Check the validity of the callback pointer first
+			it->second(state);
+	}
 }
 
 

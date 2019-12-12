@@ -41,8 +41,8 @@
 
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
-	pIOS(std::make_unique<asio::io_service>(std::thread::hardware_concurrency()+1)),
-	ios_working(std::make_unique<asio::io_service::work>(*pIOS)),
+	pIOS(std::make_shared<odc::asio_service>(std::thread::hardware_concurrency()+1)),
+	ios_working(pIOS->make_work()),
 	shutting_down(false),
 	shut_down(false),
 	pTCPostream(nullptr)
@@ -63,6 +63,19 @@ DataConcentrator::DataConcentrator(std::string FileName):
 
 	if(Interfaces.empty() && DataPorts.empty() && DataConnectors.empty())
 		throw std::runtime_error("No objects to manage");
+
+	for(auto& conn : DataConnectors)
+		conn.second->SetIOS(pIOS);
+
+	std::unordered_map<std::string,std::shared_ptr<IUIResponder>> PortResponders;
+	for(auto& port : DataPorts)
+	{
+		port.second->SetIOS(pIOS);
+		auto ResponderPair = port.second->GetUIResponder();
+		//if it's a different, valid responder pair, store it
+		if(ResponderPair.second && PortResponders.count(ResponderPair.first) == 0)
+			PortResponders.insert(ResponderPair);
+	}
 
 	for(auto& interface : Interfaces)
 	{
@@ -87,11 +100,9 @@ DataConcentrator::DataConcentrator(std::string FileName):
 		interface.second->AddResponder("DataPorts", DataPorts);
 		interface.second->AddResponder("DataConnectors", DataConnectors);
 		interface.second->AddResponder("Plugins", Interfaces);
+		for(auto& ResponderPair : PortResponders)
+			interface.second->AddResponder(ResponderPair.first, *ResponderPair.second);
 	}
-	for(auto& port : DataPorts)
-		port.second->SetIOS(pIOS);
-	for(auto& conn : DataConnectors)
-		conn.second->SetIOS(pIOS);
 }
 
 DataConcentrator::~DataConcentrator()
@@ -107,17 +118,25 @@ DataConcentrator::~DataConcentrator()
 	{
 		//if there's a tcp sink, we need to destroy it
 		//	because ostream will be destroyed
-		if(LogSinksMap.count("tcp"))
+		//same for syslog, because asio::io_service will be destroyed
+		for(const char* logger : {"tcp","syslog"})
 		{
-			//This doesn't look thread safe
-			//	but we're on the main thread at this point
-			//	the only other threads should be spdlog threads
-			//	so if we flush first this should be safe...
-			log->flush();
-			auto tcp_sink_pos = std::find(log->sinks().begin(),log->sinks().end(),LogSinksMap["tcp"]);
-			if(tcp_sink_pos != log->sinks().end())
+			if(LogSinksMap.count(logger))
 			{
-				log->sinks().erase(tcp_sink_pos);
+				//This doesn't look thread safe
+				//	but we're on the main thread at this point
+				//	the only other threads should be spdlog threads
+				//	so if we flush first this should be safe...
+				//BUT flush doesn't wait for the async Qs :-(
+				//	it only flushes the sinks
+				//	only thing to do is give some time for the Qs to empty
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				log->flush();
+				auto tcp_sink_pos = std::find(log->sinks().begin(),log->sinks().end(),LogSinksMap[logger]);
+				if(tcp_sink_pos != log->sinks().end())
+				{
+					log->sinks().erase(tcp_sink_pos);
+				}
 			}
 		}
 	}
@@ -442,6 +461,15 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				continue;
 			}
 
+			//Create a logger if we haven't already
+			if(!odc::spdlog_get(libname))
+			{
+				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
+					odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+				pLibLogger->set_level(spdlog::level::trace);
+				odc::spdlog_register_logger(pLibLogger);
+			}
+
 			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of DataPort
 			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
@@ -461,15 +489,6 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
-			}
-
-			//Create a logger if we haven't already
-			if(!odc::spdlog_get(libname))
-			{
-				auto pLibLogger = std::make_shared<spdlog::async_logger>(libname, begin(LogSinksVec), end(LogSinksVec),
-					odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-				pLibLogger->set_level(spdlog::level::trace);
-				odc::spdlog_register_logger(pLibLogger);
 			}
 
 			auto port_cleanup = [=](DataPort* port)
@@ -576,7 +595,7 @@ void DataConcentrator::Run()
 		}
 		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
 		{
-			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
+			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
 			pTimer->async_wait([pTimer,&Name_n_Conn](asio::error_code err_code)
 				{
@@ -598,7 +617,7 @@ void DataConcentrator::Run()
 		}
 		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
 		{
-			auto pTimer = std::make_shared<asio::basic_waitable_timer<std::chrono::steady_clock>>(*pIOS);
+			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
 			pTimer->async_wait([pTimer,&Name_n_Port](asio::error_code err_code)
 				{

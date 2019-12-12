@@ -71,7 +71,7 @@ public:
 	virtual void Disable()=0;
 
 	void Subscribe(IOHandler* pIOHandler, std::string aName);
-	void SetIOS(std::shared_ptr<asio::io_service> ios_ptr);
+	void SetIOS(std::shared_ptr<odc::asio_service> ios_ptr);
 
 	inline const std::string& GetName(){return Name;}
 	inline const bool Enabled(){return enabled;}
@@ -82,7 +82,7 @@ public:
 
 protected:
 	std::string Name;
-	std::shared_ptr<asio::io_service> pIOS;
+	std::shared_ptr<odc::asio_service> pIOS;
 	std::atomic_bool enabled;
 
 	inline bool InDemand(){ return mDemandMap.InDemand(); }
@@ -98,6 +98,8 @@ protected:
 
 	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}))
 	{
+		if(!pStatusCallback)
+			pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){});
 		if(event->GetEventType() == EventType::ConnectState)
 		{
 			//call the special connection Event() function separately,

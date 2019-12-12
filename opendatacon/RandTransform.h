@@ -29,6 +29,7 @@
 
 #include <opendatacon/util.h>
 #include <opendatacon/Transform.h>
+#include <random>
 
 class RandTransform: public Transform
 {
@@ -39,10 +40,11 @@ public:
 
 	bool Event(std::shared_ptr<EventInfo> event) override
 	{
+		thread_local std::mt19937 RandNumGenerator = std::mt19937(std::random_device()());
+		uint16_t random_number = std::uniform_int_distribution<unsigned int>(0, 100)(RandNumGenerator);
 		if(event->GetEventType() != EventType::Analog)
 			return true;
-		static rand_t seed = (rand_t)((intptr_t) this);
-		event->SetPayload<EventType::Analog>(100*ZERO_TO_ONE(seed));
+		event->SetPayload<EventType::Analog>(std::move(random_number));
 		return true;
 	}
 };

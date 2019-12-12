@@ -35,7 +35,7 @@
 namespace odc
 {
 
-class DataPort: public IOHandler, public ConfigParser
+class DataPort: public IOHandler, public ConfigParser, public std::enable_shared_from_this<DataPort>
 {
 public:
 	DataPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
@@ -54,6 +54,14 @@ public:
 	void Event(ConnectState state, const std::string& SenderName) final
 	{
 		MuxConnectionEvents(state, SenderName);
+	}
+
+	virtual std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder()
+	{
+		std::shared_ptr<IUIResponder> pR(nullptr);
+		std::string s = "";
+		std::pair<std::string,std::shared_ptr<IUIResponder>> pair(s,pR);
+		return pair;
 	}
 
 	virtual const Json::Value GetStatistics() const

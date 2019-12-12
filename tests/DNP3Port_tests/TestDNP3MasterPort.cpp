@@ -32,7 +32,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		auto ios = std::make_shared<asio::io_service>();
+		auto ios = std::make_shared<odc::asio_service>();
 		newptr newMaster = GetPortCreator(portlib, "DNP3Master");
 		REQUIRE(newMaster);
 		delptr deleteMaster = GetPortDestroyer(portlib, "DNP3Master");
@@ -47,7 +47,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	}
 	/// Test the destruction of an enabled port
 	{
-		auto ios = std::make_shared<asio::io_service>();
+		auto ios = std::make_shared<odc::asio_service>();
 		newptr newMaster = GetPortCreator(portlib, "DNP3Master");
 		REQUIRE(newMaster);
 		delptr deleteMaster = GetPortDestroyer(portlib, "DNP3Master");

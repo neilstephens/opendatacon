@@ -61,6 +61,20 @@ opendatacon bundles some third party source code:
 	 *  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 	 */ 
 
+	and
+
+	/*
+	 * include/whereami.h
+	 * include/whereami++.h
+	 * ODC/whereami.c
+	 * ODC/whereami++.cpp
+	 *
+	 * Where Am I?
+	 * -------------------------------------------------------------------------
+	 * (‑●‑●)> released under the WTFPL v2 license, by Gregory Pakosz (@gpakosz)
+	 * https://github.com/gpakosz/whereami
+	 */
+
 it also (optionally) bundles some third party binary libraries in the installation package:
 
 	/*
@@ -114,6 +128,17 @@ it also (optionally) bundles some third party binary libraries in the installati
 	 * You should have received a copy of the GNU Lesser General Public
 	 * License along with this library; if not, write to the Free Software
 	 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+	 */
+
+	and
+
+	/*
+	 * Python
+	 * http://www.python.org/
+	 *
+	 * Distributed under the PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2 (See accompanying
+	 *  file PSF-LICENSE or copy at https://github.com/python/cpython/raw/master/LICENSE)
+	 *
 	 */
 
 it is also compiled with some external third party dependancies:

@@ -32,6 +32,7 @@
 #define NONVSTESTING
 
 #include <cstdint>
+#include <shared_mutex>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 
@@ -58,6 +59,9 @@
 
 
 // Hide some of the code to make Logging cleaner
+#define LOGTRACE(...) \
+	if (auto log = odc::spdlog_get("CBPort")) \
+		log->trace(__VA_ARGS__);
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("CBPort")) \
 		log->debug(__VA_ARGS__);
@@ -79,7 +83,7 @@ typedef std::shared_ptr<Timer_t> pTimer_t;
 
 typedef uint64_t CBTime; // msec since epoch, utc, most time functions are uint64_t
 
-CBTime CBNow();
+CBTime CBNowUTC();
 
 const CBTime CBTimeOneDay = 1000 * 60 * 60 * 24;
 const CBTime CBTimeOneHour = 1000 * 60 * 60;
@@ -109,6 +113,33 @@ OT numeric_cast(const ST value)
 {
 	return static_cast<OT>(value);
 }
+
+class protected_bool
+{
+public:
+	protected_bool(): val(false) {};
+	protected_bool(bool _val): val(_val) {};
+	bool getandset(bool newval)
+	{
+		std::unique_lock<std::shared_timed_mutex> lck(m);
+		bool retval = val;
+		val = newval;
+		return retval;
+	}
+	void set(bool newval)
+	{
+		std::unique_lock<std::shared_timed_mutex> lck(m);
+		val = newval;
+	}
+	bool get(void)
+	{
+		std::shared_lock<std::shared_timed_mutex> lck(m);
+		return val;
+	}
+private:
+	std::shared_timed_mutex m;
+	bool val;
+};
 
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
 enum BinaryPointType { DIG, MCA, MCB, MCC, BINCONTROL }; // Inputs and outputs
@@ -242,6 +273,18 @@ public:
 	~CBBinaryPoint();
 
 	BinaryPointType GetPointType() const { return PointType; }
+	std::string GetPointTypeName() const
+	{
+		switch (PointType)
+		{
+			case DIG: return "DIG";
+			case MCA: return "MCA";
+			case MCB: return "MCB";
+			case MCC: return "MCC";
+			case BINCONTROL: return "BINCONTROL";
+		}
+		return "UNKNOWN";
+	}
 
 	uint8_t GetBinary() { std::unique_lock<std::mutex> lck(PointMutex); return Binary; }
 
@@ -259,8 +302,8 @@ public:
 		HasBeenSet = true;
 		ChangedTime = ctime;
 
-		if ((PointType == MCA)  && (Binary==1) && (b == 0)) MomentaryChangeStatus = true;   // Only set on 1-->0 transition
-		if ((PointType == MCB)  && (Binary == 0) && (b == 1)) MomentaryChangeStatus = true; // Only set on 0-->1 transition
+		if ((PointType == MCA) && (Binary == 1) && (b == 0)) MomentaryChangeStatus = true;  // Only set on 1-->0 transition
+		if ((PointType == MCB) && (Binary == 0) && (b == 1)) MomentaryChangeStatus = true;  // Only set on 0-->1 transition
 		if ((PointType == MCC) && (Changed) && (Binary != b)) MomentaryChangeStatus = true; // The normal changed flag was already set, and then we got another change.
 
 		Changed = (Binary != b);

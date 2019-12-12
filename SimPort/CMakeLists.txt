@@ -19,11 +19,17 @@
  # 
 project(SimPort)
 cmake_minimum_required(VERSION 2.8)
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def sqlite3/sqlite3.c sqlite3/sqlite3.h)
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC)
+target_link_libraries(${PROJECT_NAME} ODC ${DL})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
 
+install(CODE
+"
+	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+	)
+")

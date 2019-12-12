@@ -57,8 +57,8 @@
 
 // Master Station Request Sub-Codes
 
-#define     MASTER_SUB_FUNC_0_NOTUSED                                               0
-#define     MASTER_SUB_FUNC_TESTRAM                                                 1
+#define MASTER_SUB_FUNC_0_NOTUSED                                               0
+#define MASTER_SUB_FUNC_TESTRAM                                                 1
 #define MASTER_SUB_FUNC_TESTPROM                                              2
 #define MASTER_SUB_FUNC_TESTEPROM                                             3
 #define MASTER_SUB_FUNC_TESTIO                                                      4
@@ -123,9 +123,13 @@ std::string to_binstring(T val)
 }
 
 // Create an ASCII string version of the time from the CB time - which is msec since epoch.
-std::string to_timestringfromCBtime(CBTime _time);
+std::string to_LOCALtimestringfromCBtime(CBTime _time);
+std::string to_stringfromCBtime(CBTime _time);
+std::string to_stringfromhhmmssmsec(uint8_t hh, uint8_t mm, uint8_t ss, uint16_t msec);
 
 void to_hhmmssmmfromCBtime(CBTime _time, uint8_t &hh, uint8_t &mm, uint8_t &ss, uint16_t &msec);
+void DecodeTimePayload(uint16_t P1B, uint16_t P2A, uint16_t P2B, uint8_t& hhin, uint8_t& mmin, uint8_t& ssin, uint16_t& msecin);
+void PackageTimePayload(uint8_t hh, uint8_t mm, uint8_t ss, uint16_t msec, uint16_t& P1B, uint16_t& P2A, uint16_t& P2B);
 
 // Return the current UTC offset in minutes.
 int tz_offset();
@@ -154,6 +158,9 @@ int tz_offset();
 // The configuration file for the Python simulator actually defines the group, and the "location" that the data defined will take in the returned packet.
 // This is specified in terms of 1B, 2A, 2B where the first number is the packet number, the second is the A or B payload location.
 // We will follow the same method.
+
+// the following maintains a string version during block assembly so that I can watch it in the debugger. Turn off normally
+//#define  DEBUGSTR
 
 class CBBlockData
 {
@@ -363,6 +370,9 @@ public:
 			data = ShiftLeftResult32Bits(data, 8);
 			data |= ShiftLeftResult32Bits(b, 0); // No shift but convert to 32 bit.
 		}
+		#ifdef DEBUGSTR
+		dataasstr = ToString();
+		#endif
 	}
 	bool IsValidBlock()
 	{
@@ -404,6 +414,9 @@ protected:
 
 	uint32_t data = 0;
 	uint32_t builddataindex = 0; // Used in TCP framingblock building only.
+	#ifdef DEBUGSTR
+	std::string dataasstr; // Used in TCP framingblock building only.
+	#endif
 };
 
 typedef std::vector<CBBlockData> CBMessage_t;

@@ -31,6 +31,8 @@
 #include <opendatacon/DataPortConf.h>
 #include <opendatacon/IOTypes.h>
 
+using namespace odc;
+
 //DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
 //We can generalise, and come up with a simpler superset:
 //	-have an arbitrary length list of outputs
@@ -59,15 +61,17 @@ public:
 	{}
 
 	std::vector<uint32_t> BinaryIndicies;
-	std::map<size_t, bool> BinaryStartVals;
-	std::map<size_t, unsigned int> BinaryUpdateIntervalms;
+	std::map<uint32_t, bool> BinaryStartVals;
+	std::map<uint32_t, bool> BinaryForcedStates;
+	std::map<uint32_t, unsigned int> BinaryUpdateIntervalms;
 	std::vector<uint32_t> AnalogIndicies;
-	std::map<size_t, double> AnalogStartVals;
-	std::map<size_t, unsigned int> AnalogUpdateIntervalms;
-	std::map<size_t, double> AnalogStdDevs;
+	std::map<uint32_t, double> AnalogStartVals;
+	std::map<uint32_t, bool> AnalogForcedStates;
+	std::map<uint32_t, unsigned int> AnalogUpdateIntervalms;
+	std::map<uint32_t, double> AnalogStdDevs;
 	std::vector<uint32_t> ControlIndicies;
-	std::map<size_t, unsigned int> ControlIntervalms;
-	std::map<size_t, std::vector<BinaryFeedback>> ControlFeedback;
+	std::map<uint32_t, unsigned int> ControlIntervalms;
+	std::map<uint32_t, std::vector<BinaryFeedback>> ControlFeedback;
 
 	double default_std_dev_factor;
 };

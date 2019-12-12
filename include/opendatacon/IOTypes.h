@@ -160,6 +160,33 @@ enum class ControlCode : uint8_t
 //TODO: make these ToString functions faster
 //	use hash map cache
 #define ENUMSTRING(A,E,B) if(A == E::B) return #B;
+
+inline std::string ToString(const CommandStatus cc)
+{
+	ENUMSTRING(cc, CommandStatus,SUCCESS )
+	ENUMSTRING(cc, CommandStatus,TIMEOUT)
+	ENUMSTRING(cc, CommandStatus,NO_SELECT)
+	ENUMSTRING(cc, CommandStatus,FORMAT_ERROR)
+	ENUMSTRING(cc, CommandStatus,NOT_SUPPORTED)
+	ENUMSTRING(cc, CommandStatus,ALREADY_ACTIVE)
+	ENUMSTRING(cc, CommandStatus,HARDWARE_ERROR)
+	ENUMSTRING(cc, CommandStatus,LOCAL)
+	ENUMSTRING(cc, CommandStatus,TOO_MANY_OPS)
+	ENUMSTRING(cc, CommandStatus,NOT_AUTHORIZED)
+	ENUMSTRING(cc, CommandStatus,AUTOMATION_INHIBIT)
+	ENUMSTRING(cc, CommandStatus,PROCESSING_LIMITED)
+	ENUMSTRING(cc, CommandStatus,OUT_OF_RANGE)
+	ENUMSTRING(cc, CommandStatus,DOWNSTREAM_LOCAL)
+	ENUMSTRING(cc, CommandStatus,ALREADY_COMPLETE)
+	ENUMSTRING(cc, CommandStatus,BLOCKED)
+	ENUMSTRING(cc, CommandStatus,CANCELLED)
+	ENUMSTRING(cc, CommandStatus,BLOCKED_OTHER_MASTER)
+	ENUMSTRING(cc, CommandStatus,DOWNSTREAM_FAIL)
+	ENUMSTRING(cc, CommandStatus,NON_PARTICIPATING)
+	ENUMSTRING(cc, CommandStatus,UNDEFINED)
+	return "<no_string_representation>";
+}
+
 inline std::string ToString(const ControlCode cc)
 {
 	ENUMSTRING(cc,ControlCode,NUL                  )
@@ -288,6 +315,86 @@ inline std::string ToString(const ConnectState cs)
 	ENUMSTRING(cs, ConnectState, DISCONNECTED)
 	ENUMSTRING(cs, ConnectState, PORT_DOWN)
 	return "<no_string_representation>";
+}
+
+inline bool GetQualityFlagsFromStringName(const std::string StrQuality, QualityFlags& QualityResult)
+{
+#define CHECKFLAGSTRING(X) if (StrQuality.find(#X) != std::string::npos) QualityResult |= QualityFlags::X
+
+	QualityResult = QualityFlags::NONE;
+
+	CHECKFLAGSTRING(ONLINE);
+	CHECKFLAGSTRING(RESTART);
+	CHECKFLAGSTRING(COMM_LOST);
+	CHECKFLAGSTRING(REMOTE_FORCED);
+	CHECKFLAGSTRING(LOCAL_FORCED);
+	CHECKFLAGSTRING(OVERRANGE);
+	CHECKFLAGSTRING(REFERENCE_ERR);
+	CHECKFLAGSTRING(ROLLOVER);
+	CHECKFLAGSTRING(DISCONTINUITY);
+	CHECKFLAGSTRING(CHATTER_FILTER);
+
+	return (QualityResult != QualityFlags::NONE); // Should never be none!
+}
+
+inline bool GetEventTypeFromStringName(const std::string StrEventType, EventType& EventTypeResult)
+{
+#define CHECKEVENTSTRING(X) if (StrEventType.find(ToString(X)) != std::string::npos) EventTypeResult = X
+
+	EventTypeResult = EventType::BeforeRange;
+
+	CHECKEVENTSTRING(EventType::ConnectState);
+	CHECKEVENTSTRING(EventType::Binary);
+	CHECKEVENTSTRING(EventType::Analog);
+	CHECKEVENTSTRING(EventType::Counter);
+	CHECKEVENTSTRING(EventType::FrozenCounter);
+	CHECKEVENTSTRING(EventType::BinaryOutputStatus);
+	CHECKEVENTSTRING(EventType::AnalogOutputStatus);
+	CHECKEVENTSTRING(EventType::ControlRelayOutputBlock);
+	CHECKEVENTSTRING(EventType::OctetString);
+	CHECKEVENTSTRING(EventType::BinaryQuality);
+	CHECKEVENTSTRING(EventType::DoubleBitBinaryQuality);
+	CHECKEVENTSTRING(EventType::AnalogQuality);
+	CHECKEVENTSTRING(EventType::CounterQuality);
+	CHECKEVENTSTRING(EventType::BinaryOutputStatusQuality);
+	CHECKEVENTSTRING( EventType::FrozenCounterQuality);
+	CHECKEVENTSTRING(EventType::AnalogOutputStatusQuality);
+
+	return (EventTypeResult != EventType::BeforeRange);
+}
+inline bool GetControlCodeFromStringName(const std::string StrControlCode, ControlCode& ControlCodeResult)
+{
+#define CHECKCONTROLCODESTRING(X) if (StrControlCode.find(ToString(X)) != std::string::npos) ControlCodeResult = X
+
+	ControlCodeResult = ControlCode::UNDEFINED;
+
+	CHECKCONTROLCODESTRING(ControlCode::CLOSE_PULSE_ON);
+	CHECKCONTROLCODESTRING(ControlCode::CLOSE_PULSE_ON_CANCEL);
+	CHECKCONTROLCODESTRING(ControlCode::LATCH_OFF);
+	CHECKCONTROLCODESTRING(ControlCode::LATCH_OFF_CANCEL);
+	CHECKCONTROLCODESTRING(ControlCode::LATCH_ON);
+	CHECKCONTROLCODESTRING(ControlCode::LATCH_ON_CANCEL);
+	CHECKCONTROLCODESTRING(ControlCode::NUL);
+	CHECKCONTROLCODESTRING(ControlCode::NUL_CANCEL);
+	CHECKCONTROLCODESTRING(ControlCode::PULSE_OFF);
+	CHECKCONTROLCODESTRING(ControlCode::PULSE_OFF_CANCEL);
+	CHECKCONTROLCODESTRING(ControlCode::PULSE_ON);
+	CHECKCONTROLCODESTRING(ControlCode::PULSE_ON_CANCEL);
+	CHECKCONTROLCODESTRING(ControlCode::TRIP_PULSE_ON);
+	CHECKCONTROLCODESTRING(ControlCode::TRIP_PULSE_ON_CANCEL);
+
+	return (ControlCodeResult != ControlCode::UNDEFINED);
+}
+inline bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult)
+{
+#define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
+
+	CHECKCONNECTSTATESTRING(ConnectState::CONNECTED);
+	CHECKCONNECTSTATESTRING(ConnectState::DISCONNECTED);
+	CHECKCONNECTSTATESTRING(ConnectState::PORT_DOWN);
+	CHECKCONNECTSTATESTRING(ConnectState::PORT_UP);
+
+	return false;
 }
 
 typedef uint64_t msSinceEpoch_t;

@@ -41,8 +41,8 @@ TEST_CASE(SUITE("StatusCallback"))
 	 * verify the status callback
 	 */
 
-	auto ios = std::make_shared<asio::io_service>();
-	auto work = std::make_shared<asio::io_service::work>(*ios);
+	auto ios = std::make_shared<odc::asio_service>();
+	auto work = ios->make_work();
 
 	PublicPublishPort Source("Null1","",Json::Value::nullSingleton());
 	NullPort Null2("Null2","",Json::Value::nullSingleton());

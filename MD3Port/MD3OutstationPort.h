@@ -150,10 +150,13 @@ public:
 
 	// Testing use only
 	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
+	int GetSOEOffsetMinutes() { return SOETimeOffsetMinutes; }
+
 private:
 
 	bool DigitalChangedFlagCalculationMethod(void);
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);
+	int SOETimeOffsetMinutes = 0;
 
 	OutstationSystemFlags SystemFlags;
 

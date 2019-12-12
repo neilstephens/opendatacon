@@ -64,8 +64,8 @@ private:
 	DataConnectorCollection DataConnectors;
 	InterfaceCollection Interfaces;
 
-	std::shared_ptr<asio::io_service> pIOS;
-	std::unique_ptr<asio::io_service::work> ios_working;
+	std::shared_ptr<odc::asio_service> pIOS;
+	std::shared_ptr<asio::io_service::work> ios_working;
 	std::once_flag shutdown_flag;
 	std::atomic_bool shutting_down;
 	std::atomic_bool shut_down;

@@ -25,12 +25,8 @@
  */
 
 #include <opendatacon/util.h>
-
-//compile asio only in libODC
-//ASIO_DYN_LINK lets other modules link to it
-#include <asio/impl/src.hpp>
-
 #include <regex>
+#include <iostream>
 
 namespace odc
 {
@@ -43,6 +39,11 @@ void spdlog_init_thread_pool(size_t q_size, size_t thread_count)
 std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool()
 {
 	return spdlog::thread_pool();
+}
+
+void spdlog_flush_all()
+{
+	spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) {l->flush(); });
 }
 
 void spdlog_register_logger(std::shared_ptr<spdlog::logger> logger)
@@ -89,19 +90,32 @@ bool extract_delimited_string(std::istream& ist, std::string& extracted)
 {
 	extracted.clear();
 	char delim;
-	//The first char is the delimiter
-	if(!(ist>>delim))
-		return true; //nothing to extract - return successfully extracted nothing
-	char ch;
-	while(ist.get(ch))
+	//The first non-whitespace char is the delimiter
+	ist>>std::ws; //eat whitspace
+	if((delim = ist.peek()) == EOF)
+		return false; //nothing to extract - return failed (no delimetered string)
+
+	auto reset_pos = ist.tellg();
+	size_t offset = 1;
+	while(ist.seekg(1,std::ios_base::cur))
 	{
-		//return success once we find the second delimiter
-		if(ch == delim)
+		if(ist.peek() == delim)
+		{
+			ist.seekg(reset_pos);
+			char ch;
+			ist.get(ch); //start delim
+			while(--offset)
+			{
+				ist.get(ch);
+				extracted.push_back(ch);
+			}
+			ist.get(ch); //end delim
 			return true;
-		//otherwise keep extracting
-		extracted.push_back(ch);
+		}
+		offset++;
 	}
-	//if we get to here, there wasn't a matching end delimiter - return failed
+	//if we get to here, something has gone wrong
+	ist.seekg(reset_pos);
 	return false;
 }
 
@@ -109,29 +123,19 @@ bool extract_delimited_string(const std::string& delims, std::istream& ist, std:
 {
 	extracted.clear();
 	char delim;
-	//The first char is the delimiter
-	if(!(ist>>delim))
-		return true; //nothing to extract - return successfully extracted nothing
+	//The first non-whitespace char is the delimiter
+	ist>>std::ws; //eat whitspace
+	if((delim = ist.peek()) == EOF)
+		return false; //nothing to extract - return failed
+
 	if(delims.find(delim) == std::string::npos)
 	{
-		/* no delimiter so just extract until we get to a space or end of string */
-		extracted.push_back(delim);
-		std::string temptoken;
-		ist>>temptoken;
-		extracted.append(temptoken);
+		/* not delimited so just extract until we get to a space or end of string */
+		ist>>extracted;
 		return true;
 	}
-	char ch;
-	while(ist.get(ch))
-	{
-		//return success once we find the second delimiter
-		if(ch == delim)
-			return true;
-		//otherwise keep extracting
-		extracted.push_back(ch);
-	}
-	//if we get to here, there wasn't a matching end delimiter
-	return false;
+
+	return extract_delimited_string(ist,extracted);
 }
 
 }

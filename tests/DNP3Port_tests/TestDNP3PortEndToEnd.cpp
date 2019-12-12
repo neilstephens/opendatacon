@@ -34,8 +34,8 @@ TEST_CASE(SUITE("TCP link"))
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		auto ios = std::make_shared<asio::io_service>();
-		auto work = std::make_unique<asio::io_service::work>(*ios);
+		auto ios = std::make_shared<odc::asio_service>();
+		auto work = ios->make_work();
 		std::thread t([&](){ios->run();});
 
 		//make an outstation port
@@ -83,6 +83,7 @@ TEST_CASE(SUITE("TCP link"))
 
 		//turn outstation off
 		OPUT->Disable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 		count = 0;
 		while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
@@ -116,11 +117,14 @@ TEST_CASE(SUITE("Serial link"))
 		auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 		REQUIRE(portlib);
 		{
-			auto ios = std::make_shared<asio::io_service>();
-			auto work = std::make_unique<asio::io_service::work>(*ios);
+			auto ios = std::make_shared<odc::asio_service>();
+			auto work = ios->make_work();
 			std::thread t([&](){ios->run();});
 
-			system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &");
+			if(system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &"))
+			{
+				WARN("socat system call failed");
+			}
 
 			//make an outstation port
 			newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
@@ -181,7 +185,10 @@ TEST_CASE(SUITE("Serial link"))
 			REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 			REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
-			system("killall socat");
+			if(system("killall socat"))
+			{
+				WARN("kill socat system call failed");
+			}
 
 			work.reset();
 			t.join();

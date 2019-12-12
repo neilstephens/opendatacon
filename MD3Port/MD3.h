@@ -38,6 +38,9 @@
 #include <opendatacon/util.h>
 
 // Hide some of the code to make Logging cleaner
+#define LOGTRACE(...) \
+	if (auto log = odc::spdlog_get("MD3Port")) \
+		log->trace(__VA_ARGS__);
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("MD3Port")) \
 		log->debug(__VA_ARGS__);
@@ -59,7 +62,7 @@ typedef std::shared_ptr<Timer_t> pTimer_t;
 
 typedef uint64_t MD3Time; // msec since epoch, utc, most time functions are uint64_t
 
-MD3Time MD3Now();
+MD3Time MD3NowUTC();
 
 // We use for signed/unsigned conversions, where we know we will not have problems.
 // Static casting all over the place still produces a lot of gcc warning messages.
@@ -98,7 +101,7 @@ OT numeric_cast(const ST value)
 // So our Outstation data structure needs to support these modes and addressing/module limits.
 
 
-enum MD3_FUNCTION_CODE
+enum MD3_FUNCTION_CODE : uint8_t
 {
 	ANALOG_UNCONDITIONAL = 5,      // HAS MODULE INFORMATION ATTACHED
 	ANALOG_DELTA_SCAN = 6,         // HAS MODULE INFORMATION ATTACHED
@@ -131,8 +134,51 @@ enum MD3_FUNCTION_CODE
 };
 
 enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
-enum BinaryPointType { BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT };
+enum BinaryPointType { BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT, DIMOUTPUT };
 enum PollGroupType { BinaryPoints, AnalogPoints, CounterPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
+
+enum DIMControlSelectionType : uint8_t
+{
+	RESERVED_0 = 0,
+	TRIP = 1,
+	CLOSE = 2,
+	RAISE = 3,
+	LOWER = 4,
+	SETPOINT = 5,
+	SINGLEPOLEOPERATE = 6,
+	OFF = 7,
+	ON = 8,
+	RESERVED_9 = 9,
+	RESERVED_10 = 10,
+	RESERVED_11 = 11,
+	RESERVED_12 = 12,
+	RESERVED_13 = 13,
+	RESERVED_14 = 14,
+	RESERVED_15 = 15
+};
+
+#define ENUMSTRING(A,E,B) if(A == E::B) return #B;
+
+inline std::string ToString(const DIMControlSelectionType cc)
+{
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_0)
+	ENUMSTRING(cc, DIMControlSelectionType, TRIP)
+	ENUMSTRING(cc, DIMControlSelectionType, CLOSE)
+	ENUMSTRING(cc, DIMControlSelectionType, RAISE)
+	ENUMSTRING(cc, DIMControlSelectionType, LOWER)
+	ENUMSTRING(cc, DIMControlSelectionType, SETPOINT)
+	ENUMSTRING(cc, DIMControlSelectionType, SINGLEPOLEOPERATE)
+	ENUMSTRING(cc, DIMControlSelectionType, OFF)
+	ENUMSTRING(cc, DIMControlSelectionType, ON)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_9)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_10)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_11)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_12)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_13)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_14)
+	ENUMSTRING(cc, DIMControlSelectionType, RESERVED_15)
+	return "<no_string_representation>";
+}
 
 #define EOMBIT 0x40
 #define FOMBIT 0x80
@@ -151,7 +197,6 @@ enum PollGroupType { BinaryPoints, AnalogPoints, CounterPoints, TimeSetCommand, 
 
 class MD3Point // Abstract Class
 {
-	//TODO: Can we convert protection to strands??
 	/*	NONE              = 0,
 	ONLINE            = 1<<0,
 	RESTART           = 1<<1,

@@ -37,9 +37,9 @@ using namespace odc;
 class ModbusExecutor
 {
 public:
-	ModbusExecutor(modbus_t* mb_,asio::io_service& ios):
+	ModbusExecutor(modbus_t* mb_,odc::asio_service& ios):
 		mb(mb_),
-		sync(ios)
+		sync(ios.make_strand())
 	{}
 	~ModbusExecutor()
 	{
@@ -48,7 +48,7 @@ public:
 	}
 	void Execute(std::function<void(modbus_t*)>&& f)
 	{
-		sync.dispatch([this,f = std::move(f)](){f(mb);});
+		sync->dispatch([this,f = std::move(f)](){f(mb);});
 	}
 	bool isNull()
 	{
@@ -56,7 +56,7 @@ public:
 	}
 private:
 	modbus_t* mb;
-	asio::io_service::strand sync;
+	std::unique_ptr<asio::io_service::strand> sync;
 };
 
 class ModbusPort: public DataPort

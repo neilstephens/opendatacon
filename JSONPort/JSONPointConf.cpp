@@ -107,6 +107,15 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 				this->Controls[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
 			}
 		}
+		else if (PointType == "AnalogControl")
+		{
+			for (Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)
+			{
+				if (!check_index(PointConfs[n]["Points"][k]))
+					continue;
+				this->AnalogControls[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
+			}
+		}
 		else
 		{
 			if(auto log = odc::spdlog_get("JSONPort"))

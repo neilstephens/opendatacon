@@ -99,11 +99,14 @@ public:
 	//*** PUBLIC for unit tests only
 	void DoPoll(uint32_t payloadlocation);
 	void SendF0ScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
-	void SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback);
+	void SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback, int TimeOffsetMinutes = 0);
+
+	static void BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t& CompleteCBMessage);
 	void SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
 
 	// Testing use only
 	CBPointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
+	bool GetOutStationSOEBufferOverflowFlag() { return OutStationSOEBufferOverflow.getandset(false); };
 private:
 
 	std::unique_ptr<asio::io_service::strand> MasterCommandStrand;
@@ -127,7 +130,7 @@ private:
 	bool CheckResponseHeaderMatch(const CBBlockData & ReceivedHeader, const CBBlockData & SentHeader);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
-
+	protected_bool OutStationSOEBufferOverflow{ false }; // Initialised in constructor
 	//TODO: Check if we need these Quality Calculations
 	QualityFlags  CalculateBinaryQuality(bool enabled, CBTime time);
 	QualityFlags  CalculateAnalogQuality(bool enabled, uint16_t meas, CBTime time);
