@@ -68,7 +68,7 @@ install:
   - export INSTALL_PREFIX=$(pwd)/install
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      brew install libmodbus libmicrohttpd socat
+      HOMEBREW_NO_AUTO_UPDATE=1 brew install libmodbus libmicrohttpd socat
       export TOOLCHAIN_OPT="-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMICROHTTPD=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF"
     elif [ -z "$DOCKER_BUILD" ]; then
       # Not a docker build, just normal linux
