@@ -26,6 +26,7 @@
 #include <memory>
 #include <random>
 #include <limits>
+#include <chrono>
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
 #include "SimPort.h"
@@ -342,15 +343,29 @@ void SimPort::PortUp()
 	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 	for(auto index : pConf->AnalogIndicies)
 	{
+		pTimer_t pTimer = pIOS->make_steady_timer();
+		Timers["Analog"+std::to_string(index)] = pTimer;
+
+		//Check if we're configured to load this point from DB
+		if(DBStats.count("Analog"+std::to_string(index)))
+		{
+			//posting this is essential - otherwise SpawnEvent will deadlock the mutex we have locked
+			pIOS->post([this,index]()
+				{
+					auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
+					NextEventFromDB(event);
+					//TODO: use initial timestamp as relative???
+					SpawnEvent(event);
+				});
+			continue;
+		}
+
 		//send initial event
 		auto mean = pConf->AnalogStartVals.count(index) ? pConf->AnalogStartVals.at(index) : 0;
 		pConf->AnalogStartVals[index] = mean;
 		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Analog>(std::move(mean));
 		PublishEvent(event);
-
-		pTimer_t pTimer = pIOS->make_steady_timer();
-		Timers["Analog"+std::to_string(index)] = pTimer;
 
 		//queue up a timer if it has an update interval
 		if(pConf->AnalogUpdateIntervalms.count(index))
@@ -403,10 +418,42 @@ void SimPort::PortDown()
 	Timers.clear();
 }
 
+void SimPort::NextEventFromDB(std::shared_ptr<EventInfo> event)
+{
+	if(event->GetEventType() == EventType::Analog)
+	{
+		auto rv = sqlite3_step(DBStats.at("Analog"+std::to_string(event->GetIndex())).get());
+		if(rv == SQLITE_ROW)
+		{
+			auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(DBStats.at("Analog"+std::to_string(event->GetIndex())).get(),0));
+			//TODO: apply some relative offset to time
+			event->SetTimestamp(t);
+			event->SetPayload<EventType::Analog>(sqlite3_column_double(DBStats.at("Analog"+std::to_string(event->GetIndex())).get(),1));
+		}
+		else
+		{
+			//wait forever
+			auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
+			event->SetTimestamp(forever);
+		}
+	}
+	else if(auto log = odc::spdlog_get("SimPort"))
+	{
+		log->error("{} : Unsupported EventType : '{}'", ToString(event->GetEventType()));
+		return;
+	}
+}
+
 void SimPort::PopulateNextEvent(std::shared_ptr<EventInfo> event)
 {
-	//TODO: add other (non random) ways to populate event - like from a database
+	//Check if we're configured to load this point from DB
+	if(DBStats.count("Analog"+std::to_string(event->GetIndex())))
+	{
+		NextEventFromDB(event);
+		return;
+	}
 
+	//Otherwise do random
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 	unsigned int interval;
 	if(event->GetEventType() == EventType::Analog)
@@ -543,21 +590,24 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 
 						if(Analogs[n].isMember("SQLite3Query"))
 						{
-							const char* query = Analogs[n]["SQLite3Query"].asString().c_str();
-							int len = Analogs[n]["SQLite3Query"].asString().size();
 							sqlite3_stmt* stmt;
-							const char* tail;
-							auto rv = sqlite3_prepare_v2(db,query,len,&stmt,&tail);
+							auto rv = sqlite3_prepare_v2(db,Analogs[n]["SQLite3Query"].asString().c_str(),-1,&stmt,nullptr);
 							if(rv != SQLITE_OK)
 							{
 								if(auto log = odc::spdlog_get("SimPort"))
-									log->error("Failed to prepare SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
+									log->error("Failed to prepare SQLite3 query '{}' : '{}'", Analogs[n]["SQLite3Query"].asString(), sqlite3_errstr(rv));
+							}
+							else if (sqlite3_column_count(stmt) != 2)
+							{
+								if(auto log = odc::spdlog_get("SimPort"))
+									log->error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", Analogs[n]["SQLite3Query"].asString());
 							}
 							else
 							{
 								auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
 								DBStats["Analog"+std::to_string(index)] = pDBStatement(stmt,deleter);
 							}
+							//TODO: get offset of timestamps
 						}
 						else
 						{

@@ -62,6 +62,7 @@ private:
 	std::unordered_map<std::string, pDBConnection> DBConns;
 	typedef std::shared_ptr<sqlite3_stmt> pDBStatement;
 	std::unordered_map<std::string, pDBStatement> DBStats;
+	void NextEventFromDB(std::shared_ptr<EventInfo> event);
 	void PopulateNextEvent(std::shared_ptr<EventInfo> event);
 	void SpawnEvent(std::shared_ptr<EventInfo> event);
 	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)
