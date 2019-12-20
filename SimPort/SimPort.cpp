@@ -339,6 +339,7 @@ bool SimPort::UIRelease(const std::string& type, const std::string& index)
 
 void SimPort::PortUp()
 {
+	auto now = msSinceEpoch();
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 	for(auto index : pConf->AnalogIndicies)
@@ -349,14 +350,52 @@ void SimPort::PortUp()
 		//Check if we're configured to load this point from DB
 		if(DBStats.count("Analog"+std::to_string(index)))
 		{
-			//posting this is essential - otherwise SpawnEvent will deadlock the mutex we have locked
-			pIOS->post([this,index]()
+			auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
+			NextEventFromDB(event);
+			int64_t time_offset = 0;
+			if(!(TimestampHandling & TimestampMode::ABSOLUTE))
+			{
+				if(!!(TimestampHandling & TimestampMode::FIRST))
 				{
-					auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
+					time_offset = now - event->GetTimestamp();
+				}
+				else if(!!(TimestampHandling & TimestampMode::TOD))
+				{
+					auto whole_days = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
+					time_offset = now - std::chrono::duration_cast<std::chrono::milliseconds>(whole_days).count();
+				}
+				else
+				{
+					throw std::runtime_error("Invalid timestamp mode: Not absolute, but not relative either");
+				}
+			}
+			if(!(TimestampHandling & TimestampMode::FASTFORWARD))
+			{
+				//Find the first event that's not in the past
+				while(now > (event->GetTimestamp()+time_offset))
 					NextEventFromDB(event);
-					//TODO: use initial timestamp as relative???
-					SpawnEvent(event);
+			}
+
+			//TODO: remeber the last event in the past to send an initial event
+			//posting this is essential - otherwise SpawnEvent will deadlock the mutex we have locked
+//			pIOS->post([this,event,time_offset]()
+//				{
+//					SpawnEvent(last_event, time_offset);
+//				});
+
+			msSinceEpoch_t delta;
+			if(now > event->GetTimestamp())
+				delta = 0;
+			else
+				delta = event->GetTimestamp() - now;
+			pTimer->expires_from_now(std::chrono::milliseconds(delta));
+			pTimer->async_wait([=](asio::error_code err_code)
+				{
+					if(enabled && !err_code)
+						SpawnEvent(event, time_offset);
+					//else - break timer cycle
 				});
+
 			continue;
 		}
 
@@ -444,12 +483,13 @@ void SimPort::NextEventFromDB(std::shared_ptr<EventInfo> event)
 	}
 }
 
-void SimPort::PopulateNextEvent(std::shared_ptr<EventInfo> event)
+void SimPort::PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_offset)
 {
 	//Check if we're configured to load this point from DB
 	if(DBStats.count("Analog"+std::to_string(event->GetIndex())))
 	{
 		NextEventFromDB(event);
+		event->SetTimestamp(event->GetTimestamp()+time_offset);
 		return;
 	}
 
@@ -485,7 +525,7 @@ void SimPort::PopulateNextEvent(std::shared_ptr<EventInfo> event)
 	event->SetTimestamp(msSinceEpoch()+random_interval);
 }
 
-void SimPort::SpawnEvent(std::shared_ptr<EventInfo> event)
+void SimPort::SpawnEvent(std::shared_ptr<EventInfo> event, int64_t time_offset)
 {
 	//deep copy event to modify as next event
 	auto next_event = std::make_shared<EventInfo>(*event);
@@ -515,7 +555,7 @@ void SimPort::SpawnEvent(std::shared_ptr<EventInfo> event)
 		PublishEvent(event);
 
 	auto pTimer = Timers.at(typeString+std::to_string(event->GetIndex()));
-	PopulateNextEvent(next_event);
+	PopulateNextEvent(next_event, time_offset);
 	auto now = msSinceEpoch();
 	msSinceEpoch_t delta;
 	if(now > next_event->GetTimestamp())
@@ -527,7 +567,7 @@ void SimPort::SpawnEvent(std::shared_ptr<EventInfo> event)
 	pTimer->async_wait([=](asio::error_code err_code)
 		{
 			if(enabled && !err_code)
-				SpawnEvent(next_event);
+				SpawnEvent(next_event, time_offset);
 			//else - break timer cycle
 		});
 }
@@ -573,50 +613,68 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 				if(!exists)
 					pConf->AnalogIndicies.push_back(index);
 
-				if(Analogs[n].isMember("SQLite3File"))
+				if(Analogs[n].isMember("SQLite3"))
 				{
-					sqlite3* db;
-					const char* filename = Analogs[n]["SQLite3File"].asString().c_str();
-					auto rv = sqlite3_open_v2(filename,&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_SHAREDCACHE,nullptr);
-					if(rv != SQLITE_OK)
+					if(Analogs[n]["SQLite3"].isMember("File") && Analogs[n]["SQLite3"].isMember("Query"))
 					{
-						if(auto log = odc::spdlog_get("SimPort"))
-							log->error("Failed to open SQLite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
-					}
-					else
-					{
-						auto deleter = [](sqlite3* db){sqlite3_close_v2(db);};
-						DBConns["Analog"+std::to_string(index)] = pDBConnection(db,deleter);
-
-						if(Analogs[n].isMember("SQLite3Query"))
+						sqlite3* db;
+						auto filename = Analogs[n]["SQLite3"]["File"].asString();
+						auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_SHAREDCACHE,nullptr);
+						if(rv != SQLITE_OK)
 						{
+							if(auto log = odc::spdlog_get("SimPort"))
+								log->error("Failed to open SQLite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
+						}
+						else
+						{
+							auto deleter = [](sqlite3* db){sqlite3_close_v2(db);};
+							DBConns["Analog"+std::to_string(index)] = pDBConnection(db,deleter);
+
 							sqlite3_stmt* stmt;
-							auto rv = sqlite3_prepare_v2(db,Analogs[n]["SQLite3Query"].asString().c_str(),-1,&stmt,nullptr);
+							auto query = Analogs[n]["SQLite3"]["Query"].asString();
+							auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);
 							if(rv != SQLITE_OK)
 							{
 								if(auto log = odc::spdlog_get("SimPort"))
-									log->error("Failed to prepare SQLite3 query '{}' : '{}'", Analogs[n]["SQLite3Query"].asString(), sqlite3_errstr(rv));
+									log->error("Failed to prepare SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
 							}
 							else if (sqlite3_column_count(stmt) != 2)
 							{
 								if(auto log = odc::spdlog_get("SimPort"))
-									log->error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", Analogs[n]["SQLite3Query"].asString());
+									log->error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", query);
 							}
 							else
 							{
 								auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
 								DBStats["Analog"+std::to_string(index)] = pDBStatement(stmt,deleter);
 							}
-							//TODO: get offset of timestamps
+							TimestampHandling = TimestampMode::FIRST;
+							if(Analogs[n]["SQLite3"].isMember("TimestampHandling"))
+							{
+								auto ts_mode = Analogs[n]["SQLite3"]["TimestampHandling"].asString();
+								if(ts_mode == "ABSOLUTE")
+									TimestampHandling = TimestampMode::ABSOLUTE;
+								else if(ts_mode == "ABSOLUTE_FASTFORWARD")
+									TimestampHandling = TimestampMode::ABSOLUTE | TimestampMode::FASTFORWARD;
+								else if(ts_mode == "RELATIVE_TOD")
+									TimestampHandling = TimestampMode::TOD;
+								else if(ts_mode == "RELATIVE_TOD_FASTFORWARD")
+									TimestampHandling = TimestampMode::TOD | TimestampMode::FASTFORWARD;
+								else if(ts_mode == "RELATIVE_FIRST")
+									TimestampHandling = TimestampMode::FIRST;
+								else if(auto log = odc::spdlog_get("SimPort"))
+									log->error("Invalid SQLite3 'TimeStampHandling' mode '{}'. Defaulting to RELATIVE_FIRST", ts_mode);
+							}
+							else if(auto log = odc::spdlog_get("SimPort"))
+								log->info("SQLite3 'TimeStampHandling' mode defaulting to RELATIVE_FIRST");
 						}
-						else
-						{
-							if(auto log = odc::spdlog_get("SimPort"))
-								log->error("'SQLite3Query' parameter required for point : '{}'", Analogs[n].toStyledString());
-						}
-
 					}
-				}
+					else
+					{
+						if(auto log = odc::spdlog_get("SimPort"))
+							log->error("'SQLite3' object requires 'File' and 'Query' for point : '{}'", Analogs[n].toStyledString());
+					}
+				} //SQLite3
 
 				if(Analogs[n].isMember("StdDev"))
 					pConf->AnalogStdDevs[index] = Analogs[n]["StdDev"].asDouble();

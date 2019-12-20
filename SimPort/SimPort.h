@@ -29,6 +29,7 @@
 
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
+#include <opendatacon/EnumClassFlags.h>
 #include <shared_mutex>
 #include <random>
 
@@ -36,6 +37,17 @@
 #include "sqlite3/sqlite3.h"
 
 using namespace odc;
+
+using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
+
+enum class TimestampMode: uint8_t
+{
+	FIRST       = 1,
+	ABSOLUTE    = 1<<1,
+	FASTFORWARD = 1<<2,
+	TOD         = 1<<3
+};
+ENABLE_BITWISE(TimestampMode)
 
 class SimPortCollection;
 class SimPort: public DataPort
@@ -62,9 +74,10 @@ private:
 	std::unordered_map<std::string, pDBConnection> DBConns;
 	typedef std::shared_ptr<sqlite3_stmt> pDBStatement;
 	std::unordered_map<std::string, pDBStatement> DBStats;
+	TimestampMode TimestampHandling;
 	void NextEventFromDB(std::shared_ptr<EventInfo> event);
-	void PopulateNextEvent(std::shared_ptr<EventInfo> event);
-	void SpawnEvent(std::shared_ptr<EventInfo> event);
+	void PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_offset);
+	void SpawnEvent(std::shared_ptr<EventInfo> event, int64_t time_offset = 0);
 	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)
 	{
 		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
