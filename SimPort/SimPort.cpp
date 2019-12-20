@@ -361,8 +361,10 @@ void SimPort::PortUp()
 				}
 				else if(!!(TimestampHandling & TimestampMode::TOD))
 				{
-					auto whole_days = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
-					time_offset = now - std::chrono::duration_cast<std::chrono::milliseconds>(whole_days).count();
+					auto whole_days_ts = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
+					auto whole_days_now = std::chrono::duration_cast<days>(std::chrono::milliseconds(now));
+					time_offset = std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_now).count()
+					              - std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_ts).count();
 				}
 				else
 				{
@@ -647,6 +649,17 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							{
 								auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
 								DBStats["Analog"+std::to_string(index)] = pDBStatement(stmt,deleter);
+								auto index_bind_index = sqlite3_bind_parameter_index(stmt, ":INDEX");
+								if(index_bind_index)
+								{
+									auto rv = sqlite3_bind_int(stmt, index_bind_index, index);
+									if(rv != SQLITE_OK)
+									{
+										if(auto log = odc::spdlog_get("SimPort"))
+											log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
+										DBStats.erase("Analog"+std::to_string(index));
+									}
+								}
 							}
 							TimestampHandling = TimestampMode::FIRST;
 							if(Analogs[n]["SQLite3"].isMember("TimestampHandling"))
