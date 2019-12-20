@@ -46,7 +46,7 @@ struct BitwiseEnabled
 //Macro to specialise the above template for enum classes that are flags
 #define ENABLE_BITWISE(E)                   \
 	template<>                            \
-	struct BitwiseEnabled<E>              \
+	struct odc::BitwiseEnabled<E>              \
 	{                                     \
 		static const bool state = true; \
 	};
