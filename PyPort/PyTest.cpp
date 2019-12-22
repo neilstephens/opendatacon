@@ -273,12 +273,12 @@ public:
 	void set(std::string newval)
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(m);
-		val = newval.c_str();
+		val = newval;
 	}
 	std::string get(void)
 	{
 		std::shared_lock<std::shared_timed_mutex> lck(m);
-		return val.c_str();
+		return val;
 	}
 private:
 	std::shared_timed_mutex m;
@@ -485,15 +485,27 @@ TEST_CASE("Py.TestsUsingPython")
 		std::string url("http://testserver/thisport/cb?test=harold");
 		protected_string sres("");
 
+		std::atomic<size_t> done_count(0);
 		auto pResponseCallback = std::make_shared<std::function<void(std::string url)>>([&](std::string response)
 			{
 				sres.set(response);
+				done_count++;
 			});
 
 		// Direct inject web request to python code - we get response back from python module PyPortSim.py
 		PythonPort->RestHandler(url, "", pResponseCallback);
 
-		WaitIOS(IOS, 2);
+		REQUIRE_NOTHROW
+		(
+			if (!WaitIOSFnResult(IOS, 5, [&]()
+				    {
+					    return bool(done_count);
+				    }))
+			{
+				throw("Waiting for RestHandler response timed out");
+			}
+		);
+
 		LOGDEBUG("Response {}", sres.get());
 		REQUIRE(sres.get() == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
 
@@ -502,6 +514,7 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort->SetTimer(121, 1000);
 		PythonPort->SetTimer(122, 800);
 
+		done_count = 0;
 		for (int i = 0; i < 1000; i++)
 		{
 			url = fmt::format("RestHandler sent url {:d}", i);
@@ -510,7 +523,18 @@ TEST_CASE("Py.TestsUsingPython")
 		}
 
 		// Wait - we should see the timer callback triggered and no crashes!
-		WaitIOS(IOS, 7);
+		REQUIRE_NOTHROW
+		(
+			if (!WaitIOSFnResult(IOS, 7, [&]()
+				    {
+					    if(done_count == 1000)
+						    return true;
+					    return false;
+				    }))
+			{
+				throw("Waiting for 1000 RestHandler responses timed out");
+			}
+		);
 		LOGDEBUG("Last Response {}", sres.get());
 	}
 
@@ -592,6 +616,17 @@ TEST_CASE("Py.TestsUsingPython")
 
 		LOGINFO("Port5 Enabled");
 
+		std::atomic<size_t> block_counts[4];
+		odc::SharedStatusCallback_t block_callbacks[4];
+		for(size_t i=0; i<4; i++)
+		{
+			block_counts[i] = 0;
+			block_callbacks[i] = std::make_shared<std::function<void (CommandStatus status)>>([&block_counts,i] (CommandStatus status)
+				{
+					block_counts[i]++;
+				});
+		}
+
 		IOS->post([&]()
 			{
 				LOGINFO("Sending Binary Events 1");
@@ -600,7 +635,7 @@ TEST_CASE("Py.TestsUsingPython")
 				      bool val = (ODCIndex % 2 == 0);
 				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing1");
 				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				      PythonPort5->Event(boolevent, "TestHarness", block_callbacks[0]);
 				}
 				LOGINFO("Sending Binary Events 1 Done");
 			});
@@ -612,7 +647,7 @@ TEST_CASE("Py.TestsUsingPython")
 				      bool val = (ODCIndex % 2 == 0);
 				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
 				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				      PythonPort5->Event(boolevent, "TestHarness", block_callbacks[1]);
 				}
 				LOGINFO("Sending Binary Events 2 Done");
 			});
@@ -624,7 +659,7 @@ TEST_CASE("Py.TestsUsingPython")
 				      bool val = (ODCIndex % 2 == 0);
 				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
 				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				      PythonPort5->Event(boolevent, "TestHarness", block_callbacks[2]);
 				}
 				LOGINFO("Sending Binary Events 3 Done");
 			});
@@ -636,12 +671,37 @@ TEST_CASE("Py.TestsUsingPython")
 				      bool val = (ODCIndex % 2 == 0);
 				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
 				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "TestHarness", nullptr);
+				      PythonPort5->Event(boolevent, "TestHarness", block_callbacks[3]);
 				}
 				LOGINFO("Sending Binary Events 4 Done");
 			});
 
-		WaitIOS(IOS, 6);
+		REQUIRE_NOTHROW
+		(
+			if (!WaitIOSFnResult(IOS, 6, [&]()
+				    {
+					    if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
+						    return false;
+					    return true;
+				    }))
+			{
+				throw("Waiting for queuing events timed out");
+			}
+		);
+		LOGINFO("All events queued");
+
+		REQUIRE_NOTHROW
+		(
+			if (!WaitIOSFnResult(IOS, 6, [&]()
+				    {
+					    if(PythonPort5->GetEventQueueSize() > 1)
+						    return false;
+					    return true;
+				    }))
+			{
+				throw("Waiting for queued events timed out");
+			}
+		);
 
 		// Check that the PyPortSim module has processed the number of events that we have sent?
 		// Query through the Restful interface
@@ -661,21 +721,6 @@ TEST_CASE("Py.TestsUsingPython")
 
 		LOGDEBUG("The PyPortSim Code Processed {} Events", ProcessedEvents);
 
-		if (ProcessedEvents != 14999)
-		{
-			WaitIOS(IOS, 15); // Wait longer for RPI build to run!!!
-
-			resp = DoHttpRequst("localhost", "10000", "/TestMaster5", callresp);
-			REQUIRE(resp);
-
-			LOGDEBUG("GET http://localhost:10000/TestMaster5 We got back {}", callresp);
-
-			size_t pos = callresp.find(matchstr);
-			REQUIRE(pos != std::string::npos);
-			ProcessedEvents = GetProcessedEventsFromJSON(callresp.substr(pos + matchstr.length()));
-
-			LOGDEBUG("The PyPortSim Code Processed {} Events", ProcessedEvents);
-		}
 		size_t QueueSize = PythonPort5->GetEventQueueSize();
 
 		REQUIRE(ProcessedEvents == 14999);
