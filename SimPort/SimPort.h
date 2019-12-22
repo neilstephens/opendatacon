@@ -47,7 +47,10 @@ enum class TimestampMode: uint8_t
 	FASTFORWARD = 1<<2,
 	TOD         = 1<<3
 };
+namespace odc
+{
 ENABLE_BITWISE(TimestampMode)
+}
 
 class SimPortCollection;
 class SimPort: public DataPort
