@@ -545,6 +545,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 				TagValue);                                                 // 6
 			pWrapper->QueueEvent(jsonevent);
 			LOGTRACE("Queued Event {}", jsonevent);
+			PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
 		}
 		catch(std::exception& e)
 		{
