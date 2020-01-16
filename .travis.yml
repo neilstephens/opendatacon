@@ -136,6 +136,7 @@ install:
         yum install -y rh-python36 rh-python36-python-devel
         python3 --version
       '
+      sudo pip install python-socks
       sudo pip install gdown
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
