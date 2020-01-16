@@ -676,6 +676,7 @@ TEST_CASE("Py.TestsUsingPython")
 				LOGINFO("Sending Binary Events 4 Done");
 			});
 
+		LOGINFO("Waiting for all events to be queued");
 		REQUIRE_NOTHROW
 		(
 			if (!WaitIOSFnResult(IOS, 10, [&]()
@@ -685,6 +686,7 @@ TEST_CASE("Py.TestsUsingPython")
 					return true;
 				}))
 			{
+				LOGERROR("Waiting for queuing events timed out"); // the throw does not get reported - causes a seg fault in travis
 				throw("Waiting for queuing events timed out");
 			}
 		);
