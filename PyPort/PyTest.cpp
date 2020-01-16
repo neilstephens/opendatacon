@@ -434,9 +434,9 @@ TEST_CASE("Py.TestsUsingPython")
 	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
 	REQUIRE_NOTHROW(
 		if (!WaitIOSFnResult(IOS, 10, [&]()
-			    {
-				    return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
-			    }))
+			{
+				return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
+			}))
 		{
 			throw std::runtime_error("Waiting for Ports to Enable timed out");
 		}
@@ -498,9 +498,9 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE_NOTHROW
 		(
 			if (!WaitIOSFnResult(IOS, 5, [&]()
-				    {
-					    return bool(done_count);
-				    }))
+				{
+					return bool(done_count);
+				}))
 			{
 				throw("Waiting for RestHandler response timed out");
 			}
@@ -526,11 +526,11 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE_NOTHROW
 		(
 			if (!WaitIOSFnResult(IOS, 7, [&]()
-				    {
-					    if(done_count == 1000)
-						    return true;
-					    return false;
-				    }))
+				{
+					if(done_count == 1000)
+						return true;
+					return false;
+				}))
 			{
 				throw("Waiting for 1000 RestHandler responses timed out");
 			}
@@ -587,9 +587,9 @@ TEST_CASE("Py.TestsUsingPython")
 	REQUIRE_NOTHROW
 	(
 		if (!WaitIOSFnResult(IOS, 10, [&]()
-			    {
-				    return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
-			    }))
+			{
+				return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
+			}))
 		{
 			throw("Waiting for Ports to be disabled timed out");
 		}
@@ -606,9 +606,9 @@ TEST_CASE("Py.TestsUsingPython")
 		// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
 		REQUIRE_NOTHROW(
 			if (!WaitIOSFnResult(IOS, 11, [&]()
-				    {
-					    return (PythonPort5->Enabled());
-				    }))
+				{
+					return (PythonPort5->Enabled());
+				}))
 			{
 				throw std::runtime_error("Waiting for Ports to Enable timed out");
 			}
@@ -678,12 +678,12 @@ TEST_CASE("Py.TestsUsingPython")
 
 		REQUIRE_NOTHROW
 		(
-			if (!WaitIOSFnResult(IOS, 6, [&]()
-				    {
-					    if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
-						    return false;
-					    return true;
-				    }))
+			if (!WaitIOSFnResult(IOS, 10, [&]()
+				{
+					if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
+						return false;
+					return true;
+				}))
 			{
 				throw("Waiting for queuing events timed out");
 			}
@@ -693,11 +693,11 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE_NOTHROW
 		(
 			if (!WaitIOSFnResult(IOS, 6, [&]()
-				    {
-					    if(PythonPort5->GetEventQueueSize() > 1)
-						    return false;
-					    return true;
-				    }))
+				{
+					if(PythonPort5->GetEventQueueSize() > 1)
+						return false;
+					return true;
+				}))
 			{
 				throw("Waiting for queued events timed out");
 			}
@@ -732,9 +732,9 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE_NOTHROW
 		(
 			if (!WaitIOSFnResult(IOS, 11, [&]()
-				    {
-					    return (!PythonPort->Enabled());
-				    }))
+				{
+					return (!PythonPort->Enabled());
+				}))
 			{
 				throw("Waiting for Ports to be disabled timed out");
 			}
