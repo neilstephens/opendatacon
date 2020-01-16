@@ -679,7 +679,7 @@ TEST_CASE("Py.TestsUsingPython")
 		LOGINFO("Waiting for all events to be queued");
 		REQUIRE_NOTHROW
 		(
-			if (!WaitIOSFnResult(IOS, 10, [&]()
+			if (!WaitIOSFnResult(IOS, 15, [&]()
 				{
 					if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
 						return false;
