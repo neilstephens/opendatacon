@@ -25,6 +25,9 @@
 //
 //
 
+#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
+#include <experimental/filesystem>
+#include <opendatacon/util.h>
 #include "MhdWrapper.h"
 
 const int POSTBUFFERSIZE = 512;
@@ -91,13 +94,16 @@ int ReturnFile(struct MHD_Connection *connection,
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;
-
-	if ((0 == stat(&url[1], &buf)) && (S_ISREG(buf.st_mode)))
-		fopen_s(&file, &url[1], "rb");
+	std::string filename = "www/" + std::string(&url[1]);
+	if ((0 == stat(filename.c_str(), &buf)) && (S_ISREG(buf.st_mode)))
+		fopen_s(&file, filename.c_str(), "rb");
 	else
 		file = nullptr;
 	if (file == nullptr)
 	{
+		if (auto log = odc::spdlog_get("WebUI"))
+			log->error("WebUI : Failed to open file {}",std::experimental::filesystem::current_path().string()+"/"+filename);
+
 		response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
 			(void *)EMPTY_PAGE,
 			MHD_RESPMEM_PERSISTENT);
