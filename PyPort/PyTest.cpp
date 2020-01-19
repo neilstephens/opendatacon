@@ -575,6 +575,7 @@ TEST_CASE("Py.TestsUsingPython")
 		REQUIRE(res);
 		REQUIRE(callresp.find("\"processedevents\": 1") != std::string::npos);
 		REQUIRE(callresp.find("\"test\": \"GET\"") != std::string::npos);
+		LOGERROR("HTTP tests are finished..");
 	}
 
 	LOGDEBUG("Starting teardown ports 1-4");
@@ -598,6 +599,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 	INFO("QueuedEvents")
 	{
+		LOGERROR("Queued Events Tests..");
 		Json::Value portoverride;
 		portoverride["EventsAreQueued"] = static_cast<Json::UInt>(1);
 		TEST_PythonPort5(portoverride);
@@ -678,10 +680,10 @@ TEST_CASE("Py.TestsUsingPython")
 
 		WaitIOS(IOS, 1);
 
-		LOGINFO("Waiting for all events to be queued");
+		LOGERROR("Waiting for all events to be queued");
 		REQUIRE_NOTHROW
 		(
-			if (!WaitIOSFnResult(IOS, 21, [&]() // RPI very much slower than everything else... 5 works for all other platforms...
+			if (!WaitIOSFnResult(IOS, 25, [&]() // RPI very much slower than everything else... 5 works for all other platforms...
 				{
 					if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
 						return false;
@@ -692,7 +694,7 @@ TEST_CASE("Py.TestsUsingPython")
 				throw("Waiting for queuing events timed out");
 			}
 		);
-		LOGINFO("All events queued");
+		LOGERROR("All events queued");
 
 		REQUIRE_NOTHROW
 		(
