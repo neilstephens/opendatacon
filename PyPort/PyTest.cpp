@@ -676,10 +676,12 @@ TEST_CASE("Py.TestsUsingPython")
 				LOGINFO("Sending Binary Events 4 Done");
 			});
 
+		WaitIOS(IOS, 1);
+
 		LOGINFO("Waiting for all events to be queued");
 		REQUIRE_NOTHROW
 		(
-			if (!WaitIOSFnResult(IOS, 15, [&]()
+			if (!WaitIOSFnResult(IOS, 21, [&]() // RPI very much slower than everything else... 5 works for all other platforms...
 				{
 					if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
 						return false;
