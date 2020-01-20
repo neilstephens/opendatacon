@@ -683,7 +683,7 @@ TEST_CASE("Py.TestsUsingPython")
 		LOGERROR("Waiting for all events to be queued");
 		REQUIRE_NOTHROW
 		(
-			if (!WaitIOSFnResult(IOS, 25, [&]() // RPI very much slower than everything else... 5 works for all other platforms...
+			if (!WaitIOSFnResult(IOS, 60, [&]() // RPI very much slower than everything else... 5 works for all other platforms...
 				{
 					if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
 						return false;
