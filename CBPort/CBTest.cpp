@@ -878,13 +878,12 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	std::atomic_bool done_flag(false);
+	CBOSPort->SetSendTCPDataFn([&Response,&done_flag](std::string CBMessage) { Response = CBMessage; done_flag = true; });
 
 	// Send the commands in as if came from TCP channel
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
-
-	WaitIOS(*IOS, 2);
 
 	// Check the command is formatted correctly
 	std::string DesiredResult = "0937ffaa" // Echoed block plus data 1B
@@ -894,6 +893,10 @@ TEST_CASE("Station - ScanRequest F0")
 	                            "00080006"
 	                            "00080006"
 	                            "00080007";
+
+	while(!done_flag)
+		IOS->poll_one();
+	done_flag = false;
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -932,8 +935,6 @@ TEST_CASE("Station - ScanRequest F0")
 		SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0));
 	}
 
-	WaitIOS(*IOS, 1);
-
 	// MCA,MCB,MCC Set to starting values
 	SendBinaryEvent(CBOSPort, 12, true);  //CLOSED // MCA inverted on the wire!!
 	SendBinaryEvent(CBOSPort, 13, false); //OPEN
@@ -953,7 +954,10 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "80080023";
-	WaitIOS(*IOS, 1);
+
+	while(!done_flag)
+		IOS->poll_one();
+	done_flag = false;
 
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
@@ -989,7 +993,10 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "80080023";
-	WaitIOS(*IOS, 1);
+
+	while(!done_flag)
+		IOS->poll_one();
+	done_flag = false;
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -998,8 +1005,6 @@ TEST_CASE("Station - ScanRequest F0")
 	SendBinaryEvent(CBOSPort, 12, true); // MCA inverted on the wire!!
 	SendBinaryEvent(CBOSPort, 13, false);
 	SendBinaryEvent(CBOSPort, 14, false); // Only 1 change, need 2 to trigger
-
-	WaitIOS(*IOS, 1);
 
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
@@ -1013,7 +1018,10 @@ TEST_CASE("Station - ScanRequest F0")
 	                "405a032c"
 	                "40780030"
 	                "c0080031"; // The SOE buffer overflow bit should be set here...
-	WaitIOS(*IOS, 1);
+
+	while(!done_flag)
+		IOS->poll_one();
+	done_flag = false;
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -1702,11 +1710,11 @@ TEST_CASE("Master - SOE Request F10")
 	CBMAPort->EnablePolling(false); // Don't want the timer triggering this. We will call manually.
 
 	// Hook the output functions
+	std::atomic_bool done_flag(false);
 	std::string OSResponse = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&OSResponse](std::string CBMessage) { OSResponse = CBMessage; });
-
+	CBOSPort->SetSendTCPDataFn([&](std::string CBMessage){ OSResponse = CBMessage; done_flag = true; });
 	std::string MAResponse = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&MAResponse](std::string CBMessage) { MAResponse = CBMessage; });
+	CBMAPort->SetSendTCPDataFn([&](std::string CBMessage){ MAResponse = CBMessage; done_flag = true; });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -1719,12 +1727,15 @@ TEST_CASE("Master - SOE Request F10")
 		INFO("Test actual returned data for F10 SOE Scan");
 		{
 			MAResponse = "Not Set";
+			done_flag = false;
 
 			// Send an SOE Scan Command from the Master
 			uint8_t Group = 5;
 			CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
 
-			WaitIOS(*IOS, 2);
+			while(!done_flag)
+				IOS->poll_one();
+			done_flag = false;
 
 			// Check that the command was formatted correctly.
 			const std::string DesiredResult = "a9500005";
@@ -1738,7 +1749,7 @@ TEST_CASE("Master - SOE Request F10")
 			MAoutput << CommandResponse;
 			CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-			WaitIOS(*IOS, 4);
+			WaitIOS(*IOS,4);
 
 			// We should now have data available...
 			// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
@@ -1790,7 +1801,9 @@ TEST_CASE("Master - SOE Request F10")
 			// Now can we check the overflow record in some way.
 			CBMAPort->SendFn10SOEScanCommand(Group, nullptr);
 
-			WaitIOS(*IOS, 2);
+			while(!done_flag)
+				IOS->poll_one();
+			done_flag = false;
 
 			// Check that the command was formatted correctly.
 			REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == DesiredResult);
