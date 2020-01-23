@@ -40,6 +40,7 @@
 #define TCPSOCKETMANAGER
 
 #include <opendatacon/asio.h>
+#include <opendatacon/Platform.h>
 #include <string>
 #include <functional>
 
@@ -75,27 +76,46 @@ private:
 	std::shared_ptr<T> con;
 };
 
+struct TCPKeepaliveOpts
+{
+	TCPKeepaliveOpts(bool enabled, unsigned int idle_timeout_s, unsigned int retry_interval_s, unsigned int fail_count):
+		enabled(enabled),
+		idle_timeout_s(idle_timeout_s),
+		retry_interval_s(retry_interval_s),
+		fail_count(fail_count)
+	{}
+	bool enabled;
+	unsigned int idle_timeout_s;
+	unsigned int retry_interval_s;
+	unsigned int fail_count;
+};
+
 template <typename Q>
 class TCPSocketManager
 {
 public:
 	TCPSocketManager
 		(std::shared_ptr<odc::asio_service> apIOS,        //pointer to an asio io_service
-		bool aisServer,                                   //Whether to act as a server or client
+		const bool aisServer,                             //Whether to act as a server or client
 		const std::string& aEndPoint,                     //IP addr or hostname (to connect to if client, or bind to if server)
 		const std::string& aPort,                         //Port to connect to if client, or listen on if server
 		const std::function<void(buf_t&)>& aReadCallback, //Handler for data read off socket
 		const std::function<void(bool)>& aStateCallback,  //Handler for communicating the connection state of the socket
 		const size_t abuffer_limit                        //
 		      = std::numeric_limits<size_t>::max(),       //maximum number of writes to buffer
-		bool aauto_reopen = false,                        //Keeps the socket open (retry on error), unless you explicitly Close() it
-		uint16_t aretry_time_ms = 0):                     //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
+		const bool aauto_reopen = false,                  //Keeps the socket open (retry on error), unless you explicitly Close() it
+		const uint16_t aretry_time_ms = 0,                //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
+		const bool useKeepalives = true,                  //Set TCP keepalive socket option
+		const unsigned int KeepAliveTimeout_s = 599,      //TCP keepalive idle timeout (seconds)
+		const unsigned int KeepAliveRetry_s = 10,         //TCP keepalive retry interval (seconds)
+		const unsigned int KeepAliveFailcount = 3):       //TCP keepalive fail count
 		isConnected(false),
 		manuallyClosed(true),
 		pIOS(apIOS),
 		isServer(aisServer),
 		ReadCallback(aReadCallback),
 		StateCallback(aStateCallback),
+		Keepalives(useKeepalives,KeepAliveTimeout_s,KeepAliveRetry_s,KeepAliveFailcount),
 		pSock(pIOS->make_tcp_socket()),
 		pReadStrand(pIOS->make_strand()),
 		pWriteStrand(pIOS->make_strand()),
@@ -192,6 +212,7 @@ private:
 	const bool isServer;
 	const std::function<void(buf_t&)> ReadCallback;
 	const std::function<void(bool)> StateCallback;
+	TCPKeepaliveOpts Keepalives;
 
 	buf_t readbuf;
 	std::vector<shared_const_buffer<Q>> writebufs;
@@ -229,6 +250,7 @@ private:
 
 		pSockStrand->post([this]()
 			{
+				SetTCPKeepalives(*pSock,Keepalives.enabled,Keepalives.idle_timeout_s,Keepalives.retry_interval_s,Keepalives.fail_count);
 				isConnected = true;
 				StateCallback(isConnected);
 				ramp_time_ms = 0;
