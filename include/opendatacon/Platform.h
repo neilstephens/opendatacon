@@ -208,10 +208,11 @@ static const std::initializer_list<u_int8_t> SIG_IGNORE = { SIGINT, SIGTSTP };
 
 /// Platform specific socket options
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+#include <Mstcpip.h>
 inline void SetTCPKeepalives(asio::ip::tcp::socket& tcpsocket, bool enable=true, unsigned int initial_interval_s=7200, unsigned int subsequent_interval_s=75, unsigned int fail_count=9)
 {
 	DWORD dwBytesRet;
-	struct tcp_keepalive alive;
+	tcp_keepalive alive;
 	alive.onoff = enable;
 	alive.keepalivetime = initial_interval_s * 1000;
 	alive.keepaliveinterval = subsequent_interval_s * 1000;
