@@ -353,7 +353,7 @@ void SimPort::PortUp()
 			auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
 			NextEventFromDB(event);
 			int64_t time_offset = 0;
-			if(!(TimestampHandling & TimestampMode::ABSOLUTE))
+			if(!(TimestampHandling & TimestampMode::ABSOLUTE_T))
 			{
 				if(!!(TimestampHandling & TimestampMode::FIRST))
 				{
@@ -666,9 +666,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							{
 								auto ts_mode = Analogs[n]["SQLite3"]["TimestampHandling"].asString();
 								if(ts_mode == "ABSOLUTE")
-									TimestampHandling = TimestampMode::ABSOLUTE;
+									TimestampHandling = TimestampMode::ABSOLUTE_T;
 								else if(ts_mode == "ABSOLUTE_FASTFORWARD")
-									TimestampHandling = TimestampMode::ABSOLUTE | TimestampMode::FASTFORWARD;
+									TimestampHandling = TimestampMode::ABSOLUTE_T | TimestampMode::FASTFORWARD;
 								else if(ts_mode == "RELATIVE_TOD")
 									TimestampHandling = TimestampMode::TOD;
 								else if(ts_mode == "RELATIVE_TOD_FASTFORWARD")

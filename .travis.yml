@@ -31,11 +31,11 @@ matrix:
     - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi
       services:
         - docker
-    #OEL6 Release
+    #OEL7 Release
     - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
       services:
         - docker
-    #OEL6 Debug
+    #OEL7 Debug
     - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
       services:
         - docker
@@ -112,37 +112,42 @@ install:
     fi
   - |
     if [ "$DOCKER_BUILD" == "OEL" ]; then
-      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti library/oraclelinux:6.6)
+      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti library/oraclelinux:7.6)
       docker exec -i $DOCK sh -c '
-        # load dependencies into docker image so that tests can be run
-        curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm
-        curl -O http://packages.psychotic.ninja/6/plus/x86_64/RPMS//libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
-        rpm -i libmodbus-3.0.6-2.el6.psychotic.x86_64.rpm
-        rpm -i libmodbus-devel-3.0.6-2.el6.psychotic.x86_64.rpm     
-        # To get Python3.5 we need the software collections repo, and scl tools.
-        yum install -y oracle-softwarecollection-release-el6
+        yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
-        yum install -y scl-utils rh-python35 rh-python35-python-devel
-        yum install -y libmicrohttpd-devel glibc-devel
+        yum repolist
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd
+        
+        # load dependencies into docker image so that tests can be run
+        curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm
+        curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-3.0.6-2.el7.psychotic.x86_64.rpm
+        rpm -i libmodbus-3.0.6-2.el7.psychotic.x86_64.rpm
+        rpm -i libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm     
+        # To get Python3.6 we need scl-util-build tools.
+        curl -O http://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
+        rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
+        curl -O https://public-yum.oracle.com/repo/OracleLinux/OL7/optional/latest/x86_64/getPackage/libmicrohttpd-devel-0.9.33-2.el7.x86_64.rpm
+        rpm -i libmicrohttpd-devel-0.9.33-2.el7.x86_64.rpm
+        
+        yum install -y rh-python36 rh-python36-python-devel
       '
-      sudo pip install gdown
+      sudo pip install gdown==3.8.3
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
       tar xzf x86_64-RHEL65-linux-gnu.tar.gz
-      export EL6_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
-      export EL6_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
-      mkdir -p sysroot/opt/rh/rh-python35/root
+      export EL7_CC=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-gcc
+      export EL7_CXX=$(pwd)/x86_64-RHEL65-linux-gnu/bin/x86_64-RHEL65-linux-gnu-g++ 
+      mkdir -p sysroot/opt/rh/rh-python36/root
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
-      #make symbolic link to what ldd produces
-      docker exec -i $DOCK ln -rs libpython3.5m.so /opt/rh/rh-python35/root/usr/lib64/libpython3.5m.so.rh-python35-1.0
-      docker exec -i $DOCK cp -a /opt/rh/rh-python35/root/usr /mnt/build/sysroot/opt/rh/rh-python35/root/
+      docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd)
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el6-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/opt/rh/rh-python35/root/usr"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el7-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/opt/rh/rh-python36/root/usr"
     fi
   - |
     if [ "$DOCKER_BUILD" == "i386" ]; then
@@ -170,6 +175,7 @@ script:
   - $STOP
 
 deploy:
+  # Only do a git deploy on a tagged release.
   provider: releases
   api_key:
     secure: "a1Vm3l2QwXhwDoFpQn1Rw6BEL+gHHDlSAL5C43IWjr52qPRBL/qiQi9DBSrb4421M01QQtfxHOAxVs7bcM3oZ6oTeqy4vVHA3oqMhDtlVrt0Om4tlyLdY8kuSM/Hxm5G6WPYcgIj2ABMoX0PxpEftgrEtqa8E/cu8WkSP1Hmuv5RC5fJ+TmLHTTW7KxRSKZ9clmjWzRgLyrLYB+eS3HFfo64XW98XHkop9U+rb7+NQ9E4oZ9gVXmPYwEG805lNePAhyJ+EZ6NAMwY0HFeNj5JRt73EFtokYaLTW+drf7zUnptT9grquCpu16EbmEnUrgdJfUKjZHUAuBu6vYGLmM1SJ9PcS9+PGnGqhKyIZhSRFZCeCH5//gc3sh+Yp7NxT+6IrqsOKVitNoeiXykpk4MwCefuxvB5kDboxic8vxniSp+awnlzmwyKHP/aDCUANHpkQ+uNHnpA7Ev+zFeZnsDoDmcrzT39pWZav23ofP4c7H7MsgjQV/SWutHp91Bqs8AR2sBRpXl6FbLKIMrgXUQWd52lsSGWUUW042KddzGlfiWPV24P642AI40LbkPD1yD4FStH/KniA+9q0xvKeDqGqSB/8IrH0ZUxB/pCrHbsLl0R77Wi2PmYYIT+LGL58UxaJzMr+CyMTW05HH6/ruM4pUXzSMes7GC7cdJs2D/g8="
