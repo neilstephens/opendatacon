@@ -223,9 +223,9 @@ inline void SetTCPKeepalives(asio::ip::tcp::socket& tcpsocket, bool enable=true,
 inline void SetTCPKeepalives(asio::ip::tcp::socket& tcpsocket, bool enable=true, unsigned int initial_interval_s=7200, unsigned int subsequent_interval_s=75, unsigned int fail_count=9)
 {
 	int set = enable ? 1 : 0;
-	if(setsockopt(sockfd, SOL_SOCKET,  SO_KEEPALIVE, &set, sizeof(set)) != 0)
+	if(setsockopt(tcpsocket.native_handle(), SOL_SOCKET,  SO_KEEPALIVE, &set, sizeof(set)) != 0)
 		throw std::runtime_error("Failed to set TCP SO_KEEPALIVE");
-	if(setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, &initial_interval_s, sizeof(initial_interval_s)) != 0)
+	if(setsockopt(tcpsocket.native_handle(), IPPROTO_TCP, TCP_KEEPALIVE, &initial_interval_s, sizeof(initial_interval_s)) != 0)
 		throw std::runtime_error("Failed to set TCP_KEEPALIVE");
 }
 #else
