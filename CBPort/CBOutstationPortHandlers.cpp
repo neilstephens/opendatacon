@@ -763,7 +763,7 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		// We keep trying to add data until there is none left, or the data will not fit into our bit array.
 		// The time field is the delta between the previous event (if there is one) and the current event (in msec)
 		SOEEventFormat PackedEvent;
-		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; //TODO: Bottom three bits of the point group,  not the SOE Group! Pretty sure this is correct - from captures.
+		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; // Bottom three bits of the point group,  not the SOE Group!
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
 		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? 1 : 0;
 		PackedEvent.QualityBit = 0;

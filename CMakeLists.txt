@@ -70,7 +70,7 @@ add_custom_command(
 add_custom_target(version DEPENDS "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h")
 
 # various optional libraries and projects
-option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, PyPort, SimPort, MD3Port, CBPort, Tests, ConsoleUI, WebUI)" OFF)
+option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, PyPort, SimPort, MD3Port, CBPort, Tests, ConsoleUI, WebUI, PortProxy)" OFF)
 option(USE_ASIO_SUBMODULE "Use git submodule to download asio header library" ON)
 option(USE_SPDLOG_SUBMODULE "Use git submodule to download spdlog header library" ON)
 
@@ -84,6 +84,7 @@ set(SIMPORT OFF CACHE BOOL "Build Simulation Port")
 set(MD3PORT OFF CACHE BOOL "Build MD3 Port")
 set(CBPORT OFF CACHE BOOL "Build Conitel-Baker Port")
 set(CONSOLEUI OFF CACHE BOOL "Build the console user interface")
+set(PORTPROXY OFF CACHE BOOL "Build the port mapping proxy app")
 
 # other options off-by-default that you can enable
 option(WERROR "Set all warnings to errors" OFF)
@@ -100,6 +101,7 @@ if(FULL)
 	set(MD3PORT ON CACHE BOOL "Build MD3 Port" FORCE)
 	set(CBPORT ON CACHE BOOL "Build Conitel-Baker Port" FORCE)
 	set(CONSOLEUI ON CACHE BOOL "Build the console user interface" FORCE)
+	set(PORTPROXY ON CACHE BOOL "Build the port mapping proxy app" FORCE)
 endif()
 
 # IDE configuration
@@ -379,6 +381,10 @@ if(TESTS)
 	add_test(MD3_tests MD3_tests)
 	add_test(CB_tests CB_tests)
 	add_test(Py_tests Py_tests)
+endif()
+if(PORTPROXY)
+	message("add subdir PortProxy")
+	add_subdirectory(PortProxy)
 endif()
 message("add subdir install")
 add_subdirectory("install")
