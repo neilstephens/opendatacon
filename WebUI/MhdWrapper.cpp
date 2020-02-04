@@ -25,15 +25,6 @@
 //
 //
 
-#ifdef WIN32
-#include <direct.h>
-#define PathSeparator "\\"
-#define GetCurrentDir _getcwd
-#else
-#include <unistd.h>
-#define PathSeparator "/"
-#define GetCurrentDir getcwd
-#endif
 #include <iostream>
 #include <opendatacon/util.h>
 
@@ -52,13 +43,6 @@ const std::unordered_map<std::string, const std::string> MimeTypeMap {
 	{ "svg", "image/svg+xml"},
 	{ "default", "application/octet-stream"}
 };
-
-std::string GetCurrentWorkingDir(void)
-{
-	char buff[FILENAME_MAX];
-	std::string current_working_dir(GetCurrentDir(buff, FILENAME_MAX));
-	return current_working_dir;
-}
 
 const std::string& GetMimeType(const std::string& rUrl)
 {
@@ -118,7 +102,7 @@ int ReturnFile(struct MHD_Connection *connection,
 	if (file == nullptr)
 	{
 		if (auto log = odc::spdlog_get("WebUI"))
-			log->error("WebUI : Failed to open file {}", GetCurrentWorkingDir()+"/"+filename);
+			log->error("WebUI : Failed to open file {}", filename);
 
 		response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
 			(void *)EMPTY_PAGE,
