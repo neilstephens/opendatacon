@@ -3274,7 +3274,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 
 		LOGDEBUG("Test - Injecting OS message as TCP Input");
 		MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This must be sent first
-		Wait(*IOS, 4);                                        // Outstation decodes message, sends ODC event, Master gets ODC event, sends out command on TCP.
+		Wait(*IOS, 6);                                        // Outstation decodes message, sends ODC event, Master gets ODC event, sends out command on TCP.
 
 		// Check the Master port output on TCP - it should be an identical time change command??
 		REQUIRE(MAResponse == TimeChangeCommand);

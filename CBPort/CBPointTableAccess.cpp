@@ -95,6 +95,37 @@ bool CBPointTableAccess::AddAnalogPointToPointTable(const size_t &index, const u
 	return true;
 }
 
+bool CBPointTableAccess::CheckForBinaryBitClash(const uint8_t group, uint8_t channel, const PayloadLocationType& payloadlocation, const BinaryPointType& pointtype)
+{
+	uint8_t bit = channel;
+	if (pointtype == MCB || pointtype == MCA || pointtype == MCC)
+	{
+		// Dual bit point...Chan 1 goes to 1, 2 to 3 etc
+		bit = (channel-1) * 2 + 1;
+	}
+	uint16_t CBBitIndex = GetCBBitMapIndex(group,bit, payloadlocation, pointtype);
+	if (BinaryCBBitMap.find(CBBitIndex) != BinaryCBBitMap.end())
+	{
+		LOGERROR("{} Error Duplicate Binary CB Bit  {} - {} - {} - {}", Name, group,bit, payloadlocation.to_string(), pointtype);
+		return false;
+	}
+	BinaryCBBitMap[CBBitIndex] = true;
+
+	if (pointtype == MCB || pointtype == MCA || pointtype == MCC)
+	{
+		// Dual bit point...
+		bit++; // Process 2nd channel
+		CBBitIndex = GetCBBitMapIndex(group, bit, payloadlocation, pointtype);
+		if (BinaryCBBitMap.find(CBBitIndex) != BinaryCBBitMap.end())
+		{
+			LOGERROR("{} Error Duplicate Binary CB Bit  {} - {} - {} - {}", Name, group, bit, payloadlocation.to_string(), pointtype);
+			return false;
+		}
+		BinaryCBBitMap[CBBitIndex] = true;
+	}
+
+	return true;
+}
 bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation, const BinaryPointType &pointtype, bool issoe, uint8_t soeindex)
 {
 	// So we need to access the Conitel data by Group/PayLoadLocation/Channel
@@ -114,6 +145,9 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 		LOGERROR("{} Error Duplicate Binary CB Index {} - {} - {}",Name,group,channel,payloadlocation.to_string());
 		return false;
 	}
+
+	if (!CheckForBinaryBitClash(group, channel, payloadlocation, pointtype))
+		return false;
 
 	UpdateMaxPayload(group, payloadlocation);
 
@@ -478,7 +512,12 @@ uint16_t CBPointTableAccess::GetCBPointMapIndex(const uint8_t & group, const uin
 	uint16_t CBIndex = ShiftLeftResult16Bits(group, 12) | ShiftLeftResult16Bits(channel, 8) | ShiftLeftResult16Bits(payloadlocation.Packet-1, 4) | (payloadlocation.Position == PayloadABType::PositionA ? 0 : 1);
 	return CBIndex;
 }
-
+uint16_t CBPointTableAccess::GetCBBitMapIndex(const uint8_t& group, uint8_t bit, const PayloadLocationType& payloadlocation, const BinaryPointType& pointtype)
+{
+	// Top 4 bits group (0-15), Next 4 bits are bit index (1-12), next 4 bits payload packet number (0-15), next 4 bits 0(A) or 1(B)
+	uint16_t CBBit = ShiftLeftResult16Bits(group, 12) | ShiftLeftResult16Bits(bit, 8) | ShiftLeftResult16Bits(payloadlocation.Packet - 1, 4) | (payloadlocation.Position == PayloadABType::PositionA ? 0 : 1);
+	return CBBit;
+}
 uint16_t CBPointTableAccess::GetCBControlPointMapIndex(const uint8_t & group, const uint8_t & channel)
 {
 	assert(group <= 0x0F);

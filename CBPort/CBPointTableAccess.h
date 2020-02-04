@@ -51,6 +51,7 @@ public:
 	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel,  const BinaryPointType & pointtype );
 	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
 	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
+	bool CheckForBinaryBitClash(const uint8_t group, uint8_t channel, const PayloadLocationType& payloadlocation, const BinaryPointType& pointtype);
 	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation, const BinaryPointType & pointtype, bool issoe, uint8_t soeindex);
 	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const AnalogCounterPointType &pointtype);
 
@@ -101,11 +102,13 @@ public:
 
 	// Public only for testing
 	static uint16_t GetCBPointMapIndex(const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation); // Group/Payload/Channel
+	static uint16_t GetCBBitMapIndex(const uint8_t& group, uint8_t bit, const PayloadLocationType& payloadlocation, const BinaryPointType& pointtype);
 	static uint16_t GetCBControlPointMapIndex(const uint8_t & group, const uint8_t & channel);
 protected:
 
 	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
-	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinaryCBPointMap;  // Group/Payload/Channel, CBPoint
+	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinaryCBPointMap;  // Group/Payload/Channel, CBPoin
+	std::map<uint16_t, bool> BinaryCBBitMap;                              // Group/Payload/Bitl, bool
 	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinarySOEPointMap; // Group/SoeIndexl, CBPoint
 	std::map<size_t, std::shared_ptr<CBBinaryPoint>> BinaryODCPointMap;   // Index OpenDataCon, CBPoint
 
