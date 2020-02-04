@@ -21,13 +21,13 @@
 
 #include "../PortManager.h"
 #include "ServiceBase.h"
-#include "../ODCArgs.h"
+#include "../PortProxyArgs.h"
 
 class PortManagerService: public CServiceBase
 {
 public:
 
-	PortManagerService(ODCArgs& Args,
+	PortManagerService(PPArgs& Args,
 		PWSTR pszServiceName,
 		BOOL fCanStop = TRUE,
 		BOOL fCanShutdown = TRUE,
@@ -42,7 +42,7 @@ protected:
 	void ServiceWorkerThread(void);
 
 private:
-	ODCArgs& Args;
+	PPArgs& Args;
 	std::unique_ptr<PortManager> ThePortManager;
 	BOOL m_fStopping;
 	HANDLE m_hStoppedEvent;

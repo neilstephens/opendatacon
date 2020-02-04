@@ -17,21 +17,21 @@
 *	See the License for the specific language governing permissions and
 *	limitations under the License.
 */
-#ifndef ODCARGS_H
-#define ODCARGS_H
+#ifndef PPARGS_H
+#define PPARGS_H
 
 #include <tclap/CmdLine.h>
 #include <opendatacon/Version.h>
-struct ODCArgs
+struct PPArgs
 {
-	ODCArgs(int argc, char* argv[]):
-		cmd("High performance asynchronous data concentrator", ' ', ODC_VERSION_STRING),
-		ConfigFileArg("c", "config", "Configuration file, specified as an absolute path or relative to the working directory.", false, "opendatacon.conf", "string"),
+	PPArgs(int argc, char* argv[]):
+		cmd("Simple TCP Port Proxy", ' ', ODC_VERSION_STRING),
+		ConfigFileArg("c", "config", "Configuration file, specified as an absolute path or relative to the working directory.", false, "portproxy.conf", "string"),
 		PathArg("p", "path", "Working directory path, all configuration files and log files are relative to this path.", false, "", "string"),
 		DaemonInstallArg("i", "daemon_install", "Switch to install opendatacon as a background service (not required / ignored for POSIX platforms)"),
-		DaemonArg("d", "daemon", "Switch to run opendatacon in the background"),
-		PIDFileArg("f", "pidfile", "Optional file path to write a pid file in daemon mode. Eg. /var/run/opendatacon.pid", false, "", "string"),
-		DaemonRemoveArg("r", "daemon_remove", "Switch to uninstall opendatacon as a background service (not required / ignored for POSIX platforms)")
+		DaemonArg("d", "daemon", "Switch to run portproxy in the background"),
+		PIDFileArg("f", "pidfile", "Optional file path to write a pid file in daemon mode. Eg. /var/run/portproxy.pid", false, "", "string"),
+		DaemonRemoveArg("r", "daemon_remove", "Switch to uninstall portproxy as a background service (not required / ignored for POSIX platforms)")
 	{
 		cmd.add(ConfigFileArg);
 		cmd.add(PathArg);

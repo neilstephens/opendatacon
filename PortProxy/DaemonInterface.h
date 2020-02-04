@@ -21,10 +21,10 @@
 #define DAEMONWRAPPER_H
 
 #include "PortManager.h"
-#include "ODCArgs.h"
+#include "PortProxyArgs.h"
 
-void daemonp(ODCArgs& Args);
-void daemon_install(ODCArgs& Args);
+void daemonp(PPArgs& Args);
+void daemon_install(PPArgs& Args);
 void daemon_remove();
 
 #endif

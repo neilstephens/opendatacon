@@ -3,7 +3,7 @@
 
 #include "PortManager.h"
 #include "DaemonInterface.h"
-#include "ODCArgs.h"
+#include "PortProxyArgs.h"
 #include <opendatacon/Platform.h>
 #include <csignal>
 #include <cstdio>
@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 	try
 	{
 		// Turn command line arguments into easy to query struct
-		ODCArgs Args(argc, argv);
+		PPArgs Args(argc, argv);
 
 		// If arg "-p <path>" is set, try and change directory to <path>
 		if (Args.PathArg.isSet())

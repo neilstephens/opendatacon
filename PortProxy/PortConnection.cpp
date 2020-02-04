@@ -114,18 +114,8 @@ PortProxyConnection::~PortProxyConnection()
 	LOGDEBUG("Connection Destructor Complete : {}", InternalChannelID);
 }
 
-// We need one read completion handler hooked to each address/port combination.
-// We do some basic CB block identification and processing, enough to give us complete blocks and StationAddresses
-// The TCPSocketManager class ensures that this callback is not called again with more data until it is complete.
-// Does not make sense for it to do anything else on a TCP stream which must (should) be sequentially processed.
 void PortProxyConnection::ServerReadCompletionHandler(buf_t&readbuf)
 {
-	// We need to treat the TCP data as a stream, just like a serial stream. The first block (4 bytes) is probably the start block, but we cannot assume this.
-	// Also we could get more than one message in a TCP block so need to handle this correctly.
-	// We will build a CBMessage until we get the end condition. If we get a new start block, we will have to dump anything in the CBMessage and start again.
-
-	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
-
 	while (readbuf.size() > 0)
 	{
 		size_t len = readbuf.size();
@@ -164,12 +154,6 @@ void PortProxyConnection::ServerSocketStateHandler(bool state)
 }
 void PortProxyConnection::ClientReadCompletionHandler(buf_t& readbuf)
 {
-	// We need to treat the TCP data as a stream, just like a serial stream. The first block (4 bytes) is probably the start block, but we cannot assume this.
-	// Also we could get more than one message in a TCP block so need to handle this correctly.
-	// We will build a CBMessage until we get the end condition. If we get a new start block, we will have to dump anything in the CBMessage and start again.
-
-	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
-
 	while (readbuf.size() > 0)
 	{
 		size_t len = readbuf.size();
@@ -183,7 +167,7 @@ void PortProxyConnection::ClientReadCompletionHandler(buf_t& readbuf)
 		LOGDEBUG("Client received {}", buffer);
 		if (pServerSockMan && pServerSockMan->IsConnected())
 		{
-			//pServerSockMan->Write(std::string(buffer));
+			pServerSockMan->Write(std::string(buffer));
 		}
 	}
 }

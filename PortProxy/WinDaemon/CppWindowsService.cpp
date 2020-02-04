@@ -50,7 +50,7 @@
 // The password to the service account name
 #define SERVICE_PASSWORD         NULL
 
-void daemonp(ODCArgs& Args)
+void daemonp(PPArgs& Args)
 {
 	PortManagerService service(Args, SERVICE_NAME);
 	if (!CServiceBase::Run(service))
@@ -60,7 +60,7 @@ void daemonp(ODCArgs& Args)
 	exit(0);
 }
 
-void daemon_install(ODCArgs& Args)
+void daemon_install(PPArgs& Args)
 {
 	Args.DaemonInstallArg.reset();
 	std::wstringstream wss;

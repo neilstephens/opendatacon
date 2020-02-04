@@ -19,10 +19,10 @@
 
 #pragma region Includes
 #include "PortManagerService.h"
-#include "../ODCArgs.h"
+#include "../PortProxyArgs.h"
 #pragma endregion
 
-PortManagerService::PortManagerService(ODCArgs& aArgs,
+PortManagerService::PortManagerService(PPArgs& aArgs,
 	PWSTR pszServiceName,
 	BOOL fCanStop,
 	BOOL fCanShutdown,
