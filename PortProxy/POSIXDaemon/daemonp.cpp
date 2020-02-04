@@ -30,7 +30,7 @@
 #include "../DaemonInterface.h"
 #include "../PortProxyArgs.h"
 
-void daemonp(ODCArgs& Args)
+void daemonp(PPArgs& Args)
 {
 	if(daemon(1,0))
 	{
@@ -61,5 +61,5 @@ void daemonp(ODCArgs& Args)
 			throw std::runtime_error("Failed to write pidfile.");
 	}
 }
-void daemon_install(ODCArgs& Args){}
+void daemon_install(PPArgs& Args){}
 void daemon_remove(){}
