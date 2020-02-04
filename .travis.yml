@@ -73,7 +73,10 @@ install:
     elif [ -z "$DOCKER_BUILD" ]; then
       # Not a docker build, just normal linux
       sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev python3.5 python3.5-dev
-      export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
+      echo "Python3 Version"
+      python3 --version      
+      ls /usr/bin/python*
+      export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic" # -DPYTHON_HOME=/usr/lib/python3.7"
     fi
   - |
     if [ "$DOCKER_BUILD" == "Rpi" ]; then
@@ -131,6 +134,7 @@ install:
         rpm -i libmicrohttpd-devel-0.9.33-2.el7.x86_64.rpm
         
         yum install -y rh-python36 rh-python36-python-devel
+        python3 --version
       '
       sudo pip install gdown==3.8.3
       gdown "https://drive.google.com/uc?export=download&id=1GXu7aRCGviXEA3RM5slDKIC8yGIr4KW3"
@@ -140,9 +144,11 @@ install:
       mkdir -p sysroot/opt/rh/rh-python36/root
       docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
       docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
+      #docker exec -i $DOCK ls -l /opt/rh/rh-python36/root/usr/lib64/libpython* 
       docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
+      ls -l sysroot/opt/rh/rh-python36/root/usr/lib64/*.so
       sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd)
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
@@ -178,7 +184,7 @@ deploy:
   # Only do a git deploy on a tagged release.
   provider: releases
   api_key:
-    secure: "a1Vm3l2QwXhwDoFpQn1Rw6BEL+gHHDlSAL5C43IWjr52qPRBL/qiQi9DBSrb4421M01QQtfxHOAxVs7bcM3oZ6oTeqy4vVHA3oqMhDtlVrt0Om4tlyLdY8kuSM/Hxm5G6WPYcgIj2ABMoX0PxpEftgrEtqa8E/cu8WkSP1Hmuv5RC5fJ+TmLHTTW7KxRSKZ9clmjWzRgLyrLYB+eS3HFfo64XW98XHkop9U+rb7+NQ9E4oZ9gVXmPYwEG805lNePAhyJ+EZ6NAMwY0HFeNj5JRt73EFtokYaLTW+drf7zUnptT9grquCpu16EbmEnUrgdJfUKjZHUAuBu6vYGLmM1SJ9PcS9+PGnGqhKyIZhSRFZCeCH5//gc3sh+Yp7NxT+6IrqsOKVitNoeiXykpk4MwCefuxvB5kDboxic8vxniSp+awnlzmwyKHP/aDCUANHpkQ+uNHnpA7Ev+zFeZnsDoDmcrzT39pWZav23ofP4c7H7MsgjQV/SWutHp91Bqs8AR2sBRpXl6FbLKIMrgXUQWd52lsSGWUUW042KddzGlfiWPV24P642AI40LbkPD1yD4FStH/KniA+9q0xvKeDqGqSB/8IrH0ZUxB/pCrHbsLl0R77Wi2PmYYIT+LGL58UxaJzMr+CyMTW05HH6/ruM4pUXzSMes7GC7cdJs2D/g8="
+    secure:    15MT0ZY2lVjvl7cdz+h6RFVTIYpFHuMsNAoIwJwI4iLQdj9ybdq4t9VrqkMZ7THlhgoYXYJKbXmPJmmt8/s1x5tktkbhdu2AU3e0sOYluO8ciBUvBUt5Jak6DAZB6Anjvj/tQqJb5nldnAfZmgnK/5A1Qyn33GBpnb6j2W4hiINR88zPMNpk0q2MF2VKdcFDLgNgbwDgfwEKcWbuxNJ0/g6aJDfS6aSyqPnAX8S/fS0arJmdMwIiAiiVKLBtyD5L6PVhbeP+pPaFD+uEuB+hSyO2tTEl827J78Fe4PgWkmd6xuTkCcObvK90vOv+1sXHA+2mIUbpvceREtM6E2uiofTzhEvoNPd4MYbmk9EMbmofsjorM5807F/Lx3yT7bcn2SjFMbDT7KSvFXLFD2HPLURHKFQ7cveYU+4KofVNhR8jWSOgDYljIskLUrycaysKqs2LD+sgBL9j/9O8HZTJx0nG5juBuHZcKon775T097CDMJFu9GbEw808GDcmX85dZDg1xlldNZAtB1CBw+kYrsApqSv8QWeVSANsNpJf9IvdszQRaLjvalKohDLEA7M1QRcaDpjXzTMz3+bqEokjUgmbLSlzjxuWoMv5PfRZHXPJDBVPnECyoXbF8+b89xHQgLUnr598S3uZEWNB2BcSEky2qjoaUqeJQeeD/AUDY1Y=
   file_glob: true
   file: opendatacon-*.*.*-*-*-*-*-*.sh
   name: "opendatacon ${TRAVIS_TAG}"
@@ -186,4 +192,20 @@ deploy:
   on:
     tags: true
     compiler: gcc
-  
+    
+  # Upload testing log files and deploy packages for all develop builds. Searches recursively for all .log files.
+  provider: releases
+  api_key:
+    secure:    15MT0ZY2lVjvl7cdz+h6RFVTIYpFHuMsNAoIwJwI4iLQdj9ybdq4t9VrqkMZ7THlhgoYXYJKbXmPJmmt8/s1x5tktkbhdu2AU3e0sOYluO8ciBUvBUt5Jak6DAZB6Anjvj/tQqJb5nldnAfZmgnK/5A1Qyn33GBpnb6j2W4hiINR88zPMNpk0q2MF2VKdcFDLgNgbwDgfwEKcWbuxNJ0/g6aJDfS6aSyqPnAX8S/fS0arJmdMwIiAiiVKLBtyD5L6PVhbeP+pPaFD+uEuB+hSyO2tTEl827J78Fe4PgWkmd6xuTkCcObvK90vOv+1sXHA+2mIUbpvceREtM6E2uiofTzhEvoNPd4MYbmk9EMbmofsjorM5807F/Lx3yT7bcn2SjFMbDT7KSvFXLFD2HPLURHKFQ7cveYU+4KofVNhR8jWSOgDYljIskLUrycaysKqs2LD+sgBL9j/9O8HZTJx0nG5juBuHZcKon775T097CDMJFu9GbEw808GDcmX85dZDg1xlldNZAtB1CBw+kYrsApqSv8QWeVSANsNpJf9IvdszQRaLjvalKohDLEA7M1QRcaDpjXzTMz3+bqEokjUgmbLSlzjxuWoMv5PfRZHXPJDBVPnECyoXbF8+b89xHQgLUnr598S3uZEWNB2BcSEky2qjoaUqeJQeeD/AUDY1Y=
+  file_glob: true
+  file: 
+    - ./**/*.log
+    - opendatacon-*.sh
+  name: "opendatacon_draft ${TRAVIS_TAG}"
+  skip_cleanup: true
+  draft: true
+  overwrite: true
+  on:
+    branch: not_develop
+    compiler: gcc    
+
