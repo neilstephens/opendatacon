@@ -32,7 +32,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include "portproxy.h"
+#include "PortProxy.h"
 
 using namespace odc;
 

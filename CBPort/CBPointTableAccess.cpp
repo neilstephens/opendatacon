@@ -104,6 +104,9 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 	// For Binaries there will only be a maximum of 12 channels(bits)
 	// The channels might have gaps, dont need to be in order.
 
+	//TODO: We dont allow double bit points and single bit DIG's to occupy the same payload - it is hard to detect collisions if we do...
+	// how to check for this???
+
 	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
 
 	if (BinaryCBPointMap.find(CBIndex) != BinaryCBPointMap.end())
@@ -168,6 +171,8 @@ void CBPointTableAccess::UpdateMaxPayload(const uint8_t & group, const PayloadLo
 #endif
 bool CBPointTableAccess::AddAnalogControlPointToPointTable(const size_t &index, const uint8_t &group, const uint8_t &channel, const AnalogCounterPointType &pointtype)
 {
+	// TODO: We do not detect collisions that could be caused by mixing analog types in the one payload (any mix 12 bit and 6 bit)
+	// will be a problem in any situaton at they will not fit..
 	uint16_t CBIndex = GetCBControlPointMapIndex(group, channel);
 	if (AnalogControlCBPointMap.find(CBIndex) != AnalogControlCBPointMap.end())
 	{

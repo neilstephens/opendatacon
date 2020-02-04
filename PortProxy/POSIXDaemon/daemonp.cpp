@@ -28,7 +28,7 @@
 
 #include <opendatacon/Platform.h>
 #include "../DaemonInterface.h"
-#include "../ODCArgs.h"
+#include "../PortProxyArgs.h"
 
 void daemonp(ODCArgs& Args)
 {
