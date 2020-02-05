@@ -1476,7 +1476,6 @@ QualityFlags MD3MasterPort::CalculateAnalogQuality(bool enabled, uint16_t meas, 
 
 
 // So we have received an event, which for the Master will result in a write to the Outstation, so the command is a Binary Output or Analog Output
-// Also we have the pass through commands with special port values defined.
 void MD3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
@@ -1490,12 +1489,6 @@ void MD3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::str
 			return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 		case EventType::AnalogOutputInt16:
 			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-		case EventType::AnalogOutputInt32:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-		case EventType::AnalogOutputFloat32:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
-		case EventType::AnalogOutputDouble64:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 		case EventType::ConnectState:
 		{
 			auto state = event->GetPayload<EventType::ConnectState>();
@@ -1660,77 +1653,6 @@ void MD3MasterPort::WriteObject(const int16_t & command, const uint32_t &index, 
 	SendDIMOutputCommand(MyConf->mAddrConf.OutstationAddr, ModuleAddress, Channel, action, 0, pStatusCallback);
 
 	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-}
-
-
-void MD3MasterPort::WriteObject(const int32_t & command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
-{
-	// Other Magic point commands
-
-	if (index == MyPointConf->POMControlPoint.second) // Is this out magic time set point?
-	{
-		LOGDEBUG("Master received POM Control Point command on the magic point through ODC {}",index);
-
-		MD3BlockFn17MtoS Header = MD3BlockFn17MtoS(MD3BlockData(numeric_cast<uint32_t>(command)));
-		SendPOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputSelection(), pStatusCallback);
-	}
-	else if (index == MyPointConf->SystemSignOnPoint.second)
-	{
-		// Normally a Fn40
-		LOGDEBUG("Master received System Sign On command on the magic point through ODC {}",index);
-		MD3BlockFormatted MD3command(numeric_cast<uint32_t>(command), true);
-		QueueMD3Command(MD3command, pStatusCallback); // Single block send
-	}
-	else if (index == MyPointConf->FreezeResetCountersPoint.second)
-	{
-		// Normally a Fn16
-		LOGDEBUG("Master received Freeze/Reset Counters command on the magic point through ODC {}",index);
-		MD3BlockFormatted MD3command(numeric_cast<uint32_t>(command),true); // The packet rx'd by the outstation and passed to us through ODC is sent out unchanged by the master...
-		QueueMD3Command(MD3command, pStatusCallback);                       // Single block send
-	}
-	else if (index == MyPointConf->DOMControlPoint.second) // Is this out magic time set point?
-	{
-		LOGDEBUG("Master received DOM Control Point command on the magic point through ODC {}",index);
-		uint32_t PacketData = numeric_cast<uint32_t>(command);
-		MD3BlockFn19MtoS Header = MD3BlockFn19MtoS((PacketData >> 24) & 0x7F, (PacketData >> 16) & 0xFF);
-		MD3BlockData BlockData = Header.GenerateSecondBlock(PacketData & 0xFFFF);
-
-		SendDOMOutputCommand(MyConf->mAddrConf.OutstationAddr, Header.GetModuleAddress(), Header.GetOutputFromSecondBlock(BlockData), pStatusCallback);
-	}
-	else
-	{
-		LOGDEBUG("Master received unknown AnalogOutputInt32 ODC Event {}",index);
-		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-	}
-}
-
-void MD3MasterPort::WriteObject(const float& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
-{
-	LOGERROR("On Master float Type is not implemented {}",index);
-	PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-}
-
-void MD3MasterPort::WriteObject(const double& command, const uint32_t &index, const SharedStatusCallback_t &pStatusCallback)
-{
-	if (index == MyPointConf->TimeSetPoint.second) // Is this out magic time set point?
-	{
-		LOGDEBUG("Master received a Time Change command on the magic point through ODC {}",index);
-		uint64_t currenttime = static_cast<uint64_t>(command);
-
-		SendTimeDateChangeCommand(currenttime, pStatusCallback);
-	}
-	else if(index == MyPointConf->TimeSetPointNew.second) // Is this out magic time set point?
-	{
-		LOGDEBUG("Master received a New Time Change command on the magic point through ODC {}",index);
-		uint64_t currenttime = static_cast<uint64_t>(command);
-		int utcoffsetminutes = tz_offset();
-		SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, pStatusCallback);
-	}
-	else
-	{
-		LOGDEBUG("Master received unknown double ODC Event {}",index);
-		PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED);
-	}
 }
 
 void MD3MasterPort::SendDOMOutputCommand(const uint8_t &StationAddress, const uint8_t &ModuleAddress, const uint16_t &outputbits, const SharedStatusCallback_t &pStatusCallback)

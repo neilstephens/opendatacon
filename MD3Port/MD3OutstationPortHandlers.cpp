@@ -1111,17 +1111,6 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 		failed = true;
 	}
 
-	uint32_t ODCIndex = MyPointConf->FreezeResetCountersPoint.second;
-	MyPointConf->FreezeResetCountersPoint.first = static_cast<int32_t>(Header.GetData()); // Pass the actual packet to the master across ODC
-
-	EventTypePayload<EventType::AnalogOutputInt32>::type val;
-	val.first = MyPointConf->FreezeResetCountersPoint.first;
-
-	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
-	event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
-
-	bool waitforresult = !MyPointConf->StandAloneOutstation;
-
 	if (Header.GetStationAddress() != 0)
 	{
 		if (failed)
@@ -1130,23 +1119,7 @@ void MD3OutstationPort::DoFreezeResetCounters(MD3BlockFn16MtoS &Header)
 			return;
 		}
 
-		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
-		{
-			SendControlOK(Header);
-		}
-		else
-		{
-			SendControlOrScanRejected(Header);
-		}
-	}
-	else
-	{
-		if (!failed)
-		{
-			// This is an all station (0 address) freeze reset function.
-			// No response, don't wait for a result
-			Perform(event, false);
-		}
+		SendControlOK(Header);
 	}
 }
 
@@ -1197,34 +1170,14 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 	// POM is only a single bit, so easy to do...
 	// For AUSGRID Systems, POM modules are always PULSE_ON, and what you pulse determines what happens (can be a trip or close)
 
-	if (MyPointConf->POMControlPoint.second == 0) // If NO pass through, then do normal operation
-	{
-		// Module contains 0 to 15 channels..
-		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-		val.functionCode = ControlCode::PULSE_ON; // Always pulse on for POM control!
+	// Module contains 0 to 15 channels..
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+	val.functionCode = ControlCode::PULSE_ON; // Always pulse on for POM control!
 
-		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
-		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+	auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
+	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
-		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
-	}
-
-	// If the index is !=0, then the pass through is active. So success depends on the pass through
-	if (MyPointConf->POMControlPoint.second != 0)
-	{
-		// Pass the command through ODC, just for MD3 on the other side.
-		MyPointConf->POMControlPoint.first = static_cast<int32_t>(Header.GetData());
-
-		ODCIndex = MyPointConf->POMControlPoint.second;
-
-		EventTypePayload<EventType::AnalogOutputInt32>::type val;
-		val.first = MyPointConf->POMControlPoint.first;
-
-		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
-		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
-
-		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS);
-	}
+	success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
 
 	if (success)
 	{
@@ -1282,42 +1235,22 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 
 	bool success = true;
 
-	if (MyPointConf->DOMControlPoint.second == 0) // NO pass through, normal operation
+	// Send each of the DigitalOutputs
+	for (uint8_t i = 0; i < 16; i++)
 	{
-		// Send each of the DigitalOutputs (If we were connected to an DNP3 Port the MD3 pass through would not work)
-		for (uint8_t i = 0; i < 16; i++)
+		if (MyPointConf->PointTable.GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, ODCIndex))
 		{
-			if (MyPointConf->PointTable.GetBinaryControlODCIndexUsingMD3Index(Header.GetModuleAddress(), i, ODCIndex))
+			EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+			val.functionCode = ((output >> (15 - i) & 0x01) == 1) ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
+
+			auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
+			event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+			if (CommandStatus::SUCCESS != Perform(event, waitforresult)) // If no subscribers will return quickly.
 			{
-				EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-				val.functionCode = ((output >> (15 - i) & 0x01) == 1) ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF;
-
-				auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
-				event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
-
-				if (CommandStatus::SUCCESS != Perform(event, waitforresult)) // If no subscribers will return quickly.
-				{
-					success = false;
-				}
+				success = false;
 			}
 		}
-	}
-
-	// If the index is !=0, then the pass through is active. So success depends on the pass through
-	if (MyPointConf->DOMControlPoint.second != 0)
-	{
-		// Pass the command through ODC, just for MD3 on the other side. Have to compress to fit into 32 bits
-		uint32_t PacketData = static_cast<uint32_t>(Header.GetStationAddress()) << 24 | static_cast<uint32_t>(Header.GetModuleAddress()) << 16 | static_cast<uint32_t>(CompleteMD3Message[1].GetFirstWord());
-		MyPointConf->DOMControlPoint.first = static_cast<int32_t>(PacketData);
-		ODCIndex = MyPointConf->DOMControlPoint.second;
-
-		EventTypePayload<EventType::AnalogOutputInt32>::type val;
-		val.first = MyPointConf->DOMControlPoint.first;
-
-		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
-		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
-
-		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS);
 	}
 
 	if (success)
@@ -1541,37 +1474,18 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40MtoS &Header)
 	LOGDEBUG("{} - DoSystemSignOnControl",Name);
 	if (Header.IsValid())
 	{
-		uint32_t ODCIndex = MyPointConf->SystemSignOnPoint.second;
-		MyPointConf->SystemSignOnPoint.first = static_cast<int32_t>(Header.GetData()); // Pass the actual packet to the master across ODC
+		// Need to send a response, but with the StationAddress set to match our address.
+		MD3BlockFn40StoM FormattedBlock(MyConf->mAddrConf.OutstationAddr);
 
-		EventTypePayload<EventType::AnalogOutputInt32>::type val;
-		val.first = MyPointConf->SystemSignOnPoint.first;
-
-		auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name);
-		event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
-
-		// If StandAloneOutstation, don\92t wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-		bool waitforresult = !MyPointConf->StandAloneOutstation;
-
-		// This does a PublishCommand and waits for the result - or times out.
-		if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
-		{
-			// Need to send a response, but with the StationAddress set to match our address.
-			MD3BlockFn40StoM FormattedBlock(MyConf->mAddrConf.OutstationAddr);
-
-			MD3Message_t ResponseMD3Message;
-			ResponseMD3Message.push_back(FormattedBlock);
-			SendMD3Message(ResponseMD3Message);
-		}
-		else
-		{
-			// SIGNON does not send back a rejected message
-			//SendControlOrScanRejected(Header);
-		}
+		MD3Message_t ResponseMD3Message;
+		ResponseMD3Message.push_back(FormattedBlock);
+		SendMD3Message(ResponseMD3Message);
 	}
 	else
 	{
-		LOGERROR("Invalid SYSTEM_SIGNON_CONTROL message, On Station Address - " + std::to_string(Header.GetStationAddress()) );
+		// SIGNON does not send back a rejected message
+		//SendControlOrScanRejected(Header);
+		LOGERROR("Invalid SYSTEM_SIGNON_CONTROL message, On Station Address - " + std::to_string(Header.GetStationAddress()));
 	}
 }
 // Function 43
@@ -1616,31 +1530,8 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS& Header, MD3Message_t& Co
 		return;
 	}
 
-	// This is the time set pass through ODC command - which if nothing is listening to the port, does nothing!!
-
-	uint32_t ODCIndex = MyPointConf->TimeSetPoint.second;
-	MyPointConf->TimeSetPoint.first = numeric_cast<double>(msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
-
-	EventTypePayload<EventType::AnalogOutputDouble64>::type val;
-	val.first = MyPointConf->TimeSetPoint.first;
-
-	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
-	event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
-
-	// If StandAloneOutstation, dont wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-	bool waitforresult = !MyPointConf->StandAloneOutstation;
-
-	// This does a PublishCommand and waits for the result - or times out.
-	if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
-	{
-		if (Header.GetStationAddress() != 0)
-			SendControlOK(Header);
-	}
-	else
-	{
-		if (Header.GetStationAddress() != 0)
-			SendControlOrScanRejected(Header);
-	}
+	if (Header.GetStationAddress() != 0)
+		SendControlOK(Header);
 	SystemFlags.TimePacketReceived();
 }
 // Function 44
@@ -1688,33 +1579,14 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS& Header, MD3Message_t&
 	if (abs(SOETimeOffsetMinutes) > 24 * 60)
 	{
 		// If the abs time offset > 24 hours, ignore!
+		LOGDEBUG("{} DoSetDateTime Time Offset Greater than 24 hours, ignoring...", Name );
 		SendControlOrScanRejected(Header); // If we did not get two blocks, then send back a command rejected message.
 		return;
 	}
 
-	uint32_t ODCIndex = MyPointConf->TimeSetPointNew.second;
-	MyPointConf->TimeSetPointNew.first = numeric_cast<double>(msecsinceepoch); // Fit the 64 bit int into the 64 bit float.
+	if (Header.GetStationAddress() != 0)
+		SendControlOK(Header);
 
-	EventTypePayload<EventType::AnalogOutputDouble64>::type val;
-	val.first = MyPointConf->TimeSetPointNew.first;
-
-	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name);
-	event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
-
-	// If StandAloneOutstation, dont wait for the result - problem is ODC will always wait - no choice on commands. If no subscriber, will return immediately - good for testing
-	bool waitforresult = !MyPointConf->StandAloneOutstation;
-
-	// This does a PublishCommand and waits for the result - or times out.
-	if (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS)
-	{
-		if (Header.GetStationAddress() != 0)
-			SendControlOK(Header);
-	}
-	else
-	{
-		if (Header.GetStationAddress() != 0)
-			SendControlOrScanRejected(Header);
-	}
 	SystemFlags.TimePacketReceived();
 }
 // Function 52
