@@ -51,6 +51,10 @@ install(FILES "README.md" DESTINATION ".")
 install(FILES "RELEASE_NOTES" DESTINATION ".")
 install(DIRECTORY "./3rdPartyLicenses" DESTINATION ".")
 install(DIRECTORY "install/init" DESTINATION ".")
+install(PROGRAMS install/systemd/opendatacon-server-start.sh DESTINATION bin)
+install(PROGRAMS install/systemd/opendatacon-server-stop.sh DESTINATION bin)
+install(PROGRAMS install/systemd/odcrunning.sh DESTINATION bin)
+install(FILES install/systemd/opendatacon.service DESTINATION .)
 
 #Deploy git workflow hook scripts
 include(git-hooks.cmake)
