@@ -35,7 +35,7 @@
 #include <thread>
 #include <chrono>
 #include <cstdint>
-#include "../http/clientrequest.h"
+#include "../HTTP/clientrequest.h"
 
 #define COMPILE_TESTS
 

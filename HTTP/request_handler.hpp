@@ -41,7 +41,7 @@ namespace http
 			/// Handle a request and produce a reply.
 			void handle_request(const request& req, reply& rep);
 			pHandlerCallbackType find_matching_handler(const std::string& uripattern);
-			ParameterMapType SplitParams(std::string& paramstring);
+			ParameterMapType SplitParams(std::string &paramstring);
 
 		private:
 			/// The directory containing the files to be served.

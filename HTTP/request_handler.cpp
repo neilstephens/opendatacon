@@ -82,12 +82,33 @@ pHandlerCallbackType request_handler::find_matching_handler(const std::string& u
 	return result;
 }
 
-ParameterMapType request_handler::SplitParams(std::string& paramstring)
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	while (std::getline(tokenStream, token, delimiter))
+	{
+		tokens.push_back(token);
+	}
+	return tokens;
+}
+
+ParameterMapType request_handler::SplitParams(std::string &paramstring)
 {
 	// Split into a map of keys and values.
 	ParameterMapType p;
 	LOGDEBUG("Splitting Params {}", paramstring);
+	std::vector<std::string> tokens = split(paramstring, '&');
 
+	for (auto token : tokens)
+	{
+		std::vector<std::string>keyval = split(token, '=');
+
+		std::string key = keyval[0];
+		std::string value = keyval[1];
+		p[key] = value;
+	}
 	return p;
 }
 
