@@ -193,7 +193,7 @@ void PyPort::Build()
 
 	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
-	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			rep.status = http::reply::ok;
 			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
@@ -206,7 +206,7 @@ void PyPort::Build()
 
 	HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-	auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
 			std::string contenttype = "application/json";
@@ -243,7 +243,7 @@ void PyPort::Build()
 		});
 	HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
-	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
 			std::string result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.

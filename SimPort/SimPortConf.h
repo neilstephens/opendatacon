@@ -60,6 +60,8 @@ public:
 		default_std_dev_factor(0.1)
 	{}
 
+	std::string HttpAddr = "0.0.0.0";
+	std::string HttpPort = "";
 	std::vector<uint32_t> BinaryIndicies;
 	std::map<uint32_t, bool> BinaryStartVals;
 	std::map<uint32_t, bool> BinaryForcedStates;

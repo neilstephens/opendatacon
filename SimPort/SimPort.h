@@ -35,6 +35,7 @@
 
 #include "SimPortConf.h"
 #include "sqlite3/sqlite3.h"
+#include "../http/HttpServerManager.h"
 
 using namespace odc;
 
@@ -128,6 +129,7 @@ private:
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	static thread_local std::mt19937 RandNumGenerator;
+	ServerTokenType pServer;
 };
 
 #endif // SIMPORT_H

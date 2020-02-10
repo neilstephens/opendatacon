@@ -72,7 +72,7 @@ HttpServerManager::HttpServerManager(std::shared_ptr<odc::asio_service> apIOS, c
 }
 
 // Static Method
-ServerTokenType HttpServerManager::AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint,     const std::string& aPort)
+ServerTokenType HttpServerManager::AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort)
 {
 	std::unique_lock<std::mutex> lck(HttpServerManager::ManagementMutex); // Only allow one static op at a time
 

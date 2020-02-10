@@ -82,6 +82,15 @@ pHandlerCallbackType request_handler::find_matching_handler(const std::string& u
 	return result;
 }
 
+ParameterMapType request_handler::SplitParams(std::string& paramstring)
+{
+	// Split into a map of keys and values.
+	ParameterMapType p;
+	LOGDEBUG("Splitting Params {}", paramstring);
+
+	return p;
+}
+
 // We only need to do simple decoding, the first part of the url after the address will give us the port name, we look for this in a map
 // once we find it call the registered method. What is returned is what we send back as the response.
 // Remembering that we are going to pass this into and back from Python code, so a little different than if we were planning to do everything
@@ -114,7 +123,8 @@ void request_handler::handle_request(const request& req, reply& rep)
 	{
 		// Pass everything so it can be handled/passed to python
 		// What about req.headers[] - a vector
-		(*fn)(req.method + " " + req.uri, req.content, rep);
+		ParameterMapType params = SplitParams(request_params);
+		(*fn)(req.method + " " + req.uri, params, req.content, rep);
 		return;
 	}
 

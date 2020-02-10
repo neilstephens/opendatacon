@@ -72,6 +72,7 @@ void SimPort::Enable()
 			if(!enabled)
 			{
 			      enabled = true;
+			      HttpServerManager::StartConnection(pServer);
 			      PortUp();
 			}
 		});
@@ -83,6 +84,7 @@ void SimPort::Disable()
 			if(enabled)
 			{
 			      enabled = false;
+			      HttpServerManager::StopConnection(pServer);
 			      PortDown();
 			}
 		});
@@ -579,12 +581,106 @@ void SimPort::Build()
 	pEnableDisableSync = pIOS->make_strand();
 	auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
 	this->SimCollection->Add(shared_this,this->Name);
+
+	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
+	if ((pConf->HttpAddr.length() != 0) && (pConf->HttpPort.length() != 0))
+	{
+		pServer = HttpServerManager::AddConnection(pIOS, pConf->HttpAddr, pConf->HttpPort); //Static method - creates a new HttpServerManager if required
+
+		// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
+
+		auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+			{
+				rep.status = http::reply::ok;
+				rep.content.append("You have reached the SimPort http interface.<br>To talk to a port the url must contain the SimPort name, which is case senstive.<br>The rest is formatted as if it were a console UI command.");
+				rep.headers.resize(2);
+				rep.headers[0].name = "Content-Length";
+				rep.headers[0].value = std::to_string(rep.content.size());
+				rep.headers[1].name = "Content-Type";
+				rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
+			});
+
+		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
+
+		auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+			{
+				// So when we hit here, someone has made a Get request of our Named Port.
+				// The parameters are type and index, we return value, quality and timestamp
+				// Split the absolute uri into parameters.
+
+
+				std::string contenttype = "application/json";
+				std::string result = "";
+
+				//	result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
+
+				if (result.length() > 0)
+				{
+				      rep.status = http::reply::ok;
+				      rep.content.append(result);
+				}
+				else
+				{
+				      rep.status = http::reply::not_found;
+				      rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
+				      contenttype = "text/html";
+				}
+				rep.headers.resize(2);
+				rep.headers[0].name = "Content-Length";
+				rep.headers[0].value = std::to_string(rep.content.size());
+				rep.headers[1].name = "Content-Type";
+				rep.headers[1].value = contenttype;
+			});
+		HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
+
+		auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+			{
+				// So when we hit here, someone has made a POST request of our Port. Parse our the parameters
+
+				std::string type;
+				std::string index;
+				std::string value;
+				std::string quality;
+				std::string timestamp;
+				bool force;
+
+				std::string result = "";
+//				if (UILoad(type, index, value, quality, timestamp, force))
+				{
+				      result = "Command Accepted";
+				}
+
+				std::string contenttype = "text/html";
+
+				if (result.length() > 0)
+				{
+				      rep.status = http::reply::ok;
+				      rep.content.append(result);
+				}
+				else
+				{
+				      rep.status = http::reply::not_found;
+				      rep.content.append("You have reached the SimPort Instance with POST on " + Name + " POST Command Failed when passed to UILoad");
+				}
+				rep.headers.resize(2);
+				rep.headers[0].name = "Content-Length";
+				rep.headers[0].value = std::to_string(rep.content.size());
+				rep.headers[1].name = "Content-Type";
+				rep.headers[1].value = contenttype;
+			});
+		HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
+	}
 }
 
 void SimPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+
+	if (JSONRoot.isMember("HttpIP"))
+		pConf->HttpAddr = JSONRoot["HttpIP"].asString();
+	if (JSONRoot.isMember("HttpPort"))
+		pConf->HttpPort = JSONRoot["HttpPort"].asString();
 
 	if(JSONRoot.isMember("Analogs"))
 	{

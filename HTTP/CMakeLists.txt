@@ -20,7 +20,7 @@
 project(HTTP)
 
 cmake_minimum_required(VERSION 2.8)
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def ../include/opendatacon/*.h)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.hpp *.def ../include/opendatacon/*.h)
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
 add_dependencies(${PROJECT_NAME} version) #make sure version info is up-to-date first
