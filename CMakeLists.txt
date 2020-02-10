@@ -334,6 +334,8 @@ else()
 	endif()
 endif()
 
+message("add subdir HTTP")
+add_subdirectory(HTTP)
 message("add subdir JSON")
 add_subdirectory(JSON)
 message("add subdir ODC")

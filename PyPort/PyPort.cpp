@@ -189,7 +189,7 @@ void PyPort::Build()
 			LOGSTRAND("Exit Strand");
 		});
 
-	pServer = ServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new ServerManager if required
+	pServer = HttpServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new HttpServerManager if required
 
 	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
@@ -204,7 +204,7 @@ void PyPort::Build()
 			rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
 		});
 
-	ServerManager::AddHandler(pServer, "GET /", roothandler);
+	HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
 	auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const std::string& content, http::reply& rep)
 		{
@@ -241,7 +241,7 @@ void PyPort::Build()
 			rep.headers[1].name = "Content-Type";
 			rep.headers[1].value = contenttype;
 		});
-	ServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
+	HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
 	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const std::string& content, http::reply& rep)
 		{
@@ -266,7 +266,7 @@ void PyPort::Build()
 			rep.headers[1].name = "Content-Type";
 			rep.headers[1].value = contenttype;
 		});
-	ServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
+	HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
 }
 
 void PyPort::Enable()
@@ -286,7 +286,7 @@ void PyPort::Enable()
 	}
 	LOGDEBUG("pWrapper is good!");
 
-	ServerManager::StartConnection(pServer);
+	HttpServerManager::StartConnection(pServer);
 	std::promise<bool> promise;
 	auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
@@ -321,7 +321,7 @@ void PyPort::Disable()
 		return;
 
 	// Leaves handlers in place, so can be restarted without re-adding handlers
-	ServerManager::StopConnection(pServer);
+	HttpServerManager::StopConnection(pServer);
 
 	python_strand->dispatch([&]()
 		{

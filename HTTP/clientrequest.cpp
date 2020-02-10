@@ -12,7 +12,6 @@
 #include <istream>
 #include <sstream>
 #include <string>
-#include "../Py.h"
 #include <asio.hpp>
 
 using asio::ip::tcp;
@@ -86,7 +85,7 @@ bool DoHttpRequst(std::string server, std::string port, std::string path, std::s
 		// Read until EOF, writing data to output as we go.
 		asio::error_code error;
 		while (asio::read(socket, response,
-				 asio::transfer_at_least(1), error))
+			asio::transfer_at_least(1), error))
 			sout << &response;
 		if (error != asio::error::eof)
 			throw asio::system_error(error);

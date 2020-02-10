@@ -1006,6 +1006,8 @@ TEST_CASE("Station - ScanRequest F0")
 	SendBinaryEvent(CBOSPort, 13, false);
 	SendBinaryEvent(CBOSPort, 14, false); // Only 1 change, need 2 to trigger
 
+	WaitIOS(*IOS, 1);
+
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // Scan Data Group 3 - analog values and digitals have now changed. SOE overflow should be set, SOE Data Available in RSW
@@ -1022,6 +1024,9 @@ TEST_CASE("Station - ScanRequest F0")
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
+
+	WaitIOS(*IOS, 1);
+
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);

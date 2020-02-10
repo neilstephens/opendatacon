@@ -33,7 +33,7 @@
 
 #include "PythonWrapper.h"
 #include "PyPortConf.h"
-#include "ServerManager.h"
+#include "../http/HttpServerManager.h"
 
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
