@@ -68,6 +68,7 @@ public:
 
 	bool UILoad(const std::string &type, const std::string &index, const std::string &value, const std::string &quality, const std::string &timestamp, const bool force);
 	bool UIRelease(const std::string& type, const std::string& index);
+	bool SetForcedState(const std::string& index, const std::string& type, bool forced);
 	bool UISetUpdateInterval(const std::string& type, const std::string& index, const std::string& period);
 
 private:
@@ -79,6 +80,12 @@ private:
 	typedef std::shared_ptr<sqlite3_stmt> pDBStatement;
 	std::unordered_map<std::string, pDBStatement> DBStats;
 	TimestampMode TimestampHandling;
+
+	// use this instead of PublishEvent, it catches current values and saves them.
+	void PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback);
+	std::string GetCurrentBinaryVals(const std::string& index);
+	std::string GetCurrentAnalogVals(const std::string& index);
+
 	void NextEventFromDB(std::shared_ptr<EventInfo> event);
 	void PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_offset);
 	void SpawnEvent(std::shared_ptr<EventInfo> event, int64_t time_offset = 0);
@@ -130,6 +137,7 @@ private:
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	static thread_local std::mt19937 RandNumGenerator;
 	ServerTokenType pServer;
+	SimPortConf* pSimConf = nullptr; // Set in constructor
 };
 
 #endif // SIMPORT_H

@@ -64,10 +64,12 @@ public:
 	std::string HttpPort = "";
 	std::vector<uint32_t> BinaryIndicies;
 	std::map<uint32_t, bool> BinaryStartVals;
+	std::map<uint32_t, bool> BinaryVals;
 	std::map<uint32_t, bool> BinaryForcedStates;
 	std::map<uint32_t, unsigned int> BinaryUpdateIntervalms;
 	std::vector<uint32_t> AnalogIndicies;
 	std::map<uint32_t, double> AnalogStartVals;
+	std::map<uint32_t, double> AnalogVals;
 	std::map<uint32_t, bool> AnalogForcedStates;
 	std::map<uint32_t, unsigned int> AnalogUpdateIntervalms;
 	std::map<uint32_t, double> AnalogStdDevs;

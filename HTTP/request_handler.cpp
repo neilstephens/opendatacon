@@ -104,10 +104,12 @@ ParameterMapType request_handler::SplitParams(std::string &paramstring)
 	for (auto token : tokens)
 	{
 		std::vector<std::string>keyval = split(token, '=');
-
-		std::string key = keyval[0];
-		std::string value = keyval[1];
-		p[key] = value;
+		if (keyval.size() == 2)
+		{
+			std::string key = keyval[0];
+			std::string value = keyval[1];
+			p[key] = value;
+		}
 	}
 	return p;
 }
@@ -136,8 +138,6 @@ void request_handler::handle_request(const request& req, reply& rep)
 		LOGDEBUG("Invalid Path/Url");
 		return;
 	}
-	// ParameterMapType params;
-	// Translate request_params into ParameterMapType??
 
 	// Do the method/path matching
 	if (auto fn = find_matching_handler(req.method + " " + request_path))
