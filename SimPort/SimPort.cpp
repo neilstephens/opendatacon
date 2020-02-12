@@ -387,37 +387,37 @@ bool SimPort::SetForcedState(const std::string& index, const std::string& type, 
 
 	return true;
 }
-std::string SimPort::GetCurrentBinaryVals(const std::string& index)
+std::string SimPort::GetCurrentBinaryValsAsJSON(const std::string& index)
 {
 	auto indexes = IndexesFromString(index, "binary");
 	if (!indexes.size())
 		return "";
-	std::string result = "";
+	Json::Value root;
 
 	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 	for (auto idx : indexes)
 	{
-		if (result.length() != 0)
-			result += ",";
-		result += pSimConf->BinaryVals[idx] ? "1" : "0";
+		root[std::to_string(idx)] = pSimConf->BinaryVals[idx] ? "1" : "0";
 	}
+	Json::FastWriter writer;
+	const std::string result = writer.write(root);
 	return result;
 }
 
-std::string SimPort::GetCurrentAnalogVals(const std::string& index)
+std::string SimPort::GetCurrentAnalogValsAsJSON(const std::string& index)
 {
 	auto indexes = IndexesFromString(index, "analog");
 	if (!indexes.size())
 		return "";
-	std::string result = "";
+	Json::Value root;
 
 	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 	for (auto idx : indexes)
 	{
-		if (result.length() != 0)
-			result += ",";
-		result += std::to_string(pSimConf->AnalogVals[idx]);
+		root[std::to_string(idx)] = std::to_string(pSimConf->AnalogVals[idx]);
 	}
+	Json::FastWriter writer;
+	const std::string result = writer.write(root);
 	return result;
 }
 
@@ -701,16 +701,17 @@ void SimPort::Build()
 					error += " No 'index' parameter found";
 
 				std::string result = "";
+				std::string contenttype = "application/json";
 
 				if (error.length() == 0)
 				{
 				      if (StringToLower(type) == "binary")
 				      {
-				            result = GetCurrentBinaryVals(index);
+				            result = GetCurrentBinaryValsAsJSON(index);
 					}
 				      if (StringToLower(type) == "analog")
 				      {
-				            result = GetCurrentAnalogVals(index);
+				            result = GetCurrentAnalogValsAsJSON(index);
 					}
 				}
 				if (result.length() != 0)
@@ -721,13 +722,14 @@ void SimPort::Build()
 				else
 				{
 				      rep.status = http::reply::not_found;
-				      rep.content.append("You have reached the SimPort Instance with GET on " + Name + " Invalid Request "+type+", "+index+" - "+error);
+				      contenttype = "text/html";
+				      rep.content.append("You have reached the SimPort Instance with GET on " + Name + " Invalid Request " + type + ", " + index + " - " + error);
 				}
 				rep.headers.resize(2);
 				rep.headers[0].name = "Content-Length";
 				rep.headers[0].value = std::to_string(rep.content.size());
 				rep.headers[1].name = "Content-Type";
-				rep.headers[1].value = "text/html";
+				rep.headers[1].value = contenttype;
 			});
 		HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 

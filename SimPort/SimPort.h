@@ -83,8 +83,8 @@ private:
 
 	// use this instead of PublishEvent, it catches current values and saves them.
 	void PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback);
-	std::string GetCurrentBinaryVals(const std::string& index);
-	std::string GetCurrentAnalogVals(const std::string& index);
+	std::string GetCurrentBinaryValsAsJSON(const std::string& index);
+	std::string GetCurrentAnalogValsAsJSON(const std::string& index);
 
 	void NextEventFromDB(std::shared_ptr<EventInfo> event);
 	void PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_offset);

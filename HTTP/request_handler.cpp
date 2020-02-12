@@ -77,7 +77,7 @@ pHandlerCallbackType request_handler::find_matching_handler(const std::string& u
 	}
 	else
 	{
-		LOGDEBUG("Found Handler {} for {} ", matchkey, uripattern);
+		LOGTRACE("Found Handler {} for {}", matchkey, uripattern);
 	}
 	return result;
 }
@@ -98,7 +98,7 @@ ParameterMapType request_handler::SplitParams(std::string &paramstring)
 {
 	// Split into a map of keys and values.
 	ParameterMapType p;
-	LOGDEBUG("Splitting Params {}", paramstring);
+	//LOGDEBUG("Splitting Params {}", paramstring);
 	std::vector<std::string> tokens = split(paramstring, '&');
 
 	for (auto token : tokens)
@@ -129,7 +129,7 @@ void request_handler::handle_request(const request& req, reply& rep)
 		LOGDEBUG("Bad Request");
 		return;
 	}
-	LOGDEBUG("Path {} - Params {}", request_path, request_params);
+	//LOGDEBUG("Path {} - Params {}", request_path, request_params);
 
 	// Request path must be absolute and not contain "..".
 	if (request_path.empty() || request_path[0] != '/' || request_path.find("..") != std::string::npos)
