@@ -217,8 +217,6 @@ int ConsoleUI::hotkeys(char c)
 		//find contextual commands that start with the partial
 		if (this->context.empty())
 		{
-			//LineStream>>arg;
-
 			//check if command matches a Responder - if so, arg is our partial sub command
 			if (Responders.count(cmd))
 			{
