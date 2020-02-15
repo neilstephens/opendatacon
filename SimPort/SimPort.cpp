@@ -93,6 +93,18 @@ std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
 }
 
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	while (std::getline(tokenStream, token, delimiter))
+	{
+		tokens.push_back(token);
+	}
+	return tokens;
+}
+
 std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
 {
 	std::vector<uint32_t> indexes;
@@ -114,15 +126,15 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 
 	//Check for comma separated list
 	std::regex comma_regx("^([0-9]+)(?:,([0-9]+))*$");
-	std::smatch comma_matches;
-	if(std::regex_search(index_str, comma_matches, comma_regx))
+	if(std::regex_match(index_str, comma_regx))
 	{
-		for(size_t i = 0; i < comma_matches.size(); ++i)
+		auto idxstrings = split(index_str, ',');
+		for( auto idxs : idxstrings)
 		{
 			size_t idx;
 			try
 			{
-				idx = std::stoi(comma_matches[i].str());
+				idx = std::stoi(idxs);
 			}
 			catch(std::exception e)
 			{
