@@ -167,6 +167,7 @@ private:
 
 	SetTimerFnType PythonPortSetTimerFn;
 	PublishEventCallFnType PythonPortPublishEventCallFn;
+	std::atomic_flag QueuePushErrorLogged = ATOMIC_FLAG_INIT;
 };
 
 #endif /* PYWRAPPER_H_ */

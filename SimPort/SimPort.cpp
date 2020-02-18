@@ -399,8 +399,9 @@ std::string SimPort::GetCurrentBinaryValsAsJSON(const std::string& index)
 	{
 		root[std::to_string(idx)] = pSimConf->BinaryVals[idx] ? "1" : "0";
 	}
-	Json::FastWriter writer;
-	const std::string result = writer.write(root);
+	Json::StreamWriterBuilder wbuilder;
+	wbuilder["indentation"] = "";
+	const std::string result = Json::writeString(wbuilder, root);
 	return result;
 }
 
@@ -416,8 +417,9 @@ std::string SimPort::GetCurrentAnalogValsAsJSON(const std::string& index)
 	{
 		root[std::to_string(idx)] = std::to_string(pSimConf->AnalogVals[idx]);
 	}
-	Json::FastWriter writer;
-	const std::string result = writer.write(root);
+	Json::StreamWriterBuilder wbuilder;
+	wbuilder["indentation"] = "";
+	const std::string result = Json::writeString(wbuilder, root);
 	return result;
 }
 
@@ -614,30 +616,24 @@ void SimPort::SpawnEvent(std::shared_ptr<EventInfo> event, int64_t time_offset)
 	//deep copy event to modify as next event
 	auto next_event = std::make_shared<EventInfo>(*event);
 
-	std::string typeString = "Binary";
-	auto& ForcedStates = pSimConf->BinaryForcedStates;
-	if(event->GetEventType() == EventType::Analog)
+	bool shouldPub = true;
+	if (event->GetEventType() == EventType::Analog)
 	{
-		typeString = "Analog";
-		ForcedStates = pSimConf->AnalogForcedStates;
+		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+		if (pSimConf->AnalogForcedStates.count(event->GetIndex()))
+			shouldPub = !pSimConf->AnalogForcedStates.at(event->GetIndex());
 	}
-	else if(event->GetEventType() != EventType::Binary)
+	if (event->GetEventType() == EventType::Binary)
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->error("{} : Unsupported EventType : '{}'", ToString(event->GetEventType()));
-		return;
+		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+		if (pSimConf->BinaryForcedStates.count(event->GetIndex()))
+			shouldPub = !pSimConf->BinaryForcedStates.at(event->GetIndex());
 	}
 
-	bool shouldPub = true;
-	{ //lock scope
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		if(ForcedStates.count(event->GetIndex()))
-			shouldPub = !ForcedStates.at(event->GetIndex());
-	}
 	if (shouldPub)
 		PostPublishEvent(event);
 
-	auto pTimer = Timers.at(typeString+std::to_string(event->GetIndex()));
+	auto pTimer = Timers.at(ToString(event->GetEventType()) +std::to_string(event->GetIndex()));
 	PopulateNextEvent(next_event, time_offset);
 	auto now = msSinceEpoch();
 	msSinceEpoch_t delta;

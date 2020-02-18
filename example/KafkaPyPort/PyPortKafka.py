@@ -127,7 +127,7 @@ class SimPortClass:
         # 'compression.type':'none' - does not seem to make much difference (none,snappy, gzip)
         # 'delivery.report.only.error':False    This does make things quicker from approx 70k/sec to 74k/sec
         # 'message.send.max.retries': 100000 - will not drop the message until this many attempts have been made...
-        conf = {'bootstrap.servers': kafkaserver, 'client.id': 'OpenDataCon', 'delivery.report.only.error' : True, 'message.send.max.retries': 100000, 'request.required.acks' : 0, 'max.in.flight.requests.per.connection' : 100}
+        conf = {'bootstrap.servers': kafkaserver, 'client.id': 'OpenDataCon', 'delivery.report.only.error' : True, 'message.send.max.retries': 10000000, 'request.required.acks' : 0, 'max.in.flight.requests.per.connection' : 100}
         self.producer = Producer(conf)
         return
 
