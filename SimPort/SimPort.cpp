@@ -676,6 +676,20 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
+		auto versionhandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+			{
+				rep.status = http::reply::ok;
+				//TODO: Get the actual version information from somewhere!
+				rep.content.append("{\"ODCVersion\":\"1.3.1 and stuff\",\"ConfigFileVersion\":\"24-02-2020 Sim Test File\"}");
+				rep.headers.resize(2);
+				rep.headers[0].name = "Content-Length";
+				rep.headers[0].value = std::to_string(rep.content.size());
+				rep.headers[1].name = "Content-Type";
+				rep.headers[1].value = "application/json"; // http::server::mime_types::extension_to_type(extension);
+			});
+
+		HttpServerManager::AddHandler(pServer, "GET /Version", versionhandler);
+
 		auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				// So when we hit here, someone has made a Get request of our Named Port.

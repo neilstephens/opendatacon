@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>3f5f09d1-984a-4869-b6af-610056ba0e32</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>PyPortTestMain.py</StartupFile>
+    <StartupFile>..\..\example\KafkaPyPort\PyPortKafka.py</StartupFile>
     <SearchPath>..\..\example\KafkaPyPort;..\..\example\JSON-PyPortCBSim;..\..\example\JSON-PyPortRtuSim</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>

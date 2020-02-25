@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>OpenDataCon</short>
+  <description>Firewall rules for OpenDataCon configured as DMNC gateway – allowing inbound connections from DMNS and other specific ports. Change definition as required.</description>
+  <port protocol="tcp" port="20000-20400"/>
+  <port protocol="tcp" port="10443"/>
+</service>

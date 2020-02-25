@@ -305,9 +305,9 @@ def StimulatePyPortKafkaDirectly():
 
 print("Start")
 #StimulateViaHttp() # Requires the PyPortCBSim.py file to be running in OpenDataCon
-StimulateDirectly() # Can use this to call code within this single Python program for simpler
+#StimulateDirectly() # Can use this to call code within this single Python program for simpler
 # debugging and testing.
 #KafkaProduceTest()
-#StimulatePyPortKafkaDirectly()
+StimulatePyPortKafkaDirectly()
 #KafkaConsumeTest()
 print("Done")
