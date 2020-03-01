@@ -138,6 +138,18 @@ std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
 }
 
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	while (std::getline(tokenStream, token, delimiter))
+	{
+		tokens.push_back(token);
+	}
+	return tokens;
+}
+
 std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
 {
 	std::vector<uint32_t> indexes;

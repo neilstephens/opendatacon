@@ -137,8 +137,10 @@ void ConsoleUI::AddHelp(std::string help)
 int ConsoleUI::trigger (std::string s)
 {
 	std::stringstream LineStream(s);
-	std::string cmd;
+	std::string cmd, lower_cmd;
 	LineStream>>cmd;
+	lower_cmd = cmd;
+	ToLower(lower_cmd);
 
 	if(this->context.empty() && Responders.count(cmd))
 	{
@@ -157,7 +159,7 @@ int ConsoleUI::trigger (std::string s)
 			ExecuteCommand(Responders[cmd],rcmd,LineStream);
 		}
 	}
-	else if(!this->context.empty() && cmd == "exit")
+	else if(!this->context.empty() && lower_cmd == "exit")
 	{
 		/* change context */
 		this->context = "";
@@ -196,25 +198,25 @@ int ConsoleUI::hotkeys(char c)
 	if (c == TAB) //auto complete/list
 	{
 		//store what's been entered so far
-		std::string partial_cmd;
-		partial_cmd.assign(buffer.begin(), buffer.end());
+		std::string cmd, lower_cmd;
+		cmd.assign(buffer.begin(), buffer.end());
 
-		std::stringstream LineStream(partial_cmd);
-		std::string cmd,arg;
-		LineStream>>cmd;
+		lower_cmd = cmd;
+		ToLower(lower_cmd);
 
 		//find root commands that start with the partial
 		std::vector<std::string> matching_cmds;
 		for(auto name_n_description : mDescriptions)
 		{
-			if(strncmp(name_n_description.first.c_str(),partial_cmd.c_str(),partial_cmd.size())==0)
-				matching_cmds.push_back(name_n_description.first.c_str());
+			std::string name = name_n_description.first;
+			ToLower(name);
+			if (name.substr(0, lower_cmd.size()) == lower_cmd)
+				matching_cmds.push_back(name_n_description.first);
 		}
+
 		//find contextual commands that start with the partial
 		if (this->context.empty())
 		{
-			LineStream>>arg;
-
 			//check if command matches a Responder - if so, arg is our partial sub command
 			if (Responders.count(cmd))
 			{
@@ -222,7 +224,9 @@ int ConsoleUI::hotkeys(char c)
 				auto commands = Responders[cmd]->GetCommandList();
 				for (auto command : commands)
 				{
-					if(strncmp(command.asString().c_str(),arg.c_str(),arg.size())==0)
+					std::string cmd = command.asString();
+					ToLower(cmd);
+					if (cmd.substr(0, lower_cmd.size()) == lower_cmd)
 						matching_cmds.push_back(cmd + " " + command.asString());
 				}
 			}
@@ -232,7 +236,9 @@ int ConsoleUI::hotkeys(char c)
 				/* list all matching responders */
 				for(auto name_n_responder : Responders)
 				{
-					if(strncmp(name_n_responder.first.c_str(),cmd.c_str(),cmd.size())==0)
+					std::string name = name_n_responder.first;
+					ToLower(name);
+					if (name.substr(0, lower_cmd.size()) == lower_cmd)
 						matching_cmds.push_back(name_n_responder.first.c_str());
 				}
 			}
@@ -243,7 +249,9 @@ int ConsoleUI::hotkeys(char c)
 			auto commands = Responders[this->context]->GetCommandList();
 			for (auto command : commands)
 			{
-				if(strncmp(command.asString().c_str(),partial_cmd.c_str(),partial_cmd.size())==0)
+				std::string cmd = command.asString();
+				ToLower(cmd);
+				if (cmd.substr(0, lower_cmd.size()) == lower_cmd)
 					matching_cmds.push_back(command.asString());
 			}
 		}
@@ -252,10 +260,12 @@ int ConsoleUI::hotkeys(char c)
 		if(matching_cmds.size())
 		{
 			//we want to see how many chars all the matches have in common
-			auto common_length = partial_cmd.size()-1; //starting from what we already know matched
+			auto common_length = cmd.size() - 1; //starting from what we already know matched
 
-			if(matching_cmds.size()==1)
-				common_length=matching_cmds.back().size();
+			if(matching_cmds.size() == 1)
+			{
+				common_length = matching_cmds.back().size();
+			}
 			else
 			{
 				bool common = true;
@@ -276,11 +286,11 @@ int ConsoleUI::hotkeys(char c)
 			}
 
 			//auto-complete common chars
-			if(common_length > partial_cmd.size())
+			if(common_length > cmd.size())
 			{
 				buffer.assign(matching_cmds.back().begin(),matching_cmds.back().begin()+common_length);
 				std::string remainder;
-				remainder.assign(matching_cmds.back().begin()+partial_cmd.size(),matching_cmds.back().begin()+common_length);
+				remainder.assign(matching_cmds.back().begin() + cmd.size(), matching_cmds.back().begin() + common_length);
 				std::cout<<remainder<< std::flush;
 				line_pos = (int)common_length;
 			}
@@ -290,11 +300,11 @@ int ConsoleUI::hotkeys(char c)
 				std::cout<<std::endl;
 				for(auto cmd : matching_cmds)
 					std::cout<<cmd<<std::endl;
-				std::cout<<_prompt<<partial_cmd<<std::flush;
+				std::cout<<_prompt<<cmd<<std::flush;
 			}
 
 			//if there's just one match, and we just auto-completed it, print a trailing space.
-			if(matching_cmds.size() == 1 && partial_cmd.size() <= matching_cmds.back().size())
+			if(matching_cmds.size() == 1 && cmd.size() <= matching_cmds.back().size())
 			{
 				std::cout<<' '<< std::flush;
 				buffer.push_back(' ');
@@ -350,6 +360,12 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 	}
 }
 
+void ConsoleUI::ToLower(std::string& str)
+{
+	std::transform(str.begin(), str.end(), str.begin(),
+		[](unsigned char c) { return std::tolower(c); });
+}
+
 void ConsoleUI::Build()
 {}
 
@@ -359,9 +375,9 @@ void ConsoleUI::Enable()
 	if (!uithread)
 	{
 		uithread = std::unique_ptr<asio::thread>(new asio::thread([this]()
-				{
-					this->run();
-				}));
+			{
+				this->run();
+			}));
 	}
 }
 
