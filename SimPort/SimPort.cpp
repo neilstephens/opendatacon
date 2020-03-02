@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/Version.h>
 #include "SimPort.h"
 #include "SimPortConf.h"
 #include "SimPortCollection.h"
@@ -136,18 +137,6 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 {
 	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
-}
-
-std::vector<std::string> split(const std::string& s, char delimiter)
-{
-	std::vector<std::string> tokens;
-	std::string token;
-	std::istringstream tokenStream(s);
-	while (std::getline(tokenStream, token, delimiter))
-	{
-		tokens.push_back(token);
-	}
-	return tokens;
 }
 
 std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
@@ -688,11 +677,12 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-		auto versionhandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, pSimConf->Version);
+		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				rep.status = http::reply::ok;
-				//TODO: Get the actual version information from somewhere!
-				rep.content.append("{\"ODCVersion\":\"1.3.1 and stuff\",\"ConfigFileVersion\":\"24-02-2020 Sim Test File\"}");
+
+				rep.content.append(VersionResp);
 				rep.headers.resize(2);
 				rep.headers[0].name = "Content-Length";
 				rep.headers[0].value = std::to_string(rep.content.size());
@@ -755,7 +745,7 @@ void SimPort::Build()
 			});
 		HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
-		auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+		auto posthandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				// So when we hit here, someone has made a POST request of our Port.
 				// The UILoad checks the values past to it and sets sensible defaults if they are missing.
@@ -842,6 +832,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		pSimConf->HttpAddr = JSONRoot["HttpIP"].asString();
 	if (JSONRoot.isMember("HttpPort"))
 		pSimConf->HttpPort = JSONRoot["HttpPort"].asString();
+	if (JSONRoot.isMember("Version"))
+		pSimConf->Version = JSONRoot["Version"].asString();
+
 
 	if(JSONRoot.isMember("Analogs"))
 	{

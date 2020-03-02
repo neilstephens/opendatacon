@@ -62,6 +62,7 @@ public:
 
 	std::string HttpAddr = "0.0.0.0";
 	std::string HttpPort = "";
+	std::string Version = "Unknown";
 	std::vector<uint32_t> BinaryIndicies;
 	std::map<uint32_t, bool> BinaryStartVals;
 	std::map<uint32_t, bool> BinaryVals;
