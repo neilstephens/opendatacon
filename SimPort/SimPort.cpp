@@ -111,31 +111,31 @@ void SimPort::Disable()
 		});
 }
 
-// Just a way to keep the BinaryVals and analogVals up to date...
+// Just a way to keep the BinaryVals and AnalogVals up to date...
 void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([](CommandStatus status) {}))
 {
 	PublishEvent(event, pStatusCallback);
-	/*
-	pIOS->post([&,event,pStatusCallback]()
-	      {
-	            // If we publish it, the value has changed so update current values.
-	            if (event->GetEventType() == EventType::Binary)
-	            {
-	                  { //lock scope
-	                        std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-	                        pSimConf->BinaryVals[event->GetIndex()] = event->GetPayload<EventType::Binary>();
-	                  }
-	            }
-	            if (event->GetEventType() == EventType::Analog)
-	            {
-	                  { //lock scope
-	                        std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-	                        pSimConf->AnalogVals[event->GetIndex()] = event->GetPayload<EventType::Analog>();
-	                  }
-	            }
-	            PublishEvent(event, pStatusCallback);
-	      });
-	      */
+
+	// If we publish it, the value has changed so update current values.
+	size_t index = event->GetIndex();
+	if (event->GetEventType() == EventType::Analog)
+	{
+		double val = event->GetPayload<EventType::Analog>();
+		pIOS->post([&, index, val]()
+			{
+				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+				pSimConf->AnalogVals[index] = val;
+			});
+	}
+	if (event->GetEventType() == EventType::Binary)
+	{
+		bool val = event->GetPayload<EventType::Binary>();
+		pIOS->post([&, index, val]()
+			{
+				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+				pSimConf->BinaryVals[index] = val;
+			});
+	}
 }
 
 std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
