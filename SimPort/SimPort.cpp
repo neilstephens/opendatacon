@@ -164,7 +164,7 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 	// Take a copy of the shared allowed_indexs while mutex protected.
 	std::vector<uint32_t> allowed_indexes = GetAllowedIndexes(type);
 
-	if (allowed_indexes.size == 0)
+	if (allowed_indexes.size() == 0)
 		return indexes;
 
 	//Check for comma separated list,no white space
