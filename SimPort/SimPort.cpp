@@ -111,6 +111,7 @@ void SimPort::Disable()
 		});
 }
 
+// Just a way to keep the BinaryVals and analogVals up to date...
 void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([](CommandStatus status) {}))
 {
 	pIOS->post([&,event,pStatusCallback]()
@@ -119,14 +120,14 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 			if (event->GetEventType() == EventType::Binary)
 			{
 			      { //lock scope
-			            std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+			            std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 			            pSimConf->BinaryVals[event->GetIndex()] = event->GetPayload<EventType::Binary>();
 				}
 			}
 			if (event->GetEventType() == EventType::Analog)
 			{
 			      { //lock scope
-			            std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+			            std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 			            pSimConf->AnalogVals[event->GetIndex()] = event->GetPayload<EventType::Analog>();
 				}
 			}
@@ -139,21 +140,31 @@ std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
 }
 
-std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
+std::vector<uint32_t> SimPort::GetAllowedIndexes(std::string type)
 {
-	std::vector<uint32_t> indexes;
 	std::vector<uint32_t> allowed_indexes;
-	if(StringToLower(type) == "analog")
+	// Take a copy of the shared allowed_indexs while mutex protected.
+	if (StringToLower(type) == "analog")
 	{
 		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
 		allowed_indexes = pSimConf->AnalogIndicies;
 	}
-	else if(StringToLower(type) == "binary")
+	else if (StringToLower(type) == "binary")
 	{
 		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
 		allowed_indexes = pSimConf->BinaryIndicies;
 	}
-	else
+	return allowed_indexes;
+}
+
+
+std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
+{
+	std::vector<uint32_t> indexes;
+	// Take a copy of the shared allowed_indexs while mutex protected.
+	std::vector<uint32_t> allowed_indexes = GetAllowedIndexes(type);
+
+	if (allowed_indexes.size == 0)
 		return indexes;
 
 	//Check for comma separated list,no white space
@@ -299,11 +310,10 @@ bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& in
 		for(auto idx : indexes)
 		{
 			{ //lock scope
-				auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				if(!pConf->BinaryStartVals.count(idx))
+				if(!pSimConf->BinaryStartVals.count(idx))
 					return false;
-				pConf->BinaryUpdateIntervalms[idx] = delta;
+				pSimConf->BinaryUpdateIntervalms[idx] = delta;
 			}
 			auto pTimer = Timers.at("Binary"+std::to_string(idx));
 			if(!delta) //zero means no updates
@@ -327,11 +337,10 @@ bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& in
 		for(auto idx : indexes)
 		{
 			{ //lock scope
-				auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				if(!pConf->AnalogStartVals.count(idx))
+				if(!pSimConf->AnalogStartVals.count(idx))
 					return false;
-				pConf->AnalogUpdateIntervalms[idx] = delta;
+				pSimConf->AnalogUpdateIntervalms[idx] = delta;
 			}
 			auto pTimer = Timers.at("Analog"+std::to_string(idx));
 			if(!delta) //zero means no updates
@@ -395,10 +404,12 @@ std::string SimPort::GetCurrentBinaryValsAsJSON(const std::string& index)
 		return "";
 	Json::Value root;
 
-	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-	for (auto idx : indexes)
 	{
-		root[std::to_string(idx)] = pSimConf->BinaryVals[idx] ? "1" : "0";
+		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+		for (auto idx : indexes)
+		{
+			root[std::to_string(idx)] = pSimConf->BinaryVals[idx] ? "1" : "0";
+		}
 	}
 	Json::StreamWriterBuilder wbuilder;
 	wbuilder["indentation"] = "";
@@ -413,10 +424,12 @@ std::string SimPort::GetCurrentAnalogValsAsJSON(const std::string& index)
 		return "";
 	Json::Value root;
 
-	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-	for (auto idx : indexes)
 	{
-		root[std::to_string(idx)] = std::to_string(pSimConf->AnalogVals[idx]);
+		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+		for (auto idx : indexes)
+		{
+			root[std::to_string(idx)] = std::to_string(pSimConf->AnalogVals[idx]);
+		}
 	}
 	Json::StreamWriterBuilder wbuilder;
 	wbuilder["indentation"] = "";
@@ -427,8 +440,9 @@ std::string SimPort::GetCurrentAnalogValsAsJSON(const std::string& index)
 void SimPort::PortUp()
 {
 	auto now = msSinceEpoch();
-	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-	for(auto index : pSimConf->AnalogIndicies)
+	std::vector<uint32_t> indexes = GetAllowedIndexes("analog"); // Mutex protected copy of indexes.
+
+	for(auto index : indexes)
 	{
 		pTimer_t pTimer = pIOS->make_steady_timer();
 		Timers["Analog"+std::to_string(index)] = pTimer;
@@ -487,34 +501,48 @@ void SimPort::PortUp()
 			continue;
 		}
 
-		//send initial event
-		auto mean = pSimConf->AnalogStartVals.count(index) ? pSimConf->AnalogStartVals.at(index) : 0;
-		pSimConf->AnalogStartVals[index] = mean;
+		double mean;
+		{ //lock scope
+			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+			//send initial event
+			mean = pSimConf->AnalogStartVals.count(index) ? pSimConf->AnalogStartVals.at(index) : 0;
+			pSimConf->AnalogStartVals[index] = mean;
+		}
 		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Analog>(std::move(mean));
 		PostPublishEvent(event);
 
 		//queue up a timer if it has an update interval
-		if(pSimConf->AnalogUpdateIntervalms.count(index))
-		{
-			auto interval = pSimConf->AnalogUpdateIntervalms[index];
-			auto std_dev = pSimConf->AnalogStdDevs.count(index) ? pSimConf->AnalogStdDevs.at(index) : (mean ? (pSimConf->default_std_dev_factor*mean) : 20);
-			pSimConf->AnalogStdDevs[index] = std_dev;
+		{ //lock scope
+			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+			if (pSimConf->AnalogUpdateIntervalms.count(index))
+			{
+				auto interval = pSimConf->AnalogUpdateIntervalms[index];
+				auto std_dev = pSimConf->AnalogStdDevs.count(index) ? pSimConf->AnalogStdDevs.at(index) : (mean ? (pSimConf->default_std_dev_factor * mean) : 20);
+				pSimConf->AnalogStdDevs[index] = std_dev;
 
-			auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*interval)(RandNumGenerator);
-			pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-			pTimer->async_wait([=](asio::error_code err_code)
-				{
-					if(enabled && !err_code)
-						StartAnalogEvents(index);
-				});
+				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
+				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
+				pTimer->async_wait([=](asio::error_code err_code)
+					{
+						if (enabled && !err_code)
+							StartAnalogEvents(index);
+					});
+			}
 		}
 	}
-	for(auto index : pSimConf->BinaryIndicies)
+
+	indexes = GetAllowedIndexes("binary"); // Mutex protected copy of indexes.
+
+	for(auto index : indexes)
 	{
 		//send initial event
-		auto val = pSimConf->BinaryStartVals.count(index) ? pSimConf->BinaryStartVals.at(index) : false;
-		pSimConf->BinaryStartVals[index] = val;
+		bool val;
+		{ //lock scope
+			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+			val = pSimConf->BinaryStartVals.count(index) ? pSimConf->BinaryStartVals.at(index) : false;
+			pSimConf->BinaryStartVals[index] = val;
+		}
 		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Binary>(std::move(val));
 		PostPublishEvent(event);
@@ -523,17 +551,20 @@ void SimPort::PortUp()
 		Timers["Binary"+std::to_string(index)] = pTimer;
 
 		//queue up a timer if it has an update interval
-		if(pSimConf->BinaryUpdateIntervalms.count(index))
-		{
-			auto interval = pSimConf->BinaryUpdateIntervalms[index];
+		{ //lock scope
+			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+			if (pSimConf->BinaryUpdateIntervalms.count(index))
+			{
+				auto interval = pSimConf->BinaryUpdateIntervalms[index];
 
-			auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*interval)(RandNumGenerator);
-			pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-			pTimer->async_wait([=](asio::error_code err_code)
-				{
-					if(enabled && !err_code)
-						StartBinaryEvents(index, !val);
-				});
+				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
+				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
+				pTimer->async_wait([=](asio::error_code err_code)
+					{
+						if (enabled && !err_code)
+							StartBinaryEvents(index, !val);
+					});
+			}
 		}
 	}
 }
@@ -1173,13 +1204,20 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	}
 	auto index = event->GetIndex();
 	auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
-	std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-	for(auto i : pSimConf->ControlIndicies)
+	std::vector<unsigned int> indexes;
+	{
+		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+		indexes = pSimConf->ControlIndicies;
+	}
+	for(auto i : indexes)
 	{
 		if(i == index)
 		{
 			if(auto log = odc::spdlog_get("SimPort"))
 				log->trace("{}: Control {}: Matched configured index.", Name, index);
+
+			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
+
 			if(pSimConf->ControlFeedback.count(i))
 			{
 				if(auto log = odc::spdlog_get("SimPort"))
@@ -1205,8 +1243,6 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
 									{
 										//FIXME: check err_code?
-										auto pConf = static_cast<SimPortConf*>(this->pConf.get());
-										std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
 										if(!pSimConf->BinaryForcedStates[fb.off_value->GetIndex()])
 											PostPublishEvent(fb.off_value);
 									});

@@ -81,6 +81,7 @@ private:
 	std::unordered_map<std::string, pDBStatement> DBStats;
 	TimestampMode TimestampHandling;
 
+	std::vector<uint32_t> GetAllowedIndexes(std::string type);
 	// use this instead of PublishEvent, it catches current values and saves them.
 	void PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback);
 	std::string GetCurrentBinaryValsAsJSON(const std::string& index);
@@ -91,12 +92,11 @@ private:
 	void SpawnEvent(std::shared_ptr<EventInfo> event, int64_t time_offset = 0);
 	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)
 	{
-		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 		double mean, std_dev;
 		{ //lock scope
 			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-			mean = pConf->AnalogStartVals.at(event->GetIndex());
-			std_dev = pConf->AnalogStdDevs.at(event->GetIndex());
+			mean = pSimConf->AnalogStartVals.at(event->GetIndex());
+			std_dev = pSimConf->AnalogStdDevs.at(event->GetIndex());
 		}
 		//change value around mean
 		std::normal_distribution<double> distribution(mean, std_dev);
