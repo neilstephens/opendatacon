@@ -114,25 +114,28 @@ void SimPort::Disable()
 // Just a way to keep the BinaryVals and analogVals up to date...
 void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([](CommandStatus status) {}))
 {
+	PublishEvent(event, pStatusCallback);
+	/*
 	pIOS->post([&,event,pStatusCallback]()
-		{
-			// If we publish it, the value has changed so update current values.
-			if (event->GetEventType() == EventType::Binary)
-			{
-			      { //lock scope
-			            std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			            pSimConf->BinaryVals[event->GetIndex()] = event->GetPayload<EventType::Binary>();
-				}
-			}
-			if (event->GetEventType() == EventType::Analog)
-			{
-			      { //lock scope
-			            std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			            pSimConf->AnalogVals[event->GetIndex()] = event->GetPayload<EventType::Analog>();
-				}
-			}
-			PublishEvent(event, pStatusCallback);
-		});
+	      {
+	            // If we publish it, the value has changed so update current values.
+	            if (event->GetEventType() == EventType::Binary)
+	            {
+	                  { //lock scope
+	                        std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+	                        pSimConf->BinaryVals[event->GetIndex()] = event->GetPayload<EventType::Binary>();
+	                  }
+	            }
+	            if (event->GetEventType() == EventType::Analog)
+	            {
+	                  { //lock scope
+	                        std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+	                        pSimConf->AnalogVals[event->GetIndex()] = event->GetPayload<EventType::Analog>();
+	                  }
+	            }
+	            PublishEvent(event, pStatusCallback);
+	      });
+	      */
 }
 
 std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
