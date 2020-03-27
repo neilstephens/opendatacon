@@ -18,15 +18,15 @@
  *	limitations under the License.
  */
 //
-//  WebUI.h
+//  ConsoleUI.h
 //  opendatacon
 //
-//  Created by Alan Murray on 06/09/2014.
+//  Created by Alan Murray on 01/01/2016.
 //
 //
 
-#ifndef __opendatacon__WebUI__
-#define __opendatacon__WebUI__
+#ifndef __opendatacon__ConsoleUI__
+#define __opendatacon__ConsoleUI__
 #include "tinycon.h"
 #include <opendatacon/IUI.h>
 #include <opendatacon/asio.h>
@@ -69,6 +69,14 @@ private:
 
 	/* Internal functions */
 	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);
+
+	/* Internal functions for auto completion and console prompt handling */
+	void AddRootCommands(const std::string& cmd, std::vector<std::string>& matches);
+	void AddCommands(const std::string& cmd, const std::string& sub_cmd, std::vector<std::string>& mathces);
+	void PrintMatches(const std::string& cmd,
+		const std::string& sub_cmd,
+		const std::string& history_cmd,
+		const std::vector<std::string>& matches);
 };
 
-#endif /* defined(__opendatacon__WebUI__) */
+#endif /* defined(__opendatacon__ConsoleUI__) */
