@@ -29,7 +29,7 @@
 #include <openpal/logging/ILogHandler.h>
 #include <chrono>
 #include <opendatacon/TCPSocketManager.h>
-#include <spdlog/spdlog.h>
+#include <opendatacon/spdlog.h>
 
 class DNP3Log2spdlog: public openpal::ILogHandler
 {

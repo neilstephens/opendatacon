@@ -41,6 +41,7 @@
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 
+#include <opendatacon/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
@@ -213,7 +214,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 
 void SetupLoggers(spdlog::level::level_enum log_level)
 {
-	if (auto log = odc::spdlog_get("CBPort")) \
+	if (auto log = odc::spdlog_get("CBPort"))
 		return; // Already exists
 
 	// So create the log sink first - can be more than one and add to a vector.

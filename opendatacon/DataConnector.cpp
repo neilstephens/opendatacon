@@ -33,7 +33,7 @@
 #include "RateLimitTransform.h"
 #include "LogicInvTransform.h"
 #include <opendatacon/Platform.h>
-#include <spdlog/spdlog.h>
+#include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 
 DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
@@ -77,8 +77,8 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				}
 				Connections[ConName] = std::make_pair(GetIOHandlers()[ConPort1], GetIOHandlers()[ConPort2]);
 				//Subscribe to recieve events for the connection
-				GetIOHandlers()[ConPort1] -> Subscribe(this, this->Name);
-				GetIOHandlers()[ConPort2] -> Subscribe(this, this->Name);
+				GetIOHandlers()[ConPort1]->Subscribe(this, this->Name);
+				GetIOHandlers()[ConPort2]->Subscribe(this, this->Name);
 				//Add to the lookup table
 				SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
 				SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
