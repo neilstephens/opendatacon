@@ -198,9 +198,7 @@ int WebUI::http_ahc(void *cls,
 		event = Responders[ResponderName]->ExecuteCommand(command, params);
 		pWriter->write(event, &oss); oss<<std::endl;
 
-		const char* jsoncstr = oss.str().c_str();
-
-		return ReturnJSON(connection, jsoncstr);
+		return ReturnJSON(connection, oss.str());
 	}
 	else
 	{
