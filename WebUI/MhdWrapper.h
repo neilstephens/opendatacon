@@ -84,6 +84,6 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 	void **con_cls,
 	enum MHD_RequestTerminationCode toe);
 int ReturnFile(struct MHD_Connection *connection, const char *url);
-int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr);
+int ReturnJSON(struct MHD_Connection *connection, const std::string& json_str);
 
 #endif /* defined(__opendatacon__MhdWrapper__) */
