@@ -72,7 +72,11 @@ private:
 	/* Internal functions */
 	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);
 
+	/* Internal functions for auto completion and console prompt handling */
 	void ToLower(std::string& str);
+	void AddRootCommands(const std::string& cmd, std::vector<std::string>& matches);
+	void AddCommands(const std::string& cmd, const std::string& sub_cmd, std::vector<std::string>& mathces);
+	void PrintMatches(const std::string& cmd, const std::string& sub_cmd, const std::vector<std::string>& matches);
 };
 
 #endif /* defined(__opendatacon__WebUI__) */
