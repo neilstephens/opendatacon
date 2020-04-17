@@ -47,9 +47,9 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) final;
 
-	void Enable() override =0;
-	void Disable() override =0;
-	void Build() override =0;
+	void Enable() override = 0;
+	void Disable() override = 0;
+	void Build() override = 0;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 

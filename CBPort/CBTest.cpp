@@ -213,7 +213,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 
 void SetupLoggers(spdlog::level::level_enum log_level)
 {
-	if (auto log = odc::spdlog_get("CBPort")) \
+	if (auto log = odc::spdlog_get("CBPort"))                                                                                                                                                 \
 		return; // Already exists
 
 	// So create the log sink first - can be more than one and add to a vector.
@@ -1954,6 +1954,24 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 	REQUIRE(res == CommandStatus::SUCCESS);
 
 	REQUIRE(CBOSPort->GetSOEOffsetMinutes() == 15);
+
+	CBMAPort->SendFn9TimeUpdate(pStatusCallback, 1400);
+
+	// Wait for it to go to the OutStation and Back again
+	WaitIOS(*IOS, 2);
+
+	REQUIRE(res == CommandStatus::SUCCESS);
+
+	REQUIRE(CBOSPort->GetSOEOffsetMinutes() == 1400-1440);
+
+	CBMAPort->SendFn9TimeUpdate(pStatusCallback, -1400);
+
+	// Wait for it to go to the OutStation and Back again
+	WaitIOS(*IOS, 2);
+
+	REQUIRE(res == CommandStatus::SUCCESS);
+
+	REQUIRE(CBOSPort->GetSOEOffsetMinutes() == 1440 - 1400);
 
 	CBOSPort->Disable();
 	CBMAPort->Disable();

@@ -826,8 +826,11 @@ void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 	// If we are doing this around a UTC clock rollover, it can fail we can get 1430 instead of -10.
 	// We dont care about the actual day, so 1430 is actually equal to -10.
 	// So we will limit the range to +/- 1440/2 (i.e. +/- half a day)
-	if (SOETimeOffsetMinutes > 1440 / 2)
+	if (SOETimeOffsetMinutes > (1440 / 2))
 		SOETimeOffsetMinutes = SOETimeOffsetMinutes - 1440;
+
+	if (SOETimeOffsetMinutes < -(1440 / 2))
+		SOETimeOffsetMinutes = SOETimeOffsetMinutes + 1440;
 
 	LOGDEBUG("{} Received Time Set Command {}, Current UTC Time {} - SOE Offset Now Set to {} minutes",Name, to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), to_stringfromCBtime(CBNowUTC()), SOETimeOffsetMinutes);
 
