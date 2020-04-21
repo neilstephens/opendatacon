@@ -127,7 +127,7 @@ int ReturnFile(struct MHD_Connection *connection,
 	return ret;
 }
 
-int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr)
+int ReturnJSON(struct MHD_Connection *connection, const std::string& json_str)
 {
 	struct MHD_Response *response;
 	int ret;
@@ -136,8 +136,8 @@ int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr)
 	 MHD_RESPMEM_MUST_FREE
 	 MHD_RESPMEM_MUST_COPY
 	 */
-	response = MHD_create_response_from_buffer(strlen(jsoncstr),
-		(void *)jsoncstr,
+	response = MHD_create_response_from_buffer(json_str.size(),
+		(void *)json_str.c_str(),
 		MHD_RESPMEM_MUST_COPY);
 	MHD_add_response_header (response, "Content-Type", MimeTypeMap.at("json").c_str());
 	ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
