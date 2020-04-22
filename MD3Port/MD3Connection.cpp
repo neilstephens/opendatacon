@@ -77,9 +77,9 @@ MD3Connection::MD3Connection
 			true,
 			retry_time_ms))
 {
-	ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
+	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
-	LOGDEBUG("Opened an MD3Connection object " + ChannelID + " As a " + (isServer ? "Server" : "Client"));
+	LOGDEBUG("Opened an MD3Connection object " + InternalChannelID + " As a " + (isServer ? "Server" : "Client"));
 }
 
 // Static Method
@@ -174,7 +174,7 @@ void MD3Connection::RemoveMaster(const ConnectionTokenType &ConnectionTok, uint8
 void MD3Connection::RemoveConnectionFromMap()
 {
 	std::unique_lock<std::mutex> lck(MD3Connection::MapMutex);
-	ConnectionMap.erase(ChannelID); // Remove the map entry shared ptr - so that shared ptr no longer points to us.
+	ConnectionMap.erase(InternalChannelID); // Remove the map entry shared ptr - so that shared ptr no longer points to us.
 }
 
 // Static Method
@@ -192,21 +192,28 @@ void MD3Connection::Open(const ConnectionTokenType &ConnectionTok)
 
 void MD3Connection::Open()
 {
-	if (enabled.exchange(true)) return;
-
-	try
+	if (pSockMan.get() == nullptr)
+		throw std::runtime_error("Socket manager uninitialised for - " + InternalChannelID);
+	// We have a potential lock/race condition on a failed open, hence the two atomics to track this. Could not work out how to do it with one...
+	if (!successfullyopened.exchange(true))
 	{
-		if (pSockMan.get() == nullptr)
-			throw std::runtime_error("Socket manager uninitialised for - " + ChannelID);
-
-		pSockMan->Open();
-		LOGDEBUG("Connection Opened: " + ChannelID);
+		// Port has not been opened yet.
+		try
+		{
+			pSockMan->Open();
+			opencount.fetch_add(1);
+			LOGDEBUG("ConnectionTok Opened: {}", InternalChannelID);
+		}
+		catch (std::exception& e)
+		{
+			LOGERROR("Problem opening connection :{} - {}", InternalChannelID, e.what());
+			successfullyopened.exchange(false);
+			return;
+		}
 	}
-	catch (std::exception& e)
+	else
 	{
-		LOGERROR("Problem opening connection : " + ChannelID + " - " + e.what());
-		enabled = false;
-		return;
+		LOGDEBUG("Connection increased open count: {} {}", opencount.load(), InternalChannelID);
 	}
 }
 
@@ -225,13 +232,21 @@ void MD3Connection::Close(const ConnectionTokenType &ConnectionTok)
 
 void MD3Connection::Close()
 {
-	if (!enabled.exchange(false)) return;
-
 	if (!pSockMan) // Could be empty if a connection was never added (opened)
 		return;
-	pSockMan->Close();
 
-	LOGDEBUG("Connection Closed: " + ChannelID);
+	// If we are down to the last connection that needs it open, then close it
+	if ((opencount.fetch_sub(1) == 1) && successfullyopened.load())
+	{
+		pSockMan->Close();
+		successfullyopened.exchange(false);
+
+		LOGDEBUG("Connection open count 0, Closed: {}", InternalChannelID);
+	}
+	else
+	{
+		LOGDEBUG("Connection reduced open count: {} {}", opencount.load(), InternalChannelID);
+	}
 }
 
 MD3Connection::~MD3Connection()
@@ -404,7 +419,7 @@ void MD3Connection::RouteMD3Message(MD3Message_t &CompleteMD3Message)
 
 void MD3Connection::SocketStateHandler(bool state)
 {
-	LOGDEBUG("Connection changed state " + ChannelID + " As a " + (isServer ? "Open" : "Close"));
+	LOGDEBUG("Connection changed state " + InternalChannelID + " As a " + (isServer ? "Open" : "Close"));
 
 	// Call all the OutStation State Callbacks
 	for (auto it = StateCallbackMap.begin(); it != StateCallbackMap.end(); ++it)

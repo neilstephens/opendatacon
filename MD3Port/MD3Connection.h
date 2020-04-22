@@ -125,10 +125,11 @@ private:
 	std::shared_ptr<odc::asio_service> pIOS;
 	std::string EndPoint;
 	std::string Port;
-	std::string ChannelID;
+	std::string InternalChannelID;
 
 	bool isServer;
-	std::atomic_bool enabled{ false };
+	std::atomic_bool successfullyopened{ false }; // There is a possible race condition we need to deal with on a failed opening of the connection
+	std::atomic<int> opencount{ 0 };              // So we only disconnect the port when everyone has disconnected.
 	MD3Message_t MD3Message;
 
 	// Maintain a pointer to the sending function, so that we can hook it for testing purposes. Set to  default in constructor.
