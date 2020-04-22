@@ -80,7 +80,7 @@ void CBOutstationPort::Disable()
 {
 	if (!enabled.exchange(false)) return;
 
-	CBConnection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+	CBConnection::Close(pConnection); // The port will only close when all ports disable it
 }
 
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
