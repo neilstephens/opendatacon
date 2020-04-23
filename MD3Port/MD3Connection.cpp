@@ -213,6 +213,7 @@ void MD3Connection::Open()
 	}
 	else
 	{
+		opencount.fetch_add(1);
 		LOGDEBUG("Connection increased open count: {} {}", opencount.load(), InternalChannelID);
 	}
 }

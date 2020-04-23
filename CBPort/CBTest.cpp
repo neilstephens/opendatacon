@@ -213,7 +213,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 
 void SetupLoggers(spdlog::level::level_enum log_level)
 {
-	if (auto log = odc::spdlog_get("CBPort"))                                                                                                                                                 \
+	if (auto log = odc::spdlog_get("CBPort"))                                                                                                                                                                                                 \
 		return; // Already exists
 
 	// So create the log sink first - can be more than one and add to a vector.
@@ -2073,6 +2073,138 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 
 	// Send an ODC DigitalOutput command to the Master.
 	CBMAPort->Event(event3, "TestHarness2", pStatusCallback2);
+
+	// Wait for it to go to the OutStation and Back again
+	WaitIOS(*IOS, 3);
+
+	REQUIRE(res2 == CommandStatus::SUCCESS);
+
+	CBOSPort->Disable();
+	CBOSPort2->Disable();
+
+	CBMAPort->Disable();
+	CBMAPort2->Disable();
+
+	STOP_IOS();
+	STANDARD_TEST_TEARDOWN();
+}
+TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
+{
+	// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
+	// Create two masters, two stations, and then see if they can share the TCP connection successfully.
+	STANDARD_TEST_SETUP();
+	// Outstations are as for the conf files
+	TEST_CBOSPort(Json::nullValue);
+	TEST_CBOSPort2(Json::nullValue);
+
+	// The masters need to be TCP Clients - should be only change necessary.
+	Json::Value MAportoverride;
+	MAportoverride["TCPClientServer"] = "CLIENT";
+	TEST_CBMAPort(MAportoverride);
+
+	Json::Value MAportoverride2;
+	MAportoverride2["TCPClientServer"] = "CLIENT";
+	TEST_CBMAPort2(MAportoverride2);
+
+
+	START_IOS(1);
+
+	CBOSPort->Enable();
+	CBOSPort2->Enable();
+	CBMAPort->Enable();
+	CBMAPort2->Enable();
+
+	// Allow everything to get setup.
+	WaitIOS(*IOS, 2);
+
+	// So to do this test, we are going to send an Event into the Master which will require it to send a POM command to the outstation.
+	// We should then have an Event triggered on the outstation caused by the POM. We need to capture this to check that it was the correct POM Event.
+
+	// Send a POM command by injecting an ODC event to the Master
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
+			res = command_stat;
+		});
+
+	bool point_on = true;
+	uint16_t ODCIndex = 1;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+	val.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event1 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event1->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+	// Send an ODC DigitalOutput command to the Master.
+	CBMAPort->Event(event1, "TestHarness", pStatusCallback);
+
+	// Wait for it to go to the OutStation and Back again
+	WaitIOS(*IOS, 5);
+
+	REQUIRE(res == CommandStatus::SUCCESS);
+
+	// Now do the other Master/Outstation combination.
+	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
+			res2 = command_stat;
+		});
+
+	ODCIndex = 20;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val2;
+	val2.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event2 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event2->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val2));
+
+	// Send an ODC DigitalOutput command to the Master.
+	CBMAPort2->Event(event2, "TestHarness2", pStatusCallback2);
+
+	// Wait for it to go to the OutStation and Back again
+	WaitIOS(*IOS, 3);
+
+	REQUIRE(res2 == CommandStatus::SUCCESS);
+
+	// Now Disable on port, and check that the other still works.
+	CBOSPort2->Disable();
+	res = CommandStatus::NON_PARTICIPATING;
+	WaitIOS(*IOS, 2);
+
+	// Do the POM control again
+	ODCIndex = 1;
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val3;
+	val3.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event3 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event3->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val3));
+
+	// Send an ODC DigitalOutput command to the Master.
+	CBMAPort->Event(event3, "TestHarness", pStatusCallback);
+
+	// Wait for it to go to the OutStation and Back again
+	WaitIOS(*IOS, 5);
+
+	REQUIRE(res == CommandStatus::SUCCESS);
+
+	//--- Reenable and then test the reenabled port
+	CBOSPort2->Enable();
+	res2 = CommandStatus::NON_PARTICIPATING;
+	WaitIOS(*IOS, 2);
+
+	ODCIndex = 20;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val4;
+	val4.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event4 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event4->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val4));
+
+	// Send an ODC DigitalOutput command to the Master.
+	CBMAPort2->Event(event4, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
 	WaitIOS(*IOS, 3);
