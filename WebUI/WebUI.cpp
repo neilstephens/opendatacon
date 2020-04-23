@@ -93,7 +93,12 @@ static int ahc(void *cls,
 	void **ptr)
 {
 	WebUI* test = (WebUI*)cls;
-	return test->http_ahc(cls, connection, url, method, version, upload_data, upload_data_size, ptr);
+	std::string upload_data_str;
+	if (*upload_data_size > 0)
+	{
+		upload_data_str = upload_data;
+	}
+	return test->http_ahc(cls, connection, url, method, version, upload_data_str, *upload_data_size, ptr);
 }
 
 static
@@ -142,11 +147,11 @@ void WebUI::AddResponder(const std::string& name, const IUIResponder& pResponder
 /* HTTP access handler call back */
 int WebUI::http_ahc(void *cls,
 	struct MHD_Connection *connection,
-	const char *url,
-	const char *method,
-	const char *version,
-	const char *upload_data,
-	size_t *upload_data_size,
+	const std::string& url,
+	const std::string& method,
+	const std::string& version,
+	const std::string& upload_data,
+	size_t& upload_data_size,
 	void **con_cls)
 {
 	struct connection_info_struct *con_info;
@@ -166,14 +171,14 @@ int WebUI::http_ahc(void *cls,
 
 	ParamCollection params;
 
-	if (0 == strcmp(method, "POST"))
+	if (method == "POST")
 	{
 		con_info = (connection_info_struct*)*con_cls;
 
-		if (*upload_data_size != 0)
+		if (upload_data_size > 0)
 		{
-			MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
-			*upload_data_size = 0;
+			MHD_post_process(con_info->postprocessor, upload_data.c_str(), upload_data_size);
+			upload_data_size = 0;
 
 			return MHD_YES;
 		}
@@ -198,11 +203,21 @@ int WebUI::http_ahc(void *cls,
 		event = Responders[ResponderName]->ExecuteCommand(command, params);
 		pWriter->write(event, &oss); oss<<std::endl;
 
-		return ReturnJSON(connection, oss.str());
+		std::string data = oss.str();
+		/* Remove the list command for DataPorts  */
+		if (url == "/DataPorts/List" && method == "POST")
+		{
+			const std::size_t pos = data.find("List");
+			std::string temp = data.substr(0, pos - 2);
+			// we need to skip "List,"\n therefore we have a constant as 8
+			temp += data.substr(pos + 8, data.size() - pos + 8);
+			data = temp;
+		}
+		return ReturnJSON(connection, data);
 	}
 	else
 	{
-		if (strlen(url) == 1)
+		if (url == "/")
 		{
 			return ReturnFile(connection, ROOTPAGE);
 		}

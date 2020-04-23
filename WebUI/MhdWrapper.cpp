@@ -87,14 +87,13 @@ const std::string GetFile(const std::string& rUrl)
 	return rUrl.substr(last+1);
 }
 
-int ReturnFile(struct MHD_Connection *connection,
-	const char *url)
+int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 {
 	struct stat buf;
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;
-	std::string filename = "www/" + std::string(&url[1]);
+	std::string filename = "www/" + url;
 	if ((0 == stat(filename.c_str(), &buf)) && (S_ISREG(buf.st_mode)))
 		fopen_s(&file, filename.c_str(), "rb");
 	else
@@ -243,11 +242,11 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 
 int CreateNewRequest(void *cls,
 	struct MHD_Connection *connection,
-	const char *url,
-	const char *method,
-	const char *version,
-	const char *upload_data,
-	size_t *upload_data_size,
+	const std::string& url,
+	const std::string& method,
+	const std::string& version,
+	const std::string& upload_data,
+	size_t& upload_data_size,
 	void **con_cls)
 {
 	struct connection_info_struct *con_info;
@@ -256,8 +255,8 @@ int CreateNewRequest(void *cls,
 	if (nullptr == con_info) return MHD_NO;
 	*con_cls = (void*)con_info;
 
-	if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) return MHD_YES;
-	if (0 == strcmp(method, "POST"))
+	if (method == MHD_HTTP_METHOD_GET) return MHD_YES;
+	if (method == "POST")
 	{
 		auto length = atoi(MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "Content-Length"));
 		if (length == 0) return MHD_YES;
