@@ -213,7 +213,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 
 void SetupLoggers(spdlog::level::level_enum log_level)
 {
-	if (auto log = odc::spdlog_get("CBPort"))                                                                                                                                                                                                 \
+	if (auto log = odc::spdlog_get("CBPort"))                                                                                                                                                                                                                                                 \
 		return; // Already exists
 
 	// So create the log sink first - can be more than one and add to a vector.
@@ -2190,8 +2190,7 @@ TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
 
 	REQUIRE(res == CommandStatus::SUCCESS);
 
-	//--- Reenable and then test the reenabled port
-	CBOSPort2->Enable();
+	// Now check that the disabled port does not work!
 	res2 = CommandStatus::NON_PARTICIPATING;
 	WaitIOS(*IOS, 2);
 
@@ -2205,6 +2204,25 @@ TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
 
 	// Send an ODC DigitalOutput command to the Master.
 	CBMAPort2->Event(event4, "TestHarness2", pStatusCallback2);
+
+	// Wait for it to go to the OutStation and Back again
+	WaitIOS(*IOS, 3);
+
+	REQUIRE(res2 != CommandStatus::SUCCESS);
+
+	//--- Reenable and then test the reenabled port
+	CBOSPort2->Enable();
+	res2 = CommandStatus::NON_PARTICIPATING;
+	WaitIOS(*IOS, 2);
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val5;
+	val5.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event5 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event5->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val5));
+
+	// Send an ODC DigitalOutput command to the Master.
+	CBMAPort2->Event(event5, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
 	WaitIOS(*IOS, 3);

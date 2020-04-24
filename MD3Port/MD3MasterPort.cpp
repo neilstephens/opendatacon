@@ -76,6 +76,8 @@ void MD3MasterPort::Disable()
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
 void MD3MasterPort::SocketStateHandler(bool state)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	std::string msg;
 	if (state)
 	{
@@ -334,6 +336,8 @@ void MD3MasterPort::ClearMD3CommandQueue()
 // We would have to limit how many times we could do this without giving up.
 void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 
 	//! Anywhere we find that we don't have what we need, return. If we succeed we send the next command at the end of this method.

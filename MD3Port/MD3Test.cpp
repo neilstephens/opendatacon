@@ -3405,7 +3405,6 @@ TEST_CASE("Master - POM Multi-drop Test Using TCP")
 	MAportoverride2["TCPClientServer"] = "CLIENT";
 	TEST_MD3MAPort2(MAportoverride2);
 
-
 	START_IOS(1);
 
 	MD3OSPort->Enable();
@@ -3462,6 +3461,157 @@ TEST_CASE("Master - POM Multi-drop Test Using TCP")
 
 	// Send an ODC DigitalOutput command to the Master.
 	MD3MAPort2->Event(event2, "TestHarness2", pStatusCallback2);
+
+	// Wait for it to go to the OutStation and Back again
+	Wait(*IOS, 3);
+
+	REQUIRE(res2 == CommandStatus::SUCCESS);
+
+	MD3OSPort->Disable();
+	MD3OSPort2->Disable();
+
+	MD3MAPort->Disable();
+	MD3MAPort2->Disable();
+
+	STOP_IOS();
+	TestTearDown();
+}
+
+TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
+{
+	// Here we test the ability to support multiple Stations on the one Port/IP Combination. The Stations will be 0x7C, 0x7D
+	// Create two masters, two stations, and then see if they can share the TCP connection successfully.
+	STANDARD_TEST_SETUP();
+	// Outstations are as for the conf files
+	TEST_MD3OSPort(Json::nullValue);
+	TEST_MD3OSPort2(Json::nullValue);
+
+	// The masters need to be TCP Clients - should be only change necessary.
+	Json::Value MAportoverride;
+	MAportoverride["TCPClientServer"] = "CLIENT";
+	TEST_MD3MAPort(MAportoverride);
+
+	Json::Value MAportoverride2;
+	MAportoverride2["TCPClientServer"] = "CLIENT";
+	TEST_MD3MAPort2(MAportoverride2);
+
+
+	START_IOS(1);
+
+	MD3OSPort->Enable();
+	MD3OSPort2->Enable();
+	MD3MAPort->Enable();
+	MD3MAPort2->Enable();
+
+	// Allow everything to get setup.
+	Wait(*IOS, 2);
+
+	// So to do this test, we are going to send an Event into the Master which will require it to send a POM command to the outstation.
+	// We should then have an Event triggered on the outstation caused by the POM. We need to capture this to check that it was the correct POM Event.
+
+	// Send a POM command by injecting an ODC event to the Master
+	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
+			res = command_stat;
+		});
+
+	bool point_on = true;
+	uint16_t ODCIndex = 116;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+	val.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event1 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event1->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+	// Send an ODC DigitalOutput command to the Master.
+	MD3MAPort->Event(event1, "TestHarness", pStatusCallback);
+
+	// Wait for it to go to the OutStation and Back again
+	Wait(*IOS, 5);
+
+	REQUIRE(res == CommandStatus::SUCCESS);
+
+	// Now do the other Master/Outstation combination.
+	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
+	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
+		{
+			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
+			res2 = command_stat;
+		});
+
+	ODCIndex = 16;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val2;
+	val2.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event2 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event2->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val2));
+
+	// Send an ODC DigitalOutput command to the Master.
+	MD3MAPort2->Event(event2, "TestHarness2", pStatusCallback2);
+
+	// Wait for it to go to the OutStation and Back again
+	Wait(*IOS, 3);
+
+	REQUIRE(res2 == CommandStatus::SUCCESS);
+
+	// Now Disable on port, and check that the other still works.
+	MD3OSPort2->Disable();
+	res = CommandStatus::NON_PARTICIPATING;
+	Wait(*IOS, 2);
+
+	// Do the POM control again
+	ODCIndex = 116;
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val3;
+	val3.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event3 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event3->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val3));
+
+	// Send an ODC DigitalOutput command to the Master.
+	MD3MAPort->Event(event3, "TestHarness", pStatusCallback);
+
+	// Wait for it to go to the OutStation and Back again
+	Wait(*IOS, 5);
+
+	REQUIRE(res == CommandStatus::SUCCESS);
+
+	// Now check that the disabled port does not work!
+	res2 = CommandStatus::NON_PARTICIPATING;
+	Wait(*IOS, 2);
+
+	ODCIndex = 16;
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val4;
+	val4.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event4 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event4->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val4));
+
+	// Send an ODC DigitalOutput command to the Master.
+	MD3MAPort2->Event(event4, "TestHarness2", pStatusCallback2);
+
+	// Wait for it to go to the OutStation and Back again
+	Wait(*IOS, 3);
+
+	REQUIRE(res2 != CommandStatus::SUCCESS);
+
+	//--- Reenable and then test the reenabled port
+	MD3OSPort2->Enable();
+	res2 = CommandStatus::NON_PARTICIPATING;
+	Wait(*IOS, 2);
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val5;
+	val5.functionCode = (point_on ? ControlCode::LATCH_ON : ControlCode::LATCH_OFF);
+
+	auto event5 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, "TestHarness");
+	event5->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val5));
+
+	// Send an ODC DigitalOutput command to the Master.
+	MD3MAPort2->Event(event5, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
 	Wait(*IOS, 3);

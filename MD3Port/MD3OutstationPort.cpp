@@ -86,6 +86,8 @@ void MD3OutstationPort::Disable()
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
 void MD3OutstationPort::SocketStateHandler(bool state)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	std::string msg;
 	if (state)
 	{

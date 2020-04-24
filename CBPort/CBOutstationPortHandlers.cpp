@@ -42,6 +42,8 @@
 
 void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 	assert(CompleteCBMessage.size() != 0);
 

@@ -75,6 +75,8 @@ LOW_RES_EVENTS_LIST_SCAN = 60
 
 void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 	assert(CompleteMD3Message.size() != 0);
 

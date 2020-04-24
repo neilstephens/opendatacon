@@ -105,6 +105,7 @@ uint8_t CBPort::Limit(uint8_t val, uint8_t max)
 
 void CBPort::SetSendTCPDataFn(std::function<void(std::string)> Send)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
 	CBConnection::SetSendTCPDataFn(pConnection,Send);
 }
 
@@ -112,6 +113,7 @@ void CBPort::SetSendTCPDataFn(std::function<void(std::string)> Send)
 void CBPort::InjectSimulatedTCPMessage(buf_t&readbuf)
 {
 	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
+	if (!enabled.load()) return; // Port Disabled so dont process
 	CBConnection::InjectSimulatedTCPMessage(pConnection,readbuf);
 }
 
@@ -123,6 +125,8 @@ void CBPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 		LOGERROR("Tried to send an empty message to the TCP Port");
 		return;
 	}
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	CBConnection::Write(pConnection,CompleteCBMessage);
 }
 
