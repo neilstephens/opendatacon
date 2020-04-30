@@ -21,3 +21,4 @@ LIBRARY SimPort
 EXPORTS
 	new_SimPort
 	delete_SimPort
+    run_tests

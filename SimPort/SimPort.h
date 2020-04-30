@@ -37,7 +37,30 @@
 #include "sqlite3/sqlite3.h"
 #include "../HTTP/HttpServerManager.h"
 
+#define COMPILE_TESTS
+#define NONVSTESTING	// Comment this out for VS Based Testing
+
 using namespace odc;
+
+// Hide some of the code to make Logging cleaner
+#define LOGTRACE(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+		log->trace(__VA_ARGS__);
+#define LOGDEBUG(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+		log->debug(__VA_ARGS__);
+#define LOGERROR(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+		log->error(__VA_ARGS__);
+#define LOGWARN(...) \
+	if (auto log = odc::spdlog_get("SimPort"))  \
+		log->warn(__VA_ARGS__);
+#define LOGINFO(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+		log->info(__VA_ARGS__);
+
+extern "C" void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
+extern "C" void CommandLineLoggingCleanup();
 
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 

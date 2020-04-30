@@ -1106,41 +1106,41 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
 				continue;
 			}
-			for(auto index = start; index <= stop; index++)
+			for (auto index = start; index <= stop; index++)
 			{
 				bool exists = false;
-				for(auto existing_index : pSimConf->ControlIndicies)
-					if(existing_index == index)
+				for (auto existing_index : pSimConf->ControlIndicies)
+					if (existing_index == index)
 						exists = true;
 
-				if(!exists)
+				if (!exists)
 					pSimConf->ControlIndicies.push_back(index);
 
-				if(BinaryControls[n].isMember("Intervalms"))
+				if (BinaryControls[n].isMember("Intervalms"))
 					pSimConf->ControlIntervalms[index] = BinaryControls[n]["Intervalms"].asUInt();
 
 				auto start_val = BinaryControls[n]["StartVal"].asString();
-				if(start_val == "D")
+				if (start_val == "D")
 				{
-					if(pSimConf->ControlIntervalms.count(index))
+					if (pSimConf->ControlIntervalms.count(index))
 						pSimConf->ControlIntervalms.erase(index);
-					for(auto it = pSimConf->ControlIndicies.begin(); it != pSimConf->ControlIndicies.end(); it++)
-						if(*it == index)
+					for (auto it = pSimConf->ControlIndicies.begin(); it != pSimConf->ControlIndicies.end(); it++)
+						if (*it == index)
 						{
 							pSimConf->ControlIndicies.erase(it);
 							break;
 						}
 				}
 
-				if(BinaryControls[n].isMember("FeedbackBinaries"))
+				if (BinaryControls[n].isMember("FeedbackBinaries"))
 				{
-					const auto FeedbackBinaries= BinaryControls[n]["FeedbackBinaries"];
-					for(Json::ArrayIndex fbn = 0; fbn < FeedbackBinaries.size(); ++fbn)
+					const auto FeedbackBinaries = BinaryControls[n]["FeedbackBinaries"];
+					for (Json::ArrayIndex fbn = 0; fbn < FeedbackBinaries.size(); ++fbn)
 					{
-						if(!FeedbackBinaries[fbn].isMember("Index"))
+						if (!FeedbackBinaries[fbn].isMember("Index"))
 						{
-							if(auto log = odc::spdlog_get("SimPort"))
-								log->error("An 'Index' is required for Binary feedback : '{}'",FeedbackBinaries[fbn].toStyledString());
+							if (auto log = odc::spdlog_get("SimPort"))
+								log->error("An 'Index' is required for Binary feedback : '{}'", FeedbackBinaries[fbn].toStyledString());
 							continue;
 						}
 
@@ -1151,42 +1151,142 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 						bool off_val = false;
 						auto mode = FeedbackMode::LATCH;
 
-						if(FeedbackBinaries[fbn].isMember("OnValue"))
+						if (FeedbackBinaries[fbn].isMember("OnValue"))
 						{
-							if(FeedbackBinaries[fbn]["OnValue"].asString() == "X")
+							if (FeedbackBinaries[fbn]["OnValue"].asString() == "X")
 								on_qual = QualityFlags::COMM_LOST;
 							else
 								on_val = FeedbackBinaries[fbn]["OnValue"].asBool();
 						}
-						if(FeedbackBinaries[fbn].isMember("OffValue"))
+						if (FeedbackBinaries[fbn].isMember("OffValue"))
 						{
-							if(FeedbackBinaries[fbn]["OffValue"].asString() == "X")
+							if (FeedbackBinaries[fbn]["OffValue"].asString() == "X")
 								off_qual = QualityFlags::COMM_LOST;
 							else
 								off_val = FeedbackBinaries[fbn]["OffValue"].asBool();
 
 						}
-						if(FeedbackBinaries[fbn].isMember("FeedbackMode"))
+						if (FeedbackBinaries[fbn].isMember("FeedbackMode"))
 						{
 							auto mode_str = FeedbackBinaries[fbn]["FeedbackMode"].asString();
-							if(mode_str == "PULSE")
+							if (mode_str == "PULSE")
 								mode = FeedbackMode::PULSE;
-							else if(mode_str == "LATCH")
+							else if (mode_str == "LATCH")
 								mode = FeedbackMode::LATCH;
 							else
 							{
-								if(auto log = odc::spdlog_get("SimPort"))
-									log->warn("Unrecognised feedback mode: '{}'",FeedbackBinaries[fbn].toStyledString());
+								if (auto log = odc::spdlog_get("SimPort"))
+									log->warn("Unrecognised feedback mode: '{}'", FeedbackBinaries[fbn].toStyledString());
 							}
 						}
 
-						auto on = std::make_shared<EventInfo>(EventType::Binary,fb_index,Name,on_qual);
+						auto on = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, on_qual);
 						on->SetPayload<EventType::Binary>(std::move(on_val));
-						auto off = std::make_shared<EventInfo>(EventType::Binary,fb_index,Name,off_qual);
+						auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, off_qual);
 						off->SetPayload<EventType::Binary>(std::move(off_val));
 
-						pSimConf->ControlFeedback[index].emplace_back(on,off,mode);
+						pSimConf->ControlFeedback[index].emplace_back(on, off, mode);
 					}
+				}
+				// Used to implement TapChanger functionality, containing:
+				// {"Type": "Analog", "Index" : 7, "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+				// {"Type": "Binary", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+				// {"Type": "BCD", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+				//
+				// Because the feedback is complex, we need to keep the current value available so we can change it.
+				// As a result, the feedback bits or analog will be set to forced state. If you unforce them, they will
+				// get re-forced the next time a command comes through.
+				// Bit of a hack, but comes back to the original simulator design not "remembering" what its current state is.
+				if (BinaryControls[n].isMember("FeedbackPosition"))
+				{
+					const auto FeedbackPosition = BinaryControls[n]["FeedbackPosition"];
+					try
+					{
+						// Only allow 1 entry - you need pulse or repeated open/close to tap up and down from two separate signals.
+						if (!FeedbackPosition.isMember("Type"))
+						{
+							throw std::runtime_error("A 'Type' is required for Position feedback");
+						}
+						if (!FeedbackPosition.isMember("Action"))
+						{
+							throw std::runtime_error("An 'Action' is required for Position feedback");
+						}
+						if (!FeedbackPosition.isMember("FeedbackMode"))
+						{
+							throw std::runtime_error("A 'FeedbackMode' is required for Position feedback");
+						}
+						if (!(FeedbackPosition.isMember("Index") || FeedbackPosition.isMember("Indexes")))
+						{
+							throw std::runtime_error("An 'Index' or 'Indexes' is required for Position feedback");
+						}
+
+						if (FeedbackPosition["Type"] == "Analog")
+						{
+							auto fb_index = FeedbackPosition["Index"].asUInt();
+						}
+						else if (FeedbackPosition["Type"] == "Binary")
+						{
+
+						}
+						else if (FeedbackPosition["Type"] == "BCD")
+						{
+
+						}
+						else
+						{
+							throw std::runtime_error("The 'Type' for Position feedback is invalid, requires 'Analog','Binary' or 'BCD'");
+						}
+						//SJE
+					}
+					catch (std::exception &e)
+					{
+						LOGERROR("{} : '{}'", e.what(),  FeedbackPosition.toStyledString());
+						continue;
+					}
+
+/*
+					auto on_qual = QualityFlags::ONLINE;
+					auto off_qual = QualityFlags::ONLINE;
+					bool on_val = true;
+					bool off_val = false;
+					auto mode = FeedbackMode::LATCH;
+
+					if (FeedbackBinaries[fbn].isMember("OnValue"))
+					{
+						if (FeedbackBinaries[fbn]["OnValue"].asString() == "X")
+							on_qual = QualityFlags::COMM_LOST;
+						else
+							on_val = FeedbackBinaries[fbn]["OnValue"].asBool();
+					}
+					if (FeedbackBinaries[fbn].isMember("OffValue"))
+					{
+						if (FeedbackBinaries[fbn]["OffValue"].asString() == "X")
+							off_qual = QualityFlags::COMM_LOST;
+						else
+							off_val = FeedbackBinaries[fbn]["OffValue"].asBool();
+
+					}
+					if (FeedbackBinaries[fbn].isMember("FeedbackMode"))
+					{
+						auto mode_str = FeedbackBinaries[fbn]["FeedbackMode"].asString();
+						if (mode_str == "PULSE")
+							mode = FeedbackMode::PULSE;
+						else if (mode_str == "LATCH")
+							mode = FeedbackMode::LATCH;
+						else
+						{
+							if (auto log = odc::spdlog_get("SimPort"))
+								log->warn("Unrecognised feedback mode: '{}'", FeedbackBinaries[fbn].toStyledString());
+						}
+					}
+
+					auto on = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, on_qual);
+					on->SetPayload<EventType::Binary>(std::move(on_val));
+					auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, off_qual);
+					off->SetPayload<EventType::Binary>(std::move(off_val));
+
+					pSimConf->ControlFeedback[index].emplace_back(on, off, mode);
+*/
 				}
 			}
 		}
