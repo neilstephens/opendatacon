@@ -184,7 +184,7 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 			{
 				idx = std::stoi(idxs);
 			}
-			catch(std::exception e)
+			catch(std::exception& e)
 			{
 				continue;
 			}
@@ -209,7 +209,7 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 					indexes.push_back(allowed);
 			}
 		}
-		catch(std::exception e)
+		catch(std::exception& e)
 		{}
 	}
 	return indexes;
@@ -227,7 +227,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 	{
 		val = std::stod(value);
 	}
-	catch(std::exception e)
+	catch(std::exception& e)
 	{
 		return false;
 	}
@@ -251,7 +251,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 		{
 			ts = std::stoull(timestamp);
 		}
-		catch(std::exception e)
+		catch(std::exception& e)
 		{
 			return false;
 		}
@@ -299,7 +299,7 @@ bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& in
 	{
 		delta = std::stoi(period);
 	}
-	catch(std::exception e)
+	catch(std::exception& e)
 	{
 		return false;
 	}

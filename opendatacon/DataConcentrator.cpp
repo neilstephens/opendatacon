@@ -27,7 +27,7 @@
 #include <thread>
 #include <opendatacon/asio.h>
 
-#include <spdlog/spdlog.h>
+#include <opendatacon/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>

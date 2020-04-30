@@ -25,7 +25,7 @@
  */
 
 #include "DNP3Log2spdlog.h"
-#include <spdlog/spdlog.h>
+#include <opendatacon/spdlog.h>
 #include <opendnp3/LogLevels.h>
 #include <opendatacon/util.h>
 

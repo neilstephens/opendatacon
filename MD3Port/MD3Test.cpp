@@ -32,6 +32,7 @@
 #include <array>
 #include <fstream>
 #include <cassert>
+#include <opendatacon/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
 

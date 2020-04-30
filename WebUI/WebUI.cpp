@@ -120,7 +120,7 @@ WebUI::WebUI(uint16_t pPort):
 		key_pem = load_key("server.key");
 		cert_pem = load_key("server.pem");
 	}
-	catch (std::exception e)
+	catch (std::exception& e)
 	{
 		if(auto log = odc::spdlog_get("WebUI"))
 			log->warn("WebUI port {}: The key/certificate files could not be read. Reverting to default certificate.", pPort);

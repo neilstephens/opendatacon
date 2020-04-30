@@ -103,7 +103,7 @@ public:
 					}
 				});
 		}
-		catch (const std::exception)
+		catch (const std::exception&)
 		{
 			// Must be a memory allocation failure.
 			return false;

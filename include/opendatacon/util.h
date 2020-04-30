@@ -26,7 +26,7 @@
 #include <string>
 #include <map>
 #include <cstdint>
-#include <spdlog/spdlog.h>
+#include <opendatacon/spdlog.h>
 #include <spdlog/async.h>
 
 namespace odc

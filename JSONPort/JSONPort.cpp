@@ -206,7 +206,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				if(timestamp == 0)
 					throw std::runtime_error("Null timestamp");
 			}
-			catch(std::runtime_error e)
+			catch(std::runtime_error& e)
 			{
 				if(auto log = odc::spdlog_get("JSONPort"))
 					log->error("Error decoding timestamp as Uint64: '{}'",e.what());
@@ -360,7 +360,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						{
 							on = check_val("OnVal","OffVal");
 						}
-						catch(std::runtime_error e)
+						catch(std::runtime_error& e)
 						{
 							if(auto log = odc::spdlog_get("JSONPort"))
 								log->error("'{}', for index {}",e.what(),point_pair.first);
@@ -378,7 +378,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						{
 							trip = check_val("TripVal","CloseVal");
 						}
-						catch(std::runtime_error e)
+						catch(std::runtime_error& e)
 						{
 							if(auto log = odc::spdlog_get("JSONPort"))
 								log->error("'{}', for index {}",e.what(),point_pair.first);
