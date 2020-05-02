@@ -8,6 +8,7 @@
     <script src= "/js/jquery.min.js"> </script>
     <script src= "/js/bootstrap.min.js"> </script>
     <script src="/js/datatables.min.js"></script>
+    <script src="/js/bootstrap-treeview.min.js"></script>
 
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/datatables.min.css">
@@ -15,11 +16,13 @@
 
   <body>
     <!-- html section -->
+    <!-- toggle between web and console mode -->
     <div class="alert alert-info clearfix">
       <a href="#" class="alert-link"></a>
       <button type="button" class="btn btn-primary float-right" onclick="go_to_console()">Console</button>
     </div>
 
+    <!-- Data ports table -->
     <h1 style="text-align:center"> Data Ports </h1>
     <table id="DataPortsTable" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
       <thead>
@@ -30,6 +33,7 @@
       <tbody id="DataPortsTableBody"/>
     </table>
 
+    <!-- Data connectors table -->
     <h1 style="text-align:center">Data Connectors</h1>
     <table id="DataConnectorsTable" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
       <thead>
@@ -40,8 +44,9 @@
       <tbody id="DataConnectorsTableBody"/>
     </table>
 
+    <!-- Dataports result view over a modal -->
     <div class="modal fade" id="dataports_modal">
-      <div class="modal-dialog">
+      <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
             <h4 class="modal-title">
@@ -59,24 +64,24 @@
       </div>
     </div>
 
-    <div class="modal" id="statistics_modal">
-      <div class="modal-dialog">
+    <!-- Statistics view over a modal which embeds a iframe -->
+    <div class="modal fade" id="statistics_modal" tabindex="-1" role="dialog" aria-labelledby="statistics_modal_label" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h1 class="modal-title">
-              <div id="statistics_modal_title">
-            </h1>
-            <button type="button" class="close" data-dismiss="modal">×</button>
+            <h4 class="modal-title">
+              <div id="statistics_modal_title"></div>
+            </h4>
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
           </div>
-            <div class="modal-body">
-              <div class="row">
-                <div class="col-md-4 col-md-offset-4">
-                  <div id="statistics_view" class=""></div>
-                </div>
-              </div>
+          <div class="modal-body mb-0 p-0">
+            <div class="embed-responsive embed-responsive-16by9 z-depth-1-half">
+              <iframe class="embed-responsive-item" id="statistics_frame" src="" allowfullscreen></iframe>
+            </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+
+          <div class="modal-footer justify-content-center">
+            <button type="button" class="btn btn-outline-primary btn-rounded btn-md ml-4" data-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
@@ -84,33 +89,21 @@
 
     <!-- java script section -->
     <script>
+      /* function which will take user to the console mode */
       function go_to_console() {
           window.location.href="console.html";
       }
 
-      function post_data_ports(target, command) {
+      /* post a query to the server with target and get the data ports */
+      function get_data_ports(target, command) {
           const url = "/DataPorts/" + command;
           var getResponders = $.post( url, { Target : target } )
               .done(function( data ) {
                   if (data) {
                       if (command == 'Configuration') {
                       } else if (command == 'Statistics') {
-                          var statistics_data= {};
-                          for (var key of Object.keys(data)) {
-                              statistics_data["text"] = key;
-                              nodes = [];
-                              for (var sub_key of Object.keys(data[key])) {
-                                  nodes["text"] = data[key][sub_key];
-                              }
-                              statistics_data["nodes"] = nodes;
-                          }
-
-                          console.log(statistics_data);
-                          $('#statistics_view').treeview({
-                              data: statistics_data,
-                          });
-
-                          document.getElementById("statistics_modal_title").innerHTML="Statistics [" + target +"]";
+                          document.getElementById("statistics_frame").src = "statistics.html?target=" + target;
+                          document.getElementById("statistics_modal_title").innerHTML="Statistics[" + target +"]";
                           $('#statistics_modal').modal('show');
                       } else {
                           var result = '';
@@ -130,6 +123,7 @@
               });
       }
 
+      /* post a query to the server with Data ports list */
       $.post( "/DataPorts/List", { } ).done(function( data ) {
           for(command in data["Commands"]) {
               $( "#DataPortsTableHeader" ).append('<th>' + data["Commands"][command] + '</th>');
@@ -139,7 +133,7 @@
           for(target in data["Items"]) {
               var TableRow = [data["Items"][target]];
               for(command in data["Commands"]) {
-                  const row = '<a href="javascript:void(0);" onclick="post_data_ports(\'' + data["Items"][target] + '\', \'' + data["Commands"][command] + '\');">' + data["Commands"][command] + '</a>'
+                  const row = '<a href="javascript:void(0);" onclick="get_data_ports(\'' + data["Items"][target] + '\', \'' + data["Commands"][command] + '\');">' + data["Commands"][command] + '</a>'
                   TableRow.push(row);
               }
               TableData.push(TableRow);
@@ -147,6 +141,7 @@
           $('#DataPortsTable').dataTable({ "data": TableData });
       });
 
+      /* post a query to the server with Data connectors list */
       $.post( "/DataConnectors/List", { } ).done(function( data ) {
           for(command in data["Commands"]) {
               $( "#DataConnectorsTableHeader" ).append('<th>' + data["Commands"][command] + '</th>');

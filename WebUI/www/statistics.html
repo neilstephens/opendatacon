@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenDataCon</title>
+
+    <script src= "/js/statistics/jquery.min.js"> </script>
+    <script src= "/js/statistics/bootstrap-treeview.min.js"> </script>
+
+    <link rel="stylesheet" href="/css/statistics/bootstrap.min.css">
+  </head>
+
+  <body onload="init()">
+    <!-- CSS styling for treeview -->
+    <style>
+      body{
+          padding-top: 30px;
+          background-color: #FFFFFF;
+      }
+
+      .treeview ul li{
+          background: #FFFACD;
+          color: #0000FF;
+      }
+
+      .treeview ul li:hover{
+          background: #00FFFF;
+          color: #0000CD;
+      }
+    </style>
+
+    <!-- statistics view -->
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4 col-md-offset-4">
+          <div id="statistics_view" class=""></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* init function which will parse the url extract the target and load the statistics view */
+      function init() {
+          const target = new URL(window.location.href).searchParams.get('target');
+          get_statistics(target);
+      }
+
+      /* get statistics by post from the server and display the data in treeview */
+      function get_statistics(target) {
+          const url = "/DataPorts/Statistics";
+          var getResponders = $.post(url, {Target : target})
+              .done(function(data) {
+                  var statistics_data= [];
+                  count = 0;
+                  for (var key of Object.keys(data)) {
+                      var node = {};
+                      var nodes = [];
+                      for (var sub_key of Object.keys(data[key])) {
+                          var sub_node = {};
+                          const d = sub_key + " : " + data[key][sub_key];
+                          sub_node["text"] = d;
+                          sub_node["tags"] = "0";
+                          sub_node["href"] = "#" + d;
+                          nodes.push(sub_node);
+                          ++count;
+                      }
+                      node["text"] = key;
+                      node["tags"] = "'" + count + "'";
+                      node["href"] = "#" + key;
+                      node["nodes"] = nodes;
+                      statistics_data.push(node);
+                  }
+
+                  $('#statistics_view').treeview({
+                      openedClass:'glyphicon-chevron-right',
+                      closedClass:'glyphicon-chevron-down',
+                      data: statistics_data,
+                  });
+              });
+      }
+    </script>
+
+  </body>
+
+</html>
