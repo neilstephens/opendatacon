@@ -121,9 +121,17 @@ private:
 			mean = pSimConf->AnalogStartVals.at(event->GetIndex());
 			std_dev = pSimConf->AnalogStdDevs.at(event->GetIndex());
 		}
-		//change value around mean
-		std::normal_distribution<double> distribution(mean, std_dev);
-		event->SetPayload<EventType::Analog>(distribution(RandNumGenerator));
+
+		//change value around mean - handle 0 which windows does not...
+		if (std_dev != 0)
+		{
+			std::normal_distribution<double> distribution(mean, std_dev);
+			event->SetPayload<EventType::Analog>(distribution(RandNumGenerator));
+		}
+		else
+		{
+			event->SetPayload<EventType::Analog>(std::move(mean));
+		}
 	}
 	inline void StartAnalogEvents(size_t index)
 	{
