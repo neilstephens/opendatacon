@@ -93,15 +93,15 @@ int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;
-	std::string filename = "www/" + url;
-	if ((0 == stat(filename.c_str(), &buf)) && (S_ISREG(buf.st_mode)))
-		fopen_s(&file, filename.c_str(), "rb");
+
+	if ((0 == stat(url.c_str(), &buf)) && (S_ISREG(buf.st_mode)))
+		fopen_s(&file, url.c_str(), "rb");
 	else
 		file = nullptr;
 	if (file == nullptr)
 	{
 		if (auto log = odc::spdlog_get("WebUI"))
-			log->error("WebUI : Failed to open file {}", filename);
+			log->error("WebUI : Failed to open file {}", url);
 
 		response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
 			(void *)EMPTY_PAGE,

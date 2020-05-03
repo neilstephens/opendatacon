@@ -116,9 +116,10 @@ std::string load_key(const char *filename)
 	return(contents);
 }
 
-WebUI::WebUI(uint16_t pPort):
+WebUI::WebUI(uint16_t pPort, const std::string& web_root):
 	d(nullptr),
-	port(pPort)
+	port(pPort),
+	web_root(web_root)
 {
 	try
 	{
@@ -219,11 +220,11 @@ int WebUI::http_ahc(void *cls,
 	{
 		if (url == "/")
 		{
-			return ReturnFile(connection, ROOTPAGE);
+			return ReturnFile(connection, web_root + "/" + ROOTPAGE);
 		}
 		else
 		{
-			return ReturnFile(connection, url);
+			return ReturnFile(connection, web_root + "/" + url);
 		}
 	}
 }

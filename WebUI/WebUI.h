@@ -36,7 +36,7 @@ const char ROOTPAGE[] = "/index.html";
 class WebUI: public IUI
 {
 public:
-	WebUI(uint16_t port);
+	WebUI(uint16_t port, const std::string& web_root);
 
 	/* Implement IUI interface */
 	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
@@ -60,6 +60,7 @@ private:
 	const int port;
 	std::string cert_pem;
 	std::string key_pem;
+	std::string web_root;
 
 	bool useSSL = false;
 	/* UI response handlers */
