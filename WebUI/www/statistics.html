@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OpenDataCon</title>
 
-    <script src= "/js/statistics/jquery.min.js"> </script>
-    <script src= "/js/statistics/bootstrap-treeview.min.js"> </script>
+    <script src= "/js/frame_modal/jquery.min.js"> </script>
+    <script src= "/js/frame_modal/bootstrap-treeview.min.js"> </script>
 
-    <link rel="stylesheet" href="/css/statistics/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/frame_modal/bootstrap.min.css">
   </head>
 
   <body onload="init()">
@@ -52,7 +52,8 @@
           var getResponders = $.post(url, {Target : target})
               .done(function(data) {
                   var statistics_data= [];
-                  count = 0;
+                  var count = 0;
+
                   for (var key of Object.keys(data)) {
                       var node = {};
                       var nodes = [];

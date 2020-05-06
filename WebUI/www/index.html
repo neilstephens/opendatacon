@@ -44,18 +44,18 @@
       <tbody id="DataConnectorsTableBody"/>
     </table>
 
-    <!-- Dataports result view over a modal -->
-    <div class="modal fade" id="dataports_modal">
+    <!-- Modal for displaying short text -->
+    <div class="modal fade" id="short_text_modal">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
             <h4 class="modal-title">
-              <div id="dataports_modal_title"></div>
+              <div id="short_text_modal_title"></div>
             </h4>
             <button type="button" class="close" data-dismiss="modal">&times;</button>
           </div>
           <div class="modal-body">
-            <div id="dataports_modal_data"></div>
+            <div id="short_text_modal_data"></div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
@@ -64,19 +64,19 @@
       </div>
     </div>
 
-    <!-- Statistics view over a modal which embeds a iframe -->
-    <div class="modal fade" id="statistics_modal" tabindex="-1" role="dialog" aria-labelledby="statistics_modal_label" aria-hidden="true">
+    <!-- Responsive modal with medium size which can display an embeded page in iframe for statistics and configuration -->
+    <div class="modal fade" id="frame_modal" tabindex="-1" role="dialog" aria-labelledby="frame_modal_label" aria-hidden="true">
       <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h4 class="modal-title">
-              <div id="statistics_modal_title"></div>
+              <div id="frame_modal_title"></div>
             </h4>
             <button type="button" class="close" data-dismiss="modal">&times;</button>
           </div>
           <div class="modal-body mb-0 p-0">
             <div class="embed-responsive embed-responsive-16by9 z-depth-1-half">
-              <iframe class="embed-responsive-item" id="statistics_frame" src="" allowfullscreen></iframe>
+              <iframe class="embed-responsive-item" id="frame_src" src="" allowfullscreen></iframe>
             </div>
           </div>
 
@@ -101,24 +101,27 @@
               .done(function( data ) {
                   if (data) {
                       if (command == 'Configuration') {
+                          document.getElementById("frame_src").src = "configuration.html?target=" + target;
+                          document.getElementById("frame_modal_title").innerHTML="Configuration[" + target +"]";
+                          $('#frame_modal').modal('show');
                       } else if (command == 'Statistics') {
-                          document.getElementById("statistics_frame").src = "statistics.html?target=" + target;
-                          document.getElementById("statistics_modal_title").innerHTML="Statistics[" + target +"]";
-                          $('#statistics_modal').modal('show');
+                          document.getElementById("frame_src").src = "statistics.html?target=" + target;
+                          document.getElementById("frame_modal_title").innerHTML="Statistics[" + target +"]";
+                          $('#frame_modal').modal('show');
                       } else {
                           var result = '';
                           for (var key of Object.keys(data)) {
                               result += key + ' : ' + data[key] + '<br>';
                           }
 
-                          document.getElementById("dataports_modal_title").innerHTML="Data Ports[" + target + ", " + command +"]";
-                          document.getElementById("dataports_modal_data").innerHTML=result;
-                          $('#dataports_modal').modal('show');
+                          document.getElementById("short_text_modal_title").innerHTML="Data Ports[" + target + ", " + command +"]";
+                          document.getElementById("short_text_modal_data").innerHTML=result;
+                          $('#short_text_modal').modal('show');
                       }
                   } else {
-                      document.getElementById("dataports_modal_title").innerHTML="Data Ports[" + target + ", " + command +"]";
-                      document.getElementById("dataports_modal_data").innerHTML="NULL";
-                      $('#dataports_modal').modal('show');
+                      document.getElementById("short_text_modal_title").innerHTML="Data Ports[" + target + ", " + command +"]";
+                      document.getElementById("short_text_modal_data").innerHTML="NULL";
+                      $('#short_text_modal').modal('show');
                   }
               });
       }
