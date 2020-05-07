@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+
+  <head onload="init()">
+    <meta charset="utf-8"/>
+    <title>Current State</title>
+    <script src="/js/jquery.min.js"></script>
+
+    <script>
+      $(function() {
+          $("#common_content").load("common.html");
+      });
+    </script>
+  </head>
+
+  <body onload="init()">
+    <h1>Current State</h1>
+    <div id="CurrentStateDiv"></div>
+    <h1>Mimic</h1>
+    <svg id="mimic-svg" xmlns="http://www.w3.org/2000/svg" width="601.81927" height="725.12518"></svg>
+
+    <div id="common_content"></div>
+
+    <script>
+      function init() {
+          const target = new URL(window.location.href).searchParams.get('target');
+
+          const mimic_SVG = 'mimics/dmc.svg';
+          const mimic_JS = 'mimics/dmc.js';
+
+          $('#mimic-svg').load(mimic_SVG, null, function() {
+              get_current_state(target);
+          });
+      }
+
+      function get_current_state(target) {
+          const url = "/DataPorts/CurrentState";
+          var getResponders = $.post( url, {Target : target} )
+              .done (function (data) {
+                  console.log("-----------------------------------------------------------");
+                  console.log(data);
+                  console.log("-----------------------------------------------------------");
+              });
+      }
+    </script>
+  </body>
+
+</html>
