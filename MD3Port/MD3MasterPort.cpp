@@ -42,7 +42,7 @@ MD3MasterPort::MD3MasterPort(const std::string &aName, const std::string &aConfF
 
 	IsOutStation = false;
 
-	LOGDEBUG("MD3Master Constructor - " + aName + " - " + aConfFilename + " Overrides - " + over);
+	LOGDEBUG("{} MD3Master Constructor {}  Overrides - {}", Name, aConfFilename, over);
 }
 
 MD3MasterPort::~MD3MasterPort()
@@ -61,7 +61,7 @@ void MD3MasterPort::Enable()
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Problem opening connection TCP : " + Name + " : " + e.what());
+		LOGERROR("{} Problem opening connection TCP : {}", Name, e.what());
 		enabled = false;
 		return;
 	}
@@ -140,10 +140,10 @@ void MD3MasterPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 {
 	if (CompleteMD3Message.size() == 0)
 	{
-		LOGERROR("MA - Tried to send an empty message to the TCP Port");
+		LOGERROR("{} MA - Tried to send an empty message to the TCP Port", Name);
 		return;
 	}
-	LOGDEBUG("MA - Sending Message - " + MD3MessageAsString(CompleteMD3Message));
+	LOGDEBUG("{} MA - Sending Message - {}",Name, MD3MessageAsString(CompleteMD3Message));
 
 	// Done this way just to get context into log messages.
 	MD3Port::SendMD3Message(CompleteMD3Message);
@@ -169,7 +169,7 @@ void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, Shar
 			}
 			else
 			{
-			      LOGDEBUG("Tried to queue another MD3 Master Command when the command queue is full");
+			      LOGDEBUG("{} Tried to queue another MD3 Master Command when the command queue is full",Name);
 			      PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED); // Failed...
 			}
 
@@ -227,7 +227,7 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 			if (MasterCommandProtectedData.RetriesLeft-- > 0)
 			{
 				MasterCommandProtectedData.ProcessingMD3Command = true;
-				LOGDEBUG("Sending Retry on command :" + std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
+				LOGDEBUG("{} Sending Retry on command: {}, Retrys Remaining: {}", Name, std::to_string(MasterCommandProtectedData.CurrentFunctionCode), MasterCommandProtectedData.RetriesLeft)
 			}
 			else
 			{
@@ -242,7 +242,7 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 						SetAllPointsQualityToCommsLost(); // All the connected points need their quality set to comms lost
 					});
 
-				LOGDEBUG("Reached maximum number of retries on command :" + std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
+				LOGDEBUG("{} Reached maximum number of retries on command: {}",Name,std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
 			}
 		}
 
@@ -257,7 +257,7 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 			MasterCommandProtectedData.MasterCommandQueue.pop();
 
 			MasterCommandProtectedData.CurrentFunctionCode = MD3BlockFormatted(MasterCommandProtectedData.CurrentCommand.first[0]).GetFunctionCode();
-			LOGDEBUG("Sending next command :" + std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
+			LOGDEBUG("{} Sending next command: {}",Name, std::to_string(MasterCommandProtectedData.CurrentFunctionCode))
 		}
 
 		// If either of the above situations need us to send a command, do so.
@@ -283,19 +283,19 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 								// we have cancelled the timer and this callback is called, that we do NOT take any action!
 								if (endtime == MasterCommandProtectedData.TimerExpireTime)
 								{
-								      LOGDEBUG("MD3 Master Timeout valid - MD3 Function " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode));
+								      LOGDEBUG("{} MD3 Master Timeout valid - MD3 Function {}",Name,std::to_string(MasterCommandProtectedData.CurrentFunctionCode));
 
 								      MasterCommandProtectedData.ProcessingMD3Command = false; // Only gets reset on success or timeout.
 
 								      UnprotectedSendNextMasterCommand(true); // We already have the strand, so don't need the wrapper here
 								}
 								else
-									LOGDEBUG("MD3 Master Timeout callback called, when we had already moved on to the next command");
+									LOGDEBUG("{} MD3 Master Timeout callback called, when we had already moved on to the next command",Name);
 							});
 					}
 					else
 					{
-					      LOGDEBUG("MD3 Master Timeout callback cancelled");
+					      LOGDEBUG("{} MD3 Master Timeout callback cancelled",Name);
 					}
 				});
 		}
@@ -348,7 +348,7 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 
 			if (CompleteMD3Message.size() == 0)
 			{
-			      LOGERROR("Received a Master to Station message with zero length!!! ");
+			      LOGERROR("{} Received a Master to Station message with zero length!!! ",Name);
 			      return;
 			}
 
@@ -358,24 +358,21 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 
 			if (Header.IsMasterToStationMessage() != false)
 			{
-			      LOGERROR("Received a Master to Station message at the Master - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      LOGERROR("{} Received a Master to Station message at the Master - ignoring - {} On Station Address - {}",Name, Header.GetFunctionCode() ,Header.GetStationAddress());
 			      return;
 			}
 			if (Header.GetStationAddress() == 0)
 			{
-			      LOGERROR("Received broadcast return message - address 0 - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      LOGERROR("{} Received broadcast return message - address 0 - ignoring - {} On Station Address - {}",Name, Header.GetFunctionCode(), Header.GetStationAddress());
 			      return;
 			}
 			if (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr)
 			{
-			      LOGERROR("Received a message from the wrong address - ignoring - " + std::to_string(Header.GetFunctionCode()) +
-					" On Station Address - " + std::to_string(Header.GetStationAddress()));
+			      LOGERROR("{} Received a message from the wrong address - ignoring - {} On Station Address - {}", Name, Header.GetFunctionCode(),Header.GetStationAddress());
 			      return;
 			}
 
-			LOGDEBUG("MD3 Master received a response to sending cmd " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " of " + std::to_string(Header.GetFunctionCode()));
+			LOGDEBUG("{} MD3 Master received a response to sending cmd {} of {}",Name, MasterCommandProtectedData.CurrentFunctionCode, Header.GetFunctionCode());
 
 			bool success = false;
 

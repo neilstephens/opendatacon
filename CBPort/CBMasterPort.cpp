@@ -240,7 +240,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				// If you want a resend command and not send the same command again, allow the following line.
 				// DoResendCommand = true;
 
-				LOGDEBUG("{} Sending Retry on command :{}", Name, GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode))
+				LOGDEBUG("{} Sending Retry on command: {}, Retrys Remaining: {}", Name, GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode), MasterCommandProtectedData.RetriesLeft)
 			}
 			else
 			{
