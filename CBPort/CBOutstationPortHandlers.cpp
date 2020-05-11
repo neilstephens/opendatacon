@@ -38,6 +38,7 @@
 #include "CB.h"
 #include "CBUtility.h"
 #include "CBOutstationPort.h"
+#include "CBOutStationPortCollection.h"
 
 
 void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
@@ -349,8 +350,15 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 		PendingCommands[group].Command = pCommand;
 		PendingCommands[group].ExpiryTime = CBNowUTC() + PendingCommands[group].CommandValidTimemsec;
 
-		LOGDEBUG("{} Got a valid {} PendingCommand, Data {}",Name, cmd, PendingCommands[group].Data);
+		LOGDEBUG("{} Got a valid {} PendingCommand, Data {} FailControlResponse {}",Name, cmd, PendingCommands[group].Data, FailControlResponse);
 
+		if (FailControlResponse)
+		{
+			// We have to corrupt the response by shifting right by one bit. Channel is 1 to 12
+			uint8_t bit = 1 + numeric_cast<uint8_t>(GetSetBit(PendingCommands[group].Data, 12));
+			if (bit > 11) bit = 0;
+			PendingCommands[group].Data = 1 << (11 - bit);
+		}
 		auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommands[group].Data, true);
 
 		// Now assemble and return the required response..
@@ -876,7 +884,6 @@ void CBOutstationPort::MarkAllBinaryPointsAsChanged()
 		});
 }
 
-
 // Scan all binary/digital blocks for changes - used to determine what response we need to send
 // We return the total number of changed blocks we assume every block supports time tagging
 // If SendEverything is true,
@@ -900,6 +907,44 @@ uint8_t CBOutstationPort::CountBinaryBlocksWithChanges()
 		});
 
 	return changedblocks;
+}
+// UI Handlers
+std::pair<std::string, std::shared_ptr<IUIResponder>> CBOutstationPort::GetUIResponder()
+{
+	return std::pair<std::string, std::shared_ptr<CBOutstationPortCollection>>("CBOutstationPortControl", this->CBOutstationCollection);
+	// 	return std::pair<std::string, std::shared_ptr<SimPortCollection>>("SimControl", this->SimCollection);
+}
+
+bool CBOutstationPort::UIFailControl(const std::string &active)
+{
+	if (iequals(active,"true"))
+	{
+		FailControlResponse = true;
+		LOGCRITICAL("{} The Control Response Packet is set to fail - {}", Name, FailControlResponse);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		FailControlResponse = false;
+		LOGCRITICAL("{} The Control Response Packet is set to fail - {}", Name, FailControlResponse);
+		return true;
+	}
+	return false;
+}
+bool CBOutstationPort::UIRandomReponseBitFlips(const std::string& probability)
+{
+	try
+	{
+		auto prob = std::stod(probability);
+		if ((prob > 1.0) || (prob < 0.0))
+			return false;
+		BitFlipProbability = prob;
+		LOGCRITICAL("{} Set the probability of a flipped bit in the response packet to {}", Name, BitFlipProbability );
+		return true;
+	}
+	catch (...)
+	{}
+	return false;
 }
 #ifdef _MSC_VER
 #pragma endregion

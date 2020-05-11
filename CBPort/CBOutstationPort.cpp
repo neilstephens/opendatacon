@@ -34,15 +34,20 @@
 #include <future>
 #include <regex>
 #include <chrono>
+#include <random>
 
 #include "CB.h"
 #include "CBUtility.h"
+#include "CBOutStationPortCollection.h"
 #include "CBOutstationPort.h"
 
 
 CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string &aConfFilename, const Json::Value & aConfOverrides):
-	CBPort(aName, aConfFilename, aConfOverrides)
+	CBPort(aName, aConfFilename, aConfOverrides),
+	CBOutstationCollection(nullptr)
 {
+	UpdateOutstationPortCollection();
+
 	// Don't load conf here, do it in CBPort
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
@@ -54,6 +59,29 @@ CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string 
 	IsOutStation = true;
 
 	LOGDEBUG("CBOutstation Constructor - {} ", Name);
+}
+
+void CBOutstationPort::UpdateOutstationPortCollection()
+{
+	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
+	static std::weak_ptr<CBOutstationPortCollection> weak_collection;
+
+	//if we're the first/only one on the scene,
+	// init the CBOutstationPortCollection
+	if (!init_flag.test_and_set(std::memory_order_acquire))
+	{
+		// Make a custom deleter for the PortManager that will also clear the init flag
+		auto deinit_del = [](CBOutstationPortCollection* collection_ptr)
+					{init_flag.clear(); delete collection_ptr; };
+		this->CBOutstationCollection = std::shared_ptr<CBOutstationPortCollection>(new CBOutstationPortCollection(), deinit_del);
+		weak_collection = this->CBOutstationCollection;
+	}
+	//otherwise just make sure it's finished initialising and take a shared_ptr
+	else
+	{
+		while (!(this->CBOutstationCollection = weak_collection.lock()))
+		{} //init happens very seldom, so spin lock is good
+	}
 }
 
 CBOutstationPort::~CBOutstationPort()
@@ -103,6 +131,10 @@ void CBOutstationPort::SocketStateHandler(bool state)
 
 void CBOutstationPort::Build()
 {
+	// Add this port to the list of ports we can command.
+	auto shared_this = std::static_pointer_cast<CBOutstationPort>(shared_from_this());
+	this->CBOutstationCollection->Add(shared_this, this->Name);
+
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(Name, IsOutStation, *pIOS, MyPointConf->SOEQueueSize, SOEBufferOverflowFlag);
 
@@ -123,11 +155,41 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 		LOGERROR("{} - Tried to send an empty message to the TCP Port",Name);
 		return;
 	}
-	LOGDEBUG("{} - Sending Message - {}", Name, CBMessageAsString(CompleteCBMessage));
-	// Done this way just to get context into log messages.
-	CBPort::SendCBMessage(CompleteCBMessage);
+	if (BitFlipProbability != 0.0)
+	{
+		auto msg = CorruptCBMessage(CompleteCBMessage);
+		LOGDEBUG("{} - Sending Corrupted Message - Correct {}, Corrupted {}", Name, CBMessageAsString(CompleteCBMessage), CBMessageAsString(msg));
+		CBPort::SendCBMessage(msg);
+	}
+	else
+	{
+		LOGDEBUG("{} - Sending Message - {}", Name, CBMessageAsString(CompleteCBMessage));
 
+		// Done this way just to get context into log messages.
+		CBPort::SendCBMessage(CompleteCBMessage);
+	}
 	LastSentCBMessage = CompleteCBMessage; // Take a copy of last message
+}
+CBMessage_t CBOutstationPort::CorruptCBMessage(const CBMessage_t& CompleteCBMessage)
+{
+	if (BitFlipProbability != 0.0)
+	{
+		// Setup a random generator
+		std::random_device rd;
+		std::mt19937 e2(rd());
+		std::uniform_real_distribution<> dist(0, 1);
+
+		if (dist(e2) > BitFlipProbability)
+		{
+			CBMessage_t ResMsg = CompleteCBMessage;
+			size_t messagelen = CompleteCBMessage.size();
+			std::uniform_real_distribution<> bitdist(0, messagelen * 32);
+			int bitnum = round(bitdist(e2));
+			ResMsg[bitnum / 32].XORBit(bitnum % 32);
+			return ResMsg;
+		}
+	}
+	return CompleteCBMessage;
 }
 #ifdef _MCS_VER
 #pragma region OpenDataConInteraction

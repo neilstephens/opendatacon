@@ -249,6 +249,11 @@ public:
 		builddataindex = 4;
 	}
 
+	void XORBit(int bit) // Used to corrupt the message...
+	{
+		data = data ^ (1 << bit);
+	}
+
 	void DoBakerConitelSwap()
 	{
 		// Swap Station and Group values before sending - the swap is the next two lines...
