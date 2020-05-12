@@ -38,6 +38,7 @@
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3OutstationPort.h"
+#include "MD3OutStationPortCollection.h"
 
 
 // The list of codes in use
@@ -1172,6 +1173,12 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 	// POM is only a single bit, so easy to do...
 	// For AUSGRID Systems, POM modules are always PULSE_ON, and what you pulse determines what happens (can be a trip or close)
 
+	if (FailControlResponse)
+	{
+		SendControlOrScanRejected(Header);
+		return;
+	}
+
 	// Module contains 0 to 15 channels..
 	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 	val.functionCode = ControlCode::PULSE_ON; // Always pulse on for POM control!
@@ -1235,6 +1242,12 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 		return;
 	}
 
+	if (FailControlResponse)
+	{
+		SendControlOrScanRejected(Header);
+		return;
+	}
+
 	bool success = true;
 
 	// Send each of the DigitalOutputs
@@ -1264,7 +1277,6 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 		SendControlOrScanRejected(Header);
 	}
 }
-
 
 
 void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message_t& CompleteMD3Message)
@@ -1335,6 +1347,12 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 	if (failed)
 	{
 		LOGDEBUG("{} - DoInputPointControl, Failed", Name);
+		SendControlOrScanRejected(Header);
+		return;
+	}
+
+	if (FailControlResponse)
+	{
 		SendControlOrScanRejected(Header);
 		return;
 	}
@@ -1647,6 +1665,45 @@ void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
 	SendMD3Message(ResponseMD3Message);
 }
 
+// UI Handlers
+std::pair<std::string, std::shared_ptr<IUIResponder>> MD3OutstationPort::GetUIResponder()
+{
+	return std::pair<std::string, std::shared_ptr<MD3OutstationPortCollection>>("MD3OutstationPortControl", this->MD3OutstationCollection);
+	// 	return std::pair<std::string, std::shared_ptr<SimPortCollection>>("SimControl", this->SimCollection);
+}
+
+bool MD3OutstationPort::UIFailControl(const std::string& active)
+{
+	if (iequals(active, "true"))
+	{
+		FailControlResponse = true;
+		LOGCRITICAL("{} The Control Response Packet is set to fail - {}", Name, FailControlResponse);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		FailControlResponse = false;
+		LOGCRITICAL("{} The Control Response Packet is set to fail - {}", Name, FailControlResponse);
+		return true;
+	}
+	return false;
+}
+bool MD3OutstationPort::UIRandomReponseBitFlips(const std::string& probability)
+{
+	try
+	{
+		auto prob = std::stod(probability);
+		if ((prob > 1.0) || (prob < 0.0))
+			return false;
+		BitFlipProbability = prob;
+		LOGCRITICAL("{} Set the probability of a flipped bit in the response packet to {}", Name, BitFlipProbability);
+		return true;
+	}
+	catch (...)
+	{
+	}
+	return false;
+}
 #ifdef _MSC_VER
 #pragma endregion
 #endif

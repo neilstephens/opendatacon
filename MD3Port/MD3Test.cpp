@@ -3755,7 +3755,7 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 	OSportoverride["IP"] = "0.0.0.0"; // Bind to everything?? was 172.21.8.111
 	OSportoverride["TCPClientServer"]= "SERVER";
 
-	auto MD3OSPort = new  MD3OutstationPort("MD3LiveTestOutstation", "md3masterconffile.conf", OSportoverride);
+	auto MD3OSPort = std::make_shared<MD3OutstationPort>("MD3LiveTestOutstation", "md3masterconffile.conf", OSportoverride);
 	MD3OSPort->SetIOS(IOS);
 	MD3OSPort->Build();
 

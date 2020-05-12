@@ -251,7 +251,7 @@ public:
 
 	void XORBit(int bit) // Used to corrupt the message...
 	{
-		data = data ^ (1 << bit);
+		data = data ^ (1 << (31 - bit));
 	}
 
 	void DoBakerConitelSwap()
