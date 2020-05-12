@@ -334,22 +334,22 @@ void Wait(odc::asio_service &IOS, int seconds)
 	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i]);
 
 #define TEST_MD3MAPort(overridejson)\
-	auto MD3MAPort = std::make_unique<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
+	auto MD3MAPort = std::make_shared<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
 	MD3MAPort->SetIOS(IOS);      \
 	MD3MAPort->Build();
 
 #define TEST_MD3MAPort2(overridejson)\
-	auto MD3MAPort2 = std::make_unique<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
+	auto MD3MAPort2 = std::make_shared<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
 	MD3MAPort2->SetIOS(IOS);      \
 	MD3MAPort2->Build();
 
 #define TEST_MD3OSPort(overridejson)      \
-	auto MD3OSPort = std::make_unique<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
+	auto MD3OSPort = std::make_shared<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
 	MD3OSPort->SetIOS(IOS);      \
 	MD3OSPort->Build();
 
 #define TEST_MD3OSPort2(overridejson)     \
-	auto MD3OSPort2 = std::make_unique<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
+	auto MD3OSPort2 = std::make_shared<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
 	MD3OSPort2->SetIOS(IOS);     \
 	MD3OSPort2->Build();
 
