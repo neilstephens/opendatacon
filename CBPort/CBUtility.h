@@ -249,9 +249,10 @@ public:
 		builddataindex = 4;
 	}
 
-	void XORBit(int bit) // Used to corrupt the message...
+	void XORBit(uint8_t bit) // Used to corrupt the message...
 	{
-		data = data ^ (1 << (31 - bit));
+		if (bit < 32)
+			data = data ^ (1 << (31 - bit));
 	}
 
 	void DoBakerConitelSwap()

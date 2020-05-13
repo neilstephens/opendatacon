@@ -177,12 +177,13 @@ public:
 		endbyte |= lastblock ? EOMBIT : 0x00;
 		builddataindex = 6; // Just to mark it as full. Only used for rx'd block assembly.
 	}
-	void XORBit(int bit) // Used to corrupt the message...
+	void XORBit(uint8_t bit) // Used to corrupt the message...
 	{
 		if (bit < 32)
 			data = data ^ (1 << (31 - bit));
-		else
+		else if (bit < 40)
 			endbyte = endbyte ^ (1 << (39 - bit));
+		//else ignore!
 	}
 	bool IsEndOfMessageBlock() const
 	{
