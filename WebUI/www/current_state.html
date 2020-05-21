@@ -1,47 +1,42 @@
 <!doctype html>
 <html lang="en">
 
-  <head onload="init()">
+  <head>
     <meta charset="utf-8"/>
-    <title>Current State</title>
-    <script src="/js/jquery.min.js"></script>
+    <title>Mimic</title>
 
-    <script>
-      $(function() {
-          $("#common_content").load("common.html");
-      });
-    </script>
+    <script src="/js/jquery.min.js"></script>
   </head>
 
-  <body onload="init()">
-    <h1>Current State</h1>
-    <div id="CurrentStateDiv"></div>
-    <h1>Mimic</h1>
+  <body>
     <svg id="mimic-svg" xmlns="http://www.w3.org/2000/svg" width="601.81927" height="725.12518"></svg>
-
-    <div id="common_content"></div>
-
     <script>
-      function init() {
-          const target = new URL(window.location.href).searchParams.get('target');
 
-          const mimic_SVG = 'mimics/dmc.svg';
-          const mimic_JS = 'mimics/dmc.js';
+      // Send the data using post
+      $( document ).ready(function() {
+          target = new URL(window.location.href).searchParams.get('target');
+
+          const mimic_name = "dmc";
+          const mimic_SVG = "/mimics/" + mimic_name + ".svg";
+          const mimic_JS = "/mimics/" + mimic_name + ".js";
+
+          jQuery.getScript(mimic_JS)
+              .done(function() {
+                  console.log(mimic_JS + " loaded successfully !!!");
+              });
 
           $('#mimic-svg').load(mimic_SVG, null, function() {
-              get_current_state(target);
+              window.setInterval(function() { refresh_values(target);  }, 1000);
           });
-      }
+      });
 
-      function get_current_state(target) {
-          const url = "/DataPorts/CurrentState";
-          var getResponders = $.post( url, {Target : target} )
-              .done (function (data) {
-                  console.log("-----------------------------------------------------------");
-                  console.log(data);
-                  console.log("-----------------------------------------------------------");
+      function refresh_values(target) {
+          var getResponders = $.post( "/DataPorts/CurrentState", { Target : target } )
+              .done(function( data ) {
+                  updateMimic(document.getElementById("mimic-svg"), data);
               });
       }
+
     </script>
   </body>
 

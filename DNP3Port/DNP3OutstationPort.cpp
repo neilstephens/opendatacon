@@ -151,15 +151,15 @@ void DNP3OutstationPort::Build()
 	}
 
 	asiodnp3::OutstationStackConfig StackConfig(opendnp3::DatabaseSizes(
-			pConf->pPointConf->BinaryIndicies.size(), //numBinary
-			0,                                        //numDoubleBinary
-			pConf->pPointConf->AnalogIndicies.size(), //numAnalog
-			0,                                        //numCounter
-			0,                                        //numFrozenCounter
-			0,                                        //numBinaryOutputStatus
-			0,                                        //numAnalogOutputStatus
-			0,                                        //numTimeAndInterval
-			0));                                      //numOctetString
+		pConf->pPointConf->BinaryIndicies.size(), //numBinary
+		0,                                        //numDoubleBinary
+		pConf->pPointConf->AnalogIndicies.size(), //numAnalog
+		0,                                        //numCounter
+		0,                                        //numFrozenCounter
+		0,                                        //numBinaryOutputStatus
+		0,                                        //numAnalogOutputStatus
+		0,                                        //numTimeAndInterval
+		0));                                      //numOctetString
 
 	uint16_t rawIndex = 0;
 	for (auto index : pConf->pPointConf->AnalogIndicies)
@@ -229,29 +229,7 @@ void DNP3OutstationPort::Build()
 //DataPort function for UI
 const Json::Value DNP3OutstationPort::GetCurrentState() const
 {
-	Json::Value event;
-	Json::Value analogValues;
-	Json::Value binaryValues;
-	if (pOutstation == nullptr)
-		return IUIResponder::GenerateResult("Bad port");
-
-	//FIXME: The new opendnp3 API doesn't expose internal state
-
-//	auto configView = pOutstation->GetConfigView();
-//
-//	for (auto point : configView.analogs)
-//	{
-//		analogValues[std::to_string(point.vIndex)] = point.value.value;
-//	}
-//	for (auto point : configView.binaries)
-//	{
-//		binaryValues[std::to_string(point.vIndex)] = point.value.value;
-//	}
-
-	event["AnalogCurrent"] = analogValues;
-	event["BinaryCurrent"] = binaryValues;
-
-	return event;
+	return state;
 }
 
 //DataPort function for UI
@@ -357,15 +335,19 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
+			state["BinaryCurrent"][std::to_string(event->GetIndex())] = event->GetPayloadString();
 			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
+			state["AnalogCurrent"][std::to_string(event->GetIndex())] = event->GetPayloadString();
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
+			state["BinaryQuality"][std::to_string(event->GetIndex())] = event->GetPayloadString();
 			EventQ<opendnp3::Binary>(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
+			state["AnalogQuality"][std::to_string(event->GetIndex())] = event->GetPayloadString();
 			EventQ<opendnp3::Analog>(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:
@@ -381,7 +363,7 @@ template<typename T, typename Q>
 inline void DNP3OutstationPort::EventQ(Q qual, uint16_t index, opendnp3::FlagsType FT)
 {
 	asiodnp3::UpdateBuilder builder;
-	builder.Modify(FT,index,index,static_cast<uint8_t>(qual));
+	builder.Modify(FT, index, index, static_cast<uint8_t>(qual));
 	pOutstation->Apply(builder.Build());
 }
 

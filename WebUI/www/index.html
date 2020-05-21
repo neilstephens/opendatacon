@@ -70,12 +70,13 @@
               document.getElementById("frame_modal_title").innerHTML="Statistics[" + target +"]";
               $('#frame_modal').modal('show');
           } else if (command == "CurrentState") {
-              /*
-              document.getElementById("xl_frame_src").src = "current_state.html?target=" + target;
-              document.getElementById("xl_frame_modal_title").innerHTML="Current State[" + target + "]";
-              $('#xl_frame_modal').modal('show');
-              */
-              window.location.href="current_state.html?target=" + target;
+              document.getElementById("frame_src").src = "current_state.html?target=" + target;
+              document.getElementById("frame_modal_title").innerHTML="Current State[" + target + "]";
+              $('#frame_modal').modal('show');
+
+              $("#frame_modal").on("hidden.bs.modal", function () {
+                  location.reload();
+              });
           } else {
               const url = "/DataPorts/" + command;
               var getResponders = $.post( url, { Target : target } )
