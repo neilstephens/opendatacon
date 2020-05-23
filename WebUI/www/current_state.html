@@ -1,43 +1,130 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
 
+<html>
   <head>
-    <meta charset="utf-8"/>
-    <title>Mimic</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body {
+          font-family: Arial;
+          color: white;
+      }
 
-    <script src="/js/jquery.min.js"></script>
+      .split {
+          height: 100%;
+          width: 50%;
+          position: fixed;
+          z-index: 1;
+          top: 0;
+          overflow-x: hidden;
+          padding-top: 20px;
+      }
+
+      .left {
+          left: 0;
+          background-color: #F0FFFF;
+      }
+
+      .right {
+          right: 0;
+          background-color: #FFFFFF;
+      }
+
+      .centered {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          text-align: center;
+      }
+
+      .centered img {
+          width: 150px;
+          border-radius: 50%;
+      }
+    </style>
   </head>
 
   <body>
-    <svg id="mimic-svg" xmlns="http://www.w3.org/2000/svg" width="601.81927" height="725.12518"></svg>
-    <script>
+    <head>
+      <meta charset="utf-8"/>
+      <script src="/js/jquery.min.js"></script>
+      <script src= "/js/frame_modal/jquery.min.js"> </script>
+      <script src= "/js/frame_modal/bootstrap-treeview.min.js"> </script>
+      <script src= "/js/build_treeview_data.js"> </script>
 
-      // Send the data using post
-      $( document ).ready(function() {
-          target = new URL(window.location.href).searchParams.get('target');
+      <link rel="stylesheet" href="/css/common.css">
+      <link rel="stylesheet" href="/css/frame_modal/bootstrap.min.css">
+    </head>
 
-          const mimic_name = "dmc";
-          const mimic_SVG = "/mimics/" + mimic_name + ".svg";
-          const mimic_JS = "/mimics/" + mimic_name + ".js";
+    <div class="split left">
+      <div class="centered">
+        <body>
+          <svg id="mimic-svg" xmlns="http://www.w3.org/2000/svg" width="601.81927" height="725.12518"></svg>
+          <script>
+            // Send the data using post
+            $(document).ready(function() {
+                target = new URL(window.location.href).searchParams.get('target');
 
-          jQuery.getScript(mimic_JS)
-              .done(function() {
-                  console.log(mimic_JS + " loaded successfully !!!");
-              });
+                const mimic_name = "dmc";
+                const mimic_SVG = "/mimics/" + mimic_name + ".svg";
+                const mimic_JS = "/mimics/" + mimic_name + ".js";
 
-          $('#mimic-svg').load(mimic_SVG, null, function() {
-              window.setInterval(function() { refresh_values(target);  }, 1000);
-          });
-      });
+                jQuery.getScript(mimic_JS)
+                    .done(function() {
+                        console.log(mimic_JS + " loaded successfully !!!");
+                    });
 
-      function refresh_values(target) {
-          var getResponders = $.post( "/DataPorts/CurrentState", { Target : target } )
-              .done(function( data ) {
-                  updateMimic(document.getElementById("mimic-svg"), data);
-              });
-      }
+                $('#mimic-svg').load(mimic_SVG, null, function() {
+                    window.setInterval(function() { update_values(target);  }, 1000);
+                });
+            });
 
-    </script>
+            function update_values(target) {
+                $.post("/DataPorts/CurrentState", { Target : target })
+                    .done(function(data) {
+                        updateMimic(document.getElementById("mimic-svg"), data);
+                    });
+            }
+          </script>
+        </body>
+      </div>
+    </div>
+
+    <div class="split right">
+      <div class="centered">
+        <body>
+          <!-- current state view -->
+          <div class="container">
+            <div class="row">
+              <div class="col-md-4 col-md-offset-4">
+                <div id="current_state_view" class=""></div>
+              </div>
+            </div>
+          </div>
+
+          <script>
+            /* init function which will parse the url extract the target and load the current state */
+            $(document).ready(function() {
+                const target = new URL(window.location.href).searchParams.get('target');
+                window.setInterval(function() { refresh_values(target); }, 1000);
+            });
+
+            /* get current state by post from the server and display the data in treeview */
+            function refresh_values(target) {
+                const url = "/DataPorts/CurrentState";
+                $.post(url, {Target : target})
+                    .done(function(data) {
+                        const current_state_data = convert_to_treeview_data(data);
+                        $('#current_state_view').treeview({
+                            openedClass:'glyphicon-chevron-right',
+                            closedClass:'glyphicon-chevron-down',
+                            data: current_state_data,
+                        });
+                    });
+            }
+          </script>
+        </body>
+      </div>
+    </div>
   </body>
-
 </html>

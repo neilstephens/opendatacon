@@ -7,12 +7,13 @@
 
     <script src= "/js/frame_modal/jquery.min.js"> </script>
     <script src= "/js/frame_modal/bootstrap-treeview.min.js"> </script>
+    <script src= "/js/build_treeview_data.js"></script>
 
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/frame_modal/bootstrap.min.css">
   </head>
 
-  <body onload="init()">
+  <body>
     <!-- configuration view -->
     <div class="container">
       <div class="row">
@@ -23,95 +24,19 @@
     </div>
 
     <script>
-      /* init function which will parse the url extract the target and load the configuration view */
-      function init() {
+      $( document ).ready(function() {
           const target = new URL(window.location.href).searchParams.get('target');
-          get_configuration(target);
-      }
-
-      /* get configuration by post from the server and display the data in treeview */
-      function get_configuration(target) {
           const url = "/DataPorts/Configuration";
-          var getResponders = $.post(url, {Target : target})
+          $.post(url, {Target : target})
               .done(function(data) {
-                  var configuration_data = [];
-                  var count = 0;
-
-                  for (var key of Object.keys(data)) {
-                      if (key.length > 0) {
-                          if (typeof data[key] == 'object') {
-                              const nodes = get_node(data[key]);
-                              configuration_data.push(build_node(key, null, count, nodes));
-                          } else {
-                              configuration_data.push(build_node(key, data[key], count, null));
-                          }
-                      }
-                      ++count;
-                  }
-
+                  const configuration_data = convert_to_treeview_data(data);
                   $('#configuration_view').treeview({
                       openedClass:'glyphicon-chevron-right',
                       closedClass:'glyphicon-chevron-down',
                       data: configuration_data,
                   });
               });
-      }
-
-      /* recursive function to build the treeview nodes, depending on object type[array or dictionary] or value pair */
-      function get_node(data) {
-          if (data) {
-              var node = [];
-              var count = 0;
-
-              if (Array.isArray(data) == true) {
-                  for (var i = 0; i < data.length; ++i) {
-                      var count = 0;
-                      for (var key of Object.keys(data[i])) {
-                          if (typeof data[i][key] == 'object') {
-                              var sub_node = get_node(data[i][key]);
-                              node.push(build_node(key, null, count, sub_node));
-                          } else {
-                              node.push(build_node(key, data[i][key], count, null));
-                          }
-
-                          ++count;
-                      }
-                  }
-              } else {
-                  for (var key of Object.keys(data)) {
-                      if (typeof data[key] == 'object') {
-                          var sub_key = get_node(data[key]);
-                          node.push(build_node(key, null, count, sub_key));
-                      } else {
-                          node.push(build_node(key, data[key], count, null));
-                      }
-
-                      ++count;
-                  }
-              }
-
-              return node;
-          }
-      }
-
-      /* this function build the node or sub node depending on the value or nodes are present or not */
-      function build_node(key, value, count, nodes) {
-          var node = {};
-          var d = key;
-          if (value != null) {
-              d += " : " + value;
-          }
-          node["text"] = d;
-          node["tags"] = "'" + count + "'";
-          node["href"] = "#" + "_" + d;
-          if (nodes != null)
-              node["nodes"] = nodes;
-
-          return node;
-      }
-
+      });
     </script>
-
   </body>
-
 </html>

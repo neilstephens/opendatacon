@@ -7,6 +7,7 @@
 
     <script src= "/js/frame_modal/jquery.min.js"> </script>
     <script src= "/js/frame_modal/bootstrap-treeview.min.js"> </script>
+    <script src= "/js/build_treeview_data.js"> </script>
 
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/frame_modal/bootstrap.min.css">
@@ -24,48 +25,19 @@
 
     <script>
       /* init function which will parse the url extract the target and load the statistics view */
-      function init() {
-          console.log(window.location.href);
+      $( document ).ready(function() {
           const target = new URL(window.location.href).searchParams.get('target');
-          get_statistics(target);
-      }
-
-      /* get statistics by post from the server and display the data in treeview */
-      function get_statistics(target) {
           const url = "/DataPorts/Statistics";
-          var getResponders = $.post(url, {Target : target})
+          $.post( url, { Target : target } )
               .done(function(data) {
-                  var statistics_data= [];
-                  var count = 0;
-
-                  for (var key of Object.keys(data)) {
-                      var node = {};
-                      var nodes = [];
-                      for (var sub_key of Object.keys(data[key])) {
-                          var sub_node = {};
-                          const d = sub_key + " : " + data[key][sub_key];
-                          sub_node["text"] = d;
-                          sub_node["tags"] = "0";
-                          sub_node["href"] = "#" + d;
-                          nodes.push(sub_node);
-                          ++count;
-                      }
-                      node["text"] = key;
-                      node["tags"] = "'" + count + "'";
-                      node["href"] = "#" + key;
-                      node["nodes"] = nodes;
-                      statistics_data.push(node);
-                  }
-
+                  const statistics_data = convert_to_treeview_data(data);
                   $('#statistics_view').treeview({
                       openedClass:'glyphicon-chevron-right',
                       closedClass:'glyphicon-chevron-down',
                       data: statistics_data,
                   });
               });
-      }
+      });
     </script>
-
   </body>
-
 </html>

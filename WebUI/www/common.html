@@ -40,3 +40,28 @@
     </div>
   </div>
 </div>
+
+<!-- Responsive modal with custom with and height to accomodate current state -->
+<div class="modal custom fade" id="current_state_modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          <div id="current_state_modal_title"></div>
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+
+      <div class="modal-body mb-0 p-0">
+          <div class="embed-responsive embed-responsive-1by1">
+            <iframe class="embed-responsive-item" id="current_state_src" src=""></iframe>
+          </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
