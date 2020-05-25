@@ -206,7 +206,8 @@ int WebUI::http_ahc(void *cls,
 
 		std::string data = oss.str();
 		/* Remove the list command for DataPorts  */
-		if (url == "/DataPorts/List" && method == "POST")
+		if ((url == "/DataPorts/List" ||
+		     url == "/DataConnectors/List") && method == "POST")
 		{
 			const std::size_t pos = data.find("List");
 			std::string temp = data.substr(0, pos - 2);
@@ -214,6 +215,7 @@ int WebUI::http_ahc(void *cls,
 			temp += data.substr(pos + 8, data.size() - pos + 8);
 			data = temp;
 		}
+
 		return ReturnJSON(connection, data);
 	}
 	else

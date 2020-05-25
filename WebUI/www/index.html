@@ -117,6 +117,34 @@
           }
       }
 
+      /* post a query to the server with target and get the data connectors */
+      function get_data_connectors(target, command) {
+          if (command == "Configuration") {
+              document.getElementById("frame_src").src = "configuration.html?target=" + target;
+              document.getElementById("frame_modal_title").innerHTML="Configuration[" + target +"]";
+              $('#frame_modal').modal('show');
+          } else {
+              const url = "/DataConnectors/" + command;
+              $.post( url, { Target : target } )
+                  .done(function( data ) {
+                      if (data) {
+                          var result = '';
+                          for (var key of Object.keys(data)) {
+                              result += key + ' : ' + data[key] + '<br>';
+                          }
+
+                          document.getElementById("short_text_modal_title").innerHTML="Data Connectors[" + target + ", " + command +"]";
+                          document.getElementById("short_text_modal_data").innerHTML=result;
+                          $('#short_text_modal').modal('show');
+                      } else {
+                          document.getElementById("short_text_modal_title").innerHTML="Data Connectors[" + target + ", " + command +"]";
+                          document.getElementById("short_text_modal_data").innerHTML="NULL";
+                          $('#short_text_modal').modal('show');
+                      }
+                  });
+          }
+      }
+
       /* post a query to the server with Data ports list */
       $.post( "/DataPorts/List", { } ).done(function( data ) {
           for(command in data["Commands"]) {
@@ -142,12 +170,11 @@
           }
 
           var TableData = [];
-          for(target in data["Items"])
-          {
+          for(target in data["Items"]) {
               var TableRow = [data["Items"][target]];
-              for(command in data["Commands"])
-              {
-                  TableRow.push('<a href="' + data["Commands"][command] + '.html#/DataConnectors/' + data["Items"][target] + '">' + data["Commands"][command] + '</a>');
+              for(command in data["Commands"]) {
+                  const row = '<a href="javascript:void(0);" onclick="get_data_connectors(\'' + data["Items"][target] + '\', \'' + data["Commands"][command] + '\');">' + data["Commands"][command] + '</a>'
+                  TableRow.push(row);
               }
               TableData.push(TableRow);
           }
