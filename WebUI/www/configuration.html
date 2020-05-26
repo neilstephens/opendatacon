@@ -25,8 +25,10 @@
 
     <script>
       $( document ).ready(function() {
+          const type = new URL(window.location.href).searchParams.get('type');
           const target = new URL(window.location.href).searchParams.get('target');
-          const url = "/DataPorts/Configuration";
+          const url = "/" + type + "/Configuration";
+
           $.post(url, {Target : target})
               .done(function(data) {
                   const configuration_data = convert_to_treeview_data(data);

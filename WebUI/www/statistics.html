@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/frame_modal/bootstrap.min.css">
   </head>
 
-  <body onload="init()">
+  <body>
     <!-- statistics view -->
     <div class="container">
       <div class="row">
@@ -26,8 +26,9 @@
     <script>
       /* init function which will parse the url extract the target and load the statistics view */
       $( document ).ready(function() {
+          const type = new URL(window.location.href).searchParams.get('type');
           const target = new URL(window.location.href).searchParams.get('target');
-          const url = "/DataPorts/Statistics";
+          const url = "/" + type + "/Statistics";
           $.post( url, { Target : target } )
               .done(function(data) {
                   const statistics_data = convert_to_treeview_data(data);
