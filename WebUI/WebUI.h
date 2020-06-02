@@ -65,6 +65,10 @@ private:
 	bool useSSL = false;
 	/* UI response handlers */
 	std::unordered_map<std::string, const IUIResponder*> Responders;
+	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
+
+	std::string HandleSimControl(const std::string& url);
+	std::string HandleOpenDataCon(const std::string& url);
 };
 
 #endif /* defined(__opendatacon__WebUI__) */

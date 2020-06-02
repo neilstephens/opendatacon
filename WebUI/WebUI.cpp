@@ -137,7 +137,7 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root):
 
 void WebUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
 {
-	// TODO: complete
+	RootCommands[name] = callback;
 }
 
 void WebUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
@@ -189,11 +189,24 @@ int WebUI::http_ahc(void *cls,
 		}
 	}
 
+	/* it will handle the OpenDataCon requests */
+	if (url.find("/OpenDataCon") != std::string::npos)
+	{
+		const std::string data = HandleOpenDataCon(url);
+		return ReturnJSON(connection, data);
+	}
+
+	/* it will handle the SimControl requests */
+	if (url.find("/SimControl") != std::string::npos)
+	{
+		const std::string data = HandleSimControl(url);
+		return ReturnJSON(connection, data);
+	}
+
 	const std::string ResponderName = GetPath(url);
 	if (Responders.count(ResponderName))
 	{
 		const std::string command = GetFile(&url[ResponderName.length()]);
-
 		Json::Value event;
 
 		//TODO: make this writer reusable (class member)
@@ -276,4 +289,69 @@ void WebUI::Disable()
 	d = nullptr;
 }
 
+std::string WebUI::HandleSimControl(const std::string& url)
+{
+	const std::string simcontrol = "/SimControl";
+	const std::string command = url.substr(simcontrol.size() + 1, url.size() - simcontrol.size());
+
+	Json::Value value;
+	std::string data;
+
+	if (command == "List")
+	{
+		auto commands = Responders[simcontrol]->GetCommandList();
+		for (auto cmd : commands)
+		{
+			if (cmd.asString() != command)
+				value[cmd.asString()] = cmd.asString();
+		}
+	}
+
+	Json::StreamWriterBuilder wbuilder;
+	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+	std::ostringstream oss;
+	pWriter->write(value, &oss); oss<<std::endl;
+	return oss.str();
+}
+
+std::string WebUI::HandleOpenDataCon(const std::string& url)
+{
+	const std::string opendatacon = "/OpenDataCon";
+	const std::string log = "set_loglevel";
+	const std::string command = url.substr(opendatacon.size() + 1, url.size() - opendatacon.size());
+
+	Json::Value value;
+	std::string data;
+	if (command == "List")
+	{
+		for (auto it = RootCommands.begin();
+		     it != RootCommands.end(); ++it)
+		{
+			value[it->first] = it->first;
+		}
+	}
+	else if (command == "version")
+	{
+		ParamCollection params;
+		value = Responders[opendatacon]->ExecuteCommand(command, params);
+	}
+	else if (command.find(log) != std::string::npos)
+	{
+		const std::string log_type = command.substr(log.size(), command.size() - log.size());
+		const std::string cmd = "file " + log_type;
+		std::stringstream ss(cmd);
+		RootCommands["set_loglevel"](ss);
+	}
+	else
+	{
+		std::stringstream ss;
+		RootCommands[command](ss);
+	}
+
+	Json::StreamWriterBuilder wbuilder;
+	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+	std::ostringstream oss;
+	pWriter->write(value, &oss); oss<<std::endl;
+	return oss.str();
+}
 
