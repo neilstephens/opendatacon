@@ -12,6 +12,12 @@
     <script src="/node_modules/popper/dist/umd/popper.min.js"></script>
     <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
 
+    <style>
+      a.list-group-item:hover {
+          background:#FFEFD5;
+      }
+    </style>
+
     <script>
       $(function() {
           $("#common_content").load("common.html");
@@ -126,6 +132,12 @@
               });
           }
       }
+
+      $('.list-group').on('click','> a', function() {
+          var $this = $(this);
+          $('.list-group').find('.active').removeClass('active');
+          $this.addClass('active');
+      });
       </script>
   </body>
 </html>
