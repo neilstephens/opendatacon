@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenDataCon</title>
+
+    <script>
+      var fs = require('fs');
+    </script>
+  </head>
+
+  <body>
+    <div class="container">
+      <p class="text-primary">
+        <div id="data">
+        </div>
+      </p>
+    </div>
+
+    <script>
+      const file = "/home/rakesh/ausgrid/opendatacon/confs/ODC_Log.txt";
+      fs.watch(file, "utf8", function(event, trigger) {
+          console.log(trigger);
+      });
+    </script>
+  </body>
+</html>
