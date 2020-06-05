@@ -407,7 +407,7 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 
 inline void DNP3OutstationPort::SetState(const std::string& type, const std::string& index, const std::string& payload)
 {
-	pStateSync->post([&]()
+	pStateSync->post([=]()
 		{
 			state[type][index] = payload;
 		});
