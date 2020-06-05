@@ -224,12 +224,27 @@ void DNP3OutstationPort::Build()
 			log->error("{}: Error creating outstation.", Name);
 		return;
 	}
+
+	pStateSync = pIOS->make_strand();
 }
 
 //DataPort function for UI
 const Json::Value DNP3OutstationPort::GetCurrentState() const
 {
-	return state;
+	std::atomic_bool stateExecuted(false);
+	Json::Value temp_value;
+	pStateSync->post([this, &stateExecuted, &temp_value]()
+		{
+			temp_value = state;
+			stateExecuted = true;
+		});
+
+	while (!stateExecuted)
+	{
+		pIOS->run_one();
+	}
+
+	return temp_value;
 }
 
 //DataPort function for UI
@@ -332,22 +347,23 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		return;
 	}
 
+	std::string type;
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
-			state["BinaryCurrent"][std::to_string(event->GetIndex())] = event->GetPayloadString();
+			type = "BinaryCurrent";
 			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
-			state["AnalogCurrent"][std::to_string(event->GetIndex())] = event->GetPayloadString();
+			type = "AnalogCurrent";
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
-			state["BinaryQuality"][std::to_string(event->GetIndex())] = event->GetPayloadString();
+			type = "BinaryQuality";
 			EventQ<opendnp3::Binary>(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
-			state["AnalogQuality"][std::to_string(event->GetIndex())] = event->GetPayloadString();
+			type = "AnalogQuality";
 			EventQ<opendnp3::Analog>(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:
@@ -356,6 +372,10 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 			return;
 	}
+
+	const std::string index = std::to_string(event->GetIndex());
+	const std::string payload = event->GetPayloadString();
+	SetState(type, index, payload);
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
@@ -385,4 +405,10 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 	pOutstation->Apply(builder.Build());
 }
 
-
+inline void DNP3OutstationPort::SetState(const std::string& type, const std::string& index, const std::string& payload)
+{
+	pStateSync->post([&]()
+		{
+			state[type][index] = payload;
+		});
+}

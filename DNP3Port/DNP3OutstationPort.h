@@ -79,6 +79,7 @@ protected:
 
 private:
 	Json::Value state;
+	std::unique_ptr<asio::io_service::strand> pStateSync;
 	std::shared_ptr<asiodnp3::IOutstation> pOutstation;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
@@ -87,6 +88,8 @@ private:
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
+
+	void SetState(const std::string& type, const std::string& index, const std::string& payload);
 };
 
 #endif /* DNP3SERVERPORT_H_ */
