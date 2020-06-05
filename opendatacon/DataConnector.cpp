@@ -187,14 +187,17 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					continue;
 				}
 
-				//FIXME: need access to LogSinks on the DataConcentrator object
 				//Create a logger if we haven't already
-//				if(!odc::spdlog_get(libname))
-//				{
-//					auto pLibLogger = std::make_shared<spdlog::logger>(libname, begin(LogSinks), end(LogSinks));
-//					pLibLogger->set_level(spdlog::level::trace);
-//					odc::spdlog_register_logger(pLibLogger);
-//				}
+				if(!odc::spdlog_get(libname))
+				{
+					if(auto log = odc::spdlog_get("opendatacon"))
+					{
+						auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
+							odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+						pLogger->set_level(spdlog::level::trace);
+						odc::spdlog_register_logger(pLogger);
+					}
+				}
 
 				auto tx_cleanup = [=](Transform* tx)
 							{
