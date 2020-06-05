@@ -39,7 +39,7 @@
 #include <opendatacon/DataPort.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/TCPstringbuf.h>
-#include <spdlog/spdlog.h>
+#include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 
 #include "DataConnector.h"
@@ -76,7 +76,10 @@ private:
 
 	std::map<std::string,spdlog::sink_ptr> LogSinksMap;
 	std::vector<spdlog::sink_ptr> LogSinksVec;
+	inline void ListLogSinks();
 	void SetLogLevel(std::stringstream& ss);
+	void AddLogSink(std::stringstream& ss);
+	void DeleteLogSink(std::stringstream& ss);
 
 	std::vector<std::thread> threads;
 };

@@ -46,6 +46,11 @@ void spdlog_flush_all()
 	spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) {l->flush(); });
 }
 
+void spdlog_apply_all(const std::function<void(std::shared_ptr<spdlog::logger>)> &fun)
+{
+	spdlog::apply_all(fun);
+}
+
 void spdlog_register_logger(std::shared_ptr<spdlog::logger> logger)
 {
 	return spdlog::register_logger(logger);

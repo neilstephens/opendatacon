@@ -87,22 +87,21 @@ const std::string GetFile(const std::string& rUrl)
 	return rUrl.substr(last+1);
 }
 
-int ReturnFile(struct MHD_Connection *connection,
-	const char *url)
+int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 {
 	struct stat buf;
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;
-	std::string filename = "www/" + std::string(&url[1]);
-	if ((0 == stat(filename.c_str(), &buf)) && (S_ISREG(buf.st_mode)))
-		fopen_s(&file, filename.c_str(), "rb");
+
+	if ((0 == stat(url.c_str(), &buf)) && (S_ISREG(buf.st_mode)))
+		fopen_s(&file, url.c_str(), "rb");
 	else
 		file = nullptr;
 	if (file == nullptr)
 	{
 		if (auto log = odc::spdlog_get("WebUI"))
-			log->error("WebUI : Failed to open file {}", filename);
+			log->error("WebUI : Failed to open file {}", url);
 
 		response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
 			(void *)EMPTY_PAGE,
@@ -127,7 +126,7 @@ int ReturnFile(struct MHD_Connection *connection,
 	return ret;
 }
 
-int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr)
+int ReturnJSON(struct MHD_Connection *connection, const std::string& json_str)
 {
 	struct MHD_Response *response;
 	int ret;
@@ -136,8 +135,8 @@ int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr)
 	 MHD_RESPMEM_MUST_FREE
 	 MHD_RESPMEM_MUST_COPY
 	 */
-	response = MHD_create_response_from_buffer(strlen(jsoncstr),
-		(void *)jsoncstr,
+	response = MHD_create_response_from_buffer(json_str.size(),
+		(void *)json_str.c_str(),
 		MHD_RESPMEM_MUST_COPY);
 	MHD_add_response_header (response, "Content-Type", MimeTypeMap.at("json").c_str());
 	ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
@@ -243,11 +242,11 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 
 int CreateNewRequest(void *cls,
 	struct MHD_Connection *connection,
-	const char *url,
-	const char *method,
-	const char *version,
-	const char *upload_data,
-	size_t *upload_data_size,
+	const std::string& url,
+	const std::string& method,
+	const std::string& version,
+	const std::string& upload_data,
+	size_t& upload_data_size,
 	void **con_cls)
 {
 	struct connection_info_struct *con_info;
@@ -256,8 +255,8 @@ int CreateNewRequest(void *cls,
 	if (nullptr == con_info) return MHD_NO;
 	*con_cls = (void*)con_info;
 
-	if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) return MHD_YES;
-	if (0 == strcmp(method, "POST"))
+	if (method == MHD_HTTP_METHOD_GET) return MHD_YES;
+	if (method == "POST")
 	{
 		auto length = atoi(MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "Content-Length"));
 		if (length == 0) return MHD_YES;
