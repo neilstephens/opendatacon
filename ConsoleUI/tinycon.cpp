@@ -422,10 +422,10 @@ void tinyConsole::run ()
 				line_pos = 0;
 				break;
 			default:
-        if (skip_out) {
-          skip_out = 0;
-          break;
-        }
+				if (skip_out) {
+					skip_out = 0;
+					break;
+				}
 				std::cout << c << std::flush;
 				if(line_pos == (int)buffer.size()) {
 					// line position is at the end of the buffer, just append
