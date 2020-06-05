@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenDataCon</title>
+
+    <link rel="stylesheet" href="/common_modules/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/common_modules/css/common.css">
+
+    <script src= "/node_modules/jquery/dist/jquery.min.js"> </script>
+    <script src= "/common_modules/js/bootstrap-treeview.min.js"> </script>
+    <script src= "/common_modules/js/build_treeview_data.js"> </script>
+  </head>
+
+  <body>
+    <!-- statistics view -->
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4 col-md-offset-4">
+          <div id="statistics_view" class=""></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* init function which will parse the url extract the target and load the statistics view */
+      $( document ).ready(function() {
+          const type = new URL(window.location.href).searchParams.get('type');
+          const target = new URL(window.location.href).searchParams.get('target');
+          const url = "/" + type + "/Statistics";
+          $.post( url, { Target : target } )
+              .done(function(data) {
+                  const statistics_data = convert_to_treeview_data(data);
+                  $('#statistics_view').treeview({
+                      openedClass:'glyphicon-chevron-right',
+                      closedClass:'glyphicon-chevron-down',
+                      data: statistics_data,
+                  });
+              });
+      });
+    </script>
+  </body>
+</html>

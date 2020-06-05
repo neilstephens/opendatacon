@@ -265,7 +265,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 		if(pTCPostream)
 		{
-			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostream.get());
+			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostream.get(), true);
 			tcp->set_level(log_level);
 			LogSinksMap["tcp"] = tcp;
 			LogSinksVec.push_back(tcp);

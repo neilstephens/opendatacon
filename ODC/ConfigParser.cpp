@@ -93,6 +93,7 @@ const Json::Value ConfigParser::GetConfiguration(const std::string& pFileName)
 	{
 		return JSONCache[pFileName];
 	}
+
 	return Json::Value();
 }
 
@@ -119,5 +120,17 @@ const Json::Value ConfigParser::GetConfiguration() const
 	}
 	JSONRoot["ConfigOverrides"] = ConfOverrides;
 
-	return JSONRoot;
+	Json::StreamWriterBuilder builder;
+	std::unique_ptr<Json::StreamWriter> const writer(builder.newStreamWriter());
+	std::ostringstream oss;
+	writer->write(JSONRoot, &oss); oss<<std::endl;
+
+	Json::Reader reader;
+	Json::Value root;
+	if ((reader.parse(oss.str().c_str(), root, false) == false))
+	{
+		std::cerr << "ERROR: JSON reader failed while parsing the configuration" << std::endl;
+	}
+
+	return root;
 }

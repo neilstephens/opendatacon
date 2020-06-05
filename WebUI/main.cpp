@@ -31,6 +31,7 @@ extern "C" WebUI* new_WebUIPlugin(const std::string& Name, const std::string& Fi
 {
 	std::string ip = "0.0.0.0";
 	uint16_t port = 443;
+	std::string web_root = "";
 	if(Overrides.isObject())
 	{
 		if(Overrides.isMember("IP"))
@@ -38,9 +39,12 @@ extern "C" WebUI* new_WebUIPlugin(const std::string& Name, const std::string& Fi
 
 		if(Overrides.isMember("Port"))
 			port = Overrides["Port"].asUInt();
+
+		if (Overrides.isMember("WebRoot"))
+			web_root = Overrides["WebRoot"].asString();
 	}
 
-	return new WebUI(port);
+	return new WebUI(port, web_root);
 }
 
 extern "C" void delete_WebUIPlugin(WebUI* aIUI_ptr)

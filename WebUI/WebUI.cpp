@@ -93,7 +93,12 @@ static int ahc(void *cls,
 	void **ptr)
 {
 	WebUI* test = (WebUI*)cls;
-	return test->http_ahc(cls, connection, url, method, version, upload_data, upload_data_size, ptr);
+	std::string upload_data_str;
+	if (*upload_data_size > 0)
+	{
+		upload_data_str = upload_data;
+	}
+	return test->http_ahc(cls, connection, url, method, version, upload_data_str, *upload_data_size, ptr);
 }
 
 static
@@ -111,9 +116,10 @@ std::string load_key(const char *filename)
 	return(contents);
 }
 
-WebUI::WebUI(uint16_t pPort):
+WebUI::WebUI(uint16_t pPort, const std::string& web_root):
 	d(nullptr),
-	port(pPort)
+	port(pPort),
+	web_root(web_root)
 {
 	try
 	{
@@ -131,7 +137,7 @@ WebUI::WebUI(uint16_t pPort):
 
 void WebUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
 {
-	// TODO: complete
+	RootCommands[name] = callback;
 }
 
 void WebUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
@@ -142,11 +148,11 @@ void WebUI::AddResponder(const std::string& name, const IUIResponder& pResponder
 /* HTTP access handler call back */
 int WebUI::http_ahc(void *cls,
 	struct MHD_Connection *connection,
-	const char *url,
-	const char *method,
-	const char *version,
-	const char *upload_data,
-	size_t *upload_data_size,
+	const std::string& url,
+	const std::string& method,
+	const std::string& version,
+	const std::string& upload_data,
+	size_t& upload_data_size,
 	void **con_cls)
 {
 	struct connection_info_struct *con_info;
@@ -166,14 +172,14 @@ int WebUI::http_ahc(void *cls,
 
 	ParamCollection params;
 
-	if (0 == strcmp(method, "POST"))
+	if (method == "POST")
 	{
 		con_info = (connection_info_struct*)*con_cls;
 
-		if (*upload_data_size != 0)
+		if (upload_data_size > 0)
 		{
-			MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
-			*upload_data_size = 0;
+			MHD_post_process(con_info->postprocessor, upload_data.c_str(), upload_data_size);
+			upload_data_size = 0;
 
 			return MHD_YES;
 		}
@@ -183,11 +189,24 @@ int WebUI::http_ahc(void *cls,
 		}
 	}
 
+	/* it will handle the OpenDataCon requests */
+	if (url.find("/OpenDataCon") != std::string::npos)
+	{
+		const std::string data = HandleOpenDataCon(url);
+		return ReturnJSON(connection, data);
+	}
+
+	/* it will handle the SimControl requests */
+	if (url.find("/SimControl") != std::string::npos)
+	{
+		const std::string data = HandleSimControl(url);
+		return ReturnJSON(connection, data);
+	}
+
 	const std::string ResponderName = GetPath(url);
 	if (Responders.count(ResponderName))
 	{
 		const std::string command = GetFile(&url[ResponderName.length()]);
-
 		Json::Value event;
 
 		//TODO: make this writer reusable (class member)
@@ -198,19 +217,29 @@ int WebUI::http_ahc(void *cls,
 		event = Responders[ResponderName]->ExecuteCommand(command, params);
 		pWriter->write(event, &oss); oss<<std::endl;
 
-		const char* jsoncstr = oss.str().c_str();
+		std::string data = oss.str();
+		/* Remove the list command for DataPorts  */
+		if ((url == "/DataPorts/List" ||
+		     url == "/DataConnectors/List") && method == "POST")
+		{
+			const std::size_t pos = data.find("List");
+			std::string temp = data.substr(0, pos - 2);
+			// we need to skip "List,"\n therefore we have a constant as 8
+			temp += data.substr(pos + 8, data.size() - pos + 8);
+			data = temp;
+		}
 
-		return ReturnJSON(connection, jsoncstr);
+		return ReturnJSON(connection, data);
 	}
 	else
 	{
-		if (strlen(url) == 1)
+		if (url == "/")
 		{
-			return ReturnFile(connection, ROOTPAGE);
+			return ReturnFile(connection, web_root + "/" + ROOTPAGE);
 		}
 		else
 		{
-			return ReturnFile(connection, url);
+			return ReturnFile(connection, web_root + "/" + url);
 		}
 	}
 }
@@ -260,4 +289,69 @@ void WebUI::Disable()
 	d = nullptr;
 }
 
+std::string WebUI::HandleSimControl(const std::string& url)
+{
+	const std::string simcontrol = "/SimControl";
+	const std::string command = url.substr(simcontrol.size() + 1, url.size() - simcontrol.size());
+
+	Json::Value value;
+	std::string data;
+
+	if (command == "List")
+	{
+		auto commands = Responders[simcontrol]->GetCommandList();
+		for (auto cmd : commands)
+		{
+			if (cmd.asString() != command)
+				value[cmd.asString()] = cmd.asString();
+		}
+	}
+
+	Json::StreamWriterBuilder wbuilder;
+	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+	std::ostringstream oss;
+	pWriter->write(value, &oss); oss<<std::endl;
+	return oss.str();
+}
+
+std::string WebUI::HandleOpenDataCon(const std::string& url)
+{
+	const std::string opendatacon = "/OpenDataCon";
+	const std::string log = "set_loglevel";
+	const std::string command = url.substr(opendatacon.size() + 1, url.size() - opendatacon.size());
+
+	Json::Value value;
+	std::string data;
+	if (command == "List")
+	{
+		for (auto it = RootCommands.begin();
+		     it != RootCommands.end(); ++it)
+		{
+			value[it->first] = it->first;
+		}
+	}
+	else if (command == "version")
+	{
+		ParamCollection params;
+		value = Responders[opendatacon]->ExecuteCommand(command, params);
+	}
+	else if (command.find(log) != std::string::npos)
+	{
+		const std::string log_type = command.substr(log.size(), command.size() - log.size());
+		const std::string cmd = "file " + log_type;
+		std::stringstream ss(cmd);
+		RootCommands["set_loglevel"](ss);
+	}
+	else
+	{
+		std::stringstream ss;
+		RootCommands[command](ss);
+	}
+
+	Json::StreamWriterBuilder wbuilder;
+	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+	std::ostringstream oss;
+	pWriter->write(value, &oss); oss<<std::endl;
+	return oss.str();
+}
 

@@ -16,3 +16,7 @@ MD3Port/uncrustify.cfg
 MD3Port/uncrustify_here.pl
 
 cmake-build-debug-mingw/
+
+GPATH
+GRTAGS
+GTAGS

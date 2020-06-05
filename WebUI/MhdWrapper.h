@@ -74,16 +74,16 @@ const std::string GetFile(const std::string& rUrl);
 
 int CreateNewRequest(void *cls,
 	struct MHD_Connection *connection,
-	const char *url,
-	const char *method,
-	const char *version,
-	const char *upload_data,
-	size_t *upload_data_size,
+	const std::string& url,
+	const std::string& method,
+	const std::string& version,
+	const std::string& upload_data,
+	size_t& upload_data_size,
 	void **con_cls);
 void request_completed(void *cls, struct MHD_Connection *connection,
 	void **con_cls,
 	enum MHD_RequestTerminationCode toe);
-int ReturnFile(struct MHD_Connection *connection, const char *url);
-int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr);
+int ReturnFile(struct MHD_Connection *connection, const std::string& url);
+int ReturnJSON(struct MHD_Connection *connection, const std::string& json_str);
 
 #endif /* defined(__opendatacon__MhdWrapper__) */
