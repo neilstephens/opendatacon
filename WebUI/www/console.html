@@ -14,7 +14,7 @@
 
     <style>
       a.list-group-item:hover {
-          background:#FFEFD5;
+          background:#00BFFF;
       }
     </style>
 
@@ -41,7 +41,7 @@
           <div class="list-group" id="opendatacon_list">
             <div id="opendatacon_commands"></div>
           </div>
-
+          </br>
           <div class="col-sm-6 text centre">
             <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
           </div>
@@ -51,7 +51,7 @@
           <div class="list-group" id="simcontrol_list">
             <div id="simcontrol_commands"></div>
           </div>
-
+          </br>
           <div class="col-sm-10 text center">
             <button id="execute_simcontrol_button" class="btn btn-primary btn-lg" onclick="execute_simcontrol_command()">Execute</button>
           </div>
@@ -59,7 +59,14 @@
       </div>
     </div>
 
-    </br>
+    </br></br></br>
+
+    <div class="alert alert-info clearfix">
+      <a href="#" class="alert-link"></a>
+      <div class="col text-center">
+        <button type="button" class="btn btn-primary btn-lg" onclick="logs()">Logs</button>
+      </div>
+    </div>
 
     <script>
       var opendatacon_command = null;
@@ -133,11 +140,14 @@
           }
       }
 
+      function logs() {
+      }
+
       $('.list-group').on('click','> a', function() {
           var $this = $(this);
           $('.list-group').find('.active').removeClass('active');
           $this.addClass('active');
       });
-      </script>
+    </script>
   </body>
 </html>
