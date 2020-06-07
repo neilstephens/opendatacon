@@ -44,8 +44,7 @@ DataConcentrator::DataConcentrator(std::string FileName):
 	pIOS(std::make_shared<odc::asio_service>(std::thread::hardware_concurrency()+1)),
 	ios_working(pIOS->make_work()),
 	shutting_down(false),
-	shut_down(false),
-	pTCPostream(nullptr)
+	shut_down(false)
 {
 	// Enable loading of libraries
 	InitLibaryLoading();
@@ -224,6 +223,14 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 	std::string sinkname;
 	std::string sinklevel;
 	std::string sinktype;
+	auto log = odc::spdlog_get("opendatacon");
+
+	if (LogSinksMap.find(sinkname) != LogSinksMap.end())
+	{
+		log->info("{} this named sink already exist, please try with another sink name", sinkname);
+		return;
+	}
+
 	if(ss>>sinkname && ss>>sinklevel && ss>>sinktype)
 	{
 		if(LogSinksMap.count(sinkname) == 0)
@@ -259,8 +266,26 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 			}
 			else if(sinktype == "TCP")
 			{
-				//TODO: implement
-				std::cout << "Not implemented." << std::endl;
+				std::string host;
+				std::string tcp_port;
+				std::string client_server;
+				if (ss >> host && ss >> tcp_port && ss >> client_server)
+				{
+					TCPbufs[sinkname].Init(pIOS, client_server == "CLIENT" ? false : true, host, tcp_port);
+					pTCPostreams[sinkname] = std::make_unique<std::ostream>(&TCPbufs[sinkname]);
+
+					if(pTCPostreams[sinkname])
+					{
+						auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams[sinkname].get(), true);
+						tcp->set_level(spdlog::level::off);
+						LogSinksMap[sinkname] = tcp;
+						LogSinksVec.push_back(tcp);
+					}
+				}
+				else
+				{
+					std::cout << "Usage: add_logsink <sinkname> <level> TCP <host> <port> <client / server>" << std::endl;
+				}
 			}
 			else if(sinktype == "FILE")
 			{
@@ -285,6 +310,7 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 	{
 		std::cout << "Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
 	}
+
 	ReloadLogSinks(LogSinksVec);
 }
 
@@ -313,6 +339,7 @@ void DataConcentrator::DeleteLogSink(std::stringstream& ss)
 	{
 		std::cout << "Usage: del_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
 	}
+
 	ReloadLogSinks(LogSinksVec);
 }
 
@@ -397,18 +424,19 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
 					temp_logger->error("Invalid TCPLog TCPClientServer setting '{}'. Choose CLIENT or SERVER. Defaulting to SERVER.", TCPLogJSON["TCPClientServer"].asString());
 
-				TCPbuf.Init(pIOS,isServer,TCPLogJSON["IP"].asString(),TCPLogJSON["Port"].asString());
-				pTCPostream = std::make_unique<std::ostream>(&TCPbuf);
+				TCPbufs["tcp"].Init(pIOS, isServer, TCPLogJSON["IP"].asString(), TCPLogJSON["Port"].asString());
+				pTCPostreams["tcp"] = std::make_unique<std::ostream>(&TCPbufs["tcp"]);
 			}
 		}
 
-		if(pTCPostream)
+		if(pTCPostreams.find("tcp") != pTCPostreams.end())
 		{
-			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostream.get(),true);
+			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams["tcp"].get(), true);
 			tcp->set_level(log_level);
 			LogSinksMap["tcp"] = tcp;
 			LogSinksVec.push_back(tcp);
 		}
+
 		odc::spdlog_init_thread_pool(4096,3);
 		AddLogger("opendatacon", LogSinksVec);
 	}
@@ -817,9 +845,12 @@ void DataConcentrator::Shutdown()
 			}
 
 			//shutdown tcp logger so it doesn't keep the io_service going
-			TCPbuf.DeInit();
-			if(LogSinksMap.count("tcp"))
-				LogSinksMap["tcp"]->set_level(spdlog::level::off);
+			for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
+			{
+			      it->second.DeInit();
+			      if(LogSinksMap.count(it->first))
+					LogSinksMap[it->first]->set_level(spdlog::level::off);
+			}
 
 			ios_working.reset();
 		});

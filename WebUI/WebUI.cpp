@@ -116,10 +116,11 @@ std::string load_key(const char *filename)
 	return(contents);
 }
 
-WebUI::WebUI(uint16_t pPort, const std::string& web_root):
+WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp_port):
 	d(nullptr),
 	port(pPort),
-	web_root(web_root)
+	web_root(web_root),
+	tcp_port(tcp_port)
 {
 	try
 	{
@@ -245,7 +246,11 @@ int WebUI::http_ahc(void *cls,
 }
 
 void WebUI::Build()
-{}
+{
+	std::string cmd = "tcp_web_ui off TCP 127.0.0.1 " + tcp_port + " SERVER";
+	std::stringstream ss(cmd);
+	RootCommands["add_logsink"](ss);
+}
 
 void WebUI::Enable()
 {
@@ -338,7 +343,7 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 	else if (command.find(log) != std::string::npos)
 	{
 		const std::string log_type = command.substr(log.size(), command.size() - log.size());
-		const std::string cmd = "file " + log_type;
+		const std::string cmd = "tcp " + log_type;
 		std::stringstream ss(cmd);
 		RootCommands["set_loglevel"](ss);
 	}
