@@ -134,13 +134,18 @@
                   const url = "/OpenDataCon/set_loglevel " + log_level;
                   $.post(url, {})
                       .done(function(data) {
-                          window.location.href="log.html";
+                          console.log("Rakesh set log level done for == " + url);
                       });
               });
           }
       }
 
       function logs() {
+          const url = "/OpenDataCon/tcp";
+          $.post(url, {})
+              .done(function (data) {
+                  console.log(data);
+              });
       }
 
       $('.list-group').on('click','> a', function() {

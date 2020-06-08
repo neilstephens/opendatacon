@@ -30,6 +30,8 @@
 
 #include <opendatacon/IUI.h>
 #include "MhdWrapper.h"
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 const char ROOTPAGE[] = "/index.html";
 
@@ -62,6 +64,8 @@ private:
 	std::string key_pem;
 	std::string web_root;
 	std::string tcp_port;
+	int sock;
+	struct sockaddr_in server_address;
 
 	bool useSSL = false;
 	/* UI response handlers */
@@ -70,6 +74,7 @@ private:
 
 	std::string HandleSimControl(const std::string& url);
 	std::string HandleOpenDataCon(const std::string& url);
+	void ConnectToTCPServer();
 };
 
 #endif /* defined(__opendatacon__WebUI__) */
