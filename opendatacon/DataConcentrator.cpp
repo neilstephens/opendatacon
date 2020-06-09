@@ -705,6 +705,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 }
+
 void DataConcentrator::Build()
 {
 	if(auto log = odc::spdlog_get("opendatacon"))
@@ -726,6 +727,7 @@ void DataConcentrator::Build()
 		Name_n_Conn.second->Build();
 	}
 }
+
 void DataConcentrator::Run()
 {
 	if (auto log = odc::spdlog_get("opendatacon"))

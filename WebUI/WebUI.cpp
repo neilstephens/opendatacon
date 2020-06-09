@@ -323,7 +323,7 @@ std::string WebUI::HandleSimControl(const std::string& url)
 std::string WebUI::HandleOpenDataCon(const std::string& url)
 {
 	const std::string opendatacon = "/OpenDataCon";
-	const std::string log = "set_loglevel";
+	const std::string set_log_level = "set_loglevel";
 	const std::string command = url.substr(opendatacon.size() + 1, url.size() - opendatacon.size());
 
 	Json::Value value;
@@ -340,23 +340,37 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 		ParamCollection params;
 		value = Responders[opendatacon]->ExecuteCommand(command, params);
 	}
-	else if (command.find(log) != std::string::npos)
+	else if (command.find(set_log_level) != std::string::npos)
 	{
-		const std::string log_type = command.substr(log.size(), command.size() - log.size());
+		const std::string log_type = command.substr(set_log_level.size(), command.size() - set_log_level.size());
 		const std::string cmd = "tcp_web_ui " + log_type;
 		std::stringstream ss(cmd);
 		RootCommands["set_loglevel"](ss);
 	}
-	else if (command == "tcp")
+	else if (command.find("tcp") != std::string::npos)
 	{
-		printf("Rakesh >>>> tcp got it man lets see sock == [%d]\n", sock);
-		if (sock == 0)
+		if (command == "tcp_logs_on")
 		{
-			ConnectToTCPServer();
+			if (sock == 0)
+			{
+				ConnectToTCPServer();
+			}
+
+			char buffer[10240] = {0};
+			read(sock, buffer, sizeof(buffer));
+			value["tcp_data"] = buffer;
 		}
-		char buffer[10240] = {0};
-		read(sock, buffer, sizeof(buffer));
-		value["tcp_data"] = buffer;
+		else
+		{
+			const std::size_t pos = command.find(" ");
+			if (pos != std::string::npos)
+			{
+				const std::string log_type = command.substr(pos, command.size() - pos);
+				const std::string cmd = "tcp_web_ui" + log_type + " off";
+				std::stringstream ss(cmd);
+				RootCommands["set_loglevel"](ss);
+			}
+		}
 	}
 	else
 	{

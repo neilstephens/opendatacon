@@ -16,6 +16,13 @@
       a.list-group-item:hover {
           background:#00BFFF;
       }
+
+      .modal.opendatacon .modal-dialog {
+          width:1240px;
+          /* For responsive */
+          max-width:100%;
+          max-height:100%;
+      }
     </style>
 
     <script>
@@ -62,10 +69,7 @@
     </br></br></br>
 
     <div class="alert alert-info clearfix">
-      <a href="#" class="alert-link"></a>
-      <div class="col text-center">
-        <button type="button" class="btn btn-primary btn-lg" onclick="logs()">Logs</button>
-      </div>
+        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="logs()">Logs</button>
     </div>
 
     <script>
@@ -141,11 +145,19 @@
       }
 
       function logs() {
-          const url = "/OpenDataCon/tcp";
-          $.post(url, {})
-              .done(function (data) {
-                  console.log(data);
-              });
+          document.getElementById("opendatacon_logs_src").src = "log.html";
+          document.getElementById("opendatacon_logs_modal_title").innerHTML="OpenDataCon Logs";
+          $('#opendatacon_logs_modal').modal('show');
+
+          $("#opendatacon_logs_modal").on("hidden.bs.modal", function () {
+              location.reload();
+              const log_level = window.localStorage.getItem("log_level");
+              const url = "/OpenDataCon/tcp_logs_off " + log_level;
+              $.post(url, {})
+                  .done(function(data) {
+                      console.log("Rakesh set log level done for == " + url + " turned off");
+                  });
+          });
       }
 
       $('.list-group').on('click','> a', function() {
