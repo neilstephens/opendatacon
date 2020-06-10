@@ -241,7 +241,7 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 
 	while (!stateExecuted)
 	{
-		pIOS->run_one();
+		pIOS->poll_one();
 	}
 
 	return temp_value;
