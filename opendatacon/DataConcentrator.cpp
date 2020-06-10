@@ -39,6 +39,28 @@
 #include "DataConcentrator.h"
 #include "NullPort.h"
 
+inline void AddLogger(const std::string& name, const std::vector<spdlog::sink_ptr>& LogSinksVec)
+{
+	auto pLogger = std::make_shared<spdlog::async_logger>(name, begin(LogSinksVec), end(LogSinksVec),
+		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+	pLogger->set_level(spdlog::level::trace);
+	odc::spdlog_register_logger(pLogger);
+}
+
+//Drop and reload all the loggers
+//This may cause some log messages to be lost...
+inline void ReloadLogSinks(const std::vector<spdlog::sink_ptr>& LogSinksVec)
+{
+	std::vector<std::string> lognames;
+	odc::spdlog_apply_all([&](std::shared_ptr<spdlog::logger> log)
+		{
+			lognames.push_back(log->name());
+		});
+	odc::spdlog_drop_all();
+	for(const auto& name : lognames)
+		AddLogger(name, LogSinksVec);
+}
+
 DataConcentrator::DataConcentrator(std::string FileName):
 	ConfigParser(FileName),
 	pIOS(std::make_shared<odc::asio_service>(std::thread::hardware_concurrency()+1)),
@@ -125,59 +147,13 @@ DataConcentrator::~DataConcentrator()
 		thread.detach();
 	threads.clear();
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-	{
-		//if there's a tcp sink, we need to destroy it
-		//	because ostream will be destroyed
-		//same for syslog, because asio::io_service will be destroyed
-		for(const char* logger : {"tcp","syslog"})
-		{
-			if(LogSinksMap.count(logger))
-			{
-				//This doesn't look thread safe
-				//	but we're on the main thread at this point
-				//	the only other threads should be spdlog threads
-				//	so if we flush first this should be safe...
-				//BUT flush doesn't wait for the async Qs :-(
-				//	it only flushes the sinks
-				//	only thing to do is give some time for the Qs to empty
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				log->flush();
-				auto tcp_sink_pos = std::find(log->sinks().begin(),log->sinks().end(),LogSinksMap[logger]);
-				if(tcp_sink_pos != log->sinks().end())
-				{
-					log->sinks().erase(tcp_sink_pos);
-				}
-			}
-		}
-	}
+	LogSinksMap.clear();
+	LogSinksVec.clear();
+	ReloadLogSinks(LogSinksVec);
 }
 
 //FIXME: the following command functions shouldn't really print to the console,
 //	they should return values to be compatible with non-cosole UIs
-
-inline void AddLogger(const std::string& name, const std::vector<spdlog::sink_ptr>& LogSinksVec)
-{
-	auto pLogger = std::make_shared<spdlog::async_logger>(name, begin(LogSinksVec), end(LogSinksVec),
-		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-	pLogger->set_level(spdlog::level::trace);
-	odc::spdlog_register_logger(pLogger);
-}
-
-//Drop and reload all the loggers
-//This may cause some log messages to be lost...
-inline void ReloadLogSinks(const std::vector<spdlog::sink_ptr>& LogSinksVec)
-{
-	std::vector<std::string> lognames;
-	odc::spdlog_apply_all([&](std::shared_ptr<spdlog::logger> log)
-		{
-			lognames.push_back(log->name());
-		});
-	odc::spdlog_drop_all();
-	for(const auto& name : lognames)
-		AddLogger(name, LogSinksVec);
-}
-
 inline void DataConcentrator::ListLogSinks()
 {
 	std::cout << "Sinks:" << std::endl;
