@@ -39,9 +39,23 @@
 #include "DataConcentrator.h"
 #include "NullPort.h"
 
-inline void AddLogger(const std::string& name, const std::vector<spdlog::sink_ptr>& LogSinksVec)
+/*
+   Whenever needed we will ask for all the Sinks present,
+   I don't like this personally, but due to the limitations with spdlogs,
+   we need to create sinks only once can't add on the fly.
+ */
+inline std::vector<spdlog::sink_ptr> GetAllSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks)
 {
-	auto pLogger = std::make_shared<spdlog::async_logger>(name, begin(LogSinksVec), end(LogSinksVec),
+	std::vector<spdlog::sink_ptr> sink_vec;
+	for (auto it = sinks.begin(); it != sinks.end(); ++it)
+		sink_vec.push_back(it->second);
+	return sink_vec;
+}
+
+inline void AddLogger(const std::string& name, const std::unordered_map<std::string, spdlog::sink_ptr>& sinks)
+{
+	const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(sinks);
+	auto pLogger = std::make_shared<spdlog::async_logger>(name, sink_vec.begin(), sink_vec.end(),
 		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
 	pLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pLogger);
@@ -49,7 +63,7 @@ inline void AddLogger(const std::string& name, const std::vector<spdlog::sink_pt
 
 //Drop and reload all the loggers
 //This may cause some log messages to be lost...
-inline void ReloadLogSinks(const std::vector<spdlog::sink_ptr>& LogSinksVec)
+inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks)
 {
 	std::vector<std::string> lognames;
 	odc::spdlog_apply_all([&](std::shared_ptr<spdlog::logger> log)
@@ -58,7 +72,7 @@ inline void ReloadLogSinks(const std::vector<spdlog::sink_ptr>& LogSinksVec)
 		});
 	odc::spdlog_drop_all();
 	for(const auto& name : lognames)
-		AddLogger(name, LogSinksVec);
+		AddLogger(name, sinks);
 }
 
 DataConcentrator::DataConcentrator(std::string FileName):
@@ -146,10 +160,6 @@ DataConcentrator::~DataConcentrator()
 	for (auto& thread : threads)
 		thread.detach();
 	threads.clear();
-
-	LogSinksMap.clear();
-	LogSinksVec.clear();
-	ReloadLogSinks(LogSinksVec);
 }
 
 //FIXME: the following command functions shouldn't really print to the console,
@@ -157,8 +167,8 @@ DataConcentrator::~DataConcentrator()
 inline void DataConcentrator::ListLogSinks()
 {
 	std::cout << "Sinks:" << std::endl;
-	for(auto& sink : LogSinksMap)
-		std::cout << sink.first << std::endl;
+	for (auto it = LogSinks.begin(); it != LogSinks.end(); ++it)
+		std::cout << it->first << std::endl;
 }
 
 void DataConcentrator::SetLogLevel(std::stringstream& ss)
@@ -167,26 +177,21 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 	std::string level_str;
 	if(ss>>sinkname && ss>>level_str)
 	{
-		for(auto& sink : LogSinksMap)
+		auto new_level = spdlog::level::from_str(level_str);
+		if(new_level == spdlog::level::off && level_str != "off")
 		{
-			if(sink.first == sinkname)
-			{
-				auto new_level = spdlog::level::from_str(level_str);
-				if(new_level == spdlog::level::off && level_str != "off")
-				{
-					std::cout << "Invalid log level. Options are:" << std::endl;
-					for(uint8_t i = 0; i < 7; i++)
-						std::cout << spdlog::level::level_string_views[i].data() << std::endl;
-					return;
-				}
-				else
-				{
-					sink.second->set_level(new_level);
-					return;
-				}
-			}
+			std::cout << "Invalid log level. Options are:" << std::endl;
+			for(uint8_t i = 0; i < 7; i++)
+				std::cout << spdlog::level::level_string_views[i].data() << std::endl;
+			return;
+		}
+		else
+		{
+			LogSinks[sinkname]->set_level(new_level);
+			return;
 		}
 	}
+
 	std::cout << "Usage: set_loglevel <sinkname> <level>" << std::endl;
 	ListLogSinks();
 	std::cout << std::endl << "Levels:" << std::endl;
@@ -201,15 +206,9 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 	std::string sinktype;
 	auto log = odc::spdlog_get("opendatacon");
 
-	if (LogSinksMap.find(sinkname) != LogSinksMap.end())
-	{
-		log->info("{} this named sink already exist, please try with another sink name", sinkname);
-		return;
-	}
-
 	if(ss>>sinkname && ss>>sinklevel && ss>>sinktype)
 	{
-		if(LogSinksMap.count(sinkname) == 0)
+		if(LogSinks.find(sinkname) == LogSinks.end())
 		{
 			std::stringstream level_params;
 			level_params << sinkname << " " << sinklevel;
@@ -232,8 +231,7 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 					auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink>(
 						*pIOS,host,port,1,local_host,app,category);
 					syslog_sink->set_level(spdlog::level::off);
-					LogSinksMap[sinkname] = syslog_sink;
-					LogSinksVec.push_back(syslog_sink);
+					LogSinks[sinkname] = syslog_sink;
 				}
 				else
 				{
@@ -254,8 +252,7 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 					{
 						auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams[sinkname].get(), true);
 						tcp->set_level(spdlog::level::off);
-						LogSinksMap[sinkname] = tcp;
-						LogSinksVec.push_back(tcp);
+						LogSinks[sinkname] = tcp;
 					}
 				}
 				else
@@ -277,7 +274,7 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 		}
 		else
 		{
-			std::cout << "Log sink name already taken." << std::endl;
+			std::cout << "Error: [" << sinkname << "] Log sink name already taken." << std::endl;
 			ListLogSinks();
 			return;
 		}
@@ -287,7 +284,7 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 		std::cout << "Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
 	}
 
-	ReloadLogSinks(LogSinksVec);
+	ReloadLogSinks(LogSinks);
 }
 
 void DataConcentrator::DeleteLogSink(std::stringstream& ss)
@@ -295,14 +292,9 @@ void DataConcentrator::DeleteLogSink(std::stringstream& ss)
 	std::string sinkname;
 	if(ss>>sinkname)
 	{
-		if(LogSinksMap.count(sinkname))
+		if(LogSinks.find(sinkname) != LogSinks.end())
 		{
-			auto sink_pos = std::find(LogSinksVec.begin(),LogSinksVec.end(),LogSinksMap.at(sinkname));
-			if(sink_pos != LogSinksVec.end())
-			{
-				LogSinksVec.erase(sink_pos);
-			}
-			LogSinksMap.erase(sinkname);
+			LogSinks.erase(sinkname);
 		}
 		else
 		{
@@ -316,7 +308,7 @@ void DataConcentrator::DeleteLogSink(std::stringstream& ss)
 		std::cout << "Usage: del_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
 	}
 
-	ReloadLogSinks(LogSinksVec);
+	ReloadLogSinks(LogSinks);
 }
 
 void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
@@ -350,15 +342,14 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		file->set_level(log_level);
 		console->set_level(console_level);
 
-		LogSinksMap["file"] = file;
-		LogSinksVec.push_back(file);
-		LogSinksMap["console"] = console;
-		LogSinksVec.push_back(console);
+		LogSinks["file"] = file;
+		LogSinks["console"] = console;
 
 		//TODO: document these config options
 		if(JSONRoot.isMember("SyslogLog"))
 		{
-			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(LogSinksVec), end(LogSinksVec));
+			const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
+			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
 
 			auto SyslogJSON = JSONRoot["SyslogLog"];
 			if(!SyslogJSON.isMember("Host"))
@@ -376,15 +367,15 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink>(
 					*pIOS,host,port,1,local_host,app,category);
 				syslog_sink->set_level(log_level);
-				LogSinksMap["syslog"] = syslog_sink;
-				LogSinksVec.push_back(syslog_sink);
+				LogSinks["syslog"] = syslog_sink;
 			}
 		}
 
 		//TODO: document these config options
 		if(JSONRoot.isMember("TCPLog"))
 		{
-			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(LogSinksVec), end(LogSinksVec));
+			const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
+			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
 
 			auto TCPLogJSON = JSONRoot["TCPLog"];
 			if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
@@ -409,12 +400,11 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		{
 			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams["tcp"].get(), true);
 			tcp->set_level(log_level);
-			LogSinksMap["tcp"] = tcp;
-			LogSinksVec.push_back(tcp);
+			LogSinks["tcp"] = tcp;
 		}
 
 		odc::spdlog_init_thread_pool(4096,3);
-		AddLogger("opendatacon", LogSinksVec);
+		AddLogger("opendatacon", LogSinks);
 	}
 	catch (const spdlog::spdlog_ex& ex)
 	{
@@ -494,7 +484,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 			//Create a logger if we haven't already
 			if(!odc::spdlog_get(libname))
-				AddLogger(libname, LogSinksVec);
+				AddLogger(libname, LogSinks);
 
 			auto plugin_cleanup = [=](IUI* plugin)
 						    {
@@ -598,7 +588,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			//Create a logger if we haven't already
 			if(!odc::spdlog_get(libname))
-				AddLogger(libname, LogSinksVec);
+				AddLogger(libname, LogSinks);
 
 			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of DataPort
@@ -638,7 +628,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		const Json::Value Connectors = JSONRoot["Connectors"];
 
 		//make a logger for use by Connectors
-		AddLogger("Connectors", LogSinksVec);
+		AddLogger("Connectors", LogSinks);
 
 		for(Json::Value::ArrayIndex n = 0; n < Connectors.size(); ++n)
 		{
@@ -826,8 +816,8 @@ void DataConcentrator::Shutdown()
 			for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
 			{
 			      it->second.DeInit();
-			      if(LogSinksMap.count(it->first))
-					LogSinksMap[it->first]->set_level(spdlog::level::off);
+			      if(LogSinks.find(it->first) != LogSinks.end())
+					LogSinks[it->first]->set_level(spdlog::level::off);
 			}
 
 			ios_working.reset();
