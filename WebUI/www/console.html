@@ -49,8 +49,14 @@
             <div id="opendatacon_commands"></div>
           </div>
           </br>
-          <div class="col-sm-6 text centre">
-            <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
+          <div class="col-sm-12 text-center">
+              <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
+          </div>
+
+          </br></br></br>
+
+          <div class="alert alert-info clearfix">
+            <button type="button" class="btn btn-primary btn-lg btn-block" onclick="logs_opendatacon()">Logs</button>
           </div>
         </div>
         <div class="col-sm-6">
@@ -58,19 +64,20 @@
           <div class="list-group" id="simcontrol_list">
             <div id="simcontrol_commands"></div>
           </div>
-          </br>
-          <div class="col-sm-10 text center">
+          </br><br><br><br><br>
+          <div class="col-sm-20 text-center">
             <button id="execute_simcontrol_button" class="btn btn-primary btn-lg" onclick="execute_simcontrol_command()">Execute</button>
+          </div>
+
+          </br></br></br>
+
+          <div class="alert alert-info clearfix">
+            <button type="button" class="btn btn-primary btn-lg btn-block" onclick="logs_simcontrol()">Logs</button>
           </div>
         </div>
       </div>
     </div>
 
-    </br></br></br>
-
-    <div class="alert alert-info clearfix">
-        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="logs()">Logs</button>
-    </div>
 
     <script>
       var opendatacon_command = null;
@@ -144,7 +151,7 @@
           }
       }
 
-      function logs() {
+      function logs_opendatacon() {
           document.getElementById("opendatacon_logs_src").src = "log.html";
           document.getElementById("opendatacon_logs_modal_title").innerHTML="OpenDataCon Logs";
           $('#opendatacon_logs_modal').modal('show');
@@ -158,6 +165,10 @@
                       console.log("Rakesh set log level done for == " + url + " turned off");
                   });
           });
+      }
+
+      function logs_simcontrol() {
+          alert('Do you want to see the sim control logs?');
       }
 
       $('.list-group').on('click','> a', function() {
