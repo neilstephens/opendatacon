@@ -265,7 +265,7 @@ int CreateNewRequest(void *cls,
 	}
 
 	// unexpected method or couldn't create post processor
-	free(con_info);
+	delete con_info;
 	*con_cls = nullptr;
 	return MHD_NO;
 }
