@@ -332,39 +332,39 @@ void Wait(odc::asio_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup();\
-	auto IOS = std::make_shared<odc::asio_service>(4); // Max 4 threads
+	auto IOS = std::make_shared<odc::asio_service>(4) // Max 4 threads
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS);
+	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS)
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i]);
+	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i])
 
 #define TEST_MD3MAPort(overridejson)\
 	auto MD3MAPort = std::make_unique<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
 	MD3MAPort->SetIOS(IOS);      \
-	MD3MAPort->Build();
+	MD3MAPort->Build()
 
 #define TEST_MD3MAPort2(overridejson)\
 	auto MD3MAPort2 = std::make_unique<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
 	MD3MAPort2->SetIOS(IOS);      \
-	MD3MAPort2->Build();
+	MD3MAPort2->Build()
 
 #define TEST_MD3OSPort(overridejson)      \
 	auto MD3OSPort = std::make_unique<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
 	MD3OSPort->SetIOS(IOS);      \
-	MD3OSPort->Build();
+	MD3OSPort->Build()
 
 #define TEST_MD3OSPort2(overridejson)     \
 	auto MD3OSPort2 = std::make_unique<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
 	MD3OSPort2->SetIOS(IOS);     \
-	MD3OSPort2->Build();
+	MD3OSPort2->Build()
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -2613,7 +2613,7 @@ TEST_CASE("Master - Analog")
 	std::string Response = "Not Set";
 	MD3MAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
-	INFO("Analog Unconditional Fn5");
+	INFO("Analog Unconditional Fn5")
 	{
 		// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
 		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
@@ -2671,7 +2671,7 @@ TEST_CASE("Master - Analog")
 		REQUIRE(res == 0x1808);
 	}
 
-	INFO("Analog Delta Fn6");
+	INFO("Analog Delta Fn6")
 	{
 		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 		// Same address and channels as above
@@ -2735,7 +2735,7 @@ TEST_CASE("Master - Analog")
 		REQUIRE(res == 0x1808); // Unchanged
 	}
 
-	INFO("Analog Delta Fn6 - No Change Response");
+	INFO("Analog Delta Fn6 - No Change Response")
 	{
 		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 		// Same address and channels as above
@@ -2784,7 +2784,7 @@ TEST_CASE("Master - Analog")
 		REQUIRE(res == 0x1808); // Unchanged
 	}
 
-	INFO("Analog Unconditional Fn5 Timeout");
+	INFO("Analog Unconditional Fn5 Timeout")
 	{
 		// Now send a request analog unconditional command
 		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
@@ -2889,7 +2889,7 @@ TEST_CASE("Master - DOM and POM Tests")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("DOM ODC->Master Command Test");
+	INFO("DOM ODC->Master Command Test")
 	{
 		// So we want to send an ODC ControlRelayOutputBlock command to the Master through ODC, and check that it sends out the correct MD3 command,
 		// and then also when we send the correct response we get an ODC::success message.
@@ -2932,7 +2932,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		REQUIRE(res == CommandStatus::SUCCESS);
 	}
 
-	INFO("POM ODC->Master Command Test");
+	INFO("POM ODC->Master Command Test")
 	{
 		// So we want to send an ODC ControlRelayOutputBlock command to the Master through ODC, and check that it sends out the correct MD3 command,
 		// and then also when we send the correct response we get an ODC::success message.
@@ -2974,7 +2974,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		REQUIRE(res == CommandStatus::SUCCESS);
 	}
 
-	INFO("DOM OutStation->ODC->Master Command Test");
+	INFO("DOM OutStation->ODC->Master Command Test")
 	{
 		// We want to send a DOM Command to the OutStation, have it convert that to (up to) 16   Events.
 		// The Master will then ask for a response to those events (all 16!!), which we have to give it, as simulated TCP.
@@ -3012,7 +3012,7 @@ TEST_CASE("Master - DOM and POM Tests")
 	}
 
 
-	INFO("POM OutStation->ODC->Master Command Test");
+	INFO("POM OutStation->ODC->Master Command Test")
 	{
 		// We want to send a POM Command to the OutStation, it is a single bit and event, so easy compared to DOM
 		// It should responded with an OK packet, and its callback executed.
@@ -3097,7 +3097,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("DOM OutStation->ODC->Master Pass Through Command Test");
+	INFO("DOM OutStation->ODC->Master Pass Through Command Test")
 	{
 		// We want to send a DOM Command to the OutStation, but pass it through ODC unchanged. Use a "magic" analog port to do this.
 
@@ -3131,7 +3131,7 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 	}
 
 
-	INFO("POM OutStation->ODC->Master Pass Through Command Test");
+	INFO("POM OutStation->ODC->Master Pass Through Command Test")
 	{
 		LOGDEBUG("POM OutStation->ODC->Master Pass Through Command Test");
 
@@ -3214,7 +3214,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 	std::ostream MAoutput(&MAwrite_buffer);
 
 
-	INFO("Time Set Poll Command");
+	INFO("Time Set Poll Command")
 	{
 		// The config file has the timeset poll as group 2.
 		MD3MAPort->DoPoll(3);
@@ -3243,7 +3243,7 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 		REQUIRE(MAResponse == "Not Set");
 	}
 
-	INFO("Time Set TCP to OutStation to Master to TCP");
+	INFO("Time Set TCP to OutStation to Master to TCP")
 	{
 		// So we post time change command to the outstation, which should then go to the Master, which should then send a timechange command out on TCP.
 		// If the Outstation is standalone, it will not wait for the ODC response.
@@ -3336,7 +3336,7 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 
 	// We send a command to the outstation (as if from a master) it goes through ODC, and the Master then spits out a command. We respond to this and
 	// the response should find its way back and be spat out by the outstation...
-	INFO("System Sign On OutStation->ODC->Master Pass Through Command Test");
+	INFO("System Sign On OutStation->ODC->Master Pass Through Command Test")
 	{
 		// We want to send a System Sign On Command to the OutStation, but pass it through ODC unchanged. Use a "magic" analog port to do this.
 		MD3BlockFn40MtoS commandblock(0x7C);
@@ -3367,7 +3367,7 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 	}
 
 
-	INFO("Freeze Reset OutStation->ODC->Master Pass Through Command Test");
+	INFO("Freeze Reset OutStation->ODC->Master Pass Through Command Test")
 	{
 		// We want to send a FreezeReset Command to the OutStation.
 		// It should respond with an OK packet, and its callback executed.
@@ -3447,7 +3447,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("Test actual returned data for DCOS 11");
+	INFO("Test actual returned data for DCOS 11")
 	{
 		// We have two modules in this poll group, 34 and 35, ODC points 0 to 31.
 		// Will send 3 time tagged events, and data for both modules
@@ -3537,7 +3537,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("New Digital Poll Command");
+	INFO("New Digital Poll Command")
 	{
 		// Poll group 1, we want to send out the poll command from the master,
 		// inject a response and then look at the Masters point table to check that the data got to where it should.
@@ -3639,7 +3639,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("Flag Scan Poll Command");
+	INFO("Flag Scan Poll Command")
 	{
 		// Poll group 5, we want to send out the poll command from the master, then check the response.
 
