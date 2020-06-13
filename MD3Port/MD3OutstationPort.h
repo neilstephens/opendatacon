@@ -96,7 +96,7 @@ public:
 	~MD3OutstationPort() override;
 
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;

@@ -50,11 +50,11 @@ public:
 	int hotkeys(char c) override;
 
 	/* Implement IUI interface */
-	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
+	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override final;
 	void AddResponder(const std::string& name, const IUIResponder& pResponder) override;
 	void Build() override;
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 
 private:
 	/* */

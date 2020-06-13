@@ -62,7 +62,7 @@ public:
 	~MD3MasterPort() override;
 
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Build() override;
 	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 

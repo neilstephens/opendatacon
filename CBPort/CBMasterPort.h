@@ -62,7 +62,7 @@ public:
 	~CBMasterPort() override;
 
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Build() override;
 	void SendCBMessage(const CBMessage_t & CompleteCBMessage) override;
 

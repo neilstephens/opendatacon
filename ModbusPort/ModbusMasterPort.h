@@ -79,7 +79,7 @@ public:
 
 	// Implement ModbusPort
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Connect(modbus_t *mb);
 	void Disconnect();
 	void Build() override;
