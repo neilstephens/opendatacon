@@ -322,47 +322,47 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	auto IOS = std::make_shared<odc::asio_service>(4); // Max 4 threads
+	auto IOS = std::make_shared<odc::asio_service>(4) // Max 4 threads
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
-	TestSetup(Catch::getResultCapture().getCurrentTestName());
+	TestSetup(Catch::getResultCapture().getCurrentTestName())
 
 #define STANDARD_TEST_TEARDOWN()\
-	TestTearDown();\
+	TestTearDown()
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS);
+	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS)
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i]);
+	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i])
 
 #define TEST_CBMAPort(overridejson)\
 	auto CBMAPort = std::make_unique<CBMasterPort>("TestMaster", conffilename1, overridejson); \
 	CBMAPort->SetIOS(IOS);      \
-	CBMAPort->Build();
+	CBMAPort->Build()
 
 #define TEST_CBMAPort2(overridejson)\
 	auto CBMAPort2 = std::make_unique<CBMasterPort>("TestMaster", conffilename2, overridejson); \
 	CBMAPort2->SetIOS(IOS);      \
-	CBMAPort2->Build();
+	CBMAPort2->Build()
 
 
 #define TEST_CBOSPort(overridejson)      \
 	auto CBOSPort = std::make_unique<CBOutstationPort>("TestOutStation", conffilename1, overridejson);   \
 	CBOSPort->SetIOS(IOS);      \
-	CBOSPort->Build();
+	CBOSPort->Build()
 
 #define TEST_CBOSPort2(overridejson)     \
 	auto CBOSPort2 = std::make_unique<CBOutstationPort>("TestOutStation2", conffilename2, overridejson); \
 	CBOSPort2->SetIOS(IOS);     \
-	CBOSPort2->Build();
+	CBOSPort2->Build()
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS

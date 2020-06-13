@@ -238,7 +238,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				// If you want a resend command and not send the same command again, allow the following line.
 				// DoResendCommand = true;
 
-				LOGDEBUG("{} Sending Retry on command :{}", Name, GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode))
+				LOGDEBUG("{} Sending Retry on command :{}", Name, GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode));
 			}
 			else
 			{
@@ -253,7 +253,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 						SetAllPointsQualityToCommsLost(); // All the connected points need their quality set to comms lost
 					});
 
-				LOGDEBUG("{} Reached maximum number of retries on command :{}", Name, GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode))
+				LOGDEBUG("{} Reached maximum number of retries on command :{}", Name, GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode));
 			}
 		}
 
