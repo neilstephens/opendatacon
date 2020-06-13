@@ -412,19 +412,23 @@ TEST_CASE("Util - ParsePayloadString")
 	PayloadLocationType payloadlocation;
 
 	bool res = CBPointConf::ParsePayloadString("16B", payloadlocation);
+	REQUIRE(res == true);
 	REQUIRE(payloadlocation.Packet == 16);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionB);
 
 	res = CBPointConf::ParsePayloadString("1B", payloadlocation);
+	REQUIRE(res == true);
 	REQUIRE(payloadlocation.Packet == 1);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionB);
 
 	res = CBPointConf::ParsePayloadString("16A", payloadlocation);
+	REQUIRE(res == true);
 	REQUIRE(payloadlocation.Packet == 16);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionA);
 	LOGINFO("Ignore Next Three LOGGGED Errors");
 
 	res = CBPointConf::ParsePayloadString("1A", payloadlocation);
+	REQUIRE(res == false);
 	REQUIRE(payloadlocation.Packet == 1);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionA);
 
