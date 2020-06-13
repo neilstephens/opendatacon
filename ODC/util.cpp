@@ -107,7 +107,7 @@ bool extract_delimited_string(std::istream& ist, std::string& extracted)
 		if(ist.peek() == delim)
 		{
 			ist.seekg(reset_pos);
-			char ch;
+			char ch = '\0';
 			ist.get(ch); //start delim
 			while(--offset)
 			{

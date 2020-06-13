@@ -24,6 +24,7 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#include <sstream>
 #include "TCPSocketManager.h"
 
 namespace odc
