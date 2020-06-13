@@ -17,13 +17,13 @@ namespace http
 connection_manager::connection_manager()
 {}
 
-void connection_manager::start(connection_ptr c)
+void connection_manager::start(const connection_ptr& c)
 {
 	connections_.insert(c);
 	c->start();
 }
 
-void connection_manager::stop(connection_ptr c)
+void connection_manager::stop(const connection_ptr& c)
 {
 	connections_.erase(c);
 	c->stop();

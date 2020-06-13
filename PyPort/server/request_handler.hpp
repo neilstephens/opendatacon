@@ -37,7 +37,7 @@ namespace http
 			/// Construct with a directory containing files to be served.
 			explicit request_handler();
 
-			void register_handler(const std::string& uripattern, pHandlerCallbackType handler);
+			void register_handler(const std::string& uripattern, const pHandlerCallbackType& handler);
 
 			/// Handle a request and produce a reply.
 			void handle_request(const request& req, reply& rep);

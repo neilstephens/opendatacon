@@ -31,7 +31,7 @@
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const std::string _Name, const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag)
+void CBPointTableAccess::Build(const std::string& _Name, const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag)
 {
 	Name = _Name;
 	IsOutstation = isoutstation;
@@ -484,7 +484,7 @@ uint16_t CBPointTableAccess::GetCBControlPointMapIndex(const uint8_t & group, co
 	uint16_t CBIndex = ShiftLeftResult16Bits(group, 12) | ShiftLeftResult16Bits(channel, 8);
 	return CBIndex;
 }
-void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBBinaryPoint &pt)> fn)
+void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBBinaryPoint &pt)>& fn)
 {
 	// Need to do a search for channels 1 to 12 in the group and payloadlocation
 	for (uint8_t channel = 1; channel <= 12; channel++)
@@ -498,7 +498,7 @@ void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const
 	}
 }
 
-void CBPointTableAccess::ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint &pt)> fn)
+void CBPointTableAccess::ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint &pt)>& fn)
 {
 	// Max of two channels for analogs
 	for (uint8_t channel = 1; channel <= 2; channel++)
@@ -511,7 +511,7 @@ void CBPointTableAccess::ForEachMatchingAnalogPoint(const uint8_t & group, const
 		}
 	}
 }
-void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint &pt)> fn)
+void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint &pt)>& fn)
 {
 	uint16_t CBIndex = GetCBPointMapIndex(group, 1, payloadlocation);
 	if (CounterCBPointMap.count(CBIndex) != 0)
@@ -520,7 +520,7 @@ void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, cons
 		fn(*CounterCBPointMap[CBIndex]);
 	}
 }
-void CBPointTableAccess::ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn)
+void CBPointTableAccess::ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(void)>& fn)
 {
 	uint16_t CBIndex = GetCBPointMapIndex(group, 1, payloadlocation); // Use the same index as the points
 	if (StatusByteMap.count(CBIndex) != 0)
@@ -540,21 +540,21 @@ bool CBPointTableAccess::GetMaxPayload(uint8_t group, uint8_t & blockcount)
 	return true;
 }
 
-void CBPointTableAccess::ForEachBinaryPoint(std::function<void(CBBinaryPoint &pt)> fn)
+void CBPointTableAccess::ForEachBinaryPoint(const std::function<void(CBBinaryPoint &pt)>& fn)
 {
 	for (const auto& CBpt : BinaryODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}
 }
-void CBPointTableAccess::ForEachAnalogPoint(std::function<void(CBAnalogCounterPoint &pt)> fn)
+void CBPointTableAccess::ForEachAnalogPoint(const std::function<void(CBAnalogCounterPoint &pt)>& fn)
 {
 	for (const auto& CBpt : AnalogODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}
 }
-void CBPointTableAccess::ForEachCounterPoint(std::function<void(CBAnalogCounterPoint &pt)> fn)
+void CBPointTableAccess::ForEachCounterPoint(const std::function<void(CBAnalogCounterPoint &pt)>& fn)
 {
 	for (const auto& CBpt : CounterODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{

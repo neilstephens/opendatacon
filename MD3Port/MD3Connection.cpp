@@ -1,4 +1,4 @@
-﻿/*	opendatacon
+/*	opendatacon
  *
  *	Copyright (c) 2018:
  *
@@ -29,7 +29,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-
+#include <utility> 
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3Connection.h"
@@ -65,7 +65,7 @@ MD3Connection::MD3Connection
 	const std::string& aEndPoint,              //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                  //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms):
-	pIOS(apIOS),
+	pIOS(std::move(apIOS)),
 	EndPoint(aEndPoint),
 	Port(aPort),
 	isServer(aisServer),
@@ -112,8 +112,8 @@ ConnectionTokenType MD3Connection::AddConnection
 
 void MD3Connection::AddOutstation(const ConnectionTokenType &ConnectionTok,
 	uint8_t StationAddress, // For message routing, OutStation identification
-	const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
-	const std::function<void(bool)> aStateCallback)
+	const std::function<void(MD3Message_t &MD3Message)>& aReadCallback,
+	const std::function<void(bool)>& aStateCallback)
 {
 
 	if (auto pConnection = ConnectionTok.pConnection)
@@ -142,8 +142,8 @@ void MD3Connection::RemoveOutstation(const ConnectionTokenType &ConnectionTok, u
 }
 
 void MD3Connection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
-	const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
-	const std::function<void(bool)> aStateCallback)
+	const std::function<void(MD3Message_t &MD3Message)>& aReadCallback,
+	const std::function<void(bool)>& aStateCallback)
 {
 	if (auto pConnection = ConnectionTok.pConnection)
 	{
@@ -296,7 +296,7 @@ void MD3Connection::SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, s
 {
 	if (auto pConnection = ConnectionTok.pConnection)
 	{
-		pConnection->SendTCPDataFn = f;
+		pConnection->SendTCPDataFn = std::move(f);
 	}
 	else
 	{

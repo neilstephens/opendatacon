@@ -100,7 +100,7 @@ public:
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	CommandStatus Perform(std::shared_ptr<EventInfo> event, bool waitforresult);
+	CommandStatus Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult);
 
 	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 	void ProcessMD3Message(MD3Message_t &CompleteMD3Message);

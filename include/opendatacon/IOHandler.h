@@ -70,7 +70,7 @@ public:
 	virtual void Enable() = 0;
 	virtual void Disable() = 0;
 
-	void Subscribe(IOHandler* pIOHandler, std::string aName);
+	void Subscribe(IOHandler* pIOHandler, const std::string& aName);
 	void SetIOS(std::shared_ptr<odc::asio_service> ios_ptr);
 
 	inline const std::string& GetName(){return Name;}

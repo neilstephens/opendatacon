@@ -42,6 +42,7 @@
 #include <datetime.h> //PyDateTime
 #include <time.h>
 #include <iomanip>
+#include <utility>
 #include <exception>
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/Platform.h>
@@ -358,9 +359,9 @@ static PyObject* PyInit_odc(void)
 
 PythonWrapper::PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio_service> _pIOS, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn):
 	Name(aName),
-	pIOS(_pIOS),
-	PythonPortSetTimerFn(SetTimerFn),
-	PythonPortPublishEventCallFn(PublishEventCallFn)
+	pIOS(std::move(_pIOS)),
+	PythonPortSetTimerFn(std::move(SetTimerFn)),
+	PythonPortPublishEventCallFn(std::move(PublishEventCallFn))
 {
 	EventQueue = std::make_shared<SpecialEventQueue<std::string>>(pIOS, MaximumQueueSize);
 }
@@ -729,7 +730,7 @@ bool PythonWrapper::DequeueEvent(std::string& eq)
 
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.
 // This method is synced with the asio strand in PyPort
-CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName)
+CommandStatus PythonWrapper::Event(const std::shared_ptr<const EventInfo>& odcevent, const std::string& SenderName)
 {
 	try
 	{

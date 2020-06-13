@@ -17,7 +17,7 @@ namespace http
 
 
 server::server(std::shared_ptr<odc::asio_service> _pIOS, const std::string& _address, const std::string& _port)
-	: pIOS(_pIOS),
+	: pIOS(std::move(_pIOS)),
 	acceptor_(nullptr),
 	connection_manager_(),
 	request_handler_(),

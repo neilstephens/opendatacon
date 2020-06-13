@@ -17,7 +17,7 @@
 
 using asio::ip::tcp;
 
-bool DoHttpRequst(std::string server, std::string port, std::string path, std::string& callresp)
+bool DoHttpRequst(const std::string& server, const std::string& port, const std::string& path, std::string& callresp)
 {
 	std::stringstream sout;
 	try

@@ -27,7 +27,7 @@
 #include <thread>
 #include <chrono>
 #include <array>
-
+#include <utility> 
 #include "CB.h"
 #include "CBUtility.h"
 #include "CBMasterPort.h"
@@ -153,7 +153,7 @@ void CBMasterPort::SendCBMessage(const CBMessage_t& CompleteCBMessage)
 // If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
 // This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 // Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
-void CBMasterPort::QueueCBCommand(const CBMessage_t& CompleteCBMessage, SharedStatusCallback_t pStatusCallback)
+void CBMasterPort::QueueCBCommand(const CBMessage_t& CompleteCBMessage, const SharedStatusCallback_t& pStatusCallback)
 {
 	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post.
 		{
@@ -176,7 +176,7 @@ void CBMasterPort::QueueCBCommand(const CBBlockData& SingleBlockCBMessage, Share
 {
 	CBMessage_t CommandCBMessage;
 	CommandCBMessage.push_back(SingleBlockCBMessage);
-	QueueCBCommand(CommandCBMessage, pStatusCallback);
+	QueueCBCommand(CommandCBMessage, std::move(pStatusCallback));
 }
 
 
@@ -754,7 +754,7 @@ bool CBMasterPort::ConvertSOEMessageToBitArray(const CBMessage_t& CompleteCBMess
 	return true;
 }
 
-void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits>& BitArray, uint32_t& UsedBits, std::function<void(SOEEventFormat& soeevnt)> fn)
+void CBMasterPort::ForEachSOEEventInBitArray(std::array<bool, MaxSOEBits>& BitArray, uint32_t& UsedBits, const std::function<void(SOEEventFormat& soeevnt)>& fn)
 {
 	// We now have the data in the bit array, now we have to decode into the SOE blocks - 30 or 41 bits long.
 	uint32_t startbit = 0;
@@ -886,7 +886,7 @@ void CBMasterPort::EnablePolling(bool on)
 void CBMasterPort::SendF0ScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback)
 {
 	CBBlockData sendcommandblock(MyConf->mAddrConf.OutstationAddr, group, FUNC_SCAN_DATA, 0, true);
-	QueueCBCommand(sendcommandblock, pStatusCallback);
+	QueueCBCommand(sendcommandblock, std::move(pStatusCallback));
 }
 // The timeoffset minutes setting is purely for testing
 void CBMasterPort::SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback, int TimeOffsetMinutes)
@@ -895,7 +895,7 @@ void CBMasterPort::SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback, int
 
 	BuildUpdateTimeMessage(MyConf->mAddrConf.OutstationAddr, (uint64_t)((int64_t)CBNowUTC()+(int64_t)(TimeOffsetMinutes*60*1000)), CompleteCBMessage);
 
-	QueueCBCommand(CompleteCBMessage, pStatusCallback);
+	QueueCBCommand(CompleteCBMessage, std::move(pStatusCallback));
 }
 // This message is constructed by the Master to send the time to the RTU
 void CBMasterPort::BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t& CompleteCBMessage)
@@ -920,7 +920,7 @@ void CBMasterPort::BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime,
 void CBMasterPort::SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback)
 {
 	CBBlockData sendcommandblock(MyConf->mAddrConf.OutstationAddr, group, FUNC_SEND_NEW_SOE, 0, true);
-	QueueCBCommand(sendcommandblock, pStatusCallback);
+	QueueCBCommand(sendcommandblock, std::move(pStatusCallback));
 }
 void CBMasterPort::SetAllPointsQualityToCommsLost()
 {

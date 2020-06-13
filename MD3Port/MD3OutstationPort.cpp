@@ -142,7 +142,7 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 //
 //TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we dont get stuck here.
 
-CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
+CommandStatus MD3OutstationPort::Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;

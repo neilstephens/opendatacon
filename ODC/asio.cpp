@@ -61,7 +61,7 @@ std::unique_ptr<asio::ip::tcp::socket> asio_service::make_tcp_socket()
 {
 	return std::make_unique<asio::ip::tcp::socket>(*unwrap_this);
 }
-std::unique_ptr<asio::ip::tcp::acceptor> asio_service::make_tcp_acceptor(asio::ip::tcp::resolver::iterator EndPoint)
+std::unique_ptr<asio::ip::tcp::acceptor> asio_service::make_tcp_acceptor(const asio::ip::tcp::resolver::iterator& EndPoint)
 {
 	return std::make_unique<asio::ip::tcp::acceptor>(*unwrap_this,*EndPoint);
 }

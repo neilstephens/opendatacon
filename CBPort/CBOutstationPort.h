@@ -114,7 +114,7 @@ public:
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	CommandStatus Perform(std::shared_ptr<EventInfo> event, bool waitforresult);
+	CommandStatus Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult);
 
 	void SendCBMessage(const CBMessage_t & CompleteCBMessage) override;
 	void ResendLastCBMessage()

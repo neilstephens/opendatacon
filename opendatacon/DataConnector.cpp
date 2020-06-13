@@ -36,7 +36,7 @@
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 
-DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+DataConnector::DataConnector(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	IOHandler(aName),
 	ConfigParser(aConfFilename, aConfOverrides)
 {

@@ -24,7 +24,7 @@
 #include <fstream>
 #include <iomanip>
 #include <exception>
-
+#include <utility> 
 using namespace odc;
 
 ConsoleUI::ConsoleUI():
@@ -120,7 +120,7 @@ void ConsoleUI::AddCommand(const std::string& name, std::function<void (std::str
 }
 void ConsoleUI::AddHelp(std::string help)
 {
-	help_intro = help;
+	help_intro = std::move(help);
 	int width = 0;
 	for(size_t i=0; i < help_intro.size(); i++)
 	{

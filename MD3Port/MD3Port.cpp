@@ -26,6 +26,7 @@
 
 
 #include <iostream>
+#include <utility>
 #include "MD3Port.h"
 #include "MD3PortConf.h"
 
@@ -103,7 +104,7 @@ uint8_t MD3Port::Limit(uint8_t val, uint8_t max)
 
 void MD3Port::SetSendTCPDataFn(std::function<void(std::string)> Send)
 {
-	MD3Connection::SetSendTCPDataFn(pConnection, Send);
+	MD3Connection::SetSendTCPDataFn(pConnection, std::move(Send));
 }
 
 // Test only method for simulating input from the TCP Connection.

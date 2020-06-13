@@ -81,7 +81,7 @@ public:
 	std::unique_ptr<asio::steady_timer> make_steady_timer(std::chrono::steady_clock::time_point t);
 	std::unique_ptr<asio::ip::tcp::resolver> make_tcp_resolver();
 	std::unique_ptr<asio::ip::tcp::socket> make_tcp_socket();
-	std::unique_ptr<asio::ip::tcp::acceptor> make_tcp_acceptor(asio::ip::tcp::resolver::iterator EndPoint);
+	std::unique_ptr<asio::ip::tcp::acceptor> make_tcp_acceptor(const asio::ip::tcp::resolver::iterator& EndPoint);
 	std::unique_ptr<asio::ip::tcp::acceptor> make_tcp_acceptor();
 	std::unique_ptr<asio::ip::udp::resolver> make_udp_resolver();
 	std::unique_ptr<asio::ip::udp::socket> make_udp_socket();

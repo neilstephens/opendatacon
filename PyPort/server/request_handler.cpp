@@ -22,7 +22,7 @@ namespace http
 request_handler::request_handler()
 {}
 
-void request_handler::register_handler(const std::string& uripattern, pHandlerCallbackType handler)
+void request_handler::register_handler(const std::string& uripattern, const pHandlerCallbackType& handler)
 {
 	if (HandlerMap.find(uripattern) != HandlerMap.end())
 	{

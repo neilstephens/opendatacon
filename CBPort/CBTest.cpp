@@ -34,6 +34,7 @@
 #include <cassert>
 #include <thread>
 #include <chrono>
+#include <utility>
 
 #define COMPILE_TESTS
 
@@ -237,7 +238,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 	odc::spdlog_register_logger(pODCLogger);
 
 }
-void WriteStartLoggingMessage(std::string TestName)
+void WriteStartLoggingMessage(const std::string& TestName)
 {
 	std::string msg = "Logging for '"+TestName+"' started..";
 
@@ -260,7 +261,7 @@ void TestSetup(std::string TestName, bool writeconffiles = true)
 	#ifndef NONVSTESTING
 	SetupLoggers(spdlog::level::debug);
 	#endif
-	WriteStartLoggingMessage(TestName);
+	WriteStartLoggingMessage(std::move(TestName));
 
 	if (writeconffiles)
 		WriteConfFilesToCurrentWorkingDirectory();
@@ -884,7 +885,7 @@ TEST_CASE("Station - ScanRequest F0")
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
 	std::atomic_bool done_flag(false);
-	CBOSPort->SetSendTCPDataFn([&Response,&done_flag](std::string CBMessage) { Response = CBMessage; done_flag = true; });
+	CBOSPort->SetSendTCPDataFn([&Response,&done_flag](std::string CBMessage) { Response = std::move(CBMessage); done_flag = true; });
 
 	// Send the commands in as if came from TCP channel
 	output << commandblock.ToBinaryString();
@@ -1065,7 +1066,7 @@ TEST_CASE("Station - SOERequest F10")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Send the command in as if came from TCP channel
 	output << commandblock.ToBinaryString();
@@ -1198,7 +1199,7 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1341,7 +1342,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Send the commands in as if came from TCP channel
 	output << commandblock.ToBinaryString();
@@ -1507,7 +1508,7 @@ TEST_CASE("Station - Baker Global CONTROL Command")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1585,7 +1586,7 @@ TEST_CASE("Master - Scan Request F0")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBMAPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
 	// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
@@ -1719,9 +1720,9 @@ TEST_CASE("Master - SOE Request F10")
 	// Hook the output functions
 	std::atomic_bool done_flag(false);
 	std::string OSResponse = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&](std::string CBMessage){ OSResponse = CBMessage; done_flag = true; });
+	CBOSPort->SetSendTCPDataFn([&](std::string CBMessage){ OSResponse = std::move(CBMessage); done_flag = true; });
 	std::string MAResponse = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&](std::string CBMessage){ MAResponse = CBMessage; done_flag = true; });
+	CBMAPort->SetSendTCPDataFn([&](std::string CBMessage){ MAResponse = std::move(CBMessage); done_flag = true; });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -2093,7 +2094,7 @@ TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master an
 	WaitIOS(*IOS, 2);
 
 	std::string Response = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	CBMAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Master sends a scan command
 	CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);

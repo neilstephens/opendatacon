@@ -312,7 +312,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				//work out control code to send
 				if(point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
 				{
-					auto check_val = [&](std::string truename, std::string falsename) -> bool
+					auto check_val = [&](const std::string& truename, const std::string& falsename) -> bool
 							     {
 								     bool ret = true;
 								     if(point_pair.second.isMember(truename))

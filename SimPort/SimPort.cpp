@@ -471,7 +471,7 @@ void SimPort::PortDown()
 	Timers.clear();
 }
 
-void SimPort::NextEventFromDB(std::shared_ptr<EventInfo> event)
+void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 {
 	if(event->GetEventType() == EventType::Analog)
 	{
@@ -497,7 +497,7 @@ void SimPort::NextEventFromDB(std::shared_ptr<EventInfo> event)
 	}
 }
 
-void SimPort::PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_offset)
+void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
 	//Check if we're configured to load this point from DB
 	if(DBStats.count("Analog"+std::to_string(event->GetIndex())))
@@ -539,7 +539,7 @@ void SimPort::PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_o
 	event->SetTimestamp(msSinceEpoch()+random_interval);
 }
 
-void SimPort::SpawnEvent(std::shared_ptr<EventInfo> event, int64_t time_offset)
+void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
 	//deep copy event to modify as next event
 	auto next_event = std::make_shared<EventInfo>(*event);

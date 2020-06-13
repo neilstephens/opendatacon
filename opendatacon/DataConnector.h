@@ -36,7 +36,7 @@ using namespace odc;
 class DataConnector: public IOHandler, public ConfigParser
 {
 public:
-	DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides);
+	DataConnector(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~DataConnector() override {}
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;

@@ -1,4 +1,4 @@
-﻿/*	opendatacon
+/*	opendatacon
  *
  *	Copyright (c) 2018:
  *
@@ -29,7 +29,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-
+#include <utility> 
 #include "CB.h"
 #include "CBUtility.h"
 #include "CBConnection.h"
@@ -70,7 +70,7 @@ CBConnection::CBConnection
 	bool isbakerdevice,
 	uint16_t retry_time_ms
 ):
-	pIOS(apIOS),
+	pIOS(std::move(apIOS)),
 	EndPoint(aEndPoint),
 	Port(aPort),
 	IsServer(aisServer),
@@ -120,8 +120,8 @@ ConnectionTokenType CBConnection::AddConnection
 }
 
 void CBConnection::AddOutstation(const ConnectionTokenType &ConnectionTok, uint8_t StationAddress, // For message routing, OutStation identification
-	const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
-	const std::function<void(bool)> aStateCallback,
+	const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+	const std::function<void(bool)>& aStateCallback,
 	bool isbakerdevice)
 {
 	if (auto pConnection = ConnectionTok.pConnection)
@@ -161,8 +161,8 @@ void CBConnection::RemoveOutstation(const ConnectionTokenType &ConnectionTok, ui
 }
 
 void CBConnection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
-	const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
-	const std::function<void(bool)> aStateCallback,
+	const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+	const std::function<void(bool)>& aStateCallback,
 	bool isbakerdevice)
 {
 	if (auto pConnection = ConnectionTok.pConnection)
@@ -329,7 +329,7 @@ void CBConnection::SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, st
 {
 	if (auto pConnection = ConnectionTok.pConnection)
 	{
-		pConnection->SendTCPDataFn = f;
+		pConnection->SendTCPDataFn = std::move(f);
 	}
 	else
 	{

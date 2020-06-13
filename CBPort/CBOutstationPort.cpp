@@ -139,7 +139,7 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 // Remember there can be multiple responders!
 //
 
-CommandStatus CBOutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
+CommandStatus CBOutstationPort::Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;

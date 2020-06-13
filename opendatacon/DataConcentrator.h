@@ -49,7 +49,7 @@
 class DataConcentrator: public ConfigParser, public IUIResponder
 {
 public:
-	DataConcentrator(std::string FileName);
+	DataConcentrator(const std::string& FileName);
 	~DataConcentrator() override;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;

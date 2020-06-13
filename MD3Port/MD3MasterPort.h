@@ -84,7 +84,7 @@ public:
 	// If the callback gets an error it will be ignored which will result in a timeout and the next command (or retry) being sent.
 	// This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 	// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
-	void QueueMD3Command(const MD3Message_t &CompleteMD3Message, SharedStatusCallback_t pStatusCallback);
+	void QueueMD3Command(const MD3Message_t &CompleteMD3Message, const SharedStatusCallback_t& pStatusCallback);
 	void QueueMD3Command(const MD3BlockData & SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback); // Handle the many single block command messages better
 	void QueueMD3Command(const MD3BlockFormatted & SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback);
 	void PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c);

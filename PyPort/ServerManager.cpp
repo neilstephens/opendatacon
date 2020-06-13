@@ -28,7 +28,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-
+#include <utility> 
 #include "PyPort.h"
 #include "ServerManager.h"
 
@@ -42,7 +42,7 @@ ServerTokenType::~ServerTokenType()
 {}
 
 ServerManager::ServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort):
-	pIOS(apIOS),
+	pIOS(std::move(apIOS)),
 	EndPoint(aEndPoint),
 	Port(aPort)
 {
@@ -108,7 +108,7 @@ void ServerManager::AddHandler(const ServerTokenType& ServerTok, const std::stri
 	std::unique_lock<std::mutex> lck(ServerManager::ManagementMutex); // Only allow one static op at a time
 	if (auto pServerMgr = ServerTok.pServerManager)
 	{
-		pServerMgr->pServer->register_handler(urlpattern, urihandler); // Will overwrite if duplicate
+		pServerMgr->pServer->register_handler(urlpattern, std::move(urihandler)); // Will overwrite if duplicate
 	}
 	else
 	{

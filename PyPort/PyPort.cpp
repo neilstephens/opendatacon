@@ -40,6 +40,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <utility>
 #include <vector>
 #include <fstream>
 #include <stdio.h>
@@ -86,7 +87,7 @@ std::vector<std::string> split(const std::string& s, char delim)
 }
 
 // Get the number contained in this string.
-std::string GetNumber(std::string input)
+std::string GetNumber(const std::string& input)
 {
 	std::string res;
 	for (char ch : input)
@@ -100,7 +101,7 @@ std::string GetNumber(std::string input)
 struct MyException: public std::exception
 {
 	std::string s;
-	MyException(std::string ss): s(ss) {}
+	MyException(std::string ss): s(std::move(ss)) {}
 	~MyException() throw () {} // Updated
 	const char* what() const throw() { return s.c_str(); }
 };
@@ -592,7 +593,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 
 // This is called when we have decoded a restful request, to the point where we know which instance it should be passed to. We give it a callback, which will
 // be used to actually send the response back to the caller.
-void PyPort::RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback)
+void PyPort::RestHandler(const std::string& url, const std::string& content, const ResponseCallback_t& pResponseCallback)
 {
 	if (!enabled)
 	{

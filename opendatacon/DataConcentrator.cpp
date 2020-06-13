@@ -39,7 +39,7 @@
 #include "DataConcentrator.h"
 #include "NullPort.h"
 
-DataConcentrator::DataConcentrator(std::string FileName):
+DataConcentrator::DataConcentrator(const std::string& FileName):
 	ConfigParser(FileName),
 	pIOS(std::make_shared<odc::asio_service>(std::thread::hardware_concurrency()+1)),
 	ios_working(pIOS->make_work()),
@@ -170,7 +170,7 @@ inline void AddLogger(const std::string& name, const std::vector<spdlog::sink_pt
 inline void ReloadLogSinks(const std::vector<spdlog::sink_ptr>& LogSinksVec)
 {
 	std::vector<std::string> lognames;
-	odc::spdlog_apply_all([&](std::shared_ptr<spdlog::logger> log)
+	odc::spdlog_apply_all([&](const std::shared_ptr<spdlog::logger>& log)
 		{
 			lognames.push_back(log->name());
 		});

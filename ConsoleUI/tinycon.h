@@ -72,7 +72,7 @@ public:
 	void quit();
 	std::string getLine();
 	std::string getLine(int);
-	std::string getLine(int, std::string);
+	std::string getLine(int, const std::string&);
 	std::string version();
 	void setMaxHistory(int);
 	void setBuffer(std::string);

@@ -27,7 +27,7 @@
 #include <thread>
 #include <chrono>
 #include <array>
-
+#include <utility> 
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3MasterPort.h"
@@ -157,7 +157,7 @@ void MD3MasterPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 // If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
 // This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 // Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
-void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, const SharedStatusCallback_t& pStatusCallback)
 {
 	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post. Note the calling thread must be one of the io_service threads.... this changes our tests!
 		{
@@ -180,14 +180,14 @@ void MD3MasterPort::QueueMD3Command(const MD3BlockData &SingleBlockMD3Message, S
 {
 	MD3Message_t CommandMD3Message;
 	CommandMD3Message.push_back(SingleBlockMD3Message);
-	QueueMD3Command(CommandMD3Message, pStatusCallback);
+	QueueMD3Command(CommandMD3Message, std::move(pStatusCallback));
 }
 // Handle the many single block command messages better
 void MD3MasterPort::QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback)
 {
 	MD3Message_t CommandMD3Message;
 	CommandMD3Message.push_back(SingleBlockMD3Message);
-	QueueMD3Command(CommandMD3Message, pStatusCallback);
+	QueueMD3Command(CommandMD3Message, std::move(pStatusCallback));
 }
 
 // Just schedule the callback, don't want to do it in a strand protected section.
@@ -1353,7 +1353,7 @@ void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec,
 	MD3Message_t Cmd;
 	Cmd.push_back(commandblock);
 	Cmd.push_back(datablock);
-	QueueMD3Command(Cmd, pStatusCallback);
+	QueueMD3Command(Cmd, std::move(pStatusCallback));
 }
 void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback)
 {
@@ -1364,12 +1364,12 @@ void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinms
 	Cmd.push_back(commandblock);
 	Cmd.push_back(datablock);
 	Cmd.push_back(datablock2);
-	QueueMD3Command(Cmd, pStatusCallback);
+	QueueMD3Command(Cmd, std::move(pStatusCallback));
 }
 void MD3MasterPort::SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCallback)
 {
 	MD3BlockFn52MtoS commandblock(MyConf->mAddrConf.OutstationAddr);
-	QueueMD3Command(commandblock, pStatusCallback);
+	QueueMD3Command(commandblock, std::move(pStatusCallback));
 }
 
 void MD3MasterPort::SetAllPointsQualityToCommsLost()

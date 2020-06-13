@@ -25,7 +25,7 @@
  */
 
 #include <opendatacon/IOHandler.h>
-
+ #include <utility> 
 namespace odc
 {
 
@@ -46,14 +46,14 @@ IOHandler::IOHandler(const std::string& aName):
 	IOHandlers[Name]=this;
 }
 
-void IOHandler::Subscribe(IOHandler* pIOHandler, std::string aName)
+void IOHandler::Subscribe(IOHandler* pIOHandler, const std::string& aName)
 {
 	this->Subscribers[aName] = pIOHandler;
 }
 
 void IOHandler::SetIOS(std::shared_ptr<odc::asio_service> ios_ptr)
 {
-	pIOS = ios_ptr;
+	pIOS = std::move(ios_ptr);
 }
 
 bool DemandMap::InDemand()

@@ -32,6 +32,7 @@
 #include <array>
 #include <fstream>
 #include <cassert>
+#include <utility>
 #include <opendatacon/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
@@ -235,7 +236,7 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 	pODCLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pODCLogger);
 }
-void WriteStartLoggingMessage(std::string TestName)
+void WriteStartLoggingMessage(const std::string& TestName)
 {
 	std::string msg = "Logging for '" + TestName + "' started..";
 	if (auto md3logger = odc::spdlog_get("MD3Port"))
@@ -1210,7 +1211,7 @@ TEST_CASE("Station - AnalogUnconditionalF5")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Analog Unconditional command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1265,7 +1266,7 @@ TEST_CASE("Station - CounterScanFn30")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Analog Unconditional command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1353,7 +1354,7 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1441,7 +1442,7 @@ TEST_CASE("Station - DigitalUnconditionalFn7")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1471,7 +1472,7 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1535,7 +1536,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1675,7 +1676,7 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1738,7 +1739,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1889,7 +1890,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1953,7 +1954,7 @@ TEST_CASE("Station - FreezeResetFn16")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2004,7 +2005,7 @@ TEST_CASE("Station - POMControlFn17")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2075,7 +2076,7 @@ TEST_CASE("Station - DOMControlFn19")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2126,7 +2127,7 @@ TEST_CASE("Station - InputPointControlFn20")
 	MD3OSPort->Enable();
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	//  Station 0x7C
 	uint8_t StationAddress = 0x7C;
@@ -2191,7 +2192,7 @@ TEST_CASE("Station - AOMControlFn23")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2243,7 +2244,7 @@ TEST_CASE("Station - SystemsSignOnFn40")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2266,7 +2267,7 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	uint64_t currenttime = MD3NowUTC();
 
@@ -2351,7 +2352,7 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2500,7 +2501,7 @@ TEST_CASE("Station - System Flag Scan Test")
 	uint64_t currenttime = MD3NowUTC();
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
@@ -2610,7 +2611,7 @@ TEST_CASE("Master - Analog")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	INFO("Analog Unconditional Fn5");
 	{
@@ -2877,10 +2878,10 @@ TEST_CASE("Master - DOM and POM Tests")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -3082,12 +3083,12 @@ TEST_CASE("Master - DOM and POM Pass Through Tests")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
 	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message)
 		{
-			MAResponse = MD3Message;
+			MAResponse = std::move(MD3Message);
 		});
 
 	asio::streambuf OSwrite_buffer;
@@ -3201,10 +3202,10 @@ TEST_CASE("Master - TimeDate Poll and Pass Through Tests")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -3319,12 +3320,12 @@ TEST_CASE("Master - SystemSignOn and FreezeResetCounter Pass Through Tests")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
 	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message)
 		{
-			MAResponse = MD3Message;
+			MAResponse = std::move(MD3Message);
 		});
 
 	asio::streambuf OSwrite_buffer;
@@ -3435,10 +3436,10 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -3525,10 +3526,10 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -3627,10 +3628,10 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);

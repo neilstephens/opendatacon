@@ -555,21 +555,21 @@ bool MD3PointTableAccess::TimeTaggedDataAvailable()
 	return !pBinaryTimeTaggedEventQueue->sync_empty();
 }
 
-void MD3PointTableAccess::ForEachBinaryPoint(std::function<void(MD3BinaryPoint &pt)> fn)
+void MD3PointTableAccess::ForEachBinaryPoint(const std::function<void(MD3BinaryPoint &pt)>& fn)
 {
 	for (const auto& md3pt : BinaryMD3PointMap) // We always use the MD3 map - its order is the only one we care about.
 	{
 		fn(*md3pt.second);
 	}
 }
-void MD3PointTableAccess::ForEachAnalogPoint(std::function<void(MD3AnalogCounterPoint &pt)> fn)
+void MD3PointTableAccess::ForEachAnalogPoint(const std::function<void(MD3AnalogCounterPoint &pt)>& fn)
 {
 	for (const auto& md3pt : AnalogMD3PointMap) // We always use the MD3 map - its order is the only one we care about.
 	{
 		fn(*md3pt.second);
 	}
 }
-void MD3PointTableAccess::ForEachCounterPoint(std::function<void(MD3AnalogCounterPoint &pt)> fn)
+void MD3PointTableAccess::ForEachCounterPoint(const std::function<void(MD3AnalogCounterPoint &pt)>& fn)
 {
 	for (const auto& md3pt : CounterMD3PointMap) // We always use the MD3 map - its order is the only one we care about.
 	{

@@ -91,7 +91,7 @@ public:
 	void Enable();
 	void Disable();
 
-	CommandStatus Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName);
+	CommandStatus Event(const std::shared_ptr<const EventInfo>& odcevent, const std::string& SenderName);
 	void QueueEvent(const std::string& jsonevent);
 
 	bool DequeueEvent(std::string& eq);

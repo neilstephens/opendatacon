@@ -78,9 +78,9 @@ private:
 	typedef std::shared_ptr<sqlite3_stmt> pDBStatement;
 	std::unordered_map<std::string, pDBStatement> DBStats;
 	TimestampMode TimestampHandling;
-	void NextEventFromDB(std::shared_ptr<EventInfo> event);
-	void PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_offset);
-	void SpawnEvent(std::shared_ptr<EventInfo> event, int64_t time_offset = 0);
+	void NextEventFromDB(const std::shared_ptr<EventInfo>& event);
+	void PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset);
+	void SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset = 0);
 	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)
 	{
 		auto pConf = static_cast<SimPortConf*>(this->pConf.get());

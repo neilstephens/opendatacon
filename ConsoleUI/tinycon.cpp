@@ -32,7 +32,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <thread>
-
+#include <utility> 
 int GetCharTimeout (const uint8_t timeout_tenths_of_seconds)
 {
 	static const size_t secinaday = 10*60*60*24;
@@ -141,7 +141,7 @@ tinyConsole::tinyConsole (std::string s)
 {
 	_max_history = MAX_HISTORY;
 	_quit = false;
-	_prompt = s;
+	_prompt = std::move(s);
 	pos = -1;
 	line_pos = 0;
 	skip_out = 0;
@@ -192,7 +192,7 @@ std::string tinyConsole::getLine (int mode)
 	return getLine(mode, "");
 }
 
-std::string tinyConsole::getLine (int mode = M_LINE, std::string delimeter = "")
+std::string tinyConsole::getLine (int mode = M_LINE, const std::string& delimeter = "")
 {
 	std::string line;
 	char c;
