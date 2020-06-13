@@ -103,7 +103,7 @@ TEST_CASE(SUITE("PayloadTransport"))
 		                      std::to_string(time);
 		events.back()->SetPayload<EventType::OctetString>(std::move(payload));
 	}
-	for(auto e : events)
+	for(const auto& e : events)
 	{
 		Source.PublicPublishEvent(e,StatusCallback);
 	}

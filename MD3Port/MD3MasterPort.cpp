@@ -122,7 +122,7 @@ void MD3MasterPort::Build()
 
 	PollScheduler->Stop();
 	PollScheduler->Clear();
-	for (auto pg : MyPointConf->PollGroups)
+	for (const auto& pg : MyPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
 		auto action = [=]()
@@ -1079,7 +1079,7 @@ bool MD3MasterPort::ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3M
 	if (SystemTimeIncorrectFlag)
 	{
 		// Find if there is a poll group time set command, if so, do that poll (send the time)
-		for (auto pg : MyPointConf->PollGroups)
+		for (const auto& pg : MyPointConf->PollGroups)
 		{
 			if (pg.second.polltype == TimeSetCommand)
 			{
@@ -1092,23 +1092,21 @@ bool MD3MasterPort::ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3M
 	if (SystemPoweredUpFlag)
 	{
 		// Launch all digital polls/scans
-		for (auto pg : MyPointConf->PollGroups)
+		for (const auto& pg : MyPointConf->PollGroups)
 		{
 			if (pg.second.polltype == BinaryPoints)
 			{
 				this->DoPoll(pg.second.ID);
 			}
-			;
 		}
 
 		// Launch all analog polls/scans
-		for (auto pg : MyPointConf->PollGroups)
+		for (const auto& pg : MyPointConf->PollGroups)
 		{
 			if (pg.second.polltype == AnalogPoints)
 			{
 				this->DoPoll(pg.second.ID);
 			}
-			;
 		}
 	}
 	return (Header.GetFunctionCode() == SYSTEM_FLAG_SCAN);

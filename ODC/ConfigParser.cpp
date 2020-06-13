@@ -99,7 +99,7 @@ const Json::Value ConfigParser::GetConfiguration(const std::string& pFileName)
 
 void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits)
 {
-	for(Json::Value InheritFile : Inherits)
+	for(auto& InheritFile : Inherits)
 	{
 		Json::Value InheritRoot = ConfigParser::GetConfiguration(InheritFile.asString());
 		JSONRoot[InheritFile.asString()] = InheritRoot;

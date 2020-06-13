@@ -129,7 +129,7 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 	if(std::regex_match(index_str, comma_regx))
 	{
 		auto idxstrings = split(index_str, ',');
-		for( auto idxs : idxstrings)
+		for(const auto& idxs : idxstrings)
 		{
 			size_t idx;
 			try
@@ -466,7 +466,7 @@ void SimPort::PortUp()
 
 void SimPort::PortDown()
 {
-	for(auto pTimer : Timers)
+	for(const auto& pTimer : Timers)
 		pTimer.second->cancel();
 	Timers.clear();
 }

@@ -279,7 +279,7 @@ request_parser::result_type request_parser::consume(request& req, char input)
 			{
 				// Check Content Length, if it exsists go to that state, otherwise return good.
 				req.contentlength = 0;
-				for (auto h : req.headers)
+				for (const auto& h : req.headers)
 				{
 					if (h.name == "Content-Length")
 						req.contentlength = stoul(h.value);

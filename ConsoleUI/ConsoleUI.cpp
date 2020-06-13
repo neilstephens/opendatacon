@@ -51,7 +51,7 @@ ConsoleUI::ConsoleUI():
 			            "Access contextual subcommands:"<<std::endl<<std::endl;
 			/* list sub commands */
 			            auto commands = Responders[arg]->GetCommandList();
-			            for (auto command : commands)
+					for (const auto& command : commands)
 			            {
 			                  auto cmd = command.asString();
 			                  auto desc = Responders[arg]->GetCommandDescription(cmd);
@@ -63,7 +63,7 @@ ConsoleUI::ConsoleUI():
 			{
 			      std::cout<<help_intro<<std::endl<<std::endl;
 			//print root commands with descriptions
-			      for(auto desc: mDescriptions)
+				for(const auto& desc: mDescriptions)
 			      {
 			            std::cout<<std::setw(25)<<std::left<<desc.first+":"<<desc.second<<std::endl<<std::endl;
 				}
@@ -71,7 +71,7 @@ ConsoleUI::ConsoleUI():
 			      if (this->context.empty())
 			      {
 			//check if command matches a Responder - if so, arg is our partial sub command
-			            for(auto name_n_responder : Responders)
+					for(const auto& name_n_responder : Responders)
 			            {
 			                  std::cout<<std::setw(25)<<std::left<<name_n_responder.first+":"<<
 			                  "Access contextual subcommands."<<std::endl<<std::endl;
@@ -81,7 +81,7 @@ ConsoleUI::ConsoleUI():
 			      {
 			            /* list commands available to current responder */
 			            auto commands = Responders[this->context]->GetCommandList();
-			            for (auto command : commands)
+					for (const auto& command : commands)
 			            {
 			                  auto cmd = command.asString();
 			                  auto desc = Responders[this->context]->GetCommandDescription(cmd);
@@ -206,7 +206,7 @@ int ConsoleUI::hotkeys(char c)
 
 		//find root commands that start with the partial
 		std::vector<std::string> matching_cmds;
-		for(auto name_n_description : mDescriptions)
+		for(const auto& name_n_description : mDescriptions)
 		{
 			std::string name = name_n_description.first;
 			ToLower(name);
@@ -222,7 +222,7 @@ int ConsoleUI::hotkeys(char c)
 			{
 				/* list commands avaialble to responder */
 				auto commands = Responders[cmd]->GetCommandList();
-				for (auto command : commands)
+				for (const auto& command : commands)
 				{
 					std::string cmd = command.asString();
 					ToLower(cmd);
@@ -234,7 +234,7 @@ int ConsoleUI::hotkeys(char c)
 			else
 			{
 				/* list all matching responders */
-				for(auto name_n_responder : Responders)
+				for(const auto& name_n_responder : Responders)
 				{
 					std::string name = name_n_responder.first;
 					ToLower(name);
@@ -247,7 +247,7 @@ int ConsoleUI::hotkeys(char c)
 		{
 			/* list commands available to current responder */
 			auto commands = Responders[this->context]->GetCommandList();
-			for (auto command : commands)
+			for (const auto& command : commands)
 			{
 				std::string cmd = command.asString();
 				ToLower(cmd);
@@ -298,7 +298,7 @@ int ConsoleUI::hotkeys(char c)
 			else if(matching_cmds.size() > 1)
 			{
 				std::cout<<std::endl;
-				for(auto cmd : matching_cmds)
+				for(const auto& cmd : matching_cmds)
 					std::cout<<cmd<<std::endl;
 				std::cout<<_prompt<<cmd<<std::flush;
 			}

@@ -41,7 +41,7 @@ pHandlerCallbackType request_handler::find_matching_handler(const std::string& u
 	size_t matchlength = 0;
 	std::string matchkey;
 
-	for (auto key : HandlerMap)
+	for (const auto& key : HandlerMap)
 	{
 		// The key match string should be at the start of the path.
 		// We need to find the longest match.

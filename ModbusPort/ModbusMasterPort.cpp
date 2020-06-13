@@ -155,7 +155,7 @@ void ModbusMasterPort::Disconnect()
 	event->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
 
 	// Modbus function code 0x01 (read coil status)
-	for(auto range : pConf->pPointConf->BitIndicies)
+	for(const auto& range : pConf->pPointConf->BitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 		{
 			event->SetIndex(index);
@@ -163,7 +163,7 @@ void ModbusMasterPort::Disconnect()
 		}
 
 	// Modbus function code 0x02 (read input status)
-	for(auto range : pConf->pPointConf->InputBitIndicies)
+	for(const auto& range : pConf->pPointConf->InputBitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 		{
 			event->SetIndex(index);
@@ -171,7 +171,7 @@ void ModbusMasterPort::Disconnect()
 		}
 
 	// Modbus function code 0x03 (read holding registers)
-	for(auto range : pConf->pPointConf->RegIndicies)
+	for(const auto& range : pConf->pPointConf->RegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 		{
 			event->SetIndex(index);
@@ -179,7 +179,7 @@ void ModbusMasterPort::Disconnect()
 		}
 
 	// Modbus function code 0x04 (read input registers)
-	for(auto range : pConf->pPointConf->InputRegIndicies)
+	for(const auto& range : pConf->pPointConf->InputRegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 		{
 			event->SetIndex(index);
@@ -304,7 +304,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 	int rc;
 
 	// Modbus function code 0x01 (read coil status)
-	for(auto range : pConf->pPointConf->BitIndicies)
+	for(const auto& range : pConf->pPointConf->BitIndicies)
 	{
 		if (pollgroup && (range.pollgroup != pollgroup))
 			continue;
@@ -335,7 +335,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 	}
 
 	// Modbus function code 0x02 (read input status)
-	for(auto range : pConf->pPointConf->InputBitIndicies)
+	for(const auto& range : pConf->pPointConf->InputBitIndicies)
 	{
 		if (pollgroup && (range.pollgroup != pollgroup))
 			continue;
@@ -366,7 +366,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 	}
 
 	// Modbus function code 0x03 (read holding registers)
-	for(auto range : pConf->pPointConf->RegIndicies)
+	for(const auto& range : pConf->pPointConf->RegIndicies)
 	{
 		if (pollgroup && (range.pollgroup != pollgroup))
 			continue;
@@ -398,7 +398,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 	}
 
 	// Modbus function code 0x04 (read input registers)
-	for(auto range : pConf->pPointConf->InputRegIndicies)
+	for(const auto& range : pConf->pPointConf->InputRegIndicies)
 	{
 		if (pollgroup && (range.pollgroup != pollgroup))
 			continue;

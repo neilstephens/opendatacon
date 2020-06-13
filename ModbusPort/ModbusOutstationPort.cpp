@@ -184,7 +184,7 @@ void ModbusOutstationPort::Build()
 
 int find_index (const ModbusReadGroupCollection& aCollection, uint16_t index)
 {
-	for(auto group : aCollection)
+	for(const auto& group : aCollection)
 		for(auto group_index = group.start; group_index < group.start + group.count; group_index++)
 			if(group_index + group.index_offset == index)
 				return (int)group_index;

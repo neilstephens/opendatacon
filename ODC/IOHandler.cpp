@@ -59,7 +59,7 @@ void IOHandler::SetIOS(std::shared_ptr<odc::asio_service> ios_ptr)
 bool DemandMap::InDemand()
 {
 	std::lock_guard<std::mutex> lck (mtx);
-	for(auto demand : connection_demands)
+	for(const auto& demand : connection_demands)
 		if(demand.second)
 			return true;
 	return false;

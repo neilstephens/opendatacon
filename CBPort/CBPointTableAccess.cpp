@@ -542,21 +542,21 @@ bool CBPointTableAccess::GetMaxPayload(uint8_t group, uint8_t & blockcount)
 
 void CBPointTableAccess::ForEachBinaryPoint(std::function<void(CBBinaryPoint &pt)> fn)
 {
-	for (auto CBpt : BinaryODCPointMap) // We always use the CB map - its order is the only one we care about.
+	for (const auto& CBpt : BinaryODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}
 }
 void CBPointTableAccess::ForEachAnalogPoint(std::function<void(CBAnalogCounterPoint &pt)> fn)
 {
-	for (auto CBpt : AnalogODCPointMap) // We always use the CB map - its order is the only one we care about.
+	for (const auto& CBpt : AnalogODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}
 }
 void CBPointTableAccess::ForEachCounterPoint(std::function<void(CBAnalogCounterPoint &pt)> fn)
 {
-	for (auto CBpt : CounterODCPointMap) // We always use the CB map - its order is the only one we care about.
+	for (const auto& CBpt : CounterODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}

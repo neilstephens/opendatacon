@@ -37,7 +37,7 @@ const Json::Value IUIResponder::GenerateResult(const std::string& message)
 Json::Value IUIResponder::GetCommandList() const
 {
 	Json::Value result;
-	for (auto command : commands)
+	for (const auto& command : commands)
 	{
 		if (!command.second.hidden) result.append(command.first);
 	}

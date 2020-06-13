@@ -86,7 +86,7 @@ public:
 	size_t Total()
 	{
 		size_t total = 0;
-		for(auto element : *this)
+		for(const auto& element : *this)
 		{
 			total += element.count;
 		}
