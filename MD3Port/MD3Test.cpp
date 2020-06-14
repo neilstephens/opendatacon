@@ -1155,10 +1155,9 @@ TEST_CASE("Station - BinaryEvent")
 	// Test on a valid binary point
 	const int ODCIndex = 1;
 
-	EventTypePayload<EventType::Binary>::type val;
-	val = true;
+	bool val = true;
 	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-	event->SetPayload<EventType::Binary>(std::move(val));
+	event->SetPayload<EventType::Binary>(bool(val));
 
 	MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 

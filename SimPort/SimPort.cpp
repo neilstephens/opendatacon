@@ -232,7 +232,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 				pConf->AnalogForcedStates[idx] = true;
 			}
 			auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q,ts);
-			event->SetPayload<EventType::Analog>(std::move(val));
+			event->SetPayload<EventType::Analog>(double(val));
 			PublishEvent(event);
 		}
 	}
@@ -418,7 +418,7 @@ void SimPort::PortUp()
 		auto mean = pConf->AnalogStartVals.count(index) ? pConf->AnalogStartVals.at(index) : 0;
 		pConf->AnalogStartVals[index] = mean;
 		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
-		event->SetPayload<EventType::Analog>(std::move(mean));
+		event->SetPayload<EventType::Analog>(double(mean));
 		PublishEvent(event);
 
 		//queue up a timer if it has an update interval
@@ -443,7 +443,7 @@ void SimPort::PortUp()
 		auto val = pConf->BinaryStartVals.count(index) ? pConf->BinaryStartVals.at(index) : false;
 		pConf->BinaryStartVals[index] = val;
 		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
-		event->SetPayload<EventType::Binary>(std::move(val));
+		event->SetPayload<EventType::Binary>(bool(val));
 		PublishEvent(event);
 
 		pTimer_t pTimer = pIOS->make_steady_timer();

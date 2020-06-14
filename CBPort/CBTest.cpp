@@ -1158,10 +1158,10 @@ TEST_CASE("Station - BinaryEvent")
 	// Test on a valid binary point
 	const int ODCIndex = 1;
 
-	EventTypePayload<EventType::Binary>::type val = true;
+	bool val = true;
 
-	std::shared_ptr<odc::EventInfo> event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-	event->SetPayload<EventType::Binary>(std::move(val));
+	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+	event->SetPayload<EventType::Binary>(bool(val));
 
 	CBOSPort->Event(event, "TestHarness", pStatusCallback);
 
