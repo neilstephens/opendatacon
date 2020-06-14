@@ -45,11 +45,11 @@ symbol_ptr GetPortFunc(module_ptr pluginlib, const std::string& objname, bool de
 
 newptr GetPortCreator(module_ptr pluginlib, const std::string& objname)
 {
-	return (newptr)GetPortFunc(pluginlib,objname);
+	return reinterpret_cast<newptr>(GetPortFunc(pluginlib,objname));
 }
 
 delptr GetPortDestroyer(module_ptr pluginlib, const std::string& objname)
 {
-	return (delptr)GetPortFunc(pluginlib,objname,true);
+	return reinterpret_cast<delptr>(GetPortFunc(pluginlib,objname,true));
 }
 

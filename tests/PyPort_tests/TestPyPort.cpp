@@ -44,7 +44,7 @@ int main( int argc, char* argv[] )
 
 	int (*run_tests)(int,char**);
 
-	run_tests = (int (*)(int,char**))LoadSymbol(pluginlib, "run_tests");
+	run_tests = reinterpret_cast<int (*)(int,char**)>(LoadSymbol(pluginlib, "run_tests"));
 
 	if(run_tests == nullptr)
 	{

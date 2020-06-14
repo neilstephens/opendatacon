@@ -474,10 +474,10 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Our API says the library should export a creation function: IUI* new_<Type>Plugin(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of IUI
 			std::string new_funcname = "new_"+Plugins[n]["Type"].asString()+"Plugin";
-			auto new_plugin_func = (IUI*(*)(std::string, std::string, const Json::Value))LoadSymbol(pluginlib, new_funcname);
+			auto new_plugin_func = reinterpret_cast<IUI*(*)(std::string, std::string, const Json::Value)>(LoadSymbol(pluginlib, new_funcname));
 
 			std::string delete_funcname = "delete_"+Plugins[n]["Type"].asString()+"Plugin";
-			auto delete_plugin_func = (void (*)(IUI*))LoadSymbol(pluginlib, delete_funcname);
+			auto delete_plugin_func = reinterpret_cast<void (*)(IUI*)>(LoadSymbol(pluginlib, delete_funcname));
 
 			if(new_plugin_func == nullptr)
 				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", PluginName, new_funcname, libfilename, LastSystemError());
@@ -599,10 +599,10 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 			//it should return a pointer to a heap allocated instance of a descendant of DataPort
 			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-			auto new_port_func = (DataPort*(*)(const std::string&, const std::string&, const Json::Value&))LoadSymbol(portlib, new_funcname);
+			auto new_port_func = reinterpret_cast<DataPort*(*)(const std::string&, const std::string&, const Json::Value&)>(LoadSymbol(portlib, new_funcname));
 
 			std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
-			auto delete_port_func = (void (*)(DataPort*))LoadSymbol(portlib, delete_funcname);
+			auto delete_port_func = reinterpret_cast<void (*)(DataPort*)>(LoadSymbol(portlib, delete_funcname));
 
 			if(new_port_func == nullptr)
 				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", Ports[n]["Name"].asString(), new_funcname, libfilename, LastSystemError());

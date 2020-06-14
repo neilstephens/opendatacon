@@ -92,7 +92,7 @@ static int ahc(void *cls,
 	size_t *upload_data_size,
 	void **ptr)
 {
-	WebUI* test = (WebUI*)cls;
+	WebUI* test = reinterpret_cast<WebUI*>(cls);
 	std::string upload_data_str;
 	if (*upload_data_size > 0)
 	{
@@ -174,7 +174,7 @@ int WebUI::http_ahc(void *cls,
 
 	if (method == "POST")
 	{
-		con_info = (connection_info_struct*)*con_cls;
+		con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
 
 		if (upload_data_size > 0)
 		{

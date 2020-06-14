@@ -551,7 +551,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	}
 
 	// Make sure the path to where the module is, is known to Python
-	PyObject* sysPath = PySys_GetObject((char*)"path");
+	PyObject* sysPath = PySys_GetObject("path");
 	PyObject* programName = PyUnicode_FromString(pyPathName.c_str());
 	PyList_Append(sysPath, programName);
 	Py_DECREF(programName);
