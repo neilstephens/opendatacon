@@ -337,7 +337,7 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS)
+	for (int i = 0; i < (threadcount); i++) pThread[i] = StartIOSThread(*IOS)
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
