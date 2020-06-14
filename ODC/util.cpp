@@ -143,4 +143,4 @@ bool extract_delimited_string(const std::string& delims, std::istream& ist, std:
 	return extract_delimited_string(ist,extracted);
 }
 
-}
+} // namespace odc

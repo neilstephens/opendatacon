@@ -140,4 +140,4 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 				 }));
 }
 
-}
+} // namespace odc
