@@ -552,7 +552,7 @@ TEST_CASE("Util - SOEEventFormat")
 	REQUIRE(res == 0xB06C618601000000);
 
 	// Now test our BitArray handling.
-	std::array<bool, MaxSOEBits> BitArray;
+	std::array<bool, MaxSOEBits> BitArray{};
 	for (int i = 0; i < 64; i++)
 		BitArray[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
@@ -583,7 +583,7 @@ TEST_CASE("Util - SOEEventFormat")
 	REQUIRE(res == 0xb064300c00000000);
 
 	// Now test our BitArray handling.
-	std::array<bool, MaxSOEBits> BitArray2;
+	std::array<bool, MaxSOEBits> BitArray2{};
 	for (int i = 0; i < 64; i++)
 		BitArray2[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
@@ -604,7 +604,7 @@ TEST_CASE("Util - SOEEventFormat")
 
 	uint64_t payload = 0x9945455800000000; // From a packet capture
 	// Now test our BitArray handling.
-	std::array<bool, MaxSOEBits> BitArray3;
+	std::array<bool, MaxSOEBits> BitArray3{};
 	for (int i = 0; i < 64; i++)
 		BitArray3[i] = ((payload >> (63 - i)) & 0x01) == 0x01;
 

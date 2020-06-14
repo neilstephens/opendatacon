@@ -49,7 +49,7 @@ int GetCharTimeout (const uint8_t timeout_tenths_of_seconds)
 			err_backoff = secinaday;
 	};
 
-	struct termios oldt, newt;
+	struct termios oldt{}, newt{};
 	int ch = 0;
 
 	if(tcgetattr(STDIN_FILENO, &oldt) != 0)

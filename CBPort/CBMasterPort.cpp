@@ -650,7 +650,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 	LOGDEBUG("{} SOE Scan Data processing - Blocks {}", Name, CompleteCBMessage.size());
 
 	uint32_t UsedBits = 0;
-	std::array<bool, MaxSOEBits> BitArray;
+	std::array<bool, MaxSOEBits> BitArray{};
 
 	if (!ConvertSOEMessageToBitArray(CompleteCBMessage, BitArray, UsedBits))
 		return false;

@@ -89,7 +89,7 @@ const std::string GetFile(const std::string& rUrl)
 
 int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 {
-	struct stat buf;
+	struct stat buf{};
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;

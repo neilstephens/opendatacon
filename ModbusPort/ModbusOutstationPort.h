@@ -47,7 +47,7 @@ public:
 	void Disconnect();
 
 private:
-	modbus_mapping_t *mb_mapping;
+	modbus_mapping_t *mb_mapping{};
 };
 
 #endif /* ModbusSERVERPORT_H_ */

@@ -39,6 +39,7 @@ thread_local std::mt19937 SimPort::RandNumGenerator = std::mt19937(std::random_d
 //Implement DataPort interface
 SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
 	DataPort(Name, File, Overrides),
+	TimestampHandling(TimestampMode::FIRST),
 	SimCollection(nullptr)
 {
 

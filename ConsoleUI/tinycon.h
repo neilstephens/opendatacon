@@ -57,7 +57,7 @@ protected:
 	int pos;
 	int line_pos;
 	int skip_out;
-	char c;
+	char c{};
 	std::string s, unused;
 	std::deque<char> buffer;
 	std::deque<std::string> history;

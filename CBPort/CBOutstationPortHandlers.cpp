@@ -660,7 +660,7 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 	{
 		// The maximum number of bits we can send is 12 * 31 = 372.
 		uint32_t UsedBits = 0;
-		std::array<bool, MaxSOEBits> BitArray;
+		std::array<bool, MaxSOEBits> BitArray{};
 
 		BuildPackedEventBitArray(BitArray, UsedBits);
 
