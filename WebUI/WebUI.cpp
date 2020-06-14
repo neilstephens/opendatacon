@@ -92,7 +92,7 @@ static int ahc(void *cls,
 	size_t *upload_data_size,
 	void **ptr)
 {
-	WebUI* test = reinterpret_cast<WebUI*>(cls);
+	auto test = reinterpret_cast<WebUI*>(cls);
 	std::string upload_data_str;
 	if (*upload_data_size > 0)
 	{

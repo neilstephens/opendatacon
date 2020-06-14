@@ -1126,11 +1126,11 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 	{
 		case AnalogPoints:
 		{
-			ModuleMapType::iterator mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+			auto mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
 
 			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
 			uint8_t ModuleAddress = mait->first;
-			uint8_t Channels = numeric_cast<uint8_t>(mait->second);
+			auto Channels = numeric_cast<uint8_t>(mait->second);
 
 			if (MyPointConf->PollGroups[pollgroup].ModuleAddresses.size() > 1)
 			{
@@ -1169,11 +1169,11 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 
 		case CounterPoints: //TODO: Analog Poll - Handle Counters
 		{
-			ModuleMapType::iterator mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+			auto mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
 
 			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
 			uint8_t ModuleAddress = mait->first;
-			uint8_t Channels = numeric_cast<uint8_t>(mait->second);
+			auto Channels = numeric_cast<uint8_t>(mait->second);
 
 			if (MyPointConf->PollGroups[pollgroup].ModuleAddresses.size() > 1)
 			{
@@ -1218,12 +1218,12 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 				// of the binary data (timetagged or otherwise). The outStation will use the zero sequnce number to send everything to initialise us. We
 				// don't have to send an unconditional.
 
-				ModuleMapType::iterator FirstModule = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+				auto FirstModule = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
 
 				// Request Digital Unconditional
 				uint8_t ModuleAddress = FirstModule->first;
 				// We expect the digital modules to be consecutive, or if there is a gap this will still work.
-				uint8_t Modules = numeric_cast<uint8_t>(MyPointConf->PollGroups[pollgroup].ModuleAddresses.size()); // Most modules we can get in one command - NOT channels 0 to 15!
+				auto Modules = numeric_cast<uint8_t>(MyPointConf->PollGroups[pollgroup].ModuleAddresses.size()); // Most modules we can get in one command - NOT channels 0 to 15!
 
 				bool UnconditionalCommandRequired = false;
 				for (uint8_t m = 0; m < Modules; m++)
@@ -1268,7 +1268,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 				{
 					// Use Unconditional Request Fn 7
 					LOGDEBUG("Poll Issued a Digital Unconditional (old) Command");
-					ModuleMapType::iterator mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+					auto mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
 
 					// Request Digital Unconditional
 					uint8_t ModuleAddress = mait->first;
@@ -1688,7 +1688,7 @@ void MD3MasterPort::WriteObject(const int32_t & command, const uint32_t &index, 
 	else if (index == MyPointConf->DOMControlPoint.second) // Is this out magic time set point?
 	{
 		LOGDEBUG("Master received DOM Control Point command on the magic point through ODC {}",index);
-		uint32_t PacketData = numeric_cast<uint32_t>(command);
+		auto PacketData = numeric_cast<uint32_t>(command);
 		MD3BlockFn19MtoS Header = MD3BlockFn19MtoS((PacketData >> 24) & 0x7F, (PacketData >> 16) & 0xFF);
 		MD3BlockData BlockData = Header.GenerateSecondBlock(PacketData & 0xFFFF);
 
@@ -1712,14 +1712,14 @@ void MD3MasterPort::WriteObject(const double& command, const uint32_t &index, co
 	if (index == MyPointConf->TimeSetPoint.second) // Is this out magic time set point?
 	{
 		LOGDEBUG("Master received a Time Change command on the magic point through ODC {}",index);
-		uint64_t currenttime = static_cast<uint64_t>(command);
+		auto currenttime = static_cast<uint64_t>(command);
 
 		SendTimeDateChangeCommand(currenttime, pStatusCallback);
 	}
 	else if(index == MyPointConf->TimeSetPointNew.second) // Is this out magic time set point?
 	{
 		LOGDEBUG("Master received a New Time Change command on the magic point through ODC {}",index);
-		uint64_t currenttime = static_cast<uint64_t>(command);
+		auto currenttime = static_cast<uint64_t>(command);
 		int utcoffsetminutes = tz_offset();
 		SendNewTimeDateChangeCommand(currenttime, utcoffsetminutes, pStatusCallback);
 	}

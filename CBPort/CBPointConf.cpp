@@ -362,7 +362,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			{
 				for (uint32_t index = start; index <= stop; index++)
 				{
-					uint8_t currentchannel = static_cast<uint8_t>(channel + (index - start));
+					auto currentchannel = static_cast<uint8_t>(channel + (index - start));
 
 					bool res = false;
 

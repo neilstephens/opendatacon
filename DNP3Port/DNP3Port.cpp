@@ -243,7 +243,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 	static std::unordered_map<std::string, std::weak_ptr<asiodnp3::IChannel>> Channels;
 	std::shared_ptr<asiodnp3::IChannel> chan(nullptr);
 
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	std::string ChannelID;
 	bool isSerial;

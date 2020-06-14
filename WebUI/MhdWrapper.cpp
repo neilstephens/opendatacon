@@ -217,7 +217,7 @@ iterate_post (void *coninfo_cls,
 	size_t size // POST VALUE LENGTH
 	)
 {
-	struct connection_info_struct* con_info = reinterpret_cast<connection_info_struct*>(coninfo_cls);
+	auto con_info = reinterpret_cast<connection_info_struct*>(coninfo_cls);
 
 	if (kind == MHD_POSTDATA_KIND)
 	{
@@ -231,7 +231,7 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 	void **con_cls,
 	enum MHD_RequestTerminationCode toe)
 {
-	struct connection_info_struct *con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
+	auto *con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
 
 	if (nullptr == con_info) return;
 	if (nullptr != con_info->postprocessor) MHD_destroy_post_processor(con_info->postprocessor);

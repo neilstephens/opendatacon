@@ -131,7 +131,7 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 
 TCPClientServer DNP3OutstationPort::ClientOrServer()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
 		return TCPClientServer::SERVER;
 	return pConf->mAddrConf.ClientServer;
@@ -139,7 +139,7 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 
 void DNP3OutstationPort::Build()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	pChannel = GetChannel();
 

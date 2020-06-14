@@ -182,7 +182,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 	bool parsing_success = JSONReader->parse(start,stop,&JSONRoot,&err_str);
 	if (parsing_success)
 	{
-		JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
+		auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
 		//little functor to traverse any paths, starting at the root
 		//pass a JSON array of nodes representing the path (that's how we store our point config after all)

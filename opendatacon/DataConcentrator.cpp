@@ -462,7 +462,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			std::string libfilename = GetLibFileName(libname);
 
 			//try to load the lib
-			auto* pluginlib = LoadModule(libfilename);
+			auto pluginlib = LoadModule(libfilename);
 
 			if(pluginlib == nullptr)
 			{
@@ -581,7 +581,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			std::string libfilename(GetLibFileName(libname));
 
 			//try to load the lib
-			auto* portlib = LoadModule(libfilename);
+			auto portlib = LoadModule(libfilename);
 
 			if(portlib == nullptr)
 			{

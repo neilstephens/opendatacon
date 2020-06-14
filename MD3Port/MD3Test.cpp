@@ -1727,7 +1727,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	MD3OSPort->Enable();
 
-	MD3Time changedtime = static_cast<MD3Time>(0x0000016338b6d4fb); // A value around June 2018
+	auto changedtime = static_cast<MD3Time>(0x0000016338b6d4fb); // A value around June 2018
 
 	// Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on start up to send all data, 15 modules returned
 
@@ -3454,7 +3454,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 		// Timedate is msec, but need seconds
 		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
-		MD3Time changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
+		auto changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
 		MD3BlockData b[] = { MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime / 1000)),
 			               MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true) };
 
@@ -3566,7 +3566,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// Timedate is msec, but need seconds
 		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
-		MD3Time changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
+		auto changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
 		MD3BlockData b[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime/1000)),
 			              MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true)};
 

@@ -36,14 +36,14 @@
 #include "PyPort.h"
 #include <chrono>
 #include <ctime>
-#include <time.h>
+#include <ctime>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <utility>
 #include <vector>
 #include <fstream>
-#include <stdio.h>
+#include <cstdio>
 #include <whereami++.h>
 #ifdef WIN32
 #include <direct.h>

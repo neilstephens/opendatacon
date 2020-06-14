@@ -40,7 +40,7 @@
 #include <ctime>
 #include <exception>
 #include <datetime.h> //PyDateTime
-#include <time.h>
+#include <ctime>
 #include <iomanip>
 #include <utility>
 #include <exception>
@@ -338,11 +338,11 @@ static PyMethodDef odcMethods[] = {
 	{"SetTimer", odc_SetTimer, METH_VARARGS, "Set a Timer Callback up"},
 	{"GetNextEvent", odc_GetNextEvent, METH_VARARGS, "Get the next event from the queue - return None if empty"},
 	{"GetEventQueueSize", odc_GetEventQueueSize, METH_VARARGS, "How many elements are there in the event queue - return None if empty"},
-	{NULL, NULL, 0, NULL}
+	{nullptr, nullptr, 0, nullptr}
 };
 
 static PyModuleDef odcModule = {
-	PyModuleDef_HEAD_INIT, "odc", NULL, -1, odcMethods,   NULL, NULL, NULL, NULL
+	PyModuleDef_HEAD_INIT, "odc", nullptr, -1, odcMethods,   nullptr, nullptr, nullptr, nullptr
 };
 
 static PyObject* PyInit_odc(void)
@@ -419,7 +419,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 		LOGDEBUG("Initialised Python");
 
 		#ifndef PYTHON_34_ORLESS
-		LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
+		LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),nullptr));
 		#endif
 
 		// Now execute some commands to get the environment ready.
@@ -867,12 +867,12 @@ PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sF
 void PythonWrapper::DumpStackTrace()
 {
 	PyThreadState* tstate = PyThreadState_GET();
-	if (NULL != tstate && NULL != tstate->frame)
+	if (nullptr != tstate && nullptr != tstate->frame)
 	{
 		PyFrameObject* frame = tstate->frame;
 
 		LOGERROR("Python stack trace:");
-		while (NULL != frame)
+		while (nullptr != frame)
 		{
 			// int line = frame->f_lineno;
 			/*

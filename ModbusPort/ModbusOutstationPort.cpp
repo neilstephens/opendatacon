@@ -49,7 +49,7 @@ void ModbusOutstationPort::Enable()
 	if(enabled) return;
 	enabled = true;
 
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
 	// Only change stack state if it is a persistent server
 	if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
@@ -117,7 +117,7 @@ void ModbusOutstationPort::Disconnect()
 
 void ModbusOutstationPort::Build()
 {
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
 	std::string log_id;
 
@@ -173,7 +173,7 @@ void ModbusOutstationPort::Build()
 		pConf->pPointConf->InputBitIndicies.Total(),
 		pConf->pPointConf->RegIndicies.Total(),
 		pConf->pPointConf->InputRegIndicies.Total());
-	if (mb_mapping == NULL)
+	if (mb_mapping == nullptr)
 	{
 		if(auto log = odc::spdlog_get("ModbusPort"))
 			log->error("{}: Failed to allocate the modbus register mapping: {}", Name, modbus_strerror(errno));
@@ -199,7 +199,7 @@ void ModbusOutstationPort::Event(std::shared_ptr<const EventInfo> event, const s
 		return;
 	}
 
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 	auto event_type = event->GetEventType();
 	auto index = event->GetIndex();
 

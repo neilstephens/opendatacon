@@ -155,7 +155,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					log->debug("Attempting to load library: {}, {}", libname, libfilename);
 
 				//try to load the lib
-				auto* txlib = LoadModule(libfilename.c_str());
+				auto txlib = LoadModule(libfilename.c_str());
 
 				if(txlib == nullptr)
 				{

@@ -471,7 +471,7 @@ bool CBMasterPort::ProcessScanRequestReturn(const CBMessage_t& CompleteCBMessage
 {
 	uint8_t Group = CompleteCBMessage[0].GetGroup();
 
-	uint8_t NumberOfBlocks = numeric_cast<uint8_t>(CompleteCBMessage.size());
+	auto NumberOfBlocks = numeric_cast<uint8_t>(CompleteCBMessage.size());
 
 	LOGDEBUG("{} Scan Data processing ",Name);
 
@@ -712,7 +712,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 
 bool CBMasterPort::ConvertSOEMessageToBitArray(const CBMessage_t& CompleteCBMessage, std::array<bool, MaxSOEBits>& BitArray, uint32_t& UsedBits)
 {
-	uint8_t NumberOfBlocks = numeric_cast<uint8_t>(CompleteCBMessage.size());
+	auto NumberOfBlocks = numeric_cast<uint8_t>(CompleteCBMessage.size());
 
 	if (NumberOfBlocks == 1)
 	{
@@ -1116,7 +1116,7 @@ void CBMasterPort::WriteObject(const int16_t& command, const uint32_t& index, co
 
 	assert((Channel >= 1) && (Channel <= 2));
 
-	uint16_t BData = numeric_cast<uint16_t>(command);
+	auto BData = numeric_cast<uint16_t>(command);
 	uint8_t FunctionCode = FUNC_SETPOINT_A;
 
 	if (Channel == 2)
@@ -1161,7 +1161,7 @@ void CBMasterPort::SendDigitalControlOnCommand(const uint8_t& StationAddress, co
 	if (MyPointConf->IsBakerDevice)
 		bitshift = Channel - 1;
 
-	uint16_t BData = numeric_cast<uint16_t>(1 << bitshift);
+	auto BData = numeric_cast<uint16_t>(1 << bitshift);
 
 	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_CLOSE, BData, true); // Trip is OPEN or OFF
 	QueueCBCommand(commandblock, nullptr);
@@ -1181,7 +1181,7 @@ void CBMasterPort::SendDigitalControlOffCommand(const uint8_t& StationAddress, c
 	if (MyPointConf->IsBakerDevice)
 		bitshift = Channel - 1;
 
-	uint16_t BData = numeric_cast<uint16_t>(1 << bitshift);
+	auto BData = numeric_cast<uint16_t>(1 << bitshift);
 	CBBlockData commandblock = CBBlockData(StationAddress, Group, FUNC_TRIP, BData, true); // Trip is OPEN or OFF
 	QueueCBCommand(commandblock, nullptr);
 

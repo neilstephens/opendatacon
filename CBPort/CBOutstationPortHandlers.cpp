@@ -765,8 +765,8 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		SOEEventFormat PackedEvent;
 		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; //TODO: Bottom three bits of the point group,  not the SOE Group! Pretty sure this is correct - from captures.
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
-		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? 1 : 0;
-		PackedEvent.QualityBit = 0;
+		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? true : false;
+		PackedEvent.QualityBit = false;
 
 		CBTime TimeDelta = CurrentPoint.GetChangedTime() - LastPointTime;
 

@@ -482,7 +482,7 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 {
 	SIMPLE_TEST_SETUP();
 	uint8_t address = 1;
-	CBTime cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
+	auto cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
 
 	CBMessage_t CompleteCBMessage;
 
@@ -533,7 +533,7 @@ TEST_CASE("Util - SOEEventFormat")
 	SIMPLE_TEST_SETUP();
 	SOEEventFormat S;
 
-	CBTime cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
+	auto cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
 
 	S.Group = 5;     // 3 bits b101
 	S.Number = 0x41; // 7 bits b1000001 - 0x41

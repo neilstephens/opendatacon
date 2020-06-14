@@ -199,7 +199,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	{
 		case EventType::Analog:
 		{
-			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
+			auto analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
 			LOGTRACE("{} - Received Event - Analog - Index {} Value {}",Name, ODCIndex, to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
@@ -211,7 +211,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		}
 		case EventType::Counter:
 		{
-			uint16_t countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
+			auto countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
 			LOGDEBUG("{} - Received Event - Counter - Index {} Value {}",Name, ODCIndex,to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))

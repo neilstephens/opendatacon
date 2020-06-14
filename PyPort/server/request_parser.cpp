@@ -199,7 +199,7 @@ request_parser::result_type request_parser::consume(request& req, char input)
 			}
 			else
 			{
-				req.headers.push_back(header());
+				req.headers.emplace_back();
 				req.headers.back().name.push_back(input);
 				state_ = header_name;
 				return indeterminate;

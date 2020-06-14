@@ -51,7 +51,7 @@ DNP3MasterPort::~DNP3MasterPort()
 
 void DNP3MasterPort::Enable()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	if(enabled)
 		return;
@@ -107,7 +107,7 @@ void DNP3MasterPort::PortDown()
 
 void DNP3MasterPort::SetCommsGood()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
@@ -124,7 +124,7 @@ void DNP3MasterPort::SetCommsGood()
 
 void DNP3MasterPort::SetCommsFailed()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
@@ -193,7 +193,7 @@ void DNP3MasterPort::OnLinkDown()
 		// Notify subscribers that a disconnect event has occured
 		PublishEvent(ConnectState::DISCONNECTED);
 
-		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
@@ -220,7 +220,7 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 		// Update the comms state point
 		PortUp();
 
-		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if(pConf->pPointConf->SetQualityOnLinkStatus)
 		{
 			// Trigger integrity scan to get point quality
@@ -233,7 +233,7 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 
 TCPClientServer DNP3MasterPort::ClientOrServer()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
 		return TCPClientServer::CLIENT;
 	return pConf->mAddrConf.ClientServer;
@@ -241,7 +241,7 @@ TCPClientServer DNP3MasterPort::ClientOrServer()
 
 void DNP3MasterPort::Build()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	pChannel = GetChannel();
 
@@ -363,7 +363,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			IntegrityScan->Demand();
 		}
 
-		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 		// If an upstream port is connected, attempt a connection (if on demand)
 		if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)

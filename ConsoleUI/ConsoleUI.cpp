@@ -24,7 +24,9 @@
 #include <fstream>
 #include <iomanip>
 #include <exception>
+#include <memory>
 #include <utility>
+
 using namespace odc;
 
 ConsoleUI::ConsoleUI():
@@ -239,7 +241,7 @@ int ConsoleUI::hotkeys(char c)
 					std::string name = name_n_responder.first;
 					ToLower(name);
 					if (name.substr(0, lower_cmd.size()) == lower_cmd)
-						matching_cmds.push_back(name_n_responder.first.c_str());
+						matching_cmds.emplace_back(name_n_responder.first);
 				}
 			}
 		}
@@ -374,10 +376,10 @@ void ConsoleUI::Enable()
 	this->_quit = false;
 	if (!uithread)
 	{
-		uithread = std::unique_ptr<asio::thread>(new asio::thread([this]()
+		uithread = std::make_unique<asio::thread>([this]()
 			{
 				this->run();
-			}));
+			});
 	}
 }
 

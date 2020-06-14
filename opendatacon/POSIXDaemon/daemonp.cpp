@@ -19,10 +19,10 @@
  */
 
 #include <unistd.h>
-#include <errno.h>
+#include <cerrno>
 #include <string>
 #include <stdexcept>
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <fstream>
 
