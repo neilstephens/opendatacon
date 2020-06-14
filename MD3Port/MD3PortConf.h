@@ -75,7 +75,7 @@ class MD3PortConf: public DataPortConf
 public:
 	MD3PortConf(std::string FileName, const Json::Value& ConfOverrides)
 	{
-		pPointConf.reset(new MD3PointConf(FileName, ConfOverrides));
+		pPointConf = std::make_unique<MD3PointConf>(FileName, ConfOverrides);
 	}
 
 	std::shared_ptr<MD3PointConf> pPointConf;

@@ -1861,7 +1861,7 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 
 		MAportoverride["OutstationAddr"] = static_cast<Json::UInt>(StationAddress);
 
-		CBMAPort[StationAddress].reset( new CBMasterPort("Station Master "+std::to_string(StationAddress), conffilename1, MAportoverride));
+		CBMAPort[StationAddress] = std::make_unique<CBMasterPort>("Station Master "+std::to_string(StationAddress), conffilename1, MAportoverride);
 
 		CBMAPort[StationAddress]->SetIOS(IOS);
 		CBMAPort[StationAddress]->Build();

@@ -38,7 +38,7 @@ JSONPort::JSONPort(const std::string& aName, const std::string& aConfFilename, c
 	pSockMan(nullptr)
 {
 	//the creation of a new PortConf will get the point details
-	pConf.reset(new JSONPortConf(ConfFilename, aConfOverrides));
+	pConf = std::make_unique<JSONPortConf>(ConfFilename, aConfOverrides);
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();

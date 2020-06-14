@@ -28,7 +28,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include <utility> 
+#include <utility>
 #include "PyPort.h"
 #include "ServerManager.h"
 

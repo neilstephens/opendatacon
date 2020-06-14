@@ -63,7 +63,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 		{} //init happens very seldom, so spin lock is good
 	}
 
-	pConf.reset(new SimPortConf());
+	pConf = std::make_unique<SimPortConf>();
 	ProcessFile();
 }
 void SimPort::Enable()

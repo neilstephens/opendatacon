@@ -29,7 +29,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include <utility> 
+#include <utility>
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3Connection.h"

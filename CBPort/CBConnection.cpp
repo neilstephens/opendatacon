@@ -29,7 +29,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include <utility> 
+#include <utility>
 #include "CB.h"
 #include "CBUtility.h"
 #include "CBConnection.h"
@@ -76,13 +76,13 @@ CBConnection::CBConnection
 	IsServer(aisServer),
 	IsBakerDevice(isbakerdevice)
 {
-	pSockMan.reset(new TCPSocketManager<std::string>
-			(pIOS, IsServer, EndPoint, Port,
-			std::bind(&CBConnection::ReadCompletionHandler, this, std::placeholders::_1),
-			std::bind(&CBConnection::SocketStateHandler, this, std::placeholders::_1),
-			std::numeric_limits<size_t>::max(),
-			true,
-			retry_time_ms));
+	pSockMan = std::make_shared<TCPSocketManager<std::string>>
+		           (pIOS, IsServer, EndPoint, Port,
+		           std::bind(&CBConnection::ReadCompletionHandler, this, std::placeholders::_1),
+		           std::bind(&CBConnection::SocketStateHandler, this, std::placeholders::_1),
+		           std::numeric_limits<size_t>::max(),
+		           true,
+		           retry_time_ms);
 
 	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 

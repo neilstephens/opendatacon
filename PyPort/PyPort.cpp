@@ -113,7 +113,7 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 	JSONOverride("")
 {
 	//the creation of a new PyPortConf will get the point details
-	pConf.reset(new PyPortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<PyPortConf>(ConfFilename, ConfOverrides);
 
 	// Just to save a lot of dereferencing..
 	MyConf = static_cast<PyPortConf*>(this->pConf.get());

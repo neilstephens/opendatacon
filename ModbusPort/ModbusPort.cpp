@@ -32,7 +32,7 @@ ModbusPort::ModbusPort(const std::string& aName, const std::string& aConfFilenam
 	stack_enabled(false)
 {
 	//the creation of a new ModbusPortConf will get the point details
-	pConf.reset(new ModbusPortConf(ConfFilename));
+	pConf = std::make_unique<ModbusPortConf>(ConfFilename);
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();

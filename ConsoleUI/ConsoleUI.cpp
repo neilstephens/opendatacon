@@ -24,7 +24,7 @@
 #include <fstream>
 #include <iomanip>
 #include <exception>
-#include <utility> 
+#include <utility>
 using namespace odc;
 
 ConsoleUI::ConsoleUI():

@@ -25,7 +25,7 @@
  */
 
 #include <opendatacon/IOHandler.h>
- #include <utility> 
+ #include <utility>
 namespace odc
 {
 

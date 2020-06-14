@@ -34,7 +34,7 @@ MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, co
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
 	//the creation of a new MD3PortConf will get the point details
-	pConf.reset(new MD3PortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<MD3PortConf>(ConfFilename, ConfOverrides);
 
 	// Just to save a lot of dereferencing..
 	MyConf = static_cast<MD3PortConf*>(this->pConf.get());

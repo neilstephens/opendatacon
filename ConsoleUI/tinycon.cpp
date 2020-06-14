@@ -32,7 +32,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <thread>
-#include <utility> 
+#include <utility>
 int GetCharTimeout (const uint8_t timeout_tenths_of_seconds)
 {
 	static const size_t secinaday = 10*60*60*24;

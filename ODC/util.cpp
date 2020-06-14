@@ -27,7 +27,7 @@
 #include <opendatacon/util.h>
 #include <regex>
 #include <iostream>
-#include <utility> 
+#include <utility>
 namespace odc
 {
 

@@ -61,7 +61,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	}
 
 	//the creation of a new DNP3PortConf will get the point details
-	pConf.reset(new DNP3PortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<DNP3PortConf>(ConfFilename, ConfOverrides);
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();

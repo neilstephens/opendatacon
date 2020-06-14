@@ -27,7 +27,7 @@
 #include <thread>
 #include <chrono>
 #include <array>
-#include <utility> 
+#include <utility>
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3MasterPort.h"
@@ -103,8 +103,7 @@ void MD3MasterPort::Build()
 {
 	std::string ChannelID = MyConf->mAddrConf.ChannelID();
 
-	if (PollScheduler == nullptr)
-		PollScheduler.reset(new ASIOScheduler(*pIOS));
+	PollScheduler = std::make_unique<ASIOScheduler>(*pIOS);
 
 	MasterCommandProtectedData.CurrentCommandTimeoutTimer = pIOS->make_steady_timer();
 	MasterCommandStrand = pIOS->make_strand();

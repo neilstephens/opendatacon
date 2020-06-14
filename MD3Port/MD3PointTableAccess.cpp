@@ -35,7 +35,7 @@ void MD3PointTableAccess::Build(const bool isoutstation, const bool newdigitalco
 {
 	IsOutstation = isoutstation;
 	NewDigitalCommands = newdigitalcommands;
-	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<MD3BinaryPoint>(IOS, 256));
+	pBinaryTimeTaggedEventQueue = std::make_unique<StrandProtectedQueue<MD3BinaryPoint>>(IOS, 256);
 }
 
 #ifdef _MSC_VER

@@ -71,7 +71,7 @@ class CBPortConf: public DataPortConf
 public:
 	CBPortConf(std::string FileName, const Json::Value& ConfOverrides)
 	{
-		pPointConf.reset(new CBPointConf(FileName, ConfOverrides));
+		pPointConf = std::make_unique<CBPointConf>(FileName, ConfOverrides);
 	}
 
 	std::shared_ptr<CBPointConf> pPointConf;

@@ -27,7 +27,7 @@
 #include <thread>
 #include <chrono>
 #include <array>
-#include <utility> 
+#include <utility>
 #include "CB.h"
 #include "CBUtility.h"
 #include "CBMasterPort.h"
@@ -99,8 +99,7 @@ void CBMasterPort::SocketStateHandler(bool state)
 
 void CBMasterPort::Build()
 {
-	if (PollScheduler == nullptr)
-		PollScheduler.reset(new ASIOScheduler(*pIOS));
+	PollScheduler = std::make_unique<ASIOScheduler>(*pIOS);
 
 	MasterCommandProtectedData.CurrentCommandTimeoutTimer = pIOS->make_steady_timer();
 	MasterCommandStrand = pIOS->make_strand();
