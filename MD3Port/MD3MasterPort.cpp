@@ -589,7 +589,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 				LOGDEBUG("MA - Published Event - Analog - Index {} Value {}",ODCIndex, to_hexstring(AnalogValues[i]));
 
 				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from MD3, so add it as soon as possible);
-				event->SetPayload<EventType::Analog>(AnalogValues[i]);
+				event->SetPayload<EventType::Analog>(double(AnalogValues[i]));
 				PublishEvent(event);
 			}
 		}
@@ -603,7 +603,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 				QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
 				LOGDEBUG("MA - Published Event - Counter - Index {} Value {}",ODCIndex, to_hexstring(AnalogValues[i]));
 				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from MD3, so add it as soon as possible);
-				event->SetPayload<EventType::Counter>(AnalogValues[i]);
+				event->SetPayload<EventType::Counter>(uint32_t(AnalogValues[i]));
 				PublishEvent(event);
 			}
 		}
