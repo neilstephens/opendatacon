@@ -367,7 +367,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		case EventType::Binary:
 		{
 			pubevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, QualityResult);
-			bool val = (PayloadStr.find("1") != std::string::npos);
+			bool val = (PayloadStr.find('1') != std::string::npos);
 			pubevent->SetPayload<EventType::Binary>(std::move(val));
 		}
 		break;
