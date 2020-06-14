@@ -24,9 +24,6 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#ifndef CBCLIENTPORT_H_
-#define CBCLIENTPORT_H_
-
 #include <regex>
 #include <algorithm>
 #include <memory>
@@ -697,4 +694,3 @@ bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType&
 	return false;
 }
 
-#endif

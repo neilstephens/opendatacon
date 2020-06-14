@@ -24,9 +24,6 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#ifndef MD3CLIENTPORT_H_
-#define MD3CLIENTPORT_H_
-
 #include <regex>
 #include <algorithm>
 #include <memory>
@@ -487,5 +484,3 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 	}
 	LOGDEBUG("Conf processing - Analog/Counter - Finished");
 }
-
-#endif
