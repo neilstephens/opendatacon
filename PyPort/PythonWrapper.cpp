@@ -406,7 +406,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 			PlatformSetEnv("PYTHONPATH", newpythonpath.c_str(), 1);
 			LOGDEBUG("Set PYTHONPATH env var to: '{}'", newpythonpath);
 			#else
-			LOGERROR("OpenDataCon was built without linked in Python support, must be run in UseSystemPython mode - use the follwing in the Python Port config file - GlobalUseSystemPython = true")
+			LOGERROR("OpenDataCon was built without linked in Python support, must be run in UseSystemPython mode - use the follwing in the Python Port config file - GlobalUseSystemPython = true");
 			#endif
 		}
 
