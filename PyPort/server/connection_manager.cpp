@@ -31,7 +31,7 @@ void connection_manager::stop(const connection_ptr& c)
 
 void connection_manager::stop_all()
 {
-	for (auto c: connections_)
+	for (const auto& c: connections_)
 		c->stop();
 	connections_.clear();
 }
