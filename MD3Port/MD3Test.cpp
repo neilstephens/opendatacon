@@ -1201,7 +1201,7 @@ TEST_CASE("Station - AnalogUnconditionalF5")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1256,7 +1256,7 @@ TEST_CASE("Station - CounterScanFn30")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1291,7 +1291,7 @@ TEST_CASE("Station - CounterScanFn30")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(std::move(numeric_cast<uint16_t>(4096 + ODCIndex + ODCIndex * 0x100)));
+		event->SetPayload<EventType::Counter>(numeric_cast<uint16_t>(4096 + ODCIndex + ODCIndex * 0x100));
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1338,7 +1338,7 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1376,7 +1376,7 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	for (int ODCIndex = 0; ODCIndex < 5; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100 + ((ODCIndex % 2) == 0 ? 50 : -50)));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100 + ((ODCIndex % 2) == 0 ? 50 : -50));
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1426,7 +1426,7 @@ TEST_CASE("Station - DigitalUnconditionalFn7")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex%2)==0));
+		event->SetPayload<EventType::Binary>((ODCIndex%2)==0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1490,7 +1490,7 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+		event->SetPayload<EventType::Binary>((ODCIndex % 2) == 0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1558,7 +1558,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+		event->SetPayload<EventType::Binary>((ODCIndex % 2) == 0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1780,7 +1780,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "TestHarness", QualityFlags::ONLINE, static_cast<MD3Time>(changedtime));
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+		event->SetPayload<EventType::Binary>((ODCIndex % 2) == 0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1911,7 +1911,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+		event->SetPayload<EventType::Binary>((ODCIndex % 2) == 0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -3912,7 +3912,7 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 	}

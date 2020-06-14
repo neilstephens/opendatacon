@@ -66,7 +66,7 @@ public:
 	tinyConsole(std::string);
 	void run();
 	void setPrompt(std::string);
-	virtual int trigger(std::string);
+	virtual int trigger(const std::string &);
 	virtual int hotkeys(char);
 	void pause();
 	void quit();

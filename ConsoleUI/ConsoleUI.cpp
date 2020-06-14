@@ -134,7 +134,7 @@ void ConsoleUI::AddHelp(std::string help)
 	}
 }
 
-int ConsoleUI::trigger (std::string s)
+int ConsoleUI::trigger (const std::string& s)
 {
 	std::stringstream LineStream(s);
 	std::string cmd, lower_cmd;

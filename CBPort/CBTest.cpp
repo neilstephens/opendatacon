@@ -256,12 +256,12 @@ void WriteStartLoggingMessage(const std::string& TestName)
                           std::cout << "Error opendatacon Logger not operational";
                           */
 }
-void TestSetup(std::string TestName, bool writeconffiles = true)
+void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
 	SetupLoggers(spdlog::level::debug);
 	#endif
-	WriteStartLoggingMessage(std::move(TestName));
+	WriteStartLoggingMessage(TestName);
 
 	if (writeconffiles)
 		WriteConfFilesToCurrentWorkingDirectory();
@@ -913,7 +913,7 @@ TEST_CASE("Station - ScanRequest F0")
 	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(1024 + ODCIndex));
+		event->SetPayload<EventType::Analog>(1024 + ODCIndex);
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
@@ -921,7 +921,7 @@ TEST_CASE("Station - ScanRequest F0")
 	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(1 + ODCIndex));
+		event->SetPayload<EventType::Analog>(1 + ODCIndex);
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
@@ -929,7 +929,7 @@ TEST_CASE("Station - ScanRequest F0")
 	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(std::move(numeric_cast<unsigned int>(1024 + ODCIndex)));
+		event->SetPayload<EventType::Counter>(numeric_cast<unsigned int>(1024 + ODCIndex));
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1368,7 +1368,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(1024 + ODCIndex));
+		event->SetPayload<EventType::Analog>(1024 + ODCIndex);
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
@@ -1376,7 +1376,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(1 + ODCIndex));
+		event->SetPayload<EventType::Analog>(1 + ODCIndex);
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
@@ -1384,7 +1384,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(std::move(numeric_cast<unsigned int>(1024 + ODCIndex)));
+		event->SetPayload<EventType::Counter>(numeric_cast<unsigned int>(1024 + ODCIndex));
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 

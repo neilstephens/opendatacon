@@ -167,12 +167,12 @@ void WriteStartLoggingMessage(const std::string& TestName)
 	else
 		std::cout << "Error opendatacon Logger not operational";
 }
-void TestSetup(std::string TestName, bool writeconffiles = true)
+void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
 	SetupLoggers(spdlog::level::level_enum::trace);
 	#endif
-	WriteStartLoggingMessage(std::move(TestName));
+	WriteStartLoggingMessage(TestName);
 
 	if (writeconffiles)
 		WriteConfFilesToCurrentWorkingDirectory();

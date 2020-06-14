@@ -171,11 +171,11 @@ void CBMasterPort::QueueCBCommand(const CBMessage_t& CompleteCBMessage, const Sh
 		});
 }
 // Handle the many single block command messages better
-void CBMasterPort::QueueCBCommand(const CBBlockData& SingleBlockCBMessage, SharedStatusCallback_t pStatusCallback)
+void CBMasterPort::QueueCBCommand(const CBBlockData& SingleBlockCBMessage, const SharedStatusCallback_t& pStatusCallback)
 {
 	CBMessage_t CommandCBMessage;
 	CommandCBMessage.push_back(SingleBlockCBMessage);
-	QueueCBCommand(CommandCBMessage, std::move(pStatusCallback));
+	QueueCBCommand(CommandCBMessage, pStatusCallback);
 }
 
 
@@ -888,13 +888,13 @@ void CBMasterPort::SendF0ScanCommand(uint8_t group, SharedStatusCallback_t pStat
 	QueueCBCommand(sendcommandblock, std::move(pStatusCallback));
 }
 // The timeoffset minutes setting is purely for testing
-void CBMasterPort::SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback, int TimeOffsetMinutes)
+void CBMasterPort::SendFn9TimeUpdate(const SharedStatusCallback_t& pStatusCallback, int TimeOffsetMinutes)
 {
 	CBMessage_t CompleteCBMessage;
 
 	BuildUpdateTimeMessage(MyConf->mAddrConf.OutstationAddr, (uint64_t)((int64_t)CBNowUTC()+(int64_t)(TimeOffsetMinutes*60*1000)), CompleteCBMessage);
 
-	QueueCBCommand(CompleteCBMessage, std::move(pStatusCallback));
+	QueueCBCommand(CompleteCBMessage, pStatusCallback);
 }
 // This message is constructed by the Master to send the time to the RTU
 void CBMasterPort::BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t& CompleteCBMessage)

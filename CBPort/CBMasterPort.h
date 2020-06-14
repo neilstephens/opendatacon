@@ -85,7 +85,7 @@ public:
 	// This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 	// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
 	void QueueCBCommand(const CBMessage_t &CompleteCBMessage, const SharedStatusCallback_t& pStatusCallback);
-	void QueueCBCommand(const CBBlockData & SingleBlockCBMessage, SharedStatusCallback_t pStatusCallback); // Handle the many single block command messages better
+	void QueueCBCommand(const CBBlockData & SingleBlockCBMessage, const SharedStatusCallback_t& pStatusCallback); // Handle the many single block command messages better
 	void PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c);
 
 	void ResetDigitalCommandSequenceNumber();
@@ -99,7 +99,7 @@ public:
 	//*** PUBLIC for unit tests only
 	void DoPoll(uint32_t payloadlocation);
 	void SendF0ScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);
-	void SendFn9TimeUpdate(SharedStatusCallback_t pStatusCallback, int TimeOffsetMinutes = 0);
+	void SendFn9TimeUpdate(const SharedStatusCallback_t& pStatusCallback, int TimeOffsetMinutes = 0);
 
 	static void BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime, CBMessage_t& CompleteCBMessage);
 	void SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback);

@@ -162,7 +162,7 @@ void tinyConsole::quit ()
 	_quit = true;
 }
 
-int tinyConsole::trigger (std::string cmd)
+int tinyConsole::trigger (const std::string& cmd)
 {
 	if (cmd == "exit") {
 		_quit = true;

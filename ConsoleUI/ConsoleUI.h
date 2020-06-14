@@ -46,7 +46,7 @@ public:
 	void AddHelp(std::string help);
 
 	/* tinyConsole functions */
-	int trigger (std::string s) override;
+	int trigger (const std::string& s) override;
 	int hotkeys(char c) override;
 
 	/* Implement IUI interface */

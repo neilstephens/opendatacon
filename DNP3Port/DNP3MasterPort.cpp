@@ -117,7 +117,7 @@ void DNP3MasterPort::SetCommsGood()
 
 		auto commsUpEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
-		commsUpEvent->SetPayload<EventType::Binary>(std::move(!failed_val));
+		commsUpEvent->SetPayload<EventType::Binary>(!failed_val);
 		PublishEvent(commsUpEvent);
 	}
 }

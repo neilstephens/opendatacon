@@ -175,18 +175,18 @@ void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, cons
 		});
 }
 // Handle the many single block command messages better
-void MD3MasterPort::QueueMD3Command(const MD3BlockData &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::QueueMD3Command(const MD3BlockData &SingleBlockMD3Message, const SharedStatusCallback_t& pStatusCallback)
 {
 	MD3Message_t CommandMD3Message;
 	CommandMD3Message.push_back(SingleBlockMD3Message);
-	QueueMD3Command(CommandMD3Message, std::move(pStatusCallback));
+	QueueMD3Command(CommandMD3Message, pStatusCallback);
 }
 // Handle the many single block command messages better
-void MD3MasterPort::QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message, const SharedStatusCallback_t& pStatusCallback)
 {
 	MD3Message_t CommandMD3Message;
 	CommandMD3Message.push_back(SingleBlockMD3Message);
-	QueueMD3Command(CommandMD3Message, std::move(pStatusCallback));
+	QueueMD3Command(CommandMD3Message, pStatusCallback);
 }
 
 // Just schedule the callback, don't want to do it in a strand protected section.
@@ -589,7 +589,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 				LOGDEBUG("MA - Published Event - Analog - Index {} Value {}",ODCIndex, to_hexstring(AnalogValues[i]));
 
 				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from MD3, so add it as soon as possible);
-				event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
+				event->SetPayload<EventType::Analog>(AnalogValues[i]);
 				PublishEvent(event);
 			}
 		}
@@ -603,7 +603,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 				QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
 				LOGDEBUG("MA - Published Event - Counter - Index {} Value {}",ODCIndex, to_hexstring(AnalogValues[i]));
 				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from MD3, so add it as soon as possible);
-				event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
+				event->SetPayload<EventType::Counter>(AnalogValues[i]);
 				PublishEvent(event);
 			}
 		}
@@ -1345,16 +1345,16 @@ void MD3MasterPort::EnablePolling(bool on)
 	else
 		PollScheduler->Stop();
 }
-void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec, const SharedStatusCallback_t& pStatusCallback)
 {
 	MD3BlockFn43MtoS commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
 	MD3BlockData datablock(static_cast<uint32_t>(currenttimeinmsec / 1000), true);
 	MD3Message_t Cmd;
 	Cmd.push_back(commandblock);
 	Cmd.push_back(datablock);
-	QueueMD3Command(Cmd, std::move(pStatusCallback));
+	QueueMD3Command(Cmd, pStatusCallback);
 }
-void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinmsec, int utcoffsetminutes, const SharedStatusCallback_t& pStatusCallback)
 {
 	MD3BlockFn44MtoS commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
 	MD3BlockData datablock(static_cast<uint32_t>(currenttimeinmsec / 1000));
@@ -1363,7 +1363,7 @@ void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinms
 	Cmd.push_back(commandblock);
 	Cmd.push_back(datablock);
 	Cmd.push_back(datablock2);
-	QueueMD3Command(Cmd, std::move(pStatusCallback));
+	QueueMD3Command(Cmd, pStatusCallback);
 }
 void MD3MasterPort::SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCallback)
 {
