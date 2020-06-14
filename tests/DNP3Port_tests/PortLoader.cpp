@@ -33,7 +33,7 @@ symbol_ptr GetPortFunc(module_ptr pluginlib, const std::string& objname, bool de
 		funcname = "new_";
 
 	funcname += objname + "Port";
-	symbol_ptr port_func = LoadSymbol(pluginlib, funcname.c_str());
+	symbol_ptr port_func = LoadSymbol(pluginlib, funcname);
 
 	if (port_func == nullptr)
 	{

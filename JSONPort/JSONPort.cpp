@@ -49,7 +49,7 @@ void JSONPort::Enable()
 	if(enabled) return;
 	try
 	{
-		if(pSockMan.get() == nullptr)
+		if(!pSockMan)
 			throw std::runtime_error("Socket manager uninitilised");
 		pSockMan->Open();
 		enabled = true;
@@ -66,7 +66,7 @@ void JSONPort::Disable()
 {
 	if(!enabled) return;
 	enabled = false;
-	if(pSockMan.get() == nullptr)
+	if(!pSockMan)
 		return;
 	pSockMan->Close();
 }

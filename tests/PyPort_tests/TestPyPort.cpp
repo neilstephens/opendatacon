@@ -34,7 +34,7 @@ int main( int argc, char* argv[] )
 	InitLibaryLoading();
 	std::string libname = "PyPort";
 	std::string libfilename = GetLibFileName(libname);
-	auto pluginlib = LoadModule(libfilename.c_str());
+	auto pluginlib = LoadModule(libfilename);
 
 	if (pluginlib == nullptr)
 	{

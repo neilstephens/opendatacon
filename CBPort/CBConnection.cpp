@@ -227,7 +227,7 @@ void CBConnection::Open()
 
 	try
 	{
-		if (pSockMan.get() == nullptr)
+		if (!pSockMan)
 			throw std::runtime_error("Socket manager uninitialised for - " + InternalChannelID);
 
 		pSockMan->Open();

@@ -155,7 +155,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					log->debug("Attempting to load library: {}, {}", libname, libfilename);
 
 				//try to load the lib
-				auto txlib = LoadModule(libfilename.c_str());
+				auto txlib = LoadModule(libfilename);
 
 				if(txlib == nullptr)
 				{
@@ -170,9 +170,9 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
 				//it should return a pointer to a heap allocated instance of a descendant of Transform
 				std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
-				auto new_tx_func = reinterpret_cast<Transform*(*)(const Json::Value&)>(LoadSymbol(txlib, new_funcname.c_str()));
+				auto new_tx_func = reinterpret_cast<Transform*(*)(const Json::Value&)>(LoadSymbol(txlib, new_funcname));
 				std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
-				auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname.c_str()));
+				auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
 
 				if(new_tx_func == nullptr)
 					if(auto log = odc::spdlog_get("Connectors"))

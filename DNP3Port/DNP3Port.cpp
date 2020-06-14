@@ -264,7 +264,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 		auto listener = std::make_shared<ChannelListener>(ChannelID,this);
 		if(isSerial)
 		{
-			chan = IOMgr->AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+			chan = IOMgr->AddSerial(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
 				asiopal::ChannelRetry(
 					openpal::TimeDuration::Milliseconds(500),
 					openpal::TimeDuration::Milliseconds(5000)),
@@ -276,7 +276,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 			{
 				case TCPClientServer::SERVER:
 				{
-					chan = IOMgr->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					chan = IOMgr->AddTCPServer(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
 						pConf->pPointConf->ServerAcceptMode,
 						pConf->mAddrConf.IP,
 						pConf->mAddrConf.Port,listener);
@@ -285,7 +285,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 
 				case TCPClientServer::CLIENT:
 				{
-					chan = IOMgr->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					chan = IOMgr->AddTCPClient(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
 						asiopal::ChannelRetry(
 							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
 							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
