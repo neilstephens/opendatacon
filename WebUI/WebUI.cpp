@@ -211,6 +211,7 @@ int WebUI::http_ahc(void *cls,
 
 		//TODO: make this writer reusable (class member)
 		Json::StreamWriterBuilder wbuilder;
+		wbuilder["commentStyle"] = "None";
 		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
 		std::ostringstream oss;
 
