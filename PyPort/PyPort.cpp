@@ -98,14 +98,6 @@ std::string GetNumber(const std::string& input)
 	return res;
 }
 
-struct MyException: public std::exception
-{
-	std::string s;
-	MyException(std::string ss): s(std::move(ss)) {}
-	~MyException() throw () {} // Updated
-	const char* what() const throw() { return s.c_str(); }
-};
-
 // Constructor for PyPort --------------------------------------
 PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -404,19 +396,19 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				// Payload String looks like: "|LATCH_ON|Count 1|ON 100ms|OFF 100ms|"
 				EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 				auto Parts = split(PayloadStr, '|');
-				if (Parts.size() != 5) throw MyException("Payload for ControlRelayOutputBlock does not have enough sections " + PayloadStr);
+				if (Parts.size() != 5) throw std::runtime_error("Payload for ControlRelayOutputBlock does not have enough sections " + PayloadStr);
 
 				ControlCode ControlCodeResult;
 				GetControlCodeFromStringName(Parts[1], ControlCodeResult);
 				val.functionCode = ControlCodeResult;
 
-				if (Parts[2].find("Count") == std::string::npos) throw MyException("Count field of ControlRelayOutputBlock not in " + Parts[2]);
+				if (Parts[2].find("Count") == std::string::npos) throw std::runtime_error("Count field of ControlRelayOutputBlock not in " + Parts[2]);
 				val.count = std::stoi(GetNumber(Parts[2]));
 
-				if (Parts[3].find("ON") == std::string::npos) throw MyException("ON field of ControlRelayOutputBlock not in " + Parts[3]);
+				if (Parts[3].find("ON") == std::string::npos) throw std::runtime_error("ON field of ControlRelayOutputBlock not in " + Parts[3]);
 				val.onTimeMS = std::stoi(GetNumber(Parts[3]));
 
-				if (Parts[4].find("OFF") == std::string::npos) throw MyException("OFF field of ControlRelayOutputBlock not in " + Parts[4]);
+				if (Parts[4].find("OFF") == std::string::npos) throw std::runtime_error("OFF field of ControlRelayOutputBlock not in " + Parts[4]);
 				val.offTimeMS = std::stoi(GetNumber(Parts[4]));
 
 				pubevent->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
