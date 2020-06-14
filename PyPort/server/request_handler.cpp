@@ -9,13 +9,13 @@
 //
 
 #include "../Py.h"
+#include "mime_types.hpp"
+#include "reply.hpp"
+#include "request.hpp"
 #include "request_handler.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
-#include "mime_types.hpp"
-#include "reply.hpp"
-#include "request.hpp"
 
 namespace http
 {

@@ -30,14 +30,13 @@
  So an Event to an outstation will be data that needs to be sent up to the scada master.
  An event from an outstation will be a master control signal to turn something on or off.
 */
-#include <iostream>
-#include <future>
-#include <regex>
-#include <chrono>
-
 #include "MD3.h"
-#include "MD3Utility.h"
 #include "MD3OutstationPort.h"
+#include "MD3Utility.h"
+#include <chrono>
+#include <future>
+#include <iostream>
+#include <regex>
 
 
 // The list of codes in use

@@ -30,8 +30,6 @@
 #include <unordered_map>
 #include <vector>
 #include <functional>
-
-
 #include "MD3.h"
 #include "MD3PointConf.h"
 //#include "MD3PortConf.h"

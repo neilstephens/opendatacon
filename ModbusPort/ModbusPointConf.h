@@ -34,8 +34,6 @@
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
-
-
 #include <chrono>
 
 using namespace odc;

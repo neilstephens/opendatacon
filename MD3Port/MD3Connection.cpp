@@ -24,15 +24,15 @@
  *      Author: Scott Ellis - scott.ellis@novatex.com.au
  */
 
-#include <opendatacon/asio.h>
-#include <opendatacon/TCPSocketManager.h>
-#include <string>
+#include "MD3.h"
+#include "MD3Connection.h"
+#include "MD3Utility.h"
 #include <functional>
+#include <opendatacon/TCPSocketManager.h>
+#include <opendatacon/asio.h>
+#include <string>
 #include <unordered_map>
 #include <utility>
-#include "MD3.h"
-#include "MD3Utility.h"
-#include "MD3Connection.h"
 
 using namespace odc;
 

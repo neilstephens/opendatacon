@@ -29,7 +29,6 @@
 
 #include <unordered_map>
 #include <opendnp3/outstation/ICommandHandler.h>
-
 #include "DNP3Port.h"
 
 class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication

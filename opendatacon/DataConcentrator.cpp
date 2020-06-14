@@ -24,20 +24,18 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <thread>
-#include <opendatacon/asio.h>
-
-#include <opendatacon/spdlog.h>
-#include <spdlog/async.h>
-#include <spdlog/sinks/ostream_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/rotating_file_sink.h>
-#include <opendatacon/asio_syslog_spdlog_sink.h>
-
-#include <opendatacon/util.h>
-#include <opendatacon/Version.h>
 #include "DataConcentrator.h"
 #include "NullPort.h"
+#include <opendatacon/Version.h>
+#include <opendatacon/asio.h>
+#include <opendatacon/asio_syslog_spdlog_sink.h>
+#include <opendatacon/spdlog.h>
+#include <opendatacon/util.h>
+#include <spdlog/async.h>
+#include <spdlog/sinks/ostream_sink.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <thread>
 
 DataConcentrator::DataConcentrator(const std::string& FileName):
 	ConfigParser(FileName),

@@ -29,25 +29,23 @@
 #pragma warning(disable: 6262)
 #endif
 
+#include "server/clientrequest.h"
 #include <array>
-#include <fstream>
 #include <cassert>
-#include <thread>
 #include <chrono>
 #include <cstdint>
+#include <fstream>
+#include <thread>
 #include <utility>
-#include "server/clientrequest.h"
 
 #define COMPILE_TESTS
 
 #if defined(COMPILE_TESTS)
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
-
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/basic_file_sink.h>
-
 #include "PyPort.h"
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #if defined(NONVSTESTING)
 #include <catch.hpp>

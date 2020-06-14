@@ -25,10 +25,10 @@
 */
 
 
-#include <iostream>
-#include <utility>
 #include "MD3Port.h"
 #include "MD3PortConf.h"
+#include <iostream>
+#include <utility>
 
 MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)

@@ -26,12 +26,11 @@
 // This is a fix for a VS bug
 #define NOMINMAX
 
-#include <iostream>
-#include <regex>
-#include <chrono>
 #include "ModbusOutstationPort.h"
-
+#include <chrono>
+#include <iostream>
 #include <opendatacon/util.h>
+#include <regex>
 
 ModbusOutstationPort::ModbusOutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	ModbusPort(aName, aConfFilename, aConfOverrides)

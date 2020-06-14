@@ -24,14 +24,14 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <iostream>
 #include "DataConnector.h"
-#include "IndexOffsetTransform.h"
 #include "IndexMapTransform.h"
-#include "ThresholdTransform.h"
+#include "IndexOffsetTransform.h"
+#include "LogicInvTransform.h"
 #include "RandTransform.h"
 #include "RateLimitTransform.h"
-#include "LogicInvTransform.h"
+#include "ThresholdTransform.h"
+#include <iostream>
 #include <opendatacon/Platform.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>

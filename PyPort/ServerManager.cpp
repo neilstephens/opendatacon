@@ -25,12 +25,12 @@
  */
 
 
-#include <string>
-#include <functional>
-#include <unordered_map>
-#include <utility>
 #include "PyPort.h"
 #include "ServerManager.h"
+#include <functional>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 
 std::unordered_map<std::string, std::weak_ptr<ServerManager>> ServerManager::ServerMap;

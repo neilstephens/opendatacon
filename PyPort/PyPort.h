@@ -30,7 +30,6 @@
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
-
 #include "PythonWrapper.h"
 #include "PyPortConf.h"
 #include "ServerManager.h"

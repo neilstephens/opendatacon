@@ -34,7 +34,6 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
-
 #include "MD3.h"
 
 

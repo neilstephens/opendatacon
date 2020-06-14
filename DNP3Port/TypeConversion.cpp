@@ -24,10 +24,10 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 #include "TypeConversion.h"
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendnp3/app/ControlRelayOutputBlock.h>
-#include <opendnp3/app/AnalogOutput.h>
 #include <opendatacon/IOTypes.h>
+#include <opendnp3/app/AnalogOutput.h>
+#include <opendnp3/app/ControlRelayOutputBlock.h>
+#include <opendnp3/app/MeasurementTypes.h>
 
 namespace odc
 {

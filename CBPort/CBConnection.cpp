@@ -24,15 +24,15 @@
  *      Author: Scott Ellis - scott.ellis@novatex.com.au
  */
 
-#include <opendatacon/asio.h>
-#include <opendatacon/TCPSocketManager.h>
-#include <string>
+#include "CB.h"
+#include "CBConnection.h"
+#include "CBUtility.h"
 #include <functional>
+#include <opendatacon/TCPSocketManager.h>
+#include <opendatacon/asio.h>
+#include <string>
 #include <unordered_map>
 #include <utility>
-#include "CB.h"
-#include "CBUtility.h"
-#include "CBConnection.h"
 
 using namespace odc;
 

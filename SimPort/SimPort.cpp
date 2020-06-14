@@ -23,16 +23,16 @@
  *  Created on: 29/07/2015
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-#include <memory>
-#include <random>
-#include <limits>
-#include <chrono>
-#include <opendatacon/util.h>
-#include <opendatacon/IOTypes.h>
 #include "SimPort.h"
-#include "SimPortConf.h"
 #include "SimPortCollection.h"
+#include "SimPortConf.h"
 #include "sqlite3/sqlite3.h"
+#include <chrono>
+#include <limits>
+#include <memory>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <random>
 
 thread_local std::mt19937 SimPort::RandNumGenerator = std::mt19937(std::random_device()());
 

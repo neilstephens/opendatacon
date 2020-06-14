@@ -24,8 +24,8 @@
  *      Author: Alan Murray
  */
 
-#include <opendatacon/util.h>
 #include "ModbusPort.h"
+#include <opendatacon/util.h>
 
 ModbusPort::ModbusPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),

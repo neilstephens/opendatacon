@@ -29,7 +29,6 @@
 #define __opendatacon__DataConectorCollection__
 
 #include <iostream>
-
 #include "DataConnector.h"
 #include <opendatacon/ResponderMap.h>
 

@@ -25,13 +25,13 @@
  *
  */
 
-#include <opendatacon/util.h>
 #include "tinycon.h"
+#include <opendatacon/util.h>
 
 #if !defined(WIN32) && !defined(_WIN32) && !defined(__WIN32)
 #include <termios.h>
-#include <unistd.h>
 #include <thread>
+#include <unistd.h>
 #include <utility>
 int GetCharTimeout (const uint8_t timeout_tenths_of_seconds)
 {

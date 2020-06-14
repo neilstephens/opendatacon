@@ -24,13 +24,13 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#include <thread>
-#include <chrono>
-#include <array>
-#include <utility>
 #include "MD3.h"
-#include "MD3Utility.h"
 #include "MD3MasterPort.h"
+#include "MD3Utility.h"
+#include <array>
+#include <chrono>
+#include <thread>
+#include <utility>
 
 
 MD3MasterPort::MD3MasterPort(const std::string &aName, const std::string &aConfFilename, const Json::Value &aConfOverrides):

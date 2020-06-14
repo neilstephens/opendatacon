@@ -9,10 +9,10 @@
 //
 
 #include "connection.hpp"
-#include <utility>
-#include <vector>
 #include "connection_manager.hpp"
 #include "request_handler.hpp"
+#include <utility>
+#include <vector>
 
 namespace http
 {

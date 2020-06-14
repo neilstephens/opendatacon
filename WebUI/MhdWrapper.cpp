@@ -25,10 +25,9 @@
 //
 //
 
+#include "MhdWrapper.h"
 #include <iostream>
 #include <opendatacon/util.h>
-
-#include "MhdWrapper.h"
 
 const int POSTBUFFERSIZE = 512;
 const char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";

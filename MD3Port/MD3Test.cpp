@@ -30,11 +30,11 @@
 #endif
 
 #include <array>
-#include <fstream>
 #include <cassert>
-#include <utility>
+#include <fstream>
 #include <opendatacon/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <utility>
 
 
 #define COMPILE_TESTS
@@ -43,14 +43,12 @@
 
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
-
-#include <spdlog/sinks/stdout_color_sinks.h>
-
-#include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
+#include "MD3OutstationPort.h"
 #include "MD3Utility.h"
-#include "StrandProtectedQueue.h"
 #include "ProducerConsumerQueue.h"
+#include "StrandProtectedQueue.h"
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #ifdef NONVSTESTING
 #include <catch.hpp>

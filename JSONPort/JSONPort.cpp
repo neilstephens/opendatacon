@@ -24,11 +24,11 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <memory>
-#include <chrono>
-#include <opendatacon/util.h>
-#include <opendatacon/IOTypes.h>
 #include "JSONPort.h"
+#include <chrono>
+#include <memory>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
 
 using namespace odc;
 

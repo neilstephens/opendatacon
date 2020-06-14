@@ -19,12 +19,12 @@
  */
 
 #include "ConsoleUI.h"
-#include <opendatacon/Version.h>
-#include <opendatacon/util.h>
+#include <exception>
 #include <fstream>
 #include <iomanip>
-#include <exception>
 #include <memory>
+#include <opendatacon/Version.h>
+#include <opendatacon/util.h>
 #include <utility>
 
 using namespace odc;

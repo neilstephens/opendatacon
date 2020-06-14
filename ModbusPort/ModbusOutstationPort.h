@@ -28,7 +28,6 @@
 #define ModbusSERVERPORT_H_
 
 #include <unordered_map>
-
 #include "ModbusPort.h"
 
 class ModbusOutstationPort: public ModbusPort

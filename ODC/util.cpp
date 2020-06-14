@@ -24,9 +24,9 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#include <iostream>
 #include <opendatacon/util.h>
 #include <regex>
-#include <iostream>
 #include <utility>
 namespace odc
 {

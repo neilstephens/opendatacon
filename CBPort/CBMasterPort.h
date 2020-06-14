@@ -30,7 +30,6 @@
 #include <queue>
 #include <utility>
 #include <opendatacon/ASIOScheduler.h>
-
 #include "CB.h"
 #include "CBUtility.h"
 #include "CBPort.h"

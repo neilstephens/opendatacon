@@ -23,10 +23,10 @@
  *  Created on: 05/06/2019
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+#include "../opendatacon/DataConnector.h"
+#include "TestPorts.h"
 #include <atomic>
 #include <catch.hpp>
-#include "TestPorts.h"
-#include "../opendatacon/DataConnector.h"
 
 using namespace odc;
 

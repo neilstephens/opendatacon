@@ -21,5 +21,5 @@
  */
 
 #define CATCH_CONFIG_MAIN
-#include <catch.hpp>
 #include "../opendatacon/DataConnector.cpp"
+#include <catch.hpp>

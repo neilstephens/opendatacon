@@ -29,7 +29,6 @@
 #define __opendatacon__WebUI__
 
 #include <opendatacon/IUI.h>
-
 #include <opendatacon/asio.h>
 #include <vector>
 #include <map>

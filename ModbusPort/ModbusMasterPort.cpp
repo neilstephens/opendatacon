@@ -24,13 +24,12 @@
  *      Author: Alan Murray
  */
 
-#include <opendatacon/util.h>
-#include <thread>
-#include <chrono>
-
-#include <opendatacon/IOTypes.h>
 #include "ModbusMasterPort.h"
 #include <array>
+#include <chrono>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <thread>
 
 ModbusMasterPort::~ModbusMasterPort()
 {

@@ -30,8 +30,6 @@
 #include <unordered_map>
 #include <vector>
 #include <functional>
-
-
 #include "CB.h"
 #include "CBUtility.h"
 #include "StrandProtectedQueue.h"

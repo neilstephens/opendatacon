@@ -19,9 +19,8 @@
  */
 /**
  */
-#include <catch.hpp>
-
 #include "PortLoader.h"
+#include <catch.hpp>
 
 #define SUITE(name) "DNP3MasterPortTestSuite - " name
 

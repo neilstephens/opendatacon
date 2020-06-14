@@ -8,12 +8,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "../Py.h"
+#include <asio.hpp>
 #include <iostream>
 #include <istream>
 #include <sstream>
 #include <string>
-#include "../Py.h"
-#include <asio.hpp>
 
 using asio::ip::tcp;
 

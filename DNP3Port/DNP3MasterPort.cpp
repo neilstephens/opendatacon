@@ -24,15 +24,14 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <opendnp3/app/ClassField.h>
-#include <opendnp3/app/MeasurementTypes.h>
+#include "ChannelStateSubscriber.h"
 #include "DNP3MasterPort.h"
+#include "TypeConversion.h"
 #include <array>
 #include <asiopal/UTCTimeSource.h>
 #include <opendatacon/util.h>
-
-#include "TypeConversion.h"
-#include "ChannelStateSubscriber.h"
+#include <opendnp3/app/ClassField.h>
+#include <opendnp3/app/MeasurementTypes.h>
 
 
 DNP3MasterPort::~DNP3MasterPort()

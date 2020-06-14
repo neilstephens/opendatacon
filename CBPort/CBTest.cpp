@@ -30,10 +30,10 @@
 #endif
 
 #include <array>
-#include <fstream>
 #include <cassert>
-#include <thread>
 #include <chrono>
+#include <fstream>
+#include <thread>
 #include <utility>
 
 #define COMPILE_TESTS
@@ -41,14 +41,12 @@
 #if defined(COMPILE_TESTS)
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
-
-#include <opendatacon/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/basic_file_sink.h>
-
-#include "CBOutstationPort.h"
 #include "CBMasterPort.h"
+#include "CBOutstationPort.h"
 #include "CBUtility.h"
+#include <opendatacon/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 
 #if defined(NONVSTESTING)

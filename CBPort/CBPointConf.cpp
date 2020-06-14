@@ -24,13 +24,13 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#include <regex>
-#include <algorithm>
-#include <memory>
-#include <map>
 #include "CBPointConf.h"
-#include <opendatacon/util.h>
+#include <algorithm>
+#include <map>
+#include <memory>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <regex>
 
 using namespace odc;
 

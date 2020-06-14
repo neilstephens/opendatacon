@@ -19,11 +19,10 @@
  */
 /**
  */
+#include "PortLoader.h"
+#include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
-#include <catch.hpp>
-
-#include "PortLoader.h"
 
 #define SUITE(name) "DNP3PortEndToEndTestSuite - " name
 

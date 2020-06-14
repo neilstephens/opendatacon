@@ -30,9 +30,7 @@
 #include <unordered_map>
 #include <vector>
 #include <functional>
-
 #include <opendatacon/DataPort.h>
-
 #include "CB.h"
 #include "CBPortConf.h"
 #include "CBUtility.h"

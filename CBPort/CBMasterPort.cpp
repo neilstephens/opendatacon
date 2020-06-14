@@ -24,13 +24,13 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#include <thread>
-#include <chrono>
-#include <array>
-#include <utility>
 #include "CB.h"
-#include "CBUtility.h"
 #include "CBMasterPort.h"
+#include "CBUtility.h"
+#include <array>
+#include <chrono>
+#include <thread>
+#include <utility>
 
 
 CBMasterPort::CBMasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):

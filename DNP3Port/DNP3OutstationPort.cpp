@@ -24,21 +24,20 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <iostream>
-#include <regex>
-#include <chrono>
-#include <asiodnp3/Updates.h>
-#include <asiodnp3/UpdateBuilder.h>
-#include <asiopal/UTCTimeSource.h>
-#include <opendnp3/outstation/IOutstationApplication.h>
-#include <openpal/logging/LogLevels.h>
-#include <opendatacon/util.h>
+#include "ChannelStateSubscriber.h"
 #include "DNP3OutstationPort.h"
 #include "DNP3PortConf.h"
-
 #include "OpenDNP3Helpers.h"
 #include "TypeConversion.h"
-#include "ChannelStateSubscriber.h"
+#include <asiodnp3/UpdateBuilder.h>
+#include <asiodnp3/Updates.h>
+#include <asiopal/UTCTimeSource.h>
+#include <chrono>
+#include <iostream>
+#include <opendatacon/util.h>
+#include <opendnp3/outstation/IOutstationApplication.h>
+#include <openpal/logging/LogLevels.h>
+#include <regex>
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides),

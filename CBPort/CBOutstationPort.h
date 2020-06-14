@@ -30,7 +30,6 @@
 #include <unordered_map>
 #include <vector>
 #include <functional>
-
 #include "CB.h"
 #include "CBPort.h"
 #include "CBUtility.h"

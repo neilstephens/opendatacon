@@ -32,7 +32,6 @@
 #include <opendatacon/EnumClassFlags.h>
 #include <shared_mutex>
 #include <random>
-
 #include "SimPortConf.h"
 #include "sqlite3/sqlite3.h"
 

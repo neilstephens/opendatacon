@@ -33,7 +33,6 @@
 #include <array>
 #include <sstream>
 #include <iomanip>
-
 #include "CB.h"
 
 #define CONITEL_BLOCK_LENGTH  4

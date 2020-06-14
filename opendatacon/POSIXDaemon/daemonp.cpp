@@ -18,17 +18,15 @@
  *	limitations under the License.
  */
 
-#include <unistd.h>
-#include <cerrno>
-#include <string>
-#include <stdexcept>
-#include <cstdlib>
-
-#include <fstream>
-
-#include <opendatacon/Platform.h>
 #include "../DaemonInterface.h"
 #include "../ODCArgs.h"
+#include <cerrno>
+#include <cstdlib>
+#include <fstream>
+#include <opendatacon/Platform.h>
+#include <stdexcept>
+#include <string>
+#include <unistd.h>
 
 void daemonp(ODCArgs& Args)
 {

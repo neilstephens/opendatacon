@@ -35,20 +35,20 @@
 
 
 #include "PythonWrapper.h"
-#include <frameobject.h>
-#include <chrono>
-#include <ctime>
-#include <exception>
-#include <datetime.h> //PyDateTime
-#include <ctime>
-#include <iomanip>
-#include <utility>
-#include <exception>
-#include <opendatacon/IOTypes.h>
-#include <opendatacon/Platform.h>
-#include <whereami++.h>
 #include "PyPort.h"
 #include <Python.h>
+#include <chrono>
+#include <ctime>
+#include <ctime>
+#include <datetime.h> //PyDateTime
+#include <exception>
+#include <exception>
+#include <frameobject.h>
+#include <iomanip>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/Platform.h>
+#include <utility>
+#include <whereami++.h>
 
 
 using namespace odc;

@@ -30,7 +30,6 @@
 #include <queue>
 #include <utility>
 #include <opendatacon/ASIOScheduler.h>
-
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3Port.h"

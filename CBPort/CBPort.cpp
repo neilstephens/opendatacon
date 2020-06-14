@@ -25,10 +25,10 @@
 */
 
 
-#include <iostream>
-#include <utility>
 #include "CBPort.h"
 #include "CBPortConf.h"
+#include <iostream>
+#include <utility>
 
 CBPort::CBPort(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),

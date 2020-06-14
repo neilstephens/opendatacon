@@ -24,8 +24,8 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#include <iostream>
 #include "CB.h"
+#include <iostream>
 
 
 #ifdef NONVSTESTING
@@ -35,8 +35,8 @@
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
-#include "CBOutstationPort.h"
 #include "CBMasterPort.h"
+#include "CBOutstationPort.h"
 
 // std::shared_ptr<spdlog::logger> logger;
 

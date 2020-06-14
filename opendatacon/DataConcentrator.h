@@ -34,16 +34,13 @@
 #include "DataConnector.h"
 #include "DataConnectorCollection.h"
 #include <opendatacon/InterfaceCollection.h>
-
 #include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/TCPstringbuf.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
-
 #include "DataConnector.h"
-
 #include <opendatacon/IUI.h>
 
 class DataConcentrator: public ConfigParser, public IUIResponder

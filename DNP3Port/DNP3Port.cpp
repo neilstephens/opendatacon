@@ -24,12 +24,12 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <openpal/logging/LogLevels.h>
-#include <opendnp3/gen/Parity.h>
-#include <opendatacon/util.h>
+#include "ChannelStateSubscriber.h"
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
-#include "ChannelStateSubscriber.h"
+#include <opendatacon/util.h>
+#include <opendnp3/gen/Parity.h>
+#include <openpal/logging/LogLevels.h>
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),

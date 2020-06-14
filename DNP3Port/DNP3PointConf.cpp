@@ -24,12 +24,12 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <regex>
-#include <algorithm>
-#include <opendnp3/app/ClassField.h>
 #include "DNP3PointConf.h"
 #include "OpenDNP3Helpers.h"
+#include <algorithm>
 #include <opendatacon/util.h>
+#include <opendnp3/app/ClassField.h>
+#include <regex>
 
 
 DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides):
