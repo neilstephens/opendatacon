@@ -28,12 +28,12 @@
 #define PYWRAPPER_H_
 
 #include "Py.h"
+#include "SpecialEventQueue.h"
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_set>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
-#include "SpecialEventQueue.h"
 
 
 using namespace odc;

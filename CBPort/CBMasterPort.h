@@ -26,14 +26,13 @@
 
 #ifndef CBMASTERPORT_H_
 #define CBMASTERPORT_H_
-
-#include <queue>
-#include <utility>
-#include <opendatacon/ASIOScheduler.h>
 #include "CB.h"
 #include "CBUtility.h"
 #include "CBPort.h"
 #include "CBPointTableAccess.h"
+#include <queue>
+#include <utility>
+#include <opendatacon/ASIOScheduler.h>
 
 // The command, and an ODC callback pointer - may be nullptr. We check for that
 typedef std::pair <CBMessage_t, SharedStatusCallback_t> MasterCommandQueueItem;

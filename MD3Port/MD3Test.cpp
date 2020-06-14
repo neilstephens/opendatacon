@@ -29,14 +29,6 @@
 #pragma warning(disable: 6262)
 #endif
 
-#include <array>
-#include <cassert>
-#include <fstream>
-#include <opendatacon/spdlog.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <utility>
-
-
 #define COMPILE_TESTS
 
 #ifdef COMPILE_TESTS
@@ -49,6 +41,12 @@
 #include "ProducerConsumerQueue.h"
 #include "StrandProtectedQueue.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <array>
+#include <cassert>
+#include <fstream>
+#include <opendatacon/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <utility>
 
 #ifdef NONVSTESTING
 #include <catch.hpp>

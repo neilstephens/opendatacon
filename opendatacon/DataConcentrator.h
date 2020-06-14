@@ -26,13 +26,13 @@
 
 #ifndef DATACONCENTRATOR_H_
 #define DATACONCENTRATOR_H_
-
+#include "DataConnector.h"
+#include "DataConnectorCollection.h"
+#include "DataConnector.h"
 #include <opendatacon/asio.h>
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/DataPortCollection.h>
-#include "DataConnector.h"
-#include "DataConnectorCollection.h"
 #include <opendatacon/InterfaceCollection.h>
 #include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
@@ -40,7 +40,6 @@
 #include <opendatacon/TCPstringbuf.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
-#include "DataConnector.h"
 #include <opendatacon/IUI.h>
 
 class DataConcentrator: public ConfigParser, public IUIResponder

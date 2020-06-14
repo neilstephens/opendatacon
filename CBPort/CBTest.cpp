@@ -29,13 +29,6 @@
 #pragma warning(disable: 6262)
 #endif
 
-#include <array>
-#include <cassert>
-#include <chrono>
-#include <fstream>
-#include <thread>
-#include <utility>
-
 #define COMPILE_TESTS
 
 #if defined(COMPILE_TESTS)
@@ -47,6 +40,12 @@
 #include <opendatacon/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <array>
+#include <cassert>
+#include <chrono>
+#include <fstream>
+#include <thread>
+#include <utility>
 
 
 #if defined(NONVSTESTING)

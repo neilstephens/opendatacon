@@ -26,14 +26,13 @@
 
 #ifndef MD3CONNECTION
 #define MD3CONNECTION
-
+#include "MD3.h"
+#include "MD3Utility.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/TCPSocketManager.h>
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include "MD3.h"
-#include "MD3Utility.h"
 
 /*
 This class is used to manage and share a TCPSocket for MD3 OutStations

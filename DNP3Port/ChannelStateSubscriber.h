@@ -26,9 +26,8 @@
 
 #ifndef CHANNELSTATESUBSCRIBER_H
 #define CHANNELSTATESUBSCRIBER_H
-
-#include <map>
 #include "DNP3Port.h"
+#include <map>
 #include <asiodnp3/IChannel.h>
 
 class ChannelStateSubscriber

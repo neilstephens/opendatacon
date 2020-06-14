@@ -26,7 +26,7 @@
 
 #ifndef MD3ENGINE_H_
 #define MD3ENGINE_H_
-
+#include "MD3.h"
 #include <cstddef>
 #include <cstdint>
 #include <cassert>
@@ -34,7 +34,6 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
-#include "MD3.h"
 
 
 const int MD3BlockArraySize = 6;

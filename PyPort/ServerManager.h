@@ -28,12 +28,12 @@
 #define ServerManagerh
 
 #include "Py.h"
+#include "server/server.hpp"
+#include "server/request_handler.hpp"
 #include <string>
 #include <functional>
 #include <unordered_map>
 #include <mutex>
-#include "server/server.hpp"
-#include "server/request_handler.hpp"
 
 
 /*

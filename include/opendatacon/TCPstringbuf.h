@@ -23,9 +23,8 @@
  *  Created on: 2018-06-19
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-
-#include <sstream>
 #include "TCPSocketManager.h"
+#include <sstream>
 
 namespace odc
 {

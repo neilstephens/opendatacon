@@ -26,7 +26,7 @@
 
 #ifndef JSONPOINTCONF_H_
 #define JSONPOINTCONF_H_
-
+#include "JSONOutputTemplate.h"
 #include <vector>
 #include <memory>
 #include <unordered_map>
@@ -34,7 +34,6 @@
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
 #include <json/json.h>
-#include "JSONOutputTemplate.h"
 
 class JSONPointConf: public ConfigParser
 {

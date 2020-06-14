@@ -26,16 +26,15 @@
 
 #ifndef MD3PORT_H_
 #define MD3PORT_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
-#include <opendatacon/DataPort.h>
 #include "MD3.h"
 #include "MD3PortConf.h"
 #include "MD3Utility.h"
 #include "MD3Connection.h"
 #include "StrandProtectedQueue.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
+#include <opendatacon/DataPort.h>
 
 using namespace odc;
 

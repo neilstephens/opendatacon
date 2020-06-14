@@ -26,15 +26,14 @@
 
 #ifndef CBOUTSTATIONPORT_H_
 #define CBOUTSTATIONPORT_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
 #include "CB.h"
 #include "CBPort.h"
 #include "CBUtility.h"
 #include "CBConnection.h"
 #include "CBPointTableAccess.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
 
 
 class OutstationSystemFlags

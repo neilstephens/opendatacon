@@ -26,15 +26,14 @@
 
 #ifndef MD3OUTSTATIONPORT_H_
 #define MD3OUTSTATIONPORT_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
 #include "MD3.h"
 #include "MD3Port.h"
 #include "MD3Utility.h"
 #include "MD3Connection.h"
 #include "MD3PointTableAccess.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
 
 
 class OutstationSystemFlags

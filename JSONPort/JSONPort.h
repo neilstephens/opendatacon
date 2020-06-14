@@ -26,11 +26,10 @@
 
 #ifndef JSONDATAPORT_H_
 #define JSONDATAPORT_H_
-
+#include "JSONPortConf.h"
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/TCPSocketManager.h>
-#include "JSONPortConf.h"
 
 using namespace odc;
 

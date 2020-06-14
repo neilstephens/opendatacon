@@ -27,14 +27,13 @@
 
 #ifndef __opendatacon__WebUI__
 #define __opendatacon__WebUI__
-
+#include "tinycon.h"
 #include <opendatacon/IUI.h>
 #include <opendatacon/asio.h>
 #include <vector>
 #include <map>
 #include <sstream>
 #include <functional>
-#include "tinycon.h"
 
 class ConsoleUI: public IUI, tinyConsole
 {

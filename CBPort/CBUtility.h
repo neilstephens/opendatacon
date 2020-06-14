@@ -26,14 +26,13 @@
 
 #ifndef CBENGINE_H_
 #define CBENGINE_H_
-
+#include "CB.h"
 #include <cstddef>
 #include <cstdint>
 #include <cassert>
 #include <array>
 #include <sstream>
 #include <iomanip>
-#include "CB.h"
 
 #define CONITEL_BLOCK_LENGTH  4
 #define MAX_BLOCK_COUNT       16

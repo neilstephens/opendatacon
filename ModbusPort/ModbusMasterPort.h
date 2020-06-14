@@ -26,9 +26,8 @@
 
 #ifndef ModbusCLIENTPORT_H_
 #define ModbusCLIENTPORT_H_
-
-#include <queue>
 #include "ModbusPort.h"
+#include <queue>
 #include <opendatacon/ASIOScheduler.h>
 #include <utility>
 

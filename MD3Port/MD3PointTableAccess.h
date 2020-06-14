@@ -26,12 +26,11 @@
 
 #ifndef MD3POINTTABLEACCESS_H_
 #define MD3POINTTABLEACCESS_H_
-
+#include "MD3.h"
+#include "MD3PointConf.h"
 #include <unordered_map>
 #include <vector>
 #include <functional>
-#include "MD3.h"
-#include "MD3PointConf.h"
 //#include "MD3PortConf.h"
 #include "MD3Utility.h"
 #include "StrandProtectedQueue.h"

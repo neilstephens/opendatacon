@@ -27,11 +27,10 @@
 
 #ifndef opendatacon_ResponderMap_h
 #define opendatacon_ResponderMap_h
-
+#include "IUIResponder.h"
 #include <memory>
 #include <regex>
 #include <opendatacon/util.h>
-#include "IUIResponder.h"
 
 template <class T>
 class ResponderMap: public std::unordered_map<std::string, T >, public IUIResponder

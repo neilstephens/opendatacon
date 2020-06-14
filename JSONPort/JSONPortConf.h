@@ -26,10 +26,9 @@
 
 #ifndef JSONPORTCONF_H_
 #define JSONPORTCONF_H_
-
+#include "JSONPointConf.h"
 #include <memory>
 #include <opendatacon/DataPortConf.h>
-#include "JSONPointConf.h"
 
 struct JSONAddrConf
 {

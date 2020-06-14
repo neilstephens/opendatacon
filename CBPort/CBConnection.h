@@ -26,14 +26,13 @@
 
 #ifndef CBCONNECTION
 #define CBCONNECTION
-
+#include "CB.h"
+#include "CBUtility.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/TCPSocketManager.h>
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include "CB.h"
-#include "CBUtility.h"
 
 /*
 This class is used to manage and share a TCPSocket for CB OutStations

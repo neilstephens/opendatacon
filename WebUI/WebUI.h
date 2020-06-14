@@ -27,9 +27,8 @@
 
 #ifndef __opendatacon__WebUI__
 #define __opendatacon__WebUI__
-
-#include <opendatacon/IUI.h>
 #include "MhdWrapper.h"
+#include <opendatacon/IUI.h>
 
 const char ROOTPAGE[] = "/index.html";
 

@@ -26,11 +26,10 @@
 
 #ifndef MD3OUTSTATIONPORTCONF_H_
 #define MD3OUTSTATIONPORTCONF_H_
-
-#include <opendatacon/DataPort.h>
-#include <opendatacon/TCPSocketManager.h>
 #include "MD3PointConf.h"
 #include "MD3PointTableAccess.h"
+#include <opendatacon/DataPort.h>
+#include <opendatacon/TCPSocketManager.h>
 
 // Megadata System Flag register definition bits
 #define SYSTEMPOWERUPFLAGBIT 15

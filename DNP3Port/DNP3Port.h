@@ -26,14 +26,13 @@
 
 #ifndef DNP3PORT_H_
 #define DNP3PORT_H_
-
+#include "DNP3PortConf.h"
+#include "DNP3Log2spdlog.h"
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendnp3/gen/LinkStatus.h>
 #include <opendnp3/gen/ChannelState.h>
 #include <asiodnp3/DNP3Manager.h>
-#include "DNP3PortConf.h"
-#include "DNP3Log2spdlog.h"
 
 using namespace odc;
 
@@ -65,8 +64,8 @@ protected:
 	bool link_dead;
 	bool channel_dead;
 
-	virtual void OnLinkDown()=0;
-	virtual TCPClientServer ClientOrServer()=0;
+	virtual void OnLinkDown() = 0;
+	virtual TCPClientServer ClientOrServer() = 0;
 
 };
 

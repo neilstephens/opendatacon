@@ -26,14 +26,13 @@
 
 #ifndef MD3MASTERPORT_H_
 #define MD3MASTERPORT_H_
-
-#include <queue>
-#include <utility>
-#include <opendatacon/ASIOScheduler.h>
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3Port.h"
 #include "MD3PointTableAccess.h"
+#include <queue>
+#include <utility>
+#include <opendatacon/ASIOScheduler.h>
 
 // The command, and an ODC callback pointer - may be nullptr. We check for that
 typedef std::pair <MD3Message_t, SharedStatusCallback_t> MasterCommandQueueItem;

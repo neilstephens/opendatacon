@@ -26,14 +26,13 @@
 
 #ifndef SIMPORT_H
 #define SIMPORT_H
-
+#include "SimPortConf.h"
+#include "sqlite3/sqlite3.h"
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <opendatacon/EnumClassFlags.h>
 #include <shared_mutex>
 #include <random>
-#include "SimPortConf.h"
-#include "sqlite3/sqlite3.h"
 
 using namespace odc;
 
