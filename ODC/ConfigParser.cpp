@@ -26,8 +26,8 @@
 
 #include <fstream>
 #include <iostream>
-#include <opendatacon/util.h>
 #include <opendatacon/ConfigParser.h>
+#include <opendatacon/util.h>
 
 std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
 
@@ -93,12 +93,13 @@ const Json::Value ConfigParser::GetConfiguration(const std::string& pFileName)
 	{
 		return JSONCache[pFileName];
 	}
+
 	return Json::Value();
 }
 
 void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits)
 {
-	for(Json::Value InheritFile : Inherits)
+	for(auto& InheritFile : Inherits)
 	{
 		Json::Value InheritRoot = ConfigParser::GetConfiguration(InheritFile.asString());
 		JSONRoot[InheritFile.asString()] = InheritRoot;

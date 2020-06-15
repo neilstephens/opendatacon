@@ -26,15 +26,12 @@
 
 #ifndef CBPOINTTABLEACCESS_H_
 #define CBPOINTTABLEACCESS_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
-
-
 #include "CB.h"
 #include "CBUtility.h"
 #include "StrandProtectedQueue.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
 
 using namespace odc;
 
@@ -44,7 +41,7 @@ class CBPointTableAccess
 public:
 	CBPointTableAccess();
 	void SetName(std::string _Name) { Name = _Name; };
-	void Build(const std::string _Name, bool isoutstation, odc::asio_service & IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag);
+	void Build(const std::string& _Name, bool isoutstation, odc::asio_service & IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag);
 
 	// The add to point table functions add to both the ODC and MD3 Map.
 	// The Conitel Baker methods require that a
@@ -89,14 +86,14 @@ public:
 
 	bool SetAnalogControlValueUsingODCIndex(const size_t index, const uint16_t meas, CBTime eventtime);
 
-	void ForEachBinaryPoint(std::function<void(CBBinaryPoint &pt)>);
-	void ForEachAnalogPoint(std::function<void(CBAnalogCounterPoint&pt)> fn);
-	void ForEachCounterPoint(std::function<void(CBAnalogCounterPoint&pt)> fn);
+	void ForEachBinaryPoint(const std::function<void(CBBinaryPoint &pt)>&);
+	void ForEachAnalogPoint(const std::function<void(CBAnalogCounterPoint&pt)>& fn);
+	void ForEachCounterPoint(const std::function<void(CBAnalogCounterPoint&pt)>& fn);
 
-	void ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBBinaryPoint&pt)> fn);
-	void ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
-	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
-	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn);
+	void ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBBinaryPoint&pt)>& fn);
+	void ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint&pt)>& fn);
+	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint&pt)>& fn);
+	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(void)>& fn);
 
 	bool GetMaxPayload(uint8_t group, uint8_t &blockcount);
 

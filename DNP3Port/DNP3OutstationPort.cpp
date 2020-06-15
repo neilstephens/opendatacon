@@ -24,21 +24,20 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <iostream>
-#include <regex>
-#include <chrono>
-#include <asiodnp3/Updates.h>
-#include <asiodnp3/UpdateBuilder.h>
-#include <asiopal/UTCTimeSource.h>
-#include <opendnp3/outstation/IOutstationApplication.h>
-#include <openpal/logging/LogLevels.h>
-#include <opendatacon/util.h>
+#include "ChannelStateSubscriber.h"
 #include "DNP3OutstationPort.h"
 #include "DNP3PortConf.h"
-
 #include "OpenDNP3Helpers.h"
 #include "TypeConversion.h"
-#include "ChannelStateSubscriber.h"
+#include <asiodnp3/UpdateBuilder.h>
+#include <asiodnp3/Updates.h>
+#include <asiopal/UTCTimeSource.h>
+#include <chrono>
+#include <iostream>
+#include <opendatacon/util.h>
+#include <opendnp3/outstation/IOutstationApplication.h>
+#include <openpal/logging/LogLevels.h>
+#include <regex>
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides),
@@ -131,7 +130,7 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 
 TCPClientServer DNP3OutstationPort::ClientOrServer()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
 		return TCPClientServer::SERVER;
 	return pConf->mAddrConf.ClientServer;
@@ -139,7 +138,7 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 
 void DNP3OutstationPort::Build()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	pChannel = GetChannel();
 
@@ -151,15 +150,15 @@ void DNP3OutstationPort::Build()
 	}
 
 	asiodnp3::OutstationStackConfig StackConfig(opendnp3::DatabaseSizes(
-			pConf->pPointConf->BinaryIndicies.size(), //numBinary
-			0,                                        //numDoubleBinary
-			pConf->pPointConf->AnalogIndicies.size(), //numAnalog
-			0,                                        //numCounter
-			0,                                        //numFrozenCounter
-			0,                                        //numBinaryOutputStatus
-			0,                                        //numAnalogOutputStatus
-			0,                                        //numTimeAndInterval
-			0));                                      //numOctetString
+		pConf->pPointConf->BinaryIndicies.size(), //numBinary
+		0,                                        //numDoubleBinary
+		pConf->pPointConf->AnalogIndicies.size(), //numAnalog
+		0,                                        //numCounter
+		0,                                        //numFrozenCounter
+		0,                                        //numBinaryOutputStatus
+		0,                                        //numAnalogOutputStatus
+		0,                                        //numTimeAndInterval
+		0));                                      //numOctetString
 
 	uint16_t rawIndex = 0;
 	for (auto index : pConf->pPointConf->AnalogIndicies)
@@ -224,34 +223,27 @@ void DNP3OutstationPort::Build()
 			log->error("{}: Error creating outstation.", Name);
 		return;
 	}
+
+	pStateSync = pIOS->make_strand();
 }
 
 //DataPort function for UI
 const Json::Value DNP3OutstationPort::GetCurrentState() const
 {
-	Json::Value event;
-	Json::Value analogValues;
-	Json::Value binaryValues;
-	if (pOutstation == nullptr)
-		return IUIResponder::GenerateResult("Bad port");
+	std::atomic_bool stateExecuted(false);
+	Json::Value temp_value;
+	pStateSync->post([this, &stateExecuted, &temp_value]()
+		{
+			temp_value = state;
+			stateExecuted = true;
+		});
 
-	//FIXME: The new opendnp3 API doesn't expose internal state
+	while (!stateExecuted)
+	{
+		pIOS->poll_one();
+	}
 
-//	auto configView = pOutstation->GetConfigView();
-//
-//	for (auto point : configView.analogs)
-//	{
-//		analogValues[std::to_string(point.vIndex)] = point.value.value;
-//	}
-//	for (auto point : configView.binaries)
-//	{
-//		binaryValues[std::to_string(point.vIndex)] = point.value.value;
-//	}
-
-	event["AnalogCurrent"] = analogValues;
-	event["BinaryCurrent"] = binaryValues;
-
-	return event;
+	return temp_value;
 }
 
 //DataPort function for UI
@@ -354,18 +346,23 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		return;
 	}
 
+	std::string type;
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
+			type = "BinaryCurrent";
 			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
+			type = "AnalogCurrent";
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
+			type = "BinaryQuality";
 			EventQ<opendnp3::Binary>(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
+			type = "AnalogQuality";
 			EventQ<opendnp3::Analog>(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:
@@ -374,6 +371,10 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 			return;
 	}
+
+	const std::string index = std::to_string(event->GetIndex());
+	const std::string payload = event->GetPayloadString();
+	SetState(type, index, payload);
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
@@ -381,7 +382,7 @@ template<typename T, typename Q>
 inline void DNP3OutstationPort::EventQ(Q qual, uint16_t index, opendnp3::FlagsType FT)
 {
 	asiodnp3::UpdateBuilder builder;
-	builder.Modify(FT,index,index,static_cast<uint8_t>(qual));
+	builder.Modify(FT, index, index, static_cast<uint8_t>(qual));
 	pOutstation->Apply(builder.Build());
 }
 
@@ -403,4 +404,10 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 	pOutstation->Apply(builder.Build());
 }
 
-
+inline void DNP3OutstationPort::SetState(const std::string& type, const std::string& index, const std::string& payload)
+{
+	pStateSync->post([=]()
+		{
+			state[type][index] = payload;
+		});
+}

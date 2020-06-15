@@ -26,15 +26,13 @@
 
 #ifndef MD3MASTERPORT_H_
 #define MD3MASTERPORT_H_
-
-#include <queue>
-#include <utility>
-#include <opendatacon/ASIOScheduler.h>
-
 #include "MD3.h"
 #include "MD3Utility.h"
 #include "MD3Port.h"
 #include "MD3PointTableAccess.h"
+#include <queue>
+#include <utility>
+#include <opendatacon/ASIOScheduler.h>
 
 // The command, and an ODC callback pointer - may be nullptr. We check for that
 typedef std::pair <MD3Message_t, SharedStatusCallback_t> MasterCommandQueueItem;
@@ -62,7 +60,7 @@ public:
 	~MD3MasterPort() override;
 
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Build() override;
 	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 
@@ -84,9 +82,9 @@ public:
 	// If the callback gets an error it will be ignored which will result in a timeout and the next command (or retry) being sent.
 	// This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 	// Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
-	void QueueMD3Command(const MD3Message_t &CompleteMD3Message, SharedStatusCallback_t pStatusCallback);
-	void QueueMD3Command(const MD3BlockData & SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback); // Handle the many single block command messages better
-	void QueueMD3Command(const MD3BlockFormatted & SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback);
+	void QueueMD3Command(const MD3Message_t &CompleteMD3Message, const SharedStatusCallback_t& pStatusCallback);
+	void QueueMD3Command(const MD3BlockData & SingleBlockMD3Message, const SharedStatusCallback_t& pStatusCallback); // Handle the many single block command messages better
+	void QueueMD3Command(const MD3BlockFormatted & SingleBlockMD3Message, const SharedStatusCallback_t& pStatusCallback);
 	void PostCallbackCall(const odc::SharedStatusCallback_t &pStatusCallback, CommandStatus c);
 
 
@@ -98,8 +96,8 @@ public:
 
 	void EnablePolling(bool on); // Enabled by default
 
-	void SendTimeDateChangeCommand(const uint64_t &currenttime, SharedStatusCallback_t pStatusCallback);
-	void SendNewTimeDateChangeCommand(const uint64_t & currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback);
+	void SendTimeDateChangeCommand(const uint64_t &currenttime, const SharedStatusCallback_t& pStatusCallback);
+	void SendNewTimeDateChangeCommand(const uint64_t & currenttimeinmsec, int utcoffsetminutes, const SharedStatusCallback_t& pStatusCallback);
 	void SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCallback);
 
 	void SendDOMOutputCommand(const uint8_t & StationAddress, const uint8_t & ModuleAddress, const uint16_t & outputbits, const SharedStatusCallback_t &pStatusCallback);

@@ -30,7 +30,6 @@
 #include <chrono>
 #include <string>
 #include <tuple>
-
 #include <opendatacon/EnumClassFlags.h>
 #include <opendatacon/util.h>
 

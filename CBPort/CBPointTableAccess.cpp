@@ -31,7 +31,7 @@
 CBPointTableAccess::CBPointTableAccess()
 {}
 
-void CBPointTableAccess::Build(const std::string _Name, const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag)
+void CBPointTableAccess::Build(const std::string& _Name, const bool isoutstation, odc::asio_service &IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag)
 {
 	Name = _Name;
 	IsOutstation = isoutstation;
@@ -254,7 +254,7 @@ bool CBPointTableAccess::AddBinaryControlPointToPointTable(const size_t &index, 
 
 bool CBPointTableAccess::GetCounterValueUsingODCIndex(const size_t index, uint16_t &res, bool &hasbeenset)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = CounterODCPointMap.find(index);
+	auto ODCPointMapIter = CounterODCPointMap.find(index);
 	if (ODCPointMapIter != CounterODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->GetAnalog();
@@ -265,7 +265,7 @@ bool CBPointTableAccess::GetCounterValueUsingODCIndex(const size_t index, uint16
 }
 bool CBPointTableAccess::SetCounterValueUsingODCIndex(const size_t index, const uint16_t meas)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = CounterODCPointMap.find(index);
+	auto ODCPointMapIter = CounterODCPointMap.find(index);
 	if (ODCPointMapIter != CounterODCPointMap.end())
 	{
 		ODCPointMapIter->second->SetAnalog(meas, CBNowUTC());
@@ -275,7 +275,7 @@ bool CBPointTableAccess::SetCounterValueUsingODCIndex(const size_t index, const 
 }
 bool CBPointTableAccess::ResetCounterValueUsingODCIndex(const size_t index)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
 		ODCPointMapIter->second->ResetAnalog(); // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
@@ -286,7 +286,7 @@ bool CBPointTableAccess::ResetCounterValueUsingODCIndex(const size_t index)
 
 bool CBPointTableAccess::GetAnalogValueUsingODCIndex(const size_t index, uint16_t &res, bool &hasbeenset)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->GetAnalogAndHasBeenSet( hasbeenset);
@@ -296,7 +296,7 @@ bool CBPointTableAccess::GetAnalogValueUsingODCIndex(const size_t index, uint16_
 }
 bool CBPointTableAccess::SetAnalogValueUsingODCIndex(const size_t index, const uint16_t meas)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
 		ODCPointMapIter->second->SetAnalog(meas, CBNowUTC());
@@ -306,7 +306,7 @@ bool CBPointTableAccess::SetAnalogValueUsingODCIndex(const size_t index, const u
 }
 bool CBPointTableAccess::ResetAnalogValueUsingODCIndex(const size_t index)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
 		ODCPointMapIter->second->ResetAnalog(); // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
@@ -322,7 +322,7 @@ bool CBPointTableAccess::ResetAnalogValueUsingODCIndex(const size_t index)
 // Get value and reset changed flag..
 bool CBPointTableAccess::GetBinaryValueUsingODCIndexAndResetChangedFlag(const size_t index, uint8_t &res, bool &changed, bool &hasbeenset)
 {
-	ODCBinaryPointMapIterType ODCPointMapIter = BinaryODCPointMap.find(index);
+	auto ODCPointMapIter = BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->GetBinary();
@@ -334,7 +334,7 @@ bool CBPointTableAccess::GetBinaryValueUsingODCIndexAndResetChangedFlag(const si
 }
 bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, const CBTime eventtime)
 {
-	ODCBinaryPointMapIterType ODCPointMapIter = BinaryODCPointMap.find(index);
+	auto ODCPointMapIter = BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryODCPointMap.end())
 	{
 		// Store SOE event to the SOE queue. If we receive a binary event that is older than the last one, it only goes in the SOE queue.
@@ -356,7 +356,7 @@ bool CBPointTableAccess::GetBinaryODCIndexUsingSOE( const uint8_t soeindex, size
 {
 	if (soeindex > 120) return false;
 
-	CBBinaryPointMapIterType SOEPointMapIter = BinarySOEPointMap.find(soeindex);
+	auto SOEPointMapIter = BinarySOEPointMap.find(soeindex);
 	if (SOEPointMapIter != BinarySOEPointMap.end())
 	{
 		index = SOEPointMapIter->second->GetIndex();
@@ -417,7 +417,7 @@ bool CBPointTableAccess::GetBinaryControlODCIndexUsingCBIndex(const uint8_t grou
 {
 	uint16_t CBIndex = GetCBControlPointMapIndex(group, channel);
 
-	CBBinaryPointMapIterType CBPointMapIter = BinaryControlCBPointMap.find(CBIndex);
+	auto CBPointMapIter = BinaryControlCBPointMap.find(CBIndex);
 	if (CBPointMapIter != BinaryControlCBPointMap.end())
 	{
 		index = CBPointMapIter->second->GetIndex();
@@ -427,7 +427,7 @@ bool CBPointTableAccess::GetBinaryControlODCIndexUsingCBIndex(const uint8_t grou
 }
 bool CBPointTableAccess::GetBinaryControlCBIndexUsingODCIndex(const size_t index, uint8_t &group, uint8_t &channel)
 {
-	ODCBinaryPointMapIterType ODCPointMapIter = BinaryControlODCPointMap.find(index);
+	auto ODCPointMapIter = BinaryControlODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryControlODCPointMap.end())
 	{
 		group = ODCPointMapIter->second->GetGroup();
@@ -438,7 +438,7 @@ bool CBPointTableAccess::GetBinaryControlCBIndexUsingODCIndex(const size_t index
 }
 bool CBPointTableAccess::GetBinaryControlValueUsingODCIndex(const size_t index, uint8_t &res, bool &hasbeenset)
 {
-	ODCBinaryPointMapIterType ODCPointMapIter = BinaryControlODCPointMap.find(index);
+	auto ODCPointMapIter = BinaryControlODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryControlODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->GetBinary();
@@ -449,7 +449,7 @@ bool CBPointTableAccess::GetBinaryControlValueUsingODCIndex(const size_t index, 
 }
 bool CBPointTableAccess::SetBinaryControlValueUsingODCIndex(const size_t index, const uint8_t meas, CBTime eventtime)
 {
-	ODCBinaryPointMapIterType ODCPointMapIter = BinaryControlODCPointMap.find(index);
+	auto ODCPointMapIter = BinaryControlODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryControlODCPointMap.end())
 	{
 		ODCPointMapIter->second->SetBinary(meas, eventtime);
@@ -461,7 +461,7 @@ bool CBPointTableAccess::GetAnalogControlODCIndexUsingCBIndex(const uint8_t grou
 {
 	uint16_t CBIndex = GetCBControlPointMapIndex(group, channel);
 
-	CBAnalogCounterPointMapIterType CBPointMapIter = AnalogControlCBPointMap.find(CBIndex);
+	auto CBPointMapIter = AnalogControlCBPointMap.find(CBIndex);
 	if (CBPointMapIter != AnalogControlCBPointMap.end())
 	{
 		index = CBPointMapIter->second->GetIndex();
@@ -471,7 +471,7 @@ bool CBPointTableAccess::GetAnalogControlODCIndexUsingCBIndex(const uint8_t grou
 }
 bool CBPointTableAccess::GetAnalogControlCBIndexUsingODCIndex(const size_t index, uint8_t &group, uint8_t &channel)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogControlODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogControlODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogControlODCPointMap.end())
 	{
 		group = ODCPointMapIter->second->GetGroup();
@@ -482,7 +482,7 @@ bool CBPointTableAccess::GetAnalogControlCBIndexUsingODCIndex(const size_t index
 }
 bool CBPointTableAccess::GetAnalogControlValueUsingODCIndex(const size_t index, uint16_t &res, bool &hasbeenset)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogControlODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogControlODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogControlODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->GetAnalogAndHasBeenSet(hasbeenset);
@@ -492,7 +492,7 @@ bool CBPointTableAccess::GetAnalogControlValueUsingODCIndex(const size_t index, 
 }
 bool CBPointTableAccess::SetAnalogControlValueUsingODCIndex(const size_t index, const uint16_t meas, CBTime eventtime)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogControlODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogControlODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogControlODCPointMap.end())
 	{
 		ODCPointMapIter->second->SetAnalog(meas, eventtime);
@@ -528,7 +528,7 @@ uint16_t CBPointTableAccess::GetCBControlPointMapIndex(const uint8_t & group, co
 	uint16_t CBIndex = ShiftLeftResult16Bits(group, 12) | ShiftLeftResult16Bits(channel, 8);
 	return CBIndex;
 }
-void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBBinaryPoint &pt)> fn)
+void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBBinaryPoint &pt)>& fn)
 {
 	// Need to do a search for channels 1 to 12 in the group and payloadlocation
 	for (uint8_t channel = 1; channel <= 12; channel++)
@@ -542,7 +542,7 @@ void CBPointTableAccess::ForEachMatchingBinaryPoint(const uint8_t & group, const
 	}
 }
 
-void CBPointTableAccess::ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint &pt)> fn)
+void CBPointTableAccess::ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint &pt)>& fn)
 {
 	// Max of two channels for analogs
 	for (uint8_t channel = 1; channel <= 2; channel++)
@@ -555,7 +555,7 @@ void CBPointTableAccess::ForEachMatchingAnalogPoint(const uint8_t & group, const
 		}
 	}
 }
-void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint &pt)> fn)
+void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint &pt)>& fn)
 {
 	uint16_t CBIndex = GetCBPointMapIndex(group, 1, payloadlocation);
 	if (CounterCBPointMap.count(CBIndex) != 0)
@@ -564,7 +564,7 @@ void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, cons
 		fn(*CounterCBPointMap[CBIndex]);
 	}
 }
-void CBPointTableAccess::ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn)
+void CBPointTableAccess::ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(void)>& fn)
 {
 	uint16_t CBIndex = GetCBPointMapIndex(group, 1, payloadlocation); // Use the same index as the points
 	if (StatusByteMap.count(CBIndex) != 0)
@@ -584,23 +584,23 @@ bool CBPointTableAccess::GetMaxPayload(uint8_t group, uint8_t & blockcount)
 	return true;
 }
 
-void CBPointTableAccess::ForEachBinaryPoint(std::function<void(CBBinaryPoint &pt)> fn)
+void CBPointTableAccess::ForEachBinaryPoint(const std::function<void(CBBinaryPoint &pt)>& fn)
 {
-	for (auto CBpt : BinaryODCPointMap) // We always use the CB map - its order is the only one we care about.
+	for (const auto& CBpt : BinaryODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}
 }
-void CBPointTableAccess::ForEachAnalogPoint(std::function<void(CBAnalogCounterPoint &pt)> fn)
+void CBPointTableAccess::ForEachAnalogPoint(const std::function<void(CBAnalogCounterPoint &pt)>& fn)
 {
-	for (auto CBpt : AnalogODCPointMap) // We always use the CB map - its order is the only one we care about.
+	for (const auto& CBpt : AnalogODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}
 }
-void CBPointTableAccess::ForEachCounterPoint(std::function<void(CBAnalogCounterPoint &pt)> fn)
+void CBPointTableAccess::ForEachCounterPoint(const std::function<void(CBAnalogCounterPoint &pt)>& fn)
 {
-	for (auto CBpt : CounterODCPointMap) // We always use the CB map - its order is the only one we care about.
+	for (const auto& CBpt : CounterODCPointMap) // We always use the CB map - its order is the only one we care about.
 	{
 		fn(*CBpt.second);
 	}

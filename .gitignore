@@ -16,11 +16,14 @@ MD3Port/uncrustify.cfg
 MD3Port/uncrustify_here.pl
 
 cmake-build-debug-mingw/
+
+GPATH
+GRTAGS
+GTAGS
+
 ODC_Log.txt
 CBPort/uncrustify.cfg
 CBPort/uncrustify_here.pl
 CBPort/uncrustifywithtabs.cfg
-PyPort/PythonCode/.vs/PyPort/v16/TestStore/0/000-0000.testlog
-PyPort/PythonCode/.vs/PyPort/v16/TestStore/0/testlog.manifest
 .vs/
 out/

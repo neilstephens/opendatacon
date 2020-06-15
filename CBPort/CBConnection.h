@@ -26,14 +26,13 @@
 
 #ifndef CBCONNECTION
 #define CBCONNECTION
-
+#include "CB.h"
+#include "CBUtility.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/TCPSocketManager.h>
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include "CB.h"
-#include "CBUtility.h"
 
 /*
 This class is used to manage and share a TCPSocket for CB OutStations
@@ -86,16 +85,16 @@ public:
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
 	static void AddOutstation(const ConnectionTokenType &pConnection,
 		uint8_t StationAddress, // For message routing, OutStation identification
-		const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
-		const std::function<void(bool)> aStateCallback,
+		const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+		const std::function<void(bool)>& aStateCallback,
 		bool isbakerdevice); // Check that we dont have different devices on the one connection!
 
 	static void RemoveOutstation(const ConnectionTokenType &ConnectionTok, uint8_t StationAddress);
 
 	static void AddMaster(const ConnectionTokenType &ConnectionTok,
 		uint8_t TargetStationAddress,
-		const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
-		const std::function<void(bool)> aStateCallback,
+		const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+		const std::function<void(bool)>& aStateCallback,
 		bool isbakerdevice); // Check that we dont have different devices on the one connection!
 
 	static void RemoveMaster(const ConnectionTokenType &ConnectionTok,uint8_t TargetStationAddress);

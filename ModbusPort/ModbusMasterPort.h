@@ -26,12 +26,9 @@
 
 #ifndef ModbusCLIENTPORT_H_
 #define ModbusCLIENTPORT_H_
-
-#include <queue>
-
 #include "ModbusPort.h"
+#include <queue>
 #include <opendatacon/ASIOScheduler.h>
-
 #include <utility>
 
 /*
@@ -79,7 +76,7 @@ public:
 
 	// Implement ModbusPort
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Connect(modbus_t *mb);
 	void Disconnect();
 	void Build() override;

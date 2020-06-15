@@ -23,10 +23,10 @@
  *  Created on: 05/06/2019
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+#include "../opendatacon/DataConnector.h"
+#include "TestPorts.h"
 #include <atomic>
 #include <catch.hpp>
-#include "TestPorts.h"
-#include "../opendatacon/DataConnector.h"
 
 using namespace odc;
 
@@ -103,7 +103,7 @@ TEST_CASE(SUITE("PayloadTransport"))
 		                      std::to_string(time);
 		events.back()->SetPayload<EventType::OctetString>(std::move(payload));
 	}
-	for(auto e : events)
+	for(const auto& e : events)
 	{
 		Source.PublicPublishEvent(e,StatusCallback);
 	}

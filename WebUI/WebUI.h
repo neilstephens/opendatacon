@@ -27,16 +27,15 @@
 
 #ifndef __opendatacon__WebUI__
 #define __opendatacon__WebUI__
-
-#include <opendatacon/IUI.h>
 #include "MhdWrapper.h"
+#include <opendatacon/IUI.h>
 
 const char ROOTPAGE[] = "/index.html";
 
 class WebUI: public IUI
 {
 public:
-	WebUI(uint16_t port);
+	WebUI(uint16_t port, const std::string& web_root);
 
 	/* Implement IUI interface */
 	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
@@ -48,11 +47,11 @@ public:
 	/* HTTP response handler call back */
 	int http_ahc(void *cls,
 		struct MHD_Connection *connection,
-		const char *url,
-		const char *method,
-		const char *version,
-		const char *upload_data,
-		size_t *upload_data_size,
+		const std::string& url,
+		const std::string& method,
+		const std::string& version,
+		const std::string& upload_data,
+		size_t& upload_data_size,
 		void **ptr);
 
 private:
@@ -60,10 +59,15 @@ private:
 	const int port;
 	std::string cert_pem;
 	std::string key_pem;
+	std::string web_root;
 
 	bool useSSL = false;
 	/* UI response handlers */
 	std::unordered_map<std::string, const IUIResponder*> Responders;
+	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
+
+	std::string HandleSimControl(const std::string& url);
+	std::string HandleOpenDataCon(const std::string& url);
 };
 
 #endif /* defined(__opendatacon__WebUI__) */

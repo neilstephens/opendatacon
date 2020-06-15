@@ -26,16 +26,14 @@
 
 #ifndef MD3OUTSTATIONPORT_H_
 #define MD3OUTSTATIONPORT_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
-
 #include "MD3.h"
 #include "MD3Port.h"
 #include "MD3Utility.h"
 #include "MD3Connection.h"
 #include "MD3PointTableAccess.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
 
 
 class OutstationSystemFlags
@@ -98,11 +96,11 @@ public:
 	~MD3OutstationPort() override;
 
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	CommandStatus Perform(std::shared_ptr<EventInfo> event, bool waitforresult);
+	CommandStatus Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult);
 
 	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 	MD3Message_t CorruptMD3Message(const MD3Message_t& CompleteMD3Message);

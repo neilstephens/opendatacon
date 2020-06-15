@@ -26,10 +26,9 @@
 
 #ifndef ModbusPORT_H_
 #define ModbusPORT_H_
-
+#include "ModbusPortConf.h"
 #include <modbus/modbus.h>
 #include <opendatacon/DataPort.h>
-#include "ModbusPortConf.h"
 
 using namespace odc;
 

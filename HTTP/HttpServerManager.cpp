@@ -25,30 +25,31 @@
  */
 
 
-#include <string>
+#include "PyPort.h"
+#include "ServerManager.h"
 #include <functional>
+#include <string>
 #include <unordered_map>
 
-#include "HttpServerManager.h"
 
 #define LOGTRACE(...) \
 	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->trace(__VA_ARGS__);
+		log->trace(__VA_ARGS__)
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->debug(__VA_ARGS__);
+		log->debug(__VA_ARGS__)
 #define LOGERROR(...) \
 	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->error(__VA_ARGS__);
+		log->error(__VA_ARGS__)
 #define LOGWARN(...) \
 	if (auto log = odc::spdlog_get("opendatacon"))  \
-		log->warn(__VA_ARGS__);
+		log->warn(__VA_ARGS__)
 #define LOGINFO(...) \
 	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->info(__VA_ARGS__);
+		log->info(__VA_ARGS__)
 #define LOGCRITICAL(...) \
 	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->critical(__VA_ARGS__);
+		log->critical(__VA_ARGS__)
 
 std::unordered_map<std::string, std::weak_ptr<HttpServerManager>> HttpServerManager::ServerMap;
 
@@ -58,8 +59,8 @@ std::mutex HttpServerManager::ManagementMutex; // Allow only one management oper
 ServerTokenType::~ServerTokenType()
 {}
 
-HttpServerManager::HttpServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort):
-	pIOS(apIOS),
+ServerManager::ServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort):
+	pIOS(std::move(apIOS)),
 	EndPoint(aEndPoint),
 	Port(aPort)
 {
@@ -125,7 +126,7 @@ void HttpServerManager::AddHandler(const ServerTokenType& ServerTok, const std::
 	std::unique_lock<std::mutex> lck(HttpServerManager::ManagementMutex); // Only allow one static op at a time
 	if (auto pServerMgr = ServerTok.pServerManager)
 	{
-		pServerMgr->pServer->register_handler(urlpattern, urihandler); // Will overwrite if duplicate
+		pServerMgr->pServer->register_handler(urlpattern, std::move(urihandler)); // Will overwrite if duplicate
 	}
 	else
 	{

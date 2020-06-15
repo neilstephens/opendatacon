@@ -8,33 +8,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "../Py.h"
+#include "mime_types.hpp"
+#include "reply.hpp"
+#include "request.hpp"
 #include "request_handler.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
-#include "mime_types.hpp"
-#include "reply.hpp"
-#include "request.hpp"
-#include <opendatacon/util.h>
-
-#define LOGTRACE(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->trace(__VA_ARGS__);
-#define LOGDEBUG(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->debug(__VA_ARGS__);
-#define LOGERROR(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->error(__VA_ARGS__);
-#define LOGWARN(...) \
-	if (auto log = odc::spdlog_get("opendatacon"))  \
-		log->warn(__VA_ARGS__);
-#define LOGINFO(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->info(__VA_ARGS__);
-#define LOGCRITICAL(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->critical(__VA_ARGS__);
 
 namespace http
 {
@@ -60,7 +41,7 @@ pHandlerCallbackType request_handler::find_matching_handler(const std::string& u
 	size_t matchlength = 0;
 	std::string matchkey;
 
-	for (auto key : HandlerMap)
+	for (const auto& key : HandlerMap)
 	{
 		// The key match string should be at the start of the path.
 		// We need to find the longest match.

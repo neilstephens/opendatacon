@@ -32,7 +32,6 @@
 #include <unordered_map>
 #include <bitset>
 #include <chrono>
-
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>

@@ -1,0 +1,99 @@
+<!-- Modal for displaying short text -->
+<div class="modal fade" id="short_text_modal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          <div id="short_text_modal_title"></div>
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="short_text_modal_data"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Responsive modal with medium size which can display an embeded page in iframe for statistics and configuration -->
+<div class="modal fade" id="frame_modal" tabindex="-1" role="dialog" aria-labelledby="frame_modal_label" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          <div id="frame_modal_title"></div>
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body mb-0 p-0">
+        <div class="embed-responsive embed-responsive-1by1">
+          <iframe class="embed-responsive-item" id="frame_src" src="" allowfullscreen></iframe>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Responsive modal with custom with and height to accomodate current state -->
+<div class="modal custom fade" id="current_state_modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          <div id="current_state_modal_title"></div>
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+
+      <div class="modal-body mb-0 p-0">
+        <div class="embed-responsive embed-responsive-1by1">
+          <iframe class="embed-responsive-item" id="current_state_src" src=""></iframe>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Responsive modal to display log levels -->
+<div class="modal fade" id="log_levels_modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          Log Levels
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+          <div class="btn-group">
+            <button type="button" onclick="test('trace');" class="btn btn-secondary">trace</button>
+            <button type="button" onclick="test('debug');" class="btn btn-primary">debug</button>
+            <button type="button" onclick="test('info');" class="btn btn-info">info</button>
+            <button type="button" onclick="test('warning');" class="btn btn-warning">warning</button>
+            <button type="button" onclick="test('error');" class="btn btn-danger">error</button>
+            <button type="button" onclick="test('critical');" class="btn btn-danger">critical</button>
+          </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Show Logs</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function test(log_level) {
+      window.localStorage.setItem("log_level", log_level);
+  }
+</script>

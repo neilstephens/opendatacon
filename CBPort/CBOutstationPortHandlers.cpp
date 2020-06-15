@@ -30,15 +30,18 @@
  So an Event to an outstation will be data that needs to be sent up to the scada master.
  An event from an outstation will be a master control signal to turn something on or off.
 */
-#include <iostream>
+#include "CB.h"
+#include "CBOutstationPort.h"
+#include "CBUtility.h"
+#include <chrono>
 #include <future>
+#include <iostream>
 #include <regex>
 #include <chrono>
 
 #include "CB.h"
 #include "CBUtility.h"
 #include "CBOutstationPort.h"
-#include "CBOutStationPortCollection.h"
 
 
 void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
@@ -670,7 +673,7 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 	{
 		// The maximum number of bits we can send is 12 * 31 = 372.
 		uint32_t UsedBits = 0;
-		std::array<bool, MaxSOEBits> BitArray;
+		std::array<bool, MaxSOEBits> BitArray{};
 
 		BuildPackedEventBitArray(BitArray, UsedBits);
 
@@ -775,8 +778,8 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		SOEEventFormat PackedEvent;
 		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; // Bottom three bits of the point group,  not the SOE Group!
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
-		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? 1 : 0;
-		PackedEvent.QualityBit = 0;
+		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? true : false;
+		PackedEvent.QualityBit = false;
 
 		CBTime TimeDelta = CurrentPoint.GetChangedTime() - LastPointTime;
 

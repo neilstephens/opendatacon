@@ -26,38 +26,32 @@
 
 #ifndef SIMPORT_H
 #define SIMPORT_H
-
+#include "SimPortConf.h"
+#include "sqlite3/sqlite3.h"
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <opendatacon/EnumClassFlags.h>
 #include <shared_mutex>
 #include <random>
 
-#include "SimPortConf.h"
-#include "sqlite3/sqlite3.h"
-#include "../HTTP/HttpServerManager.h"
-
-#define COMPILE_TESTS
-#define NONVSTESTING	// Comment this out for VS Based Testing
-
 using namespace odc;
 
 // Hide some of the code to make Logging cleaner
 #define LOGTRACE(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-		log->trace(__VA_ARGS__);
+		log->trace(__VA_ARGS__)
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-		log->debug(__VA_ARGS__);
+		log->debug(__VA_ARGS__)
 #define LOGERROR(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-		log->error(__VA_ARGS__);
+		log->error(__VA_ARGS__)
 #define LOGWARN(...) \
 	if (auto log = odc::spdlog_get("SimPort"))  \
-		log->warn(__VA_ARGS__);
+		log->warn(__VA_ARGS__)
 #define LOGINFO(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-		log->info(__VA_ARGS__);
+		log->info(__VA_ARGS__)
 
 extern "C" void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 extern "C" void CommandLineLoggingCleanup();
@@ -110,9 +104,9 @@ private:
 	std::string GetCurrentBinaryValsAsJSON(const std::string& index);
 	std::string GetCurrentAnalogValsAsJSON(const std::string& index);
 
-	void NextEventFromDB(std::shared_ptr<EventInfo> event);
-	void PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_offset);
-	void SpawnEvent(std::shared_ptr<EventInfo> event, int64_t time_offset = 0);
+	void NextEventFromDB(const std::shared_ptr<EventInfo> &event);
+	void PopulateNextEvent(const std::shared_ptr<EventInfo> &event, int64_t time_offset);
+	void SpawnEvent(const std::shared_ptr<EventInfo> &event, int64_t time_offset = 0);
 	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)
 	{
 		double mean, std_dev;

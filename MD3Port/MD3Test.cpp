@@ -29,27 +29,24 @@
 #pragma warning(disable: 6262)
 #endif
 
-#include <array>
-#include <fstream>
-#include <cassert>
-#include <opendatacon/spdlog.h>
-#include <spdlog/sinks/basic_file_sink.h>
-
-
 #define COMPILE_TESTS
 
 #ifdef COMPILE_TESTS
 
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
-
-#include <spdlog/sinks/stdout_color_sinks.h>
-
-#include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
+#include "MD3OutstationPort.h"
 #include "MD3Utility.h"
-#include "StrandProtectedQueue.h"
 #include "ProducerConsumerQueue.h"
+#include "StrandProtectedQueue.h"
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <array>
+#include <cassert>
+#include <fstream>
+#include <opendatacon/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <utility>
 
 #ifdef NONVSTESTING
 #include <catch.hpp>
@@ -223,7 +220,7 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 	pODCLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pODCLogger);
 }
-void WriteStartLoggingMessage(std::string TestName)
+void WriteStartLoggingMessage(const std::string& TestName)
 {
 	std::string msg = "Logging for '" + TestName + "' started..";
 	if (auto md3logger = odc::spdlog_get("MD3Port"))
@@ -319,39 +316,39 @@ void Wait(odc::asio_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup();\
-	auto IOS = std::make_shared<odc::asio_service>(4); // Max 4 threads
+	auto IOS = std::make_shared<odc::asio_service>(4) // Max 4 threads
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS);
+	for (int i = 0; i < (threadcount); i++) pThread[i] = StartIOSThread(*IOS)
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i]);
+	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i])
 
 #define TEST_MD3MAPort(overridejson)\
 	auto MD3MAPort = std::make_shared<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
 	MD3MAPort->SetIOS(IOS);      \
-	MD3MAPort->Build();
+	MD3MAPort->Build()
 
 #define TEST_MD3MAPort2(overridejson)\
 	auto MD3MAPort2 = std::make_shared<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
 	MD3MAPort2->SetIOS(IOS);      \
-	MD3MAPort2->Build();
+	MD3MAPort2->Build()
 
 #define TEST_MD3OSPort(overridejson)      \
 	auto MD3OSPort = std::make_shared<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
 	MD3OSPort->SetIOS(IOS);      \
-	MD3OSPort->Build();
+	MD3OSPort->Build()
 
 #define TEST_MD3OSPort2(overridejson)     \
 	auto MD3OSPort2 = std::make_shared<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
 	MD3OSPort2->SetIOS(IOS);     \
-	MD3OSPort2->Build();
+	MD3OSPort2->Build()
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -1142,10 +1139,9 @@ TEST_CASE("Station - BinaryEvent")
 	// Test on a valid binary point
 	const int ODCIndex = 1;
 
-	EventTypePayload<EventType::Binary>::type val;
-	val = true;
+	bool val = true;
 	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-	event->SetPayload<EventType::Binary>(std::move(val));
+	event->SetPayload<EventType::Binary>(bool(val));
 
 	MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1189,7 +1185,7 @@ TEST_CASE("Station - AnalogUnconditionalF5")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1198,7 +1194,7 @@ TEST_CASE("Station - AnalogUnconditionalF5")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Analog Unconditional command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1244,7 +1240,7 @@ TEST_CASE("Station - CounterScanFn30")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1253,7 +1249,7 @@ TEST_CASE("Station - CounterScanFn30")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Analog Unconditional command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1279,7 +1275,7 @@ TEST_CASE("Station - CounterScanFn30")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(std::move(numeric_cast<uint16_t>(4096 + ODCIndex + ODCIndex * 0x100)));
+		event->SetPayload<EventType::Counter>(numeric_cast<uint16_t>(4096 + ODCIndex + ODCIndex * 0x100));
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1326,7 +1322,7 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1341,7 +1337,7 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the command in as if came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1364,7 +1360,7 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	for (int ODCIndex = 0; ODCIndex < 5; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100 + ((ODCIndex % 2) == 0 ? 50 : -50)));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100 + ((ODCIndex % 2) == 0 ? 50 : -50));
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1414,7 +1410,7 @@ TEST_CASE("Station - DigitalUnconditionalFn7")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex%2)==0));
+		event->SetPayload<EventType::Binary>((ODCIndex%2)==0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1429,7 +1425,7 @@ TEST_CASE("Station - DigitalUnconditionalFn7")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
@@ -1459,7 +1455,7 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1478,7 +1474,7 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+		event->SetPayload<EventType::Binary>((ODCIndex % 2) == 0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1523,7 +1519,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1546,7 +1542,7 @@ TEST_CASE("Station - DigitalHRERFn9")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+		event->SetPayload<EventType::Binary>((ODCIndex % 2) == 0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1663,7 +1659,7 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1715,7 +1711,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	MD3OSPort->Enable();
 
-	MD3Time changedtime = static_cast<MD3Time>(0x0000016338b6d4fb); // A value around June 2018
+	auto changedtime = static_cast<MD3Time>(0x0000016338b6d4fb); // A value around June 2018
 
 	// Request Digital COS (Fn 11), Station 0x7C, 15 tagged events, sequence #0 - used on start up to send all data, 15 modules returned
 
@@ -1726,7 +1722,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1768,7 +1764,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	for (int ODCIndex = 0; ODCIndex < 4; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "TestHarness", QualityFlags::ONLINE, static_cast<MD3Time>(changedtime));
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+		event->SetPayload<EventType::Binary>((ODCIndex % 2) == 0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1877,7 +1873,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Inject command as if it came from TCP channel
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1899,7 +1895,7 @@ TEST_CASE("Station - DigitalUnconditionalFn12")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-		event->SetPayload<EventType::Binary>(std::move((ODCIndex % 2) == 0));
+		event->SetPayload<EventType::Binary>((ODCIndex % 2) == 0);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1941,7 +1937,7 @@ TEST_CASE("Station - FreezeResetFn16")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1992,7 +1988,7 @@ TEST_CASE("Station - POMControlFn17")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2063,7 +2059,7 @@ TEST_CASE("Station - DOMControlFn19")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2114,7 +2110,7 @@ TEST_CASE("Station - InputPointControlFn20")
 	MD3OSPort->Enable();
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	//  Station 0x7C
 	uint8_t StationAddress = 0x7C;
@@ -2179,7 +2175,7 @@ TEST_CASE("Station - AOMControlFn23")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2231,7 +2227,7 @@ TEST_CASE("Station - SystemsSignOnFn40")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2254,7 +2250,7 @@ TEST_CASE("Station - ChangeTimeDateFn43")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	uint64_t currenttime = MD3NowUTC();
 
@@ -2339,7 +2335,7 @@ TEST_CASE("Station - ChangeTimeDateFn44")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Send the Command
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -2488,7 +2484,7 @@ TEST_CASE("Station - System Flag Scan Test")
 	uint64_t currenttime = MD3NowUTC();
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
@@ -2598,9 +2594,9 @@ TEST_CASE("Master - Analog")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
-	INFO("Analog Unconditional Fn5");
+	INFO("Analog Unconditional Fn5")
 	{
 		// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
 		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
@@ -2658,7 +2654,7 @@ TEST_CASE("Master - Analog")
 		REQUIRE(res == 0x1808);
 	}
 
-	INFO("Analog Delta Fn6");
+	INFO("Analog Delta Fn6")
 	{
 		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 		// Same address and channels as above
@@ -2722,7 +2718,7 @@ TEST_CASE("Master - Analog")
 		REQUIRE(res == 0x1808); // Unchanged
 	}
 
-	INFO("Analog Delta Fn6 - No Change Response");
+	INFO("Analog Delta Fn6 - No Change Response")
 	{
 		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 		// Same address and channels as above
@@ -2771,7 +2767,7 @@ TEST_CASE("Master - Analog")
 		REQUIRE(res == 0x1808); // Unchanged
 	}
 
-	INFO("Analog Unconditional Fn5 Timeout");
+	INFO("Analog Unconditional Fn5 Timeout")
 	{
 		// Now send a request analog unconditional command
 		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
@@ -2865,10 +2861,10 @@ TEST_CASE("Master - DOM and POM Tests")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -2876,7 +2872,7 @@ TEST_CASE("Master - DOM and POM Tests")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("DOM ODC->Master Command Test");
+	INFO("DOM ODC->Master Command Test")
 	{
 		// So we want to send an ODC ControlRelayOutputBlock command to the Master through ODC, and check that it sends out the correct MD3 command,
 		// and then also when we send the correct response we get an ODC::success message.
@@ -2919,7 +2915,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		REQUIRE(res == CommandStatus::SUCCESS);
 	}
 
-	INFO("POM ODC->Master Command Test");
+	INFO("POM ODC->Master Command Test")
 	{
 		// So we want to send an ODC ControlRelayOutputBlock command to the Master through ODC, and check that it sends out the correct MD3 command,
 		// and then also when we send the correct response we get an ODC::success message.
@@ -2961,7 +2957,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		REQUIRE(res == CommandStatus::SUCCESS);
 	}
 
-	INFO("DOM OutStation->ODC->Master Command Test");
+	INFO("DOM OutStation->ODC->Master Command Test")
 	{
 		// We want to send a DOM Command to the OutStation, have it convert that to (up to) 16   Events.
 		// The Master will then ask for a response to those events (all 16!!), which we have to give it, as simulated TCP.
@@ -2999,7 +2995,7 @@ TEST_CASE("Master - DOM and POM Tests")
 	}
 
 
-	INFO("POM OutStation->ODC->Master Command Test");
+	INFO("POM OutStation->ODC->Master Command Test")
 	{
 		// We want to send a POM Command to the OutStation, it is a single bit and event, so easy compared to DOM
 		// It should responded with an OK packet, and its callback executed.
@@ -3069,10 +3065,10 @@ TEST_CASE("Master - TimeDate Poll Tests")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -3081,7 +3077,7 @@ TEST_CASE("Master - TimeDate Poll Tests")
 	std::ostream MAoutput(&MAwrite_buffer);
 
 
-	INFO("Time Set Poll Command");
+	INFO("Time Set Poll Command")
 	{
 		// The config file has the timeset poll as group 2.
 		MD3MAPort->DoPoll(3);
@@ -3142,10 +3138,10 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -3153,7 +3149,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("Test actual returned data for DCOS 11");
+	INFO("Test actual returned data for DCOS 11")
 	{
 		// We have two modules in this poll group, 34 and 35, ODC points 0 to 31.
 		// Will send 3 time tagged events, and data for both modules
@@ -3161,7 +3157,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 		// Timedate is msec, but need seconds
 		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
-		MD3Time changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
+		auto changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
 		MD3BlockData b[] = { MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime / 1000)),
 			               MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true) };
 
@@ -3232,10 +3228,10 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -3243,7 +3239,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("New Digital Poll Command");
+	INFO("New Digital Poll Command")
 	{
 		// Poll group 1, we want to send out the poll command from the master,
 		// inject a response and then look at the Masters point table to check that the data got to where it should.
@@ -3273,7 +3269,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// Timedate is msec, but need seconds
 		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
-		MD3Time changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
+		auto changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
 		MD3BlockData b[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime/1000)),
 			              MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true)};
 
@@ -3334,10 +3330,10 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
-	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = MD3Message; });
+	MD3OSPort->SetSendTCPDataFn([&OSResponse](std::string MD3Message) { OSResponse = std::move(MD3Message); });
 
 	std::string MAResponse = "Not Set";
-	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = MD3Message; });
+	MD3MAPort->SetSendTCPDataFn([&MAResponse](std::string MD3Message) { MAResponse = std::move(MD3Message); });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -3345,7 +3341,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
 
-	INFO("Flag Scan Poll Command");
+	INFO("Flag Scan Poll Command")
 	{
 		// Poll group 5, we want to send out the poll command from the master, then check the response.
 
@@ -3769,7 +3765,7 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 	for (int ODCIndex = 0; ODCIndex < 16; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(4096 + ODCIndex + ODCIndex * 0x100));
+		event->SetPayload<EventType::Analog>(4096 + ODCIndex + ODCIndex * 0x100);
 
 		MD3OSPort->Event(event, "TestHarness", pStatusCallback);
 	}

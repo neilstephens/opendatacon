@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenDataCon</title>
+
+    <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+
+    <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="/node_modules/popper/dist/umd/popper.min.js"></script>
+    <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <style>
+      a.list-group-item:hover {
+          background:#FFEFD5;
+      }
+    </style>
+
+    <script>
+      $(function() {
+          $("#common_content").load("common.html");
+      });
+    </script>
+  </head>
+
+  <body>
+    <!-- html section -->
+    <div id="common_content"></div>
+
+    <div class="alert alert-info clearfix">
+      <a href="#" class="alert-link"></a>
+      <button type="button" class="btn btn-primary float-right" onclick="go_to_web()">Web</button>
+    </div>
+
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-6">
+          <h4>OpenDataCon</h4>
+          <div class="list-group" id="opendatacon_list">
+            <div id="opendatacon_commands"></div>
+          </div>
+
+          <div class="col-sm-6 text centre">
+            <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <h4>Sim Control</h4>
+          <div class="list-group" id="simcontrol_list">
+            <div id="simcontrol_commands"></div>
+          </div>
+
+          <div class="col-sm-10 text center">
+            <button id="execute_simcontrol_button" class="btn btn-primary btn-lg" onclick="execute_simcontrol_command()">Execute</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </br>
+
+    <script>
+      var opendatacon_command = null;
+      function go_to_web() {
+          window.location.href="index.html"
+      }
+
+      $(document).ready(function() {
+          $.post("/OpenDataCon/List", {})
+              .done(function(data) {
+                  for (var key of Object.keys(data)) {
+                      const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_opendatacon_command(\'' + data[key] + '\');">' + data[key] + '</a>'
+                      $('#opendatacon_list').append(item);
+                  }
+              });
+
+          $.post("/SimControl/List", {})
+              .done(function(data) {
+                  for (var key of Object.keys(data)) {
+                      const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_simcontrol_command(\'' + data[key] + '\');">' + data[key] + '</a>'
+                      $('#simcontrol_list').append(item);
+                  }
+              });
+      });
+
+      function set_opendatacon_command(command) {
+          opendatacon_command = command;
+      }
+
+      function execute_opendatacon_command() {
+          if (opendatacon_command == null) {
+              document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
+              document.getElementById("short_text_modal_data").innerHTML="Please select from the opendatacon commands to execute";
+              $('#short_text_modal').modal('show');
+          } else if (opendatacon_command == "shutdown") {
+              document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
+              document.getElementById("short_text_modal_data").innerHTML="System is going to shutdown";
+              $('#short_text_modal').modal('show');
+
+              const url = "/OpenDataCon/" + opendatacon_command;
+              $.post(url, {})
+                  .done(function(data) {
+                  });
+          } else if (opendatacon_command == "version") {
+              const url = "/OpenDataCon/" + opendatacon_command;
+              $.post(url, {})
+                  .done(function(data) {
+                      var result = '';
+                      for (var key of Object.keys(data)) {
+                          result += key + ' : ' + data[key] + '<br>';
+                      }
+
+                      document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
+                      document.getElementById("short_text_modal_data").innerHTML=result;
+                      $('#short_text_modal').modal('show');
+                  });
+          } else {
+              $('#log_levels_modal').modal('show');
+
+              $("#log_levels_modal").on("hidden.bs.modal", function () {
+                  const log_level = window.localStorage.getItem("log_level");
+                  if(!log_level)
+                      log_level = "trace";
+
+                  const url = "/OpenDataCon/set_loglevel " + log_level;
+                  $.post(url, {})
+                      .done(function(data) {
+                          window.location.href="log.html";
+                      });
+              });
+          }
+      }
+
+      $('.list-group').on('click','> a', function() {
+          var $this = $(this);
+          $('.list-group').find('.active').removeClass('active');
+          $this.addClass('active');
+      });
+      </script>
+  </body>
+</html>

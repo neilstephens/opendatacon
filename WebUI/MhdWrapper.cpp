@@ -25,19 +25,9 @@
 //
 //
 
-#ifdef WIN32
-#include <direct.h>
-#define PathSeparator "\\"
-#define GetCurrentDir _getcwd
-#else
-#include <unistd.h>
-#define PathSeparator "/"
-#define GetCurrentDir getcwd
-#endif
+#include "MhdWrapper.h"
 #include <iostream>
 #include <opendatacon/util.h>
-
-#include "MhdWrapper.h"
 
 const int POSTBUFFERSIZE = 512;
 const char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";
@@ -52,13 +42,6 @@ const std::unordered_map<std::string, const std::string> MimeTypeMap {
 	{ "svg", "image/svg+xml"},
 	{ "default", "application/octet-stream"}
 };
-
-std::string GetCurrentWorkingDir(void)
-{
-	char buff[FILENAME_MAX];
-	std::string current_working_dir(GetCurrentDir(buff, FILENAME_MAX));
-	return current_working_dir;
-}
 
 const std::string& GetMimeType(const std::string& rUrl)
 {
@@ -76,7 +59,7 @@ const std::string& GetMimeType(const std::string& rUrl)
 static ssize_t
 file_reader(void *cls, uint64_t pos, char *buf, size_t max)
 {
-	FILE *file = (FILE *)cls;
+	FILE *file = reinterpret_cast<FILE *>(cls);
 
 	(void)fseek(file, pos, SEEK_SET);
 	return fread(buf, 1, max, file);
@@ -85,7 +68,7 @@ file_reader(void *cls, uint64_t pos, char *buf, size_t max)
 static void
 file_free_callback(void *cls)
 {
-	FILE *file = (FILE *)cls;
+	FILE *file = reinterpret_cast<FILE *>(cls);
 	fclose(file);
 }
 
@@ -103,22 +86,21 @@ const std::string GetFile(const std::string& rUrl)
 	return rUrl.substr(last+1);
 }
 
-int ReturnFile(struct MHD_Connection *connection,
-	const char *url)
+int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 {
-	struct stat buf;
+	struct stat buf{};
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;
-	std::string filename = "www/" + std::string(&url[1]);
-	if ((0 == stat(filename.c_str(), &buf)) && (S_ISREG(buf.st_mode)))
-		fopen_s(&file, filename.c_str(), "rb");
+
+	if ((0 == stat(url.c_str(), &buf)) && (S_ISREG(buf.st_mode)))
+		fopen_s(&file, url.c_str(), "rb");
 	else
 		file = nullptr;
 	if (file == nullptr)
 	{
 		if (auto log = odc::spdlog_get("WebUI"))
-			log->error("WebUI : Failed to open file {}", GetCurrentWorkingDir()+"/"+filename);
+			log->error("WebUI : Failed to open file {}", filename);
 
 		response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
 			(void *)EMPTY_PAGE,
@@ -234,7 +216,7 @@ iterate_post (void *coninfo_cls,
 	size_t size // POST VALUE LENGTH
 	)
 {
-	struct connection_info_struct* con_info = (connection_info_struct*) coninfo_cls;
+	auto con_info = reinterpret_cast<connection_info_struct*>(coninfo_cls);
 
 	if (kind == MHD_POSTDATA_KIND)
 	{
@@ -248,7 +230,7 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 	void **con_cls,
 	enum MHD_RequestTerminationCode toe)
 {
-	struct connection_info_struct *con_info = (connection_info_struct*)*con_cls;
+	auto *con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
 
 	if (nullptr == con_info) return;
 	if (nullptr != con_info->postprocessor) MHD_destroy_post_processor(con_info->postprocessor);
@@ -259,11 +241,11 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 
 int CreateNewRequest(void *cls,
 	struct MHD_Connection *connection,
-	const char *url,
-	const char *method,
-	const char *version,
-	const char *upload_data,
-	size_t *upload_data_size,
+	const std::string& url,
+	const std::string& method,
+	const std::string& version,
+	const std::string& upload_data,
+	size_t& upload_data_size,
 	void **con_cls)
 {
 	struct connection_info_struct *con_info;
@@ -272,8 +254,8 @@ int CreateNewRequest(void *cls,
 	if (nullptr == con_info) return MHD_NO;
 	*con_cls = (void*)con_info;
 
-	if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) return MHD_YES;
-	if (0 == strcmp(method, "POST"))
+	if (method == MHD_HTTP_METHOD_GET) return MHD_YES;
+	if (method == "POST")
 	{
 		auto length = atoi(MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "Content-Length"));
 		if (length == 0) return MHD_YES;
@@ -282,7 +264,7 @@ int CreateNewRequest(void *cls,
 	}
 
 	// unexpected method or couldn't create post processor
-	free(con_info);
+	delete con_info;
 	*con_cls = nullptr;
 	return MHD_NO;
 }

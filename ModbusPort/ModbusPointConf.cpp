@@ -24,11 +24,11 @@
  *      Author: Alan Murray
  */
 
-#include <regex>
-#include <algorithm>
-#include <opendatacon/util.h>
-#include <opendatacon/IOTypes.h>
 #include "ModbusPointConf.h"
+#include <algorithm>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <regex>
 
 using namespace odc;
 

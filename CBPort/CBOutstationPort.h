@@ -26,16 +26,14 @@
 
 #ifndef CBOUTSTATIONPORT_H_
 #define CBOUTSTATIONPORT_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
-
 #include "CB.h"
 #include "CBPort.h"
 #include "CBUtility.h"
 #include "CBConnection.h"
 #include "CBPointTableAccess.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
 
 
 class OutstationSystemFlags
@@ -113,11 +111,11 @@ public:
 	~CBOutstationPort() override;
 
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	CommandStatus Perform(std::shared_ptr<EventInfo> event, bool waitforresult);
+	CommandStatus Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult);
 
 	void SendCBMessage(const CBMessage_t & CompleteCBMessage) override;
 	CBMessage_t CorruptCBMessage(const CBMessage_t& CompleteCBMessage);

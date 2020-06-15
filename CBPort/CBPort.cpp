@@ -25,9 +25,10 @@
 */
 
 
-#include <iostream>
 #include "CBPort.h"
 #include "CBPortConf.h"
+#include <iostream>
+#include <utility>
 
 CBPort::CBPort(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -106,7 +107,7 @@ uint8_t CBPort::Limit(uint8_t val, uint8_t max)
 void CBPort::SetSendTCPDataFn(std::function<void(std::string)> Send)
 {
 	if (!enabled.load()) return; // Port Disabled so dont process
-	CBConnection::SetSendTCPDataFn(pConnection,Send);
+	CBConnection::SetSendTCPDataFn(pConnection,std::move(Send));
 }
 
 // Test only method for simulating input from the TCP Connection.

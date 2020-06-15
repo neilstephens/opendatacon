@@ -24,15 +24,15 @@
  *      Author: Scott Ellis - scott.ellis@novatex.com.au
  */
 
-#include <opendatacon/asio.h>
-#include <opendatacon/TCPSocketManager.h>
-#include <string>
-#include <functional>
-#include <unordered_map>
-
 #include "MD3.h"
-#include "MD3Utility.h"
 #include "MD3Connection.h"
+#include "MD3Utility.h"
+#include <functional>
+#include <opendatacon/TCPSocketManager.h>
+#include <opendatacon/asio.h>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 using namespace odc;
 
@@ -65,7 +65,7 @@ MD3Connection::MD3Connection
 	const std::string& aEndPoint,              //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                  //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms):
-	pIOS(apIOS),
+	pIOS(std::move(apIOS)),
 	EndPoint(aEndPoint),
 	Port(aPort),
 	isServer(aisServer),
@@ -105,15 +105,15 @@ ConnectionTokenType MD3Connection::AddConnection
 		ConnectionMap[ChannelID] = std::make_shared<MD3Connection>(apIOS, aisServer, aEndPoint, aPort, retry_time_ms);
 	}
 	else
-		LOGDEBUG("Md3 Connection already exists, using that connection - {}", ChannelID);
+		LOGDEBUG("MD3 Connection already exists, using that connection - {}", ChannelID);
 
 	return ConnectionTokenType(ChannelID, ConnectionMap[ChannelID]); // the use count on the Connection Map shared_ptr will go up by one.
 }
 
 void MD3Connection::AddOutstation(const ConnectionTokenType &ConnectionTok,
 	uint8_t StationAddress, // For message routing, OutStation identification
-	const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
-	const std::function<void(bool)> aStateCallback)
+	const std::function<void(MD3Message_t &MD3Message)>& aReadCallback,
+	const std::function<void(bool)>& aStateCallback)
 {
 
 	if (auto pConnection = ConnectionTok.pConnection)
@@ -142,8 +142,8 @@ void MD3Connection::RemoveOutstation(const ConnectionTokenType &ConnectionTok, u
 }
 
 void MD3Connection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
-	const std::function<void(MD3Message_t &MD3Message)> aReadCallback,
-	const std::function<void(bool)> aStateCallback)
+	const std::function<void(MD3Message_t &MD3Message)>& aReadCallback,
+	const std::function<void(bool)>& aStateCallback)
 {
 	if (auto pConnection = ConnectionTok.pConnection)
 	{
@@ -312,7 +312,7 @@ void MD3Connection::SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, s
 {
 	if (auto pConnection = ConnectionTok.pConnection)
 	{
-		pConnection->SendTCPDataFn = f;
+		pConnection->SendTCPDataFn = std::move(f);
 	}
 	else
 	{

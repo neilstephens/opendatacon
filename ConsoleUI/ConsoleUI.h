@@ -27,15 +27,13 @@
 
 #ifndef __opendatacon__WebUI__
 #define __opendatacon__WebUI__
-
+#include "tinycon.h"
 #include <opendatacon/IUI.h>
-
 #include <opendatacon/asio.h>
 #include <vector>
 #include <map>
 #include <sstream>
 #include <functional>
-#include "tinycon.h"
 
 class ConsoleUI: public IUI, tinyConsole
 {
@@ -46,15 +44,15 @@ public:
 	void AddHelp(std::string help);
 
 	/* tinyConsole functions */
-	int trigger (std::string s) override;
+	int trigger (const std::string& s) override;
 	int hotkeys(char c) override;
 
 	/* Implement IUI interface */
-	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
+	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override final;
 	void AddResponder(const std::string& name, const IUIResponder& pResponder) override;
 	void Build() override;
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 
 private:
 	/* */

@@ -29,25 +29,23 @@
 #pragma warning(disable: 6262)
 #endif
 
+#include "../HTTP/clientrequest.h"
 #include <array>
-#include <fstream>
 #include <cassert>
-#include <thread>
 #include <chrono>
 #include <cstdint>
-#include "../HTTP/clientrequest.h"
+#include <fstream>
+#include <thread>
+#include <utility>
 
 #define COMPILE_TESTS
 
 #if defined(COMPILE_TESTS)
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
-
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/basic_file_sink.h>
-
 #include "PyPort.h"
-
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #if defined(NONVSTESTING)
 #include <catch.hpp>
@@ -148,7 +146,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 	odc::spdlog_register_logger(pODCLogger);
 
 }
-void WriteStartLoggingMessage(std::string TestName)
+void WriteStartLoggingMessage(const std::string& TestName)
 {
 	std::string msg = "Logging for '" + TestName + "' started..";
 
@@ -167,7 +165,7 @@ void WriteStartLoggingMessage(std::string TestName)
 	else
 		std::cout << "Error opendatacon Logger not operational";
 }
-void TestSetup(std::string TestName, bool writeconffiles = true)
+void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
 	SetupLoggers(spdlog::level::level_enum::trace);
@@ -213,23 +211,23 @@ void RunIOSForXSeconds(std::shared_ptr<odc::asio_service> IOS, unsigned int seco
 	// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
 	// If the IOS runs out of work, it must be reset before being run again.
 }
-std::thread *StartIOSThread(std::shared_ptr<odc::asio_service> IOS)
+std::thread *StartIOSThread(const std::shared_ptr<odc::asio_service>& IOS)
 {
 	return new std::thread([IOS] { IOS->run(); });
 }
-void StopIOSThread(std::shared_ptr<odc::asio_service> IOS, std::thread *runthread)
+void StopIOSThread(const std::shared_ptr<odc::asio_service>& IOS, std::thread *runthread)
 {
 	IOS->stop();       // This does not block. The next line will! If we have multiple threads, have to join all of them.
 	runthread->join(); // Wait for it to exit
 	delete runthread;
 }
-void WaitIOS(std::shared_ptr<odc::asio_service> IOS, int seconds)
+void WaitIOS(const std::shared_ptr<odc::asio_service>& IOS, int seconds)
 {
 	auto timer = IOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::seconds(seconds));
 	timer->wait();
 }
-bool WaitIOSResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, std::atomic<CommandStatus>& res, CommandStatus InitialValue)
+bool WaitIOSResult(const std::shared_ptr<odc::asio_service>& IOS, int MaxWaitSeconds, std::atomic<CommandStatus>& res, CommandStatus InitialValue)
 {
 	auto timer = IOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
@@ -243,7 +241,7 @@ bool WaitIOSResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, s
 	}
 	return false; // Timed out
 }
-bool WaitIOSFnResult(std::shared_ptr<odc::asio_service> IOS, int MaxWaitSeconds, std::function<bool()>Result)
+bool WaitIOSFnResult(const std::shared_ptr<odc::asio_service>& IOS, int MaxWaitSeconds, const std::function<bool()>&Result)
 {
 	auto timer = IOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::milliseconds(0)); // Set below.
@@ -262,18 +260,18 @@ class protected_string
 {
 public:
 	protected_string(): val("") {};
-	protected_string(std::string _val): val(_val.c_str()) {};
-	std::string  getandset(std::string newval)
+	protected_string(const std::string& _val): val(_val) {};
+	std::string  getandset(const std::string& newval)
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(m);
-		std::string retval = val.c_str();
-		val = newval.c_str();
+		std::string retval = val;
+		val = newval;
 		return retval;
 	}
 	void set(std::string newval)
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(m);
-		val = newval;
+		val = std::move(newval);
 	}
 	std::string get(void)
 	{
@@ -336,7 +334,7 @@ private:
 
 namespace EventTests
 {
-void CheckEventStringConversions(std::shared_ptr<EventInfo> inevent)
+void CheckEventStringConversions(const std::shared_ptr<EventInfo>& inevent)
 {
 	// Get string representation as used in PythonWrapper
 	std::string EventTypeStr = odc::ToString(inevent->GetEventType());
@@ -397,7 +395,7 @@ TEST_CASE("Py.TestEventStringConversions")
 	STANDARD_TEST_TEARDOWN();
 }
 
-uint32_t GetProcessedEventsFromJSON(std::string jsonstr)
+uint32_t GetProcessedEventsFromJSON(const std::string& jsonstr)
 {
 	Json::Value root;
 	Json::CharReaderBuilder jsonReader;
@@ -488,7 +486,7 @@ TEST_CASE("Py.TestsUsingPython")
 		std::atomic<size_t> done_count(0);
 		auto pResponseCallback = std::make_shared<std::function<void(std::string url)>>([&](std::string response)
 			{
-				sres.set(response);
+				sres.set(std::move(response));
 				done_count++;
 			});
 

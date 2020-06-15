@@ -30,16 +30,19 @@
  So an Event to an outstation will be data that needs to be sent up to the scada master.
  An event from an outstation will be a master control signal to turn something on or off.
 */
-#include <iostream>
+#include "CB.h"
+#include "CBOutstationPort.h"
+#include "CBUtility.h"
+#include <chrono>
 #include <future>
+#include <iostream>
 #include <regex>
 #include <chrono>
 #include <random>
-
 #include "CB.h"
 #include "CBUtility.h"
-#include "CBOutStationPortCollection.h"
 #include "CBOutstationPort.h"
+#include "CBOutStationPortCollection.h"
 
 
 CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string &aConfFilename, const Json::Value & aConfOverrides):
@@ -209,7 +212,7 @@ CBMessage_t CBOutstationPort::CorruptCBMessage(const CBMessage_t& CompleteCBMess
 // Remember there can be multiple responders!
 //
 
-CommandStatus CBOutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
+CommandStatus CBOutstationPort::Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;
@@ -263,7 +266,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		case EventType::Analog:
 		{
 			// ODC Analog is a double by default...
-			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
+			auto analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
 			LOGTRACE("{} - Received Event - Analog - Index {}  Value 0x{}",Name, ODCIndex, to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
@@ -275,7 +278,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		}
 		case EventType::Counter:
 		{
-			uint16_t countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
+			auto countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
 			LOGDEBUG("{} - Received Event - Counter - Index {}  Value 0x{}",Name, ODCIndex, to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))

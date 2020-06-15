@@ -26,17 +26,14 @@
 
 #ifndef CBPORT_H_
 #define CBPORT_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
-
-#include <opendatacon/DataPort.h>
-
 #include "CB.h"
 #include "CBPortConf.h"
 #include "CBUtility.h"
 #include "CBConnection.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
+#include <opendatacon/DataPort.h>
 
 using namespace odc;
 

@@ -30,15 +30,13 @@
  So an Event to an outstation will be data that needs to be sent up to the scada master.
  An event from an outstation will be a master control signal to turn something on or off.
 */
-#include <iostream>
-#include <future>
-#include <regex>
-#include <chrono>
-
 #include "MD3.h"
-#include "MD3Utility.h"
 #include "MD3OutstationPort.h"
-#include "MD3OutStationPortCollection.h"
+#include "MD3Utility.h"
+#include <chrono>
+#include <future>
+#include <iostream>
+#include <regex>
 
 
 // The list of codes in use
@@ -590,7 +588,7 @@ void MD3OutstationPort::DoDigitalHRER(MD3BlockFn9 &Header, MD3Message_t &Complet
 	MD3BlockData &lastblock = ResponseMD3Message.back();
 	lastblock.MarkAsEndOfMessageBlock();
 
-	MD3BlockFn9 &firstblock = static_cast<MD3BlockFn9&>(ResponseMD3Message[0]);
+	auto &firstblock = static_cast<MD3BlockFn9&>(ResponseMD3Message[0]);
 	bool MoreEventsFlag = MyPointConf->PointTable.TimeTaggedDataAvailable();
 	firstblock.SetEventCountandMoreEventsFlag(EventCount, MoreEventsFlag); // If not empty, set more events (MEV) flag
 
@@ -611,8 +609,8 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( uint8_t MaxEventCou
 		if (EventCount == 0)
 		{
 			// First packet is the time/date block and a milliseconds packet
-			uint32_t FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000);
-			uint16_t FirstEventMSec = static_cast<uint16_t>(CurrentPoint.GetChangedTime() % 1000);
+			auto FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000);
+			auto FirstEventMSec = static_cast<uint16_t>(CurrentPoint.GetChangedTime() % 1000);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
 			ResponseWords.push_back(MD3BlockFn9::MilliSecondsPacket(FirstEventMSec));
@@ -682,7 +680,7 @@ void MD3OutstationPort::DoDigitalCOSScan(MD3BlockFn10 &Header)
 
 		BuildScanReturnBlocksFromList(ModuleList, NumberOfDataBlocks, Header.GetStationAddress(), false, ResponseMD3Message);
 
-		MD3BlockFn10 &firstblock = static_cast<MD3BlockFn10 &>(ResponseMD3Message[0]);
+		auto &firstblock = static_cast<MD3BlockFn10 &>(ResponseMD3Message[0]);
 		firstblock.SetModuleCount(static_cast<uint8_t>(ResponseMD3Message.size() - 1)); // The number of blocks taking away the header...
 
 		SendMD3Message(ResponseMD3Message);
@@ -785,7 +783,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 		// Mark the last block and set the module count and tagged event count
 		if (ResponseMD3Message.size() != 0)
 		{
-			MD3BlockFn11StoM &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
+			auto &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
 			firstblockref.SetModuleCount(ModuleCount);           // The number of blocks taking away the header...
 			firstblockref.SetTaggedEventCount(TaggedEventCount); // Update to the number we are sending
 			firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
@@ -825,7 +823,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCou
 		{
 			// First packet is the time/date block - adjust for SOEOffset (handles local utc time translation)
 			// We dont currently do anything with the timezone sent in a 44 command
-			uint32_t FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000 + SOETimeOffsetMinutes*60);
+			auto FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000 + SOETimeOffsetMinutes*60);
 			ResponseWords.push_back(FirstEventSeconds >> 16);
 			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
 			LastPointmsec = CurrentPoint.GetChangedTime() - CurrentPoint.GetChangedTime() % 1000; // The first one is seconds only. Later events have actual msec
@@ -891,7 +889,7 @@ void MD3OutstationPort::DoDigitalUnconditional(MD3BlockFn12MtoS &Header)
 	// Mark the last block
 	if (ResponseMD3Message.size() != 0)
 	{
-		MD3BlockFn11StoM &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
+		auto &firstblockref = static_cast<MD3BlockFn11StoM&>(ResponseMD3Message.front());
 		firstblockref.SetModuleCount(static_cast<uint8_t>(ResponseMD3Message.size() - 1)); // The number of blocks taking away the header...
 		firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
 
@@ -1083,7 +1081,7 @@ void MD3OutstationPort::BuildScanReturnBlocksFromList(std::vector<unsigned char>
 	if ((ResponseMD3Message.size() != 0) && !FormatForFn11and12)
 	{
 		// The header for Fn7, Fn 8 and Fn 10 need this. NOT Fn9, Fn11 and Fn12
-		MD3BlockFormatted &firstblockref = static_cast<MD3BlockFormatted&>(ResponseMD3Message.front());
+		auto &firstblockref = static_cast<MD3BlockFormatted&>(ResponseMD3Message.front());
 		firstblockref.SetFlags(SystemFlags.GetRemoteStatusChangeFlag(), SystemFlags.GetTimeTaggedDataAvailableFlag(), SystemFlags.GetDigitalChangedFlag());
 
 		MD3BlockData &lastblock = ResponseMD3Message.back();
@@ -1583,7 +1581,7 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS& Header, MD3Message_t&
 
 	// Not used for now...
 	MD3BlockData& utcoffsetblock = CompleteMD3Message[2];
-	int16_t utcoffsetminutes = (int16_t)utcoffsetblock.GetFirstWord();
+	auto utcoffsetminutes = (int16_t)utcoffsetblock.GetFirstWord();
 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
 	uint64_t currenttime = MD3NowUTC();

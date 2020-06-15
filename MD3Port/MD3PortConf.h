@@ -26,11 +26,10 @@
 
 #ifndef MD3OUTSTATIONPORTCONF_H_
 #define MD3OUTSTATIONPORTCONF_H_
-
-#include <opendatacon/DataPort.h>
-#include <opendatacon/TCPSocketManager.h>
 #include "MD3PointConf.h"
 #include "MD3PointTableAccess.h"
+#include <opendatacon/DataPort.h>
+#include <opendatacon/TCPSocketManager.h>
 
 // Megadata System Flag register definition bits
 #define SYSTEMPOWERUPFLAGBIT 15
@@ -75,7 +74,7 @@ class MD3PortConf: public DataPortConf
 public:
 	MD3PortConf(std::string FileName, const Json::Value& ConfOverrides)
 	{
-		pPointConf.reset(new MD3PointConf(FileName, ConfOverrides));
+		pPointConf = std::make_unique<MD3PointConf>(FileName, ConfOverrides);
 	}
 
 	std::shared_ptr<MD3PointConf> pPointConf;

@@ -23,18 +23,16 @@
  *  Created on: 29/07/2015
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-#include <memory>
-#include <random>
-#include <limits>
-#include <chrono>
-#include <algorithm>
-#include <opendatacon/util.h>
-#include <opendatacon/IOTypes.h>
-#include <opendatacon/Version.h>
 #include "SimPort.h"
-#include "SimPortConf.h"
 #include "SimPortCollection.h"
+#include "SimPortConf.h"
 #include "sqlite3/sqlite3.h"
+#include <chrono>
+#include <limits>
+#include <memory>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <random>
 
 thread_local std::mt19937 SimPort::RandNumGenerator = std::mt19937(std::random_device()());
 
@@ -59,6 +57,7 @@ std::vector<std::string> split(const std::string& s, char delimiter)
 //Implement DataPort interface
 SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
 	DataPort(Name, File, Overrides),
+	TimestampHandling(TimestampMode::FIRST),
 	SimCollection(nullptr)
 {
 
@@ -82,7 +81,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 		{} //init happens very seldom, so spin lock is good
 	}
 
-	pConf.reset(new SimPortConf());
+	pConf = std::make_unique<SimPortConf>();
 	pSimConf = static_cast<SimPortConf*>(this->pConf.get());
 	ProcessFile();
 }
@@ -177,7 +176,7 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 	{
 		// We have matched the regex. Now split.
 		auto idxstrings = split(index_str, ',');
-		for( auto idxs : idxstrings)
+		for(const auto& idxs : idxstrings)
 		{
 			size_t idx;
 			try
@@ -283,7 +282,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 			}
 			auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q,ts);
 			event->SetPayload<EventType::Analog>(std::move(val));
-			PostPublishEvent(event);
+			PublishEvent(event);
 		}
 	}
 	else
@@ -513,7 +512,7 @@ void SimPort::PortUp()
 		}
 		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Analog>(std::move(mean));
-		PostPublishEvent(event);
+		PublishEvent(event);
 
 		//queue up a timer if it has an update interval
 		{ //lock scope
@@ -548,7 +547,7 @@ void SimPort::PortUp()
 		}
 		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Binary>(std::move(val));
-		PostPublishEvent(event);
+		PublishEvent(event);
 
 		pTimer_t pTimer = pIOS->make_steady_timer();
 		Timers["Binary"+std::to_string(index)] = pTimer;
@@ -574,12 +573,12 @@ void SimPort::PortUp()
 
 void SimPort::PortDown()
 {
-	for(auto pTimer : Timers)
+	for(const auto& pTimer : Timers)
 		pTimer.second->cancel();
 	Timers.clear();
 }
 
-void SimPort::NextEventFromDB(std::shared_ptr<EventInfo> event)
+void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 {
 	if(event->GetEventType() == EventType::Analog)
 	{
@@ -605,7 +604,7 @@ void SimPort::NextEventFromDB(std::shared_ptr<EventInfo> event)
 	}
 }
 
-void SimPort::PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_offset)
+void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
 	//Check if we're configured to load this point from DB
 	if(DBStats.count("Analog"+std::to_string(event->GetIndex())))
@@ -646,7 +645,7 @@ void SimPort::PopulateNextEvent(std::shared_ptr<EventInfo> event, int64_t time_o
 	event->SetTimestamp(msSinceEpoch()+random_interval);
 }
 
-void SimPort::SpawnEvent(std::shared_ptr<EventInfo> event, int64_t time_offset)
+void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
 	//deep copy event to modify as next event
 	auto next_event = std::make_shared<EventInfo>(*event);

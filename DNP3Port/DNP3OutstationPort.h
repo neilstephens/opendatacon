@@ -26,11 +26,9 @@
 
 #ifndef DNP3SERVERPORT_H_
 #define DNP3SERVERPORT_H_
-
+#include "DNP3Port.h"
 #include <unordered_map>
 #include <opendnp3/outstation/ICommandHandler.h>
-
-#include "DNP3Port.h"
 
 class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication
 {
@@ -78,6 +76,8 @@ protected:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 private:
+	Json::Value state;
+	std::unique_ptr<asio::io_service::strand> pStateSync;
 	std::shared_ptr<asiodnp3::IOutstation> pOutstation;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
@@ -86,6 +86,8 @@ private:
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
+
+	void SetState(const std::string& type, const std::string& index, const std::string& payload);
 };
 
 #endif /* DNP3SERVERPORT_H_ */

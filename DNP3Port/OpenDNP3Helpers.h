@@ -27,7 +27,6 @@
 #ifndef OPENDNP3HELPERS_H_
 #define OPENDNP3HELPERS_H_
 #include <string>
-
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/app/MeasurementInfo.h>
 #include <openpal/container/ArrayView.h>

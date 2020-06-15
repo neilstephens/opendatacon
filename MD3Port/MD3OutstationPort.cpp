@@ -30,16 +30,14 @@
  So an Event to an outstation will be data that needs to be sent up to the scada master.
  An event from an outstation will be a master control signal to turn something on or off.
 */
-#include <iostream>
-#include <future>
-#include <regex>
-#include <chrono>
-#include <random>
-
 #include "MD3.h"
-#include "MD3Utility.h"
-#include "MD3OutStationPortCollection.h"
 #include "MD3OutstationPort.h"
+#include "MD3Utility.h"
+#include <chrono>
+#include <future>
+#include <random>
+#include <iostream>
+#include <regex>
 
 
 MD3OutstationPort::MD3OutstationPort(const std::string & aName, const std::string &aConfFilename, const Json::Value & aConfOverrides):
@@ -214,7 +212,7 @@ MD3Message_t MD3OutstationPort::CorruptMD3Message(const MD3Message_t& CompleteMD
 //
 //TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we dont get stuck here.
 
-CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
+CommandStatus MD3OutstationPort::Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;
@@ -271,7 +269,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	{
 		case EventType::Analog:
 		{
-			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
+			auto analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
 			LOGTRACE("{} - Received Event - Analog - Index {} Value {}",Name, ODCIndex, to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
@@ -283,7 +281,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		}
 		case EventType::Counter:
 		{
-			uint16_t countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
+			auto countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
 			LOGDEBUG("{} - Received Event - Counter - Index {} Value {}",Name, ODCIndex,to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))

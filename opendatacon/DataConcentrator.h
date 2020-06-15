@@ -26,30 +26,26 @@
 
 #ifndef DATACONCENTRATOR_H_
 #define DATACONCENTRATOR_H_
-
+#include "DataConnector.h"
+#include "DataConnectorCollection.h"
+#include "DataConnector.h"
 #include <opendatacon/asio.h>
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/DataPortCollection.h>
-#include "DataConnector.h"
-#include "DataConnectorCollection.h"
 #include <opendatacon/InterfaceCollection.h>
-
 #include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/TCPstringbuf.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
-
-#include "DataConnector.h"
-
 #include <opendatacon/IUI.h>
 
 class DataConcentrator: public ConfigParser, public IUIResponder
 {
 public:
-	DataConcentrator(std::string FileName);
+	DataConcentrator(const std::string& FileName);
 	~DataConcentrator() override;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
@@ -76,7 +72,10 @@ private:
 
 	std::map<std::string,spdlog::sink_ptr> LogSinksMap;
 	std::vector<spdlog::sink_ptr> LogSinksVec;
+	inline void ListLogSinks();
 	void SetLogLevel(std::stringstream& ss);
+	void AddLogSink(std::stringstream& ss);
+	void DeleteLogSink(std::stringstream& ss);
 
 	std::vector<std::thread> threads;
 };

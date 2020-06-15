@@ -37,7 +37,7 @@ const Json::Value IUIResponder::GenerateResult(const std::string& message)
 Json::Value IUIResponder::GetCommandList() const
 {
 	Json::Value result;
-	for (auto command : commands)
+	for (const auto& command : commands)
 	{
 		if (!command.second.hidden) result.append(command.first);
 	}
@@ -64,7 +64,7 @@ Json::Value IUIResponder::ExecuteCommand(const std::string& arCommandName, const
 	return IUIResponder::GenerateResult("Bad command");
 }
 
-void IUIResponder::AddCommand(const std::string& arCommandName, UIFunction arCommand, const std::string& desc, const bool hide)
+void IUIResponder::AddCommand(const std::string& arCommandName, const UIFunction& arCommand, const std::string& desc, const bool hide)
 {
 
 	commands.insert(std::pair<std::string, UICommand>(arCommandName, UICommand(arCommand, desc, hide)));

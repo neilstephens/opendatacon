@@ -25,15 +25,16 @@
 */
 
 
-#include <iostream>
 #include "MD3Port.h"
 #include "MD3PortConf.h"
+#include <iostream>
+#include <utility>
 
 MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
 	//the creation of a new MD3PortConf will get the point details
-	pConf.reset(new MD3PortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<MD3PortConf>(ConfFilename, ConfOverrides);
 
 	// Just to save a lot of dereferencing..
 	MyConf = static_cast<MD3PortConf*>(this->pConf.get());

@@ -42,22 +42,22 @@
 // Hide some of the code to make Logging cleaner
 #define LOGTRACE(...) \
 	if (auto log = odc::spdlog_get("PyPort")) \
-		log->trace(__VA_ARGS__);
+		log->trace(__VA_ARGS__)
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("PyPort")) \
-		log->debug(__VA_ARGS__);
+		log->debug(__VA_ARGS__)
 #define LOGERROR(...) \
 	if (auto log = odc::spdlog_get("PyPort")) \
-		log->error(__VA_ARGS__);
+		log->error(__VA_ARGS__)
 #define LOGWARN(...) \
 	if (auto log = odc::spdlog_get("PyPort"))  \
-		log->warn(__VA_ARGS__);
+		log->warn(__VA_ARGS__)
 #define LOGINFO(...) \
 	if (auto log = odc::spdlog_get("PyPort")) \
-		log->info(__VA_ARGS__);
+		log->info(__VA_ARGS__)
 #define LOGCRITICAL(...) \
 	if (auto log = odc::spdlog_get("PyPort")) \
-		log->critical(__VA_ARGS__);
+		log->critical(__VA_ARGS__)
 #define LOGSTRAND(...)
 /*if (auto log = odc::spdlog_get("PyPort")) \
             log->critical(__VA_ARGS__);

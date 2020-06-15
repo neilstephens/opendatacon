@@ -26,14 +26,13 @@
 
 #ifndef DNP3CLIENTPORT_H_
 #define DNP3CLIENTPORT_H_
-
+#include "DNP3Port.h"
+#include "DNP3PortConf.h"
+#include "CommsRideThroughTimer.h"
 #include <unordered_map>
 #include <opendnp3/master/ISOEHandler.h>
 #include <opendnp3/master/IMasterApplication.h>
 #include <opendnp3/app/parsing/ICollection.h>
-#include "DNP3Port.h"
-#include "DNP3PortConf.h"
-#include "CommsRideThroughTimer.h"
 
 class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
 {

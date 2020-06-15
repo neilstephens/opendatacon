@@ -24,13 +24,13 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#include <thread>
-#include <chrono>
-#include <array>
-
 #include "MD3.h"
-#include "MD3Utility.h"
 #include "MD3MasterPort.h"
+#include "MD3Utility.h"
+#include <array>
+#include <chrono>
+#include <thread>
+#include <utility>
 
 
 MD3MasterPort::MD3MasterPort(const std::string &aName, const std::string &aConfFilename, const Json::Value &aConfOverrides):
@@ -105,8 +105,7 @@ void MD3MasterPort::Build()
 {
 	std::string ChannelID = MyConf->mAddrConf.ChannelID();
 
-	if (PollScheduler == nullptr)
-		PollScheduler.reset(new ASIOScheduler(*pIOS));
+	PollScheduler = std::make_unique<ASIOScheduler>(*pIOS);
 
 	MasterCommandProtectedData.CurrentCommandTimeoutTimer = pIOS->make_steady_timer();
 	MasterCommandStrand = pIOS->make_strand();
@@ -124,7 +123,7 @@ void MD3MasterPort::Build()
 
 	PollScheduler->Stop();
 	PollScheduler->Clear();
-	for (auto pg : MyPointConf->PollGroups)
+	for (const auto& pg : MyPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
 		auto action = [=]()
@@ -159,7 +158,7 @@ void MD3MasterPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 // If the callback gets an error it will be ignored which will result in a timeout and the next command being sent.
 // This is necessary if somehow we get an old command sent to us, or a left over broadcast message.
 // Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
-void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, const SharedStatusCallback_t& pStatusCallback)
 {
 	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post. Note the calling thread must be one of the io_service threads.... this changes our tests!
 		{
@@ -178,14 +177,14 @@ void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, Shar
 		});
 }
 // Handle the many single block command messages better
-void MD3MasterPort::QueueMD3Command(const MD3BlockData &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::QueueMD3Command(const MD3BlockData &SingleBlockMD3Message, const SharedStatusCallback_t& pStatusCallback)
 {
 	MD3Message_t CommandMD3Message;
 	CommandMD3Message.push_back(SingleBlockMD3Message);
 	QueueMD3Command(CommandMD3Message, pStatusCallback);
 }
 // Handle the many single block command messages better
-void MD3MasterPort::QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::QueueMD3Command(const MD3BlockFormatted &SingleBlockMD3Message, const SharedStatusCallback_t& pStatusCallback)
 {
 	MD3Message_t CommandMD3Message;
 	CommandMD3Message.push_back(SingleBlockMD3Message);
@@ -591,7 +590,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 				LOGDEBUG("MA - Published Event - Analog - Index {} Value {}",ODCIndex, to_hexstring(AnalogValues[i]));
 
 				auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from MD3, so add it as soon as possible);
-				event->SetPayload<EventType::Analog>(std::move(AnalogValues[i]));
+				event->SetPayload<EventType::Analog>(double(AnalogValues[i]));
 				PublishEvent(event);
 			}
 		}
@@ -605,7 +604,7 @@ bool MD3MasterPort::ProcessAnalogUnconditionalReturn(MD3BlockFormatted & Header,
 				QualityFlags qual = CalculateAnalogQuality(enabled, AnalogValues[i],now);
 				LOGDEBUG("MA - Published Event - Counter - Index {} Value {}",ODCIndex, to_hexstring(AnalogValues[i]));
 				auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(now)); // We don't get time info from MD3, so add it as soon as possible);
-				event->SetPayload<EventType::Counter>(std::move(AnalogValues[i]));
+				event->SetPayload<EventType::Counter>(uint32_t(AnalogValues[i]));
 				PublishEvent(event);
 			}
 		}
@@ -1080,7 +1079,7 @@ bool MD3MasterPort::ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3M
 	if (SystemTimeIncorrectFlag)
 	{
 		// Find if there is a poll group time set command, if so, do that poll (send the time)
-		for (auto pg : MyPointConf->PollGroups)
+		for (const auto& pg : MyPointConf->PollGroups)
 		{
 			if (pg.second.polltype == TimeSetCommand)
 			{
@@ -1093,23 +1092,21 @@ bool MD3MasterPort::ProcessFlagScanReturn(MD3BlockFormatted & Header, const MD3M
 	if (SystemPoweredUpFlag)
 	{
 		// Launch all digital polls/scans
-		for (auto pg : MyPointConf->PollGroups)
+		for (const auto& pg : MyPointConf->PollGroups)
 		{
 			if (pg.second.polltype == BinaryPoints)
 			{
 				this->DoPoll(pg.second.ID);
 			}
-			;
 		}
 
 		// Launch all analog polls/scans
-		for (auto pg : MyPointConf->PollGroups)
+		for (const auto& pg : MyPointConf->PollGroups)
 		{
 			if (pg.second.polltype == AnalogPoints)
 			{
 				this->DoPoll(pg.second.ID);
 			}
-			;
 		}
 	}
 	return (Header.GetFunctionCode() == SYSTEM_FLAG_SCAN);
@@ -1130,11 +1127,11 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 	{
 		case AnalogPoints:
 		{
-			ModuleMapType::iterator mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+			auto mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
 
 			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
 			uint8_t ModuleAddress = mait->first;
-			uint8_t Channels = numeric_cast<uint8_t>(mait->second);
+			auto Channels = numeric_cast<uint8_t>(mait->second);
 
 			if (MyPointConf->PollGroups[pollgroup].ModuleAddresses.size() > 1)
 			{
@@ -1173,11 +1170,11 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 
 		case CounterPoints: //TODO: Analog Poll - Handle Counters
 		{
-			ModuleMapType::iterator mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+			auto mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
 
 			// We will scan a maximum of 1 module, up to 16 channels. It might spill over into the next module if the module is a counter with only 8 channels.
 			uint8_t ModuleAddress = mait->first;
-			uint8_t Channels = numeric_cast<uint8_t>(mait->second);
+			auto Channels = numeric_cast<uint8_t>(mait->second);
 
 			if (MyPointConf->PollGroups[pollgroup].ModuleAddresses.size() > 1)
 			{
@@ -1222,12 +1219,12 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 				// of the binary data (timetagged or otherwise). The outStation will use the zero sequnce number to send everything to initialise us. We
 				// don't have to send an unconditional.
 
-				ModuleMapType::iterator FirstModule = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+				auto FirstModule = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
 
 				// Request Digital Unconditional
 				uint8_t ModuleAddress = FirstModule->first;
 				// We expect the digital modules to be consecutive, or if there is a gap this will still work.
-				uint8_t Modules = numeric_cast<uint8_t>(MyPointConf->PollGroups[pollgroup].ModuleAddresses.size()); // Most modules we can get in one command - NOT channels 0 to 15!
+				auto Modules = numeric_cast<uint8_t>(MyPointConf->PollGroups[pollgroup].ModuleAddresses.size()); // Most modules we can get in one command - NOT channels 0 to 15!
 
 				bool UnconditionalCommandRequired = false;
 				for (uint8_t m = 0; m < Modules; m++)
@@ -1272,7 +1269,7 @@ void MD3MasterPort::DoPoll(uint32_t pollgroup)
 				{
 					// Use Unconditional Request Fn 7
 					LOGDEBUG("Poll Issued a Digital Unconditional (old) Command");
-					ModuleMapType::iterator mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
+					auto mait = MyPointConf->PollGroups[pollgroup].ModuleAddresses.begin();
 
 					// Request Digital Unconditional
 					uint8_t ModuleAddress = mait->first;
@@ -1349,7 +1346,7 @@ void MD3MasterPort::EnablePolling(bool on)
 	else
 		PollScheduler->Stop();
 }
-void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec, const SharedStatusCallback_t& pStatusCallback)
 {
 	MD3BlockFn43MtoS commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
 	MD3BlockData datablock(static_cast<uint32_t>(currenttimeinmsec / 1000), true);
@@ -1358,7 +1355,7 @@ void MD3MasterPort::SendTimeDateChangeCommand(const uint64_t &currenttimeinmsec,
 	Cmd.push_back(datablock);
 	QueueMD3Command(Cmd, pStatusCallback);
 }
-void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinmsec, int utcoffsetminutes, SharedStatusCallback_t pStatusCallback)
+void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinmsec, int utcoffsetminutes, const SharedStatusCallback_t& pStatusCallback)
 {
 	MD3BlockFn44MtoS commandblock(MyConf->mAddrConf.OutstationAddr, currenttimeinmsec % 1000);
 	MD3BlockData datablock(static_cast<uint32_t>(currenttimeinmsec / 1000));
@@ -1372,7 +1369,7 @@ void MD3MasterPort::SendNewTimeDateChangeCommand(const uint64_t &currenttimeinms
 void MD3MasterPort::SendSystemFlagScanCommand(SharedStatusCallback_t pStatusCallback)
 {
 	MD3BlockFn52MtoS commandblock(MyConf->mAddrConf.OutstationAddr);
-	QueueMD3Command(commandblock, pStatusCallback);
+	QueueMD3Command(commandblock, std::move(pStatusCallback));
 }
 
 void MD3MasterPort::SetAllPointsQualityToCommsLost()
