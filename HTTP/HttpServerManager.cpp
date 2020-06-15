@@ -25,7 +25,7 @@
  */
 
 
-#include "HTTPServerManager.h"
+#include "HttpServerManager.h"
 #include <opendatacon/odclogmacros.h>
 #include <functional>
 #include <string>
