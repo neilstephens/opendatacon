@@ -240,6 +240,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				// If you want a resend command and not send the same command again, allow the following line.
 				// DoResendCommand = true;
 
+				// Need a flag to know if we have had a sucessful SOE response. So we can ask for a resend of the SOE buffer.
 				LOGDEBUG("{} Sending Retry on command: {}, Retrys Remaining: {}", Name, GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode), MasterCommandProtectedData.RetriesLeft)
 			}
 			else
@@ -917,6 +918,7 @@ void CBMasterPort::BuildUpdateTimeMessage(uint8_t StationAddress, CBTime cbtime,
 }
 void CBMasterPort::SendFn10SOEScanCommand(uint8_t group, SharedStatusCallback_t pStatusCallback)
 {
+	// Any retries of this command must be FUNC_REPEAT_SOE so the SOE buffer is not lost!
 	CBBlockData sendcommandblock(MyConf->mAddrConf.OutstationAddr, group, FUNC_SEND_NEW_SOE, 0, true);
 	QueueCBCommand(sendcommandblock, pStatusCallback);
 }
