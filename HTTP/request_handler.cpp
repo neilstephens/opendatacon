@@ -12,7 +12,7 @@
 #include "reply.hpp"
 #include "request.hpp"
 #include "request_handler.hpp"
-#include <opendatacon/odclogmacros.h>
+#include <opendatacon/ODCLogMacros.h>
 #include <fstream>
 #include <sstream>
 #include <string>

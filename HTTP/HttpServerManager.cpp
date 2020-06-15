@@ -26,7 +26,7 @@
 
 
 #include "HttpServerManager.h"
-#include <opendatacon/odclogmacros.h>
+#include <opendatacon/ODCLogMacros.h>
 #include <functional>
 #include <string>
 #include <unordered_map>
