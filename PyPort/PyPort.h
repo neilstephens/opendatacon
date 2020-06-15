@@ -28,11 +28,10 @@
 #define PYPORT_H_
 #include "PythonWrapper.h"
 #include "PyPortConf.h"
-#include "ServerManager.h"
-#include <unordered_map>
+#include "../HTTP/HttpServerManager.h"
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
-
+#include <unordered_map>
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;

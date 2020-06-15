@@ -27,6 +27,7 @@
 #ifndef SIMPORT_H
 #define SIMPORT_H
 #include "SimPortConf.h"
+#include "../HTTP/HttpServerManager.h"
 #include "sqlite3/sqlite3.h"
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
@@ -34,31 +35,32 @@
 #include <shared_mutex>
 #include <random>
 
+
 using namespace odc;
 
 // Hide some of the code to make Logging cleaner
 #define LOGTRACE(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-		log->trace(__VA_ARGS__)
+	log->trace(__VA_ARGS__)
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-		log->debug(__VA_ARGS__)
+	log->debug(__VA_ARGS__)
 #define LOGERROR(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-		log->error(__VA_ARGS__)
+	log->error(__VA_ARGS__)
 #define LOGWARN(...) \
 	if (auto log = odc::spdlog_get("SimPort"))  \
-		log->warn(__VA_ARGS__)
+	log->warn(__VA_ARGS__)
 #define LOGINFO(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-		log->info(__VA_ARGS__)
+	log->info(__VA_ARGS__)
 
 extern "C" void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 extern "C" void CommandLineLoggingCleanup();
 
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 
-enum class TimestampMode: uint8_t
+enum class TimestampMode : uint8_t
 {
 	FIRST       = 1,
 	ABSOLUTE_T  = 1<<1,

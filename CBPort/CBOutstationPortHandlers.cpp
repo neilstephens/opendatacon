@@ -31,17 +31,14 @@
  An event from an outstation will be a master control signal to turn something on or off.
 */
 #include "CB.h"
-#include "CBOutstationPort.h"
 #include "CBUtility.h"
+#include "CBOutstationPort.h"
+#include "CBOutStationPortCollection.h"
 #include <chrono>
 #include <future>
 #include <iostream>
 #include <regex>
 #include <chrono>
-
-#include "CB.h"
-#include "CBUtility.h"
-#include "CBOutstationPort.h"
 
 
 void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)

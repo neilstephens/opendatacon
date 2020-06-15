@@ -88,7 +88,7 @@ const std::string GetFile(const std::string& rUrl)
 
 int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 {
-	struct stat buf{};
+	struct stat buf {};
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;
@@ -100,7 +100,7 @@ int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 	if (file == nullptr)
 	{
 		if (auto log = odc::spdlog_get("WebUI"))
-			log->error("WebUI : Failed to open file {}", filename);
+			log->error("WebUI : Failed to open file {}", url.c_str());
 
 		response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
 			(void *)EMPTY_PAGE,

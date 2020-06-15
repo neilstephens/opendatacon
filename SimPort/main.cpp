@@ -50,9 +50,9 @@ extern "C" void delete_SimPort(SimPort* aSimPort_ptr)
 
 extern "C" int run_tests(int argc, char* argv[])
 {
-#ifdef COMPILE_TESTS
+	#ifdef COMPILE_TESTS
 
-#ifdef NONVSTESTING
+	#ifdef NONVSTESTING
 	// Create loggers for tests here
 	spdlog::level::level_enum log_level = spdlog::level::off;
 	int new_argc = argc;
@@ -79,10 +79,11 @@ extern "C" int run_tests(int argc, char* argv[])
 	// And release here.
 	CommandLineLoggingCleanup();
 	return res;
-#else
+	#else
 	std::cout << "SimPort: Compiled for Visual Studio Testing only" << std::endl;
 	return 1;
-#endif
+	#endif
 
-#endif //COMPILE_TESTS
+	#endif //COMPILE_TESTS
+	return 1;
 }

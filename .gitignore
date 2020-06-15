@@ -27,3 +27,5 @@ CBPort/uncrustify_here.pl
 CBPort/uncrustifywithtabs.cfg
 .vs/
 out/
+SimPort/uncrustify.cfg
+SimPort/uncrustify_here.pl

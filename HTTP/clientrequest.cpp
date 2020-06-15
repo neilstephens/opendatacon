@@ -8,7 +8,6 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "../Py.h"
 #include <asio.hpp>
 #include <iostream>
 #include <istream>
@@ -86,7 +85,7 @@ bool DoHttpRequst(const std::string& server, const std::string& port, const std:
 		// Read until EOF, writing data to output as we go.
 		asio::error_code error;
 		while (asio::read(socket, response,
-				 asio::transfer_at_least(1), error))
+			asio::transfer_at_least(1), error))
 			sout << &response;
 		if (error != asio::error::eof)
 			throw asio::system_error(error);

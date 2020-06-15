@@ -31,6 +31,7 @@
  An event from an outstation will be a master control signal to turn something on or off.
 */
 #include "MD3.h"
+#include "MD3OutStationPortCollection.h"
 #include "MD3OutstationPort.h"
 #include "MD3Utility.h"
 #include <chrono>
@@ -69,10 +70,10 @@ void MD3OutstationPort::UpdateOutstationPortCollection()
 		// Make a custom deleter for the PortCollection that will also clear the init flag
 		// This will be called when the shared_ptr destructs (last ref gone)
 		auto deinit_del = [](MD3OutstationPortCollection* collection_ptr)
-		{
-			init_flag.clear();
-			delete collection_ptr;
-		};
+					{
+						init_flag.clear();
+						delete collection_ptr;
+					};
 		// Save a pointer to the collection in this object
 		this->MD3OutstationCollection = std::shared_ptr<MD3OutstationPortCollection>(new MD3OutstationPortCollection(), deinit_del);
 		// Save a global weak pointer to our PortCollection (shared_ptr)
@@ -83,8 +84,7 @@ void MD3OutstationPort::UpdateOutstationPortCollection()
 		// PortCollection has already been created, so get a shared pointer to it.
 		// The last shared_ptr to get destructed will control its destruction. The weak_ptr will just no longer return a pointer.
 		while (!(this->MD3OutstationCollection = weak_collection.lock()))
-		{
-		} //init happens very seldom, so spin lock is good
+		{} //init happens very seldom, so spin lock is good
 	}
 }
 
@@ -189,7 +189,7 @@ MD3Message_t MD3OutstationPort::CorruptMD3Message(const MD3Message_t& CompleteMD
 		{
 			MD3Message_t ResMsg = CompleteMD3Message;
 			size_t messagelen = CompleteMD3Message.size();
-			std::uniform_real_distribution<> bitdist(0, messagelen * 40 - 1);	// 5 bytes, 40 bits
+			std::uniform_real_distribution<> bitdist(0, messagelen * 40 - 1); // 5 bytes, 40 bits
 			int bitnum = round(bitdist(e2));
 			ResMsg[bitnum / 40].XORBit(bitnum % 40);
 			return ResMsg;

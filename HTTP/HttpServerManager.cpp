@@ -25,31 +25,11 @@
  */
 
 
-#include "PyPort.h"
-#include "ServerManager.h"
+#include "HTTPServerManager.h"
+#include <opendatacon/odclogmacros.h>
 #include <functional>
 #include <string>
 #include <unordered_map>
-
-
-#define LOGTRACE(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->trace(__VA_ARGS__)
-#define LOGDEBUG(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->debug(__VA_ARGS__)
-#define LOGERROR(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->error(__VA_ARGS__)
-#define LOGWARN(...) \
-	if (auto log = odc::spdlog_get("opendatacon"))  \
-		log->warn(__VA_ARGS__)
-#define LOGINFO(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->info(__VA_ARGS__)
-#define LOGCRITICAL(...) \
-	if (auto log = odc::spdlog_get("opendatacon")) \
-		log->critical(__VA_ARGS__)
 
 std::unordered_map<std::string, std::weak_ptr<HttpServerManager>> HttpServerManager::ServerMap;
 
@@ -59,7 +39,7 @@ std::mutex HttpServerManager::ManagementMutex; // Allow only one management oper
 ServerTokenType::~ServerTokenType()
 {}
 
-ServerManager::ServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort):
+HttpServerManager::HttpServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort):
 	pIOS(std::move(apIOS)),
 	EndPoint(aEndPoint),
 	Port(aPort)

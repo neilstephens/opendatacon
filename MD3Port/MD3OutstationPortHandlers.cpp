@@ -32,6 +32,7 @@
 */
 #include "MD3.h"
 #include "MD3OutstationPort.h"
+#include "MD3OutStationPortCollection.h"
 #include "MD3Utility.h"
 #include <chrono>
 #include <future>
@@ -1698,8 +1699,7 @@ bool MD3OutstationPort::UIRandomReponseBitFlips(const std::string& probability)
 		return true;
 	}
 	catch (...)
-	{
-	}
+	{}
 	return false;
 }
 #ifdef _MSC_VER

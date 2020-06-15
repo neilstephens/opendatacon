@@ -8,11 +8,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "../Py.h"
 #include "mime_types.hpp"
 #include "reply.hpp"
 #include "request.hpp"
 #include "request_handler.hpp"
+#include <opendatacon/odclogmacros.h>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -22,7 +22,7 @@ namespace http
 request_handler::request_handler()
 {}
 
-void request_handler::register_handler(const std::string& uripattern, pHandlerCallbackType handler)
+void request_handler::register_handler(const std::string& uripattern, const pHandlerCallbackType& handler)
 {
 	if (HandlerMap.find(uripattern) != HandlerMap.end())
 	{

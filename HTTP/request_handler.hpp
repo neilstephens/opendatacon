@@ -11,6 +11,7 @@
 #ifndef HTTP_REQUEST_HANDLER_HPP
 #define HTTP_REQUEST_HANDLER_HPP
 
+#include <opendatacon/util.h>
 #include <string>
 #include <map>
 #include <functional>

@@ -23,15 +23,17 @@
  *  Created on: 29/07/2015
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+
 #include "SimPort.h"
 #include "SimPortCollection.h"
 #include "SimPortConf.h"
 #include "sqlite3/sqlite3.h"
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <opendatacon/Version.h>
 #include <chrono>
 #include <limits>
 #include <memory>
-#include <opendatacon/IOTypes.h>
-#include <opendatacon/util.h>
 #include <random>
 
 thread_local std::mt19937 SimPort::RandNumGenerator = std::mt19937(std::random_device()());
@@ -282,7 +284,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 			}
 			auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q,ts);
 			event->SetPayload<EventType::Analog>(std::move(val));
-			PublishEvent(event);
+			PostPublishEvent(event);
 		}
 	}
 	else
@@ -512,7 +514,7 @@ void SimPort::PortUp()
 		}
 		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Analog>(std::move(mean));
-		PublishEvent(event);
+		PostPublishEvent(event);
 
 		//queue up a timer if it has an update interval
 		{ //lock scope
@@ -547,7 +549,7 @@ void SimPort::PortUp()
 		}
 		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Binary>(std::move(val));
-		PublishEvent(event);
+		PostPublishEvent(event);
 
 		pTimer_t pTimer = pIOS->make_steady_timer();
 		Timers["Binary"+std::to_string(index)] = pTimer;
@@ -1224,13 +1226,9 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 							auto fb_index = FeedbackPosition["Index"].asUInt();
 						}
 						else if (FeedbackPosition["Type"] == "Binary")
-						{
-
-						}
+						{}
 						else if (FeedbackPosition["Type"] == "BCD")
-						{
-
-						}
+						{}
 						else
 						{
 							throw std::runtime_error("The 'Type' for Position feedback is invalid, requires 'Analog','Binary' or 'BCD'");

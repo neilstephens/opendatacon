@@ -27,9 +27,10 @@
 #ifndef ServerManagerh
 #define ServerManagerh
 
-#include "Py.h"
-#include "server/server.hpp"
-#include "server/request_handler.hpp"
+
+#include "server.hpp"
+#include "request_handler.hpp"
+#include <opendatacon/asio.h>
 #include <string>
 #include <functional>
 #include <unordered_map>

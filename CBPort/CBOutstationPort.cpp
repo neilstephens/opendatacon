@@ -68,7 +68,7 @@ void CBOutstationPort::UpdateOutstationPortCollection()
 {
 	// These variables are effectively class static variables (i.e. only one ever exists.
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
-	static std::weak_ptr<CBOutstationPortCollection> weak_collection; 
+	static std::weak_ptr<CBOutstationPortCollection> weak_collection;
 
 	//if we're the first/only one on the scene, init the CBOutstationPortCollection (a special version of an unordered_map)
 	if (!init_flag.test_and_set(std::memory_order_acquire))
@@ -77,8 +77,8 @@ void CBOutstationPort::UpdateOutstationPortCollection()
 		// This will be called when the shared_ptr destructs (last ref gone)
 		auto deinit_del = [](CBOutstationPortCollection* collection_ptr)
 					{
-						init_flag.clear(); 
-						delete collection_ptr; 
+						init_flag.clear();
+						delete collection_ptr;
 					};
 		// Save a pointer to the collection in this object
 		this->CBOutstationCollection = std::shared_ptr<CBOutstationPortCollection>(new CBOutstationPortCollection(), deinit_del);
