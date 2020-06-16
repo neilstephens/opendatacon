@@ -172,26 +172,24 @@ DataConcentrator::~DataConcentrator()
 	  only thing to do is give some time for the Qs to empty
 	 */
 
-	std::vector<std::weak_ptr<spdlog::sinks::sink>> weak_sinks;
 	if (auto log = odc::spdlog_get("opendatacon"))
 	{
 		log->info("Destroying user log sinks");
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		log->flush();
+	}
 
-		// for keeping track of when erased sinks are destroyed
-		std::vector<std::string> sink_names;
-		for (auto it = LogSinks.cbegin(); it != LogSinks.cend(); ++it)
-			sink_names.push_back(it->first);
-		for (const std::string& sink_name : sink_names)
+	std::vector<std::weak_ptr<spdlog::sinks::sink>> weak_sinks;
+	// for keeping track of when erased sinks are destroyed
+	std::vector<std::string> sink_names;
+	for (auto it = LogSinks.cbegin(); it != LogSinks.cend(); ++it)
+		sink_names.push_back(it->first);
+	for (const std::string& sink_name : sink_names)
+	{
+		if (!(sink_name == "file" || sink_name == "console"))
 		{
-			if (!(sink_name == "file" || sink_name == "console"))
-			{
-				log->info("Destroying {} sink", sink_name);
-				log->flush();
-				weak_sinks.push_back(LogSinks[sink_name]);
-				LogSinks.erase(sink_name);
-			}
+			weak_sinks.push_back(LogSinks[sink_name]);
+			LogSinks.erase(sink_name);
 		}
 	}
 
