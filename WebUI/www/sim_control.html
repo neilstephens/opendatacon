@@ -100,6 +100,11 @@
 
       $(document).ready(function() {
           gcommand = new URL(window.location.href).searchParams.get("command");
+          /* disable the value input box not needed for this command */
+          if (gcommand == "ReleasePoint") {
+              document.getElementById("value_text_box").disabled = true;
+          }
+
           gcommand_text = gcommand;
           document.getElementById("command_text_box").value = gcommand;
           build_command();
@@ -213,7 +218,7 @@
       }
 
       function execute_command() {
-          console.log("Rakesh execute this command mate");
+          console.log("Rakesh >> send this command >> " + gcommand_text);
       }
 
       function set_value(val) {
@@ -222,7 +227,11 @@
       }
 
       function build_command() {
-          gcommand_text = gcommand + " " + gport + " " + gpoint_type + " " + gindex + " " + gvalue;
+          if (gcommand == "ReleasePoint") {
+              gcommand_text = gcommand + " " + gport + " " + gpoint_type + " " + gindex;
+          } else {
+              gcommand_text = gcommand + " " + gport + " " + gpoint_type + " " + gindex + " " + gvalue;
+          }
           document.getElementById("command_text_box").value = gcommand_text;
       }
 
