@@ -20,73 +20,68 @@
   </head>
 
   <body>
-    <div class="container">
-      <div class="row">
-        <div class="col-sm-2">
-          <div class="dropdown">
-            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-              Point Type
-            </button>
-
-            <div class="dropdown-menu">
-              <div id="point_types">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-sm-10">
-          <div class="dropdown">
-            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" onclick="init_indexes()">
-              Index
-            </button>
-
-            <div class="dropdown-menu">
-              <div id="indexes">
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <script>
-      var point_type = null;
-      var index_value = null
       $(document).ready(function() {
-          const target = "DNP3Outstation";
-          $.post("/DataPorts/CurrentState", {Target : target})
-              .done(function(data) {
-                  for (var key of Object.keys(data)) {
-                      const item = '<a class="dropdown-item" onclick="set_point_type(\'' + key + '\');">' + key + '</a>'
-                      document.getElementById("point_types").innerHTML += item;
-                  }
-              });
+          const command = new URL(window.location.href).searchParams.get("command");
+          initialize(set_data);
       });
 
-      function set_point_type(type) {
-          point_type = type;
-      }
-
-      function init_indexes() {
-          const target = "DNP3Outstation";
-          $.post("/DataPorts/CurrentState", {Target : target})
+      function initialize(callback) {
+          var g_data = null;
+          const url = "/DataPorts/List";
+          $.post(url, {})
               .done(function(data) {
-                  if (point_type) {
-                      var item = '<a class="dropdown-item" onclick="set_index(all)"> all </a>'
-                      document.getElementById("indexes").innerHTML = item;
-                      for (var key of Object.keys(data[point_type])) {
-                          item = '<a class="dropdown-item" onclick="set_index(\'' + key + '\');">' + key + '</a>'
-                          document.getElementById("indexes").innerHTML += item;
+                  var ports = [];
+                  for (var key in Object.keys(data["Items"])) {
+                      ports.push(data["Items"][key]);
+                      const sim = /Sim*/;
+                      var result = data["Items"][key].match(sim);
+                      if (result) {
+                          const url = "/DataPorts/Configuration";
+                          $.post(url, {Target : data["Items"][key]})
+                              .done(function (data) {
+                                  var analogs = [];
+                                  var binaries = [];
+                                  if (data["ConfigOverrides"]["Analogs"] != null)
+                                      analogs = get_indexes(data["ConfigOverrides"]["Analogs"]);
+                                  if (data["ConfigOverrides"]["Binaries"] != null)
+                                      binaries = get_indexes(data["ConfigOverrides"]["Binaries"]);
+                                  callback(ports, analogs, binaries);
+                              });
                       }
                   }
               });
       }
 
-      function set_index(index) {
-          index_value = index;
+      function set_data(ports, analogs, binaries) {
+          console.log(ports);
+          console.log(analogs);
+          console.log(binaries);
       }
 
-      </script>
+      function get_indexes(data) {
+          indexes = [];
+          for (key in Object.keys(data)) {
+              if (data[key]["Range"] != null) {
+                  var start = 0;
+                  var stop = 0;
+                  if (data[key]["Range"]["Start"] != null && data[key]["Range"]["Stop"] != null) {
+                      start = parseInt(data[key]["Range"]["Start"]);
+                      stop = parseInt(data[key]["Range"]["Stop"]);
+
+                      for (var i = start; i <= stop; ++i)
+                          indexes.push(i.toString());
+                  }
+              }
+
+              if (data[key]["Index"] != null) {
+                  indexes.push(data[key]["Index"]);
+              }
+          }
+
+          return indexes;
+      }
+    </script>
   </body>
 </html>

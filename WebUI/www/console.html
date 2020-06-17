@@ -52,12 +52,6 @@
           <div class="col-sm-12 text-center">
               <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
           </div>
-
-          </br></br></br>
-
-          <div class="alert alert-info clearfix">
-            <button type="button" class="btn btn-primary btn-lg btn-block" onclick="logs_opendatacon()">Logs</button>
-          </div>
         </div>
         <div class="col-sm-6">
           <h4>Sim Control</h4>
@@ -68,19 +62,21 @@
           <div class="col-sm-20 text-center">
             <button id="execute_simcontrol_button" class="btn btn-primary btn-lg" onclick="execute_simcontrol_command()">Execute</button>
           </div>
-
-          </br></br></br>
-
-          <div class="alert alert-info clearfix">
-            <button type="button" class="btn btn-primary btn-lg btn-block" onclick="logs_simcontrol()">Logs</button>
-          </div>
         </div>
+      </div>
+
+      <br><br><br><br>
+
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="logs()">Logs</button>
       </div>
     </div>
 
 
     <script>
       var opendatacon_command = null;
+      var simcontrol_command = null;
+
       function go_to_web() {
           window.location.href="index.html"
       }
@@ -151,7 +147,7 @@
           }
       }
 
-      function logs_opendatacon() {
+      function logs() {
           document.getElementById("opendatacon_logs_src").src = "log.html";
           document.getElementById("opendatacon_logs_modal_title").innerHTML="OpenDataCon Logs";
           $('#opendatacon_logs_modal').modal('show');
@@ -167,11 +163,12 @@
           });
       }
 
-      function execute_simcontrol_command() {
-          window.location.href = "sim_control.html";
+      function set_simcontrol_command(command) {
+          simcontrol_command = command;
       }
 
-      function logs_simcontrol() {
+      function execute_simcontrol_command() {
+          window.location.href = "sim_control.html?command=" + simcontrol_command;
       }
 
       $('.list-group').on('click','> a', function() {
