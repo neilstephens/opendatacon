@@ -168,7 +168,7 @@
       }
 
       function execute_simcontrol_command() {
-          document.getElementById("simcontrol_src").src = "sim_control.html?command" + simcontrol_command;
+          document.getElementById("simcontrol_src").src = "sim_control.html?command=" + simcontrol_command;
           document.getElementById("simcontrol_modal_title").innerHTML="Sim Control " + simcontrol_command;
           $('#simcontrol_modal').modal('show');
 

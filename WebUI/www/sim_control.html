@@ -38,30 +38,30 @@
 
     <div class="container">
       <label for="command_text_box">Sim Control Command:</label>
-      <input type="text" class="form-control" id="command_text_box" name="command_display">
+      <input type="text" class="form-control" id="command_text_box">
       <br>
 
       <div class="row">
-
-        <div class="col-sm-2">
-          <div class="dropdown" id="point_type_dropdown">
-            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-              Point Type
-            </button>
-
-            <div class="dropdown-menu">
-              <a class="dropdown-item" onclick="set_point_type('Analogs')">Analogs</a>
-              <a class="dropdown-item" onclick="set_point_type('Binaries')">Binaries</a>
-            </div>
-          </div>
-        </div>
 
         <div class="col-sm-4">
           <select class="selectpicker" multiple data-live-search="true" id="ports_select" title="Ports">
           </select>
         </div>
 
-        <div class="col-sm-6">
+        <div class="col-sm-4">
+          <div class="dropdown" id="point_type_dropdown">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+              Point Type
+            </button>
+
+            <div class="dropdown-menu">
+              <a class="dropdown-item" onclick="set_point_type('Analog')">Analog</a>
+              <a class="dropdown-item" onclick="set_point_type('Binary')">Binary</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-4">
           <select class="selectpicker" multiple data-live-search="true" id="index_select" title="Indexes">
           </select>
         </div>
@@ -70,7 +70,7 @@
 
       <br>
       <label for="value_text_box">Value:</label>
-      <input type="text" class="form-control " id="value_text_box" name="value">
+      <input type="text" class="form-control " id="value_text_box" onchange="set_value(value)">
       <br>
       <div class="alert alert-info clearfix">
         <button type="button" class="btn btn-primary btn-block" onclick="execute_command()">Execute</button>
@@ -90,14 +90,19 @@
     <script>
       var ganalogs = [];
       var gbinaries = [];
-      var port = null;
-      var point_type = null;
-      var index = null;
-      var command_text = null;
+      var gport = null;
+      var gpoint_type = null;
+      var gindex = null;
+      var gvalue = null;
+      var gcommand = null;
+      var gcommand_text = null;
+      var grefresh_time = 2000;
 
       $(document).ready(function() {
-          const command = new URL(window.location.href).searchParams.get("command");
-          document.getElementById("command_text_box").value = command;
+          gcommand = new URL(window.location.href).searchParams.get("command");
+          gcommand_text = gcommand;
+          document.getElementById("command_text_box").value = gcommand;
+          build_command();
 
           const url = "/OpenDataCon/set_loglevel trace";
           $.post(url, {})
@@ -105,7 +110,7 @@
                   console.log("Rakesh trace log is on now");
               });
 
-          window.setInterval(function() { get_tcp_logs(); }, 2000);
+          window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
           initialize(set_data);
       });
 
@@ -184,9 +189,10 @@
 
       function set_point_type(point_type) {
           var indexes = [];
-          if (point_type == "Analogs")
+          gpoint_type = point_type;
+          if (point_type == "Analog")
               indexes = ganalogs;
-          if (point_type == "Binaries")
+          if (point_type == "Binary")
               indexes = gbinaries;
 
           var options = [];
@@ -198,6 +204,8 @@
 
           $('#index_select').html(options);
           $('#index_select').selectpicker('refresh');
+
+          build_command();
       }
 
       function clear_logs() {
@@ -208,14 +216,39 @@
           console.log("Rakesh execute this command mate");
       }
 
+      function set_value(val) {
+          gvalue = val;
+          build_command();
+      }
+
+      function build_command() {
+          gcommand_text = gcommand + " " + gport + " " + gpoint_type + " " + gindex + " " + gvalue;
+          document.getElementById("command_text_box").value = gcommand_text;
+      }
+
       $('#ports_select').on('changed.bs.select', function (e, index, new_value, old_value) {
           var selected = $(e.currentTarget).val();
-          console.log(selected.join(","));
+          selected = selected.join(",");
+          console.log(selected);
+          if (selected.includes("All")) {
+              gport = ".*";
+          } else {
+              gport = selected;
+          }
+
+          build_command();
       });
 
       $('#index_select').on('changed.bs.select', function (e, index, new_value, old_value) {
           var selected = $(e.currentTarget).val();
-          console.log(selected.join(","));
+          selected = selected.join(",");
+          if (selected.includes("All")) {
+              gindex = ".*";
+          } else {
+              gindex = selected;
+          }
+
+          build_command();
       });
     </script>
   </body>
