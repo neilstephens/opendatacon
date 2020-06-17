@@ -144,6 +144,29 @@ std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
 }
 
+const Json::Value SimPort::GetCurrentState() const
+{
+	Json::Value current_state;
+	{ //lock scope
+		std::shared_lock<std::shared_timed_mutex> lck(const_cast<std::shared_timed_mutex&>(ConfMutex));
+		for(const auto& ind_val_pair : pSimConf->BinaryVals)
+			current_state["BinaryCurrent"][ind_val_pair.first] = ind_val_pair.second;
+		for(const auto& ind_val_pair : pSimConf->AnalogVals)
+			current_state["AnalogCurrent"][ind_val_pair.first] = ind_val_pair.second;
+	}
+	return current_state;
+}
+const Json::Value SimPort::GetStatistics() const
+{
+	Json::Value stats;
+	return stats;
+}
+const Json::Value SimPort::GetStatus() const
+{
+	Json::Value status;
+	return status;
+}
+
 std::vector<uint32_t> SimPort::GetAllowedIndexes(std::string type)
 {
 	std::vector<uint32_t> allowed_indexes;
@@ -401,7 +424,7 @@ bool SimPort::SetForcedState(const std::string& index, const std::string& type, 
 
 	return true;
 }
-std::string SimPort::GetCurrentBinaryValsAsJSON(const std::string& index)
+std::string SimPort::GetCurrentBinaryValsAsJSONString(const std::string& index)
 {
 	auto indexes = IndexesFromString(index, "binary");
 	if (!indexes.size())
@@ -421,7 +444,7 @@ std::string SimPort::GetCurrentBinaryValsAsJSON(const std::string& index)
 	return result;
 }
 
-std::string SimPort::GetCurrentAnalogValsAsJSON(const std::string& index)
+std::string SimPort::GetCurrentAnalogValsAsJSONString(const std::string& index)
 {
 	auto indexes = IndexesFromString(index, "analog");
 	if (!indexes.size())
@@ -754,11 +777,11 @@ void SimPort::Build()
 				{
 				      if (StringToLower(type) == "binary")
 				      {
-				            result = GetCurrentBinaryValsAsJSON(index);
+				            result = GetCurrentBinaryValsAsJSONString(index);
 					}
 				      if (StringToLower(type) == "analog")
 				      {
-				            result = GetCurrentAnalogValsAsJSON(index);
+				            result = GetCurrentAnalogValsAsJSONString(index);
 					}
 				}
 				if (result.length() != 0)

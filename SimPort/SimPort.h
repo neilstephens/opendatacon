@@ -82,6 +82,11 @@ public:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 	std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder() final;
 
+	//Implement ODC::DataPort functions for UI
+	const Json::Value GetCurrentState() const override;
+	const Json::Value GetStatistics() const override;
+	const Json::Value GetStatus() const override;
+
 	bool UILoad(const std::string &type, const std::string &index, const std::string &value, const std::string &quality, const std::string &timestamp, const bool force);
 	bool UIRelease(const std::string& type, const std::string& index);
 	bool SetForcedState(const std::string& index, const std::string& type, bool forced);
@@ -100,8 +105,10 @@ private:
 	std::vector<uint32_t> GetAllowedIndexes(std::string type);
 	// use this instead of PublishEvent, it catches current values and saves them.
 	void PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback);
-	std::string GetCurrentBinaryValsAsJSON(const std::string& index);
-	std::string GetCurrentAnalogValsAsJSON(const std::string& index);
+	std::string GetCurrentBinaryValsAsJSONString(const std::string& index);
+	std::string GetCurrentAnalogValsAsJSONString(const std::string& index);
+	Json::Value GetCurrentBinaryValsAsJSON(const size_t index);
+	Json::Value GetCurrentAnalogValsAsJSON(const size_t index);
 
 	void NextEventFromDB(const std::shared_ptr<EventInfo>& event);
 	void PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset);
