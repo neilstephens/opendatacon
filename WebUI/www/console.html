@@ -171,6 +171,10 @@
           document.getElementById("simcontrol_src").src = "sim_control.html?command" + simcontrol_command;
           document.getElementById("simcontrol_modal_title").innerHTML="Sim Control " + simcontrol_command;
           $('#simcontrol_modal').modal('show');
+
+          $("#simcontrol_modal").on("hidden.bs.modal", function () {
+              location.reload();
+          });
       }
 
       $('.list-group').on('click','> a', function() {

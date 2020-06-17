@@ -22,6 +22,8 @@
           max-width:100%;
           max-height:100%;
       }
+
+      <span style="white-space: pre-line">@Model.CommentText</span>
     </style>
 
     <script>
@@ -71,6 +73,9 @@
       <input type="text" class="form-control " id="value_text_box" name="value">
       <br>
       <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-primary btn-block" onclick="execute_command()">Execute</button>
+      </div>
+      <div class="alert alert-info clearfix">
         <button type="button" class="btn btn-secondary btn-block" onclick="clear_logs()">Clear</button>
       </div>
 
@@ -85,9 +90,21 @@
     <script>
       var ganalogs = [];
       var gbinaries = [];
+      var port = null;
+      var point_type = null;
+      var index = null;
+      var command_text = null;
 
       $(document).ready(function() {
           const command = new URL(window.location.href).searchParams.get("command");
+          document.getElementById("command_text_box").value = command;
+
+          const url = "/OpenDataCon/set_loglevel trace";
+          $.post(url, {})
+              .done(function(data) {
+                  console.log("Rakesh trace log is on now");
+              });
+
           window.setInterval(function() { get_tcp_logs(); }, 2000);
           initialize(set_data);
       });
@@ -182,6 +199,24 @@
           $('#index_select').html(options);
           $('#index_select').selectpicker('refresh');
       }
+
+      function clear_logs() {
+          document.getElementById("tcp_logs").innerHTML = "";
+      }
+
+      function execute_command() {
+          console.log("Rakesh execute this command mate");
+      }
+
+      $('#ports_select').on('changed.bs.select', function (e, index, new_value, old_value) {
+          var selected = $(e.currentTarget).val();
+          console.log(selected.join(","));
+      });
+
+      $('#index_select').on('changed.bs.select', function (e, index, new_value, old_value) {
+          var selected = $(e.currentTarget).val();
+          console.log(selected.join(","));
+      });
     </script>
   </body>
 </html>
