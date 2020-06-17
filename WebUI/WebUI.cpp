@@ -312,6 +312,19 @@ std::string WebUI::HandleSimControl(const std::string& url)
 				value[cmd.asString()] = cmd.asString();
 		}
 	}
+	else
+	{
+		ParamCollection params;
+		std::istringstream iss(command);
+		std::string sub_command, temp;
+		iss >> sub_command;
+		iss >> temp;
+		iss >> params["0"];
+		iss >> params["1"];
+		iss >> params["2"];
+		iss >> params["Target"];
+		value = Responders[simcontrol]->ExecuteCommand(sub_command, params);
+	}
 
 	Json::StreamWriterBuilder wbuilder;
 	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());

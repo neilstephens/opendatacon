@@ -97,6 +97,8 @@
       var gcommand = null;
       var gcommand_text = null;
       var grefresh_time = 2000;
+      var gtarget = null;
+      var gtimer_handle = null;
 
       $(document).ready(function() {
           gcommand = new URL(window.location.href).searchParams.get("command");
@@ -115,7 +117,7 @@
                   console.log("Rakesh trace log is on now");
               });
 
-          window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
+          gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
           initialize(set_data);
       });
 
@@ -128,7 +130,7 @@
       }
 
       function initialize(callback) {
-          var g_data = null;
+          vdata = null;
           const url = "/DataPorts/List";
           $.post(url, {})
               .done(function(data) {
@@ -138,6 +140,7 @@
                       const sim = /Sim*/;
                       var result = data["Items"][key].match(sim);
                       if (result) {
+                          gtarget = data["Items"][key];
                           const url = "/DataPorts/Configuration";
                           $.post(url, {Target : data["Items"][key]})
                               .done(function (data) {
@@ -218,7 +221,20 @@
       }
 
       function execute_command() {
-          console.log("Rakesh >> send this command >> " + gcommand_text);
+          $.post("/SimControl/" + gcommand_text + " " + gtarget, {})
+              .done(function(data) {
+                  for (var key of Object.keys(data)) {
+                      if (gcommand == "SetUpdateInterval") {
+                          if (data[key] == "Success") {
+                              grefresh_time = parseInt(gvalue);
+                              if (gtimer_handle != null) {
+                                  window.clearInterval(gtimer_handle);
+                                  gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
+                              }
+                          }
+                      }
+                  }
+              });
       }
 
       function set_value(val) {
@@ -238,7 +254,6 @@
       $('#ports_select').on('changed.bs.select', function (e, index, new_value, old_value) {
           var selected = $(e.currentTarget).val();
           selected = selected.join(",");
-          console.log(selected);
           if (selected.includes("All")) {
               gport = ".*";
           } else {
