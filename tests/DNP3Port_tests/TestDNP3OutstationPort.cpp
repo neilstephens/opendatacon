@@ -19,7 +19,7 @@
  */
 /**
  */
-#include "PortLoader.h"
+#include "../PortLoader.h"
 #include <catch.hpp>
 
 #define SUITE(name) "DNP3OutstationPortTestSuite - " name

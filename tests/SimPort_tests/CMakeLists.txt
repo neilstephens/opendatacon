@@ -17,7 +17,7 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-project(DNP3Port_tests)
+project(SimPort_tests)
 cmake_minimum_required(VERSION 2.8)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h)
 
