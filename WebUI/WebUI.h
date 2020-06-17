@@ -29,13 +29,15 @@
 #define __opendatacon__WebUI__
 #include "MhdWrapper.h"
 #include <opendatacon/IUI.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 const char ROOTPAGE[] = "/index.html";
 
 class WebUI: public IUI
 {
 public:
-	WebUI(uint16_t port, const std::string& web_root);
+	WebUI(uint16_t port, const std::string& web_root, const std::string& tcp_port);
 
 	/* Implement IUI interface */
 	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
@@ -60,6 +62,9 @@ private:
 	std::string cert_pem;
 	std::string key_pem;
 	std::string web_root;
+	std::string tcp_port;
+	int sock;
+	struct sockaddr_in server_address;
 
 	bool useSSL = false;
 	/* UI response handlers */
@@ -68,6 +73,7 @@ private:
 
 	std::string HandleSimControl(const std::string& url);
 	std::string HandleOpenDataCon(const std::string& url);
+	void ConnectToTCPServer();
 };
 
 #endif /* defined(__opendatacon__WebUI__) */

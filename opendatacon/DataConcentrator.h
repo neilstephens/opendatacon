@@ -67,11 +67,10 @@ private:
 	std::atomic_bool shut_down;
 
 	//ostream for spdlog logging sink
-	TCPstringbuf TCPbuf;
-	std::unique_ptr<std::ostream> pTCPostream;
+	std::unordered_map<std::string, TCPstringbuf> TCPbufs;
+	std::unordered_map<std::string, std::unique_ptr<std::ostream>> pTCPostreams;
 
-	std::map<std::string,spdlog::sink_ptr> LogSinksMap;
-	std::vector<spdlog::sink_ptr> LogSinksVec;
+	std::unordered_map<std::string, spdlog::sink_ptr> LogSinks;
 	inline void ListLogSinks();
 	void SetLogLevel(std::stringstream& ss);
 	void AddLogSink(std::stringstream& ss);

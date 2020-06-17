@@ -116,10 +116,12 @@ std::string load_key(const char *filename)
 	return(contents);
 }
 
-WebUI::WebUI(uint16_t pPort, const std::string& web_root):
+WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp_port):
 	d(nullptr),
 	port(pPort),
-	web_root(web_root)
+	web_root(web_root),
+	tcp_port(tcp_port),
+	sock(0)
 {
 	try
 	{
@@ -246,7 +248,11 @@ int WebUI::http_ahc(void *cls,
 }
 
 void WebUI::Build()
-{}
+{
+	std::string cmd = "tcp_web_ui off TCP 127.0.0.1 " + tcp_port + " SERVER";
+	std::stringstream ss(cmd);
+	RootCommands["add_logsink"](ss);
+}
 
 void WebUI::Enable()
 {
@@ -318,11 +324,10 @@ std::string WebUI::HandleSimControl(const std::string& url)
 std::string WebUI::HandleOpenDataCon(const std::string& url)
 {
 	const std::string opendatacon = "/OpenDataCon";
-	const std::string log = "set_loglevel";
+	const std::string set_log_level = "set_loglevel";
 	const std::string command = url.substr(opendatacon.size() + 1, url.size() - opendatacon.size());
 
 	Json::Value value;
-	std::string data;
 	if (command == "List")
 	{
 		for (auto it = RootCommands.begin();
@@ -336,12 +341,37 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 		ParamCollection params;
 		value = Responders[opendatacon]->ExecuteCommand(command, params);
 	}
-	else if (command.find(log) != std::string::npos)
+	else if (command.find(set_log_level) != std::string::npos)
 	{
-		const std::string log_type = command.substr(log.size(), command.size() - log.size());
-		const std::string cmd = "file " + log_type;
+		const std::string log_type = command.substr(set_log_level.size(), command.size() - set_log_level.size());
+		const std::string cmd = "tcp_web_ui " + log_type;
 		std::stringstream ss(cmd);
 		RootCommands["set_loglevel"](ss);
+	}
+	else if (command.find("tcp") != std::string::npos)
+	{
+		if (command == "tcp_logs_on")
+		{
+			if (sock == 0)
+			{
+				ConnectToTCPServer();
+			}
+
+			char buffer[10240] = {0};
+			read(sock, buffer, sizeof(buffer));
+			value["tcp_data"] = buffer;
+		}
+		else
+		{
+			const std::size_t pos = command.find(" ");
+			if (pos != std::string::npos)
+			{
+				const std::string log_type = command.substr(pos, command.size() - pos);
+				const std::string cmd = "tcp_web_ui" + log_type + " off";
+				std::stringstream ss(cmd);
+				RootCommands["set_loglevel"](ss);
+			}
+		}
 	}
 	else
 	{
@@ -356,3 +386,31 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 	return oss.str();
 }
 
+void WebUI::ConnectToTCPServer()
+{
+	/* create the socket and socket address for webui tcp communication in future */
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	{
+		printf("Error: Socket cannot be created for TCP commnucation from Web UI\n");
+		return;
+	}
+
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(std::atoi(tcp_port.c_str()));
+
+	// Convert IPv4 and IPv6 addresses from text to binary form
+	if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) <= 0)
+	{
+		printf("Error: Invalid address, address not supported\n");
+		return;
+	}
+
+
+	if (connect(sock, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
+	{
+		printf("Error: Connection failed from TCP client to server from Web UI port == [%d]\n", std::atoi(tcp_port.c_str()));
+		return;
+	}
+
+	printf("Web UI TCP client connect to [%s] for receiving the log messages\n", tcp_port.c_str());
+}

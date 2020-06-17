@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenDataCon</title>
+
+    <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link rel = "stylesheet" href="/node_modules/bootstrap_select/dist/css/bootstrap-select.css" />
+
+    <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="/node_modules/popper/dist/umd/popper.min.js"></script>
+    <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src= "/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src= "/node_modules/bootstrap_select/dist/js/bootstrap-select.min.js"></script>
+
+    <script>
+      $(function() {
+          $("#common_content").load("common.html");
+          $('select').selectpicker();
+      });
+    </script>
+  </head>
+
+  <body>
+
+    <div class="container">
+      <div class="row">
+
+        <div class="col-sm-0">
+          <div class="dropdown">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+              Point Type
+            </button>
+
+            <div class="dropdown-menu">
+              <a class="dropdown-item" onclick="set_point_type('Analogs')">Analogs</a>
+              <a class="dropdown-item" onclick="set_point_type('Binaries')">Binaries</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-4">
+          <select class="selectpicker" multiple data-live-search="true" id="ports_select">
+          </select>
+        </div>
+
+        <div class="col-sm-6">
+          <select class="selectpicker" multiple data-live-search="true" id="index_select">
+          </select>
+        </div>
+
+      </div>
+    </div>
+
+    <script>
+      var ganalogs = [];
+      var gbinaries = [];
+
+      $(document).ready(function() {
+          const command = new URL(window.location.href).searchParams.get("command");
+          initialize(set_data);
+      });
+
+      function initialize(callback) {
+          var g_data = null;
+          const url = "/DataPorts/List";
+          $.post(url, {})
+              .done(function(data) {
+                  var ports = [];
+                  for (var key in Object.keys(data["Items"])) {
+                      ports.push(data["Items"][key]);
+                      const sim = /Sim*/;
+                      var result = data["Items"][key].match(sim);
+                      if (result) {
+                          const url = "/DataPorts/Configuration";
+                          $.post(url, {Target : data["Items"][key]})
+                              .done(function (data) {
+                                  var analogs = [];
+                                  var binaries = [];
+                                  if (data["ConfigOverrides"]["Analogs"] != null)
+                                      analogs = get_indexes(data["ConfigOverrides"]["Analogs"]);
+                                  if (data["ConfigOverrides"]["Binaries"] != null)
+                                      binaries = get_indexes(data["ConfigOverrides"]["Binaries"]);
+                                  callback(ports, analogs, binaries);
+                              });
+                      }
+                  }
+              });
+      }
+
+      function set_data(ports, analogs, binaries) {
+          var options = [];
+          options.push("<option>All</option>");
+          ports.forEach(function (item) {
+              var option = "<option>" + item + "</option>"
+              options.push(option);
+          });
+
+          $('#ports_select').html(options);
+          $('#ports_select').selectpicker('refresh');
+
+          ganalogs = analogs;
+          gbinaries = binaries;
+      }
+
+      function get_indexes(data) {
+          indexes = [];
+          for (key in Object.keys(data)) {
+              if (data[key]["Range"] != null) {
+                  var start = 0;
+                  var stop = 0;
+                  if (data[key]["Range"]["Start"] != null && data[key]["Range"]["Stop"] != null) {
+                      start = parseInt(data[key]["Range"]["Start"]);
+                      stop = parseInt(data[key]["Range"]["Stop"]);
+
+                      for (var i = start; i <= stop; ++i)
+                          indexes.push(i.toString());
+                  }
+              }
+
+              if (data[key]["Index"] != null) {
+                  indexes.push(data[key]["Index"].toString());
+              }
+          }
+
+          return indexes;
+      }
+
+      function set_point_type(point_type) {
+          var indexes = [];
+          if (point_type == "Analogs")
+              indexes = ganalogs;
+          if (point_type == "Binaries")
+              indexes = gbinaries;
+
+          var options = [];
+          options.push("<option>All</option>");
+          indexes.forEach(function (item) {
+              var option = "<option>" + item + "</option>"
+              options.push(option);
+          });
+
+          $('#index_select').html(options);
+          $('#index_select').selectpicker('refresh');
+      }
+    </script>
+  </body>
+</html>
