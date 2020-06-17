@@ -43,8 +43,8 @@ extern "C" WebUI* new_WebUIPlugin(const std::string& Name, const std::string& Fi
 
 		if (Overrides.isMember("WebRoot"))
 			web_root = Overrides["WebRoot"].asString();
-		if (Overrides.isMember("TCP"))
-			tcp_port = Overrides["TCP"]["Port"].asString();
+		if (Overrides.isMember("LogPort"))
+			tcp_port = Overrides["LogPort"].asString();
 	}
 
 	return new WebUI(port, web_root, tcp_port);
