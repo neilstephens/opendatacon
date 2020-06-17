@@ -168,7 +168,9 @@
       }
 
       function execute_simcontrol_command() {
-          window.location.href = "sim_control.html?command=" + simcontrol_command;
+          document.getElementById("sim_control_src").src = "sim_control.html?command" + simcontrol_command;
+          document.getElementById("sim_control_modal_title").innerHTML="Sim Control " + simcontrol_command;
+          $('#sim_control_modal').modal('show');
       }
 
       $('.list-group').on('click','> a', function() {
