@@ -39,7 +39,7 @@
 enum TCPClientServer { CLIENT, SERVER, DEFAULT };
 enum server_type_t { ONDEMAND, PERSISTENT, MANUAL };
 
-enum class SerialParity: char
+enum class SerialParity : char
 {
 	NONE='N',EVEN='E',ODD='O'
 };

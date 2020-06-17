@@ -134,8 +134,9 @@ private:
 	std::string InternalChannelID;
 
 	bool IsServer;
-	std::atomic_bool enabled{ false };
-	bool IsBakerDevice; // Swap Station and Group if it is a Baker device. Set in constructor
+	std::atomic_bool successfullyopened{ false }; // There is a possible race condition we need to deal with on a failed opening of the connection
+	std::atomic<int> opencount{ 0 };              // So we only disconnect the port when everyone has disconnected.
+	bool IsBakerDevice;                           // Swap Station and Group if it is a Baker device. Set in constructor
 
 	CBMessage_t CBMessage;
 

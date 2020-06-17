@@ -24,7 +24,7 @@
  *      Author: Scott Ellis <scott.ellis@novatex.com.au>
  */
 
-#include "../Py.h"
+
 #include <string>
 
 bool DoHttpRequst(const std::string& server, const std::string& port, const std::string& path, std::string& callresp);

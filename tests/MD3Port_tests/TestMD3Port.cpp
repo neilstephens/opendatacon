@@ -33,9 +33,7 @@ int main( int argc, char* argv[] )
 		return 1;
 	}
 
-	int (*run_tests)(int,char**);
-
-	run_tests = reinterpret_cast<int (*)(int,char**)>(LoadSymbol(pluginlib, "run_tests"));
+	auto run_tests = reinterpret_cast<int (*)(int,char**)>(LoadSymbol(pluginlib, "run_tests"));
 
 	if(run_tests == nullptr)
 	{

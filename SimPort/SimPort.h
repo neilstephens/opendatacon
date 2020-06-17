@@ -27,6 +27,7 @@
 #ifndef SIMPORT_H
 #define SIMPORT_H
 #include "SimPortConf.h"
+#include "../HTTP/HttpServerManager.h"
 #include "sqlite3/sqlite3.h"
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
@@ -34,11 +35,29 @@
 #include <shared_mutex>
 #include <random>
 
+
 using namespace odc;
+
+// Hide some of the code to make Logging cleaner
+#define LOGTRACE(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+	log->trace(__VA_ARGS__)
+#define LOGDEBUG(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+	log->debug(__VA_ARGS__)
+#define LOGERROR(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+	log->error(__VA_ARGS__)
+#define LOGWARN(...) \
+	if (auto log = odc::spdlog_get("SimPort"))  \
+	log->warn(__VA_ARGS__)
+#define LOGINFO(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+	log->info(__VA_ARGS__)
 
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 
-enum class TimestampMode: uint8_t
+enum class TimestampMode : uint8_t
 {
 	FIRST       = 1,
 	ABSOLUTE_T  = 1<<1,
@@ -65,6 +84,7 @@ public:
 
 	bool UILoad(const std::string &type, const std::string &index, const std::string &value, const std::string &quality, const std::string &timestamp, const bool force);
 	bool UIRelease(const std::string& type, const std::string& index);
+	bool SetForcedState(const std::string& index, const std::string& type, bool forced);
 	bool UISetUpdateInterval(const std::string& type, const std::string& index, const std::string& period);
 
 private:
@@ -76,21 +96,35 @@ private:
 	typedef std::shared_ptr<sqlite3_stmt> pDBStatement;
 	std::unordered_map<std::string, pDBStatement> DBStats;
 	TimestampMode TimestampHandling;
+
+	std::vector<uint32_t> GetAllowedIndexes(std::string type);
+	// use this instead of PublishEvent, it catches current values and saves them.
+	void PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback);
+	std::string GetCurrentBinaryValsAsJSON(const std::string& index);
+	std::string GetCurrentAnalogValsAsJSON(const std::string& index);
+
 	void NextEventFromDB(const std::shared_ptr<EventInfo>& event);
 	void PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset);
 	void SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset = 0);
 	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)
 	{
-		auto pConf = static_cast<SimPortConf*>(this->pConf.get());
 		double mean, std_dev;
 		{ //lock scope
 			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-			mean = pConf->AnalogStartVals.at(event->GetIndex());
-			std_dev = pConf->AnalogStdDevs.at(event->GetIndex());
+			mean = pSimConf->AnalogStartVals.at(event->GetIndex());
+			std_dev = pSimConf->AnalogStdDevs.at(event->GetIndex());
 		}
-		//change value around mean
-		std::normal_distribution<double> distribution(mean, std_dev);
-		event->SetPayload<EventType::Analog>(distribution(RandNumGenerator));
+
+		//change value around mean - handle 0 which windows does not...
+		if (std_dev != 0)
+		{
+			std::normal_distribution<double> distribution(mean, std_dev);
+			event->SetPayload<EventType::Analog>(distribution(RandNumGenerator));
+		}
+		else
+		{
+			event->SetPayload<EventType::Analog>(std::move(mean));
+		}
 	}
 	inline void StartAnalogEvents(size_t index)
 	{
@@ -126,6 +160,8 @@ private:
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	static thread_local std::mt19937 RandNumGenerator;
+	ServerTokenType pServer;
+	SimPortConf* pSimConf = nullptr; // Set in constructor
 };
 
 #endif // SIMPORT_H

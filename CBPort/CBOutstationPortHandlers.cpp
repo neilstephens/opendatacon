@@ -31,8 +31,9 @@
  An event from an outstation will be a master control signal to turn something on or off.
 */
 #include "CB.h"
-#include "CBOutstationPort.h"
 #include "CBUtility.h"
+#include "CBOutstationPort.h"
+#include "CBOutStationPortCollection.h"
 #include <chrono>
 #include <future>
 #include <iostream>
@@ -41,6 +42,8 @@
 
 void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 	assert(CompleteCBMessage.size() != 0);
 
@@ -346,8 +349,15 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 		PendingCommands[group].Command = pCommand;
 		PendingCommands[group].ExpiryTime = CBNowUTC() + PendingCommands[group].CommandValidTimemsec;
 
-		LOGDEBUG("{} Got a valid {} PendingCommand, Data {}",Name, cmd, PendingCommands[group].Data);
+		LOGDEBUG("{} Got a valid {} PendingCommand, Data {} FailControlResponse {}",Name, cmd, PendingCommands[group].Data, FailControlResponse);
 
+		if (FailControlResponse)
+		{
+			// We have to corrupt the response by shifting right by one bit. Channel is 1 to 12
+			uint8_t bit = 1 + numeric_cast<uint8_t>(GetSetBit(PendingCommands[group].Data, 12));
+			if (bit > 11) bit = 0;
+			PendingCommands[group].Data = 1 << (11 - bit);
+		}
 		auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommands[group].Data, true);
 
 		// Now assemble and return the required response..
@@ -762,7 +772,7 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		// We keep trying to add data until there is none left, or the data will not fit into our bit array.
 		// The time field is the delta between the previous event (if there is one) and the current event (in msec)
 		SOEEventFormat PackedEvent;
-		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; //TODO: Bottom three bits of the point group,  not the SOE Group! Pretty sure this is correct - from captures.
+		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; // Bottom three bits of the point group,  not the SOE Group!
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
 		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? true : false;
 		PackedEvent.QualityBit = false;
@@ -819,7 +829,17 @@ void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 	// Value can be +/-
 	int16_t SetMinutes = hhin * 60 + mmin + (ssin > 30 ? 1 : 0);
 	int16_t ClockMinutes = hh * 60 + mm + (ss > 30 ? 1 : 0);
+
 	SOETimeOffsetMinutes = SetMinutes - ClockMinutes; // So when adjusting SOE times, just add the Offset to the Clock
+
+	// If we are doing this around a UTC clock rollover, it can fail we can get 1430 instead of -10.
+	// We dont care about the actual day, so 1430 is actually equal to -10.
+	// So we will limit the range to +/- 1440/2 (i.e. +/- half a day)
+	if (SOETimeOffsetMinutes > (1440 / 2))
+		SOETimeOffsetMinutes = SOETimeOffsetMinutes - 1440;
+
+	if (SOETimeOffsetMinutes < -(1440 / 2))
+		SOETimeOffsetMinutes = SOETimeOffsetMinutes + 1440;
 
 	LOGDEBUG("{} Received Time Set Command {}, Current UTC Time {} - SOE Offset Now Set to {} minutes",Name, to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), to_stringfromCBtime(CBNowUTC()), SOETimeOffsetMinutes);
 
@@ -863,7 +883,6 @@ void CBOutstationPort::MarkAllBinaryPointsAsChanged()
 		});
 }
 
-
 // Scan all binary/digital blocks for changes - used to determine what response we need to send
 // We return the total number of changed blocks we assume every block supports time tagging
 // If SendEverything is true,
@@ -887,6 +906,44 @@ uint8_t CBOutstationPort::CountBinaryBlocksWithChanges()
 		});
 
 	return changedblocks;
+}
+// UI Handlers
+std::pair<std::string, std::shared_ptr<IUIResponder>> CBOutstationPort::GetUIResponder()
+{
+	return std::pair<std::string, std::shared_ptr<CBOutstationPortCollection>>("CBOutstationPortControl", this->CBOutstationCollection);
+	// 	return std::pair<std::string, std::shared_ptr<SimPortCollection>>("SimControl", this->SimCollection);
+}
+
+bool CBOutstationPort::UIFailControl(const std::string &active)
+{
+	if (iequals(active,"true"))
+	{
+		FailControlResponse = true;
+		LOGCRITICAL("{} The Control Response Packet is set to fail - {}", Name, FailControlResponse);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		FailControlResponse = false;
+		LOGCRITICAL("{} The Control Response Packet is set to fail - {}", Name, FailControlResponse);
+		return true;
+	}
+	return false;
+}
+bool CBOutstationPort::UIRandomReponseBitFlips(const std::string& probability)
+{
+	try
+	{
+		auto prob = std::stod(probability);
+		if ((prob > 1.0) || (prob < 0.0))
+			return false;
+		BitFlipProbability = prob;
+		LOGCRITICAL("{} Set the probability of a flipped bit in the response packet to {}", Name, BitFlipProbability );
+		return true;
+	}
+	catch (...)
+	{}
+	return false;
 }
 #ifdef _MSC_VER
 #pragma endregion

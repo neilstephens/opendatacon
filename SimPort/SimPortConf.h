@@ -60,12 +60,17 @@ public:
 		default_std_dev_factor(0.1)
 	{}
 
+	std::string HttpAddr = "0.0.0.0";
+	std::string HttpPort = "";
+	std::string Version = "Unknown";
 	std::vector<uint32_t> BinaryIndicies;
 	std::map<uint32_t, bool> BinaryStartVals;
+	std::map<uint32_t, bool> BinaryVals;
 	std::map<uint32_t, bool> BinaryForcedStates;
 	std::map<uint32_t, unsigned int> BinaryUpdateIntervalms;
 	std::vector<uint32_t> AnalogIndicies;
 	std::map<uint32_t, double> AnalogStartVals;
+	std::map<uint32_t, double> AnalogVals;
 	std::map<uint32_t, bool> AnalogForcedStates;
 	std::map<uint32_t, unsigned int> AnalogUpdateIntervalms;
 	std::map<uint32_t, double> AnalogStdDevs;

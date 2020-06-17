@@ -714,8 +714,15 @@ void PythonWrapper::QueueEvent(const std::string& jsonevent)
 
 	if (!result)
 	{
-		size_t qsize = EventQueue->Size();
-		LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}",qsize);
+		if (!QueuePushErrorLogged.test_and_set())
+		{
+			size_t qsize = EventQueue->Size();
+			LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}", qsize);
+		}
+	}
+	else
+	{
+		QueuePushErrorLogged.clear();
 	}
 }
 

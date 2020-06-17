@@ -342,23 +342,23 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i])
 
 #define TEST_CBMAPort(overridejson)\
-	auto CBMAPort = std::make_unique<CBMasterPort>("TestMaster", conffilename1, overridejson); \
+	auto CBMAPort = std::make_shared<CBMasterPort>("TestMaster", conffilename1, overridejson); \
 	CBMAPort->SetIOS(IOS);      \
 	CBMAPort->Build()
 
 #define TEST_CBMAPort2(overridejson)\
-	auto CBMAPort2 = std::make_unique<CBMasterPort>("TestMaster", conffilename2, overridejson); \
+	auto CBMAPort2 = std::make_shared<CBMasterPort>("TestMaster", conffilename2, overridejson); \
 	CBMAPort2->SetIOS(IOS);      \
 	CBMAPort2->Build()
 
 
 #define TEST_CBOSPort(overridejson)      \
-	auto CBOSPort = std::make_unique<CBOutstationPort>("TestOutStation", conffilename1, overridejson);   \
+	auto CBOSPort = std::make_shared<CBOutstationPort>("TestOutStation", conffilename1, overridejson);   \
 	CBOSPort->SetIOS(IOS);      \
 	CBOSPort->Build()
 
 #define TEST_CBOSPort2(overridejson)     \
-	auto CBOSPort2 = std::make_unique<CBOutstationPort>("TestOutStation2", conffilename2, overridejson); \
+	auto CBOSPort2 = std::make_shared<CBOutstationPort>("TestOutStation2", conffilename2, overridejson); \
 	CBOSPort2->SetIOS(IOS);     \
 	CBOSPort2->Build()
 
@@ -840,7 +840,7 @@ TEST_CASE("CBBlock - BlockBuilding")
 
 namespace StationTests
 {
-void SendBinaryEvent(std::unique_ptr<CBOutstationPort> &CBOSPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
+void SendBinaryEvent(std::shared_ptr<CBOutstationPort> &CBOSPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
 {
 	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual, time);
 	event->SetPayload<EventType::Binary>(std::move(val));

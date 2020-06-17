@@ -29,7 +29,7 @@
 #pragma warning(disable: 6262)
 #endif
 
-#include "server/clientrequest.h"
+#include "../HTTP/clientrequest.h"
 #include <array>
 #include <cassert>
 #include <chrono>

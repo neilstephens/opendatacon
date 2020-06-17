@@ -64,6 +64,8 @@ target_link_libraries(${PROJECT_NAME} ODC httpd_target)
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
 
+install(DIRECTORY "www" DESTINATION ".")
+
 install(CODE
 "
 	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}

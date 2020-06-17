@@ -53,6 +53,9 @@
 #define LOGINFO(...) \
 	if (auto log = odc::spdlog_get("MD3Port")) \
 	log->info(__VA_ARGS__)
+#define LOGCRITICAL(...) \
+	if (auto log = odc::spdlog_get("MD3Port")) \
+	log->critical(__VA_ARGS__)
 
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();

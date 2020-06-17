@@ -92,47 +92,6 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			ProcessBinaryPoints(BinaryControl, BinaryControls);
 		}
 
-
-		// TimeSet Point Configuration
-		if (JSONRoot.isMember("TimeSetPoint") && JSONRoot["TimeSetPoint"].isMember("Index"))
-		{
-			TimeSetPoint.first = double(0); // Default to 0 - we know as unset - will never be used in operation.
-			TimeSetPoint.second = JSONRoot["TimeSetPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - TimeSetPoint - {}",TimeSetPoint.second);
-		}
-
-		// SystemSignOnPoint Point Configuration
-		if (JSONRoot.isMember("SystemSignOnPoint") && JSONRoot["SystemSignOnPoint"].isMember("Index"))
-		{
-			SystemSignOnPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-			SystemSignOnPoint.second = JSONRoot["SystemSignOnPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - SystemSignOnPoint - {}",SystemSignOnPoint.second);
-		}
-
-		// FreezeResetCountersPoint Point Configuration
-		if (JSONRoot.isMember("FreezeResetCountersPoint") && JSONRoot["FreezeResetCountersPoint"].isMember("Index"))
-		{
-			FreezeResetCountersPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-			FreezeResetCountersPoint.second = JSONRoot["FreezeResetCountersPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - FreezeResetCountersPoint - {}",FreezeResetCountersPoint.second);
-		}
-
-		// POMControlPoint Point Configuration
-		if (JSONRoot.isMember("POMControlPoint") && JSONRoot["POMControlPoint"].isMember("Index"))
-		{
-			POMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-			POMControlPoint.second = JSONRoot["POMControlPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - POMControlPoint - {}",POMControlPoint.second);
-		}
-
-		// DOMControlPoint Point Configuration
-		if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
-		{
-			DOMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-			DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - DOMControlPoint - ",DOMControlPoint.second);
-		}
-
 		if (JSONRoot.isMember("NewDigitalCommands"))
 		{
 			NewDigitalCommands = JSONRoot["NewDigitalCommands"].asBool();

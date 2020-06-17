@@ -1,4 +1,4 @@
-/*	opendatacon
+﻿/*	opendatacon
  *
  *	Copyright (c) 2018:
  *
@@ -223,21 +223,30 @@ void CBConnection::Open(const ConnectionTokenType &ConnectionTok)
 
 void CBConnection::Open()
 {
-	if (enabled.exchange(true)) return;
+	if (!pSockMan)
+		throw std::runtime_error("Socket manager uninitialised for - " + InternalChannelID);
 
-	try
+	// We have a potential lock/race condition on a failed open, hence the two atomics to track this. Could not work out how to do it with one...
+	if (!successfullyopened.exchange(true))
 	{
-		if (!pSockMan)
-			throw std::runtime_error("Socket manager uninitialised for - " + InternalChannelID);
-
-		pSockMan->Open();
-		LOGDEBUG("ConnectionTok Opened: {}", InternalChannelID);
+		// Port has not been opened yet.
+		try
+		{
+			pSockMan->Open();
+			opencount.fetch_add(1);
+			LOGDEBUG("ConnectionTok Opened: {}", InternalChannelID);
+		}
+		catch (std::exception& e)
+		{
+			LOGERROR("Problem opening connection :{} - {}", InternalChannelID, e.what());
+			successfullyopened.exchange(false);
+			return;
+		}
 	}
-	catch (std::exception& e)
+	else
 	{
-		LOGERROR("Problem opening connection :{} - {}",InternalChannelID, e.what());
-		enabled = false;
-		return;
+		opencount.fetch_add(1);
+		LOGDEBUG("Connection increased open count: {} {}", opencount.load(), InternalChannelID);
 	}
 }
 // Static Method
@@ -255,13 +264,21 @@ void CBConnection::Close(const ConnectionTokenType &ConnectionTok)
 
 void CBConnection::Close()
 {
-	if (!enabled.exchange(false)) return;
-
 	if (!pSockMan) // Could be empty if a connection was never added (opened)
 		return;
-	pSockMan->Close();
 
-	LOGDEBUG("Connection Closed: {}", InternalChannelID);
+	// If we are down to the last connection that needs it open, then close it
+	if ((opencount.fetch_sub(1) == 1) && successfullyopened.load())
+	{
+		pSockMan->Close();
+		successfullyopened.exchange(false);
+
+		LOGDEBUG("Connection open count 0, Closed: {}", InternalChannelID);
+	}
+	else
+	{
+		LOGDEBUG("Connection reduced open count: {} {}", opencount.load(), InternalChannelID);
+	}
 }
 
 CBConnection::~CBConnection()
@@ -371,9 +388,9 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
 
-	if (!enabled)
+	if (!successfullyopened.load())
 	{
-		LOGDEBUG("CBConnection called ReadCompletionHandler when not enabled - ignoring");
+		LOGDEBUG("CBConnection called ReadCompletionHandler when not opened - ignoring");
 		return;
 	}
 

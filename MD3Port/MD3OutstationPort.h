@@ -83,6 +83,7 @@ private:
 	bool STI = true; // Bit 17 of Block data, bit 1 of 16 bit flag data
 };
 
+class MD3OutstationPortCollection;
 
 class MD3OutstationPort: public MD3Port
 {
@@ -91,6 +92,7 @@ class MD3OutstationPort: public MD3Port
 
 public:
 	MD3OutstationPort(const std::string & aName, const std::string & aConfFilename, const Json::Value & aConfOverrides);
+	void UpdateOutstationPortCollection();
 	~MD3OutstationPort() override;
 
 	void Enable() override;
@@ -101,6 +103,7 @@ public:
 	CommandStatus Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult);
 
 	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
+	MD3Message_t CorruptMD3Message(const MD3Message_t& CompleteMD3Message);
 	void ProcessMD3Message(MD3Message_t &CompleteMD3Message);
 
 	// Analog
@@ -146,11 +149,21 @@ public:
 	void SendControlOK(MD3BlockFormatted & Header);             // Fn 15
 	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
 
+	// UI Interactions
+	std::pair<std::string, std::shared_ptr<IUIResponder>> GetUIResponder() final;
+	bool UIFailControl(const std::string& active);                // Shift the control response channel from the correct set channel to an alternative channel.
+	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
+
 	// Testing use only
 	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
 	int GetSOEOffsetMinutes() { return SOETimeOffsetMinutes; }
 
 private:
+	std::shared_ptr<MD3OutstationPortCollection> MD3OutstationCollection;
+
+	// UI Testing flags to cause misbehaviour
+	bool FailControlResponse = false;
+	double BitFlipProbability = 0.0;
 
 	bool DigitalChangedFlagCalculationMethod(void);
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);

@@ -11,19 +11,19 @@
 #ifndef HTTP_REQUEST_HANDLER_HPP
 #define HTTP_REQUEST_HANDLER_HPP
 
+#include <opendatacon/util.h>
 #include <string>
 #include <map>
 #include <functional>
 #include <memory>
 
-namespace http 
+namespace http
 {
-
 		struct reply;
 		struct request;
 
 		typedef std::map<std::string, std::string> ParameterMapType;
-		typedef std::function<void(const std::string& absoluteuri, const std::string& content, reply& rep)> HandlerCallbackType;
+		typedef std::function<void(const std::string& absoluteuri, const ParameterMapType &parameters, const std::string& content, reply& rep)> HandlerCallbackType;
 		typedef std::shared_ptr<HandlerCallbackType> pHandlerCallbackType;
 
 		/// The common handler for all incoming requests.
@@ -42,6 +42,7 @@ namespace http
 			/// Handle a request and produce a reply.
 			void handle_request(const request& req, reply& rep);
 			pHandlerCallbackType find_matching_handler(const std::string& uripattern);
+			ParameterMapType SplitParams(std::string &paramstring);
 
 		private:
 			/// The directory containing the files to be served.

@@ -8,11 +8,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "../Py.h"
 #include "mime_types.hpp"
 #include "reply.hpp"
 #include "request.hpp"
 #include "request_handler.hpp"
+#include <opendatacon/ODCLogMacros.h>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -58,9 +58,41 @@ pHandlerCallbackType request_handler::find_matching_handler(const std::string& u
 	}
 	else
 	{
-		LOGDEBUG("Found Handler {} for {} ", matchkey, uripattern);
+		LOGTRACE("Found Handler {} for {}", matchkey, uripattern);
 	}
 	return result;
+}
+
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	while (std::getline(tokenStream, token, delimiter))
+	{
+		tokens.push_back(token);
+	}
+	return tokens;
+}
+
+ParameterMapType request_handler::SplitParams(std::string &paramstring)
+{
+	// Split into a map of keys and values.
+	ParameterMapType p;
+	//LOGDEBUG("Splitting Params {}", paramstring);
+	std::vector<std::string> tokens = split(paramstring, '&');
+
+	for (auto token : tokens)
+	{
+		std::vector<std::string>keyval = split(token, '=');
+		if (keyval.size() == 2)
+		{
+			std::string key = keyval[0];
+			std::string value = keyval[1];
+			p[key] = value;
+		}
+	}
+	return p;
 }
 
 // We only need to do simple decoding, the first part of the url after the address will give us the port name, we look for this in a map
@@ -78,7 +110,7 @@ void request_handler::handle_request(const request& req, reply& rep)
 		LOGDEBUG("Bad Request");
 		return;
 	}
-	LOGDEBUG("Path {} - Params {}", request_path, request_params);
+	//LOGDEBUG("Path {} - Params {}", request_path, request_params);
 
 	// Request path must be absolute and not contain "..".
 	if (request_path.empty() || request_path[0] != '/' || request_path.find("..") != std::string::npos)
@@ -87,15 +119,14 @@ void request_handler::handle_request(const request& req, reply& rep)
 		LOGDEBUG("Invalid Path/Url");
 		return;
 	}
-	// ParameterMapType params;
-	// Translate request_params into ParameterMapType??
 
 	// Do the method/path matching
 	if (auto fn = find_matching_handler(req.method + " " + request_path))
 	{
 		// Pass everything so it can be handled/passed to python
 		// What about req.headers[] - a vector
-		(*fn)(req.method + " " + req.uri, req.content, rep);
+		ParameterMapType params = SplitParams(request_params);
+		(*fn)(req.method + " " + req.uri, params, req.content, rep);
 		return;
 	}
 
