@@ -109,6 +109,9 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 	//TODO: document this
 	if(JSONRoot.isMember("StyleOutput"))
 		static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
+	//TODO: document this
+	if(JSONRoot.isMember("PrintAllEvents"))
+		static_cast<JSONPortConf*>(pConf.get())->print_all = JSONRoot["PrintAllEvents"].asBool();
 }
 
 void JSONPort::Build()
@@ -525,6 +528,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 			auto v = event->GetPayload<EventType::Analog>();
 			auto& m = pConf->pPointConf->Analogs;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
 			          : Json::Value::nullSingleton());
 			break;
 		}
@@ -533,6 +537,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 			auto v = event->GetPayload<EventType::Binary>();
 			auto& m = pConf->pPointConf->Binaries;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
 			          : Json::Value::nullSingleton());
 			break;
 		}
@@ -541,6 +546,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 			auto v = std::string(event->GetPayload<EventType::ControlRelayOutputBlock>());
 			auto& m = pConf->pPointConf->Controls;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
 			          : Json::Value::nullSingleton());
 			break;
 		}
