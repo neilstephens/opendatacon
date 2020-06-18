@@ -316,7 +316,7 @@ void Wait(odc::asio_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup();\
-	auto IOS = std::make_shared<odc::asio_service>(4) // Max 4 threads
+	auto IOS = odc::asio_service::Get()
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
@@ -397,14 +397,14 @@ TEST_CASE("Utility - MD3CRCTest")
 
 TEST_CASE("Utility - Strand Queue")
 {
-	odc::asio_service IOS(2);
+	auto pIOS = odc::asio_service::Get();
 
-	auto work = IOS.make_work(); // Just to keep things from stopping..
+	auto work = pIOS->make_work(); // Just to keep things from stopping..
 
-	std::thread t1([&]() {IOS.run(); });
-	std::thread t2([&]() {IOS.run(); });
+	std::thread t1([&]() {pIOS->run(); });
+	std::thread t2([&]() {pIOS->run(); });
 
-	StrandProtectedQueue<int> foo(IOS, 10);
+	StrandProtectedQueue<int> foo(*pIOS, 10);
 	foo.sync_push(21);
 	foo.sync_push(31);
 	foo.sync_push(41);

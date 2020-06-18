@@ -126,7 +126,7 @@ std::shared_ptr<odc::asio_service> TestSetup(spdlog::level::level_enum loglevel)
 
 	InitLibaryLoading();
 
-	return std::make_shared<odc::asio_service>();
+	return odc::asio_service::Get();
 }
 
 void TestTearDown()

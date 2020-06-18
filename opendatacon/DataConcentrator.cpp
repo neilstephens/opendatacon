@@ -39,7 +39,7 @@
 
 DataConcentrator::DataConcentrator(const std::string& FileName):
 	ConfigParser(FileName),
-	pIOS(std::make_shared<odc::asio_service>(std::thread::hardware_concurrency()+1)),
+	pIOS(odc::asio_service::Get()),
 	ios_working(pIOS->make_work()),
 	shutting_down(false),
 	shut_down(false),

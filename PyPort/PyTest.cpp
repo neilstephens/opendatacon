@@ -287,7 +287,7 @@ private:
 #define STANDARD_TEST_SETUP(threadcount)\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
 	const int ThreadCount = threadcount; \
-	std::shared_ptr<odc::asio_service> IOS = std::make_shared<odc::asio_service>(ThreadCount);
+	std::shared_ptr<odc::asio_service> IOS = odc::asio_service::Get()
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
