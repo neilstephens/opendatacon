@@ -126,7 +126,7 @@ std::shared_ptr<odc::asio_service> TestSetup(spdlog::level::level_enum loglevel)
 
 	InitLibaryLoading();
 
-	return std::make_shared<odc::asio_service>();
+	return odc::asio_service::Get();
 }
 
 void TestTearDown()
@@ -149,7 +149,6 @@ TEST_CASE("TestConfigLoad")
 
 		auto SimPort1 = std::shared_ptr<DataPort>(newSim("OutstationUnderTest", "", GetTestConfigJSON()), deleteSim);
 
-		SimPort1->SetIOS(IOS);
 		SimPort1->Build();
 		SimPort1->Enable();
 

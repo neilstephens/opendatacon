@@ -40,7 +40,7 @@ IOHandler::IOHandler(const std::string& aName):
 	InitState(InitState_t::ENABLED),
 	EnableDelayms(0),
 	Name(aName),
-	pIOS(nullptr),
+	pIOS(asio_service::Get()),
 	enabled(false)
 {
 	IOHandlers[Name]=this;
@@ -49,11 +49,6 @@ IOHandler::IOHandler(const std::string& aName):
 void IOHandler::Subscribe(IOHandler* pIOHandler, const std::string& aName)
 {
 	this->Subscribers[aName] = pIOHandler;
-}
-
-void IOHandler::SetIOS(std::shared_ptr<odc::asio_service> ios_ptr)
-{
-	pIOS = std::move(ios_ptr);
 }
 
 bool DemandMap::InDemand()
@@ -105,39 +100,33 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
 	auto pExecCount = std::make_shared<size_t>(0);
 	std::shared_ptr<asio::io_service::strand> pCB_sync = pIOS->make_strand();
-	return std::make_shared<std::function<void (CommandStatus status)>>
-		       (pCB_sync->wrap(
-				 [work,
-				  pCB_sync,
-				  pCombinedStatus,
-				  pExecCount,
-				  cb_number,
-				  pStatusCallback](CommandStatus status)
-				 {
-					 if(*pCombinedStatus == CommandStatus::UNDEFINED)
-						 return;
+	auto multi_cb = [work, pCB_sync, pCombinedStatus, pExecCount, cb_number, pStatusCallback](CommandStatus status)
+			    {
+				    if(*pCombinedStatus == CommandStatus::UNDEFINED)
+					    return;
 
-					 if(++(*pExecCount) == 1)
-					 {
-					       *pCombinedStatus = status;
-					       if(*pCombinedStatus == CommandStatus::UNDEFINED)
-					       {
-					             (*pStatusCallback)(*pCombinedStatus);
-					             return;
-						 }
-					 }
-					 else if(status != *pCombinedStatus)
-					 {
-					       *pCombinedStatus = CommandStatus::UNDEFINED;
-					       (*pStatusCallback)(*pCombinedStatus);
-					       return;
-					 }
+				    if(++(*pExecCount) == 1)
+				    {
+					    *pCombinedStatus = status;
+					    if(*pCombinedStatus == CommandStatus::UNDEFINED)
+					    {
+						    (*pStatusCallback)(*pCombinedStatus);
+						    return;
+					    }
+				    }
+				    else if(status != *pCombinedStatus)
+				    {
+					    *pCombinedStatus = CommandStatus::UNDEFINED;
+					    (*pStatusCallback)(*pCombinedStatus);
+					    return;
+				    }
 
-					 if(*pExecCount >= cb_number)
-					 {
-					       (*pStatusCallback)(*pCombinedStatus);
-					 }
-				 }));
+				    if(*pExecCount >= cb_number)
+				    {
+					    (*pStatusCallback)(*pCombinedStatus);
+				    }
+			    };
+	return std::make_shared<std::function<void (CommandStatus status)>>(pCB_sync->wrap(std::move(multi_cb)));
 }
 
 } // namespace odc

@@ -56,13 +56,6 @@ namespace odc
 class asio_service: private asio::io_service
 {
 public:
-	asio_service():
-		asio::io_service()
-	{}
-	asio_service(int concurrency_hint):
-		asio::io_service(concurrency_hint)
-	{}
-
 	using asio::io_service::poll;
 	using asio::io_service::poll_one;
 	using asio::io_service::run;
@@ -73,6 +66,8 @@ public:
 
 	//TODO: delete next line - noone should call stop
 	using asio::io_service::stop;
+
+	static std::shared_ptr<asio_service> Get();
 
 	std::unique_ptr<asio::io_service::work> make_work();
 	std::unique_ptr<asio::io_service::strand> make_strand();
@@ -87,6 +82,13 @@ public:
 	std::unique_ptr<asio::ip::udp::socket> make_udp_socket();
 
 private:
+	asio_service():
+		asio::io_service()
+	{}
+	asio_service(int concurrency_hint):
+		asio::io_service(concurrency_hint)
+	{}
+
 	asio::io_service* const unwrap_this = static_cast<asio::io_service*>(this);
 };
 

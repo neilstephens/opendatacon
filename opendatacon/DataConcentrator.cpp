@@ -75,7 +75,7 @@ inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_pt
 
 DataConcentrator::DataConcentrator(const std::string& FileName):
 	ConfigParser(FileName),
-	pIOS(std::make_shared<odc::asio_service>(std::thread::hardware_concurrency()+1)),
+	pIOS(odc::asio_service::Get()),
 	ios_working(pIOS->make_work()),
 	shutting_down(false),
 	shut_down(false)
@@ -97,13 +97,9 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 	if(Interfaces.empty() && DataPorts.empty() && DataConnectors.empty())
 		throw std::runtime_error("No objects to manage");
 
-	for(auto& conn : DataConnectors)
-		conn.second->SetIOS(pIOS);
-
 	std::unordered_map<std::string,std::shared_ptr<IUIResponder>> PortResponders;
 	for(auto& port : DataPorts)
 	{
-		port.second->SetIOS(pIOS);
 		auto ResponderPair = port.second->GetUIResponder();
 		//if it's a different, valid responder pair, store it
 		if(ResponderPair.second && PortResponders.count(ResponderPair.first) == 0)

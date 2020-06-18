@@ -64,7 +64,7 @@ TEST_CASE(SUITE("PayloadTransport"))
 	//send them over a DataConnector
 	//check they arrived intact
 
-	auto ios = std::make_shared<odc::asio_service>();
+	auto ios = odc::asio_service::Get();
 	auto work = ios->make_work();
 
 	PublicPublishPort Source("Source","",Json::Value::nullSingleton());
@@ -76,11 +76,8 @@ TEST_CASE(SUITE("PayloadTransport"))
 	ConnConf["Connections"][0]["Port2"] = "Sink";
 	DataConnector Conn("Conn","",ConnConf);
 
-	Source.SetIOS(ios);
-	Sink.SetIOS(ios);
 	Source.Enable();
 	Sink.Enable();
-	Conn.SetIOS(ios);
 	Conn.Enable();
 
 	std::atomic<uint16_t> cb_count(0);

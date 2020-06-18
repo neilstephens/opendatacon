@@ -71,7 +71,6 @@ public:
 	virtual void Disable() = 0;
 
 	void Subscribe(IOHandler* pIOHandler, const std::string& aName);
-	void SetIOS(std::shared_ptr<odc::asio_service> ios_ptr);
 
 	inline const std::string& GetName(){return Name;}
 	inline const bool Enabled(){return enabled;}
@@ -82,7 +81,7 @@ public:
 
 protected:
 	std::string Name;
-	std::shared_ptr<odc::asio_service> pIOS;
+	const std::shared_ptr<odc::asio_service> pIOS;
 	std::atomic_bool enabled;
 
 	inline bool InDemand(){ return mDemandMap.InDemand(); }

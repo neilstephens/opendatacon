@@ -316,7 +316,7 @@ void Wait(odc::asio_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup();\
-	auto IOS = std::make_shared<odc::asio_service>(4) // Max 4 threads
+	auto IOS = odc::asio_service::Get()
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
@@ -332,22 +332,18 @@ void Wait(odc::asio_service &IOS, int seconds)
 
 #define TEST_MD3MAPort(overridejson)\
 	auto MD3MAPort = std::make_shared<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
-	MD3MAPort->SetIOS(IOS);      \
 	MD3MAPort->Build()
 
 #define TEST_MD3MAPort2(overridejson)\
 	auto MD3MAPort2 = std::make_shared<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
-	MD3MAPort2->SetIOS(IOS);      \
 	MD3MAPort2->Build()
 
 #define TEST_MD3OSPort(overridejson)      \
 	auto MD3OSPort = std::make_shared<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
-	MD3OSPort->SetIOS(IOS);      \
 	MD3OSPort->Build()
 
 #define TEST_MD3OSPort2(overridejson)     \
 	auto MD3OSPort2 = std::make_shared<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
-	MD3OSPort2->SetIOS(IOS);     \
 	MD3OSPort2->Build()
 
 #ifdef _MSC_VER
@@ -397,14 +393,14 @@ TEST_CASE("Utility - MD3CRCTest")
 
 TEST_CASE("Utility - Strand Queue")
 {
-	odc::asio_service IOS(2);
+	auto pIOS = odc::asio_service::Get();
 
-	auto work = IOS.make_work(); // Just to keep things from stopping..
+	auto work = pIOS->make_work(); // Just to keep things from stopping..
 
-	std::thread t1([&]() {IOS.run(); });
-	std::thread t2([&]() {IOS.run(); });
+	std::thread t1([&]() {pIOS->run(); });
+	std::thread t2([&]() {pIOS->run(); });
 
-	StrandProtectedQueue<int> foo(IOS, 10);
+	StrandProtectedQueue<int> foo(*pIOS, 10);
 	foo.sync_push(21);
 	foo.sync_push(31);
 	foo.sync_push(41);
@@ -3679,7 +3675,6 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	ofs.close();
 
 	auto MD3MAPort = new  MD3MasterPort("MD3LiveTestMaster", "md3masterconffile.conf", Json::nullValue);
-	MD3MAPort->SetIOS(IOS);
 	MD3MAPort->Build();
 
 	START_IOS(1);
@@ -3752,7 +3747,6 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 	OSportoverride["TCPClientServer"]= "SERVER";
 
 	auto MD3OSPort = std::make_shared<MD3OutstationPort>("MD3LiveTestOutstation", "md3masterconffile.conf", OSportoverride);
-	MD3OSPort->SetIOS(IOS);
 	MD3OSPort->Build();
 
 	START_IOS(1);

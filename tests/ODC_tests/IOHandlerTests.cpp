@@ -41,7 +41,7 @@ TEST_CASE(SUITE("StatusCallback"))
 	 * verify the status callback
 	 */
 
-	auto ios = std::make_shared<odc::asio_service>();
+	auto ios = odc::asio_service::Get();
 	auto work = ios->make_work();
 
 	PublicPublishPort Source("Null1","",Json::Value::nullSingleton());
@@ -86,14 +86,8 @@ TEST_CASE(SUITE("StatusCallback"))
 	DataConnector Conn4("Conn4","",Conn4Conf);
 	DataConnector* Conns[4] = {&Conn1,&Conn2,&Conn3,&Conn4};
 
-	Source.SetIOS(ios);
-	for(auto& p : Sinks)
-		p->SetIOS(ios);
 	for(auto& c :Conns)
-	{
-		c->SetIOS(ios);
 		c->Enable();
-	}
 
 	std::atomic_bool executed(false);
 	CommandStatus cb_status;

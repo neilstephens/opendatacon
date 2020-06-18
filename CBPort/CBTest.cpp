@@ -320,7 +320,7 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	auto IOS = std::make_shared<odc::asio_service>(4) // Max 4 threads
+	auto IOS = odc::asio_service::Get() // Max 4 threads
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
@@ -343,23 +343,19 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 
 #define TEST_CBMAPort(overridejson)\
 	auto CBMAPort = std::make_shared<CBMasterPort>("TestMaster", conffilename1, overridejson); \
-	CBMAPort->SetIOS(IOS);      \
 	CBMAPort->Build()
 
 #define TEST_CBMAPort2(overridejson)\
 	auto CBMAPort2 = std::make_shared<CBMasterPort>("TestMaster", conffilename2, overridejson); \
-	CBMAPort2->SetIOS(IOS);      \
 	CBMAPort2->Build()
 
 
 #define TEST_CBOSPort(overridejson)      \
 	auto CBOSPort = std::make_shared<CBOutstationPort>("TestOutStation", conffilename1, overridejson);   \
-	CBOSPort->SetIOS(IOS);      \
 	CBOSPort->Build()
 
 #define TEST_CBOSPort2(overridejson)     \
 	auto CBOSPort2 = std::make_shared<CBOutstationPort>("TestOutStation2", conffilename2, overridejson); \
-	CBOSPort2->SetIOS(IOS);     \
 	CBOSPort2->Build()
 
 #ifdef _MSC_VER
@@ -1860,7 +1856,6 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 
 		CBMAPort[StationAddress] = std::make_unique<CBMasterPort>("Station Master "+std::to_string(StationAddress), conffilename1, MAportoverride);
 
-		CBMAPort[StationAddress]->SetIOS(IOS);
 		CBMAPort[StationAddress]->Build();
 
 		CBMAPort[StationAddress]->Enable();
