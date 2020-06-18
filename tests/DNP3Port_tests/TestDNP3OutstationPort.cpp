@@ -39,7 +39,6 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
-		OPUT->SetIOS(ios);
 		OPUT->Enable();
 		OPUT->Disable();
 
@@ -56,7 +55,6 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
-		OPUT->SetIOS(ios);
 		OPUT->Enable();
 
 		deleteOutstation(OPUT);

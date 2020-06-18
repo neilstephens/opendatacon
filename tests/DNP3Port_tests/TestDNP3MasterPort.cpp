@@ -38,7 +38,6 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 		REQUIRE(deleteMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
-		MPUT->SetIOS(ios);
 		MPUT->Enable();
 		MPUT->Disable();
 
@@ -53,7 +52,6 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 		REQUIRE(deleteMaster);
 		DataPort* MPUT = newMaster("MasterUnderTest", "", "");
 
-		MPUT->SetIOS(ios);
 		MPUT->Enable();
 
 		deleteMaster(MPUT);

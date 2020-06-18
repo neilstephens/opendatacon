@@ -332,22 +332,18 @@ void Wait(odc::asio_service &IOS, int seconds)
 
 #define TEST_MD3MAPort(overridejson)\
 	auto MD3MAPort = std::make_shared<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
-	MD3MAPort->SetIOS(IOS);      \
 	MD3MAPort->Build()
 
 #define TEST_MD3MAPort2(overridejson)\
 	auto MD3MAPort2 = std::make_shared<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
-	MD3MAPort2->SetIOS(IOS);      \
 	MD3MAPort2->Build()
 
 #define TEST_MD3OSPort(overridejson)      \
 	auto MD3OSPort = std::make_shared<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
-	MD3OSPort->SetIOS(IOS);      \
 	MD3OSPort->Build()
 
 #define TEST_MD3OSPort2(overridejson)     \
 	auto MD3OSPort2 = std::make_shared<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
-	MD3OSPort2->SetIOS(IOS);     \
 	MD3OSPort2->Build()
 
 #ifdef _MSC_VER
@@ -3679,7 +3675,6 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	ofs.close();
 
 	auto MD3MAPort = new  MD3MasterPort("MD3LiveTestMaster", "md3masterconffile.conf", Json::nullValue);
-	MD3MAPort->SetIOS(IOS);
 	MD3MAPort->Build();
 
 	START_IOS(1);
@@ -3752,7 +3747,6 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 	OSportoverride["TCPClientServer"]= "SERVER";
 
 	auto MD3OSPort = std::make_shared<MD3OutstationPort>("MD3LiveTestOutstation", "md3masterconffile.conf", OSportoverride);
-	MD3OSPort->SetIOS(IOS);
 	MD3OSPort->Build();
 
 	START_IOS(1);

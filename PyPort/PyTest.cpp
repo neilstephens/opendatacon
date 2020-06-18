@@ -291,16 +291,16 @@ private:
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
-	TestSetup(Catch::getResultCapture().getCurrentTestName());
+	TestSetup(Catch::getResultCapture().getCurrentTestName())
 
 #define STANDARD_TEST_TEARDOWN()\
-	TestTearDown();\
+	TestTearDown()
 
 #define START_IOS() \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	std::thread *pThread[ThreadCount]; \
-	for (int i = 0; i < ThreadCount; i++) pThread[i] = StartIOSThread(IOS);
+	for (int i = 0; i < ThreadCount; i++) pThread[i] = StartIOSThread(IOS)
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
@@ -309,24 +309,19 @@ private:
 
 #define TEST_PythonPort(overridejson)\
 	auto PythonPort = std::make_shared<PyPort>("TestMaster", conffilename1, overridejson); \
-	PythonPort->SetIOS(IOS);      \
-	PythonPort->Build();
+	PythonPort->Build()
 #define TEST_PythonPort2(overridejson)\
 	auto PythonPort2 = std::make_shared<PyPort>("TestMaster2", conffilename1, overridejson); \
-	PythonPort2->SetIOS(IOS);      \
-	PythonPort2->Build();
+	PythonPort2->Build()
 #define TEST_PythonPort3(overridejson)\
 	auto PythonPort3 = std::make_shared<PyPort>("TestMaster3", conffilename1, overridejson); \
-	PythonPort3->SetIOS(IOS);      \
-	PythonPort3->Build();
+	PythonPort3->Build()
 #define TEST_PythonPort4(overridejson)\
 	auto PythonPort4 = std::make_shared<PyPort>("TestMaster4", conffilename1, overridejson); \
-	PythonPort4->SetIOS(IOS);      \
-	PythonPort4->Build();
+	PythonPort4->Build()
 #define TEST_PythonPort5(overridejson)\
 	auto PythonPort5 = std::make_shared<PyPort>("TestMaster5", conffilename1, overridejson); \
-	PythonPort5->SetIOS(IOS);      \
-	PythonPort5->Build();
+	PythonPort5->Build()
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS

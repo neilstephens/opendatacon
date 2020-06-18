@@ -149,7 +149,6 @@ TEST_CASE("TestConfigLoad")
 
 		auto SimPort1 = std::shared_ptr<DataPort>(newSim("OutstationUnderTest", "", GetTestConfigJSON()), deleteSim);
 
-		SimPort1->SetIOS(IOS);
 		SimPort1->Build();
 		SimPort1->Enable();
 

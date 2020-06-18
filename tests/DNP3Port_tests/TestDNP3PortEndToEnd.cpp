@@ -60,8 +60,6 @@ TEST_CASE(SUITE("TCP link"))
 		REQUIRE(MPUT);
 
 		//get them to build themselves using their configs
-		OPUT->SetIOS(ios);
-		MPUT->SetIOS(ios);
 		OPUT->Build();
 		MPUT->Build();
 
@@ -151,8 +149,6 @@ TEST_CASE(SUITE("Serial link"))
 			REQUIRE(MPUT);
 
 			//get them to build themselves using their configs
-			OPUT->SetIOS(ios);
-			MPUT->SetIOS(ios);
 			OPUT->Build();
 			MPUT->Build();
 

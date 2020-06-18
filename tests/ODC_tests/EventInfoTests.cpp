@@ -76,11 +76,8 @@ TEST_CASE(SUITE("PayloadTransport"))
 	ConnConf["Connections"][0]["Port2"] = "Sink";
 	DataConnector Conn("Conn","",ConnConf);
 
-	Source.SetIOS(ios);
-	Sink.SetIOS(ios);
 	Source.Enable();
 	Sink.Enable();
-	Conn.SetIOS(ios);
 	Conn.Enable();
 
 	std::atomic<uint16_t> cb_count(0);
