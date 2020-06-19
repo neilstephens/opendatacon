@@ -73,6 +73,7 @@ private:
 	std::map<std::string,spdlog::sink_ptr> LogSinksMap;
 	std::vector<spdlog::sink_ptr> LogSinksVec;
 	inline void ListLogSinks();
+	inline void ListLogLevels();
 	void SetLogLevel(std::stringstream& ss);
 	void AddLogSink(std::stringstream& ss);
 	void DeleteLogSink(std::stringstream& ss);
