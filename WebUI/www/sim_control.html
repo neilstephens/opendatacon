@@ -31,6 +31,10 @@
           $("#common_content").load("common.html");
           $('select').selectpicker();
       });
+
+      $("#success-alert").fadeTo(2000, 500).slideUp(500, function(){
+          $("#success-alert").slideUp(500);
+      });
     </script>
   </head>
 
@@ -79,6 +83,10 @@
         <button type="button" class="btn btn-secondary btn-block" onclick="clear_logs()">Clear</button>
       </div>
 
+      <div class="alert alert-success">
+        <strong>Success!</strong> This alert box could indicate a successful or positive action.
+      </div>
+
     </div>
 
     <div class="container">
@@ -101,8 +109,15 @@
       var gtimer_handle = null;
 
       $(document).ready(function() {
-          gcommand = new URL(window.location.href).searchParams.get("command");
           /* disable the value input box not needed for this command */
+
+          $("#success-alert").hide();
+          $("#myWish").click(function showAlert() {
+              $("#success-alert").fadeTo(2000, 500).slideUp(500, function() {
+                  $("#success-alert").slideUp(500);
+              });
+          });
+
           if (gcommand == "ReleasePoint") {
               document.getElementById("value_text_box").disabled = true;
           }

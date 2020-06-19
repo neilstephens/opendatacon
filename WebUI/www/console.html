@@ -42,31 +42,25 @@
     </div>
 
     <div class="container">
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="go_to_simcontrol()">Sim Control</button>
+      </div>
+      <br><br><br>
+
       <div class="row">
-        <div class="col-sm-6">
+        <div class="col-sm-4">
           <h4>OpenDataCon</h4>
           <div class="list-group" id="opendatacon_list">
             <div id="opendatacon_commands"></div>
           </div>
           </br>
           <div class="col-sm-12 text-center">
-              <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
-          </div>
-        </div>
-        <div class="col-sm-6">
-          <h4>Sim Control</h4>
-          <div class="list-group" id="simcontrol_list">
-            <div id="simcontrol_commands"></div>
-          </div>
-          </br><br><br><br><br>
-          <div class="col-sm-20 text-center">
-            <button id="execute_simcontrol_button" class="btn btn-primary btn-lg" onclick="execute_simcontrol_command()">Execute</button>
+            <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
           </div>
         </div>
       </div>
 
       <br><br><br><br>
-
       <div class="alert alert-info clearfix">
         <button type="button" class="btn btn-primary btn-lg btn-block" onclick="logs()">Logs</button>
       </div>
@@ -75,7 +69,6 @@
 
     <script>
       var opendatacon_command = null;
-      var simcontrol_command = null;
 
       function go_to_web() {
           window.location.href="index.html"
@@ -87,14 +80,6 @@
                   for (var key of Object.keys(data)) {
                       const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_opendatacon_command(\'' + data[key] + '\');">' + data[key] + '</a>'
                       $('#opendatacon_list').append(item);
-                  }
-              });
-
-          $.post("/SimControl/List", {})
-              .done(function(data) {
-                  for (var key of Object.keys(data)) {
-                      const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_simcontrol_command(\'' + data[key] + '\');">' + data[key] + '</a>'
-                      $('#simcontrol_list').append(item);
                   }
               });
       });
@@ -163,13 +148,9 @@
           });
       }
 
-      function set_simcontrol_command(command) {
-          simcontrol_command = command;
-      }
-
-      function execute_simcontrol_command() {
-          document.getElementById("simcontrol_src").src = "sim_control.html?command=" + simcontrol_command;
-          document.getElementById("simcontrol_modal_title").innerHTML="Sim Control " + simcontrol_command;
+      function go_to_simcontrol() {
+          document.getElementById("simcontrol_src").src = "sim_control.html";
+          document.getElementById("simcontrol_modal_title").innerHTML="Sim Control";
           $('#simcontrol_modal').modal('show');
 
           $("#simcontrol_modal").on("hidden.bs.modal", function () {
@@ -182,6 +163,6 @@
           $('.list-group').find('.active').removeClass('active');
           $this.addClass('active');
       });
-    </script>
+      </script>
   </body>
 </html>
