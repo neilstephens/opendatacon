@@ -148,7 +148,7 @@ const Json::Value SimPort::GetCurrentState() const
 {
 	Json::Value current_state;
 	{ //lock scope
-		std::shared_lock<std::shared_timed_mutex> lck(const_cast<std::shared_timed_mutex&>(ConfMutex));
+		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
 		for(const auto& ind_val_pair : pSimConf->BinaryVals)
 			current_state["BinaryCurrent"][ind_val_pair.first] = ind_val_pair.second;
 		for(const auto& ind_val_pair : pSimConf->AnalogVals)
