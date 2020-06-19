@@ -427,3 +427,11 @@ void WebUI::ConnectToTCPServer()
 
 	printf("Web UI TCP client connect to [%s] for receiving the log messages\n", tcp_port.c_str());
 }
+
+void WebUI::ApplyLogFilter(const std::string& regex_filter)
+{
+	//TODO: ApplyLogFilter just a stub atm.
+	//I'll check if the regex is valid
+	//and simply store it for use in the TCP log read callback
+	return;
+}

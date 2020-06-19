@@ -74,6 +74,7 @@ private:
 	std::string HandleSimControl(const std::string& url);
 	std::string HandleOpenDataCon(const std::string& url);
 	void ConnectToTCPServer();
+	void ApplyLogFilter(const std::string& regex_filter);
 };
 
 #endif /* defined(__opendatacon__WebUI__) */
