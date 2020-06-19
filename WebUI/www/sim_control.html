@@ -15,6 +15,17 @@
     <script src= "/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src= "/node_modules/bootstrap_select/dist/js/bootstrap-select.min.js"></script>
 
+    <style>
+      .modal.simcontrol .modal-dialog {
+          width:1240px;
+          /* For responsive */
+          max-width:100%;
+          max-height:100%;
+      }
+
+      <span style="white-space: pre-line">@Model.CommentText</span>
+    </style>
+
     <script>
       $(function() {
           $("#common_content").load("common.html");
@@ -26,45 +37,100 @@
   <body>
 
     <div class="container">
+      <label for="command_text_box">Sim Control Command:</label>
+      <input type="text" class="form-control" id="command_text_box">
+      <br>
+
       <div class="row">
 
-        <div class="col-sm-0">
-          <div class="dropdown">
+        <div class="col-sm-4">
+          <select class="selectpicker" multiple data-live-search="true" id="ports_select" title="Ports">
+          </select>
+        </div>
+
+        <div class="col-sm-4">
+          <div class="dropdown" id="point_type_dropdown">
             <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
               Point Type
             </button>
 
             <div class="dropdown-menu">
-              <a class="dropdown-item" onclick="set_point_type('Analogs')">Analogs</a>
-              <a class="dropdown-item" onclick="set_point_type('Binaries')">Binaries</a>
+              <a class="dropdown-item" onclick="set_point_type('Analog')">Analog</a>
+              <a class="dropdown-item" onclick="set_point_type('Binary')">Binary</a>
             </div>
           </div>
         </div>
 
         <div class="col-sm-4">
-          <select class="selectpicker" multiple data-live-search="true" id="ports_select">
-          </select>
-        </div>
-
-        <div class="col-sm-6">
-          <select class="selectpicker" multiple data-live-search="true" id="index_select">
+          <select class="selectpicker" multiple data-live-search="true" id="index_select" title="Indexes">
           </select>
         </div>
 
       </div>
+
+      <br>
+      <label for="value_text_box">Value:</label>
+      <input type="text" class="form-control " id="value_text_box" onchange="set_value(value)">
+      <br>
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-primary btn-block" onclick="execute_command()">Execute</button>
+      </div>
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-secondary btn-block" onclick="clear_logs()">Clear</button>
+      </div>
+
+    </div>
+
+    <div class="container">
+      <pre>
+        <div id="tcp_logs"></div>
+      </pre>
     </div>
 
     <script>
       var ganalogs = [];
       var gbinaries = [];
+      var gport = null;
+      var gpoint_type = null;
+      var gindex = null;
+      var gvalue = null;
+      var gcommand = null;
+      var gcommand_text = null;
+      var grefresh_time = 2000;
+      var gtarget = null;
+      var gtimer_handle = null;
 
       $(document).ready(function() {
-          const command = new URL(window.location.href).searchParams.get("command");
+          gcommand = new URL(window.location.href).searchParams.get("command");
+          /* disable the value input box not needed for this command */
+          if (gcommand == "ReleasePoint") {
+              document.getElementById("value_text_box").disabled = true;
+          }
+
+          gcommand_text = gcommand;
+          document.getElementById("command_text_box").value = gcommand;
+          build_command();
+
+          const url = "/OpenDataCon/set_loglevel trace";
+          $.post(url, {})
+              .done(function(data) {
+                  console.log("Rakesh trace log is on now");
+              });
+
+          gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
           initialize(set_data);
       });
 
+      function get_tcp_logs() {
+          const url = "/OpenDataCon/tcp_logs_on";
+          $.post(url, {})
+              .done(function(data) {
+                  document.getElementById("tcp_logs").innerHTML += data["tcp_data"];
+              });
+      }
+
       function initialize(callback) {
-          var g_data = null;
+          vdata = null;
           const url = "/DataPorts/List";
           $.post(url, {})
               .done(function(data) {
@@ -74,6 +140,7 @@
                       const sim = /Sim*/;
                       var result = data["Items"][key].match(sim);
                       if (result) {
+                          gtarget = data["Items"][key];
                           const url = "/DataPorts/Configuration";
                           $.post(url, {Target : data["Items"][key]})
                               .done(function (data) {
@@ -130,9 +197,10 @@
 
       function set_point_type(point_type) {
           var indexes = [];
-          if (point_type == "Analogs")
+          gpoint_type = point_type;
+          if (point_type == "Analog")
               indexes = ganalogs;
-          if (point_type == "Binaries")
+          if (point_type == "Binary")
               indexes = gbinaries;
 
           var options = [];
@@ -144,7 +212,68 @@
 
           $('#index_select').html(options);
           $('#index_select').selectpicker('refresh');
+
+          build_command();
       }
+
+      function clear_logs() {
+          document.getElementById("tcp_logs").innerHTML = "";
+      }
+
+      function execute_command() {
+          $.post("/SimControl/" + gcommand_text + " " + gtarget, {})
+              .done(function(data) {
+                  for (var key of Object.keys(data)) {
+                      if (gcommand == "SetUpdateInterval") {
+                          if (data[key] == "Success") {
+                              grefresh_time = parseInt(gvalue);
+                              if (gtimer_handle != null) {
+                                  window.clearInterval(gtimer_handle);
+                                  gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
+                              }
+                          }
+                      }
+                  }
+              });
+      }
+
+      function set_value(val) {
+          gvalue = val;
+          build_command();
+      }
+
+      function build_command() {
+          if (gcommand == "ReleasePoint") {
+              gcommand_text = gcommand + " " + gport + " " + gpoint_type + " " + gindex;
+          } else {
+              gcommand_text = gcommand + " " + gport + " " + gpoint_type + " " + gindex + " " + gvalue;
+          }
+          document.getElementById("command_text_box").value = gcommand_text;
+      }
+
+      $('#ports_select').on('changed.bs.select', function (e, index, new_value, old_value) {
+          var selected = $(e.currentTarget).val();
+          selected = selected.join(",");
+          if (selected.includes("All")) {
+              gport = ".*";
+          } else {
+              gport = selected;
+          }
+
+          build_command();
+      });
+
+      $('#index_select').on('changed.bs.select', function (e, index, new_value, old_value) {
+          var selected = $(e.currentTarget).val();
+          selected = selected.join(",");
+          if (selected.includes("All")) {
+              gindex = ".*";
+          } else {
+              gindex = selected;
+          }
+
+          build_command();
+      });
     </script>
   </body>
 </html>
