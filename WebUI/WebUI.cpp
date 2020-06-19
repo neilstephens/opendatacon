@@ -258,7 +258,7 @@ void WebUI::Enable()
 {
 	if (useSSL)
 	{
-		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG | MHD_USE_SSL,
+		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_DEBUG | MHD_USE_SSL,
 			port,                                                  // Port to bind to
 			nullptr,                                               // callback to call to check which clients allowed to connect
 			nullptr,                                               // extra argument to apc
@@ -272,7 +272,7 @@ void WebUI::Enable()
 	}
 	else
 	{
-		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG,
+		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_DEBUG,
 			port,                                                  // Port to bind to
 			nullptr,                                               // callback to call to check which clients allowed to connect
 			nullptr,                                               // extra argument to apc
