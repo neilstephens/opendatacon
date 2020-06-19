@@ -112,7 +112,6 @@
       var gtimer_handle = null;
 
       $(document).ready(function() {
-          /* disable the value input box not needed for this command */
           $("#success-alert").hide();
           $("#command_result").click(function showAlert() {
               $("#success-alert").fadeTo(2000, 500).slideUp(500, function() {
@@ -259,6 +258,13 @@
 
       function set_sim_control_command(command) {
           gcommand = command;
+          /* disable the value input box not needed for this command */
+          if (gcommand == "ReleasePoint") {
+              $('#value_text_box').prop('disabled', true);
+          } else {
+              $('#value_text_box').prop('disabled', false);
+          }
+
           build_command();
       }
 
