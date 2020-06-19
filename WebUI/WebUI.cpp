@@ -27,6 +27,7 @@
 
 #include "WebUI.h"
 #include <opendatacon/util.h>
+#include <opendatacon/asio.h>
 
 /* Test Certificate */
 //openssl genrsa -out server.key 2048
@@ -121,7 +122,8 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp
 	port(pPort),
 	web_root(web_root),
 	tcp_port(tcp_port),
-	sock(0)
+	pSockMan(nullptr),
+	log_filter_regex(".*",std::regex::extended)
 {
 	try
 	{
@@ -294,6 +296,7 @@ void WebUI::Disable()
 	if (d == nullptr) return;
 	MHD_stop_daemon(d);
 	d = nullptr;
+	pSockMan->Close();
 }
 
 std::string WebUI::HandleSimControl(const std::string& url)
@@ -365,14 +368,19 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 	{
 		if (command == "tcp_logs_on")
 		{
-			if (sock == 0)
-			{
+			if(!pSockMan)
 				ConnectToTCPServer();
-			}
 
-			char buffer[10240] = {0};
-			read(sock, buffer, sizeof(buffer));
-			value["tcp_data"] = buffer;
+			std::atomic_bool executed(false);
+			log_out_sync->post([this,&value,&executed]()
+				{
+					value["tcp_data"] = tcp_log_out.str();
+					tcp_log_out.str("");
+					tcp_log_out.clear();
+					executed = true;
+				});
+			while(!executed)
+				pIOS->poll_one();
 		}
 		else
 		{
@@ -401,37 +409,66 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 
 void WebUI::ConnectToTCPServer()
 {
-	/* create the socket and socket address for webui tcp communication in future */
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	//Use the ODC TCP manager
+	// Client connection to localhost on the port we set up for log sinking
+	// Automatically retry to connect on error
+	pSockMan = std::make_unique<odc::TCPSocketManager<std::string>>
+		           (pIOS, false, "localhost", tcp_port,
+		           [this](odc::buf_t& readbuf){ReadCompletionHandler(readbuf);},
+		           [this](bool state){ConnectionEvent(state);},
+		           1000,
+		           true);
+	pSockMan->Open(); //Auto re-open is enabled, so it's set and forget
+}
+
+void WebUI::ReadCompletionHandler(odc::buf_t& readbuf)
+{
+	std::istream iss(&readbuf);
+	std::string message;
+	while(std::getline(iss,message))
 	{
-		printf("Error: Socket cannot be created for TCP commnucation from Web UI\n");
-		return;
+		if(iss.eof()) //not a full line - put it back, and we're done
+		{
+			readbuf.sputn(message.c_str(),message.size());
+			break;
+		}
+
+		log_out_sync->post([this,message{std::move(message)}]()
+			{
+				auto log_size = tcp_log_out.tellp();
+				if(log_size > 1000000)
+				{
+				      if (auto log = odc::spdlog_get("WebUI"))
+						log->error("Browser isn't fetching logs fast enough: Dumping {} bytes.", log_size);
+				      tcp_log_out.str("");
+				      tcp_log_out.clear();
+				}
+				if(std::regex_match(message,log_filter_regex))
+					tcp_log_out << message << std::endl;
+			});
 	}
+}
 
-	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(std::atoi(tcp_port.c_str()));
-
-	// Convert IPv4 and IPv6 addresses from text to binary form
-	if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) <= 0)
-	{
-		printf("Error: Invalid address, address not supported\n");
-		return;
-	}
-
-
-	if (connect(sock, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
-	{
-		printf("Error: Connection failed from TCP client to server from Web UI port == [%d]\n", std::atoi(tcp_port.c_str()));
-		return;
-	}
-
-	printf("Web UI TCP client connect to [%s] for receiving the log messages\n", tcp_port.c_str());
+void WebUI::ConnectionEvent(bool state)
+{
+	if (auto log = odc::spdlog_get("WebUI"))
+		log->debug("Log sink connection on port {} {}",tcp_port,state ? "opened" : "closed");
 }
 
 void WebUI::ApplyLogFilter(const std::string& regex_filter)
 {
-	//TODO: ApplyLogFilter just a stub atm.
-	//I'll check if the regex is valid
-	//and simply store it for use in the TCP log read callback
+	try
+	{
+		std::regex regx(regex_filter);
+		log_out_sync->post([=]()
+			{
+				log_filter_regex = regex_filter;
+			});
+	}
+	catch (std::exception& e)
+	{
+		if (auto log = odc::spdlog_get("WebUI"))
+			log->error("Problem using '{}' as regex: {}",regex_filter,e.what());
+	}
 	return;
 }

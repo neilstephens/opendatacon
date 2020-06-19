@@ -29,8 +29,10 @@
 #define __opendatacon__WebUI__
 #include "MhdWrapper.h"
 #include <opendatacon/IUI.h>
+#include <opendatacon/TCPSocketManager.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <regex>
 
 const char ROOTPAGE[] = "/index.html";
 
@@ -63,8 +65,10 @@ private:
 	std::string key_pem;
 	std::string web_root;
 	std::string tcp_port;
-	int sock;
-	struct sockaddr_in server_address;
+	std::unique_ptr<odc::TCPSocketManager<std::string>> pSockMan;
+	std::ostringstream tcp_log_out;
+	std::regex log_filter_regex;
+	const std::unique_ptr<asio::io_service::strand> log_out_sync = pIOS->make_strand();
 
 	bool useSSL = false;
 	/* UI response handlers */
@@ -74,6 +78,8 @@ private:
 	std::string HandleSimControl(const std::string& url);
 	std::string HandleOpenDataCon(const std::string& url);
 	void ConnectToTCPServer();
+	void ReadCompletionHandler(odc::buf_t& readbuf);
+	void ConnectionEvent(bool state);
 	void ApplyLogFilter(const std::string& regex_filter);
 };
 
