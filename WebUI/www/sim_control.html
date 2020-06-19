@@ -227,6 +227,7 @@
       }
 
       function execute_command() {
+          gcommand_text = $("#command_text_box").val();
           const url = "/SimControl/" + gcommand_text;
           $.post(url, {})
               .done(function(data) {
