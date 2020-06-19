@@ -123,7 +123,7 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp
 	web_root(web_root),
 	tcp_port(tcp_port),
 	pSockMan(nullptr),
-	log_filter_regex(".*",std::regex::extended)
+	pLogRegex(nullptr)
 {
 	try
 	{
@@ -251,7 +251,7 @@ int WebUI::http_ahc(void *cls,
 
 void WebUI::Build()
 {
-	std::string cmd = "tcp_web_ui off TCP 127.0.0.1 " + tcp_port + " SERVER";
+	std::string cmd = "tcp_web_ui off TCP localhost " + tcp_port + " SERVER";
 	std::stringstream ss(cmd);
 	RootCommands["add_logsink"](ss);
 }
@@ -443,7 +443,7 @@ void WebUI::ReadCompletionHandler(odc::buf_t& readbuf)
 				      tcp_log_out.str("");
 				      tcp_log_out.clear();
 				}
-				if(std::regex_match(message,log_filter_regex))
+				if(!pLogRegex || std::regex_match(message,*pLogRegex))
 					tcp_log_out << message << std::endl;
 			});
 	}
@@ -459,10 +459,10 @@ void WebUI::ApplyLogFilter(const std::string& regex_filter)
 {
 	try
 	{
-		std::regex regx(regex_filter);
+		std::regex regx(regex_filter,std::regex::extended);
 		log_out_sync->post([=]()
 			{
-				log_filter_regex = regex_filter;
+				pLogRegex = std::make_unique<std::regex>(regx);
 			});
 	}
 	catch (std::exception& e)

@@ -67,7 +67,7 @@ private:
 	std::string tcp_port;
 	std::unique_ptr<odc::TCPSocketManager<std::string>> pSockMan;
 	std::ostringstream tcp_log_out;
-	std::regex log_filter_regex;
+	std::unique_ptr<std::regex> pLogRegex;
 	const std::unique_ptr<asio::io_service::strand> log_out_sync = pIOS->make_strand();
 
 	bool useSSL = false;
