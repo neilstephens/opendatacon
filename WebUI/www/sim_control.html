@@ -39,8 +39,13 @@
   </head>
 
   <body>
-
     <div class="container">
+      <div class="btn-group" id="btn_grp_simcontrol_commands">
+        <button type="button btn-lg" onclick="set_log_level('trace');" class="btn btn-primary">trace</button>
+      </div>
+
+      <br>
+
       <label for="command_text_box">Sim Control Command:</label>
       <input type="text" class="form-control" id="command_text_box">
       <br>
@@ -83,7 +88,7 @@
         <button type="button" class="btn btn-secondary btn-block" onclick="clear_logs()">Clear</button>
       </div>
 
-      <div class="alert alert-success">
+      <div class="alert alert-success" id="command_result">
         <strong>Success!</strong> This alert box could indicate a successful or positive action.
       </div>
 
@@ -110,30 +115,27 @@
 
       $(document).ready(function() {
           /* disable the value input box not needed for this command */
-
           $("#success-alert").hide();
-          $("#myWish").click(function showAlert() {
+          $("#command_result").click(function showAlert() {
               $("#success-alert").fadeTo(2000, 500).slideUp(500, function() {
                   $("#success-alert").slideUp(500);
               });
           });
 
-          if (gcommand == "ReleasePoint") {
-              document.getElementById("value_text_box").disabled = true;
-          }
+          var url = "/SimControl/List";
+          $.post(url, {})
+              .done(function(data) {
+                  initialize(data["Items"]);
+                  console.log(data["Commands"]);
+              });
 
-          gcommand_text = gcommand;
-          document.getElementById("command_text_box").value = gcommand;
-          build_command();
-
-          const url = "/OpenDataCon/set_loglevel trace";
+          url = "/OpenDataCon/set_loglevel trace";
           $.post(url, {})
               .done(function(data) {
                   console.log("Rakesh trace log is on now");
               });
 
           gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
-          initialize(set_data);
       });
 
       function get_tcp_logs() {
@@ -144,35 +146,7 @@
               });
       }
 
-      function initialize(callback) {
-          vdata = null;
-          const url = "/DataPorts/List";
-          $.post(url, {})
-              .done(function(data) {
-                  var ports = [];
-                  for (var key in Object.keys(data["Items"])) {
-                      ports.push(data["Items"][key]);
-                      const sim = /Sim*/;
-                      var result = data["Items"][key].match(sim);
-                      if (result) {
-                          gtarget = data["Items"][key];
-                          const url = "/DataPorts/Configuration";
-                          $.post(url, {Target : data["Items"][key]})
-                              .done(function (data) {
-                                  var analogs = [];
-                                  var binaries = [];
-                                  if (data["ConfigOverrides"]["Analogs"] != null)
-                                      analogs = get_indexes(data["ConfigOverrides"]["Analogs"]);
-                                  if (data["ConfigOverrides"]["Binaries"] != null)
-                                      binaries = get_indexes(data["ConfigOverrides"]["Binaries"]);
-                                  callback(ports, analogs, binaries);
-                              });
-                      }
-                  }
-              });
-      }
-
-      function set_data(ports, analogs, binaries) {
+      function initialize(ports) {
           var options = [];
           options.push("<option>All</option>");
           ports.forEach(function (item) {
@@ -183,6 +157,20 @@
           $('#ports_select').html(options);
           $('#ports_select').selectpicker('refresh');
 
+          const url = "/DataPorts/Configuration";
+          $.post(url, { Target : ports[0]})
+              .done(function(data) {
+                  var analogs = [];
+                  var binaries = [];
+                  if (data["ConfigOverrides"]["Analogs"] != null)
+                      analogs = get_indexes(data["ConfigOverrides"]["Analogs"]);
+                  if (data["ConfigOverrides"]["Binaries"] != null)
+                      binaries = get_indexes(data["ConfigOverrides"]["Binaries"]);
+                  init_analog_binary(analogs, binaries);
+              });
+      }
+
+      function init_analog_binary(analogs, binaries) {
           ganalogs = analogs;
           gbinaries = binaries;
       }
@@ -255,6 +243,10 @@
       function set_value(val) {
           gvalue = val;
           build_command();
+      }
+
+      function set_sim_control_command(command) {
+          gcommand = command;
       }
 
       function build_command() {

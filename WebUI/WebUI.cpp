@@ -305,12 +305,8 @@ std::string WebUI::HandleSimControl(const std::string& url)
 
 	if (command == "List")
 	{
-		auto commands = Responders[simcontrol]->GetCommandList();
-		for (auto cmd : commands)
-		{
-			if (cmd.asString() != command)
-				value[cmd.asString()] = cmd.asString();
-		}
+		ParamCollection params;
+		value = Responders[simcontrol]->ExecuteCommand(command, params);
 	}
 	else
 	{
