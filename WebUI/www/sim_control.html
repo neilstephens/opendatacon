@@ -31,10 +31,6 @@
           $("#common_content").load("common.html");
           $('select').selectpicker();
       });
-
-      $("#success-alert").fadeTo(2000, 500).slideUp(500, function(){
-          $("#success-alert").slideUp(500);
-      });
     </script>
   </head>
 
@@ -87,8 +83,10 @@
         <button type="button" class="btn btn-secondary btn-block" onclick="clear_logs()">Clear</button>
       </div>
 
-      <div class="alert alert-success" id="command_result">
-        <strong>Success!</strong> This alert box could indicate a successful or positive action.
+      <div class="alert alert-success" id="alert_command">
+        <strong>
+          <div id="alert_message"></div>
+        </strong>
       </div>
 
     </div>
@@ -112,12 +110,7 @@
       var gtimer_handle = null;
 
       $(document).ready(function() {
-          $("#success-alert").hide();
-          $("#command_result").click(function showAlert() {
-              $("#success-alert").fadeTo(2000, 500).slideUp(500, function() {
-                  $("#success-alert").slideUp(500);
-              });
-          });
+          $("#alert_command").hide();
 
           var url = "/SimControl/List";
           $.post(url, {})
@@ -237,7 +230,9 @@
           const url = "/SimControl/" + gcommand_text;
           $.post(url, {})
               .done(function(data) {
+                  var message = '';
                   for (var key of Object.keys(data)) {
+                      message += key + " : " + data[key];
                       if (gcommand == "SetUpdateInterval") {
                           if (data[key] == "Success") {
                               grefresh_time = parseInt(gvalue);
@@ -248,7 +243,17 @@
                           }
                       }
                   }
+
+                  document.getElementById("alert_message").innerHTML = message;
+                  display_command_result();
               });
+      }
+
+      function display_command_result() {
+          $("#alert_command").show();
+          $("#alert_command").fadeTo(2000, 500).slideUp(500, function() {
+              $("#alert_command").slideUp(500);
+          });
       }
 
       function set_value(val) {
@@ -300,6 +305,7 @@
 
           build_command();
       });
+
     </script>
   </body>
 </html>
