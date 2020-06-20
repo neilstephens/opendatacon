@@ -76,6 +76,7 @@ private:
 	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
 
 	std::string HandleSimControl(const std::string& url);
+	Json::Value ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);
 	std::string HandleOpenDataCon(const std::string& url);
 	void ConnectToTCPServer();
 	void ReadCompletionHandler(odc::buf_t& readbuf);

@@ -300,37 +300,53 @@ void WebUI::Disable()
 std::string WebUI::HandleSimControl(const std::string& url)
 {
 	const std::string simcontrol = "/SimControl";
-	const std::string command = url.substr(simcontrol.size() + 1, url.size() - simcontrol.size());
+	std::string command = url.substr(simcontrol.size() + 1, url.size() - simcontrol.size());
 
-	Json::Value value;
-	std::string data;
-	ParamCollection params;
+	std::stringstream iss(command);
+	iss >> command;
+	Json::Value value = ExecuteCommand(Responders[simcontrol],command,iss);
 
-	if (command != "List")
-	{
-		std::string ports, type, index, value;
-		std::istringstream iss(command);
-		iss >> command;
-		iss >> ports;
-		iss >> type;
-		iss >> index;
-		params["Target"] = ports;
-		params["0"] = type;
-		params["1"] = index;
-
-		if (command != "ReleasePoint")
-		{
-			iss >> value;
-			params["2"] = value;
-		}
-	}
-
-	value = Responders[simcontrol]->ExecuteCommand(command, params);
 	Json::StreamWriterBuilder wbuilder;
 	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
 	std::ostringstream oss;
 	pWriter->write(value, &oss); oss<<std::endl;
 	return oss.str();
+}
+
+Json::Value WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
+{
+	ParamCollection params;
+
+	//Define first arg as Target regex
+	std::string T_regex_str;
+	odc::extract_delimited_string("\"'`",args,T_regex_str);
+
+	//turn any regex it into a list of targets
+	Json::Value target_list;
+	if(!T_regex_str.empty() && command != "List") //List is a special case - handles it's own regex
+	{
+		params["Target"] = T_regex_str;
+		target_list = pResponder->ExecuteCommand("List", params)["Items"];
+	}
+
+	int arg_num = 0;
+	std::string Val;
+	while(odc::extract_delimited_string("\"'`",args,Val))
+		params[std::to_string(arg_num++)] = Val;
+
+	if(target_list.size() > 0) //there was a list resolved
+	{
+		Json::Value results;
+		for(auto& target : target_list)
+		{
+			params["Target"] = target.asString();
+			results[target.asString()] = pResponder->ExecuteCommand(command, params);
+		}
+		return results;
+	}
+
+	//There was no list - execute anyway
+	return pResponder->ExecuteCommand(command, params);
 }
 
 std::string WebUI::HandleOpenDataCon(const std::string& url)
