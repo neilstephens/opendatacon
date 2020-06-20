@@ -294,7 +294,8 @@ void WebUI::Disable()
 	if (d == nullptr) return;
 	MHD_stop_daemon(d);
 	d = nullptr;
-	pSockMan->Close();
+	if(pSockMan)
+		pSockMan->Close();
 }
 
 std::string WebUI::HandleSimControl(const std::string& url)
