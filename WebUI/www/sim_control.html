@@ -35,8 +35,12 @@
   </head>
 
   <body>
-
     <div class="container">
+      <div class="btn-group" id="btn_grp_simcontrol_commands">
+      </div>
+
+      <br><br>
+
       <label for="command_text_box">Sim Control Command:</label>
       <input type="text" class="form-control" id="command_text_box">
       <br>
@@ -79,6 +83,12 @@
         <button type="button" class="btn btn-secondary btn-block" onclick="clear_logs()">Clear</button>
       </div>
 
+      <div class="alert alert-success" id="alert_command">
+        <strong>
+          <div id="alert_message"></div>
+        </strong>
+      </div>
+
     </div>
 
     <div class="container">
@@ -90,35 +100,40 @@
     <script>
       var ganalogs = [];
       var gbinaries = [];
-      var gport = null;
       var gpoint_type = null;
       var gindex = null;
       var gvalue = null;
       var gcommand = null;
       var gcommand_text = null;
       var grefresh_time = 2000;
-      var gtarget = null;
+      var gports = null;
       var gtimer_handle = null;
 
       $(document).ready(function() {
-          gcommand = new URL(window.location.href).searchParams.get("command");
-          /* disable the value input box not needed for this command */
-          if (gcommand == "ReleasePoint") {
-              document.getElementById("value_text_box").disabled = true;
-          }
+          $("#alert_command").hide();
 
-          gcommand_text = gcommand;
-          document.getElementById("command_text_box").value = gcommand;
-          build_command();
-
-          const url = "/OpenDataCon/set_loglevel trace";
+          var url = "/SimControl/List";
           $.post(url, {})
               .done(function(data) {
-                  console.log("Rakesh trace log is on now");
+                  initialize(data["Items"]);
+                  const commands = data["Commands"];
+                  commands.forEach(function(item) {
+                      if (item != "List") {
+                          var button='<button class="btn btn-primary" onclick="set_sim_control_command(\'' + item + '\');">'+ item + '</button>&nbsp;&nbsp&nbsp';
+                          $("#btn_grp_simcontrol_commands").append(button);
+                      }
+                  });
+
+                  init_command(commands[0]);
+              });
+
+          url = "/OpenDataCon/set_loglevel trace";
+          $.post(url, {})
+              .done(function(data) {
+                  console.log("TCP logging port is open and logging started");
               });
 
           gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
-          initialize(set_data);
       });
 
       function get_tcp_logs() {
@@ -129,35 +144,7 @@
               });
       }
 
-      function initialize(callback) {
-          vdata = null;
-          const url = "/DataPorts/List";
-          $.post(url, {})
-              .done(function(data) {
-                  var ports = [];
-                  for (var key in Object.keys(data["Items"])) {
-                      ports.push(data["Items"][key]);
-                      const sim = /Sim*/;
-                      var result = data["Items"][key].match(sim);
-                      if (result) {
-                          gtarget = data["Items"][key];
-                          const url = "/DataPorts/Configuration";
-                          $.post(url, {Target : data["Items"][key]})
-                              .done(function (data) {
-                                  var analogs = [];
-                                  var binaries = [];
-                                  if (data["ConfigOverrides"]["Analogs"] != null)
-                                      analogs = get_indexes(data["ConfigOverrides"]["Analogs"]);
-                                  if (data["ConfigOverrides"]["Binaries"] != null)
-                                      binaries = get_indexes(data["ConfigOverrides"]["Binaries"]);
-                                  callback(ports, analogs, binaries);
-                              });
-                      }
-                  }
-              });
-      }
-
-      function set_data(ports, analogs, binaries) {
+      function initialize(ports) {
           var options = [];
           options.push("<option>All</option>");
           ports.forEach(function (item) {
@@ -168,6 +155,25 @@
           $('#ports_select').html(options);
           $('#ports_select').selectpicker('refresh');
 
+          const url = "/DataPorts/Configuration";
+          $.post(url, { Target : ports[0]})
+              .done(function(data) {
+                  var analogs = [];
+                  var binaries = [];
+                  if (data["ConfigOverrides"]["Analogs"] != null)
+                      analogs = get_indexes(data["ConfigOverrides"]["Analogs"]);
+                  if (data["ConfigOverrides"]["Binaries"] != null)
+                      binaries = get_indexes(data["ConfigOverrides"]["Binaries"]);
+                  init_analog_binary(analogs, binaries);
+              });
+      }
+
+      function init_command(command) {
+          gcommand = command;
+          build_command();
+      }
+
+      function init_analog_binary(analogs, binaries) {
           ganalogs = analogs;
           gbinaries = binaries;
       }
@@ -221,9 +227,13 @@
       }
 
       function execute_command() {
-          $.post("/SimControl/" + gcommand_text + " " + gtarget, {})
+          gcommand_text = $("#command_text_box").val();
+          const url = "/SimControl/" + gcommand_text;
+          $.post(url, {})
               .done(function(data) {
+                  var message = '';
                   for (var key of Object.keys(data)) {
+                      message += key + " : " + data[key];
                       if (gcommand == "SetUpdateInterval") {
                           if (data[key] == "Success") {
                               grefresh_time = parseInt(gvalue);
@@ -234,7 +244,17 @@
                           }
                       }
                   }
+
+                  document.getElementById("alert_message").innerHTML = message;
+                  display_command_result();
               });
+      }
+
+      function display_command_result() {
+          $("#alert_command").show();
+          $("#alert_command").fadeTo(2000, 500).slideUp(500, function() {
+              $("#alert_command").slideUp(500);
+          });
       }
 
       function set_value(val) {
@@ -242,11 +262,23 @@
           build_command();
       }
 
+      function set_sim_control_command(command) {
+          gcommand = command;
+          /* disable the value input box not needed for this command */
+          if (gcommand == "ReleasePoint") {
+              $('#value_text_box').prop('disabled', true);
+          } else {
+              $('#value_text_box').prop('disabled', false);
+          }
+
+          build_command();
+      }
+
       function build_command() {
           if (gcommand == "ReleasePoint") {
-              gcommand_text = gcommand + " " + gport + " " + gpoint_type + " " + gindex;
+              gcommand_text = gcommand + " " + gports + " " + gpoint_type + " " + gindex;
           } else {
-              gcommand_text = gcommand + " " + gport + " " + gpoint_type + " " + gindex + " " + gvalue;
+              gcommand_text = gcommand + " " + gports + " " + gpoint_type + " " + gindex + " " + gvalue;
           }
           document.getElementById("command_text_box").value = gcommand_text;
       }
@@ -255,9 +287,9 @@
           var selected = $(e.currentTarget).val();
           selected = selected.join(",");
           if (selected.includes("All")) {
-              gport = ".*";
+              gports = ".*";
           } else {
-              gport = selected;
+              gports = selected;
           }
 
           build_command();
@@ -274,6 +306,7 @@
 
           build_command();
       });
+
     </script>
   </body>
 </html>

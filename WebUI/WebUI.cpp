@@ -306,30 +306,28 @@ std::string WebUI::HandleSimControl(const std::string& url)
 
 	Json::Value value;
 	std::string data;
+	ParamCollection params;
 
-	if (command == "List")
+	if (command != "List")
 	{
-		auto commands = Responders[simcontrol]->GetCommandList();
-		for (const auto& cmd : commands)
+		std::string ports, type, index, value;
+		std::istringstream iss(command);
+		iss >> command;
+		iss >> ports;
+		iss >> type;
+		iss >> index;
+		params["Target"] = ports;
+		params["0"] = type;
+		params["1"] = index;
+
+		if (command != "ReleasePoint")
 		{
-			if (cmd.asString() != command)
-				value[cmd.asString()] = cmd.asString();
+			iss >> value;
+			params["2"] = value;
 		}
 	}
-	else
-	{
-		ParamCollection params;
-		std::istringstream iss(command);
-		std::string sub_command, temp;
-		iss >> sub_command;
-		iss >> temp;
-		iss >> params["0"];
-		iss >> params["1"];
-		iss >> params["2"];
-		iss >> params["Target"];
-		value = Responders[simcontrol]->ExecuteCommand(sub_command, params);
-	}
 
+	value = Responders[simcontrol]->ExecuteCommand(command, params);
 	Json::StreamWriterBuilder wbuilder;
 	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
 	std::ostringstream oss;
