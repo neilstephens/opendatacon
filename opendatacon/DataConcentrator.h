@@ -72,6 +72,7 @@ private:
 
 	std::unordered_map<std::string, spdlog::sink_ptr> LogSinks;
 	inline void ListLogSinks();
+	inline void ListLogLevels();
 	void SetLogLevel(std::stringstream& ss);
 	void AddLogSink(std::stringstream& ss);
 	void DeleteLogSink(std::stringstream& ss);

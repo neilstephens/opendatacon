@@ -163,7 +163,7 @@ private:
 
 	std::shared_ptr<SimPortCollection> SimCollection;
 
-	std::shared_timed_mutex ConfMutex;
+	mutable std::shared_timed_mutex ConfMutex;
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	static thread_local std::mt19937 RandNumGenerator;

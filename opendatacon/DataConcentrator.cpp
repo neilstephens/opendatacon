@@ -202,8 +202,15 @@ inline void DataConcentrator::ListLogSinks()
 {
 	std::cout << "Sinks:" << std::endl;
 	for (auto it = LogSinks.begin(); it != LogSinks.end(); ++it)
-		std::cout << it->first << std::endl;
+		std::cout << "\t" << it->first << std::endl;
 }
+inline void DataConcentrator::ListLogLevels()
+{
+	std::cout << "Levels:" << std::endl;
+	for(uint8_t i = 0; i < 7; i++)
+		std::cout << "\t" << spdlog::level::level_string_views[i].data() << std::endl;
+}
+
 
 void DataConcentrator::SetLogLevel(std::stringstream& ss)
 {
@@ -211,26 +218,35 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 	std::string level_str;
 	if(ss>>sinkname && ss>>level_str)
 	{
+		bool valid_name = false;
+		for(const auto& sink : LogSinks)
+			if(sink.first == sinkname)
+				valid_name = true;
+
+		bool fail = false;
+
+		if (!valid_name)
+		{
+			fail = true;
+			std::cout << "Log sink not found." << std::endl;
+			ListLogSinks();
+		}
 		auto new_level = spdlog::level::from_str(level_str);
 		if(new_level == spdlog::level::off && level_str != "off")
 		{
-			std::cout << "Invalid log level. Options are:" << std::endl;
-			for(uint8_t i = 0; i < 7; i++)
-				std::cout << spdlog::level::level_string_views[i].data() << std::endl;
-			return;
+			fail = true;
+			std::cout << "Invalid log level." << std::endl;
+			ListLogLevels();
 		}
-		else
-		{
-			LogSinks[sinkname]->set_level(new_level);
-			return;
-		}
-	}
 
+		if(!fail)
+			LogSinks[sinkname]->set_level(new_level);
+
+		return;
+	}
 	std::cout << "Usage: set_loglevel <sinkname> <level>" << std::endl;
 	ListLogSinks();
-	std::cout << std::endl << "Levels:" << std::endl;
-	for(uint8_t i = 0; i < 7; i++)
-		std::cout << spdlog::level::level_string_views[i].data() << std::endl;
+	ListLogLevels();
 }
 
 void DataConcentrator::AddLogSink(std::stringstream& ss)
