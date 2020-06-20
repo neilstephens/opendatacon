@@ -211,30 +211,28 @@ int WebUI::http_ahc(void *cls,
 	if (Responders.count(ResponderName))
 	{
 		const std::string command = GetFile(&url[ResponderName.length()]);
-		Json::Value event;
+		Json::Value event = Responders[ResponderName]->ExecuteCommand(command, params);
 
-		//TODO: make this writer reusable (class member)
+		//remove List - not much use in this context
+		if((url == "/DataPorts/List" ||
+		    url == "/DataConnectors/List") && method == "POST")
+			for(auto i=0; i<event["Commands"].size(); i++)
+				if(event["Commands"][i].asString() == "List")
+				{
+					Json::Value discard;
+					event["Commands"].removeIndex(i,&discard);
+					break;
+				}
+
 		Json::StreamWriterBuilder wbuilder;
 		wbuilder["commentStyle"] = "None";
 		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
 		std::ostringstream oss;
+		pWriter->write(event, &oss);
+		oss<<std::endl;
 
-		event = Responders[ResponderName]->ExecuteCommand(command, params);
-		pWriter->write(event, &oss); oss<<std::endl;
-
-		std::string data = oss.str();
-		/* Remove the list command for DataPorts  */
-		if ((url == "/DataPorts/List" ||
-		     url == "/DataConnectors/List") && method == "POST")
-		{
-			const std::size_t pos = data.find("List");
-			std::string temp = data.substr(0, pos - 2);
-			// we need to skip "List,"\n therefore we have a constant as 8
-			temp += data.substr(pos + 8, data.size() - pos + 8);
-			data = temp;
-		}
-
-		return ReturnJSON(connection, data);
+		return ReturnJSON(connection, oss.str());
 	}
 	else
 	{
