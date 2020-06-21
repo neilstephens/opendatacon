@@ -49,6 +49,7 @@ public:
 	{
 		if(pSockMan)
 			pSockMan->Close();
+		pSockMan.reset();
 	}
 	int sync() override
 	{
