@@ -140,7 +140,7 @@
           const url = "/OpenDataCon/tcp_logs_on";
           $.post(url, {})
               .done(function(data) {
-                  document.getElementById("tcp_logs").innerHTML += data["tcp_data"];
+                  document.getElementById("tcp_logs").innerHTML = data["tcp_data"];
               });
       }
 

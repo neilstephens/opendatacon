@@ -33,13 +33,15 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <regex>
+#include <shared_mutex>
+#include <queue>
 
 const char ROOTPAGE[] = "/index.html";
 
 class WebUI: public IUI
 {
 public:
-	WebUI(uint16_t port, const std::string& web_root, const std::string& tcp_port);
+	WebUI(uint16_t port, const std::string& web_root, const std::string& tcp_port, size_t log_q_size);
 
 	/* Implement IUI interface */
 	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
@@ -66,9 +68,17 @@ private:
 	std::string web_root;
 	std::string tcp_port;
 	std::unique_ptr<odc::TCPSocketManager<std::string>> pSockMan;
-	std::ostringstream tcp_log_out;
+
+	//TODO: these can be maps with entry per web session
+	//the pairs in the Q hold:
+	//	* a string view, and
+	//	* a shared pointer that manages it's underlying memory
+	std::deque<std::pair<std::shared_ptr<void>,std::string_view>> log_queue;
+	const std::unique_ptr<asio::io_service::strand> log_q_sync = pIOS->make_strand();
+	size_t log_q_size;
+
+	mutable std::shared_timed_mutex LogRegexMutex;
 	std::unique_ptr<std::regex> pLogRegex;
-	const std::unique_ptr<asio::io_service::strand> log_out_sync = pIOS->make_strand();
 
 	bool useSSL = false;
 	/* UI response handlers */
@@ -81,7 +91,10 @@ private:
 	void ConnectToTCPServer();
 	void ReadCompletionHandler(odc::buf_t& readbuf);
 	void ConnectionEvent(bool state);
+
+	//TODO: These could be per web session
 	void ApplyLogFilter(const std::string& regex_filter);
+	std::unique_ptr<std::regex> GetLogFilter();
 };
 
 #endif /* defined(__opendatacon__WebUI__) */

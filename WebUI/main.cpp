@@ -33,6 +33,7 @@ extern "C" WebUI* new_WebUIPlugin(const std::string& Name, const std::string& Fi
 	uint16_t port = 443;
 	std::string web_root = "www";
 	std::string tcp_port = "10593";
+	size_t log_q_size = 200;
 	if(Overrides.isObject())
 	{
 		if(Overrides.isMember("IP"))
@@ -45,9 +46,11 @@ extern "C" WebUI* new_WebUIPlugin(const std::string& Name, const std::string& Fi
 			web_root = Overrides["WebRoot"].asString();
 		if (Overrides.isMember("LogPort"))
 			tcp_port = Overrides["LogPort"].asString();
+		if (Overrides.isMember("MaxLogMessages"))
+			log_q_size = Overrides["MaxLogMessages"].asUInt();
 	}
 
-	return new WebUI(port, web_root, tcp_port);
+	return new WebUI(port, web_root, tcp_port, log_q_size);
 }
 
 extern "C" void delete_WebUIPlugin(WebUI* aIUI_ptr)

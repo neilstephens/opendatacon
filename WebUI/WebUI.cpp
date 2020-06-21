@@ -117,12 +117,13 @@ std::string load_key(const char *filename)
 	return(contents);
 }
 
-WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp_port):
+WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp_port, size_t log_q_size):
 	d(nullptr),
 	port(pPort),
 	web_root(web_root),
 	tcp_port(tcp_port),
 	pSockMan(nullptr),
+	log_q_size(log_q_size),
 	pLogRegex(nullptr)
 {
 	try
@@ -384,16 +385,17 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 			if(!pSockMan)
 				ConnectToTCPServer();
 
+			std::string log_str;
 			std::atomic_bool executed(false);
-			log_out_sync->post([this,&value,&executed]()
+			log_q_sync->post([this,&log_str,&executed]()
 				{
-					value["tcp_data"] = tcp_log_out.str();
-					tcp_log_out.str("");
-					tcp_log_out.clear();
+					for(const auto& pair : log_queue)
+						log_str.append(pair.second);
 					executed = true;
 				});
 			while(!executed)
 				pIOS->poll_one();
+			value["tcp_data"] = log_str;
 		}
 		else
 		{
@@ -436,29 +438,42 @@ void WebUI::ConnectToTCPServer()
 
 void WebUI::ReadCompletionHandler(odc::buf_t& readbuf)
 {
-	std::istream iss(&readbuf);
-	std::string message;
-	while(std::getline(iss,message))
-	{
-		if(iss.eof()) //not a full line - put it back, and we're done
-		{
-			readbuf.sputn(message.c_str(),message.size());
-			break;
-		}
+	const auto len = readbuf.size();
 
-		log_out_sync->post([this,message{std::move(message)}]()
-			{
-				auto log_size = tcp_log_out.tellp();
-				if(log_size > 1000000)
+	//copy all the data into a managed buffer
+	auto pBuffer = std::shared_ptr<char>(new char[readbuf.size()],[](char* p){delete[] p;}); //TODO: use make_shared<char[]>(size), instead of new (once c++20 comes along)
+	readbuf.sgetn(pBuffer.get(),len);
+
+	//a string view of the whole buffer
+	std::string_view full_str(pBuffer.get(),len);
+
+	auto regex = GetLogFilter();
+
+	//find each line and process without copying
+	size_t start_line_pos = 0;
+	size_t end_line_pos = 0;
+	while(start_line_pos < len && (end_line_pos = full_str.find_first_of('\n', start_line_pos)) != std::string_view::npos)
+	{
+		//end position minus start position == one less than length
+		auto line_str = full_str.substr(start_line_pos, (end_line_pos-start_line_pos)+1);
+
+		if(!regex || std::regex_match(line_str.begin(),line_str.end(),*regex))
+			log_q_sync->post([this,line_str,pBuffer]()
 				{
-				      if (auto log = odc::spdlog_get("WebUI"))
-						log->error("Browser isn't fetching logs fast enough: Dumping {} bytes.", log_size);
-				      tcp_log_out.str("");
-				      tcp_log_out.clear();
-				}
-				if(!pLogRegex || std::regex_match(message,*pLogRegex))
-					tcp_log_out << message << std::endl;
-			});
+					log_queue.emplace_front(pBuffer,line_str);
+					if(log_queue.size() > log_q_size)
+						log_queue.pop_back();
+				});
+
+		//start from one past the end for the next match
+		start_line_pos = end_line_pos+1;
+	}
+
+	//put back partial line
+	if(start_line_pos < len)
+	{
+		auto leftover = full_str.substr(start_line_pos);
+		readbuf.sputn(leftover.data(), leftover.length());
 	}
 }
 
@@ -473,10 +488,10 @@ void WebUI::ApplyLogFilter(const std::string& regex_filter)
 	try
 	{
 		std::regex regx(regex_filter,std::regex::extended);
-		log_out_sync->post([=]()
-			{
-				pLogRegex = std::make_unique<std::regex>(regx);
-			});
+		{ //lock scope
+			std::unique_lock<std::shared_timed_mutex> lck(LogRegexMutex);
+			pLogRegex = std::make_unique<std::regex>(regx);
+		}
 	}
 	catch (std::exception& e)
 	{
@@ -484,4 +499,14 @@ void WebUI::ApplyLogFilter(const std::string& regex_filter)
 			log->error("Problem using '{}' as regex: {}",regex_filter,e.what());
 	}
 	return;
+}
+
+std::unique_ptr<std::regex> WebUI::GetLogFilter()
+{
+	{ // lock scope
+		std::shared_lock<std::shared_timed_mutex> lck(LogRegexMutex);
+		if(pLogRegex)
+			return std::make_unique<std::regex>(*pLogRegex);
+	}
+	return std::unique_ptr<std::regex>(nullptr);
 }
