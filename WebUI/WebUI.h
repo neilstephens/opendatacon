@@ -30,8 +30,6 @@
 #include "MhdWrapper.h"
 #include <opendatacon/IUI.h>
 #include <opendatacon/TCPSocketManager.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <regex>
 #include <shared_mutex>
 #include <queue>
