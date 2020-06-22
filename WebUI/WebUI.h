@@ -35,6 +35,7 @@
 #include <regex>
 #include <shared_mutex>
 #include <queue>
+#include <string_view>
 
 const char ROOTPAGE[] = "/index.html";
 
