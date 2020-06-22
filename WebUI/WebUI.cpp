@@ -259,7 +259,9 @@ void WebUI::Enable()
 {
 	if (useSSL)
 	{
-		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_DEBUG | MHD_USE_SSL,
+		//TODO: suppress warning on later versions of libmicrohttpd by using MHD_USE_INTERNAL_POLLING_THREAD
+		// For now, the CI version is old (Xenial), so we can't use it.
+		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION /*| MHD_USE_INTERNAL_POLLING_THREAD*/ | MHD_USE_DEBUG | MHD_USE_SSL,
 			port,                                                  // Port to bind to
 			nullptr,                                               // callback to call to check which clients allowed to connect
 			nullptr,                                               // extra argument to apc
@@ -273,7 +275,9 @@ void WebUI::Enable()
 	}
 	else
 	{
-		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_DEBUG,
+		//TODO: suppress warning on later versions of libmicrohttpd by using MHD_USE_INTERNAL_POLLING_THREAD
+		// For now, the CI version is old (Xenial), so we can't use it.
+		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION /*| MHD_USE_INTERNAL_POLLING_THREAD*/ | MHD_USE_DEBUG,
 			port,                                                  // Port to bind to
 			nullptr,                                               // callback to call to check which clients allowed to connect
 			nullptr,                                               // extra argument to apc
