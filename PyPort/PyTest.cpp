@@ -425,15 +425,16 @@ TEST_CASE("Py.TestsUsingPython")
 
 
 	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
-	REQUIRE_NOTHROW(
-		if (!WaitIOSFnResult(IOS, 10, [&]()
-			{
-				return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
-			}))
+	REQUIRE_NOTHROW([&]()
 		{
-			throw std::runtime_error("Waiting for Ports to Enable timed out");
-		}
-		);
+			if (!WaitIOSFnResult(IOS, 10, [&]()
+				{
+					return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
+				}))
+			{
+			      throw std::runtime_error("Waiting for Ports to Enable timed out");
+			}
+		} ());
 	LOGINFO("Ports Enabled");
 
 	INFO("SendBinaryAndAnalogEvents")
@@ -455,10 +456,11 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort3->Event(boolevent, "TestHarness3", nullptr);
 		PythonPort4->Event(boolevent, "TestHarness4", nullptr);
 
-		REQUIRE_NOTHROW(
-			if (!WaitIOSResult(IOS, 12, res, CommandStatus::UNDEFINED))
-				throw std::runtime_error("Command Status Update timed out");
-			);
+		REQUIRE_NOTHROW([&]()
+			{
+				if (!WaitIOSResult(IOS, 12, res, CommandStatus::UNDEFINED))
+					throw std::runtime_error("Command Status Update timed out");
+			} ());
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
 		res = CommandStatus::UNDEFINED;
@@ -469,10 +471,11 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		REQUIRE_NOTHROW(
-			if (!WaitIOSResult(IOS, 10, res, CommandStatus::UNDEFINED))
-				throw("Command Status Update timed out");
-			);
+		REQUIRE_NOTHROW([&]()
+			{
+				if (!WaitIOSResult(IOS, 10, res, CommandStatus::UNDEFINED))
+					throw("Command Status Update timed out");
+			} ());
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
 		std::string url("http://testserver/thisport/cb?test=harold");
@@ -488,16 +491,16 @@ TEST_CASE("Py.TestsUsingPython")
 		// Direct inject web request to python code - we get response back from python module PyPortSim.py
 		PythonPort->RestHandler(url, "", pResponseCallback);
 
-		REQUIRE_NOTHROW
-		(
-			if (!WaitIOSFnResult(IOS, 5, [&]()
-				{
-					return bool(done_count);
-				}))
+		REQUIRE_NOTHROW([&]()
 			{
-				throw("Waiting for RestHandler response timed out");
-			}
-		);
+				if (!WaitIOSFnResult(IOS, 5, [&]()
+					{
+						return bool(done_count);
+					}))
+				{
+				      throw("Waiting for RestHandler response timed out");
+				}
+			} ());
 
 		LOGDEBUG("Response {}", sres.get());
 		REQUIRE(sres.get() == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
@@ -516,18 +519,18 @@ TEST_CASE("Py.TestsUsingPython")
 		}
 
 		// Wait - we should see the timer callback triggered and no crashes!
-		REQUIRE_NOTHROW
-		(
-			if (!WaitIOSFnResult(IOS, 7, [&]()
-				{
-					if(done_count == 1000)
-						return true;
-					return false;
-				}))
+		REQUIRE_NOTHROW([&]()
 			{
-				throw("Waiting for 1000 RestHandler responses timed out");
-			}
-		);
+				if (!WaitIOSFnResult(IOS, 7, [&]()
+					{
+						if(done_count == 1000)
+							return true;
+						return false;
+					}))
+				{
+				      throw("Waiting for 1000 RestHandler responses timed out");
+				}
+			} ());
 		LOGDEBUG("Last Response {}", sres.get());
 	}
 
@@ -578,16 +581,16 @@ TEST_CASE("Py.TestsUsingPython")
 	PythonPort3->Disable();
 	PythonPort4->Disable();
 
-	REQUIRE_NOTHROW
-	(
-		if (!WaitIOSFnResult(IOS, 10, [&]()
-			{
-				return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
-			}))
+	REQUIRE_NOTHROW([&]()
 		{
-			throw("Waiting for Ports to be disabled timed out");
-		}
-	);
+			if (!WaitIOSFnResult(IOS, 10, [&]()
+				{
+					return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
+				}))
+			{
+			      throw("Waiting for Ports to be disabled timed out");
+			}
+		} ());
 	LOGDEBUG("Ports1-4 Disabled");
 
 	INFO("QueuedEvents")
@@ -599,15 +602,16 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort5->Enable();
 		// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
-		REQUIRE_NOTHROW(
-			if (!WaitIOSFnResult(IOS, 11, [&]()
-				{
-					return (PythonPort5->Enabled());
-				}))
+		REQUIRE_NOTHROW([&]()
 			{
-				throw std::runtime_error("Waiting for Ports to Enable timed out");
-			}
-			);
+				if (!WaitIOSFnResult(IOS, 11, [&]()
+					{
+						return (PythonPort5->Enabled());
+					}))
+				{
+				      throw std::runtime_error("Waiting for Ports to Enable timed out");
+				}
+			} ());
 
 		LOGINFO("Port5 Enabled");
 
@@ -673,33 +677,33 @@ TEST_CASE("Py.TestsUsingPython")
 
 
 		LOGERROR("Waiting for all events to be queued");
-		REQUIRE_NOTHROW
-		(
-			if (!WaitIOSFnResult(IOS, 60, [&]() // RPI very much slower than everything else... 5 works for all other platforms...
-				{
-					if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
-						return false;
-					return true;
-				}))
+		REQUIRE_NOTHROW([&]()
 			{
-				LOGERROR("Waiting for queuing events timed out"); // the throw does not get reported - causes a seg fault in travis
-				throw("Waiting for queuing events timed out");
-			}
-		);
+				if (!WaitIOSFnResult(IOS, 60, [&]() // RPI very much slower than everything else... 5 works for all other platforms...
+					{
+						if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
+							return false;
+						return true;
+					}))
+				{
+				      LOGERROR("Waiting for queuing events timed out"); // the throw does not get reported - causes a seg fault in travis
+				      throw("Waiting for queuing events timed out");
+				}
+			} ());
 		LOGERROR("All events queued");
 
-		REQUIRE_NOTHROW
-		(
-			if (!WaitIOSFnResult(IOS, 6, [&]()
-				{
-					if(PythonPort5->GetEventQueueSize() > 1)
-						return false;
-					return true;
-				}))
+		REQUIRE_NOTHROW([&]()
 			{
-				throw("Waiting for queued events timed out");
-			}
-		);
+				if (!WaitIOSFnResult(IOS, 6, [&]()
+					{
+						if(PythonPort5->GetEventQueueSize() > 1)
+							return false;
+						return true;
+					}))
+				{
+				      throw("Waiting for queued events timed out");
+				}
+			} ());
 
 		// Check that the PyPortSim module has processed the number of events that we have sent?
 		// Query through the Restful interface
@@ -727,16 +731,16 @@ TEST_CASE("Py.TestsUsingPython")
 		LOGDEBUG("Tests Complete, starting teardown");
 
 		PythonPort5->Disable();
-		REQUIRE_NOTHROW
-		(
-			if (!WaitIOSFnResult(IOS, 11, [&]()
-				{
-					return (!PythonPort->Enabled());
-				}))
+		REQUIRE_NOTHROW([&]()
 			{
-				throw("Waiting for Ports to be disabled timed out");
-			}
-		);
+				if (!WaitIOSFnResult(IOS, 11, [&]()
+					{
+						return (!PythonPort->Enabled());
+					}))
+				{
+				      throw("Waiting for Ports to be disabled timed out");
+				}
+			} ());
 		LOGDEBUG("Port5 Disabled");
 	}
 
