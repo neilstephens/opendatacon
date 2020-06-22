@@ -1,28 +1,38 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<html>
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OpenDataCon</title>
 
-    <script>
-      var fs = require('fs');
-    </script>
+    <script src= "/node_modules/jquery/dist/jquery.min.js"> </script>
+
+    <link rel="stylesheet" href="/common_modules/css/bootstrap.min.css">
+
+    <style>
+      <span style="white-space: pre-line">@Model.CommentText</span>
+    </style>
   </head>
 
   <body>
+    <!-- configuration view -->
     <div class="container">
-      <p class="text-primary">
-        <div id="data">
-        </div>
-      </p>
+      <pre>
+        <div id="tcp_logs"></div>
+      </pre>
     </div>
 
     <script>
-      const file = "/home/rakesh/ausgrid/opendatacon/confs/ODC_Log.txt";
-      fs.watch(file, "utf8", function(event, trigger) {
-          console.log(trigger);
+      function get_tcp_logs() {
+          const url = "/OpenDataCon/tcp_logs_on";
+          $.post(url, {})
+              .done(function(data) {
+                  document.getElementById("tcp_logs").innerHTML = data["tcp_data"];
+              });
+      }
+
+      $( document ).ready(function() {
+          window.setInterval(function() { get_tcp_logs(); }, 2000);
       });
     </script>
   </body>
