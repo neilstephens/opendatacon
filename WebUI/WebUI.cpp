@@ -217,7 +217,7 @@ int WebUI::http_ahc(void *cls,
 		//remove List - not much use in this context
 		if((url == "/DataPorts/List" ||
 		    url == "/DataConnectors/List") && method == "POST")
-			for(auto i=0; i<event["Commands"].size(); i++)
+			for(Json::Value::ArrayIndex i=0; i<event["Commands"].size(); i++)
 				if(event["Commands"][i].asString() == "List")
 				{
 					Json::Value discard;

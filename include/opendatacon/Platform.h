@@ -102,7 +102,7 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 {
 	_putenv_s(var, val);
 }
-const std::string OSPATHSEP = ";";
+static constexpr const char* OSPATHSEP = ";";
 
 #else
 #include <dlfcn.h>
@@ -140,7 +140,7 @@ inline std::string LastSystemError()
 {
 	std::string message;
 	char *error;
-	if ((error = dlerror()) != NULL)
+	if ((error = dlerror()) != nullptr)
 		message = error;
 	else
 		message = "Unknown error";
@@ -152,7 +152,7 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 {
 	setenv(var, val, overwrite);
 }
-static const char* OSPATHSEP = ":";
+static constexpr const char* OSPATHSEP = ":";
 
 #endif
 
