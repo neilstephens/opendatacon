@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenDataCon</title>
+
+    <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link rel = "stylesheet" href="/node_modules/bootstrap_select/dist/css/bootstrap-select.css" />
+
+    <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="/node_modules/popper/dist/umd/popper.min.js"></script>
+    <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src= "/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src= "/node_modules/bootstrap_select/dist/js/bootstrap-select.min.js"></script>
+
+    <style>
+      .modal.simcontrol .modal-dialog {
+          width:1240px;
+          /* For responsive */
+          max-width:100%;
+          max-height:100%;
+      }
+
+      <span style="white-space: pre-line">@Model.CommentText</span>
+    </style>
+
+    <script>
+      $(function() {
+          $("#common_content").load("common.html");
+          $('select').selectpicker();
+      });
+    </script>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="btn-group" id="btn_grp_simcontrol_commands">
+      </div>
+
+      <br><br>
+
+      <label for="command_text_box">Sim Control Command:</label>
+      <input type="text" class="form-control" id="command_text_box">
+      <br>
+
+      <div class="row">
+
+        <div class="col-sm-4">
+          <select class="selectpicker" multiple data-live-search="true" id="ports_select" title="Ports">
+          </select>
+        </div>
+
+        <div class="col-sm-4">
+          <div class="dropdown" id="point_type_dropdown">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+              Point Type
+            </button>
+
+            <div class="dropdown-menu">
+              <a class="dropdown-item" onclick="set_point_type('Analog')">Analog</a>
+              <a class="dropdown-item" onclick="set_point_type('Binary')">Binary</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-4">
+          <select class="selectpicker" multiple data-live-search="true" id="index_select" title="Indexes">
+          </select>
+        </div>
+
+      </div>
+
+      <br>
+      <label for="value_text_box">Value:</label>
+      <input type="text" class="form-control " id="value_text_box" onchange="set_value(value)">
+      <br>
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-primary btn-block" onclick="execute_command()">Execute</button>
+      </div>
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-secondary btn-block" onclick="clear_logs()">Clear</button>
+      </div>
+
+      <div class="alert alert-success" id="alert_command">
+        <strong>
+          <div id="alert_message"></div>
+        </strong>
+      </div>
+
+    </div>
+
+    <div class="container">
+      <pre>
+        <div id="tcp_logs"></div>
+      </pre>
+    </div>
+
+    <script>
+      var ganalogs = [];
+      var gbinaries = [];
+      var gpoint_type = null;
+      var gindex = null;
+      var gvalue = null;
+      var gcommand = null;
+      var gcommand_text = null;
+      var grefresh_time = 2000;
+      var gports = null;
+      var gtimer_handle = null;
+
+      $(document).ready(function() {
+          $("#alert_command").hide();
+
+          var url = "/SimControl/List";
+          $.post(url, {})
+              .done(function(data) {
+                  initialize(data["Items"]);
+                  const commands = data["Commands"];
+                  commands.forEach(function(item) {
+                      if (item != "List") {
+                          var button='<button class="btn btn-primary" onclick="set_sim_control_command(\'' + item + '\');">'+ item + '</button>&nbsp;&nbsp&nbsp';
+                          $("#btn_grp_simcontrol_commands").append(button);
+                      }
+                  });
+
+                  init_command(commands[0]);
+              });
+
+          url = "/OpenDataCon/set_loglevel trace";
+          $.post(url, {})
+              .done(function(data) {
+                  console.log("TCP logging port is open and logging started");
+              });
+
+          gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
+      });
+
+      function get_tcp_logs() {
+          const url = "/OpenDataCon/tcp_logs_on";
+          $.post(url, {})
+              .done(function(data) {
+                  document.getElementById("tcp_logs").innerHTML = data["tcp_data"];
+              });
+      }
+
+      function initialize(ports) {
+          var options = [];
+          options.push("<option>All</option>");
+          ports.forEach(function (item) {
+              var option = "<option>" + item + "</option>"
+              options.push(option);
+          });
+
+          $('#ports_select').html(options);
+          $('#ports_select').selectpicker('refresh');
+
+          const url = "/DataPorts/Configuration";
+          $.post(url, { Target : ports[0]})
+              .done(function(data) {
+                  var analogs = [];
+                  var binaries = [];
+                  if (data["ConfigOverrides"]["Analogs"] != null)
+                      analogs = get_indexes(data["ConfigOverrides"]["Analogs"]);
+                  if (data["ConfigOverrides"]["Binaries"] != null)
+                      binaries = get_indexes(data["ConfigOverrides"]["Binaries"]);
+                  init_analog_binary(analogs, binaries);
+              });
+      }
+
+      function init_command(command) {
+          gcommand = command;
+          build_command();
+      }
+
+      function init_analog_binary(analogs, binaries) {
+          ganalogs = analogs;
+          gbinaries = binaries;
+      }
+
+      function get_indexes(data) {
+          indexes = [];
+          for (key in Object.keys(data)) {
+              if (data[key]["Range"] != null) {
+                  var start = 0;
+                  var stop = 0;
+                  if (data[key]["Range"]["Start"] != null && data[key]["Range"]["Stop"] != null) {
+                      start = parseInt(data[key]["Range"]["Start"]);
+                      stop = parseInt(data[key]["Range"]["Stop"]);
+
+                      for (var i = start; i <= stop; ++i)
+                          indexes.push(i.toString());
+                  }
+              }
+
+              if (data[key]["Index"] != null) {
+                  indexes.push(data[key]["Index"].toString());
+              }
+          }
+
+          return indexes;
+      }
+
+      function set_point_type(point_type) {
+          var indexes = [];
+          gpoint_type = point_type;
+          if (point_type == "Analog")
+              indexes = ganalogs;
+          if (point_type == "Binary")
+              indexes = gbinaries;
+
+          var options = [];
+          options.push("<option>All</option>");
+          indexes.forEach(function (item) {
+              var option = "<option>" + item + "</option>"
+              options.push(option);
+          });
+
+          $('#index_select').html(options);
+          $('#index_select').selectpicker('refresh');
+
+          build_command();
+      }
+
+      function clear_logs() {
+          document.getElementById("tcp_logs").innerHTML = "";
+      }
+
+      function execute_command() {
+          gcommand_text = $("#command_text_box").val();
+          const url = "/SimControl/" + gcommand_text;
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (var key of Object.keys(data)) {
+                      message += key + " : " + data[key];
+                      if (gcommand == "SetUpdateInterval") {
+                          if (data[key] == "Success") {
+                              grefresh_time = parseInt(gvalue);
+                              if (gtimer_handle != null) {
+                                  window.clearInterval(gtimer_handle);
+                                  gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
+                              }
+                          }
+                      }
+                  }
+
+                  document.getElementById("alert_message").innerHTML = message;
+                  display_command_result();
+              });
+      }
+
+      function display_command_result() {
+          $("#alert_command").show();
+          $("#alert_command").fadeTo(2000, 500).slideUp(500, function() {
+              $("#alert_command").slideUp(500);
+          });
+      }
+
+      function set_value(val) {
+          gvalue = val;
+          build_command();
+      }
+
+      function set_sim_control_command(command) {
+          gcommand = command;
+          /* disable the value input box not needed for this command */
+          if (gcommand == "ReleasePoint") {
+              $('#value_text_box').prop('disabled', true);
+          } else {
+              $('#value_text_box').prop('disabled', false);
+          }
+
+          build_command();
+      }
+
+      function build_command() {
+          if (gcommand == "ReleasePoint") {
+              gcommand_text = gcommand + " " + gports + " " + gpoint_type + " " + gindex;
+          } else {
+              gcommand_text = gcommand + " " + gports + " " + gpoint_type + " " + gindex + " " + gvalue;
+          }
+          document.getElementById("command_text_box").value = gcommand_text;
+      }
+
+      $('#ports_select').on('changed.bs.select', function (e, index, new_value, old_value) {
+          var selected = $(e.currentTarget).val();
+          selected = selected.join(",");
+          if (selected.includes("All")) {
+              gports = ".*";
+          } else {
+              gports = selected;
+          }
+
+          build_command();
+      });
+
+      $('#index_select').on('changed.bs.select', function (e, index, new_value, old_value) {
+          var selected = $(e.currentTarget).val();
+          selected = selected.join(",");
+          if (selected.includes("All")) {
+              gindex = ".*";
+          } else {
+              gindex = selected;
+          }
+
+          build_command();
+      });
+
+    </script>
+  </body>
+</html>

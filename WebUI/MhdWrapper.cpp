@@ -25,10 +25,9 @@
 //
 //
 
+#include "MhdWrapper.h"
 #include <iostream>
 #include <opendatacon/util.h>
-
-#include "MhdWrapper.h"
 
 const int POSTBUFFERSIZE = 512;
 const char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";
@@ -60,7 +59,7 @@ const std::string& GetMimeType(const std::string& rUrl)
 static ssize_t
 file_reader(void *cls, uint64_t pos, char *buf, size_t max)
 {
-	FILE *file = (FILE *)cls;
+	FILE *file = reinterpret_cast<FILE *>(cls);
 
 	(void)fseek(file, pos, SEEK_SET);
 	return fread(buf, 1, max, file);
@@ -69,7 +68,7 @@ file_reader(void *cls, uint64_t pos, char *buf, size_t max)
 static void
 file_free_callback(void *cls)
 {
-	FILE *file = (FILE *)cls;
+	FILE *file = reinterpret_cast<FILE *>(cls);
 	fclose(file);
 }
 
@@ -89,7 +88,7 @@ const std::string GetFile(const std::string& rUrl)
 
 int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 {
-	struct stat buf;
+	struct stat buf{};
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;
@@ -217,7 +216,7 @@ iterate_post (void *coninfo_cls,
 	size_t size // POST VALUE LENGTH
 	)
 {
-	struct connection_info_struct* con_info = (connection_info_struct*) coninfo_cls;
+	auto con_info = reinterpret_cast<connection_info_struct*>(coninfo_cls);
 
 	if (kind == MHD_POSTDATA_KIND)
 	{
@@ -231,7 +230,7 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 	void **con_cls,
 	enum MHD_RequestTerminationCode toe)
 {
-	struct connection_info_struct *con_info = (connection_info_struct*)*con_cls;
+	auto *con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
 
 	if (nullptr == con_info) return;
 	if (nullptr != con_info->postprocessor) MHD_destroy_post_processor(con_info->postprocessor);
@@ -265,7 +264,7 @@ int CreateNewRequest(void *cls,
 	}
 
 	// unexpected method or couldn't create post processor
-	free(con_info);
+	delete con_info;
 	*con_cls = nullptr;
 	return MHD_NO;
 }

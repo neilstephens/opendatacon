@@ -35,19 +35,20 @@
 
 
 #include "PythonWrapper.h"
-#include <frameobject.h>
-#include <chrono>
-#include <ctime>
-#include <exception>
-#include <datetime.h> //PyDateTime
-#include <time.h>
-#include <iomanip>
-#include <exception>
-#include <opendatacon/IOTypes.h>
-#include <opendatacon/Platform.h>
-#include <whereami++.h>
 #include "PyPort.h"
 #include <Python.h>
+#include <chrono>
+#include <ctime>
+#include <ctime>
+#include <datetime.h> //PyDateTime
+#include <exception>
+#include <exception>
+#include <frameobject.h>
+#include <iomanip>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/Platform.h>
+#include <utility>
+#include <whereami++.h>
 
 
 using namespace odc;
@@ -337,11 +338,11 @@ static PyMethodDef odcMethods[] = {
 	{"SetTimer", odc_SetTimer, METH_VARARGS, "Set a Timer Callback up"},
 	{"GetNextEvent", odc_GetNextEvent, METH_VARARGS, "Get the next event from the queue - return None if empty"},
 	{"GetEventQueueSize", odc_GetEventQueueSize, METH_VARARGS, "How many elements are there in the event queue - return None if empty"},
-	{NULL, NULL, 0, NULL}
+	{nullptr, nullptr, 0, nullptr}
 };
 
 static PyModuleDef odcModule = {
-	PyModuleDef_HEAD_INIT, "odc", NULL, -1, odcMethods,   NULL, NULL, NULL, NULL
+	PyModuleDef_HEAD_INIT, "odc", nullptr, -1, odcMethods,   nullptr, nullptr, nullptr, nullptr
 };
 
 static PyObject* PyInit_odc(void)
@@ -358,9 +359,9 @@ static PyObject* PyInit_odc(void)
 
 PythonWrapper::PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio_service> _pIOS, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn):
 	Name(aName),
-	pIOS(_pIOS),
-	PythonPortSetTimerFn(SetTimerFn),
-	PythonPortPublishEventCallFn(PublishEventCallFn)
+	pIOS(std::move(_pIOS)),
+	PythonPortSetTimerFn(std::move(SetTimerFn)),
+	PythonPortPublishEventCallFn(std::move(PublishEventCallFn))
 {
 	EventQueue = std::make_shared<SpecialEventQueue<std::string>>(pIOS, MaximumQueueSize);
 }
@@ -405,7 +406,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 			PlatformSetEnv("PYTHONPATH", newpythonpath.c_str(), 1);
 			LOGDEBUG("Set PYTHONPATH env var to: '{}'", newpythonpath);
 			#else
-			LOGERROR("OpenDataCon was built without linked in Python support, must be run in UseSystemPython mode - use the follwing in the Python Port config file - GlobalUseSystemPython = true")
+			LOGERROR("OpenDataCon was built without linked in Python support, must be run in UseSystemPython mode - use the follwing in the Python Port config file - GlobalUseSystemPython = true");
 			#endif
 		}
 
@@ -418,7 +419,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 		LOGDEBUG("Initialised Python");
 
 		#ifndef PYTHON_34_ORLESS
-		LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
+		LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),nullptr));
 		#endif
 
 		// Now execute some commands to get the environment ready.
@@ -550,7 +551,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	}
 
 	// Make sure the path to where the module is, is known to Python
-	PyObject* sysPath = PySys_GetObject((char*)"path");
+	PyObject* sysPath = PySys_GetObject("path");
 	PyObject* programName = PyUnicode_FromString(pyPathName.c_str());
 	PyList_Append(sysPath, programName);
 	Py_DECREF(programName);
@@ -713,8 +714,15 @@ void PythonWrapper::QueueEvent(const std::string& jsonevent)
 
 	if (!result)
 	{
-		size_t qsize = EventQueue->Size();
-		LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}",qsize);
+		if (!QueuePushErrorLogged.test_and_set())
+		{
+			size_t qsize = EventQueue->Size();
+			LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}", qsize);
+		}
+	}
+	else
+	{
+		QueuePushErrorLogged.clear();
 	}
 }
 
@@ -729,7 +737,7 @@ bool PythonWrapper::DequeueEvent(std::string& eq)
 
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.
 // This method is synced with the asio strand in PyPort
-CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName)
+CommandStatus PythonWrapper::Event(const std::shared_ptr<const EventInfo>& odcevent, const std::string& SenderName)
 {
 	try
 	{
@@ -866,12 +874,12 @@ PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sF
 void PythonWrapper::DumpStackTrace()
 {
 	PyThreadState* tstate = PyThreadState_GET();
-	if (NULL != tstate && NULL != tstate->frame)
+	if (nullptr != tstate && nullptr != tstate->frame)
 	{
 		PyFrameObject* frame = tstate->frame;
 
 		LOGERROR("Python stack trace:");
-		while (NULL != frame)
+		while (nullptr != frame)
 		{
 			// int line = frame->f_lineno;
 			/*

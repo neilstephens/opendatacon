@@ -35,14 +35,15 @@
 
 #include "PyPort.h"
 #include <chrono>
+#include <cstdio>
 #include <ctime>
-#include <time.h>
+#include <ctime>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <utility>
 #include <vector>
-#include <fstream>
-#include <stdio.h>
 #include <whereami++.h>
 #ifdef WIN32
 #include <direct.h>
@@ -86,7 +87,7 @@ std::vector<std::string> split(const std::string& s, char delim)
 }
 
 // Get the number contained in this string.
-std::string GetNumber(std::string input)
+std::string GetNumber(const std::string& input)
 {
 	std::string res;
 	for (char ch : input)
@@ -97,14 +98,6 @@ std::string GetNumber(std::string input)
 	return res;
 }
 
-struct MyException: public std::exception
-{
-	std::string s;
-	MyException(std::string ss): s(ss) {}
-	~MyException() throw () {} // Updated
-	const char* what() const throw() { return s.c_str(); }
-};
-
 // Constructor for PyPort --------------------------------------
 PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -112,7 +105,7 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 	JSONOverride("")
 {
 	//the creation of a new PyPortConf will get the point details
-	pConf.reset(new PyPortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<PyPortConf>(ConfFilename, ConfOverrides);
 
 	// Just to save a lot of dereferencing..
 	MyConf = static_cast<PyPortConf*>(this->pConf.get());
@@ -189,11 +182,11 @@ void PyPort::Build()
 			LOGSTRAND("Exit Strand");
 		});
 
-	pServer = ServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new ServerManager if required
+	pServer = HttpServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new HttpServerManager if required
 
 	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
-	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			rep.status = http::reply::ok;
 			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
@@ -204,9 +197,9 @@ void PyPort::Build()
 			rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
 		});
 
-	ServerManager::AddHandler(pServer, "GET /", roothandler);
+	HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-	auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
 			std::string contenttype = "application/json";
@@ -241,9 +234,9 @@ void PyPort::Build()
 			rep.headers[1].name = "Content-Type";
 			rep.headers[1].value = contenttype;
 		});
-	ServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
+	HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
-	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
 			std::string result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
@@ -266,7 +259,7 @@ void PyPort::Build()
 			rep.headers[1].name = "Content-Type";
 			rep.headers[1].value = contenttype;
 		});
-	ServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
+	HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
 }
 
 void PyPort::Enable()
@@ -286,7 +279,7 @@ void PyPort::Enable()
 	}
 	LOGDEBUG("pWrapper is good!");
 
-	ServerManager::StartConnection(pServer);
+	HttpServerManager::StartConnection(pServer);
 	std::promise<bool> promise;
 	auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
@@ -321,7 +314,7 @@ void PyPort::Disable()
 		return;
 
 	// Leaves handlers in place, so can be restarted without re-adding handlers
-	ServerManager::StopConnection(pServer);
+	HttpServerManager::StopConnection(pServer);
 
 	python_strand->dispatch([&]()
 		{
@@ -366,7 +359,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		case EventType::Binary:
 		{
 			pubevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, QualityResult);
-			bool val = (PayloadStr.find("1") != std::string::npos);
+			bool val = (PayloadStr.find('1') != std::string::npos);
 			pubevent->SetPayload<EventType::Binary>(std::move(val));
 		}
 		break;
@@ -403,19 +396,19 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				// Payload String looks like: "|LATCH_ON|Count 1|ON 100ms|OFF 100ms|"
 				EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 				auto Parts = split(PayloadStr, '|');
-				if (Parts.size() != 5) throw MyException("Payload for ControlRelayOutputBlock does not have enough sections " + PayloadStr);
+				if (Parts.size() != 5) throw std::runtime_error("Payload for ControlRelayOutputBlock does not have enough sections " + PayloadStr);
 
 				ControlCode ControlCodeResult;
 				GetControlCodeFromStringName(Parts[1], ControlCodeResult);
 				val.functionCode = ControlCodeResult;
 
-				if (Parts[2].find("Count") == std::string::npos) throw MyException("Count field of ControlRelayOutputBlock not in " + Parts[2]);
+				if (Parts[2].find("Count") == std::string::npos) throw std::runtime_error("Count field of ControlRelayOutputBlock not in " + Parts[2]);
 				val.count = std::stoi(GetNumber(Parts[2]));
 
-				if (Parts[3].find("ON") == std::string::npos) throw MyException("ON field of ControlRelayOutputBlock not in " + Parts[3]);
+				if (Parts[3].find("ON") == std::string::npos) throw std::runtime_error("ON field of ControlRelayOutputBlock not in " + Parts[3]);
 				val.onTimeMS = std::stoi(GetNumber(Parts[3]));
 
-				if (Parts[4].find("OFF") == std::string::npos) throw MyException("OFF field of ControlRelayOutputBlock not in " + Parts[4]);
+				if (Parts[4].find("OFF") == std::string::npos) throw std::runtime_error("OFF field of ControlRelayOutputBlock not in " + Parts[4]);
 				val.offTimeMS = std::stoi(GetNumber(Parts[4]));
 
 				pubevent->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
@@ -592,7 +585,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 
 // This is called when we have decoded a restful request, to the point where we know which instance it should be passed to. We give it a callback, which will
 // be used to actually send the response back to the caller.
-void PyPort::RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback)
+void PyPort::RestHandler(const std::string& url, const std::string& content, const ResponseCallback_t& pResponseCallback)
 {
 	if (!enabled)
 	{

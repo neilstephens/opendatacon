@@ -34,8 +34,6 @@
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
-
-
 #include <chrono>
 
 using namespace odc;
@@ -86,7 +84,7 @@ public:
 	size_t Total()
 	{
 		size_t total = 0;
-		for(auto element : *this)
+		for(const auto& element : *this)
 		{
 			total += element.count;
 		}

@@ -31,6 +31,8 @@
 #include <opendatacon/Transform.h>
 #include <random>
 
+using namespace odc;
+
 class RandTransform: public Transform
 {
 public:

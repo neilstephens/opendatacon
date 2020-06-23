@@ -19,11 +19,10 @@
  */
 /**
  */
+#include "../PortLoader.h"
+#include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
-#include <catch.hpp>
-
-#include "PortLoader.h"
 
 #define SUITE(name) "DNP3PortEndToEndTestSuite - " name
 
@@ -34,7 +33,7 @@ TEST_CASE(SUITE("TCP link"))
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		auto ios = std::make_shared<odc::asio_service>();
+		auto ios = odc::asio_service::Get();
 		auto work = ios->make_work();
 		std::thread t([&](){ios->run();});
 
@@ -65,8 +64,6 @@ TEST_CASE(SUITE("TCP link"))
 		MPUT->Build();
 
 		//turn them on
-		OPUT->SetIOS(ios);
-		MPUT->SetIOS(ios);
 		OPUT->Enable();
 		MPUT->Enable();
 
@@ -117,7 +114,7 @@ TEST_CASE(SUITE("Serial link"))
 		auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 		REQUIRE(portlib);
 		{
-			auto ios = std::make_shared<odc::asio_service>();
+			auto ios = odc::asio_service::Get();
 			auto work = ios->make_work();
 			std::thread t([&](){ios->run();});
 
@@ -156,8 +153,6 @@ TEST_CASE(SUITE("Serial link"))
 			MPUT->Build();
 
 			//turn them on
-			OPUT->SetIOS(ios);
-			MPUT->SetIOS(ios);
 			OPUT->Enable();
 			MPUT->Enable();
 

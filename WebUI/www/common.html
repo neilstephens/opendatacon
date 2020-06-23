@@ -42,7 +42,7 @@
 </div>
 
 <!-- Responsive modal with custom with and height to accomodate current state -->
-<div class="modal custom fade" id="current_state_modal" tabindex="-1" role="dialog">
+<div class="modal currentstate fade" id="current_state_modal" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-xl" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -77,23 +77,71 @@
       </div>
       <div class="modal-body">
           <div class="btn-group">
-            <button type="button" onclick="test('trace');" class="btn btn-secondary">trace</button>
-            <button type="button" onclick="test('debug');" class="btn btn-primary">debug</button>
-            <button type="button" onclick="test('info');" class="btn btn-info">info</button>
-            <button type="button" onclick="test('warning');" class="btn btn-warning">warning</button>
-            <button type="button" onclick="test('error');" class="btn btn-danger">error</button>
-            <button type="button" onclick="test('critical');" class="btn btn-danger">critical</button>
+            <button type="button" onclick="set_log_level('trace');" class="btn btn-secondary">trace</button>&nbsp;&nbsp;
+            <button type="button" onclick="set_log_level('debug');" class="btn btn-primary">debug</button>&nbsp;&nbsp;
+            <button type="button" onclick="set_log_level('info');" class="btn btn-info">info</button>&nbsp;&nbsp;
+            <button type="button" onclick="set_log_level('warning');" class="btn btn-warning">warning</button>&nbsp;&nbsp;
+            <button type="button" onclick="set_log_level('error');" class="btn btn-danger">error</button>&nbsp;&nbsp;
+            <button type="button" onclick="set_log_level('critical');" class="btn btn-danger">critical</button>
           </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-primary" data-dismiss="modal">Show Logs</button>
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Set Log Type</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Responsive modal for opendatacon logs -->
+<div class="modal opendatacon fade" id="opendatacon_logs_modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          <div id="opendatacon_logs_modal_title"></div>
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+
+      <div class="modal-body mb-0 p-0">
+        <div class="embed-responsive embed-responsive-1by1">
+          <iframe class="embed-responsive-item" id="opendatacon_logs_src" src=""></iframe>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Responsive modal for simcontrol -->
+<div class="modal simcontrol fade" id="simcontrol_modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          <div id="simcontrol_modal_title"></div>
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+
+      <div class="modal-body mb-0 p-0">
+        <div class="embed-responsive embed-responsive-1by1">
+          <iframe class="embed-responsive-item" id="simcontrol_src" src=""></iframe>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-  function test(log_level) {
-      window.localStorage.setItem("log_level", log_level);
+  function set_log_level(level) {
+      window.localStorage.setItem("log_level", level);
   }
 </script>

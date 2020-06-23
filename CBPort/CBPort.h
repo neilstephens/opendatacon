@@ -26,17 +26,14 @@
 
 #ifndef CBPORT_H_
 #define CBPORT_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
-
-#include <opendatacon/DataPort.h>
-
 #include "CB.h"
 #include "CBPortConf.h"
 #include "CBUtility.h"
 #include "CBConnection.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
+#include <opendatacon/DataPort.h>
 
 using namespace odc;
 
@@ -47,9 +44,9 @@ public:
 
 	void ProcessElements(const Json::Value& JSONRoot) final;
 
-	void Enable() override =0;
-	void Disable() override =0;
-	void Build() override =0;
+	void Enable() override = 0;
+	void Disable() override = 0;
+	void Build() override = 0;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 

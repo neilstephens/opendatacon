@@ -24,9 +24,8 @@
 //  Created by Alan Murray on 30/08/2014.
 //
 //
-
-#include <iostream>
 #include "../WebUI/WebUI.h"
+#include <iostream>
 
 class StaticJsonResponder: public IJsonResponder
 {

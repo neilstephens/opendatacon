@@ -30,19 +30,22 @@
  So an Event to an outstation will be data that needs to be sent up to the scada master.
  An event from an outstation will be a master control signal to turn something on or off.
 */
-#include <iostream>
-#include <future>
-#include <regex>
-#include <chrono>
-
 #include "MD3.h"
-#include "MD3Utility.h"
+#include "MD3OutStationPortCollection.h"
 #include "MD3OutstationPort.h"
+#include "MD3Utility.h"
+#include <chrono>
+#include <future>
+#include <random>
+#include <iostream>
+#include <regex>
 
 
 MD3OutstationPort::MD3OutstationPort(const std::string & aName, const std::string &aConfFilename, const Json::Value & aConfOverrides):
-	MD3Port(aName, aConfFilename, aConfOverrides)
+	MD3Port(aName, aConfFilename, aConfOverrides),
+	MD3OutstationCollection(nullptr)
 {
+	UpdateOutstationPortCollection();
 	// Don't load conf here, do it in MD3Port
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
@@ -53,6 +56,36 @@ MD3OutstationPort::MD3OutstationPort(const std::string & aName, const std::strin
 	IsOutStation = true;
 
 	LOGDEBUG("{} - MD3Outstation Constructor",aName);
+}
+
+void MD3OutstationPort::UpdateOutstationPortCollection()
+{
+	// These variables are effectively class static variables (i.e. only one ever exists.
+	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
+	static std::weak_ptr<MD3OutstationPortCollection> weak_collection;
+
+	//if we're the first/only one on the scene, init the CBOutstationPortCollection (a special version of an unordered_map)
+	if (!init_flag.test_and_set(std::memory_order_acquire))
+	{
+		// Make a custom deleter for the PortCollection that will also clear the init flag
+		// This will be called when the shared_ptr destructs (last ref gone)
+		auto deinit_del = [](MD3OutstationPortCollection* collection_ptr)
+					{
+						init_flag.clear();
+						delete collection_ptr;
+					};
+		// Save a pointer to the collection in this object
+		this->MD3OutstationCollection = std::shared_ptr<MD3OutstationPortCollection>(new MD3OutstationPortCollection(), deinit_del);
+		// Save a global weak pointer to our PortCollection (shared_ptr)
+		weak_collection = this->MD3OutstationCollection;
+	}
+	else
+	{
+		// PortCollection has already been created, so get a shared pointer to it.
+		// The last shared_ptr to get destructed will control its destruction. The weak_ptr will just no longer return a pointer.
+		while (!(this->MD3OutstationCollection = weak_collection.lock()))
+		{} //init happens very seldom, so spin lock is good
+	}
 }
 
 MD3OutstationPort::~MD3OutstationPort()
@@ -86,6 +119,8 @@ void MD3OutstationPort::Disable()
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
 void MD3OutstationPort::SocketStateHandler(bool state)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	std::string msg;
 	if (state)
 	{
@@ -102,6 +137,10 @@ void MD3OutstationPort::SocketStateHandler(bool state)
 
 void MD3OutstationPort::Build()
 {
+	// Add this port to the list of ports we can command.
+	auto shared_this = std::static_pointer_cast<MD3OutstationPort>(shared_from_this());
+	this->MD3OutstationCollection->Add(shared_this, this->Name);
+
 	std::string ChannelID = MyConf->mAddrConf.ChannelID();
 
 	// Need a couple of things passed to the point table.
@@ -122,11 +161,42 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 		LOGERROR("{} - Tried to send an empty message to the TCP Port",Name);
 		return;
 	}
-	LOGDEBUG("{} - Sending Message - {}",Name, MD3MessageAsString(CompleteMD3Message));
-	// Done this way just to get context into log messages.
-	MD3Port::SendMD3Message(CompleteMD3Message);
-}
+	if (BitFlipProbability != 0.0)
+	{
+		auto msg = CorruptMD3Message(CompleteMD3Message);
+		LOGDEBUG("{} - Sending Corrupted Message - Correct {}, Corrupted {}", Name, MD3MessageAsString(CompleteMD3Message), MD3MessageAsString(msg));
+		MD3Port::SendMD3Message(msg);
+	}
+	else
+	{
+		LOGDEBUG("{} - Sending Message - {}", Name, MD3MessageAsString(CompleteMD3Message));
 
+		// Done this way just to get context into log messages.
+		MD3Port::SendMD3Message(CompleteMD3Message);
+	}
+	// Store the last sent message in CB, but not in MD3?
+}
+MD3Message_t MD3OutstationPort::CorruptMD3Message(const MD3Message_t& CompleteMD3Message)
+{
+	if (BitFlipProbability != 0.0)
+	{
+		// Setup a random generator
+		std::random_device rd;
+		std::mt19937 e2(rd());
+		std::uniform_real_distribution<> dist(0, 1);
+
+		if (dist(e2) > BitFlipProbability)
+		{
+			MD3Message_t ResMsg = CompleteMD3Message;
+			size_t messagelen = CompleteMD3Message.size();
+			std::uniform_real_distribution<> bitdist(0, messagelen * 40 - 1); // 5 bytes, 40 bits
+			int bitnum = round(bitdist(e2));
+			ResMsg[bitnum / 40].XORBit(bitnum % 40);
+			return ResMsg;
+		}
+	}
+	return CompleteMD3Message;
+}
 #ifdef _MSC_VER
 #pragma region OpenDataConInteraction
 #endif
@@ -142,7 +212,7 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 //
 //TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we dont get stuck here.
 
-CommandStatus MD3OutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
+CommandStatus MD3OutstationPort::Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;
@@ -199,7 +269,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	{
 		case EventType::Analog:
 		{
-			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
+			auto analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
 			LOGTRACE("{} - Received Event - Analog - Index {} Value {}",Name, ODCIndex, to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
@@ -211,7 +281,7 @@ void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		}
 		case EventType::Counter:
 		{
-			uint16_t countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
+			auto countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
 			LOGDEBUG("{} - Received Event - Counter - Index {} Value {}",Name, ODCIndex,to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))

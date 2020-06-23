@@ -54,7 +54,7 @@ public:
 
 	bool Event(std::shared_ptr<EventInfo> event) override
 	{
-		auto* map = &AnalogMap;
+		auto map = &AnalogMap;
 		switch(event->GetEventType())
 		{
 			case EventType::Analog:

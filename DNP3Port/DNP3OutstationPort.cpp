@@ -24,21 +24,20 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <iostream>
-#include <regex>
-#include <chrono>
-#include <asiodnp3/Updates.h>
-#include <asiodnp3/UpdateBuilder.h>
-#include <asiopal/UTCTimeSource.h>
-#include <opendnp3/outstation/IOutstationApplication.h>
-#include <openpal/logging/LogLevels.h>
-#include <opendatacon/util.h>
+#include "ChannelStateSubscriber.h"
 #include "DNP3OutstationPort.h"
 #include "DNP3PortConf.h"
-
 #include "OpenDNP3Helpers.h"
 #include "TypeConversion.h"
-#include "ChannelStateSubscriber.h"
+#include <asiodnp3/UpdateBuilder.h>
+#include <asiodnp3/Updates.h>
+#include <asiopal/UTCTimeSource.h>
+#include <chrono>
+#include <iostream>
+#include <opendatacon/util.h>
+#include <opendnp3/outstation/IOutstationApplication.h>
+#include <openpal/logging/LogLevels.h>
+#include <regex>
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides),
@@ -131,7 +130,7 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 
 TCPClientServer DNP3OutstationPort::ClientOrServer()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
 		return TCPClientServer::SERVER;
 	return pConf->mAddrConf.ClientServer;
@@ -139,7 +138,7 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 
 void DNP3OutstationPort::Build()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	pChannel = GetChannel();
 
@@ -241,7 +240,7 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 
 	while (!stateExecuted)
 	{
-		pIOS->run_one();
+		pIOS->poll_one();
 	}
 
 	return temp_value;

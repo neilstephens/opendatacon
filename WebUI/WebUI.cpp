@@ -25,8 +25,9 @@
 //
 //
 
-#include <opendatacon/util.h>
 #include "WebUI.h"
+#include <opendatacon/util.h>
+#include <opendatacon/asio.h>
 
 /* Test Certificate */
 //openssl genrsa -out server.key 2048
@@ -92,7 +93,7 @@ static int ahc(void *cls,
 	size_t *upload_data_size,
 	void **ptr)
 {
-	WebUI* test = (WebUI*)cls;
+	auto test = reinterpret_cast<WebUI*>(cls);
 	std::string upload_data_str;
 	if (*upload_data_size > 0)
 	{
@@ -116,10 +117,14 @@ std::string load_key(const char *filename)
 	return(contents);
 }
 
-WebUI::WebUI(uint16_t pPort, const std::string& web_root):
+WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp_port, size_t log_q_size):
 	d(nullptr),
 	port(pPort),
-	web_root(web_root)
+	web_root(web_root),
+	tcp_port(tcp_port),
+	pSockMan(nullptr),
+	log_q_size(log_q_size),
+	pLogRegex(nullptr)
 {
 	try
 	{
@@ -174,7 +179,7 @@ int WebUI::http_ahc(void *cls,
 
 	if (method == "POST")
 	{
-		con_info = (connection_info_struct*)*con_cls;
+		con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
 
 		if (upload_data_size > 0)
 		{
@@ -207,29 +212,28 @@ int WebUI::http_ahc(void *cls,
 	if (Responders.count(ResponderName))
 	{
 		const std::string command = GetFile(&url[ResponderName.length()]);
-		Json::Value event;
+		Json::Value event = Responders[ResponderName]->ExecuteCommand(command, params);
 
-		//TODO: make this writer reusable (class member)
+		//remove List - not much use in this context
+		if((url == "/DataPorts/List" ||
+		    url == "/DataConnectors/List") && method == "POST")
+			for(Json::Value::ArrayIndex i=0; i<event["Commands"].size(); i++)
+				if(event["Commands"][i].asString() == "List")
+				{
+					Json::Value discard;
+					event["Commands"].removeIndex(i,&discard);
+					break;
+				}
+
 		Json::StreamWriterBuilder wbuilder;
+		wbuilder["commentStyle"] = "None";
 		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
 		std::ostringstream oss;
+		pWriter->write(event, &oss);
+		oss<<std::endl;
 
-		event = Responders[ResponderName]->ExecuteCommand(command, params);
-		pWriter->write(event, &oss); oss<<std::endl;
-
-		std::string data = oss.str();
-		/* Remove the list command for DataPorts  */
-		if ((url == "/DataPorts/List" ||
-		     url == "/DataConnectors/List") && method == "POST")
-		{
-			const std::size_t pos = data.find("List");
-			std::string temp = data.substr(0, pos - 2);
-			// we need to skip "List,"\n therefore we have a constant as 8
-			temp += data.substr(pos + 8, data.size() - pos + 8);
-			data = temp;
-		}
-
-		return ReturnJSON(connection, data);
+		return ReturnJSON(connection, oss.str());
 	}
 	else
 	{
@@ -245,13 +249,19 @@ int WebUI::http_ahc(void *cls,
 }
 
 void WebUI::Build()
-{}
+{
+	std::string cmd = "tcp_web_ui off TCP localhost " + tcp_port + " SERVER";
+	std::stringstream ss(cmd);
+	RootCommands["add_logsink"](ss);
+}
 
 void WebUI::Enable()
 {
 	if (useSSL)
 	{
-		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG | MHD_USE_SSL,
+		//TODO: suppress warning on later versions of libmicrohttpd by using MHD_USE_INTERNAL_POLLING_THREAD
+		// For now, the CI version is old (Xenial), so we can't use it.
+		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION /*| MHD_USE_INTERNAL_POLLING_THREAD*/ | MHD_USE_DEBUG | MHD_USE_SSL,
 			port,                                                  // Port to bind to
 			nullptr,                                               // callback to call to check which clients allowed to connect
 			nullptr,                                               // extra argument to apc
@@ -265,7 +275,9 @@ void WebUI::Enable()
 	}
 	else
 	{
-		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG,
+		//TODO: suppress warning on later versions of libmicrohttpd by using MHD_USE_INTERNAL_POLLING_THREAD
+		// For now, the CI version is old (Xenial), so we can't use it.
+		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION /*| MHD_USE_INTERNAL_POLLING_THREAD*/ | MHD_USE_DEBUG,
 			port,                                                  // Port to bind to
 			nullptr,                                               // callback to call to check which clients allowed to connect
 			nullptr,                                               // extra argument to apc
@@ -287,25 +299,18 @@ void WebUI::Disable()
 	if (d == nullptr) return;
 	MHD_stop_daemon(d);
 	d = nullptr;
+	if(pSockMan)
+		pSockMan->Close();
 }
 
 std::string WebUI::HandleSimControl(const std::string& url)
 {
 	const std::string simcontrol = "/SimControl";
-	const std::string command = url.substr(simcontrol.size() + 1, url.size() - simcontrol.size());
+	std::string command = url.substr(simcontrol.size() + 1, url.size() - simcontrol.size());
 
-	Json::Value value;
-	std::string data;
-
-	if (command == "List")
-	{
-		auto commands = Responders[simcontrol]->GetCommandList();
-		for (auto cmd : commands)
-		{
-			if (cmd.asString() != command)
-				value[cmd.asString()] = cmd.asString();
-		}
-	}
+	std::stringstream iss(command);
+	iss >> command;
+	Json::Value value = ExecuteCommand(Responders[simcontrol],command,iss);
 
 	Json::StreamWriterBuilder wbuilder;
 	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
@@ -314,14 +319,49 @@ std::string WebUI::HandleSimControl(const std::string& url)
 	return oss.str();
 }
 
+Json::Value WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
+{
+	ParamCollection params;
+
+	//Define first arg as Target regex
+	std::string T_regex_str;
+	odc::extract_delimited_string("\"'`",args,T_regex_str);
+
+	//turn any regex it into a list of targets
+	Json::Value target_list;
+	if(!T_regex_str.empty() && command != "List") //List is a special case - handles it's own regex
+	{
+		params["Target"] = T_regex_str;
+		target_list = pResponder->ExecuteCommand("List", params)["Items"];
+	}
+
+	int arg_num = 0;
+	std::string Val;
+	while(odc::extract_delimited_string("\"'`",args,Val))
+		params[std::to_string(arg_num++)] = Val;
+
+	if(target_list.size() > 0) //there was a list resolved
+	{
+		Json::Value results;
+		for(auto& target : target_list)
+		{
+			params["Target"] = target.asString();
+			results[target.asString()] = pResponder->ExecuteCommand(command, params);
+		}
+		return results;
+	}
+
+	//There was no list - execute anyway
+	return pResponder->ExecuteCommand(command, params);
+}
+
 std::string WebUI::HandleOpenDataCon(const std::string& url)
 {
 	const std::string opendatacon = "/OpenDataCon";
-	const std::string log = "set_loglevel";
+	const std::string set_log_level = "set_loglevel";
 	const std::string command = url.substr(opendatacon.size() + 1, url.size() - opendatacon.size());
 
 	Json::Value value;
-	std::string data;
 	if (command == "List")
 	{
 		for (auto it = RootCommands.begin();
@@ -335,12 +375,43 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 		ParamCollection params;
 		value = Responders[opendatacon]->ExecuteCommand(command, params);
 	}
-	else if (command.find(log) != std::string::npos)
+	else if (command.find(set_log_level) != std::string::npos)
 	{
-		const std::string log_type = command.substr(log.size(), command.size() - log.size());
-		const std::string cmd = "file " + log_type;
+		const std::string log_type = command.substr(set_log_level.size(), command.size() - set_log_level.size());
+		const std::string cmd = "tcp_web_ui " + log_type;
 		std::stringstream ss(cmd);
 		RootCommands["set_loglevel"](ss);
+	}
+	else if (command.find("tcp") != std::string::npos)
+	{
+		if (command == "tcp_logs_on")
+		{
+			if(!pSockMan)
+				ConnectToTCPServer();
+
+			std::string log_str;
+			std::atomic_bool executed(false);
+			log_q_sync->post([this,&log_str,&executed]()
+				{
+					for(const auto& pair : log_queue)
+						log_str.append(pair.second);
+					executed = true;
+				});
+			while(!executed)
+				pIOS->poll_one();
+			value["tcp_data"] = log_str;
+		}
+		else
+		{
+			const std::size_t pos = command.find(" ");
+			if (pos != std::string::npos)
+			{
+				const std::string log_type = command.substr(pos, command.size() - pos);
+				const std::string cmd = "tcp_web_ui" + log_type + " off";
+				std::stringstream ss(cmd);
+				RootCommands["set_loglevel"](ss);
+			}
+		}
 	}
 	else
 	{
@@ -355,3 +426,91 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 	return oss.str();
 }
 
+void WebUI::ConnectToTCPServer()
+{
+	//Use the ODC TCP manager
+	// Client connection to localhost on the port we set up for log sinking
+	// Automatically retry to connect on error
+	pSockMan = std::make_unique<odc::TCPSocketManager<std::string>>
+		           (pIOS, false, "localhost", tcp_port,
+		           [this](odc::buf_t& readbuf){ReadCompletionHandler(readbuf);},
+		           [this](bool state){ConnectionEvent(state);},
+		           1000,
+		           true);
+	pSockMan->Open(); //Auto re-open is enabled, so it's set and forget
+}
+
+void WebUI::ReadCompletionHandler(odc::buf_t& readbuf)
+{
+	const auto len = readbuf.size();
+
+	//copy all the data into a managed buffer
+	auto pBuffer = std::shared_ptr<char>(new char[readbuf.size()],[](char* p){delete[] p;}); //TODO: use make_shared<char[]>(size), instead of new (once c++20 comes along)
+	readbuf.sgetn(pBuffer.get(),len);
+
+	//a string view of the whole buffer
+	std::string_view full_str(pBuffer.get(),len);
+
+	auto regex = GetLogFilter();
+
+	//find each line and process without copying
+	size_t start_line_pos = 0;
+	size_t end_line_pos = 0;
+	while(start_line_pos < len && (end_line_pos = full_str.find_first_of('\n', start_line_pos)) != std::string_view::npos)
+	{
+		//end position minus start position == one less than length
+		auto line_str = full_str.substr(start_line_pos, (end_line_pos-start_line_pos)+1);
+
+		if(!regex || std::regex_match(line_str.begin(),line_str.end(),*regex))
+			log_q_sync->post([this,line_str,pBuffer]()
+				{
+					log_queue.emplace_front(pBuffer,line_str);
+					if(log_queue.size() > log_q_size)
+						log_queue.pop_back();
+				});
+
+		//start from one past the end for the next match
+		start_line_pos = end_line_pos+1;
+	}
+
+	//put back partial line
+	if(start_line_pos < len)
+	{
+		auto leftover = full_str.substr(start_line_pos);
+		readbuf.sputn(leftover.data(), leftover.length());
+	}
+}
+
+void WebUI::ConnectionEvent(bool state)
+{
+	if (auto log = odc::spdlog_get("WebUI"))
+		log->debug("Log sink connection on port {} {}",tcp_port,state ? "opened" : "closed");
+}
+
+void WebUI::ApplyLogFilter(const std::string& regex_filter)
+{
+	try
+	{
+		std::regex regx(regex_filter,std::regex::extended);
+		{ //lock scope
+			std::unique_lock<std::shared_timed_mutex> lck(LogRegexMutex);
+			pLogRegex = std::make_unique<std::regex>(regx);
+		}
+	}
+	catch (std::exception& e)
+	{
+		if (auto log = odc::spdlog_get("WebUI"))
+			log->error("Problem using '{}' as regex: {}",regex_filter,e.what());
+	}
+	return;
+}
+
+std::unique_ptr<std::regex> WebUI::GetLogFilter()
+{
+	{ // lock scope
+		std::shared_lock<std::shared_timed_mutex> lck(LogRegexMutex);
+		if(pLogRegex)
+			return std::make_unique<std::regex>(*pLogRegex);
+	}
+	return std::unique_ptr<std::regex>(nullptr);
+}

@@ -23,8 +23,8 @@
  *  Created on: 2018-06-19
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-
 #include "TCPSocketManager.h"
+#include <sstream>
 
 namespace odc
 {
@@ -49,6 +49,7 @@ public:
 	{
 		if(pSockMan)
 			pSockMan->Close();
+		pSockMan.reset();
 	}
 	int sync() override
 	{

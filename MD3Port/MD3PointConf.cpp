@@ -24,16 +24,13 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#ifndef MD3CLIENTPORT_H_
-#define MD3CLIENTPORT_H_
-
-#include <regex>
-#include <algorithm>
-#include <memory>
-#include <map>
 #include "MD3PointConf.h"
-#include <opendatacon/util.h>
+#include <algorithm>
+#include <map>
+#include <memory>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <regex>
 
 using namespace odc;
 
@@ -93,47 +90,6 @@ void MD3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			const auto BinaryControls = JSONRoot["BinaryControls"];
 			LOGDEBUG("Conf processed -Binary Controls");
 			ProcessBinaryPoints(BinaryControl, BinaryControls);
-		}
-
-
-		// TimeSet Point Configuration
-		if (JSONRoot.isMember("TimeSetPoint") && JSONRoot["TimeSetPoint"].isMember("Index"))
-		{
-			TimeSetPoint.first = double(0); // Default to 0 - we know as unset - will never be used in operation.
-			TimeSetPoint.second = JSONRoot["TimeSetPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - TimeSetPoint - {}",TimeSetPoint.second);
-		}
-
-		// SystemSignOnPoint Point Configuration
-		if (JSONRoot.isMember("SystemSignOnPoint") && JSONRoot["SystemSignOnPoint"].isMember("Index"))
-		{
-			SystemSignOnPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-			SystemSignOnPoint.second = JSONRoot["SystemSignOnPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - SystemSignOnPoint - {}",SystemSignOnPoint.second);
-		}
-
-		// FreezeResetCountersPoint Point Configuration
-		if (JSONRoot.isMember("FreezeResetCountersPoint") && JSONRoot["FreezeResetCountersPoint"].isMember("Index"))
-		{
-			FreezeResetCountersPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-			FreezeResetCountersPoint.second = JSONRoot["FreezeResetCountersPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - FreezeResetCountersPoint - {}",FreezeResetCountersPoint.second);
-		}
-
-		// POMControlPoint Point Configuration
-		if (JSONRoot.isMember("POMControlPoint") && JSONRoot["POMControlPoint"].isMember("Index"))
-		{
-			POMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-			POMControlPoint.second = JSONRoot["POMControlPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - POMControlPoint - {}",POMControlPoint.second);
-		}
-
-		// DOMControlPoint Point Configuration
-		if (JSONRoot.isMember("DOMControlPoint") && JSONRoot["DOMControlPoint"].isMember("Index"))
-		{
-			DOMControlPoint.first = int32_t(0); // Default to 0 - we know as unset - will never be used in operation.
-			DOMControlPoint.second = JSONRoot["DOMControlPoint"]["Index"].asUInt();
-			LOGDEBUG("Conf processed - DOMControlPoint - ",DOMControlPoint.second);
 		}
 
 		if (JSONRoot.isMember("NewDigitalCommands"))
@@ -343,8 +299,8 @@ void MD3PointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONN
 		{
 			for (uint32_t index = start; index <= stop; index++)
 			{
-				uint8_t moduleaddress = static_cast<uint8_t>(module + (index - start + offset) / 16);
-				uint8_t channel = static_cast<uint8_t>((offset + (index - start)) % 16);
+				auto moduleaddress = static_cast<uint8_t>(module + (index - start + offset) / 16);
+				auto channel = static_cast<uint8_t>((offset + (index - start)) % 16);
 
 				bool res = false;
 
@@ -439,8 +395,8 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 		{
 			for (auto index = start; index <= stop; index++)
 			{
-				uint8_t moduleaddress = static_cast<uint8_t>(module + (index - start + offset) / 16);
-				uint8_t channel = static_cast<uint8_t>((offset + (index - start)) % 16);
+				auto moduleaddress = static_cast<uint8_t>(module + (index - start + offset) / 16);
+				auto channel = static_cast<uint8_t>((offset + (index - start)) % 16);
 				bool res = false;
 
 				if (ptype == Analog)
@@ -487,5 +443,3 @@ void MD3PointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value
 	}
 	LOGDEBUG("Conf processing - Analog/Counter - Finished");
 }
-
-#endif

@@ -61,19 +61,23 @@
 // Hide some of the code to make Logging cleaner
 #define LOGTRACE(...) \
 	if (auto log = odc::spdlog_get("CBPort")) \
-		log->trace(__VA_ARGS__);
+	log->trace(__VA_ARGS__)
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("CBPort")) \
-		log->debug(__VA_ARGS__);
+	log->debug(__VA_ARGS__)
 #define LOGERROR(...) \
 	if (auto log = odc::spdlog_get("CBPort")) \
-		log->error(__VA_ARGS__);
+	log->error(__VA_ARGS__)
 #define LOGWARN(...) \
 	if (auto log = odc::spdlog_get("CBPort"))  \
-		log->warn(__VA_ARGS__);
+	log->warn(__VA_ARGS__)
 #define LOGINFO(...) \
 	if (auto log = odc::spdlog_get("CBPort")) \
-		log->info(__VA_ARGS__);
+	log->info(__VA_ARGS__)
+#define LOGCRITICAL(...) \
+	if (auto log = odc::spdlog_get("CBPort")) \
+	log->critical(__VA_ARGS__)
+
 
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
@@ -117,8 +121,8 @@ OT numeric_cast(const ST value)
 class protected_bool
 {
 public:
-	protected_bool(): val(false) {};
-	protected_bool(bool _val): val(_val) {};
+	protected_bool(): val(false) {}
+	protected_bool(bool _val): val(_val) {}
 	bool getandset(bool newval)
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(m);

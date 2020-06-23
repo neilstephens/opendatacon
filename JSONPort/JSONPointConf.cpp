@@ -24,9 +24,9 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <opendatacon/util.h>
-#include <cstdint>
 #include "JSONPointConf.h"
+#include <cstdint>
+#include <opendatacon/util.h>
 
 JSONPointConf::JSONPointConf(const std::string& FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides),

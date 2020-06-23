@@ -24,15 +24,15 @@
  *      Author: Scott Ellis - scott.ellis@novatex.com.au
  */
 
-#include <opendatacon/asio.h>
-#include <opendatacon/TCPSocketManager.h>
-#include <string>
-#include <functional>
-#include <unordered_map>
-
 #include "CB.h"
-#include "CBUtility.h"
 #include "CBConnection.h"
+#include "CBUtility.h"
+#include <functional>
+#include <opendatacon/TCPSocketManager.h>
+#include <opendatacon/asio.h>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 using namespace odc;
 
@@ -70,19 +70,19 @@ CBConnection::CBConnection
 	bool isbakerdevice,
 	uint16_t retry_time_ms
 ):
-	pIOS(apIOS),
+	pIOS(std::move(apIOS)),
 	EndPoint(aEndPoint),
 	Port(aPort),
 	IsServer(aisServer),
 	IsBakerDevice(isbakerdevice)
 {
-	pSockMan.reset(new TCPSocketManager<std::string>
-			(pIOS, IsServer, EndPoint, Port,
-			std::bind(&CBConnection::ReadCompletionHandler, this, std::placeholders::_1),
-			std::bind(&CBConnection::SocketStateHandler, this, std::placeholders::_1),
-			std::numeric_limits<size_t>::max(),
-			true,
-			retry_time_ms));
+	pSockMan = std::make_shared<TCPSocketManager<std::string>>
+		           (pIOS, IsServer, EndPoint, Port,
+		           std::bind(&CBConnection::ReadCompletionHandler, this, std::placeholders::_1),
+		           std::bind(&CBConnection::SocketStateHandler, this, std::placeholders::_1),
+		           std::numeric_limits<size_t>::max(),
+		           true,
+		           retry_time_ms);
 
 	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
@@ -120,8 +120,8 @@ ConnectionTokenType CBConnection::AddConnection
 }
 
 void CBConnection::AddOutstation(const ConnectionTokenType &ConnectionTok, uint8_t StationAddress, // For message routing, OutStation identification
-	const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
-	const std::function<void(bool)> aStateCallback,
+	const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+	const std::function<void(bool)>& aStateCallback,
 	bool isbakerdevice)
 {
 	if (auto pConnection = ConnectionTok.pConnection)
@@ -161,8 +161,8 @@ void CBConnection::RemoveOutstation(const ConnectionTokenType &ConnectionTok, ui
 }
 
 void CBConnection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
-	const std::function<void(CBMessage_t &CBMessage)> aReadCallback,
-	const std::function<void(bool)> aStateCallback,
+	const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+	const std::function<void(bool)>& aStateCallback,
 	bool isbakerdevice)
 {
 	if (auto pConnection = ConnectionTok.pConnection)
@@ -223,21 +223,30 @@ void CBConnection::Open(const ConnectionTokenType &ConnectionTok)
 
 void CBConnection::Open()
 {
-	if (enabled.exchange(true)) return;
+	if (!pSockMan)
+		throw std::runtime_error("Socket manager uninitialised for - " + InternalChannelID);
 
-	try
+	// We have a potential lock/race condition on a failed open, hence the two atomics to track this. Could not work out how to do it with one...
+	if (!successfullyopened.exchange(true))
 	{
-		if (pSockMan.get() == nullptr)
-			throw std::runtime_error("Socket manager uninitialised for - " + InternalChannelID);
-
-		pSockMan->Open();
-		LOGDEBUG("ConnectionTok Opened: {}", InternalChannelID);
+		// Port has not been opened yet.
+		try
+		{
+			pSockMan->Open();
+			opencount.fetch_add(1);
+			LOGDEBUG("ConnectionTok Opened: {}", InternalChannelID);
+		}
+		catch (std::exception& e)
+		{
+			LOGERROR("Problem opening connection :{} - {}", InternalChannelID, e.what());
+			successfullyopened.exchange(false);
+			return;
+		}
 	}
-	catch (std::exception& e)
+	else
 	{
-		LOGERROR("Problem opening connection :{} - {}",InternalChannelID, e.what());
-		enabled = false;
-		return;
+		opencount.fetch_add(1);
+		LOGDEBUG("Connection increased open count: {} {}", opencount.load(), InternalChannelID);
 	}
 }
 // Static Method
@@ -255,13 +264,21 @@ void CBConnection::Close(const ConnectionTokenType &ConnectionTok)
 
 void CBConnection::Close()
 {
-	if (!enabled.exchange(false)) return;
-
 	if (!pSockMan) // Could be empty if a connection was never added (opened)
 		return;
-	pSockMan->Close();
 
-	LOGDEBUG("Connection Closed: {}", InternalChannelID);
+	// If we are down to the last connection that needs it open, then close it
+	if ((opencount.fetch_sub(1) == 1) && successfullyopened.load())
+	{
+		pSockMan->Close();
+		successfullyopened.exchange(false);
+
+		LOGDEBUG("Connection open count 0, Closed: {}", InternalChannelID);
+	}
+	else
+	{
+		LOGDEBUG("Connection reduced open count: {} {}", opencount.load(), InternalChannelID);
+	}
 }
 
 CBConnection::~CBConnection()
@@ -329,7 +346,7 @@ void CBConnection::SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, st
 {
 	if (auto pConnection = ConnectionTok.pConnection)
 	{
-		pConnection->SendTCPDataFn = f;
+		pConnection->SendTCPDataFn = std::move(f);
 	}
 	else
 	{
@@ -371,9 +388,9 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 
 	// We need to know enough about the packets to work out the first and last, and the station address, so we can pass them to the correct station.
 
-	if (!enabled)
+	if (!successfullyopened.load())
 	{
-		LOGDEBUG("CBConnection called ReadCompletionHandler when not enabled - ignoring");
+		LOGDEBUG("CBConnection called ReadCompletionHandler when not opened - ignoring");
 		return;
 	}
 

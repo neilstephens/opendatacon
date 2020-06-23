@@ -35,11 +35,11 @@
 /// Dynamic library loading
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 #include <windows.h>
-const std::string DYNLIBPRE = "";
+static const char* DYNLIBPRE = "";
 #ifdef _DEBUG
-const std::string DYNLIBEXT = "d.dll";
+static const char* DYNLIBEXT = "d.dll";
 #else
-const std::string DYNLIBEXT = ".dll";
+static const char* DYNLIBEXT = ".dll";
 #endif
 
 typedef HMODULE module_ptr;
@@ -102,15 +102,15 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 {
 	_putenv_s(var, val);
 }
-const std::string OSPATHSEP = ";";
+static constexpr const char* OSPATHSEP = ";";
 
 #else
 #include <dlfcn.h>
-const std::string DYNLIBPRE = "lib";
+static const char* DYNLIBPRE = "lib";
 #if defined(__APPLE__)
-const std::string DYNLIBEXT = ".so";
+static const char* DYNLIBEXT = ".so";
 #else
-const std::string DYNLIBEXT = ".so";
+static const char* DYNLIBEXT = ".so";
 #endif
 
 typedef void* module_ptr;
@@ -140,7 +140,7 @@ inline std::string LastSystemError()
 {
 	std::string message;
 	char *error;
-	if ((error = dlerror()) != NULL)
+	if ((error = dlerror()) != nullptr)
 		message = error;
 	else
 		message = "Unknown error";
@@ -152,7 +152,7 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 {
 	setenv(var, val, overwrite);
 }
-const std::string OSPATHSEP = ":";
+static constexpr const char* OSPATHSEP = ":";
 
 #endif
 

@@ -24,8 +24,8 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#include <iostream>
 #include "MD3.h"
+#include <iostream>
 
 
 #ifdef NONVSTESTING
@@ -35,8 +35,8 @@
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
-#include "MD3OutstationPort.h"
 #include "MD3MasterPort.h"
+#include "MD3OutstationPort.h"
 
 // std::shared_ptr<spdlog::logger> md3logger;
 

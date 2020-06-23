@@ -139,11 +139,11 @@ std::string to_stringfromMD3time(MD3Time _time)
 {
 	uint16_t msec = _time % 1000;
 	_time = _time / 1000;
-	uint8_t ss = numeric_cast<uint8_t>(_time % 60);
+	auto ss = numeric_cast<uint8_t>(_time % 60);
 	_time = _time / 60;
-	uint8_t mm = numeric_cast<uint8_t>(_time % 60);
+	auto mm = numeric_cast<uint8_t>(_time % 60);
 	_time = _time / 60;
-	uint8_t hh = numeric_cast<uint8_t>(_time % 24);
+	auto hh = numeric_cast<uint8_t>(_time % 24);
 
 	return fmt::format("{}:{}:{}.{}", hh, mm, ss, msec);
 }

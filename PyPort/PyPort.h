@@ -26,15 +26,12 @@
 
 #ifndef PYPORT_H_
 #define PYPORT_H_
-
-#include <unordered_map>
-#include <opendatacon/DataPort.h>
-#include <opendatacon/util.h>
-
 #include "PythonWrapper.h"
 #include "PyPortConf.h"
-#include "ServerManager.h"
-
+#include "../HTTP/HttpServerManager.h"
+#include <opendatacon/DataPort.h>
+#include <opendatacon/util.h>
+#include <unordered_map>
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;
@@ -61,7 +58,7 @@ public:
 	void Build() override;
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 	void SetTimer(uint32_t id, uint32_t delayms);
-	void RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback);
+	void RestHandler(const std::string& url, const std::string& content, const ResponseCallback_t& pResponseCallback);
 	void PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
 
 	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);

@@ -24,12 +24,12 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <openpal/logging/LogLevels.h>
-#include <opendnp3/gen/Parity.h>
-#include <opendatacon/util.h>
+#include "ChannelStateSubscriber.h"
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
-#include "ChannelStateSubscriber.h"
+#include <opendatacon/util.h>
+#include <opendnp3/gen/Parity.h>
+#include <openpal/logging/LogLevels.h>
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -61,7 +61,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	}
 
 	//the creation of a new DNP3PortConf will get the point details
-	pConf.reset(new DNP3PortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<DNP3PortConf>(ConfFilename, ConfOverrides);
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
@@ -243,7 +243,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 	static std::unordered_map<std::string, std::weak_ptr<asiodnp3::IChannel>> Channels;
 	std::shared_ptr<asiodnp3::IChannel> chan(nullptr);
 
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	std::string ChannelID;
 	bool isSerial;
@@ -264,7 +264,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 		auto listener = std::make_shared<ChannelListener>(ChannelID,this);
 		if(isSerial)
 		{
-			chan = IOMgr->AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+			chan = IOMgr->AddSerial(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
 				asiopal::ChannelRetry(
 					openpal::TimeDuration::Milliseconds(500),
 					openpal::TimeDuration::Milliseconds(5000)),
@@ -276,7 +276,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 			{
 				case TCPClientServer::SERVER:
 				{
-					chan = IOMgr->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					chan = IOMgr->AddTCPServer(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
 						pConf->pPointConf->ServerAcceptMode,
 						pConf->mAddrConf.IP,
 						pConf->mAddrConf.Port,listener);
@@ -285,7 +285,7 @@ std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
 
 				case TCPClientServer::CLIENT:
 				{
-					chan = IOMgr->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
+					chan = IOMgr->AddTCPClient(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
 						asiopal::ChannelRetry(
 							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
 							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),

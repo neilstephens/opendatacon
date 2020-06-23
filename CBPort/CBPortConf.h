@@ -26,12 +26,11 @@
 
 #ifndef CBOUTSTATIONPORTCONF_H_
 #define CBOUTSTATIONPORTCONF_H_
-
-#include <opendatacon/DataPort.h>
-#include <opendatacon/TCPSocketManager.h>
 #include "CBPointConf.h"
 #include "CBPointTableAccess.h"
 #include "CBConnection.h"
+#include <opendatacon/DataPort.h>
+#include <opendatacon/TCPSocketManager.h>
 
 enum TCPClientServer { CLIENT, SERVER };
 enum server_type_t { ONDEMAND, PERSISTENT, MANUAL };
@@ -71,7 +70,7 @@ class CBPortConf: public DataPortConf
 public:
 	CBPortConf(std::string FileName, const Json::Value& ConfOverrides)
 	{
-		pPointConf.reset(new CBPointConf(FileName, ConfOverrides));
+		pPointConf = std::make_unique<CBPointConf>(FileName, ConfOverrides);
 	}
 
 	std::shared_ptr<CBPointConf> pPointConf;

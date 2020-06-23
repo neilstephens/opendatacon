@@ -44,9 +44,7 @@ public:
 		pyEventsAreQueued(false),
 		pyOnlyQueueEventsWithTags(false),
 		GlobalUseSystemPython(false)
-	{
-		//pPointConf.reset(new PyPointConf(FileName, ConfOverrides));
-	}
+	{}
 
 	std::string pyModuleName;
 	std::string pyClassName;

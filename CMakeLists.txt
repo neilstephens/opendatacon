@@ -51,6 +51,7 @@ install(FILES "README.md" DESTINATION ".")
 install(FILES "RELEASE_NOTES" DESTINATION ".")
 install(DIRECTORY "./3rdPartyLicenses" DESTINATION ".")
 install(DIRECTORY "install/init" DESTINATION ".")
+install(DIRECTORY install/systemd DESTINATION ".")
 
 #Deploy git workflow hook scripts
 include(git-hooks.cmake)
@@ -170,7 +171,7 @@ add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
 	message("CMAKE configuring opendatacon for Visual Studio C++" )
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP /Zc:rvalueCast")
 	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DASIO_SEPARATE_COMPILATION")
@@ -211,7 +212,7 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 			endif()
 		endif()
 	endif()
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++17 -pedantic")
 	if(NOT APPLE)
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
 		#only export API symbols
@@ -332,6 +333,10 @@ message("add subdir JSON")
 add_subdirectory(JSON)
 message("add subdir ODC")
 add_subdirectory(ODC)
+if(PYPORT OR SIMPORT)
+	message("add subdir HTTP")
+	add_subdirectory(HTTP)
+endif()
 message("add subdir opendatacon")
 add_subdirectory(opendatacon)
 if(DNP3PORT)

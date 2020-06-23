@@ -24,13 +24,12 @@
  *      Author: Alan Murray
  */
 
-#include <opendatacon/util.h>
-#include <thread>
-#include <chrono>
-
-#include <opendatacon/IOTypes.h>
 #include "ModbusMasterPort.h"
 #include <array>
+#include <chrono>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <thread>
 
 ModbusMasterPort::~ModbusMasterPort()
 {
@@ -47,7 +46,7 @@ void ModbusMasterPort::Enable()
 	pTCPRetryTimer = pIOS->make_steady_timer();
 	PollScheduler = std::make_unique<ASIOScheduler>(*pIOS);
 
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
 	// Only change stack state if it is a persistent server
 	if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
@@ -64,9 +63,9 @@ void ModbusMasterPort::Connect(modbus_t* mb)
 	if(!enabled) return;
 	if (stack_enabled) return;
 
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
-	if (mb == NULL)
+	if (mb == nullptr)
 	{
 		if(auto log = odc::spdlog_get("ModbusPort"))
 			log->error("{}: Connect error: 'Modbus stack failed'", Name);
@@ -147,7 +146,7 @@ void ModbusMasterPort::Disconnect()
 				modbus_close(mb);
 			});
 
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
 	//TODO: implement a comms point
 
@@ -155,7 +154,7 @@ void ModbusMasterPort::Disconnect()
 	event->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
 
 	// Modbus function code 0x01 (read coil status)
-	for(auto range : pConf->pPointConf->BitIndicies)
+	for(const auto& range : pConf->pPointConf->BitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 		{
 			event->SetIndex(index);
@@ -163,7 +162,7 @@ void ModbusMasterPort::Disconnect()
 		}
 
 	// Modbus function code 0x02 (read input status)
-	for(auto range : pConf->pPointConf->InputBitIndicies)
+	for(const auto& range : pConf->pPointConf->InputBitIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 		{
 			event->SetIndex(index);
@@ -171,7 +170,7 @@ void ModbusMasterPort::Disconnect()
 		}
 
 	// Modbus function code 0x03 (read holding registers)
-	for(auto range : pConf->pPointConf->RegIndicies)
+	for(const auto& range : pConf->pPointConf->RegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 		{
 			event->SetIndex(index);
@@ -179,7 +178,7 @@ void ModbusMasterPort::Disconnect()
 		}
 
 	// Modbus function code 0x04 (read input registers)
-	for(auto range : pConf->pPointConf->InputRegIndicies)
+	for(const auto& range : pConf->pPointConf->InputRegIndicies)
 		for(uint16_t index = range.start; index < range.start + range.count; index++ )
 		{
 			event->SetIndex(index);
@@ -244,7 +243,7 @@ CommandStatus ModbusMasterPort::HandleWriteError(int errnum, const std::string& 
 
 void ModbusMasterPort::Build()
 {
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
 	std::string log_id;
 
@@ -304,7 +303,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 	int rc;
 
 	// Modbus function code 0x01 (read coil status)
-	for(auto range : pConf->pPointConf->BitIndicies)
+	for(const auto& range : pConf->pPointConf->BitIndicies)
 	{
 		if (pollgroup && (range.pollgroup != pollgroup))
 			continue;
@@ -335,7 +334,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 	}
 
 	// Modbus function code 0x02 (read input status)
-	for(auto range : pConf->pPointConf->InputBitIndicies)
+	for(const auto& range : pConf->pPointConf->InputBitIndicies)
 	{
 		if (pollgroup && (range.pollgroup != pollgroup))
 			continue;
@@ -366,7 +365,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 	}
 
 	// Modbus function code 0x03 (read holding registers)
-	for(auto range : pConf->pPointConf->RegIndicies)
+	for(const auto& range : pConf->pPointConf->RegIndicies)
 	{
 		if (pollgroup && (range.pollgroup != pollgroup))
 			continue;
@@ -398,7 +397,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 	}
 
 	// Modbus function code 0x04 (read input registers)
-	for(auto range : pConf->pPointConf->InputRegIndicies)
+	for(const auto& range : pConf->pPointConf->InputRegIndicies)
 	{
 		if (pollgroup && (range.pollgroup != pollgroup))
 			continue;
@@ -421,7 +420,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 			for(uint16_t i = 0; i < rc; i++ )
 			{
 				auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
-				event->SetPayload<EventType::Analog>(std::move(((uint16_t*)modbus_read_buffer)[i]));
+				event->SetPayload<EventType::Analog>(double(((uint16_t*)modbus_read_buffer)[i]));
 				PublishEvent(event);
 				++index;
 			}
@@ -432,7 +431,7 @@ void ModbusMasterPort::DoPoll(uint32_t pollgroup, modbus_t* mb)
 template <EventType t>
 ModbusReadGroup *ModbusMasterPort::GetRange(uint16_t index)
 {
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 	ModbusReadGroupCollection collection;
 	switch(t)
 	{
@@ -571,7 +570,7 @@ void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		return;
 	}
 
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
 	auto write = [=](auto payload)
 			 {

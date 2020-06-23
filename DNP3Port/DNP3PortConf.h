@@ -26,12 +26,11 @@
 
 #ifndef DNP3OUTSTATIONPORTCONF_H_
 #define DNP3OUTSTATIONPORTCONF_H_
-
+#include "DNP3PointConf.h"
 #include <opendnp3/LogLevels.h>
 #include <opendatacon/DataPort.h>
 #include <asiopal/SerialTypes.h>
 #include <openpal/logging/LogFilters.h>
-#include "DNP3PointConf.h"
 
 enum class TCPClientServer {CLIENT,SERVER,DEFAULT};
 enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};

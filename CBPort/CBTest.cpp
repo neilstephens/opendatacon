@@ -29,25 +29,23 @@
 #pragma warning(disable: 6262)
 #endif
 
-#include <array>
-#include <fstream>
-#include <cassert>
-#include <thread>
-#include <chrono>
-
 #define COMPILE_TESTS
 
 #if defined(COMPILE_TESTS)
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
-
-#include <opendatacon/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/basic_file_sink.h>
-
-#include "CBOutstationPort.h"
 #include "CBMasterPort.h"
+#include "CBOutstationPort.h"
 #include "CBUtility.h"
+#include <opendatacon/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <array>
+#include <cassert>
+#include <chrono>
+#include <fstream>
+#include <thread>
+#include <utility>
 
 
 #if defined(NONVSTESTING)
@@ -237,7 +235,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 	odc::spdlog_register_logger(pODCLogger);
 
 }
-void WriteStartLoggingMessage(std::string TestName)
+void WriteStartLoggingMessage(const std::string& TestName)
 {
 	std::string msg = "Logging for '"+TestName+"' started..";
 
@@ -255,7 +253,7 @@ void WriteStartLoggingMessage(std::string TestName)
                           std::cout << "Error opendatacon Logger not operational";
                           */
 }
-void TestSetup(std::string TestName, bool writeconffiles = true)
+void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
 	SetupLoggers(spdlog::level::debug);
@@ -322,47 +320,43 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	auto IOS = std::make_shared<odc::asio_service>(4); // Max 4 threads
+	auto IOS = odc::asio_service::Get() // Max 4 threads
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
-	TestSetup(Catch::getResultCapture().getCurrentTestName());
+	TestSetup(Catch::getResultCapture().getCurrentTestName())
 
 #define STANDARD_TEST_TEARDOWN()\
-	TestTearDown();\
+	TestTearDown()
 
 #define START_IOS(threadcount) \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	const int ThreadCount = threadcount; \
 	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < threadcount; i++) pThread[i] = StartIOSThread(*IOS);
+	for (int i = 0; i < (threadcount); i++) pThread[i] = StartIOSThread(*IOS)
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i]);
+	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i])
 
 #define TEST_CBMAPort(overridejson)\
-	auto CBMAPort = std::make_unique<CBMasterPort>("TestMaster", conffilename1, overridejson); \
-	CBMAPort->SetIOS(IOS);      \
-	CBMAPort->Build();
+	auto CBMAPort = std::make_shared<CBMasterPort>("TestMaster", conffilename1, overridejson); \
+	CBMAPort->Build()
 
 #define TEST_CBMAPort2(overridejson)\
-	auto CBMAPort2 = std::make_unique<CBMasterPort>("TestMaster", conffilename2, overridejson); \
-	CBMAPort2->SetIOS(IOS);      \
-	CBMAPort2->Build();
+	auto CBMAPort2 = std::make_shared<CBMasterPort>("TestMaster", conffilename2, overridejson); \
+	CBMAPort2->Build()
 
 
 #define TEST_CBOSPort(overridejson)      \
-	auto CBOSPort = std::make_unique<CBOutstationPort>("TestOutStation", conffilename1, overridejson);   \
-	CBOSPort->SetIOS(IOS);      \
-	CBOSPort->Build();
+	auto CBOSPort = std::make_shared<CBOutstationPort>("TestOutStation", conffilename1, overridejson);   \
+	CBOSPort->Build()
 
 #define TEST_CBOSPort2(overridejson)     \
-	auto CBOSPort2 = std::make_unique<CBOutstationPort>("TestOutStation2", conffilename2, overridejson); \
-	CBOSPort2->SetIOS(IOS);     \
-	CBOSPort2->Build();
+	auto CBOSPort2 = std::make_shared<CBOutstationPort>("TestOutStation2", conffilename2, overridejson); \
+	CBOSPort2->Build()
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -412,19 +406,23 @@ TEST_CASE("Util - ParsePayloadString")
 	PayloadLocationType payloadlocation;
 
 	bool res = CBPointConf::ParsePayloadString("16B", payloadlocation);
+	REQUIRE(res == true);
 	REQUIRE(payloadlocation.Packet == 16);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionB);
 
 	res = CBPointConf::ParsePayloadString("1B", payloadlocation);
+	REQUIRE(res == true);
 	REQUIRE(payloadlocation.Packet == 1);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionB);
 
 	res = CBPointConf::ParsePayloadString("16A", payloadlocation);
+	REQUIRE(res == true);
 	REQUIRE(payloadlocation.Packet == 16);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionA);
 	LOGINFO("Ignore Next Three LOGGGED Errors");
 
 	res = CBPointConf::ParsePayloadString("1A", payloadlocation);
+	REQUIRE(res == false);
 	REQUIRE(payloadlocation.Packet == 1);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionA);
 
@@ -477,7 +475,7 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 {
 	SIMPLE_TEST_SETUP();
 	uint8_t address = 1;
-	CBTime cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
+	auto cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
 
 	CBMessage_t CompleteCBMessage;
 
@@ -528,7 +526,7 @@ TEST_CASE("Util - SOEEventFormat")
 	SIMPLE_TEST_SETUP();
 	SOEEventFormat S;
 
-	CBTime cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
+	auto cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
 
 	S.Group = 5;     // 3 bits b101
 	S.Number = 0x41; // 7 bits b1000001 - 0x41
@@ -547,7 +545,7 @@ TEST_CASE("Util - SOEEventFormat")
 	REQUIRE(res == 0xB06C618601000000);
 
 	// Now test our BitArray handling.
-	std::array<bool, MaxSOEBits> BitArray;
+	std::array<bool, MaxSOEBits> BitArray{};
 	for (int i = 0; i < 64; i++)
 		BitArray[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
@@ -578,7 +576,7 @@ TEST_CASE("Util - SOEEventFormat")
 	REQUIRE(res == 0xb064300c00000000);
 
 	// Now test our BitArray handling.
-	std::array<bool, MaxSOEBits> BitArray2;
+	std::array<bool, MaxSOEBits> BitArray2{};
 	for (int i = 0; i < 64; i++)
 		BitArray2[i] = ((res >> (63 - i)) & 0x01) == 0x01;
 
@@ -599,7 +597,7 @@ TEST_CASE("Util - SOEEventFormat")
 
 	uint64_t payload = 0x9945455800000000; // From a packet capture
 	// Now test our BitArray handling.
-	std::array<bool, MaxSOEBits> BitArray3;
+	std::array<bool, MaxSOEBits> BitArray3{};
 	for (int i = 0; i < 64; i++)
 		BitArray3[i] = ((payload >> (63 - i)) & 0x01) == 0x01;
 
@@ -838,7 +836,7 @@ TEST_CASE("CBBlock - BlockBuilding")
 
 namespace StationTests
 {
-void SendBinaryEvent(std::unique_ptr<CBOutstationPort> &CBOSPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
+void SendBinaryEvent(std::shared_ptr<CBOutstationPort> &CBOSPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
 {
 	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual, time);
 	event->SetPayload<EventType::Binary>(std::move(val));
@@ -880,7 +878,7 @@ TEST_CASE("Station - ScanRequest F0")
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
 	std::atomic_bool done_flag(false);
-	CBOSPort->SetSendTCPDataFn([&Response,&done_flag](std::string CBMessage) { Response = CBMessage; done_flag = true; });
+	CBOSPort->SetSendTCPDataFn([&Response,&done_flag](std::string CBMessage) { Response = std::move(CBMessage); done_flag = true; });
 
 	// Send the commands in as if came from TCP channel
 	output << commandblock.ToBinaryString();
@@ -908,7 +906,7 @@ TEST_CASE("Station - ScanRequest F0")
 	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(1024 + ODCIndex));
+		event->SetPayload<EventType::Analog>(1024 + ODCIndex);
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
@@ -916,7 +914,7 @@ TEST_CASE("Station - ScanRequest F0")
 	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(1 + ODCIndex));
+		event->SetPayload<EventType::Analog>(1 + ODCIndex);
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
@@ -924,7 +922,7 @@ TEST_CASE("Station - ScanRequest F0")
 	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(std::move(numeric_cast<unsigned int>(1024 + ODCIndex)));
+		event->SetPayload<EventType::Counter>(numeric_cast<unsigned int>(1024 + ODCIndex));
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1007,6 +1005,8 @@ TEST_CASE("Station - ScanRequest F0")
 	SendBinaryEvent(CBOSPort, 13, false);
 	SendBinaryEvent(CBOSPort, 14, false); // Only 1 change, need 2 to trigger
 
+	WaitIOS(*IOS, 1);
+
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer); // Scan Data Group 3 - analog values and digitals have now changed. SOE overflow should be set, SOE Data Available in RSW
@@ -1059,7 +1059,7 @@ TEST_CASE("Station - SOERequest F10")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Send the command in as if came from TCP channel
 	output << commandblock.ToBinaryString();
@@ -1151,10 +1151,10 @@ TEST_CASE("Station - BinaryEvent")
 	// Test on a valid binary point
 	const int ODCIndex = 1;
 
-	EventTypePayload<EventType::Binary>::type val = true;
+	bool val = true;
 
-	std::shared_ptr<odc::EventInfo> event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
-	event->SetPayload<EventType::Binary>(std::move(val));
+	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex);
+	event->SetPayload<EventType::Binary>(bool(val));
 
 	CBOSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1192,7 +1192,7 @@ TEST_CASE("Station - CONTROL Commands")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1335,7 +1335,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Send the commands in as if came from TCP channel
 	output << commandblock.ToBinaryString();
@@ -1361,7 +1361,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	for (int ODCIndex = 0; ODCIndex < 3; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(1024 + ODCIndex));
+		event->SetPayload<EventType::Analog>(1024 + ODCIndex);
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
@@ -1369,7 +1369,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	for (int ODCIndex = 3; ODCIndex < 5; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
-		event->SetPayload<EventType::Analog>(std::move(1 + ODCIndex));
+		event->SetPayload<EventType::Analog>(1 + ODCIndex);
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
@@ -1377,7 +1377,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
 	{
 		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(std::move(numeric_cast<unsigned int>(1024 + ODCIndex)));
+		event->SetPayload<EventType::Counter>(numeric_cast<unsigned int>(1024 + ODCIndex));
 
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 
@@ -1501,7 +1501,7 @@ TEST_CASE("Station - Baker Global CONTROL Command")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Send the PendingCommand
 	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
@@ -1579,7 +1579,7 @@ TEST_CASE("Master - Scan Request F0")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = CBMessage; });
+	CBMAPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
 
 	// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
 	// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
@@ -1713,9 +1713,9 @@ TEST_CASE("Master - SOE Request F10")
 	// Hook the output functions
 	std::atomic_bool done_flag(false);
 	std::string OSResponse = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&](std::string CBMessage){ OSResponse = CBMessage; done_flag = true; });
+	CBOSPort->SetSendTCPDataFn([&](std::string CBMessage){ OSResponse = std::move(CBMessage); done_flag = true; });
 	std::string MAResponse = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&](std::string CBMessage){ MAResponse = CBMessage; done_flag = true; });
+	CBMAPort->SetSendTCPDataFn([&](std::string CBMessage){ MAResponse = std::move(CBMessage); done_flag = true; });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);
@@ -1854,9 +1854,8 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 
 		MAportoverride["OutstationAddr"] = static_cast<Json::UInt>(StationAddress);
 
-		CBMAPort[StationAddress].reset( new CBMasterPort("Station Master "+std::to_string(StationAddress), conffilename1, MAportoverride));
+		CBMAPort[StationAddress] = std::make_unique<CBMasterPort>("Station Master "+std::to_string(StationAddress), conffilename1, MAportoverride);
 
-		CBMAPort[StationAddress]->SetIOS(IOS);
 		CBMAPort[StationAddress]->Build();
 
 		CBMAPort[StationAddress]->Enable();
@@ -2087,7 +2086,7 @@ TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master an
 	WaitIOS(*IOS, 2);
 
 	std::string Response = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = MD3Message; });
+	CBMAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
 
 	// Master sends a scan command
 	CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);

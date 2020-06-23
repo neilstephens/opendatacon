@@ -41,6 +41,7 @@
 
 #include <opendatacon/asio.h>
 #include <opendatacon/Platform.h>
+#include <opendatacon/util.h>
 #include <string>
 #include <functional>
 
@@ -109,6 +110,7 @@ public:
 		const unsigned int KeepAliveTimeout_s = 599,      //TCP keepalive idle timeout (seconds)
 		const unsigned int KeepAliveRetry_s = 10,         //TCP keepalive retry interval (seconds)
 		const unsigned int KeepAliveFailcount = 3):       //TCP keepalive fail count
+		handler_tracker(std::make_shared<char>()),
 		isConnected(false),
 		manuallyClosed(true),
 		pIOS(apIOS),
@@ -131,7 +133,8 @@ public:
 
 	void Open()
 	{
-		pSockStrand->post([this]()
+		auto tracker = handler_tracker;
+		pSockStrand->post([this,tracker]()
 			{
 				manuallyClosed = false;
 				if(isConnected)
@@ -139,24 +142,29 @@ public:
 				if(isServer)
 				{
 				      pAcceptor = pIOS->make_tcp_acceptor(EndpointIterator);
-				      pAcceptor->async_accept(*pSock,[this](asio::error_code err_code)
+				      pAcceptor->async_accept(*pSock,pSockStrand->wrap([this,tracker](asio::error_code err_code)
 						{
+							if(manuallyClosed)
+								return;
 							ConnectCompletionHandler(err_code);
 							pAcceptor.reset();
-						});
+						}));
 				}
 				else
 				{
-				      pSock->async_connect(*EndpointIterator,[this](asio::error_code err_code)
+				      pSock->async_connect(*EndpointIterator,pSockStrand->wrap([this,tracker](asio::error_code err_code)
 						{
+							if(manuallyClosed)
+								return;
 							ConnectCompletionHandler(err_code);
-						});
+						}));
 				}
 			});
 	}
 	void Close()
 	{
-		pSockStrand->post([this]()
+		auto tracker = handler_tracker;
+		pSockStrand->post([this,tracker]()
 			{
 				manuallyClosed = true;
 				ramp_time_ms = 0;
@@ -172,11 +180,12 @@ public:
 		//shared_const_buffer is a ref counted wraper that will delete the data in good time
 		auto buf = shared_const_buffer<T>(std::make_shared<T>(std::move(aContainer)));
 
-		pSockStrand->post([this,buf]()
+		auto tracker = handler_tracker;
+		pSockStrand->post([this,tracker,buf]()
 			{
 				if(!isConnected)
 				{
-				      pWriteStrand->post([this,buf]()
+				      pWriteStrand->post([this,tracker,buf]()
 						{
 							writebufs.push_back(buf);
 							if(writebufs.size() > buffer_limit)
@@ -185,27 +194,38 @@ public:
 				      return;
 				}
 
-				asio::async_write(*pSock,buf,asio::transfer_all(),pWriteStrand->wrap([this,buf](asio::error_code err_code, std::size_t n)
+				asio::async_write(*pSock,buf,asio::transfer_all(),pWriteStrand->wrap([this,tracker,buf](asio::error_code err_code, std::size_t n)
+					{
+						if(err_code)
 						{
-							if(err_code)
-							{
-							      writebufs.push_back(buf);
-							      if(writebufs.size() > buffer_limit)
-									writebufs.erase(writebufs.begin());
-							      AutoClose();
-							      AutoOpen();
-							      return;
-							}
-						}));
+						      writebufs.push_back(buf);
+						      if(writebufs.size() > buffer_limit)
+								writebufs.erase(writebufs.begin());
+						      AutoClose();
+						      AutoOpen();
+						      return;
+						}
+					}));
 			});
 	}
 
 	~TCPSocketManager()
 	{
-		Close();
+		//There may be some outstanding handlers if we're destroyed right after Close()
+		std::weak_ptr<void> tracker = handler_tracker;
+		handler_tracker.reset();
+
+		size_t i = 0;
+		while(!tracker.expired() && ++i < 1000)
+			pIOS->poll_one();
+
+		if(auto t = tracker.lock())
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->critical("TCPSocketManager is being destroyed with {} outstanding handler(s). Was Close() not called, or Write() called after Close()?", t.use_count());
 	}
 
 private:
+	std::shared_ptr<void> handler_tracker;
 	bool isConnected;
 	bool manuallyClosed;
 	std::shared_ptr<odc::asio_service> pIOS;
@@ -248,14 +268,15 @@ private:
 			return;
 		}
 
-		pSockStrand->post([this]()
+		auto tracker = handler_tracker;
+		pSockStrand->post([this,tracker]()
 			{
 				SetTCPKeepalives(*pSock,Keepalives.enabled,Keepalives.idle_timeout_s,Keepalives.retry_interval_s,Keepalives.fail_count);
 				isConnected = true;
 				StateCallback(isConnected);
 				ramp_time_ms = 0;
 				//if there's anything in the buffer sequence, write it
-				pWriteStrand->post([this]()
+				pWriteStrand->post([this,tracker]()
 					{
 						if(writebufs.size() > 0)
 						{
@@ -274,23 +295,25 @@ private:
 	}
 	void Read()
 	{
-		asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pReadStrand->wrap([this](asio::error_code err_code, std::size_t n)
+		auto tracker = handler_tracker;
+		asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pReadStrand->wrap([this,tracker](asio::error_code err_code, std::size_t n)
+			{
+				if(err_code)
 				{
-					if(err_code)
-					{
-					      AutoClose();
-					      AutoOpen();
-					}
-					else
-					{
-					      ReadCallback(readbuf);
-					      Read();
-					}
-				}));
+				      AutoClose();
+				      AutoOpen();
+				}
+				else
+				{
+				      ReadCallback(readbuf);
+				      Read();
+				}
+			}));
 	}
 	void AutoOpen()
 	{
-		pSockStrand->post([this]()
+		auto tracker = handler_tracker;
+		pSockStrand->post([this,tracker]()
 			{
 				if(!auto_reopen || manuallyClosed)
 					return;
@@ -308,20 +331,20 @@ private:
 				else
 				{
 				      pRetryTimer->expires_from_now(std::chrono::milliseconds(ramp_time_ms));
-				      pRetryTimer->async_wait([this](asio::error_code err_code)
+				      pRetryTimer->async_wait(pSockStrand->wrap([this,tracker](asio::error_code err_code)
 						{
-							if (err_code != asio::error::operation_aborted)
-							{
-							      ramp_time_ms *= 2;
-							      Open();
-							}
-						});
+							if(manuallyClosed || err_code)
+								return;
+							ramp_time_ms *= 2;
+							Open();
+						}));
 				}
 			});
 	}
 	void AutoClose()
 	{
-		pSockStrand->post([this]()
+		auto tracker = handler_tracker;
+		pSockStrand->post([this,tracker]()
 			{
 				if(!isConnected)
 				{

@@ -19,10 +19,9 @@
  # 
 project(DNP3Port_tests)
 cmake_minimum_required(VERSION 2.8)
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h)
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-target_include_directories(${PROJECT_NAME} PRIVATE "../catch")
 target_link_libraries(${PROJECT_NAME} ODC ${DL})
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})

@@ -24,8 +24,8 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#include <iostream>
 #include "CB.h"
+#include <iostream>
 
 
 #ifdef NONVSTESTING
@@ -35,8 +35,8 @@
 #include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
 #endif
 
-#include "CBOutstationPort.h"
 #include "CBMasterPort.h"
+#include "CBOutstationPort.h"
 
 // std::shared_ptr<spdlog::logger> logger;
 
@@ -93,9 +93,11 @@ extern "C" int run_tests( int argc, char* argv[] )
 	}
 	CommandLineLoggingSetup(log_level);
 
-	return Catch::Session().run( new_argc, new_argv );
+	int res =  Catch::Session().run( new_argc, new_argv );
 	// And release here.
 	CommandLineLoggingCleanup();
+	return res;
+
 	#else
 	std::cout << "CBPort: Compiled for Visual Studio Testing only" << std::endl;
 	return 1;

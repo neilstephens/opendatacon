@@ -30,19 +30,23 @@
  So an Event to an outstation will be data that needs to be sent up to the scada master.
  An event from an outstation will be a master control signal to turn something on or off.
 */
-#include <iostream>
-#include <future>
-#include <regex>
-#include <chrono>
-
 #include "CB.h"
-#include "CBUtility.h"
 #include "CBOutstationPort.h"
+#include "CBOutStationPortCollection.h"
+#include "CBUtility.h"
+#include <chrono>
+#include <future>
+#include <iostream>
+#include <regex>
+#include <random>
 
 
 CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string &aConfFilename, const Json::Value & aConfOverrides):
-	CBPort(aName, aConfFilename, aConfOverrides)
+	CBPort(aName, aConfFilename, aConfOverrides),
+	CBOutstationCollection(nullptr)
 {
+	UpdateOutstationPortCollection();
+
 	// Don't load conf here, do it in CBPort
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
@@ -54,6 +58,36 @@ CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string 
 	IsOutStation = true;
 
 	LOGDEBUG("CBOutstation Constructor - {} ", Name);
+}
+
+void CBOutstationPort::UpdateOutstationPortCollection()
+{
+	// These variables are effectively class static variables (i.e. only one ever exists.
+	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
+	static std::weak_ptr<CBOutstationPortCollection> weak_collection;
+
+	//if we're the first/only one on the scene, init the CBOutstationPortCollection (a special version of an unordered_map)
+	if (!init_flag.test_and_set(std::memory_order_acquire))
+	{
+		// Make a custom deleter for the PortCollection that will also clear the init flag
+		// This will be called when the shared_ptr destructs (last ref gone)
+		auto deinit_del = [](CBOutstationPortCollection* collection_ptr)
+					{
+						init_flag.clear();
+						delete collection_ptr;
+					};
+		// Save a pointer to the collection in this object
+		this->CBOutstationCollection = std::shared_ptr<CBOutstationPortCollection>(new CBOutstationPortCollection(), deinit_del);
+		// Save a global weak pointer to our PortCollection (shared_ptr)
+		weak_collection = this->CBOutstationCollection;
+	}
+	else
+	{
+		// PortCollection has already been created, so get a shared pointer to it.
+		// The last shared_ptr to get destructed will control its destruction. The weak_ptr will just no longer return a pointer.
+		while (!(this->CBOutstationCollection = weak_collection.lock()))
+		{} //init happens very seldom, so spin lock is good
+	}
 }
 
 CBOutstationPort::~CBOutstationPort()
@@ -80,12 +114,13 @@ void CBOutstationPort::Disable()
 {
 	if (!enabled.exchange(false)) return;
 
-	CBConnection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
+	CBConnection::Close(pConnection); // The port will only close when all ports disable it
 }
 
 // Have to fire the SocketStateHandler for all other OutStations sharing this socket.
 void CBOutstationPort::SocketStateHandler(bool state)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
 	std::string msg;
 	if (state)
 	{
@@ -102,6 +137,10 @@ void CBOutstationPort::SocketStateHandler(bool state)
 
 void CBOutstationPort::Build()
 {
+	// Add this port to the list of ports we can command.
+	auto shared_this = std::static_pointer_cast<CBOutstationPort>(shared_from_this());
+	this->CBOutstationCollection->Add(shared_this, this->Name);
+
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(Name, IsOutStation, *pIOS, MyPointConf->SOEQueueSize, SOEBufferOverflowFlag);
 
@@ -122,11 +161,41 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 		LOGERROR("{} - Tried to send an empty message to the TCP Port",Name);
 		return;
 	}
-	LOGDEBUG("{} - Sending Message - {}", Name, CBMessageAsString(CompleteCBMessage));
-	// Done this way just to get context into log messages.
-	CBPort::SendCBMessage(CompleteCBMessage);
+	if (BitFlipProbability != 0.0)
+	{
+		auto msg = CorruptCBMessage(CompleteCBMessage);
+		LOGDEBUG("{} - Sending Corrupted Message - Correct {}, Corrupted {}", Name, CBMessageAsString(CompleteCBMessage), CBMessageAsString(msg));
+		CBPort::SendCBMessage(msg);
+	}
+	else
+	{
+		LOGDEBUG("{} - Sending Message - {}", Name, CBMessageAsString(CompleteCBMessage));
 
+		// Done this way just to get context into log messages.
+		CBPort::SendCBMessage(CompleteCBMessage);
+	}
 	LastSentCBMessage = CompleteCBMessage; // Take a copy of last message
+}
+CBMessage_t CBOutstationPort::CorruptCBMessage(const CBMessage_t& CompleteCBMessage)
+{
+	if (BitFlipProbability != 0.0)
+	{
+		// Setup a random generator
+		std::random_device rd;
+		std::mt19937 e2(rd());
+		std::uniform_real_distribution<> dist(0, 1);
+
+		if (dist(e2) > BitFlipProbability)
+		{
+			CBMessage_t ResMsg = CompleteCBMessage;
+			size_t messagelen = CompleteCBMessage.size();
+			std::uniform_real_distribution<> bitdist(0, messagelen * 32 - 1);
+			int bitnum = round(bitdist(e2));
+			ResMsg[bitnum / 32].XORBit(bitnum % 32);
+			return ResMsg;
+		}
+	}
+	return CompleteCBMessage;
 }
 #ifdef _MCS_VER
 #pragma region OpenDataConInteraction
@@ -139,7 +208,7 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 // Remember there can be multiple responders!
 //
 
-CommandStatus CBOutstationPort::Perform(std::shared_ptr<EventInfo> event, bool waitforresult)
+CommandStatus CBOutstationPort::Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult)
 {
 	if (!enabled)
 		return CommandStatus::UNDEFINED;
@@ -193,7 +262,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		case EventType::Analog:
 		{
 			// ODC Analog is a double by default...
-			uint16_t analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
+			auto analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
 			LOGTRACE("{} - Received Event - Analog - Index {}  Value 0x{}",Name, ODCIndex, to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
@@ -205,7 +274,7 @@ void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::
 		}
 		case EventType::Counter:
 		{
-			uint16_t countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
+			auto countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
 			LOGDEBUG("{} - Received Event - Counter - Index {}  Value 0x{}",Name, ODCIndex, to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))

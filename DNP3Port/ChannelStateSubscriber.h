@@ -26,16 +26,15 @@
 
 #ifndef CHANNELSTATESUBSCRIBER_H
 #define CHANNELSTATESUBSCRIBER_H
-
-#include <map>
 #include "DNP3Port.h"
+#include <map>
 #include <asiodnp3/IChannel.h>
 
 class ChannelStateSubscriber
 {
 public:
 	static void Subscribe(DNP3Port* pPort, std::string ChanID);
-	static void Unsubscribe(DNP3Port* pPort, std::string ChanID = "");
+	static void Unsubscribe(DNP3Port* pPort, const std::string& ChanID = "");
 	static void StateListener(const std::string& ChanID, opendnp3::ChannelState state);
 
 private:

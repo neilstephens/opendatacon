@@ -27,10 +27,9 @@
 
 #ifndef __opendatacon__SimPortCollection__
 #define __opendatacon__SimPortCollection__
-
+#include "SimPort.h"
 #include <opendatacon/DataPort.h>
 #include <opendatacon/ResponderMap.h>
-#include "SimPort.h"
 
 using namespace odc;
 

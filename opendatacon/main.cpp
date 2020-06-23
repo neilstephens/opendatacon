@@ -41,9 +41,9 @@
 #include "DataConcentrator.h"
 #include "DaemonInterface.h"
 #include "ODCArgs.h"
-#include <opendatacon/Platform.h>
 #include <csignal>
 #include <cstdio>
+#include <opendatacon/Platform.h>
 
 int main(int argc, char* argv[])
 {

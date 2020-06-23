@@ -24,15 +24,14 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <opendnp3/app/ClassField.h>
-#include <opendnp3/app/MeasurementTypes.h>
+#include "ChannelStateSubscriber.h"
 #include "DNP3MasterPort.h"
+#include "TypeConversion.h"
 #include <array>
 #include <asiopal/UTCTimeSource.h>
 #include <opendatacon/util.h>
-
-#include "TypeConversion.h"
-#include "ChannelStateSubscriber.h"
+#include <opendnp3/app/ClassField.h>
+#include <opendnp3/app/MeasurementTypes.h>
 
 
 DNP3MasterPort::~DNP3MasterPort()
@@ -51,7 +50,7 @@ DNP3MasterPort::~DNP3MasterPort()
 
 void DNP3MasterPort::Enable()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	if(enabled)
 		return;
@@ -107,7 +106,7 @@ void DNP3MasterPort::PortDown()
 
 void DNP3MasterPort::SetCommsGood()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
@@ -117,14 +116,14 @@ void DNP3MasterPort::SetCommsGood()
 
 		auto commsUpEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
-		commsUpEvent->SetPayload<EventType::Binary>(std::move(!failed_val));
+		commsUpEvent->SetPayload<EventType::Binary>(!failed_val);
 		PublishEvent(commsUpEvent);
 	}
 }
 
 void DNP3MasterPort::SetCommsFailed()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
@@ -193,7 +192,7 @@ void DNP3MasterPort::OnLinkDown()
 		// Notify subscribers that a disconnect event has occured
 		PublishEvent(ConnectState::DISCONNECTED);
 
-		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
@@ -220,7 +219,7 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 		// Update the comms state point
 		PortUp();
 
-		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if(pConf->pPointConf->SetQualityOnLinkStatus)
 		{
 			// Trigger integrity scan to get point quality
@@ -233,7 +232,7 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 
 TCPClientServer DNP3MasterPort::ClientOrServer()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
 		return TCPClientServer::CLIENT;
 	return pConf->mAddrConf.ClientServer;
@@ -241,7 +240,7 @@ TCPClientServer DNP3MasterPort::ClientOrServer()
 
 void DNP3MasterPort::Build()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	pChannel = GetChannel();
 
@@ -280,7 +279,7 @@ void DNP3MasterPort::Build()
 	auto ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(wont_free);
 	auto MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(wont_free);
 
-	pMaster = pChannel->AddMaster(Name.c_str(), ISOEHandle, MasterApp, StackConfig);
+	pMaster = pChannel->AddMaster(Name, ISOEHandle, MasterApp, StackConfig);
 
 	if (pMaster == nullptr)
 	{
@@ -363,7 +362,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			IntegrityScan->Demand();
 		}
 
-		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 		// If an upstream port is connected, attempt a connection (if on demand)
 		if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)

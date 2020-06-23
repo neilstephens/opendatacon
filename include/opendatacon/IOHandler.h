@@ -67,11 +67,10 @@ public:
 	//Event events
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) = 0;
 
-	virtual void Enable()=0;
-	virtual void Disable()=0;
+	virtual void Enable() = 0;
+	virtual void Disable() = 0;
 
-	void Subscribe(IOHandler* pIOHandler, std::string aName);
-	void SetIOS(std::shared_ptr<odc::asio_service> ios_ptr);
+	void Subscribe(IOHandler* pIOHandler, const std::string& aName);
 
 	inline const std::string& GetName(){return Name;}
 	inline const bool Enabled(){return enabled;}
@@ -82,7 +81,7 @@ public:
 
 protected:
 	std::string Name;
-	std::shared_ptr<odc::asio_service> pIOS;
+	const std::shared_ptr<odc::asio_service> pIOS;
 	std::atomic_bool enabled;
 
 	inline bool InDemand(){ return mDemandMap.InDemand(); }
@@ -104,13 +103,13 @@ protected:
 		{
 			//call the special connection Event() function separately,
 			//	so it can keep track of upsteam demand
-			for(auto IOHandler_pair: Subscribers)
+			for(const auto& IOHandler_pair: Subscribers)
 			{
 				IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);
 			}
 		}
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
-		for(auto IOHandler_pair: Subscribers)
+		for(const auto& IOHandler_pair: Subscribers)
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
 				log->trace("{} {} Payload {} Event {} => {}", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, IOHandler_pair.first);

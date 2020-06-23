@@ -24,19 +24,19 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <iostream>
 #include "DataConnector.h"
-#include "IndexOffsetTransform.h"
 #include "IndexMapTransform.h"
-#include "ThresholdTransform.h"
+#include "IndexOffsetTransform.h"
+#include "LogicInvTransform.h"
 #include "RandTransform.h"
 #include "RateLimitTransform.h"
-#include "LogicInvTransform.h"
+#include "ThresholdTransform.h"
+#include <iostream>
 #include <opendatacon/Platform.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 
-DataConnector::DataConnector(std::string aName, std::string aConfFilename, const Json::Value aConfOverrides):
+DataConnector::DataConnector(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	IOHandler(aName),
 	ConfigParser(aConfFilename, aConfOverrides)
 {
@@ -155,7 +155,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					log->debug("Attempting to load library: {}, {}", libname, libfilename);
 
 				//try to load the lib
-				auto* txlib = LoadModule(libfilename.c_str());
+				auto txlib = LoadModule(libfilename);
 
 				if(txlib == nullptr)
 				{
@@ -170,9 +170,9 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
 				//it should return a pointer to a heap allocated instance of a descendant of Transform
 				std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
-				auto new_tx_func = (Transform*(*)(const Json::Value&))LoadSymbol(txlib, new_funcname.c_str());
+				auto new_tx_func = reinterpret_cast<Transform*(*)(const Json::Value&)>(LoadSymbol(txlib, new_funcname));
 				std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
-				auto delete_tx_func = (void (*)(Transform*))LoadSymbol(txlib, delete_funcname.c_str());
+				auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
 
 				if(new_tx_func == nullptr)
 					if(auto log = odc::spdlog_get("Connectors"))

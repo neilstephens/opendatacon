@@ -28,12 +28,12 @@
 #define PYWRAPPER_H_
 
 #include "Py.h"
+#include "SpecialEventQueue.h"
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_set>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
-#include "SpecialEventQueue.h"
 
 
 using namespace odc;
@@ -91,7 +91,7 @@ public:
 	void Enable();
 	void Disable();
 
-	CommandStatus Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName);
+	CommandStatus Event(const std::shared_ptr<const EventInfo>& odcevent, const std::string& SenderName);
 	void QueueEvent(const std::string& jsonevent);
 
 	bool DequeueEvent(std::string& eq);
@@ -167,6 +167,7 @@ private:
 
 	SetTimerFnType PythonPortSetTimerFn;
 	PublishEventCallFnType PythonPortPublishEventCallFn;
+	std::atomic_flag QueuePushErrorLogged = ATOMIC_FLAG_INIT;
 };
 
 #endif /* PYWRAPPER_H_ */

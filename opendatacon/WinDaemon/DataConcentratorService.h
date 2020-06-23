@@ -22,6 +22,7 @@
 #include "../DataConcentrator.h"
 #include "ServiceBase.h"
 #include "../ODCArgs.h"
+#include <windows.h>
 
 class DataConcentratorService: public CServiceBase
 {

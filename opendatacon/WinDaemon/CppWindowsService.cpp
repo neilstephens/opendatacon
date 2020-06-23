@@ -20,12 +20,12 @@
 #define NOMINMAX
 
 #pragma region Includes
-#include <stdio.h>
-#include <windows.h>
 #include "ServiceInstaller.h"
 #include "ServiceBase.h"
 #include "DataConcentratorService.h"
 #include "../DaemonInterface.h"
+#include <stdio.h>
+#include <windows.h>
 #pragma endregion
 
 //

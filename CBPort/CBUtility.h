@@ -26,15 +26,13 @@
 
 #ifndef CBENGINE_H_
 #define CBENGINE_H_
-
+#include "CB.h"
 #include <cstddef>
 #include <cstdint>
 #include <cassert>
 #include <array>
 #include <sstream>
 #include <iomanip>
-
-#include "CB.h"
 
 #define CONITEL_BLOCK_LENGTH  4
 #define MAX_BLOCK_COUNT       16
@@ -247,6 +245,12 @@ public:
 		if (lastblock) MarkAsEndOfMessageBlock();
 		SetBCH();
 		builddataindex = 4;
+	}
+
+	void XORBit(uint8_t bit) // Used to corrupt the message...
+	{
+		if (bit < 32)
+			data = data ^ (1 << (31 - bit));
 	}
 
 	void DoBakerConitelSwap()

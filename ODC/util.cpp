@@ -24,10 +24,10 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#include <iostream>
 #include <opendatacon/util.h>
 #include <regex>
-#include <iostream>
-
+#include <utility>
 namespace odc
 {
 
@@ -43,7 +43,7 @@ std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool()
 
 void spdlog_flush_all()
 {
-	spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) {l->flush(); });
+	spdlog::apply_all([&](const std::shared_ptr<spdlog::logger>& l) {l->flush(); });
 }
 
 void spdlog_apply_all(const std::function<void(std::shared_ptr<spdlog::logger>)> &fun)
@@ -53,7 +53,7 @@ void spdlog_apply_all(const std::function<void(std::shared_ptr<spdlog::logger>)>
 
 void spdlog_register_logger(std::shared_ptr<spdlog::logger> logger)
 {
-	return spdlog::register_logger(logger);
+	return spdlog::register_logger(std::move(logger));
 }
 
 std::shared_ptr<spdlog::logger> spdlog_get(const std::string &name)
@@ -107,7 +107,7 @@ bool extract_delimited_string(std::istream& ist, std::string& extracted)
 		if(ist.peek() == delim)
 		{
 			ist.seekg(reset_pos);
-			char ch;
+			char ch = '\0';
 			ist.get(ch); //start delim
 			while(--offset)
 			{
@@ -143,4 +143,4 @@ bool extract_delimited_string(const std::string& delims, std::istream& ist, std:
 	return extract_delimited_string(ist,extracted);
 }
 
-}
+} // namespace odc
