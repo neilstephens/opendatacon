@@ -101,8 +101,8 @@
                   .done(function( data ) {
                       if (data) {
                           var result = '';
-                          for (var key of Object.keys(data)) {
-                              result += key + ' : ' + data[key] + '<br>';
+                          for (const [key, value] of Object.entries(data)) {
+                              result += key + ' : ' + value + '<br>';
                           }
 
                           document.getElementById("short_text_modal_title").innerHTML="Data Ports[" + target + ", " + command +"]";
@@ -129,8 +129,8 @@
                   .done(function( data ) {
                       if (data) {
                           var result = '';
-                          for (var key of Object.keys(data)) {
-                              result += key + ' : ' + data[key] + '<br>';
+                          for (const [key, value] of Object.entries(data)) {
+                              result += key + ' : ' + value + '<br>';
                           }
 
                           document.getElementById("short_text_modal_title").innerHTML="Data Connectors[" + target + ", " + command +"]";

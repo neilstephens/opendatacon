@@ -180,21 +180,21 @@
 
       function get_indexes(data) {
           indexes = [];
-          for (var key in Object.keys(data)) {
-              if (data[key]["Range"] != null) {
+          for (const [key, value] of Object.entries(data)) {
+              if (value["Range"] != null) {
                   var start = 0;
                   var stop = 0;
-                  if (data[key]["Range"]["Start"] != null && data[key]["Range"]["Stop"] != null) {
-                      start = parseInt(data[key]["Range"]["Start"]);
-                      stop = parseInt(data[key]["Range"]["Stop"]);
+                  if (value["Range"]["Start"] != null && value["Range"]["Stop"] != null) {
+                      start = parseInt(value["Range"]["Start"]);
+                      stop = parseInt(value["Range"]["Stop"]);
 
                       for (var i = start; i <= stop; ++i)
                           indexes.push(i.toString());
                   }
               }
 
-              if (data[key]["Index"] != null) {
-                  indexes.push(data[key]["Index"].toString());
+              if (value["Index"] != null) {
+                  indexes.push(value["Index"].toString());
               }
           }
 
@@ -232,10 +232,10 @@
           $.post(url, {})
               .done(function(data) {
                   var message = '';
-                  for (var key in data) {
+                  for (const [key, value] of Object.entries(data)) {
                       message += key + " ==> ";
-                      for (var sub_key in data[key]) {
-                          message += sub_key + " : " + data[key][sub_key];
+                      for (const [sub_key, sub_value] of Object.entries(value)) {
+                          message += sub_key + " : " + sub_value;
                       }
                   }
 

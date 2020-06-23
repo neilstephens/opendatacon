@@ -77,8 +77,8 @@
       $(document).ready(function() {
           $.post("/OpenDataCon/List", {})
               .done(function(data) {
-                  for (var key of Object.keys(data)) {
-                      const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_opendatacon_command(\'' + data[key] + '\');">' + data[key] + '</a>'
+                  for (const [key, value] of Object.entries(data)) {
+                      const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_opendatacon_command(\'' + value + '\');">' + value + '</a>'
                       $('#opendatacon_list').append(item);
                   }
               });
@@ -107,8 +107,8 @@
               $.post(url, {})
                   .done(function(data) {
                       var result = '';
-                      for (var key of Object.keys(data)) {
-                          result += key + ' : ' + data[key] + '<br>';
+                      for (const [key, value] of Object.entries()) {
+                          result += key + ' : ' + value + '<br>';
                       }
 
                       document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
@@ -126,7 +126,7 @@
                   const url = "/OpenDataCon/set_loglevel " + log_level;
                   $.post(url, {})
                       .done(function(data) {
-                          console.log("Rakesh set log level done for == " + url);
+                          console.log("Set log level success for == " + url);
                       });
               });
           }
@@ -143,7 +143,7 @@
               const url = "/OpenDataCon/tcp_logs_off " + log_level;
               $.post(url, {})
                   .done(function(data) {
-                      console.log("Rakesh set log level done for == " + url + " turned off");
+                      console.log("set log level success for == " + url + " turned off");
                   });
           });
       }
