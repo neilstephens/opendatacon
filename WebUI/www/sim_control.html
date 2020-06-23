@@ -82,16 +82,16 @@
 
       <div class="input-group mb-3">
         <div class="input-group-append">
-          <input type="text" class="form-control">
+          <input type="text" class="form-control" id="log_filter_box">
         </div>
         <button class="btn btn-primary" type="button">Apply Filter</button>
         &nbsp;&nbsp;
         <button class="btn btn-primary" type="button">Reset Filter</button>
         &nbsp;&nbsp;
         <div class="input-group-append">
-          <input type="text" class="form-control">
+          <input type="text" class="form-control" id="refresh_rate_box">
         </div>
-        <button class="btn btn-primary" type="button">Refresh Rate</button>
+        <button class="btn btn-primary" type="button" onclick="set_refresh_rate()">Refresh Rate</button>
       </div>
 
       <div class="alert alert-info clearfix">
@@ -120,7 +120,7 @@
       var gvalue = null;
       var gcommand = null;
       var gcommand_text = null;
-      var grefresh_time = 2000;
+      var grefresh_rate = 2000;
       var gports = null;
       var gtimer_handle = null;
 
@@ -150,7 +150,7 @@
                       console.log("Set log level success for == " + url);
                   });
           }
-          gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
+          gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
       });
 
       function get_tcp_logs() {
@@ -282,6 +282,13 @@
           }
 
           build_command();
+      }
+
+      function set_refresh_rate() {
+          grefresh_rate = parseInt(document.getElementById("refresh_rate_box").value);
+          //reset the timer
+          window.clearInterval(gtimer_handle);
+          gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
       }
 
       function build_command() {
