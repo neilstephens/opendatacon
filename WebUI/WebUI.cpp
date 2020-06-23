@@ -307,8 +307,18 @@ std::string WebUI::HandleSimControl(const std::string& url)
 	std::stringstream iss(url);
 	std::string responder;
 	std::string command;
+	Json::Value value;
 	iss >> responder >> command;
-	Json::Value value = ExecuteCommand(Responders[responder], command, iss);
+	if (command == "apply_log_filter")
+	{
+		std::string filter;
+		iss >> filter;
+		value = ApplyLogFilter(filter);
+	}
+	else
+	{
+		value = ExecuteCommand(Responders[responder], command, iss);
+	}
 
 	Json::StreamWriterBuilder wbuilder;
 	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
@@ -476,22 +486,26 @@ void WebUI::ConnectionEvent(bool state)
 		log->debug("Log sink connection on port {} {}",tcp_port,state ? "opened" : "closed");
 }
 
-void WebUI::ApplyLogFilter(const std::string& regex_filter)
+Json::Value WebUI::ApplyLogFilter(const std::string& regex_filter)
 {
+	Json::Value value;
 	try
 	{
 		std::regex regx(regex_filter,std::regex::extended);
 		{ //lock scope
 			std::unique_lock<std::shared_timed_mutex> lck(LogRegexMutex);
 			pLogRegex = std::make_unique<std::regex>(regx);
+			value["Result"] = "Success";
 		}
 	}
 	catch (std::exception& e)
 	{
 		if (auto log = odc::spdlog_get("WebUI"))
 			log->error("Problem using '{}' as regex: {}",regex_filter,e.what());
+		value["Result"] = "Faliure";
 	}
-	return;
+
+	return value;
 }
 
 std::unique_ptr<std::regex> WebUI::GetLogFilter()

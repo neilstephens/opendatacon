@@ -93,7 +93,7 @@ private:
 	void ConnectionEvent(bool state);
 
 	//TODO: These could be per web session
-	void ApplyLogFilter(const std::string& regex_filter);
+	Json::Value ApplyLogFilter(const std::string& regex_filter);
 	std::unique_ptr<std::regex> GetLogFilter();
 };
 

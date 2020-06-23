@@ -84,10 +84,7 @@
         <div class="input-group-append">
           <input type="text" class="form-control" id="log_filter_box">
         </div>
-        <button class="btn btn-primary" type="button">Apply Filter</button>
-        &nbsp;&nbsp;
-        <button class="btn btn-primary" type="button">Reset Filter</button>
-        &nbsp;&nbsp;
+        <button class="btn btn-primary" type="button" onclick="apply_log_filter()">Apply Filter</button>
         <div class="input-group-append">
           <input type="text" class="form-control" id="refresh_rate_box">
         </div>
@@ -256,11 +253,11 @@
                           message += sub_key + " : " + sub_value;
                       }
                   }
-                  display_command_result(message);
+                  display_alert_message(message);
               });
       }
 
-      function display_command_result(message) {
+      function display_alert_message(message) {
           document.getElementById("alert_message").innerHTML = message;
           $("#alert_command").show();
           $("#alert_command").fadeTo(2000, 500).slideUp(500, function() {
@@ -290,6 +287,16 @@
           //reset the timer
           window.clearInterval(gtimer_handle);
           gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
+          display_alert_message("Refresh Rate : " + grefresh_rate)
+      }
+
+      function apply_log_filter() {
+          const filter = document.getElementById("log_filter_box").value;
+          const url = "/SimControl apply_log_filter " + filter;
+          $.post(url, {})
+              .done(function(data) {
+                  display_alert_message(data);
+              });
       }
 
       function build_command() {
