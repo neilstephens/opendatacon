@@ -450,6 +450,7 @@ TEST_CASE("Py.TestsUsingPython")
 		auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
 		boolevent->SetPayload<EventType::Binary>(std::move(val));
 
+		// Send a bool event on 4 ports, but only check that the first succeeded.
 		LOGINFO("Sending Binary Events");
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 		PythonPort2->Event(boolevent, "TestHarness2", nullptr);
@@ -463,6 +464,7 @@ TEST_CASE("Py.TestsUsingPython")
 			} ());
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
+		// Now send an Analog Event, and check that it worked.
 		res = CommandStatus::UNDEFINED;
 		double fval = 100.1;
 		ODCIndex = 1001;
@@ -478,6 +480,7 @@ TEST_CASE("Py.TestsUsingPython")
 			} ());
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
+		// Now create a web request and inject it into the code (simulate it coming in through a TCP connection)
 		std::string url("http://testserver/thisport/cb?test=harold");
 		protected_string sres("");
 
@@ -491,6 +494,7 @@ TEST_CASE("Py.TestsUsingPython")
 		// Direct inject web request to python code - we get response back from python module PyPortSim.py
 		PythonPort->RestHandler(url, "", pResponseCallback);
 
+		// Check that the Send Event occured.
 		REQUIRE_NOTHROW([&]()
 			{
 				if (!WaitIOSFnResult(IOS, 5, [&]()
@@ -502,23 +506,28 @@ TEST_CASE("Py.TestsUsingPython")
 				}
 			} ());
 
+		// Check that the web response is correct.
 		LOGDEBUG("Response {}", sres.get());
 		REQUIRE(sres.get() == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
 
 		// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.
+		// The first value is the timer ID, the second the delay in msec. The python code can handle them as it sees fit.
+		// Only timer id 1 restarts itself, every 250msec
 		PythonPort->SetTimer(120, 1200);
 		PythonPort->SetTimer(121, 1000);
 		PythonPort->SetTimer(122, 800);
 
+		// Make 1000 web requests, each one starts a timer callback - all going off in less than a second. They dont actually do anything
+		// (other than try to make the code fail/crash)
 		done_count = 0;
 		for (int i = 0; i < 1000; i++)
 		{
 			url = fmt::format("RestHandler sent url {:d}", i);
-			PythonPort2->SetTimer(i + 100, 1001 - i);
-			PythonPort->RestHandler(url, "", pResponseCallback);
+			PythonPort2->SetTimer(i + 100, 1001 - i);            // Just laoding up the response system, we dont check the results
+			PythonPort->RestHandler(url, "", pResponseCallback); // This callback should be called 1000 times...
 		}
 
-		// Wait - we should see the timer callback triggered and no crashes!
+		// Wait - we should see the timer callback triggered (1000 times) and no crashes!
 		REQUIRE_NOTHROW([&]()
 			{
 				if (!WaitIOSFnResult(IOS, 7, [&]()

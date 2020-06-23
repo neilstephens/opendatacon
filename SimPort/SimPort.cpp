@@ -1246,6 +1246,7 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 
 						if (FeedbackPosition["Type"] == "Analog")
 						{
+							auto fb_index = FeedbackPosition["Index"].asUInt();
 							//TODO:
 							throw std::runtime_error("'Analog' Position feedback is unimplemented.");
 						}
