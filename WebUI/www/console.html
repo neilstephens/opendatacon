@@ -75,7 +75,7 @@
       }
 
       $(document).ready(function() {
-          $.post("/OpenDataCon/List", {})
+          $.post("/OpenDataCon List", {})
               .done(function(data) {
                   for (const [key, value] of Object.entries(data)) {
                       const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_opendatacon_command(\'' + value + '\');">' + value + '</a>'
@@ -98,16 +98,16 @@
               document.getElementById("short_text_modal_data").innerHTML="System is going to shutdown";
               $('#short_text_modal').modal('show');
 
-              const url = "/OpenDataCon/" + opendatacon_command;
+              const url = "/OpenDataCon " + opendatacon_command;
               $.post(url, {})
                   .done(function(data) {
                   });
           } else if (opendatacon_command == "version") {
-              const url = "/OpenDataCon/" + opendatacon_command;
+              const url = "/OpenDataCon " + opendatacon_command;
               $.post(url, {})
                   .done(function(data) {
                       var result = '';
-                      for (const [key, value] of Object.entries()) {
+                      for (const [key, value] of Object.entries(data)) {
                           result += key + ' : ' + value + '<br>';
                       }
 
@@ -123,7 +123,7 @@
                   if(!log_level)
                       log_level = "trace";
 
-                  const url = "/OpenDataCon/set_loglevel " + log_level;
+                  const url = "/OpenDataCon set_loglevel tcp_web_ui " + log_level;
                   $.post(url, {})
                       .done(function(data) {
                           console.log("Set log level success for == " + url);
@@ -140,7 +140,7 @@
           $("#opendatacon_logs_modal").on("hidden.bs.modal", function () {
               location.reload();
               const log_level = window.localStorage.getItem("log_level");
-              const url = "/OpenDataCon/tcp_logs_off " + log_level;
+              const url = "/OpenDataCon set_loglevel tcp_web_ui " + log_level + " off";
               $.post(url, {})
                   .done(function(data) {
                       console.log("set log level success for == " + url + " turned off");

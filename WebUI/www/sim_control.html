@@ -112,7 +112,7 @@
       $(document).ready(function() {
           $("#alert_command").hide();
 
-          var url = "/SimControl/List";
+          var url = "/SimControl List";
           $.post(url, {})
               .done(function(data) {
                   initialize(data["Items"]);
@@ -127,17 +127,11 @@
                   init_command(commands[0]);
               });
 
-          url = "/OpenDataCon/set_loglevel trace";
-          $.post(url, {})
-              .done(function(data) {
-                  console.log("TCP logging port is open and logging started");
-              });
-
           gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
       });
 
       function get_tcp_logs() {
-          const url = "/OpenDataCon/tcp_logs_on";
+          const url = "/OpenDataCon tcp_logs_on";
           $.post(url, {})
               .done(function(data) {
                   document.getElementById("tcp_logs").innerHTML = data["tcp_data"];
@@ -227,9 +221,8 @@
       }
 
       function execute_command() {
-          gcommand_text = $("#command_text_box").val();
-          const url = "/SimControl/" + gcommand_text;
-          $.post(url, {})
+          gcommand_text = "/" + $("#command_text_box").val();
+          $.post(gcommand_text, {})
               .done(function(data) {
                   var message = '';
                   for (const [key, value] of Object.entries(data)) {
@@ -270,9 +263,9 @@
 
       function build_command() {
           if (gcommand == "ReleasePoint") {
-              gcommand_text = gcommand + " " + gports + " " + gpoint_type + " " + gindex;
+              gcommand_text = "SimControl " + gcommand + " " + gports + " " + gpoint_type + " " + gindex;
           } else {
-              gcommand_text = gcommand + " " + gports + " " + gpoint_type + " " + gindex + " " + gvalue;
+              gcommand_text = "SimControl " + gcommand + " " + gports + " " + gpoint_type + " " + gindex + " " + gvalue;
           }
           document.getElementById("command_text_box").value = gcommand_text;
       }

@@ -86,6 +86,7 @@ private:
 
 	std::string HandleSimControl(const std::string& url);
 	Json::Value ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);
+	void ExecuteRootCommand(const std::string& command, const std::string& params);
 	std::string HandleOpenDataCon(const std::string& url);
 	void ConnectToTCPServer();
 	void ReadCompletionHandler(odc::buf_t& readbuf);
