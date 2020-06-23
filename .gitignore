@@ -20,3 +20,9 @@ cmake-build-debug-mingw/
 GPATH
 GRTAGS
 GTAGS
+.vs/
+out/
+CBPort/uncrustify.cfg
+CBPort/uncrustify_here.pl
+SimPort/uncrustify.cfg
+SimPort/uncrustify_here.pl
