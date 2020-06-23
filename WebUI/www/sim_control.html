@@ -180,7 +180,7 @@
 
       function get_indexes(data) {
           indexes = [];
-          for (key in Object.keys(data)) {
+          for (var key in Object.keys(data)) {
               if (data[key]["Range"] != null) {
                   var start = 0;
                   var stop = 0;
@@ -232,16 +232,10 @@
           $.post(url, {})
               .done(function(data) {
                   var message = '';
-                  for (var key of Object.keys(data)) {
-                      message += key + " : " + data[key];
-                      if (gcommand == "SetUpdateInterval") {
-                          if (data[key] == "Success") {
-                              grefresh_time = parseInt(gvalue);
-                              if (gtimer_handle != null) {
-                                  window.clearInterval(gtimer_handle);
-                                  gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
-                              }
-                          }
+                  for (var key in data) {
+                      message += key + " ==> ";
+                      for (var sub_key in data[key]) {
+                          message += sub_key + " : " + data[key][sub_key];
                       }
                   }
 
