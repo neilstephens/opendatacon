@@ -18,7 +18,7 @@
  #	limitations under the License.
  # 
 project(SimPort)
-cmake_minimum_required(VERSION 2.8)
+
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def sqlite3/sqlite3.c sqlite3/sqlite3.h)
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})

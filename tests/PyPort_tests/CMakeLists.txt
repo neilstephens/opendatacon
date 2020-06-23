@@ -18,7 +18,7 @@
  #	limitations under the License.
  # 
 project(PyPort_tests)
-cmake_minimum_required(VERSION 2.8)
+
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})

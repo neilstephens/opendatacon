@@ -18,7 +18,7 @@
  #	limitations under the License.
  #
 project(CBPort)
-cmake_minimum_required(VERSION 2.8)
+
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 include_directories(

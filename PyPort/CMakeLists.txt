@@ -18,7 +18,7 @@
  #	limitations under the License.
  # 
 project(PyPort)
-cmake_minimum_required(VERSION 2.8)
+
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def server/*.cpp server/*.hpp PythonCode/*.py)
 
 option(USE_PYTHON_SUBMODULE "Use git submodule to download and build python libraries" OFF)
