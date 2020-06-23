@@ -120,7 +120,7 @@
 
               $("#log_levels_modal").on("hidden.bs.modal", function () {
                   const log_level = window.localStorage.getItem("log_level");
-                  if(!log_level)
+                  if (!log_level)
                       log_level = "trace";
 
                   const url = "/OpenDataCon set_loglevel tcp_web_ui " + log_level;
@@ -133,6 +133,9 @@
       }
 
       function logs() {
+          const log_level = window.localStorage.getItem("log_level");
+          if (!log_level)
+              log_level = "trace";
           document.getElementById("opendatacon_logs_src").src = "log.html";
           document.getElementById("opendatacon_logs_modal_title").innerHTML="OpenDataCon Logs";
           $('#opendatacon_logs_modal').modal('show');

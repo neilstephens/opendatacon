@@ -127,6 +127,14 @@
                   init_command(commands[0]);
               });
 
+          const log_level = window.localStorage.getItem("log_level");
+          if (!log_level) {
+              const url = "/OpenDataCon set_loglevel tcp_web_ui trace";
+              $.post(url, {})
+                  .done(function(data) {
+                      console.log("Set log level success for == " + url);
+                  });
+          }
           gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_time);
       });
 
