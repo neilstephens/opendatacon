@@ -139,6 +139,8 @@
                       }
                   });
 
+                  // initlaize the refresh rate ui with default
+                  document.getElementById("refresh_rate_box").value = grefresh_rate;
                   init_command(commands[0]);
               });
 
@@ -254,13 +256,12 @@
                           message += sub_key + " : " + sub_value;
                       }
                   }
-
-                  document.getElementById("alert_message").innerHTML = message;
-                  display_command_result();
+                  display_command_result(message);
               });
       }
 
-      function display_command_result() {
+      function display_command_result(message) {
+          document.getElementById("alert_message").innerHTML = message;
           $("#alert_command").show();
           $("#alert_command").fadeTo(2000, 500).slideUp(500, function() {
               $("#alert_command").slideUp(500);
