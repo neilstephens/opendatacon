@@ -148,7 +148,7 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo dpkg --add-architecture i386
       sudo apt-get update
-      sudo apt-get install -y lib32stdc++-5-dev libstdc++-5-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 python3.5-minimal:i386 python3.5:i386 python3.5-dev:i386
+      sudo apt-get install -y lib32stdc++-8-dev libstdc++-8-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 python3.6-minimal:i386 python3.6:i386 python3.6-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
