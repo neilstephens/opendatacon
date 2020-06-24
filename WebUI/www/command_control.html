@@ -309,7 +309,10 @@
           const url = "/SimControl apply_log_filter " + gfilter_type + " " + filter;
           $.post(url, {})
               .done(function(data) {
-                  display_alert_message(data);
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
               });
       }
 
