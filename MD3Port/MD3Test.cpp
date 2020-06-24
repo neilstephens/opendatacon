@@ -209,10 +209,13 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 	#endif
 	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("md3porttest.log", true);
 
+	console_sink->set_level(loglevel);
+	file_sink->set_level(spdlog::level::debug);
+
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
 
 	auto pLibLogger = std::make_shared<spdlog::logger>("MD3Port", begin(sinks), end(sinks));
-	pLibLogger->set_level(loglevel);
+	pLibLogger->set_level(spdlog::level::trace);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
@@ -279,32 +282,6 @@ std::string BuildHexStringFromASCIIHexString(const std::string &as)
 	}
 	return res;
 }
-void RunIOSForXSeconds(odc::asio_service &IOS, unsigned int seconds)
-{
-	// We don\92t have to consider the timer going out of scope in this use case.
-	auto timer = IOS.make_steady_timer();
-	timer->expires_from_now(std::chrono::seconds(seconds));
-	timer->async_wait([&IOS](asio::error_code err_code) // [=] all autos by copy, [&] all autos by ref
-		{
-			// If there was no more work, the odc::asio_service will exit from the IOS.run() below.
-			// However something is keeping it running, so use the stop command to force the issue.
-			IOS.stop();
-		});
-
-	IOS.run(); // Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
-	// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
-	// If the IOS runs out of work, it must be reset before being run again.
-}
-std::thread *StartIOSThread(odc::asio_service &IOS)
-{
-	return new std::thread([&] { IOS.run(); });
-}
-void StopIOSThread(odc::asio_service &IOS, std::thread *runthread)
-{
-	IOS.stop();        // This does not block. The next line will! If we have multiple threads, have to join all of them.
-	runthread->join(); // Wait for it to exit
-	delete runthread;
-}
 void Wait(odc::asio_service &IOS, int seconds)
 {
 	auto timer = IOS.make_steady_timer();
@@ -318,17 +295,16 @@ void Wait(odc::asio_service &IOS, int seconds)
 	TestSetup();\
 	auto IOS = odc::asio_service::Get()
 
-#define START_IOS(threadcount) \
+#define START_IOS(ThreadCount) \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
-	const int ThreadCount = threadcount; \
-	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < (threadcount); i++) pThread[i] = StartIOSThread(*IOS)
+	std::vector<std::thread> threads; \
+	for (int i = 0; i < (ThreadCount); i++) threads.emplace_back([IOS] { IOS->run(); })
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i])
+	for (auto& t : threads) t.join()
 
 #define TEST_MD3MAPort(overridejson)\
 	auto MD3MAPort = std::make_shared<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
@@ -2793,6 +2769,9 @@ TEST_CASE("Master - Analog")
 		REQUIRE(res == 0x8000);
 	}
 
+	MD3OSPort->Disable();
+	MD3MAPort->Disable();
+
 	work.reset(); // Indicate all work is finished.
 
 	STOP_IOS();
@@ -2830,6 +2809,8 @@ TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 	// connected know that data is now not valid. As the MD3 slave maintains its own copy of data, to respond to polls, this is important.
 	//TODO: Comms up/Down test not complete
 
+	MD3MAPort->Disable();
+
 	STOP_IOS();
 	TestTearDown();
 }
@@ -2854,6 +2835,7 @@ TEST_CASE("Master - DOM and POM Tests")
 
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
+	MD3MAPort->EnablePolling(false);
 
 	// Hook the output functions
 	std::string OSResponse = "Not Set";
@@ -3031,6 +3013,9 @@ TEST_CASE("Master - DOM and POM Tests")
 
 	work.reset(); // Indicate all work is finished.
 
+	MD3OSPort->Disable();
+	MD3MAPort->Disable();
+
 	STOP_IOS();
 	TestTearDown();
 }
@@ -3103,6 +3088,9 @@ TEST_CASE("Master - TimeDate Poll Tests")
 	}
 
 	work.reset(); // Indicate all work is finished.
+
+	MD3OSPort->Disable();
+	MD3MAPort->Disable();
 
 	STOP_IOS();
 	TestTearDown();
@@ -3193,6 +3181,9 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 		//		  REQUIRE(PointList[80].ChangedTime == 0x00000164ee1e751c);
 	}
 	work.reset(); // Indicate all work is finished.
+
+	MD3OSPort->Disable();
+	MD3MAPort->Disable();
 
 	STOP_IOS();
 	TestTearDown();
@@ -3296,6 +3287,9 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 
 	work.reset(); // Indicate all work is finished.
 
+	MD3OSPort->Disable();
+	MD3MAPort->Disable();
+
 	STOP_IOS();
 	TestTearDown();
 }
@@ -3376,6 +3370,9 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 		// Catching the rest is difficult!
 	}
 	work.reset(); // Indicate all work is finished.
+
+	MD3OSPort->Disable();
+	MD3MAPort->Disable();
 
 	STOP_IOS();
 	TestTearDown();
@@ -3725,6 +3722,8 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 
 	work.reset(); // Indicate all work is finished.
 
+	MD3MAPort->Disable();
+
 	STOP_IOS();
 	TestTearDown();
 }
@@ -3765,10 +3764,8 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 	}
 
 	MD3OSPort->Enable();
-
-
 	Wait(*IOS, 2); // We just run for a period and see if we get connected and scanned.
-
+	MD3OSPort->Disable();
 
 	work.reset(); // Indicate all work is finished.
 

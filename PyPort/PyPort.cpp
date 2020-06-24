@@ -564,23 +564,20 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 		LOGDEBUG("PyPort {} not enabled, SetTimer call ignored", Name);
 		return;
 	}
-	//LOGDEBUG("SetTimer call {}, {}, {}", Name, id, delayms);
+	LOGTRACE("SetTimer call {}, {}, {}", Name, id, delayms);
 
 	pTimer_t timer = pIOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::milliseconds(delayms));
-	timer->async_wait(
+	timer->async_wait(python_strand->wrap(
 		[&, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
 		{
 			if (err_code != asio::error::operation_aborted)
 			{
-			      python_strand->dispatch([&, id]()
-					{
-						LOGSTRAND("Entered Strand on SetTimer");
-						pWrapper->CallTimerHandler(id);
-						LOGSTRAND("Exit Strand");
-					});
+			      LOGSTRAND("Entered Strand on SetTimer");
+			      pWrapper->CallTimerHandler(id);
+			      LOGSTRAND("Exit Strand");
 			}
-		});
+		}));
 }
 
 // This is called when we have decoded a restful request, to the point where we know which instance it should be passed to. We give it a callback, which will

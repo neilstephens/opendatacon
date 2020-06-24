@@ -282,33 +282,6 @@ void CommandLineLoggingCleanup()
 	odc::spdlog_flush_all();
 	odc::spdlog_drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
-
-void RunIOSForXSeconds(odc::asio_service &IOS, unsigned int seconds)
-{
-	// We don\92t have to consider the timer going out of scope in this use case.
-	auto timer = IOS.make_steady_timer();
-	timer->expires_from_now(std::chrono::seconds(seconds));
-	timer->async_wait([&IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
-		{
-			// If there was no more work, the odc::asio_service will exit from the IOS.run() below.
-			// However something is keeping it running, so use the stop command to force the issue.
-			IOS.stop();
-		});
-
-	IOS.run(); // Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
-	// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
-	// If the IOS runs out of work, it must be reset before being run again.
-}
-std::thread *StartIOSThread(odc::asio_service &IOS)
-{
-	return new std::thread([&] { IOS.run(); });
-}
-void StopIOSThread(odc::asio_service &IOS, std::thread *runthread)
-{
-	IOS.stop();        // This does not block. The next line will! If we have multiple threads, have to join all of them.
-	runthread->join(); // Wait for it to exit
-	delete runthread;
-}
 void WaitIOS(odc::asio_service &IOS, int seconds)
 {
 	auto timer = IOS.make_steady_timer();
@@ -320,7 +293,7 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	auto IOS = odc::asio_service::Get() // Max 4 threads
+	auto IOS = odc::asio_service::Get()
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
@@ -329,17 +302,16 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 #define STANDARD_TEST_TEARDOWN()\
 	TestTearDown()
 
-#define START_IOS(threadcount) \
+#define START_IOS(ThreadCount) \
 	LOGINFO("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
-	const int ThreadCount = threadcount; \
-	std::thread *pThread[threadcount]; \
-	for (int i = 0; i < (threadcount); i++) pThread[i] = StartIOSThread(*IOS)
+	std::vector<std::thread> threads; \
+	for (int i = 0; i < (ThreadCount); i++) threads.emplace_back([IOS] { IOS->run(); })
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(*IOS, pThread[i])
+	for (auto& t : threads) t.join();
 
 #define TEST_CBMAPort(overridejson)\
 	auto CBMAPort = std::make_shared<CBMasterPort>("TestMaster", conffilename1, overridejson); \
@@ -526,7 +498,7 @@ TEST_CASE("Util - SOEEventFormat")
 	SIMPLE_TEST_SETUP();
 	SOEEventFormat S;
 
-	auto cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
+	//auto cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018 //Not used - what was it going to be used for?
 
 	S.Group = 5;     // 3 bits b101
 	S.Number = 0x41; // 7 bits b1000001 - 0x41

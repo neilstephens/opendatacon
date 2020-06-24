@@ -137,12 +137,12 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 	console_sink->set_level(log_level);
 
 	auto pLibLogger = std::make_shared<spdlog::logger>("PyPort", begin(sinks), end(sinks));
-	pLibLogger->set_level(spdlog::level::level_enum::debug);
+	pLibLogger->set_level(spdlog::level::level_enum::trace);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", begin(sinks), end(sinks));
-	pODCLogger->set_level(spdlog::level::level_enum::debug);
+	pODCLogger->set_level(spdlog::level::level_enum::trace);
 	odc::spdlog_register_logger(pODCLogger);
 
 }
@@ -195,32 +195,6 @@ void CommandLineLoggingCleanup()
 	odc::spdlog_drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
 }
 
-void RunIOSForXSeconds(std::shared_ptr<odc::asio_service> IOS, unsigned int seconds)
-{
-	// We dont have to consider the timer going out of scope in this use case.
-	auto timer = IOS->make_steady_timer();
-	timer->expires_from_now(std::chrono::seconds(seconds));
-	timer->async_wait([&IOS](asio::error_code ) // [=] all autos by copy, [&] all autos by ref
-		{
-			// If there was no more work, the asio::io_context will exit from the IOS.run() below.
-			// However something is keeping it running, so use the stop command to force the issue.
-			IOS->stop();
-		});
-
-	IOS->run(); // Will block until all Work is done, or IOS.Stop() is called. In our case will wait for the TCP write to be done,
-	// and also any async timer to time out and run its work function (or lambda) - does not need to really do anything!
-	// If the IOS runs out of work, it must be reset before being run again.
-}
-std::thread *StartIOSThread(const std::shared_ptr<odc::asio_service>& IOS)
-{
-	return new std::thread([IOS] { IOS->run(); });
-}
-void StopIOSThread(const std::shared_ptr<odc::asio_service>& IOS, std::thread *runthread)
-{
-	IOS->stop();       // This does not block. The next line will! If we have multiple threads, have to join all of them.
-	runthread->join(); // Wait for it to exit
-	delete runthread;
-}
 void WaitIOS(const std::shared_ptr<odc::asio_service>& IOS, int seconds)
 {
 	auto timer = IOS->make_steady_timer();
@@ -284,9 +258,8 @@ private:
 };
 
 // Don't like using macros, but we use the same test set up almost every time.
-#define STANDARD_TEST_SETUP(threadcount)\
+#define STANDARD_TEST_SETUP()\
 	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	const int ThreadCount = threadcount; \
 	std::shared_ptr<odc::asio_service> IOS = odc::asio_service::Get()
 
 // Used for tests that dont need IOS
@@ -298,14 +271,15 @@ private:
 
 #define START_IOS() \
 	LOGINFO("Starting ASIO Threads"); \
+	const int ThreadCount = std::thread::hardware_concurrency()+2;\
 	auto work = IOS->make_work(); /* To keep run - running!*/\
-	std::thread *pThread[ThreadCount]; \
-	for (int i = 0; i < ThreadCount; i++) pThread[i] = StartIOSThread(IOS)
+	std::vector<std::thread> threads; \
+	for (int i = 0; i < ThreadCount; i++) threads.emplace_back([IOS] { IOS->run(); })
 
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (int i = 0; i < ThreadCount; i++) StopIOSThread(IOS, pThread[i]);
+	for (auto& t : threads) t.join()
 
 #define TEST_PythonPort(overridejson)\
 	auto PythonPort = std::make_shared<PyPort>("TestMaster", conffilename1, overridejson); \
@@ -349,7 +323,7 @@ void CheckEventStringConversions(const std::shared_ptr<EventInfo>& inevent)
 
 TEST_CASE("Py.TestEventStringConversions")
 {
-	STANDARD_TEST_SETUP(4);
+	STANDARD_TEST_SETUP();
 
 	uint32_t ODCIndex = 1001;
 
@@ -409,7 +383,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 	// The ODC startup process is Build, Start IOS, then Enable posts. So we are doing that right.
 	// However in build we are telling our Python script we are operational - have to assume not enabled!
-	STANDARD_TEST_SETUP(4); // Threads
+	STANDARD_TEST_SETUP();
 
 	TEST_PythonPort(Json::nullValue);
 	TEST_PythonPort2(Json::nullValue);
@@ -418,10 +392,21 @@ TEST_CASE("Py.TestsUsingPython")
 
 	START_IOS();
 
-	PythonPort->Enable();
-	PythonPort2->Enable();
-	PythonPort3->Enable();
-	PythonPort4->Enable();
+	try
+	{
+		PythonPort->Enable();
+		PythonPort2->Enable();
+		PythonPort3->Enable();
+		PythonPort4->Enable();
+	}
+	catch (asio::system_error& e)
+	{
+		std::string msg("Ports Enable() Asio system error: ");
+		msg += e.what();
+		LOGERROR(msg);
+		STOP_IOS();
+		FAIL(msg);
+	}
 
 
 	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
@@ -511,7 +496,7 @@ TEST_CASE("Py.TestsUsingPython")
 		PythonPort->SetTimer(122, 800);
 
 		done_count = 0;
-		for (int i = 0; i < 1000; i++)
+		for (uint32_t i = 0; i < 1000; i++)
 		{
 			url = fmt::format("RestHandler sent url {:d}", i);
 			PythonPort2->SetTimer(i + 100, 1001 - i);
@@ -523,7 +508,7 @@ TEST_CASE("Py.TestsUsingPython")
 			{
 				if (!WaitIOSFnResult(IOS, 7, [&]()
 					{
-						if(done_count == 1000)
+						if(done_count >= 1000)
 							return true;
 						return false;
 					}))
@@ -742,10 +727,11 @@ TEST_CASE("Py.TestsUsingPython")
 				}
 			} ());
 		LOGDEBUG("Port5 Disabled");
-	}
 
-	STOP_IOS(); // Wait in here for all threads to stop.
-	LOGDEBUG("IOS Stopped");
+
+		STOP_IOS(); // Wait in here for all threads to stop.
+		LOGDEBUG("IOS Stopped");
+	}
 
 	STANDARD_TEST_TEARDOWN();
 	LOGDEBUG("Test Teardown complete");

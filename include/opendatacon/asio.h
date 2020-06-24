@@ -64,9 +64,6 @@ public:
 	using asio::io_service::dispatch;
 	using asio::io_service::stopped;
 
-	//TODO: delete next line - noone should call stop
-	using asio::io_service::stop;
-
 	static std::shared_ptr<asio_service> Get();
 
 	std::unique_ptr<asio::io_service::work> make_work();
