@@ -122,6 +122,7 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp
 	port(pPort),
 	web_root(web_root),
 	tcp_port(tcp_port),
+	filter_type("sub_text"),
 	pSockMan(nullptr),
 	log_q_size(log_q_size),
 	pLogRegex(nullptr)
@@ -311,14 +312,15 @@ std::string WebUI::HandleSimControl(const std::string& url)
 	iss >> responder >> command;
 	if (command == "apply_log_filter")
 	{
-		std::string filter;
+		iss >> filter_type;
+		filter.clear();
 		std::string word;
 		while (iss >> word)
 		{
 			filter += word + " ";
 		}
 		filter = filter.substr(0, filter.size() - 1);
-		value = ApplyLogFilter(filter);
+		value = ApplyLogFilter();
 	}
 	else
 	{
@@ -464,8 +466,8 @@ void WebUI::ReadCompletionHandler(odc::buf_t& readbuf)
 	{
 		//end position minus start position == one less than length
 		auto line_str = full_str.substr(start_line_pos, (end_line_pos-start_line_pos)+1);
-
-		if(!regex || std::regex_match(line_str.begin(),line_str.end(),*regex))
+		if((filter_type == "reg_ex" && (!regex || std::regex_match(line_str.begin(),line_str.end(),*regex))) ||
+		   (filter_type == "sub_text" && (line_str.find(filter) != std::string::npos)))
 			log_q_sync->post([this,line_str,pBuffer]()
 				{
 					log_queue.emplace_front(pBuffer,line_str);
@@ -491,31 +493,34 @@ void WebUI::ConnectionEvent(bool state)
 		log->debug("Log sink connection on port {} {}",tcp_port,state ? "opened" : "closed");
 }
 
-Json::Value WebUI::ApplyLogFilter(const std::string& regex_filter)
+Json::Value WebUI::ApplyLogFilter()
 {
 	Json::Value value;
-	if (regex_filter.empty())
+	value["Result"] = "Success";
+	if (filter_type == "reg_ex")
 	{
-		std::unique_lock<std::shared_timed_mutex> lck(LogRegexMutex);
-		pLogRegex.reset();
-		value["Result"] = "Success";
-		return value;
-	}
-
-	try
-	{
-		std::regex regx(regex_filter,std::regex::extended);
-		{ //lock scope
+		if (filter.empty())
+		{
 			std::unique_lock<std::shared_timed_mutex> lck(LogRegexMutex);
-			pLogRegex = std::make_unique<std::regex>(regx);
-			value["Result"] = "Success";
+			pLogRegex.reset();
+			return value;
 		}
-	}
-	catch (std::exception& e)
-	{
-		if (auto log = odc::spdlog_get("WebUI"))
-			log->error("Problem using '{}' as regex: {}",regex_filter,e.what());
-		value["Result"] = "Faliure";
+
+		try
+		{
+			std::regex regx(filter,std::regex::extended);
+			{ //lock scope
+				std::unique_lock<std::shared_timed_mutex> lck(LogRegexMutex);
+				pLogRegex = std::make_unique<std::regex>(regx);
+			}
+		}
+		catch (std::exception& e)
+		{
+			if (auto log = odc::spdlog_get("WebUI"))
+				log->error("Problem using '{}' as regex: {}",filter,e.what());
+			value["Result"] = "Faliure";
+			return value;
+		}
 	}
 
 	return value;

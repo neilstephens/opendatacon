@@ -66,6 +66,8 @@ private:
 	std::string key_pem;
 	std::string web_root;
 	std::string tcp_port;
+	std::string filter;
+	std::string filter_type;
 	std::unique_ptr<odc::TCPSocketManager<std::string>> pSockMan;
 
 	//TODO: these can be maps with entry per web session
@@ -93,7 +95,7 @@ private:
 	void ConnectionEvent(bool state);
 
 	//TODO: These could be per web session
-	Json::Value ApplyLogFilter(const std::string& regex_filter);
+	Json::Value ApplyLogFilter();
 	std::unique_ptr<std::regex> GetLogFilter();
 };
 

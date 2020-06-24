@@ -84,7 +84,7 @@
         <div class="form-check">
           <input type="radio" class="form-check-input" name="log_filter_type" value="sub_text" checked="">SubText
         </div>
-
+        &nbsp;
         <div class="form-check">
           <input type="radio" class="form-check-input" name="log_filter_type" value="reg_ex">RegEx
         </div>
@@ -93,6 +93,7 @@
           <input type="text" class="form-control" id="log_filter_box">
         </div>
         <button class="btn btn-primary" type="button" onclick="apply_log_filter()">Apply Filter</button>
+        &nbsp;
         <div class="input-group-append">
           <input type="text" class="form-control" id="refresh_rate_box">
         </div>
@@ -127,6 +128,7 @@
       var gcommand_text = null;
       var grefresh_rate = 2000;
       var gports = null;
+      var gfilter_type = 'sub_text';
       var gtimer_handle = null;
 
       $(document).ready(function() {
@@ -304,7 +306,7 @@
 
       function apply_log_filter() {
           const filter = document.getElementById("log_filter_box").value;
-          const url = "/SimControl apply_log_filter " + filter;
+          const url = "/SimControl apply_log_filter " + gfilter_type + " " + filter;
           $.post(url, {})
               .done(function(data) {
                   display_alert_message(data);
@@ -342,6 +344,10 @@
           }
 
           build_command();
+      });
+
+      $(document).on('click', 'input[type=radio]', function() {
+          gfilter_type = $(this).attr('value');
       });
 
     </script>
