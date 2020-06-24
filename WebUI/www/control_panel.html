@@ -118,7 +118,7 @@
               $('#log_levels_modal').modal('show');
 
               $("#log_levels_modal").on("hidden.bs.modal", function () {
-                  const log_level = window.localStorage.getItem("log_level");
+                  var log_level = window.localStorage.getItem("log_level");
                   if (!log_level)
                       log_level = "trace";
 
@@ -132,7 +132,7 @@
       }
 
       function logs() {
-          const log_level = window.localStorage.getItem("log_level");
+          var log_level = window.localStorage.getItem("log_level");
           if (!log_level)
               log_level = "trace";
           document.getElementById("opendatacon_logs_src").src = "log.html";
