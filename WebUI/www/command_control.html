@@ -254,7 +254,7 @@
                   for (const [key, value] of Object.entries(data)) {
                       message += key + " ==> ";
                       for (const [sub_key, sub_value] of Object.entries(value)) {
-                          message += sub_key + " : " + sub_value;
+                          message += sub_key + " : " + sub_value + "<br>";
                       }
                   }
                   display_alert_message(message);
