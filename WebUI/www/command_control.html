@@ -41,7 +41,7 @@
 
       <br><br>
 
-      <label for="command_text_box">Sim Control Command:</label>
+      <label for="command_text_box">Command:</label>
       <input type="text" class="form-control" id="command_text_box">
       <br>
 
@@ -88,7 +88,7 @@
         <div class="input-group-append">
           <input type="text" class="form-control" id="refresh_rate_box">
         </div>
-        <button class="btn btn-primary" type="button" onclick="set_refresh_rate()">Refresh Rate</button>
+        <button class="btn btn-primary" type="button" onclick="set_refresh_rate()">Refresh Rate(milliseconds)</button>
       </div>
 
       <div class="alert alert-info clearfix">
@@ -131,7 +131,11 @@
                   const commands = data["Commands"];
                   commands.forEach(function(item) {
                       if (item != "List") {
-                          var button='<button class="btn btn-primary" onclick="set_sim_control_command(\'' + item + '\');">'+ item + '</button>&nbsp;&nbsp&nbsp';
+                          var desc = item;
+                          if (item == "SetUpdateInterval") {
+                              desc += "(milliseconds)";
+                          }
+                          var button='<button class="btn btn-primary" onclick="set_sim_control_command(\'' + item + '\');">'+ desc + '</button>&nbsp;&nbsp&nbsp';
                           $("#btn_grp_simcontrol_commands").append(button);
                       }
                   });

@@ -312,7 +312,12 @@ std::string WebUI::HandleSimControl(const std::string& url)
 	if (command == "apply_log_filter")
 	{
 		std::string filter;
-		iss >> filter;
+		std::string word;
+		while (iss >> word)
+		{
+			filter += word + " ";
+		}
+		filter = filter.substr(0, filter.size() - 1);
 		value = ApplyLogFilter(filter);
 	}
 	else
@@ -489,6 +494,14 @@ void WebUI::ConnectionEvent(bool state)
 Json::Value WebUI::ApplyLogFilter(const std::string& regex_filter)
 {
 	Json::Value value;
+	if (regex_filter.empty())
+	{
+		std::unique_lock<std::shared_timed_mutex> lck(LogRegexMutex);
+		pLogRegex.reset();
+		value["Result"] = "Success";
+		return value;
+	}
+
 	try
 	{
 		std::regex regx(regex_filter,std::regex::extended);

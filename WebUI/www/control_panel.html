@@ -38,18 +38,17 @@
 
     <div class="alert alert-info clearfix">
       <a href="#" class="alert-link"></a>
-      <button type="button" class="btn btn-primary float-right" onclick="go_to_web()">Web</button>
+      <button type="button" class="btn btn-primary float-right" onclick="go_to_tabular()">Tabular</button>
     </div>
 
     <div class="container">
       <div class="alert alert-info clearfix">
-        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="go_to_simcontrol()">Sim Control</button>
+        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="go_to_command_control()">Command Control</button>
       </div>
       <br><br><br>
 
       <div class="row">
         <div class="col-sm-4">
-          <h4>OpenDataCon</h4>
           <div class="list-group" id="opendatacon_list">
             <div id="opendatacon_commands"></div>
           </div>
@@ -70,7 +69,7 @@
     <script>
       var opendatacon_command = null;
 
-      function go_to_web() {
+      function go_to_tabular() {
           window.location.href="index.html"
       }
 
@@ -151,12 +150,12 @@
           });
       }
 
-      function go_to_simcontrol() {
-          document.getElementById("simcontrol_src").src = "sim_control.html";
-          document.getElementById("simcontrol_modal_title").innerHTML="Sim Control";
-          $('#simcontrol_modal').modal('show');
+      function go_to_command_control() {
+          document.getElementById("command_control_src").src = "command_control.html";
+          document.getElementById("command_control_modal_title").innerHTML="Command Control";
+          $('#command_control_modal').modal('show');
 
-          $("#simcontrol_modal").on("hidden.bs.modal", function () {
+          $("#command_control_modal").on("hidden.bs.modal", function () {
               location.reload();
           });
       }
