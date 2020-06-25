@@ -119,15 +119,16 @@ install:
         yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
         yum repolist
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3-3.12.2
+        yum install -y applydeltarpm
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3
         ln -s /usr/bin/cmake3 /bin/cmake
         
-        #Extras that aren't yum-able
+        #Extras that aren-t yum-able
         curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm
         curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-3.0.6-2.el7.psychotic.x86_64.rpm
         rpm -i libmodbus-3.0.6-2.el7.psychotic.x86_64.rpm
         rpm -i libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm     
-        # To get Python3.6 we need scl-util-build tools.
+        # To get Python3.6 we need scl-util-build tools
         curl -O http://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
         rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
         curl -O https://public-yum.oracle.com/repo/OracleLinux/OL7/optional/latest/x86_64/getPackage/libmicrohttpd-devel-0.9.33-2.el7.x86_64.rpm
@@ -135,7 +136,7 @@ install:
         
         yum install -y rh-python36 rh-python36-python-devel
       ' 
-      #Set up mirror paths inside the docker - so it's the same command to run tests as other configs
+      #Set up mirror paths inside the docker - so it-s the same command to run tests as other configs
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       
@@ -147,7 +148,7 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo dpkg --add-architecture i386
       sudo apt-get update
-      sudo apt-get install -y lib32stdc++-8-dev libstdc++-8-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 python3.6-minimal:i386 python3.6:i386 python3.6-dev:i386
+      sudo apt-get install -y lib32stdc++-7-dev libstdc++-7-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 python3.6-minimal:i386 python3.6:i386 python3.6-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
