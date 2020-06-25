@@ -18,7 +18,6 @@
  #	limitations under the License.
  #
 cmake_minimum_required(VERSION 3.10)
-project(opendatacon_suite C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,6 +44,7 @@ endif()
 
 #macro for resolving chain of symlinks into a list
 include(file_w_symlinks.cmake)
+project(opendatacon_suite C CXX)
 
 install(FILES "LICENSE.txt" DESTINATION ".")
 install(FILES "NOTICE.txt" DESTINATION ".")
@@ -181,7 +181,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 	# using Intel C++
 	message(WARNING "opendatacon has not been tested using Intel compiler" )
 	
-else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+else()
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
