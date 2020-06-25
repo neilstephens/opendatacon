@@ -141,7 +141,8 @@ install:
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       
       export PRESOURCE="source scl_source enable rh-python36 && source scl_source enable devtoolset-8 &&"
-      export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
+      export RUN="docker exec --interactive --workdir $SRC_DIR/build $DOCK"
+      export BUILDRUN="$RUN"
       export STOP="docker stop $DOCK"
     fi
   - |
@@ -158,10 +159,10 @@ install:
     fi
 
 script:
-  - $RUN sh -c '$PRESOURCE cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT $SRC_DIR'
-  - $RUN sh -c '$PRESOURCE make -j3'
-  - $RUN sh -c '$PRESOURCE make package'
-  - $RUN sh -c '$PRESOURCE make install'
+  - $BUILDRUN sh -c '$PRESOURCE cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT ..'
+  - $BUILDRUN sh -c '$PRESOURCE make -j3'
+  - $BUILDRUN sh -c '$PRESOURCE make package'
+  - $BUILDRUN sh -c '$PRESOURCE make install'
   - $RUN install/bin/ODC_tests -d yes
   - $RUN install/bin/DNP3Port_tests -d yes
   - $RUN install/bin/SimPort_tests -d yes
