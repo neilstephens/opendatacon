@@ -113,13 +113,16 @@ install:
   - |
     if [ "$DOCKER_BUILD" == "OEL" ]; then
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti library/oraclelinux:7.6)
+      
+      # load dependencies into docker image
       docker exec -i $DOCK sh -c '
         yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
         yum repolist
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3-3.12.2
+        ln -s /usr/bin/cmake3 /bin/cmake
         
-        # load dependencies into docker image so that tests can be run
+        #Extras that aren't yum-able
         curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm
         curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-3.0.6-2.el7.psychotic.x86_64.rpm
         rpm -i libmodbus-3.0.6-2.el7.psychotic.x86_64.rpm
@@ -132,17 +135,13 @@ install:
         
         yum install -y rh-python36 rh-python36-python-devel
       ' 
-      mkdir -p sysroot/opt/rh/rh-python36/root
-      docker exec -i $DOCK cp -a /usr /mnt/build/sysroot/
-      docker exec -i $DOCK cp -a /lib* /mnt/build/sysroot/
-      docker exec -i $DOCK cp -a /opt/rh/rh-python36/root/usr /mnt/build/sysroot/opt/rh/rh-python36/root/
+      #Set up mirror paths inside the docker - so it's the same command to run tests as other configs
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
-      sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd)
-      export SYSROOT=$(pwd)/sysroot/
-      export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
+      
+      export RUN="docker exec --interactive --workdir /mnt/build $DOCK source scl_source enable rh-python36 &&"
+      export BUILDRUN="$RUN source scl_source enable devtoolset-8 &&"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../el7-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper -DPYTHON_HOME=$SYSROOT/opt/rh/rh-python36/root/usr"
     fi
   - |
     if [ "$DOCKER_BUILD" == "i386" ]; then
@@ -158,10 +157,10 @@ install:
     fi
 
 script:
-  - cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT ..
-  - make -j3
-  - make package
-  - make install
+  - $BUILDRUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT ..
+  - $BUILDRUN make -j3
+  - $BUILDRUN make package
+  - $BUILDRUN make install
   - $RUN install/bin/ODC_tests -d yes
   - $RUN install/bin/DNP3Port_tests -d yes
   - $RUN install/bin/SimPort_tests -d yes
