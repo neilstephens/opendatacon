@@ -65,11 +65,12 @@ void MD3MasterPort::Enable()
 		enabled = false;
 		return;
 	}
+	EnablePolling(true);
 }
 void MD3MasterPort::Disable()
 {
 	if (!enabled.exchange(false)) return;
-
+	EnablePolling(false);
 	MD3Connection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
 

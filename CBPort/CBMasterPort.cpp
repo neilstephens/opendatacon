@@ -64,11 +64,12 @@ void CBMasterPort::Enable()
 		enabled = false;
 		return;
 	}
+	EnablePolling(true);
 }
 void CBMasterPort::Disable()
 {
 	if (!enabled.exchange(false)) return;
-
+	EnablePolling(false);
 	CBConnection::Close(pConnection); // Any outstation can take the port down and back up - same as OpenDNP operation for multidrop
 }
 

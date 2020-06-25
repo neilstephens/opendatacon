@@ -122,6 +122,7 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp
 	port(pPort),
 	web_root(web_root),
 	tcp_port(tcp_port),
+	filter_type("sub_text"),
 	pSockMan(nullptr),
 	log_q_size(log_q_size),
 	pLogRegex(nullptr)
@@ -250,9 +251,8 @@ int WebUI::http_ahc(void *cls,
 
 void WebUI::Build()
 {
-	std::string cmd = "tcp_web_ui off TCP localhost " + tcp_port + " SERVER";
-	std::stringstream ss(cmd);
-	RootCommands["add_logsink"](ss);
+	const std::string params = "tcp_web_ui off TCP localhost " + tcp_port + " SERVER";
+	ExecuteRootCommand("add_logsink", params);
 }
 
 void WebUI::Enable()
@@ -305,12 +305,27 @@ void WebUI::Disable()
 
 std::string WebUI::HandleSimControl(const std::string& url)
 {
-	const std::string simcontrol = "/SimControl";
-	std::string command = url.substr(simcontrol.size() + 1, url.size() - simcontrol.size());
-
-	std::stringstream iss(command);
-	iss >> command;
-	Json::Value value = ExecuteCommand(Responders[simcontrol],command,iss);
+	std::stringstream iss(url);
+	std::string responder;
+	std::string command;
+	Json::Value value;
+	iss >> responder >> command;
+	if (command == "apply_log_filter")
+	{
+		iss >> filter_type;
+		filter.clear();
+		std::string word;
+		while (iss >> word)
+		{
+			filter += word + " ";
+		}
+		filter = filter.substr(0, filter.size() - 1);
+		value = ApplyLogFilter();
+	}
+	else
+	{
+		value = ExecuteCommand(Responders[responder], command, iss);
+	}
 
 	Json::StreamWriterBuilder wbuilder;
 	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
@@ -355,11 +370,25 @@ Json::Value WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::str
 	return pResponder->ExecuteCommand(command, params);
 }
 
+void WebUI::ExecuteRootCommand(const std::string& command, const std::string& params)
+{
+	std::stringstream iss(params);
+	RootCommands[command](iss);
+}
+
 std::string WebUI::HandleOpenDataCon(const std::string& url)
 {
-	const std::string opendatacon = "/OpenDataCon";
-	const std::string set_log_level = "set_loglevel";
-	const std::string command = url.substr(opendatacon.size() + 1, url.size() - opendatacon.size());
+	std::stringstream iss(url);
+	std::string responder;
+	std::string command;
+	iss >> responder >> command;
+
+	std::string params;
+	std::string p;
+	while (iss >> p)
+	{
+		params += p + " ";
+	}
 
 	Json::Value value;
 	if (command == "List")
@@ -372,51 +401,28 @@ std::string WebUI::HandleOpenDataCon(const std::string& url)
 	}
 	else if (command == "version")
 	{
-		ParamCollection params;
-		value = Responders[opendatacon]->ExecuteCommand(command, params);
+		value = ExecuteCommand(Responders[responder], command, iss);
 	}
-	else if (command.find(set_log_level) != std::string::npos)
+	else if (command == "tcp_logs_on")
 	{
-		const std::string log_type = command.substr(set_log_level.size(), command.size() - set_log_level.size());
-		const std::string cmd = "tcp_web_ui " + log_type;
-		std::stringstream ss(cmd);
-		RootCommands["set_loglevel"](ss);
-	}
-	else if (command.find("tcp") != std::string::npos)
-	{
-		if (command == "tcp_logs_on")
-		{
-			if(!pSockMan)
-				ConnectToTCPServer();
+		if(!pSockMan)
+			ConnectToTCPServer();
 
-			std::string log_str;
-			std::atomic_bool executed(false);
-			log_q_sync->post([this,&log_str,&executed]()
-				{
-					for(const auto& pair : log_queue)
-						log_str.append(pair.second);
-					executed = true;
-				});
-			while(!executed)
-				pIOS->poll_one();
-			value["tcp_data"] = log_str;
-		}
-		else
-		{
-			const std::size_t pos = command.find(" ");
-			if (pos != std::string::npos)
+		std::string log_str;
+		std::atomic_bool executed(false);
+		log_q_sync->post([this,&log_str,&executed]()
 			{
-				const std::string log_type = command.substr(pos, command.size() - pos);
-				const std::string cmd = "tcp_web_ui" + log_type + " off";
-				std::stringstream ss(cmd);
-				RootCommands["set_loglevel"](ss);
-			}
-		}
+				for(const auto& pair : log_queue)
+					log_str.append(pair.second);
+				executed = true;
+			});
+		while(!executed)
+			pIOS->poll_one();
+		value["tcp_data"] = log_str;
 	}
 	else
 	{
-		std::stringstream ss;
-		RootCommands[command](ss);
+		ExecuteRootCommand(command, params);
 	}
 
 	Json::StreamWriterBuilder wbuilder;
@@ -460,8 +466,8 @@ void WebUI::ReadCompletionHandler(odc::buf_t& readbuf)
 	{
 		//end position minus start position == one less than length
 		auto line_str = full_str.substr(start_line_pos, (end_line_pos-start_line_pos)+1);
-
-		if(!regex || std::regex_match(line_str.begin(),line_str.end(),*regex))
+		if((filter_type == "reg_ex" && (!regex || std::regex_match(line_str.begin(),line_str.end(),*regex))) ||
+		   (filter_type == "sub_text" && (line_str.find(filter) != std::string::npos)))
 			log_q_sync->post([this,line_str,pBuffer]()
 				{
 					log_queue.emplace_front(pBuffer,line_str);
@@ -487,22 +493,37 @@ void WebUI::ConnectionEvent(bool state)
 		log->debug("Log sink connection on port {} {}",tcp_port,state ? "opened" : "closed");
 }
 
-void WebUI::ApplyLogFilter(const std::string& regex_filter)
+Json::Value WebUI::ApplyLogFilter()
 {
-	try
+	Json::Value value;
+	value["Result"] = "Success";
+	if (filter_type == "reg_ex")
 	{
-		std::regex regx(regex_filter,std::regex::extended);
-		{ //lock scope
+		if (filter.empty())
+		{
 			std::unique_lock<std::shared_timed_mutex> lck(LogRegexMutex);
-			pLogRegex = std::make_unique<std::regex>(regx);
+			pLogRegex.reset();
+			return value;
+		}
+
+		try
+		{
+			std::regex regx(filter,std::regex::extended);
+			{ //lock scope
+				std::unique_lock<std::shared_timed_mutex> lck(LogRegexMutex);
+				pLogRegex = std::make_unique<std::regex>(regx);
+			}
+		}
+		catch (std::exception& e)
+		{
+			if (auto log = odc::spdlog_get("WebUI"))
+				log->error("Problem using '{}' as regex: {}",filter,e.what());
+			value["Result"] = "Fail: " + std::string(e.what());
+			return value;
 		}
 	}
-	catch (std::exception& e)
-	{
-		if (auto log = odc::spdlog_get("WebUI"))
-			log->error("Problem using '{}' as regex: {}",regex_filter,e.what());
-	}
-	return;
+
+	return value;
 }
 
 std::unique_ptr<std::regex> WebUI::GetLogFilter()
