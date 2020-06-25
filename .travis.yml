@@ -112,7 +112,7 @@ install:
     fi
   - |
     if [ "$DOCKER_BUILD" == "OEL" ]; then
-      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti library/oraclelinux:7.6)
+      DOCK=$(docker run -d -v $SRC_DIR:/mnt/src --rm -ti library/oraclelinux:7.6)
       
       # load dependencies into docker image
       docker exec -i $DOCK sh -c '
@@ -120,7 +120,7 @@ install:
         /usr/bin/ol_yum_configure.sh
         yum repolist
         yum install -y applydeltarpm
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3 git file
         ln -s /usr/bin/cmake3 /bin/cmake
         
         #Extras that aren-t yum-able
@@ -138,10 +138,12 @@ install:
       ' 
       #Set up mirror paths inside the docker - so it-s the same command to run tests as other configs
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
-      docker exec -i $DOCK ln -s /mnt $SRC_DIR
+      docker exec -i $DOCK ln -s /mnt/src $SRC_DIR
       
+      export TOOLCHAIN_OPT="-DPYTHON_HOME=/opt/rh/rh-python36/root/usr"
+      export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=oel7"
       export PRESOURCE="source scl_source enable rh-python36 && source scl_source enable devtoolset-8 &&"
-      export RUN="docker exec --interactive --workdir $SRC_DIR/build $DOCK"
+      export RUN="docker exec --interactive --workdir /mnt/src/build $DOCK"
       export BUILDRUN="$RUN"
       export STOP="docker stop $DOCK"
     fi
@@ -149,7 +151,7 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo dpkg --add-architecture i386
       sudo apt-get update
-      sudo apt-get install -y lib32gcc-7-dev lib32stdc++-7-dev libstdc++-7-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 python3.6-minimal:i386 python3.6:i386 python3.6-dev:i386
+      sudo apt-get install -y lib32gcc-7-dev lib32gcc-7-dev:i386 lib32stdc++-7-dev libstdc++-7-dev:i386 libmodbus-dev:i386 libmicrohttpd-dev:i386 python3.6-minimal:i386 python3.6:i386 python3.6-dev:i386
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
@@ -159,10 +161,10 @@ install:
     fi
 
 script:
-  - $BUILDRUN sh -c '$PRESOURCE cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT ..'
-  - $BUILDRUN sh -c '$PRESOURCE make -j3'
-  - $BUILDRUN sh -c '$PRESOURCE make package'
-  - $BUILDRUN sh -c '$PRESOURCE make install'
+  - $BUILDRUN sh -c "$PRESOURCE cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT .."
+  - $BUILDRUN sh -c "$PRESOURCE make -j3"
+  - $BUILDRUN sh -c "$PRESOURCE make package"
+  - $BUILDRUN sh -c "$PRESOURCE make install"
   - $RUN install/bin/ODC_tests -d yes
   - $RUN install/bin/DNP3Port_tests -d yes
   - $RUN install/bin/SimPort_tests -d yes
