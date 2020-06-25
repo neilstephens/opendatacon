@@ -1142,6 +1142,7 @@ TEST_CASE("Station - BinaryEvent")
 	REQUIRE((res == CommandStatus::UNDEFINED)); // The Get will Wait for the result to be set. This always returns this value?? Should be Success if it worked...
 	// Wait for some period to do something?? Check that the port is open and we can connect to it?
 
+	CBOSPort->Disable();
 	STANDARD_TEST_TEARDOWN();
 }
 
@@ -1275,6 +1276,8 @@ TEST_CASE("Station - CONTROL Commands")
 	CBOSPort->GetPointTable()->GetAnalogControlValueUsingODCIndex(ODCIndex, res16, hasbeenset);
 	REQUIRE(res16 == BData);
 	REQUIRE(hasbeenset == true);
+
+	CBOSPort->Disable();
 
 	STANDARD_TEST_TEARDOWN();
 }
@@ -1509,6 +1512,8 @@ TEST_CASE("Station - Baker Global CONTROL Command")
 	REQUIRE(res == 1);
 	REQUIRE(hasbeenset == true);
 
+	CBOSPort->Disable();
+
 	STANDARD_TEST_TEARDOWN();
 }
 }
@@ -1648,6 +1653,9 @@ TEST_CASE("Master - Scan Request F0")
 		CBOSPort->GetPointTable()->GetBinaryValueUsingODCIndexAndResetChangedFlag(ODCIndex, res, changed, hasbeenset);
 		REQUIRE(res == ((ODCIndex + 1) % 2));
 	}
+
+	CBOSPort->Disable();
+	CBMAPort->Disable();
 
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
@@ -1803,6 +1811,9 @@ TEST_CASE("Master - SOE Request F10")
 		}
 	}
 
+	CBOSPort->Disable();
+	CBMAPort->Disable();
+
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
 }
@@ -1873,6 +1884,9 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 		// We could create a config file for each station that had every group/point in the SOE stream configured so that we could then process them through to
 		// ODC events.
 	}
+
+	for (int StationAddress = 0; StationAddress < 16; StationAddress++)
+		CBMAPort[StationAddress]->Disable();
 
 	STOP_IOS();
 	STANDARD_TEST_TEARDOWN();
