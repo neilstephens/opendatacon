@@ -18,10 +18,12 @@
  #	limitations under the License.
  #
 cmake_minimum_required(VERSION 3.10)
+project(opendatacon_suite C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
+
 option(SUPPRESS_ZERO_CHECK "Turn off the VS ZERO_CHECK config which runs everytime you build" OFF)
 if(SUPPRESS_ZERO_CHECK)
 	# If you dont want the ZERO_CHECK project in VS have the following line enabled.
@@ -44,7 +46,6 @@ endif()
 #macro for resolving chain of symlinks into a list
 include(file_w_symlinks.cmake)
 
-project(opendatacon_suite C CXX)
 install(FILES "LICENSE.txt" DESTINATION ".")
 install(FILES "NOTICE.txt" DESTINATION ".")
 install(FILES "README.md" DESTINATION ".")
