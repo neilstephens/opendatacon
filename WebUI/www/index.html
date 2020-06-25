@@ -33,10 +33,10 @@
     <!-- html section -->
     <div id="common_content"></div>
 
-    <!-- toggle between web and console mode -->
+    <!-- toggle between tabular and control panel mode -->
     <div class="alert alert-info clearfix">
       <a href="#" class="alert-link"></a>
-      <button type="button" class="btn btn-primary float-right" onclick="go_to_console()">Console</button>
+      <button type="button" class="btn btn-primary float-right" onclick="go_to_control_panel()">Control Panel</button>
     </div>
 
     <!-- Data ports table -->
@@ -63,9 +63,9 @@
 
     <!-- java script section -->
     <script>
-      /* function which will take user to the console mode */
-      function go_to_console() {
-          window.location.href="console.html";
+      /* function which will take user to the control panel mode */
+      function go_to_control_panel() {
+          window.location.href="control_panel.html";
       }
 
       /* post a query to the server with target and get the data ports */
@@ -101,8 +101,8 @@
                   .done(function( data ) {
                       if (data) {
                           var result = '';
-                          for (var key of Object.keys(data)) {
-                              result += key + ' : ' + data[key] + '<br>';
+                          for (const [key, value] of Object.entries(data)) {
+                              result += key + ' : ' + value + '<br>';
                           }
 
                           document.getElementById("short_text_modal_title").innerHTML="Data Ports[" + target + ", " + command +"]";
@@ -129,8 +129,8 @@
                   .done(function( data ) {
                       if (data) {
                           var result = '';
-                          for (var key of Object.keys(data)) {
-                              result += key + ' : ' + data[key] + '<br>';
+                          for (const [key, value] of Object.entries(data)) {
+                              result += key + ' : ' + value + '<br>';
                           }
 
                           document.getElementById("short_text_modal_title").innerHTML="Data Connectors[" + target + ", " + command +"]";
