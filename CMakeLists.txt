@@ -41,10 +41,6 @@ else()
 	endif()
 endif()
 
-if(POLICY CMP0048)
-	cmake_policy(SET CMP0048 OLD)
-endif()
-
 #macro for resolving chain of symlinks into a list
 include(file_w_symlinks.cmake)
 
