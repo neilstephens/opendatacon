@@ -311,7 +311,7 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
-	for (auto& t : threads) t.join();
+	for (auto& t : threads) t.join()
 
 #define TEST_CBMAPort(overridejson)\
 	auto CBMAPort = std::make_shared<CBMasterPort>("TestMaster", conffilename1, overridejson); \
