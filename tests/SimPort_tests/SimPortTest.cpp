@@ -124,8 +124,6 @@ std::shared_ptr<odc::asio_service> TestSetup(spdlog::level::level_enum loglevel)
 	pODCLogger->set_level(loglevel);
 	odc::spdlog_register_logger(pODCLogger);
 
-	InitLibaryLoading();
-
 	return odc::asio_service::Get();
 }
 
@@ -136,6 +134,8 @@ void TestTearDown()
 
 TEST_CASE("TestConfigLoad")
 {
+	//Load the library
+	InitLibaryLoading();
 	auto portlib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(portlib);
 
