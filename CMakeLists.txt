@@ -17,7 +17,11 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  #
+cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
 option(SUPPRESS_ZERO_CHECK "Turn off the VS ZERO_CHECK config which runs everytime you build" OFF)
 if(SUPPRESS_ZERO_CHECK)
 	# If you dont want the ZERO_CHECK project in VS have the following line enabled.
@@ -212,7 +216,7 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 			endif()
 		endif()
 	endif()
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++17 -pedantic")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
 	if(NOT APPLE)
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
 		#only export API symbols
