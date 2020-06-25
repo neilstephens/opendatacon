@@ -158,6 +158,7 @@ install:
       # Copy headers and libs to sysroot from within the docker image
       docker exec -i $DOCK sh -c '
         mkdir -p /mnt/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
+        rm /usr/lib/python3.5/sitecustomize.py
         cp /etc/python3.5/sitecustomize.py /usr/lib/python3.5/sitecustomize.py
         cp -a /usr/include/*/*/pyconfig.h /mnt/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
         cp -a /usr/include/microhttpd.h /mnt/build/sysroot/usr/include/
