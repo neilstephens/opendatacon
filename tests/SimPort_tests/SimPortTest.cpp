@@ -112,7 +112,7 @@ inline Json::Value GetTestConfigJSON()
 	return json_conf;
 }
 
-std::shared_ptr<odc::asio_service> TestSetup(spdlog::level::level_enum loglevel)
+void TestSetup(spdlog::level::level_enum loglevel)
 {
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 	auto pLibLogger = std::make_shared<spdlog::logger>("SimPort", console_sink);
@@ -124,7 +124,11 @@ std::shared_ptr<odc::asio_service> TestSetup(spdlog::level::level_enum loglevel)
 	pODCLogger->set_level(loglevel);
 	odc::spdlog_register_logger(pODCLogger);
 
-	return odc::asio_service::Get();
+	static std::once_flag once_flag;
+	std::call_once(once_flag,[]()
+		{
+			InitLibaryLoading();
+		});
 }
 
 void TestTearDown()
@@ -134,14 +138,15 @@ void TestTearDown()
 
 TEST_CASE("TestConfigLoad")
 {
+	TestSetup(spdlog::level::level_enum::warn);
+
 	//Load the library
-	InitLibaryLoading();
 	auto portlib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(portlib);
 
 	//scope for port, ios lifetime
 	{
-		auto IOS = TestSetup(spdlog::level::level_enum::warn);
+		auto IOS = odc::asio_service::Get();
 		newptr newSim = GetPortCreator(portlib, "Sim");
 		REQUIRE(newSim);
 		delptr deleteSim = GetPortDestroyer(portlib, "Sim");

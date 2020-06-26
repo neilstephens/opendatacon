@@ -73,9 +73,12 @@ extern "C" int run_tests(int argc, char* argv[])
 	}
 	CommandLineLoggingSetup(log_level);
 
-	return Catch::Session().run(new_argc, new_argv);
+	auto result = Catch::Session().run(new_argc, new_argv);
+
 	// And release here.
 	CommandLineLoggingCleanup();
+	return result;
+
 	#else
 	std::cout << "PyPort: Compiled for Visual Studio Testing only" << std::endl;
 	return 1;

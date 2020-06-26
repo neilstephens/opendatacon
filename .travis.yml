@@ -151,9 +151,9 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo apt-get update
       sudo apt-get install -y g++-7-i686-linux-gnu
-      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:xenial)
+      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:bionic)
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev" 
-      docker exec -i $DOCK sh -c "apt-get install -y python3.5 python3.5-dev" 
+      docker exec -i $DOCK sh -c "apt-get install -y python3.6 python3.6-dev" 
       mkdir sysroot
       # Copy headers and libs to sysroot from within the docker image
       docker exec -i $DOCK sh -c '
