@@ -86,9 +86,10 @@ const std::string GetFile(const std::string& rUrl)
 	return rUrl.substr(last+1);
 }
 
+
 int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 {
-	struct stat buf{};
+	struct stat buf {};
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;
@@ -100,7 +101,7 @@ int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 	if (file == nullptr)
 	{
 		if (auto log = odc::spdlog_get("WebUI"))
-			log->error("WebUI : Failed to open file {}", url);
+			log->error("Failed to open file {}", url);
 
 		response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
 			(void *)EMPTY_PAGE,
@@ -115,20 +116,27 @@ int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 			&file_free_callback);
 		if (response == nullptr)
 		{
+			if (auto log = odc::spdlog_get("WebUI"))
+				log->error("MHD_create_response_from_callback failed.");
 			fclose(file);
-			return MHD_NO;
+			ret = MHD_NO;
 		}
-		MHD_add_response_header(response, "Content-Type", GetMimeType(url).c_str());
-		ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-		MHD_destroy_response(response);
+		else
+		{
+			MHD_add_response_header(response, "Content-Type", GetMimeType(url).c_str());
+			ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+			MHD_destroy_response(response);
+		}
 	}
+	if(ret != MHD_YES)
+		if (auto log = odc::spdlog_get("WebUI"))
+			log->error("Failed to queue response from ReturnFileBlocking().");
 	return ret;
 }
 
 int ReturnJSON(struct MHD_Connection *connection, const std::string& json_str)
 {
 	struct MHD_Response *response;
-	int ret;
 
 	/*
 	 MHD_RESPMEM_MUST_FREE
@@ -138,9 +146,12 @@ int ReturnJSON(struct MHD_Connection *connection, const std::string& json_str)
 		(void *)json_str.c_str(),
 		MHD_RESPMEM_MUST_COPY);
 	MHD_add_response_header (response, "Content-Type", MimeTypeMap.at("json").c_str());
-	ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+	int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
 	MHD_destroy_response(response);
 
+	if(ret != MHD_YES)
+		if (auto log = odc::spdlog_get("WebUI"))
+			log->error("Failed to queue response from ReturnJSON().");
 	return ret;
 }
 
