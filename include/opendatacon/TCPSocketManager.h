@@ -221,7 +221,7 @@ public:
 
 		if(auto t = tracker.lock())
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->critical("TCPSocketManager is being destroyed with {} outstanding handler(s). Was Close() not called, or Write() called after Close()?", t.use_count());
+				log->critical("TCPSocketManager is being destroyed with {} outstanding handler(s). Was Close() not called, or Write() called after Close()?", t.use_count()-1);
 	}
 
 private:
