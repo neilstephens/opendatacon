@@ -80,6 +80,8 @@ private:
 	const std::unique_ptr<asio::io_service::strand> log_q_sync = pIOS->make_strand();
 
 	bool useSSL = false;
+	/*Param Collection with POST from client side*/
+	ParamCollection params;
 	/* UI response handlers */
 	std::unordered_map<std::string, const IUIResponder*> Responders;
 	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;

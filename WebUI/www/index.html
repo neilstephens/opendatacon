@@ -79,7 +79,7 @@
               document.getElementById("frame_modal_title").innerHTML="Statistics[" + target +"]";
               $('#frame_modal').modal('show');
           } else if (command == "CurrentState") {
-              $.post("/DataPorts/CurrentState", { Target : target })
+              $.post("/DataPorts CurrentState", { Target : target })
                   .done(function(data) {
                       if (data) {
                           document.getElementById("current_state_src").src = "current_state.html?type=DataPorts&target=" + target;
@@ -96,7 +96,7 @@
                       }
                   });
           } else {
-              const url = "/DataPorts/" + command;
+              const url = "/DataPorts " + command;
               $.post( url, { Target : target } )
                   .done(function( data ) {
                       if (data) {
@@ -124,7 +124,7 @@
               document.getElementById("frame_modal_title").innerHTML="Configuration[" + target +"]";
               $('#frame_modal').modal('show');
           } else {
-              const url = "/DataConnectors/" + command;
+              const url = "/DataConnectors " + command;
               $.post( url, { Target : target } )
                   .done(function( data ) {
                       if (data) {

@@ -185,7 +185,7 @@
           $('#ports_select').html(options);
           $('#ports_select').selectpicker('refresh');
 
-          const url = "/DataPorts/Configuration";
+          const url = "/DataPorts Configuration";
           $.post(url, { Target : ports[0]})
               .done(function(data) {
                   var analogs = [];

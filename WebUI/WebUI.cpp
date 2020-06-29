@@ -161,6 +161,7 @@ int WebUI::http_ahc(void *cls,
 	size_t& upload_data_size,
 	void **con_cls)
 {
+	params.clear();
 	struct connection_info_struct *con_info;
 
 	//
@@ -176,7 +177,6 @@ int WebUI::http_ahc(void *cls,
 			con_cls);
 	}
 
-	ParamCollection params;
 	if (method == "POST")
 	{
 		con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
@@ -226,8 +226,8 @@ int WebUI::http_ahc(void *cls,
 
 void WebUI::Build()
 {
-	const std::string params = "tcp_web_ui off TCP localhost " + tcp_port + " SERVER";
-	ExecuteRootCommand("add_logsink", params);
+	const std::string args = "tcp_web_ui off TCP localhost " + tcp_port + " SERVER";
+	ExecuteRootCommand("add_logsink", args);
 }
 
 void WebUI::Enable()
@@ -281,20 +281,17 @@ void WebUI::Disable()
 
 void WebUI::HandleCommand(const std::string& url, std::function<void (const std::string &&)> result_cb)
 {
-	Json::Value value;
 	std::stringstream iss(url);
 	std::string responder;
 	std::string command;
 	iss >> responder >> command;
 
-	printf("----------------------------------------------------------------------\n");
-	printf("url == [%s] || command == [%s]\n", url.c_str(), command.c_str());
-	printf("----------------------------------------------------------------------\n");
-
 	if (responder == "/OpenDataCon" && command == "List")
 	{
+		Json::Value value;
 		for (auto it = RootCommands.begin(); it != RootCommands.end(); ++it)
 			value[it->first] = it->first;
+		result_cb(value.toStyledString());
 	}
 	else if (command == "tcp_logs_on")
 	{
@@ -329,12 +326,14 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const std:
 	//ignore the root version command - there's a contextual one
 	else if(command != "version" && RootCommands.find(command) != RootCommands.end())
 	{
-		std::string params;
+		std::string args;
 		std::string p;
 		while (iss >> p)
-			params += p + " ";
-		ExecuteRootCommand(command, params);
+			args += p + " ";
+		Json::Value value;
+		ExecuteRootCommand(command, args);
 		value["Result"] = "Success";
+		result_cb(value.toStyledString());
 	}
 	else if(Responders.find(responder) != Responders.end())
 	{
@@ -342,15 +341,14 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const std:
 	}
 	else
 	{
+		Json::Value value;
 		value["Result"] = "Responder not available.";
+		result_cb(value.toStyledString());
 	}
-	result_cb(value.toStyledString());
 }
 
 void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const std::string &&)> result_cb)
 {
-	ParamCollection params;
-
 	//Define first arg as Target regex
 	std::string T_regex_str;
 	odc::extract_delimited_string("\"'`",args,T_regex_str);
