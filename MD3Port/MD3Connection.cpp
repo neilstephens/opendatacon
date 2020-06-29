@@ -252,11 +252,6 @@ void MD3Connection::Close()
 
 MD3Connection::~MD3Connection()
 {
-	Close();
-
-	if (!pSockMan) // Could be empty if a connection was never added (opened)
-		return;
-
 	pSockMan.reset(); // Release our object - should be done anyway when the shared_ptr is destructed, but just to make sure...
 }
 
