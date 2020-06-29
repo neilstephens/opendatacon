@@ -177,7 +177,6 @@ int WebUI::http_ahc(void *cls,
 	}
 
 	ParamCollection params;
-
 	if (method == "POST")
 	{
 		con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
@@ -195,9 +194,7 @@ int WebUI::http_ahc(void *cls,
 		}
 	}
 
-	/* Handle the command requests */
-	if (url.find("/OpenDataCon") != std::string::npos ||
-	    url.find("/SimControl") != std::string::npos)
+	if (IsCommand(url))
 	{
 		std::string return_data;
 		std::atomic_bool executed(false);
@@ -209,35 +206,15 @@ int WebUI::http_ahc(void *cls,
 		//OK to block this thread because it's a callback from MHD
 		while(!executed)
 			pIOS->poll_one();
-		return ReturnJSON(connection, return_data);
-	}
-
-	const std::string ResponderName = GetPath(url);
-	if (Responders.count(ResponderName))
-	{
-		const std::string command = GetFile(&url[ResponderName.length()]);
-		Json::Value event = Responders[ResponderName]->ExecuteCommand(command, params);
-
-		//remove List - not much use in this context
-		if((url == "/DataPorts/List" ||
-		    url == "/DataConnectors/List") && method == "POST")
-			for(Json::Value::ArrayIndex i=0; i<event["Commands"].size(); i++)
-				if(event["Commands"][i].asString() == "List")
-				{
-					Json::Value discard;
-					event["Commands"].removeIndex(i,&discard);
-					break;
-				}
 
 		Json::StreamWriterBuilder wbuilder;
 		wbuilder["commentStyle"] = "None";
 		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
 
 		std::ostringstream oss;
-		pWriter->write(event, &oss);
+		pWriter->write(return_data, &oss);
 		oss<<std::endl;
-
-		return ReturnJSON(connection, oss.str());
+		return ReturnJSON(connection, return_data);
 	}
 	else
 	{
@@ -304,17 +281,20 @@ void WebUI::Disable()
 
 void WebUI::HandleCommand(const std::string& url, std::function<void (const std::string &&)> result_cb)
 {
+	Json::Value value;
 	std::stringstream iss(url);
 	std::string responder;
 	std::string command;
 	iss >> responder >> command;
 
+	printf("----------------------------------------------------------------------\n");
+	printf("url == [%s] || command == [%s]\n", url.c_str(), command.c_str());
+	printf("----------------------------------------------------------------------\n");
+
 	if (responder == "/OpenDataCon" && command == "List")
 	{
-		Json::Value value;
 		for (auto it = RootCommands.begin(); it != RootCommands.end(); ++it)
 			value[it->first] = it->first;
-		result_cb(value.toStyledString());
 	}
 	else if (command == "tcp_logs_on")
 	{
@@ -354,9 +334,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const std:
 		while (iss >> p)
 			params += p + " ";
 		ExecuteRootCommand(command, params);
-		Json::Value value;
 		value["Result"] = "Success";
-		result_cb(value.toStyledString());
 	}
 	else if(Responders.find(responder) != Responders.end())
 	{
@@ -364,10 +342,9 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const std:
 	}
 	else
 	{
-		Json::Value value;
 		value["Result"] = "Responder not available.";
-		result_cb(value.toStyledString());
 	}
+	result_cb(value.toStyledString());
 }
 
 void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const std::string &&)> result_cb)
@@ -511,4 +488,18 @@ std::string WebUI::ApplyLogFilter(const std::string& new_filter, bool is_regex)
 		filter_is_regex = false;
 	}
 	return value.toStyledString();
+}
+
+bool WebUI::IsCommand(const std::string& url)
+{
+	bool result = false;
+	for (auto it = Responders.begin(); it != Responders.end(); ++it)
+	{
+		if (url.find(it->first) != std::string::npos)
+		{
+			result = true;
+			break;
+		}
+	}
+	return result;
 }

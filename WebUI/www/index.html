@@ -146,7 +146,7 @@
       }
 
       /* post a query to the server with Data ports list */
-      $.post( "/DataPorts/List", { } ).done(function( data ) {
+      $.post( "/DataPorts List", { } ).done(function( data ) {
           for(command in data["Commands"]) {
               $( "#DataPortsTableHeader" ).append('<th>' + data["Commands"][command] + '</th>');
           }
@@ -164,7 +164,7 @@
       });
 
       /* post a query to the server with Data connectors list */
-      $.post( "/DataConnectors/List", { } ).done(function( data ) {
+      $.post( "/DataConnectors List", { } ).done(function( data ) {
           for(command in data["Commands"]) {
               $( "#DataConnectorsTableHeader" ).append('<th>' + data["Commands"][command] + '</th>');
           }

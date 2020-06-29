@@ -93,6 +93,7 @@ private:
 
 	//TODO: These could be per web session
 	std::string ApplyLogFilter(const std::string& new_filter, bool is_regex);
+	bool IsCommand(const std::string& url);
 };
 
 #endif /* defined(__opendatacon__WebUI__) */
