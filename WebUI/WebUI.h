@@ -66,37 +66,33 @@ private:
 	std::string key_pem;
 	std::string web_root;
 	std::string tcp_port;
-	std::string filter;
-	std::string filter_type;
 	std::unique_ptr<odc::TCPSocketManager<std::string>> pSockMan;
 
 	//TODO: these can be maps with entry per web session
 	//the pairs in the Q hold:
 	//	* a string view, and
 	//	* a shared pointer that manages it's underlying memory
-	std::deque<std::pair<std::shared_ptr<void>,std::string_view>> log_queue;
-	const std::unique_ptr<asio::io_service::strand> log_q_sync = pIOS->make_strand();
-	size_t log_q_size;
-
-	mutable std::shared_timed_mutex LogRegexMutex;
+	std::string filter;
+	bool filter_is_regex;
 	std::unique_ptr<std::regex> pLogRegex;
+	std::deque<std::pair<std::shared_ptr<void>,std::string_view>> log_queue;
+	size_t log_q_size;
+	const std::unique_ptr<asio::io_service::strand> log_q_sync = pIOS->make_strand();
 
 	bool useSSL = false;
 	/* UI response handlers */
 	std::unordered_map<std::string, const IUIResponder*> Responders;
 	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
 
-	std::string HandleSimControl(const std::string& url);
-	Json::Value ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);
+	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const std::string &&)> result_cb);
 	void ExecuteRootCommand(const std::string& command, const std::string& params);
-	std::string HandleOpenDataCon(const std::string& url);
+	void HandleCommand(const std::string& url, std::function<void (const std::string &&)> result_cb);
 	void ConnectToTCPServer();
 	void ReadCompletionHandler(odc::buf_t& readbuf);
 	void ConnectionEvent(bool state);
 
 	//TODO: These could be per web session
-	Json::Value ApplyLogFilter();
-	std::unique_ptr<std::regex> GetLogFilter();
+	std::string ApplyLogFilter(const std::string& new_filter, bool is_regex);
 };
 
 #endif /* defined(__opendatacon__WebUI__) */

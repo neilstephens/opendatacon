@@ -29,11 +29,11 @@
 
 #include "Py.h"
 #include "SpecialEventQueue.h"
+#include <opendatacon/util.h>
+#include <opendatacon/DataPort.h>
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_set>
-#include <opendatacon/util.h>
-#include <opendatacon/DataPort.h>
 
 
 using namespace odc;
@@ -76,7 +76,13 @@ public:
 	PythonInitWrapper(bool GlobalUseSystemPython);
 	~PythonInitWrapper();
 private:
-	static PyThreadState* threadState;
+	void Run(bool GlobalUseSystemPython);
+	bool running;
+	bool keep_running;
+	std::mutex RunMtx;
+	std::condition_variable RunBlocker;
+	std::thread PythonMainThread;
+	PyThreadState* threadState;
 };
 
 class PythonWrapper

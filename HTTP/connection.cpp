@@ -17,8 +17,8 @@
 namespace http
 {
 
-connection::connection(asio::ip::tcp::socket socket, connection_manager& manager, request_handler& handler)
-	: socket_(std::move(socket)),
+connection::connection(std::shared_ptr<asio::ip::tcp::socket> socket, connection_manager& manager, request_handler& handler)
+	: socket_(socket),
 	connection_manager_(manager),
 	request_handler_(handler)
 {}
@@ -30,13 +30,13 @@ void connection::start()
 
 void connection::stop()
 {
-	socket_.close();
+	socket_->close();
 }
 
 void connection::do_read()
 {
 	auto self(shared_from_this());
-	socket_.async_read_some(asio::buffer(buffer_),
+	socket_->async_read_some(asio::buffer(buffer_),
 		[this, self](std::error_code ec, std::size_t bytes_transferred)
 		{
 			if (!ec)
@@ -70,14 +70,14 @@ void connection::do_read()
 void connection::do_write()
 {
 	auto self(shared_from_this());
-	asio::async_write(socket_, reply_.to_buffers(),
+	asio::async_write(*socket_, reply_.to_buffers(),
 		[this, self](std::error_code ec, std::size_t)
 		{
 			if (!ec)
 			{
 			// Initiate graceful connection closure.
 			      asio::error_code ignored_ec;
-			      socket_.shutdown(asio::ip::tcp::socket::shutdown_both,
+			      socket_->shutdown(asio::ip::tcp::socket::shutdown_both,
 					ignored_ec);
 			}
 

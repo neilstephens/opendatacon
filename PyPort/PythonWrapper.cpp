@@ -53,8 +53,6 @@
 
 using namespace odc;
 
-PyThreadState* PythonInitWrapper::threadState;
-
 std::unordered_set<uint64_t> PythonWrapper::PyWrappers;
 std::shared_timed_mutex PythonWrapper::WrapperHashMutex;
 
@@ -376,7 +374,19 @@ void ImportODCModule()
 }
 
 // Startup the interpreter - need to have matching tear down in destructor.
-PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
+PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython):
+	running(false),
+	keep_running(true),
+	PythonMainThread([=](){Run(GlobalUseSystemPython);})
+{
+	//Wait til' the Run thread signals after init
+	std::unique_lock<std::mutex> RunLock(RunMtx);
+	RunBlocker.wait(RunLock, [this] {return running;});
+}
+
+// https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
+// Run() will act as the 'Main' thread
+void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 {
 	try
 	{
@@ -443,14 +453,6 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 
 		PyDateTime_IMPORT;
 
-		/* Kafka load test
-		if (PyRun_SimpleString("import confluent_kafka") != 0)
-		{
-		      LOGERROR("Unable to import python confluent_kafka library");
-		      PythonWrapper::PyErrOutput();
-		      return;
-		}
-		*/
 		// Initialize threads and release GIL (saving it as well):
 		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
 		if (!PyGILState_Check())
@@ -461,31 +463,40 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 	catch (std::exception& e)
 	{
 		LOGERROR("Exception Caught during pyInitialize() - {}", e.what());
+		return;
 	}
+
+	//Signal c'tor that everything initialised
+	{ // lock scope
+		std::lock_guard<std::mutex> RunLock(RunMtx);
+		running = true;
+	}
+	RunBlocker.notify_one();
+
+	//This thread gets blocked after init, until we're ready to de-init
+	//Signalled from d'tor
+	std::unique_lock<std::mutex> RunLock(RunMtx);
+	RunBlocker.wait(RunLock, [this] {return !keep_running;});
+
+	// Restore the state as it was after we called Initialize()
+	// Supposed to acquire the GIL and restore the state...
+	LOGDEBUG("About to restore thread state - Have GIL {} ", PyGILState_Check());
+	PyEval_RestoreThread(threadState);
+	LOGDEBUG("Restored thread state - Have GIL {} ", PyGILState_Check());
+
+	LOGDEBUG("About to Py_Finalize");
+	Py_Finalize();
 }
 
-// This one seems to be excatly what we need, and we are doing it, but it is not working...
-// https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
 PythonInitWrapper::~PythonInitWrapper()
 {
-	LOGDEBUG("Py_Finalize");
-	// Restore the state as it was after we called Initialize()
-	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
-	// Supposed to acquire the GIL and restore the state...
-	PyEval_RestoreThread(threadState);
-	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
-
-	//	GetPythonGIL g; //TODO If we do this we hang, if we dont we get an error saying we dont have the GIL...
-	try
-	{
-		//TODO This try/catch does not work, as when Py_Finalize() fails, it calls abort - which we cannot catch.
-		//			if (!Py_FinalizeEx())
-		LOGERROR("Python Py_Finalize() Failed");
+	//Signal Run() to de-init and return
+	{ // lock scope
+		std::lock_guard<std::mutex> RunLock(RunMtx);
+		keep_running = false;
 	}
-	catch (std::exception& e)
-	{
-		LOGERROR("Exception Caught calling Py_FinalizeEx() - {}", e.what());
-	}
+	RunBlocker.notify_one();
+	PythonMainThread.join();
 }
 
 

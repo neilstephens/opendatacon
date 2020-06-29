@@ -48,7 +48,6 @@ ConnectionTokenType::~ConnectionTokenType()
 		if (pConnection.use_count() <= 2)
 		{
 			LOGDEBUG("Use Count On ConnectionTok Shared_ptr down to 2 - Destroying the Map Connection - {}", ChannelID);
-			pConnection->Close();
 			pConnection->RemoveConnectionFromMap();
 			// Now release our shared_ptr - the last one.The CBConnection destructor should now be called.
 			pConnection.reset();
@@ -283,15 +282,6 @@ void CBConnection::Close()
 
 CBConnection::~CBConnection()
 {
-	Close();
-
-	if (!pSockMan) // Could be empty if a connection was never added (opened)
-	{
-		LOGDEBUG("Connection Destructor pSockMan null: {}", InternalChannelID);
-		return;
-	}
-	pSockMan->Close();
-
 	pSockMan.reset(); // Release our object - should be done anyway when as soon as we exit this method...
 	LOGDEBUG("Connection Destructor Complete : {}", InternalChannelID);
 }
