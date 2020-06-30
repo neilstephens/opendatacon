@@ -196,25 +196,7 @@ int WebUI::http_ahc(void *cls,
 
 	if (IsCommand(url))
 	{
-		Json::Value return_data;
-		std::atomic_bool executed(false);
-		HandleCommand(url, [&](const Json::Value& data)
-			{
-				return_data = std::move(data);
-				executed = true;
-			});
-		//OK to block this thread because it's a callback from MHD
-		while(!executed)
-			pIOS->poll_one();
-
-		Json::StreamWriterBuilder wbuilder;
-		wbuilder["commentStyle"] = "None";
-		std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
-
-		std::ostringstream oss;
-		pWriter->write(return_data, &oss);
-		oss<<std::endl;
-		return ReturnJSON(connection, oss.str());
+		return ReturnJSON(connection, InitCommand(url));
 	}
 	else
 	{
@@ -226,8 +208,8 @@ int WebUI::http_ahc(void *cls,
 
 void WebUI::Build()
 {
-	const std::string args = "tcp_web_ui off TCP localhost " + tcp_port + " SERVER";
-	ExecuteRootCommand("add_logsink", args);
+	const std::string url = "/RootCommand add_logsink tcp_web_ui trace TCP localhost " + tcp_port + " SERVER";
+	InitCommand(url);
 }
 
 void WebUI::Enable()
@@ -281,57 +263,49 @@ void WebUI::Disable()
 
 void WebUI::HandleCommand(const std::string& url, std::function<void (const Json::Value&)> result_cb)
 {
-	std::stringstream iss(url);
+	std::stringstream iss;
 	std::string responder;
 	std::string command;
-	iss >> responder >> command;
+	ParseURL(url, responder, command, iss);
 
-	if (responder == "/OpenDataCon" && command == "List")
+	if (responder == "/WebUICommand")
+	{
+		if (command == "tcp_logs_on")
+		{
+			if(!pSockMan)
+				ConnectToTCPServer();
+
+			log_q_sync->post([=]()
+				{
+					std::string log_str;
+					for(const auto& pair : log_queue)
+						log_str.append(pair.second);
+					Json::Value value;
+					value["tcp_data"] = log_str;
+					result_cb(value);
+				});
+		}
+		else if (command == "apply_log_filter")
+		{
+			std::string filter_type;
+			iss >> filter_type;
+			std::string new_filter;
+			if (iss.str().size() > filter_type.size() + 1)
+				new_filter = iss.str().substr(filter_type.size() + 1, iss.str().size() - filter_type.size() - 1);
+			bool is_regex = (filter_type == "reg_ex");
+			log_q_sync->post([=, new_filter{std::move(new_filter)}]()
+				{
+					result_cb(ApplyLogFilter(new_filter, is_regex));
+				});
+		}
+	}
+	else if (responder == "/RootCommand")
 	{
 		Json::Value value;
-		for (auto it = RootCommands.begin(); it != RootCommands.end(); ++it)
-			value[it->first] = it->first;
-		result_cb(value);
-	}
-	else if (command == "tcp_logs_on")
-	{
-		if(!pSockMan)
-			ConnectToTCPServer();
-
-		log_q_sync->post([=]()
-			{
-				std::string log_str;
-				for(const auto& pair : log_queue)
-					log_str.append(pair.second);
-				Json::Value value;
-				value["tcp_data"] = log_str;
-				result_cb(value);
-			});
-	}
-	else if (command == "apply_log_filter")
-	{
-		std::string filter_type;
-		iss >> filter_type;
-		std::string new_filter;
-		std::string word;
-		while (iss >> word)
-			new_filter += word + " ";
-		new_filter = new_filter.substr(0, new_filter.size() - 1);
-		bool is_regex = (filter_type == "reg_ex");
-		log_q_sync->post([=, new_filter{std::move(new_filter)}]()
-			{
-				result_cb(ApplyLogFilter(new_filter, is_regex));
-			});
-	}
-	//ignore the root version command - there's a contextual one
-	else if(command != "version" && RootCommands.find(command) != RootCommands.end())
-	{
-		std::string args;
-		std::string p;
-		while (iss >> p)
-			args += p + " ";
-		Json::Value value;
-		ExecuteRootCommand(command, args);
+		if (RootCommands.find(command) == RootCommands.end())
+			value["Result"] = "Command " + command + " not found !!!";
+		else
+			RootCommands[command](iss);
 		value["Result"] = "Success";
 		result_cb(value);
 	}
@@ -345,6 +319,29 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 		value["Result"] = "Responder not available.";
 		result_cb(value);
 	}
+}
+
+std::string WebUI::InitCommand(const std::string& url)
+{
+	Json::Value return_data;
+	std::atomic_bool executed(false);
+	HandleCommand(url, [&](const Json::Value& data)
+		{
+			return_data = std::move(data);
+			executed = true;
+		});
+	//OK to block this thread because it's a callback from MHD
+	while(!executed)
+		pIOS->poll_one();
+
+	Json::StreamWriterBuilder wbuilder;
+	wbuilder["commentStyle"] = "None";
+	std::unique_ptr<Json::StreamWriter> const pWriter(wbuilder.newStreamWriter());
+
+	std::ostringstream oss;
+	pWriter->write(return_data, &oss);
+	oss<<std::endl;
+	return oss.str();
 }
 
 void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&)> result_cb)
@@ -381,13 +378,17 @@ void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& co
 		results = pResponder->ExecuteCommand(command, params);
 	}
 
+	if (command == "List")
+	{
+		for(Json::Value::ArrayIndex i = 0; i < results["Commands"].size(); i++)
+			if(results["Commands"][i].asString() == "List")
+			{
+				Json::Value discard;
+				results["Commands"].removeIndex(i,&discard);
+				break;
+			}
+	}
 	result_cb(results);
-}
-
-void WebUI::ExecuteRootCommand(const std::string& command, const std::string& params)
-{
-	std::stringstream iss(params);
-	RootCommands[command](iss);
 }
 
 void WebUI::ConnectToTCPServer()
@@ -488,16 +489,35 @@ Json::Value WebUI::ApplyLogFilter(const std::string& new_filter, bool is_regex)
 	return value;
 }
 
+void WebUI::ParseURL(const std::string& url, std::string& responder, std::string& command, std::stringstream& ss)
+{
+	std::stringstream iss(url);
+	iss >> responder;
+	iss >> command;
+	std::string params;
+	std::string w;
+	while (iss >> w)
+		params += w + " ";
+	if (!params.empty() && params[params.size() - 1] == ' ')
+	{
+		params = params.substr(0, params.size() - 1);
+	}
+	std::stringstream ss_temp(params);
+	ss << ss_temp.rdbuf();
+}
+
 bool WebUI::IsCommand(const std::string& url)
 {
+	std::stringstream iss(url);
+	std::string responder;
+	std::string command;
+	iss >> responder >> command;
 	bool result = false;
-	for (auto it = Responders.begin(); it != Responders.end(); ++it)
+	if ((Responders.find(responder) != Responders.end()) ||
+	    (RootCommands.find(command) != RootCommands.end()) ||
+	    responder == "/WebUICommand")
 	{
-		if (url.find(it->first) != std::string::npos)
-		{
-			result = true;
-			break;
-		}
+		result = true;
 	}
 	return result;
 }

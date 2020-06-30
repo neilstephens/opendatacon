@@ -157,7 +157,7 @@
 
           const log_level = window.localStorage.getItem("log_level");
           if (!log_level) {
-              const url = "/OpenDataCon set_loglevel tcp_web_ui trace";
+              const url = "/RootCommand set_loglevel tcp_web_ui trace";
               $.post(url, {})
                   .done(function(data) {
                       console.log("Set log level success for == " + url);
@@ -167,7 +167,7 @@
       });
 
       function get_tcp_logs() {
-          const url = "/OpenDataCon tcp_logs_on";
+          const url = "/WebUICommand tcp_logs_on";
           $.post(url, {})
               .done(function(data) {
                   document.getElementById("tcp_logs").innerHTML = data["tcp_data"];
@@ -306,7 +306,7 @@
 
       function apply_log_filter() {
           const filter = document.getElementById("log_filter_box").value;
-          const url = "/SimControl apply_log_filter " + gfilter_type + " " + filter;
+          const url = "/WebUICommand apply_log_filter " + gfilter_type + " " + filter;
           $.post(url, {})
               .done(function(data) {
                   var message = '';
