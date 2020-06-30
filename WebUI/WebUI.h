@@ -86,15 +86,15 @@ private:
 	std::unordered_map<std::string, const IUIResponder*> Responders;
 	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
 
-	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const std::string &&)> result_cb);
+	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&)> result_cb);
 	void ExecuteRootCommand(const std::string& command, const std::string& params);
-	void HandleCommand(const std::string& url, std::function<void (const std::string &&)> result_cb);
+	void HandleCommand(const std::string& url, std::function<void (const Json::Value&)> result_cb);
 	void ConnectToTCPServer();
 	void ReadCompletionHandler(odc::buf_t& readbuf);
 	void ConnectionEvent(bool state);
 
 	//TODO: These could be per web session
-	std::string ApplyLogFilter(const std::string& new_filter, bool is_regex);
+	Json::Value ApplyLogFilter(const std::string& new_filter, bool is_regex);
 	bool IsCommand(const std::string& url);
 };
 

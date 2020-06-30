@@ -196,9 +196,9 @@ int WebUI::http_ahc(void *cls,
 
 	if (IsCommand(url))
 	{
-		std::string return_data;
+		Json::Value return_data;
 		std::atomic_bool executed(false);
-		HandleCommand(url, [&](const std::string&& data)
+		HandleCommand(url, [&](const Json::Value& data)
 			{
 				return_data = std::move(data);
 				executed = true;
@@ -214,7 +214,7 @@ int WebUI::http_ahc(void *cls,
 		std::ostringstream oss;
 		pWriter->write(return_data, &oss);
 		oss<<std::endl;
-		return ReturnJSON(connection, return_data);
+		return ReturnJSON(connection, oss.str());
 	}
 	else
 	{
@@ -279,7 +279,7 @@ void WebUI::Disable()
 		pSockMan->Close();
 }
 
-void WebUI::HandleCommand(const std::string& url, std::function<void (const std::string &&)> result_cb)
+void WebUI::HandleCommand(const std::string& url, std::function<void (const Json::Value&)> result_cb)
 {
 	std::stringstream iss(url);
 	std::string responder;
@@ -291,7 +291,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const std:
 		Json::Value value;
 		for (auto it = RootCommands.begin(); it != RootCommands.end(); ++it)
 			value[it->first] = it->first;
-		result_cb(value.toStyledString());
+		result_cb(value);
 	}
 	else if (command == "tcp_logs_on")
 	{
@@ -305,7 +305,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const std:
 					log_str.append(pair.second);
 				Json::Value value;
 				value["tcp_data"] = log_str;
-				result_cb(value.toStyledString());
+				result_cb(value);
 			});
 	}
 	else if (command == "apply_log_filter")
@@ -333,7 +333,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const std:
 		Json::Value value;
 		ExecuteRootCommand(command, args);
 		value["Result"] = "Success";
-		result_cb(value.toStyledString());
+		result_cb(value);
 	}
 	else if(Responders.find(responder) != Responders.end())
 	{
@@ -343,11 +343,11 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const std:
 	{
 		Json::Value value;
 		value["Result"] = "Responder not available.";
-		result_cb(value.toStyledString());
+		result_cb(value);
 	}
 }
 
-void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const std::string &&)> result_cb)
+void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&)> result_cb)
 {
 	//Define first arg as Target regex
 	std::string T_regex_str;
@@ -381,7 +381,7 @@ void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& co
 		results = pResponder->ExecuteCommand(command, params);
 	}
 
-	result_cb(results.toStyledString());
+	result_cb(results);
 }
 
 void WebUI::ExecuteRootCommand(const std::string& command, const std::string& params)
@@ -452,7 +452,7 @@ void WebUI::ConnectionEvent(bool state)
 		log->debug("Log sink connection on port {} {}",tcp_port,state ? "opened" : "closed");
 }
 
-std::string WebUI::ApplyLogFilter(const std::string& new_filter, bool is_regex)
+Json::Value WebUI::ApplyLogFilter(const std::string& new_filter, bool is_regex)
 {
 	Json::Value value;
 	value["Result"] = "Success";
@@ -485,7 +485,7 @@ std::string WebUI::ApplyLogFilter(const std::string& new_filter, bool is_regex)
 		filter = new_filter;
 		filter_is_regex = false;
 	}
-	return value.toStyledString();
+	return value;
 }
 
 bool WebUI::IsCommand(const std::string& url)
