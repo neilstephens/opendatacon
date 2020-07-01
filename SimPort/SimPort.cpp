@@ -735,7 +735,7 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, pSimConf->Version);
+		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::ConfigVersion);
 		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				rep.status = http::reply::ok;
@@ -890,8 +890,6 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 		pSimConf->HttpAddr = JSONRoot["HttpIP"].asString();
 	if (JSONRoot.isMember("HttpPort"))
 		pSimConf->HttpPort = JSONRoot["HttpPort"].asString();
-	if (JSONRoot.isMember("Version"))
-		pSimConf->Version = JSONRoot["Version"].asString();
 
 
 	if(JSONRoot.isMember("Analogs"))
