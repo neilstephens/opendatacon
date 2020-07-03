@@ -401,7 +401,7 @@ void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE funct
 		auto firstblock = Analogs[2 * i];
 
 		uint16_t secondblock = 0;
-		if (Analogs.size() == (2 * i + 1))
+		if (Analogs.size() > (2 * i + 1))
 			secondblock = Analogs[2 * i + 1];
 
 		auto block = MD3BlockData(firstblock, secondblock, lastblock);
@@ -434,11 +434,11 @@ void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t Station
 		uint8_t block3 = 0;
 		uint8_t block4 = 0;
 
-		if (Deltas.size() < (i * 4 + 1))
+		if (Deltas.size() > (i * 4 + 1))
 			block2 = numeric_cast<uint8_t>(Deltas[i * 4 + 1]);
-		if (Deltas.size() < (i * 4 + 2))
+		if (Deltas.size() > (i * 4 + 2))
 			block3 = numeric_cast<uint8_t>(Deltas[i * 4 + 2]);
-		if (Deltas.size() < (i * 4 + 3))
+		if (Deltas.size() > (i * 4 + 3))
 			block4 = numeric_cast<uint8_t>(Deltas[i * 4 + 3]);
 
 		auto block = MD3BlockData(block1, block2 , block3, block4, lastblock);
