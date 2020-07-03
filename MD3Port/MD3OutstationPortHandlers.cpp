@@ -398,8 +398,13 @@ void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE funct
 	for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
 	{
 		bool lastblock = (i + 1 == NumberOfDataBlocks);
+		auto firstblock = Analogs[2 * i];
 
-		auto block = MD3BlockData(Analogs[2 * i], Analogs[2 * i + 1], lastblock);
+		uint16_t secondblock = 0;
+		if (Analogs.size() == (2 * i + 1))
+			secondblock = Analogs[2 * i + 1];
+
+		auto block = MD3BlockData(firstblock, secondblock, lastblock);
 		ResponseMD3Message.push_back(block);
 	}
 	SendMD3Message(ResponseMD3Message);
@@ -423,7 +428,20 @@ void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t Station
 	{
 		bool lastblock = (i + 1 == NumberOfDataBlocks);
 
-		auto block = MD3BlockData(numeric_cast<uint8_t>(Deltas[i * 4]), numeric_cast<uint8_t>(Deltas[i * 4 + 1]), numeric_cast<uint8_t>(Deltas[i * 4 + 2]), numeric_cast<uint8_t>(Deltas[i * 4 + 3]), lastblock);
+		// Check for overflows, we can only guarantee the first value....
+		auto block1 = numeric_cast<uint8_t>(Deltas[i * 4]);
+		uint8_t block2 = 0;
+		uint8_t block3 = 0;
+		uint8_t block4 = 0;
+
+		if (Deltas.size() < (i * 4 + 1))
+			block2 = numeric_cast<uint8_t>(Deltas[i * 4 + 1]);
+		if (Deltas.size() < (i * 4 + 2))
+			block3 = numeric_cast<uint8_t>(Deltas[i * 4 + 2]);
+		if (Deltas.size() < (i * 4 + 3))
+			block4 = numeric_cast<uint8_t>(Deltas[i * 4 + 3]);
+
+		auto block = MD3BlockData(block1, block2 , block3, block4, lastblock);
 		ResponseMD3Message.push_back(block);
 	}
 	SendMD3Message(ResponseMD3Message);
