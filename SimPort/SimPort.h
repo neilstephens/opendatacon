@@ -110,6 +110,15 @@ private:
 	Json::Value GetCurrentBinaryValsAsJSON(const size_t index);
 	Json::Value GetCurrentAnalogValsAsJSON(const size_t index);
 
+	// these private functions are there to modularize the ProcessElements
+	// to parse the configuration file
+	void ProcessAnalogs(const Json::Value& Analogs);
+	void ProcessBinaries(const Json::Value& Binaries);
+	void ProcessBinaryControls(const Json::Value& BinaryControls);
+	void ProcessSQLite3(const Json::Value& SQLite3, const std::size_t& index);
+	void ProcessFeedbackBinaries(const Json::Value& FeedbackBinaries, const std::size_t& index);
+	void ProcessFeedbackPosition(const Json::Value& FeedbackPosition);
+
 	void NextEventFromDB(const std::shared_ptr<EventInfo>& event);
 	void PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset);
 	void SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset = 0);
