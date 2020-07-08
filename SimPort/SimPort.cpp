@@ -895,385 +895,11 @@ void SimPort::ProcessElements(const Json::Value& JSONRoot)
 
 
 	if(JSONRoot.isMember("Analogs"))
-	{
-		const auto Analogs = JSONRoot["Analogs"];
-		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
-		{
-			size_t start, stop;
-			if(Analogs[n].isMember("Index"))
-				start = stop = Analogs[n]["Index"].asUInt();
-			else if(Analogs[n]["Range"].isMember("Start") && Analogs[n]["Range"].isMember("Stop"))
-			{
-				start = Analogs[n]["Range"]["Start"].asUInt();
-				stop = Analogs[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
-				continue;
-			}
-			for(auto index = start; index <= stop; index++)
-			{
-				bool exists = false;
-				for(auto existing_index : pSimConf->AnalogIndicies)
-					if(existing_index == index)
-						exists = true;
-
-				if(!exists)
-					pSimConf->AnalogIndicies.push_back(index);
-
-				if(Analogs[n].isMember("SQLite3"))
-				{
-					if(Analogs[n]["SQLite3"].isMember("File") && Analogs[n]["SQLite3"].isMember("Query"))
-					{
-						sqlite3* db;
-						auto filename = Analogs[n]["SQLite3"]["File"].asString();
-						auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_SHAREDCACHE,nullptr);
-						if(rv != SQLITE_OK)
-						{
-							if(auto log = odc::spdlog_get("SimPort"))
-								log->error("Failed to open SQLite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
-						}
-						else
-						{
-							auto deleter = [](sqlite3* db){sqlite3_close_v2(db);};
-							DBConns["Analog"+std::to_string(index)] = pDBConnection(db,deleter);
-
-							sqlite3_stmt* stmt;
-							auto query = Analogs[n]["SQLite3"]["Query"].asString();
-							auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);
-							if(rv != SQLITE_OK)
-							{
-								if(auto log = odc::spdlog_get("SimPort"))
-									log->error("Failed to prepare SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
-							}
-							else if (sqlite3_column_count(stmt) != 2)
-							{
-								if(auto log = odc::spdlog_get("SimPort"))
-									log->error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", query);
-							}
-							else
-							{
-								auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
-								DBStats["Analog"+std::to_string(index)] = pDBStatement(stmt,deleter);
-								auto index_bind_index = sqlite3_bind_parameter_index(stmt, ":INDEX");
-								if(index_bind_index)
-								{
-									auto rv = sqlite3_bind_int(stmt, index_bind_index, index);
-									if(rv != SQLITE_OK)
-									{
-										if(auto log = odc::spdlog_get("SimPort"))
-											log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
-										DBStats.erase("Analog"+std::to_string(index));
-									}
-								}
-							}
-							TimestampHandling = TimestampMode::FIRST;
-							if(Analogs[n]["SQLite3"].isMember("TimestampHandling"))
-							{
-								auto ts_mode = Analogs[n]["SQLite3"]["TimestampHandling"].asString();
-								if(ts_mode == "ABSOLUTE")
-									TimestampHandling = TimestampMode::ABSOLUTE_T;
-								else if(ts_mode == "ABSOLUTE_FASTFORWARD")
-									TimestampHandling = TimestampMode::ABSOLUTE_T | TimestampMode::FASTFORWARD;
-								else if(ts_mode == "RELATIVE_TOD")
-									TimestampHandling = TimestampMode::TOD;
-								else if(ts_mode == "RELATIVE_TOD_FASTFORWARD")
-									TimestampHandling = TimestampMode::TOD | TimestampMode::FASTFORWARD;
-								else if(ts_mode == "RELATIVE_FIRST")
-									TimestampHandling = TimestampMode::FIRST;
-								else if(auto log = odc::spdlog_get("SimPort"))
-									log->error("Invalid SQLite3 'TimeStampHandling' mode '{}'. Defaulting to RELATIVE_FIRST", ts_mode);
-							}
-							else if(auto log = odc::spdlog_get("SimPort"))
-								log->info("SQLite3 'TimeStampHandling' mode defaulting to RELATIVE_FIRST");
-						}
-					}
-					else
-					{
-						if(auto log = odc::spdlog_get("SimPort"))
-							log->error("'SQLite3' object requires 'File' and 'Query' for point : '{}'", Analogs[n].toStyledString());
-					}
-				} //SQLite3
-
-				if(Analogs[n].isMember("StdDev"))
-					pSimConf->AnalogStdDevs[index] = Analogs[n]["StdDev"].asDouble();
-				if(Analogs[n].isMember("UpdateIntervalms"))
-					pSimConf->AnalogUpdateIntervalms[index] = Analogs[n]["UpdateIntervalms"].asUInt();
-
-				if(Analogs[n].isMember("StartVal"))
-				{
-					std::string start_val = Analogs[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
-					{
-						if(pSimConf->AnalogStartVals.count(index))
-							pSimConf->AnalogStartVals.erase(index);
-						if (pSimConf->AnalogVals.count(index))
-							pSimConf->AnalogVals.erase(index);
-						if(pSimConf->AnalogStdDevs.count(index))
-							pSimConf->AnalogStdDevs.erase(index);
-						if(pSimConf->AnalogUpdateIntervalms.count(index))
-							pSimConf->AnalogUpdateIntervalms.erase(index);
-						for(auto it = pSimConf->AnalogIndicies.begin(); it != pSimConf->AnalogIndicies.end(); it++)
-							if(*it == index)
-							{
-								pSimConf->AnalogIndicies.erase(it);
-								break;
-							}
-					}
-					else if(start_val == "NAN" || start_val == "nan" || start_val == "NaN")
-					{
-						pSimConf->AnalogStartVals[index] = std::numeric_limits<double>::quiet_NaN();
-					}
-					else if(start_val == "INF" || start_val == "inf")
-					{
-						pSimConf->AnalogStartVals[index] = std::numeric_limits<double>::infinity();
-					}
-					else if(start_val == "-INF" || start_val == "-inf")
-					{
-						pSimConf->AnalogStartVals[index] = -std::numeric_limits<double>::infinity();
-					}
-					else if (start_val == "X")
-					{
-						pSimConf->AnalogStartVals[index] = 0; //TODO: implement quality - use std::pair, or build the EventInfo here
-					}
-					else
-					{
-						pSimConf->AnalogStartVals[index] = std::stod(start_val);
-					}
-				}
-				else if(pSimConf->AnalogStartVals.count(index))
-					pSimConf->AnalogStartVals.erase(index);
-			}
-		}
-		std::sort(pSimConf->AnalogIndicies.begin(),pSimConf->AnalogIndicies.end());
-	}
-
+		ProcessAnalogs(JSONRoot["Analogs"]);
 	if(JSONRoot.isMember("Binaries"))
-	{
-		const auto Binaries = JSONRoot["Binaries"];
-		for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
-		{
-			size_t start, stop;
-			if(Binaries[n].isMember("Index"))
-				start = stop = Binaries[n]["Index"].asUInt();
-			else if(Binaries[n]["Range"].isMember("Start") && Binaries[n]["Range"].isMember("Stop"))
-			{
-				start = Binaries[n]["Range"]["Start"].asUInt();
-				stop = Binaries[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
-				continue;
-			}
-			for(auto index = start; index <= stop; index++)
-			{
-
-				bool exists = false;
-				for(auto existing_index : pSimConf->BinaryIndicies)
-					if(existing_index == index)
-						exists = true;
-
-				if(!exists)
-					pSimConf->BinaryIndicies.push_back(index);
-
-				if(Binaries[n].isMember("UpdateIntervalms"))
-					pSimConf->BinaryUpdateIntervalms[index] = Binaries[n]["UpdateIntervalms"].asUInt();
-
-				if(Binaries[n].isMember("StartVal"))
-				{
-					std::string start_val = Binaries[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
-					{
-						if(pSimConf->BinaryStartVals.count(index))
-							pSimConf->BinaryStartVals.erase(index);
-						if(pSimConf->BinaryUpdateIntervalms.count(index))
-							pSimConf->BinaryUpdateIntervalms.erase(index);
-						for(auto it = pSimConf->BinaryIndicies.begin(); it != pSimConf->BinaryIndicies.end(); it++)
-							if(*it == index)
-							{
-								pSimConf->BinaryIndicies.erase(it);
-								break;
-							}
-					}
-					else if(start_val == "X")
-						pSimConf->BinaryStartVals[index] = false; //TODO: implement quality - use std::pair, or build the EventInfo here
-					else
-						pSimConf->BinaryStartVals[index] = Binaries[n]["StartVal"].asBool();
-				}
-				else if(pSimConf->BinaryStartVals.count(index))
-					pSimConf->BinaryStartVals.erase(index);
-			}
-		}
-		std::sort(pSimConf->BinaryIndicies.begin(),pSimConf->BinaryIndicies.end());
-	}
-
+		ProcessBinaries(JSONRoot["Binaries"]);
 	if(JSONRoot.isMember("BinaryControls"))
-	{
-		const auto BinaryControls= JSONRoot["BinaryControls"];
-		for(Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
-		{
-			size_t start, stop;
-			if(BinaryControls[n].isMember("Index"))
-				start = stop = BinaryControls[n]["Index"].asUInt();
-			else if(BinaryControls[n]["Range"].isMember("Start") && BinaryControls[n]["Range"].isMember("Stop"))
-			{
-				start = BinaryControls[n]["Range"]["Start"].asUInt();
-				stop = BinaryControls[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
-				continue;
-			}
-			for (auto index = start; index <= stop; index++)
-			{
-				bool exists = false;
-				for (auto existing_index : pSimConf->ControlIndicies)
-					if (existing_index == index)
-						exists = true;
-
-				if (!exists)
-					pSimConf->ControlIndicies.push_back(index);
-
-				if (BinaryControls[n].isMember("Intervalms"))
-					pSimConf->ControlIntervalms[index] = BinaryControls[n]["Intervalms"].asUInt();
-
-				auto start_val = BinaryControls[n]["StartVal"].asString();
-				if (start_val == "D")
-				{
-					if (pSimConf->ControlIntervalms.count(index))
-						pSimConf->ControlIntervalms.erase(index);
-					for (auto it = pSimConf->ControlIndicies.begin(); it != pSimConf->ControlIndicies.end(); it++)
-						if (*it == index)
-						{
-							pSimConf->ControlIndicies.erase(it);
-							break;
-						}
-				}
-
-				if (BinaryControls[n].isMember("FeedbackBinaries"))
-				{
-					const auto FeedbackBinaries = BinaryControls[n]["FeedbackBinaries"];
-					for (Json::ArrayIndex fbn = 0; fbn < FeedbackBinaries.size(); ++fbn)
-					{
-						if (!FeedbackBinaries[fbn].isMember("Index"))
-						{
-							if (auto log = odc::spdlog_get("SimPort"))
-								log->error("An 'Index' is required for Binary feedback : '{}'", FeedbackBinaries[fbn].toStyledString());
-							continue;
-						}
-
-						auto fb_index = FeedbackBinaries[fbn]["Index"].asUInt();
-						auto on_qual = QualityFlags::ONLINE;
-						auto off_qual = QualityFlags::ONLINE;
-						bool on_val = true;
-						bool off_val = false;
-						auto mode = FeedbackMode::LATCH;
-
-						if (FeedbackBinaries[fbn].isMember("OnValue"))
-						{
-							if (FeedbackBinaries[fbn]["OnValue"].asString() == "X")
-								on_qual = QualityFlags::COMM_LOST;
-							else
-								on_val = FeedbackBinaries[fbn]["OnValue"].asBool();
-						}
-						if (FeedbackBinaries[fbn].isMember("OffValue"))
-						{
-							if (FeedbackBinaries[fbn]["OffValue"].asString() == "X")
-								off_qual = QualityFlags::COMM_LOST;
-							else
-								off_val = FeedbackBinaries[fbn]["OffValue"].asBool();
-
-						}
-						if (FeedbackBinaries[fbn].isMember("FeedbackMode"))
-						{
-							auto mode_str = FeedbackBinaries[fbn]["FeedbackMode"].asString();
-							if (mode_str == "PULSE")
-								mode = FeedbackMode::PULSE;
-							else if (mode_str == "LATCH")
-								mode = FeedbackMode::LATCH;
-							else
-							{
-								if (auto log = odc::spdlog_get("SimPort"))
-									log->warn("Unrecognised feedback mode: '{}'", FeedbackBinaries[fbn].toStyledString());
-							}
-						}
-
-						auto on = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, on_qual);
-						on->SetPayload<EventType::Binary>(std::move(on_val));
-						auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, off_qual);
-						off->SetPayload<EventType::Binary>(std::move(off_val));
-
-						pSimConf->ControlFeedback[index].emplace_back(on, off, mode);
-					}
-				}
-				// Used to implement TapChanger functionality, containing:
-				// {"Type": "Analog", "Index" : 7, "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
-				// {"Type": "Binary", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
-				// {"Type": "BCD", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
-				//
-				// Because the feedback is complex, we need to keep the current value available so we can change it.
-				// As a result, the feedback bits or analog will be set to forced state. If you unforce them, they will
-				// get re-forced the next time a command comes through.
-				// Bit of a hack, but comes back to the original simulator design not "remembering" what its current state is.
-				if (BinaryControls[n].isMember("FeedbackPosition"))
-				{
-					const auto FeedbackPosition = BinaryControls[n]["FeedbackPosition"];
-					try
-					{
-						// Only allow 1 entry - you need pulse or repeated open/close to tap up and down from two separate signals.
-						if (!FeedbackPosition.isMember("Type"))
-						{
-							throw std::runtime_error("A 'Type' is required for Position feedback");
-						}
-						if (!FeedbackPosition.isMember("Action"))
-						{
-							throw std::runtime_error("An 'Action' is required for Position feedback");
-						}
-						if (!FeedbackPosition.isMember("FeedbackMode"))
-						{
-							throw std::runtime_error("A 'FeedbackMode' is required for Position feedback");
-						}
-						if (!(FeedbackPosition.isMember("Index") || FeedbackPosition.isMember("Indexes")))
-						{
-							throw std::runtime_error("An 'Index' or 'Indexes' is required for Position feedback");
-						}
-
-						if (FeedbackPosition["Type"] == "Analog")
-						{
-							//TODO:
-							throw std::runtime_error("'Analog' Position feedback is unimplemented.");
-						}
-						else if (FeedbackPosition["Type"] == "Binary")
-						{
-							//TODO:
-							throw std::runtime_error("'Binary' Position feedback is unimplemented.");
-						}
-						else if (FeedbackPosition["Type"] == "BCD")
-						{
-							//TODO:
-							throw std::runtime_error("'BCD' Position feedback is unimplemented.");
-						}
-						else
-						{
-							throw std::runtime_error("The 'Type' for Position feedback is invalid, requires 'Analog','Binary' or 'BCD'");
-						}
-					}
-					catch (std::exception &e)
-					{
-						LOGERROR("{} : '{}'", e.what(),  FeedbackPosition.toStyledString());
-						continue;
-					}
-				}
-			}
-		}
-		std::sort(pSimConf->ControlIndicies.begin(),pSimConf->ControlIndicies.end());
-	}
+		ProcessBinaryControls(JSONRoot["BinaryControls"]);
 }
 
 void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -1382,4 +1008,388 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 		}
 	}
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+}
+
+void SimPort::ProcessAnalogs(const Json::Value& Analogs)
+{
+	for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
+	{
+		size_t start, stop;
+		if(Analogs[n].isMember("Index"))
+			start = stop = Analogs[n]["Index"].asUInt();
+		else if(Analogs[n]["Range"].isMember("Start") && Analogs[n]["Range"].isMember("Stop"))
+		{
+			start = Analogs[n]["Range"]["Start"].asUInt();
+			stop = Analogs[n]["Range"]["Stop"].asUInt();
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
+			continue;
+		}
+		for(auto index = start; index <= stop; index++)
+		{
+			bool exists = false;
+			for(auto existing_index : pSimConf->AnalogIndicies)
+				if(existing_index == index)
+					exists = true;
+
+			if(!exists)
+				pSimConf->AnalogIndicies.push_back(index);
+
+			if(Analogs[n].isMember("SQLite3"))
+				ProcessSQLite3(Analogs[n]["SQLite3"], index);
+			if(Analogs[n].isMember("StdDev"))
+				pSimConf->AnalogStdDevs[index] = Analogs[n]["StdDev"].asDouble();
+			if(Analogs[n].isMember("UpdateIntervalms"))
+				pSimConf->AnalogUpdateIntervalms[index] = Analogs[n]["UpdateIntervalms"].asUInt();
+
+			if(Analogs[n].isMember("StartVal"))
+			{
+				std::string start_val = Analogs[n]["StartVal"].asString();
+				if(start_val == "D") //delete this index
+				{
+					if(pSimConf->AnalogStartVals.count(index))
+						pSimConf->AnalogStartVals.erase(index);
+					if (pSimConf->AnalogVals.count(index))
+						pSimConf->AnalogVals.erase(index);
+					if(pSimConf->AnalogStdDevs.count(index))
+						pSimConf->AnalogStdDevs.erase(index);
+					if(pSimConf->AnalogUpdateIntervalms.count(index))
+						pSimConf->AnalogUpdateIntervalms.erase(index);
+					for(auto it = pSimConf->AnalogIndicies.begin(); it != pSimConf->AnalogIndicies.end(); it++)
+						if(*it == index)
+						{
+							pSimConf->AnalogIndicies.erase(it);
+							break;
+						}
+				}
+				else if(start_val == "NAN" || start_val == "nan" || start_val == "NaN")
+				{
+					pSimConf->AnalogStartVals[index] = std::numeric_limits<double>::quiet_NaN();
+				}
+				else if(start_val == "INF" || start_val == "inf")
+				{
+					pSimConf->AnalogStartVals[index] = std::numeric_limits<double>::infinity();
+				}
+				else if(start_val == "-INF" || start_val == "-inf")
+				{
+					pSimConf->AnalogStartVals[index] = -std::numeric_limits<double>::infinity();
+				}
+				else if (start_val == "X")
+				{
+					pSimConf->AnalogStartVals[index] = 0; //TODO: implement quality - use std::pair, or build the EventInfo here
+				}
+				else
+				{
+					pSimConf->AnalogStartVals[index] = std::stod(start_val);
+				}
+			}
+			else if(pSimConf->AnalogStartVals.count(index))
+				pSimConf->AnalogStartVals.erase(index);
+		}
+	}
+	std::sort(pSimConf->AnalogIndicies.begin(),pSimConf->AnalogIndicies.end());
+}
+
+void SimPort::ProcessBinaries(const Json::Value& Binaries)
+{
+	for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
+	{
+		size_t start, stop;
+		if(Binaries[n].isMember("Index"))
+			start = stop = Binaries[n]["Index"].asUInt();
+		else if(Binaries[n]["Range"].isMember("Start") && Binaries[n]["Range"].isMember("Stop"))
+		{
+			start = Binaries[n]["Range"]["Start"].asUInt();
+			stop = Binaries[n]["Range"]["Stop"].asUInt();
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
+			continue;
+		}
+		for(auto index = start; index <= stop; index++)
+		{
+
+			bool exists = false;
+			for(auto existing_index : pSimConf->BinaryIndicies)
+				if(existing_index == index)
+					exists = true;
+
+			if(!exists)
+				pSimConf->BinaryIndicies.push_back(index);
+
+			if(Binaries[n].isMember("UpdateIntervalms"))
+				pSimConf->BinaryUpdateIntervalms[index] = Binaries[n]["UpdateIntervalms"].asUInt();
+
+			if(Binaries[n].isMember("StartVal"))
+			{
+				std::string start_val = Binaries[n]["StartVal"].asString();
+				if(start_val == "D") //delete this index
+				{
+					if(pSimConf->BinaryStartVals.count(index))
+						pSimConf->BinaryStartVals.erase(index);
+					if(pSimConf->BinaryUpdateIntervalms.count(index))
+						pSimConf->BinaryUpdateIntervalms.erase(index);
+					for(auto it = pSimConf->BinaryIndicies.begin(); it != pSimConf->BinaryIndicies.end(); it++)
+						if(*it == index)
+						{
+							pSimConf->BinaryIndicies.erase(it);
+							break;
+						}
+				}
+				else if(start_val == "X")
+					pSimConf->BinaryStartVals[index] = false; //TODO: implement quality - use std::pair, or build the EventInfo here
+				else
+					pSimConf->BinaryStartVals[index] = Binaries[n]["StartVal"].asBool();
+			}
+			else if(pSimConf->BinaryStartVals.count(index))
+				pSimConf->BinaryStartVals.erase(index);
+		}
+	}
+	std::sort(pSimConf->BinaryIndicies.begin(),pSimConf->BinaryIndicies.end());
+}
+
+void SimPort::ProcessBinaryControls(const Json::Value& BinaryControls)
+{
+	for(Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
+	{
+		size_t start, stop;
+		if(BinaryControls[n].isMember("Index"))
+			start = stop = BinaryControls[n]["Index"].asUInt();
+		else if(BinaryControls[n]["Range"].isMember("Start") && BinaryControls[n]["Range"].isMember("Stop"))
+		{
+			start = BinaryControls[n]["Range"]["Start"].asUInt();
+			stop = BinaryControls[n]["Range"]["Stop"].asUInt();
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
+			continue;
+		}
+		for (auto index = start; index <= stop; index++)
+		{
+			bool exists = false;
+			for (auto existing_index : pSimConf->ControlIndicies)
+				if (existing_index == index)
+					exists = true;
+
+			if (!exists)
+				pSimConf->ControlIndicies.push_back(index);
+			if (BinaryControls[n].isMember("Intervalms"))
+				pSimConf->ControlIntervalms[index] = BinaryControls[n]["Intervalms"].asUInt();
+
+			auto start_val = BinaryControls[n]["StartVal"].asString();
+			if (start_val == "D")
+			{
+				if (pSimConf->ControlIntervalms.count(index))
+					pSimConf->ControlIntervalms.erase(index);
+				for (auto it = pSimConf->ControlIndicies.begin(); it != pSimConf->ControlIndicies.end(); it++)
+					if (*it == index)
+					{
+						pSimConf->ControlIndicies.erase(it);
+						break;
+					}
+			}
+
+			if (BinaryControls[n].isMember("FeedbackBinaries"))
+				ProcessFeedbackBinaries(BinaryControls[n]["FeedbackBinaries"], index);
+			if (BinaryControls[n].isMember("FeedbackPosition"))
+				ProcessFeedbackPosition(BinaryControls[n]["FeedbackPosition"]);
+		}
+	}
+	std::sort(pSimConf->ControlIndicies.begin(),pSimConf->ControlIndicies.end());
+}
+
+void SimPort::ProcessSQLite3(const Json::Value& SQLite3, const std::size_t& index)
+{
+	if(SQLite3.isMember("File") && SQLite3.isMember("Query"))
+	{
+		sqlite3* db;
+		auto filename = SQLite3["File"].asString();
+		auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_SHAREDCACHE,nullptr);
+		if(rv != SQLITE_OK)
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->error("Failed to open SQLite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
+		}
+		else
+		{
+			auto deleter = [](sqlite3* db){sqlite3_close_v2(db);};
+			DBConns["Analog"+std::to_string(index)] = pDBConnection(db,deleter);
+
+			sqlite3_stmt* stmt;
+			auto query = SQLite3["Query"].asString();
+			auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);
+			if(rv != SQLITE_OK)
+			{
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->error("Failed to prepare SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
+			}
+			else if (sqlite3_column_count(stmt) != 2)
+			{
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", query);
+			}
+			else
+			{
+				auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
+				DBStats["Analog"+std::to_string(index)] = pDBStatement(stmt,deleter);
+				auto index_bind_index = sqlite3_bind_parameter_index(stmt, ":INDEX");
+				if(index_bind_index)
+				{
+					auto rv = sqlite3_bind_int(stmt, index_bind_index, index);
+					if(rv != SQLITE_OK)
+					{
+						if(auto log = odc::spdlog_get("SimPort"))
+							log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
+						DBStats.erase("Analog"+std::to_string(index));
+					}
+				}
+			}
+			TimestampHandling = TimestampMode::FIRST;
+			if(SQLite3.isMember("TimestampHandling"))
+			{
+				auto ts_mode =SQLite3["TimestampHandling"].asString();
+				if(ts_mode == "ABSOLUTE")
+					TimestampHandling = TimestampMode::ABSOLUTE_T;
+				else if(ts_mode == "ABSOLUTE_FASTFORWARD")
+					TimestampHandling = TimestampMode::ABSOLUTE_T | TimestampMode::FASTFORWARD;
+				else if(ts_mode == "RELATIVE_TOD")
+					TimestampHandling = TimestampMode::TOD;
+				else if(ts_mode == "RELATIVE_TOD_FASTFORWARD")
+					TimestampHandling = TimestampMode::TOD | TimestampMode::FASTFORWARD;
+				else if(ts_mode == "RELATIVE_FIRST")
+					TimestampHandling = TimestampMode::FIRST;
+				else if(auto log = odc::spdlog_get("SimPort"))
+					log->error("Invalid SQLite3 'TimeStampHandling' mode '{}'. Defaulting to RELATIVE_FIRST", ts_mode);
+			}
+			else if(auto log = odc::spdlog_get("SimPort"))
+				log->info("SQLite3 'TimeStampHandling' mode defaulting to RELATIVE_FIRST");
+		}
+	}
+	else
+	{
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->error("'SQLite3' object requires 'File' and 'Query' for point : '{}'", SQLite3.toStyledString());
+	}
+}
+
+void SimPort::ProcessFeedbackBinaries(const Json::Value& FeedbackBinaries, const std::size_t& index)
+{
+	for (Json::ArrayIndex fbn = 0; fbn < FeedbackBinaries.size(); ++fbn)
+	{
+		if (!FeedbackBinaries[fbn].isMember("Index"))
+		{
+			if (auto log = odc::spdlog_get("SimPort"))
+				log->error("An 'Index' is required for Binary feedback : '{}'", FeedbackBinaries[fbn].toStyledString());
+			continue;
+		}
+
+		auto fb_index = FeedbackBinaries[fbn]["Index"].asUInt();
+		auto on_qual = QualityFlags::ONLINE;
+		auto off_qual = QualityFlags::ONLINE;
+		bool on_val = true;
+		bool off_val = false;
+		auto mode = FeedbackMode::LATCH;
+
+		if (FeedbackBinaries[fbn].isMember("OnValue"))
+		{
+			if (FeedbackBinaries[fbn]["OnValue"].asString() == "X")
+				on_qual = QualityFlags::COMM_LOST;
+			else
+				on_val = FeedbackBinaries[fbn]["OnValue"].asBool();
+		}
+		if (FeedbackBinaries[fbn].isMember("OffValue"))
+		{
+			if (FeedbackBinaries[fbn]["OffValue"].asString() == "X")
+				off_qual = QualityFlags::COMM_LOST;
+			else
+				off_val = FeedbackBinaries[fbn]["OffValue"].asBool();
+
+		}
+		if (FeedbackBinaries[fbn].isMember("FeedbackMode"))
+		{
+			auto mode_str = FeedbackBinaries[fbn]["FeedbackMode"].asString();
+			if (mode_str == "PULSE")
+				mode = FeedbackMode::PULSE;
+			else if (mode_str == "LATCH")
+				mode = FeedbackMode::LATCH;
+			else
+			{
+				if (auto log = odc::spdlog_get("SimPort"))
+					log->warn("Unrecognised feedback mode: '{}'", FeedbackBinaries[fbn].toStyledString());
+			}
+		}
+
+		auto on = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, on_qual);
+		on->SetPayload<EventType::Binary>(std::move(on_val));
+		auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, off_qual);
+		off->SetPayload<EventType::Binary>(std::move(off_val));
+
+		pSimConf->ControlFeedback[index].emplace_back(on, off, mode);
+	}
+}
+
+/*
+  Used to implement TapChanger functionality, containing:
+  {"Type": "Analog", "Index" : 7, "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+  {"Type": "Binary", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+  {"Type": "BCD", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+
+  Because the feedback is complex, we need to keep the current value available so we can change it.
+  As a result, the feedback bits or analog will be set to forced state. If you unforce them, they will
+  get re-forced the next time a command comes through.
+  Bit of a hack, but comes back to the original simulator design not "remembering" what its current state is.
+*/
+void SimPort::ProcessFeedbackPosition(const Json::Value& FeedbackPosition)
+{
+	try
+	{
+		// Only allow 1 entry - you need pulse or repeated open/close to tap up and down from two separate signals.
+		if (!FeedbackPosition.isMember("Type"))
+		{
+			throw std::runtime_error("A 'Type' is required for Position feedback");
+		}
+		if (!FeedbackPosition.isMember("Action"))
+		{
+			throw std::runtime_error("An 'Action' is required for Position feedback");
+		}
+		if (!FeedbackPosition.isMember("FeedbackMode"))
+		{
+			throw std::runtime_error("A 'FeedbackMode' is required for Position feedback");
+		}
+		if (!(FeedbackPosition.isMember("Index") || FeedbackPosition.isMember("Indexes")))
+		{
+			throw std::runtime_error("An 'Index' or 'Indexes' is required for Position feedback");
+		}
+
+		if (FeedbackPosition["Type"] == "Analog")
+		{
+			//TODO:
+			throw std::runtime_error("'Analog' Position feedback is unimplemented.");
+		}
+		else if (FeedbackPosition["Type"] == "Binary")
+		{
+			//TODO:
+			throw std::runtime_error("'Binary' Position feedback is unimplemented.");
+		}
+		else if (FeedbackPosition["Type"] == "BCD")
+		{
+			//TODO:
+			throw std::runtime_error("'BCD' Position feedback is unimplemented.");
+		}
+		else
+		{
+			throw std::runtime_error("The 'Type' for Position feedback is invalid, requires 'Analog','Binary' or 'BCD'");
+		}
+	}
+	catch (std::exception &e)
+	{
+		LOGERROR("{} : '{}'", e.what(),  FeedbackPosition.toStyledString());
+	}
 }
