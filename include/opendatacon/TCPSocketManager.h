@@ -141,7 +141,17 @@ public:
 					return;
 				if(isServer)
 				{
-				      pAcceptor = pIOS->make_tcp_acceptor(EndpointIterator);
+				      try
+				      {
+				            pAcceptor = pIOS->make_tcp_acceptor(EndpointIterator);
+					}
+				      catch(std::exception& e)
+				      {
+				            if(auto log = odc::spdlog_get("opendatacon"))
+							log->error("TCPSocketManager failed to start server on {}:{}. Exception: {}",EndpointIterator->host_name(),EndpointIterator->service_name(),e.what());
+				            AutoOpen();
+				            return;
+					}
 				      pAcceptor->async_accept(*pSock,pSockStrand->wrap([this,tracker](asio::error_code err_code)
 						{
 							if(manuallyClosed)
