@@ -748,8 +748,21 @@ void DataConcentrator::Run()
 {
 	if (auto log = odc::spdlog_get("opendatacon"))
 		log->info("Starting worker threads...");
+
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		threads.emplace_back([&]() {pIOS->run(); });
+		threads.emplace_back([this]()
+			{
+				try
+				{
+				      pIOS->run();
+				}
+				catch (std::exception& e)
+				{
+				      if(auto log = odc::spdlog_get("opendatacon"))
+						log->critical("Shutting down due to exception from thread pool: {}", e.what());
+				      Shutdown();
+				}
+			});
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling DataConnectors...");
