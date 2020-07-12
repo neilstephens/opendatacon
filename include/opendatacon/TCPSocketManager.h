@@ -225,7 +225,7 @@ public:
 		std::weak_ptr<void> tracker = handler_tracker;
 		handler_tracker.reset();
 
-		while(!tracker.expired())
+		while(!tracker.expired() && !pIOS->stopped())
 			pIOS->poll_one();
 	}
 
