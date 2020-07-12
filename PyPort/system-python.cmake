@@ -63,7 +63,6 @@ if(NOT USE_PYTHON_SUBMODULE)
 		set(PYTHON_DEBUG_POSTFIX "_d")
 	endif()
 
-	message( ${CMAKE_LIBRARY_ARCHITECTURE})
 	#import the python lib
 	find_library(PYTHON_LIBRARY_RELEASE
 		NAMES ${PYTHON_VER}m
