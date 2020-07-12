@@ -29,8 +29,6 @@
 #include "DataConnector.h"
 #include "DataConnectorCollection.h"
 #include "DataConnector.h"
-#include <opendatacon/asio.h>
-#include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/DataPortCollection.h>
 #include <opendatacon/InterfaceCollection.h>
@@ -41,6 +39,8 @@
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 #include <opendatacon/IUI.h>
+#include <opendatacon/asio.h>
+#include <unordered_map>
 
 class DataConcentrator: public ConfigParser, public IUIResponder
 {
@@ -62,6 +62,7 @@ private:
 
 	std::shared_ptr<odc::asio_service> pIOS;
 	std::shared_ptr<asio::io_service::work> ios_working;
+	std::atomic<size_t> starting_element_count = 0;
 	std::once_flag shutdown_flag;
 	std::atomic_bool shutting_down;
 	std::atomic_bool shut_down;

@@ -225,13 +225,8 @@ public:
 		std::weak_ptr<void> tracker = handler_tracker;
 		handler_tracker.reset();
 
-		size_t i = 0;
-		while(!tracker.expired() && ++i < 1000)
+		while(!tracker.expired())
 			pIOS->poll_one();
-
-		if(auto t = tracker.lock())
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->critical("TCPSocketManager is being destroyed with {} outstanding handler(s). Was Close() not called, or Write() called after Close()?", t.use_count()-1);
 	}
 
 private:

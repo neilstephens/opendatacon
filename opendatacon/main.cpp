@@ -125,7 +125,19 @@ int main(int argc, char* argv[])
 		}
 
 		// Start opendatacon, returns after a clean shutdown
-		auto run_thread = std::thread([=](){TheDataConcentrator->Run();});
+		auto run_thread = std::thread([]()
+			{
+				try
+				{
+					TheDataConcentrator->Run();
+				}
+				catch(const std::exception& e)
+				{
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->critical("Shutting down due to exception in DataConcentrator::Run() thread: {}", e.what());
+					TheDataConcentrator->Shutdown();
+				}
+			});
 
 		while(!TheDataConcentrator->isShuttingDown())
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -185,5 +197,11 @@ int main(int argc, char* argv[])
 		log->flush();
 
 	odc::spdlog_shutdown();
+
+	//if it's not a clean shutdown, can't risk cleaning up.
+	// _Exit() shouldn't call any destructors
+	if(ret_val)
+		_Exit(ret_val);
+
 	return ret_val;
 }

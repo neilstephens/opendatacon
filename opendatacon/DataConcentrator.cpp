@@ -148,13 +148,6 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 
 DataConcentrator::~DataConcentrator()
 {
-	//In case of exception - ie. if we're destructed while still running
-	//dump (detach) any threads
-	//the threads would be already joined and cleared on normal shutdown
-	for (auto& thread : threads)
-		thread.detach();
-	threads.clear();
-
 	/*
 	  If there's a TCP sink, we need to destroy it
 	  because ostream will be destroyed
@@ -768,60 +761,86 @@ void DataConcentrator::Run()
 		log->info("Enabling DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
+		starting_element_count++;
 		if(Name_n_Conn.second->InitState == InitState_t::ENABLED)
 		{
-			pIOS->post([&]()
+			pIOS->post([this,Name_n_Conn]()
 				{
 					Name_n_Conn.second->Enable();
+					starting_element_count--;
 				});
 		}
 		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
 		{
 			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
-			pTimer->async_wait([pTimer,&Name_n_Conn](asio::error_code err_code)
+			pTimer->async_wait([this,pTimer,Name_n_Conn](asio::error_code err_code)
 				{
 					//FIXME: check err_code?
 					Name_n_Conn.second->Enable();
+					starting_element_count--;
 				});
 		}
+		else
+			starting_element_count--;
 	}
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
+		starting_element_count++;
 		if(Name_n_Port.second->InitState == InitState_t::ENABLED)
 		{
-			pIOS->post([&]()
+			pIOS->post([this,Name_n_Port]()
 				{
 					Name_n_Port.second->Enable();
+					starting_element_count--;
 				});
 		}
 		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
 		{
 			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
 			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
-			pTimer->async_wait([pTimer,&Name_n_Port](asio::error_code err_code)
+			pTimer->async_wait([this,pTimer,Name_n_Port](asio::error_code err_code)
 				{
 					//FIXME: check err_code?
 					Name_n_Port.second->Enable();
+					starting_element_count--;
 				});
 		}
+		else
+			starting_element_count--;
 	}
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
+		starting_element_count++;
 		pIOS->post([&]()
 			{
 				Name_n_UI.second->Enable();
+				starting_element_count--;
 			});
 	}
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Up and running.");
+	try
+	{
+		while(starting_element_count > 0)
+			pIOS->run_one();
 
-	pIOS->run();
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->info("Up and running.");
+
+		pIOS->run();
+	}
+	catch (std::exception& e)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->critical("Shutting down due to exception from thread pool: {}", e.what());
+		Shutdown();
+		pIOS->run();
+	}
+
 	for(auto& thread : threads)
 		thread.join();
 	threads.clear();
@@ -843,47 +862,62 @@ void DataConcentrator::Run()
 void DataConcentrator::Shutdown()
 {
 	//Shutdown gets called from various places (signal handling, user interface(s))
-	//ensure we only act once
+	//ensure we only act once, and catch all exceptions
+	//call_once propagates exceptions, but allows calling again in that case!
+	// so we catch within handler
 	std::call_once(shutdown_flag, [this]()
 		{
 			shutting_down = true;
-			if(auto log = odc::spdlog_get("opendatacon"))
+			try
 			{
-			      log->critical("Shutting Down...");
-			      log->info("Disabling Interfaces...");
-			}
-			for(auto& Name_n_UI : Interfaces)
-			{
-			      Name_n_UI.second->Disable();
-			}
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Disabling DataConnectors...");
-			for(auto& Name_n_Conn : DataConnectors)
-			{
-			      Name_n_Conn.second->Disable();
-			}
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Disabling DataPorts...");
-			for(auto& Name_n_Port : DataPorts)
-			{
-			      Name_n_Port.second->Disable();
-			}
+				//wait for startup to finish before shutdown
+				while(starting_element_count > 0)
+					pIOS->run_one();
 
-			if(auto log = odc::spdlog_get("opendatacon"))
-			{
-			      log->info("Finishing asynchronous tasks...");
-			      log->flush(); //for the benefit of tcp logger shutdown
-			}
+				if(auto log = odc::spdlog_get("opendatacon"))
+				{
+					log->critical("Shutting Down...");
+					log->info("Disabling Interfaces...");
+				}
+				for(auto& Name_n_UI : Interfaces)
+				{
+					Name_n_UI.second->Disable();
+				}
+				if(auto log = odc::spdlog_get("opendatacon"))
+					log->info("Disabling DataConnectors...");
+				for(auto& Name_n_Conn : DataConnectors)
+				{
+					Name_n_Conn.second->Disable();
+				}
+				if(auto log = odc::spdlog_get("opendatacon"))
+					log->info("Disabling DataPorts...");
+				for(auto& Name_n_Port : DataPorts)
+				{
+					Name_n_Port.second->Disable();
+				}
 
-			//shutdown tcp logger so it doesn't keep the io_service going
-			for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
-			{
-			      it->second.DeInit();
-			      if(LogSinks.find(it->first) != LogSinks.end())
-					LogSinks[it->first]->set_level(spdlog::level::off);
-			}
+				if(auto log = odc::spdlog_get("opendatacon"))
+				{
+					log->info("Finishing asynchronous tasks...");
+					log->flush(); //for the benefit of tcp logger shutdown
+				}
 
-			ios_working.reset();
+				//shutdown tcp logger so it doesn't keep the io_service going
+				for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
+				{
+					it->second.DeInit();
+					if(LogSinks.find(it->first) != LogSinks.end())
+						LogSinks[it->first]->set_level(spdlog::level::off);
+				}
+
+				ios_working.reset();
+			}
+			catch(const std::exception& e)
+			{
+				if(auto log = odc::spdlog_get("opendatacon"))
+					log->critical("Caught exception in DataConcentrator::Shutdown(): {}", e.what());
+				//Fall through - we set the shutting_down flag for watchdog
+			}
 		});
 }
 
