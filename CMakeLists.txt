@@ -18,20 +18,22 @@
  #	limitations under the License.
  #
 cmake_minimum_required(VERSION 3.10)
-project(opendatacon_suite C CXX)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
 
 if(NOT WIN32)
 	set(BUILD_TYPE_INSTRUCTIONS "Choose the type of build, default Release, other options: Debug RelWithDebInfo MinSizeRel.")
-	if(DEFINED CMAKE_BUILD_TYPE)
+	if(CMAKE_BUILD_TYPE)
 		set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING ${BUILD_TYPE_INSTRUCTIONS})
 	else()
 		set(CMAKE_BUILD_TYPE Release CACHE STRING ${BUILD_TYPE_INSTRUCTIONS})
 	endif()
 endif()
+
+#tempting to move this to the top - but don't! Must set CMAKE_BUILD_TYPE first
+project(opendatacon_suite C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
 
 #macro for resolving chain of symlinks into a list
 include(file_w_symlinks.cmake)
