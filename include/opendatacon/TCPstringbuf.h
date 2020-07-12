@@ -41,29 +41,31 @@ public:
 		)
 	{
 		pIOS = apIOS;
-		pSockMan = std::make_unique<TCPSocketManager<std::string>>(apIOS,aisServer,aEndPoint,aPort,
+		pSockMan = std::make_shared<TCPSocketManager<std::string>>(apIOS,aisServer,aEndPoint,aPort,
 			[](buf_t& readbuf){},[](bool state){},1000,true);
 		pSockMan->Open();
 	}
 	void DeInit()
 	{
-		if(pSockMan)
-			pSockMan->Close();
-		pSockMan.reset();
+		auto p = pSockMan;
+		std::atomic_store(&pSockMan,std::shared_ptr<TCPSocketManager<std::string>>(nullptr));
+		if(p)
+			p->Close();
 	}
 	int sync() override
 	{
-		if(pSockMan)
+		auto p = std::atomic_load(&pSockMan);
+		if(p)
 		{
-			pSockMan->Write(str()); //write
-			str("");                //clear
-			return 0;               //success
+			p->Write(str()); //write
+			str("");         //clear
+			return 0;        //success
 		}
 		return -1; //fail
 	}
 private:
 	std::shared_ptr<odc::asio_service> pIOS;
-	std::unique_ptr<TCPSocketManager<std::string>> pSockMan;
+	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
 };
 
 } //namespace odc
