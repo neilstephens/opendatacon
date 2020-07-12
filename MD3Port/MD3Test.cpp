@@ -2772,8 +2772,6 @@ TEST_CASE("Master - Analog")
 	MD3OSPort->Disable();
 	MD3MAPort->Disable();
 
-	work.reset(); // Indicate all work is finished.
-
 	STOP_IOS();
 	TestTearDown();
 }
@@ -3011,8 +3009,6 @@ TEST_CASE("Master - DOM and POM Tests")
 		REQUIRE(OSResponse == BuildHexStringFromASCIIHexString("fc0f26006000")); // OK Command
 	}
 
-	work.reset(); // Indicate all work is finished.
-
 	MD3OSPort->Disable();
 	MD3MAPort->Disable();
 
@@ -3086,8 +3082,6 @@ TEST_CASE("Master - TimeDate Poll Tests")
 		// Check there is no resend of the command - we must have got an OK packet.
 		REQUIRE(MAResponse == "Not Set");
 	}
-
-	work.reset(); // Indicate all work is finished.
 
 	MD3OSPort->Disable();
 	MD3MAPort->Disable();
@@ -3180,7 +3174,6 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 		REQUIRE(PointList[80].GetModuleBinarySnapShot() == 0xff01);
 		//		  REQUIRE(PointList[80].ChangedTime == 0x00000164ee1e751c);
 	}
-	work.reset(); // Indicate all work is finished.
 
 	MD3OSPort->Disable();
 	MD3MAPort->Disable();
@@ -3285,8 +3278,6 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		//		  REQUIRE(PointList[80].ChangedTime == 0x00000164ee1e751c);
 	}
 
-	work.reset(); // Indicate all work is finished.
-
 	MD3OSPort->Disable();
 	MD3MAPort->Disable();
 
@@ -3369,7 +3360,6 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 
 		// Catching the rest is difficult!
 	}
-	work.reset(); // Indicate all work is finished.
 
 	MD3OSPort->Disable();
 	MD3MAPort->Disable();
@@ -3720,8 +3710,6 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 
 	Wait(*IOS, 2);
 
-	work.reset(); // Indicate all work is finished.
-
 	MD3MAPort->Disable();
 
 	STOP_IOS();
@@ -3766,8 +3754,6 @@ TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 	MD3OSPort->Enable();
 	Wait(*IOS, 2); // We just run for a period and see if we get connected and scanned.
 	MD3OSPort->Disable();
-
-	work.reset(); // Indicate all work is finished.
 
 	STOP_IOS();
 	TestTearDown();
