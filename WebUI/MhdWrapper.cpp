@@ -270,7 +270,7 @@ int CreateNewRequest(void *cls,
 	{
 		auto length = atoi(MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "Content-Length"));
 		if (length == 0) return MHD_YES;
-		con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void*) con_info);
+		con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, reinterpret_cast<MHD_PostDataIterator>(&iterate_post), con_info);
 		if (nullptr != con_info->postprocessor) return MHD_YES;
 	}
 
