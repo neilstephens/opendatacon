@@ -263,7 +263,7 @@ void WebUI::Enable()
 			port,                                                  // Port to bind to
 			nullptr,                                               // callback to call to check which clients allowed to connect
 			nullptr,                                               // extra argument to apc
-			&ahc,                                                  // handler called for all requests
+			reinterpret_cast<MHD_AccessHandlerCallback>(&ahc),     // handler called for all requests
 			this,                                                  // extra argument to dh
 			MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
 			MHD_OPTION_CONNECTION_TIMEOUT, 256,
@@ -279,7 +279,7 @@ void WebUI::Enable()
 			port,                                                  // Port to bind to
 			nullptr,                                               // callback to call to check which clients allowed to connect
 			nullptr,                                               // extra argument to apc
-			&ahc,                                                  // handler called for all requests
+			reinterpret_cast<MHD_AccessHandlerCallback> (&ahc),    // handler called for all requests
 			this,                                                  // extra argument to dh
 			MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
 			MHD_OPTION_CONNECTION_TIMEOUT, 256,
