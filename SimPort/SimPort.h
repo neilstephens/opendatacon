@@ -41,19 +41,19 @@ using namespace odc;
 // Hide some of the code to make Logging cleaner
 #define LOGTRACE(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-	log->trace(__VA_ARGS__)
+		log->trace(__VA_ARGS__)
 #define LOGDEBUG(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-	log->debug(__VA_ARGS__)
+		log->debug(__VA_ARGS__)
 #define LOGERROR(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-	log->error(__VA_ARGS__)
+		log->error(__VA_ARGS__)
 #define LOGWARN(...) \
 	if (auto log = odc::spdlog_get("SimPort"))  \
-	log->warn(__VA_ARGS__)
+		log->warn(__VA_ARGS__)
 #define LOGINFO(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
-	log->info(__VA_ARGS__)
+		log->info(__VA_ARGS__)
 
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 
@@ -78,7 +78,7 @@ public:
 	void Enable() final;
 	void Disable() final;
 	void Build() final;
-	void ProcessElements(const Json::Value& JSONRoot) final;
+	void ProcessElements(const Json::Value& json_root) final;
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 	std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder() final;
 
@@ -109,15 +109,6 @@ private:
 	std::string GetCurrentAnalogValsAsJSONString(const std::string& index);
 	Json::Value GetCurrentBinaryValsAsJSON(const size_t index);
 	Json::Value GetCurrentAnalogValsAsJSON(const size_t index);
-
-	// these private functions are there to modularize the ProcessElements
-	// to parse the configuration file
-	void ProcessAnalogs(const Json::Value& Analogs);
-	void ProcessBinaries(const Json::Value& Binaries);
-	void ProcessBinaryControls(const Json::Value& BinaryControls);
-	void ProcessSQLite3(const Json::Value& SQLite3, const std::size_t& index);
-	void ProcessFeedbackBinaries(const Json::Value& FeedbackBinaries, const std::size_t& index);
-	void ProcessFeedbackPosition(const Json::Value& FeedbackPosition);
 
 	void NextEventFromDB(const std::shared_ptr<EventInfo>& event);
 	void PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset);
