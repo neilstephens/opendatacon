@@ -27,9 +27,10 @@
 #ifndef SIMPORTCONF_H
 #define SIMPORTCONF_H
 
-#include <memory>
 #include <opendatacon/DataPortConf.h>
 #include <opendatacon/IOTypes.h>
+#include <json/json.h>
+#include <memory>
 
 using namespace odc;
 
@@ -60,6 +61,8 @@ public:
 		default_std_dev_factor(0.1)
 	{}
 
+	void ProcessElements(const Json::Value& json_root);
+
 	std::string HttpAddr = "0.0.0.0";
 	std::string HttpPort = "";
 	std::string Version = "Unknown";
@@ -79,6 +82,13 @@ public:
 	std::map<uint32_t, std::vector<BinaryFeedback>> ControlFeedback;
 
 	double default_std_dev_factor;
+private:
+	void m_ProcessAnalogs(const Json::Value& analogs);
+	void m_ProcessBinaries(const Json::Value& binaires);
+	void m_ProcessBinaryControls(const Json::Value& binary_controls);
+	void m_ProcessSQLite3(const Json::Value& sqlite3, const std::size_t& index);
+	void m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, const std::size_t& index);
+	void m_ProcessFeedbackPosition(const Json::Value& feedback_position);
 };
 
 #endif // SIMPORTCONF_H
