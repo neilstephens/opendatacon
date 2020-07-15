@@ -27,12 +27,45 @@
 #ifndef SIMPORTCONF_H
 #define SIMPORTCONF_H
 
+#include "sqlite3/sqlite3.h"
 #include <opendatacon/DataPortConf.h>
 #include <opendatacon/IOTypes.h>
 #include <json/json.h>
 #include <memory>
 
 using namespace odc;
+
+using DB_STATEMENT = std::shared_ptr<sqlite3_stmt>;
+
+enum class TimestampMode : uint8_t
+{
+	FIRST       = 1,
+	ABSOLUTE_T  = 1<<1,
+	FASTFORWARD = 1<<2,
+	TOD         = 1<<3
+};
+
+namespace odc
+{
+ENABLE_BITWISE(TimestampMode)
+}
+
+// Hide some of the code to make Logging cleaner
+#define LOGTRACE(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+	log->trace(__VA_ARGS__)
+#define LOGDEBUG(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+	log->debug(__VA_ARGS__)
+#define LOGERROR(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+	log->error(__VA_ARGS__)
+#define LOGWARN(...) \
+	if (auto log = odc::spdlog_get("SimPort"))  \
+	log->warn(__VA_ARGS__)
+#define LOGINFO(...) \
+	if (auto log = odc::spdlog_get("SimPort")) \
+	log->info(__VA_ARGS__)
 
 //DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
 //We can generalise, and come up with a simpler superset:
@@ -57,11 +90,12 @@ struct BinaryFeedback
 class SimPortConf: public DataPortConf
 {
 public:
-	SimPortConf():
-		default_std_dev_factor(0.1)
-	{}
+	SimPortConf();
 
 	void ProcessElements(const Json::Value& json_root);
+	std::unordered_map<std::string, DB_STATEMENT> GetDBStats() const;
+	TimestampMode GetTimestampHandling() const;
+	void SetName(const std::string& name);
 
 	std::string HttpAddr = "0.0.0.0";
 	std::string HttpPort = "";
@@ -83,10 +117,14 @@ public:
 
 	double default_std_dev_factor;
 private:
+	std::string m_name;
+	TimestampMode m_timestamp_handling;
+	std::unordered_map<std::string, DB_STATEMENT> m_db_stats;
+
 	void m_ProcessAnalogs(const Json::Value& analogs);
 	void m_ProcessBinaries(const Json::Value& binaires);
 	void m_ProcessBinaryControls(const Json::Value& binary_controls);
-	void m_ProcessSQLite3(const Json::Value& sqlite3, const std::size_t& index);
+	void m_ProcessSQLite3(const Json::Value& sqlite, const std::size_t& index);
 	void m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, const std::size_t& index);
 	void m_ProcessFeedbackPosition(const Json::Value& feedback_position);
 };

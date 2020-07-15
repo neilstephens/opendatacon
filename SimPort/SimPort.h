@@ -38,36 +38,7 @@
 
 using namespace odc;
 
-// Hide some of the code to make Logging cleaner
-#define LOGTRACE(...) \
-	if (auto log = odc::spdlog_get("SimPort")) \
-		log->trace(__VA_ARGS__)
-#define LOGDEBUG(...) \
-	if (auto log = odc::spdlog_get("SimPort")) \
-		log->debug(__VA_ARGS__)
-#define LOGERROR(...) \
-	if (auto log = odc::spdlog_get("SimPort")) \
-		log->error(__VA_ARGS__)
-#define LOGWARN(...) \
-	if (auto log = odc::spdlog_get("SimPort"))  \
-		log->warn(__VA_ARGS__)
-#define LOGINFO(...) \
-	if (auto log = odc::spdlog_get("SimPort")) \
-		log->info(__VA_ARGS__)
-
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
-
-enum class TimestampMode : uint8_t
-{
-	FIRST       = 1,
-	ABSOLUTE_T  = 1<<1,
-	FASTFORWARD = 1<<2,
-	TOD         = 1<<3
-};
-namespace odc
-{
-ENABLE_BITWISE(TimestampMode)
-}
 
 class SimPortCollection;
 class SimPort: public DataPort
@@ -96,11 +67,6 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	typedef std::shared_ptr<Timer_t> pTimer_t;
 	std::unordered_map<std::string, pTimer_t> Timers;
-	typedef std::shared_ptr<sqlite3> pDBConnection;
-	std::unordered_map<std::string, pDBConnection> DBConns;
-	typedef std::shared_ptr<sqlite3_stmt> pDBStatement;
-	std::unordered_map<std::string, pDBStatement> DBStats;
-	TimestampMode TimestampHandling;
 
 	std::vector<uint32_t> GetAllowedIndexes(std::string type);
 	// use this instead of PublishEvent, it catches current values and saves them.

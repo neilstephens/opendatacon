@@ -59,10 +59,8 @@ std::vector<std::string> split(const std::string& s, char delimiter)
 //Implement DataPort interface
 SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
 	DataPort(Name, File, Overrides),
-	TimestampHandling(TimestampMode::FIRST),
 	SimCollection(nullptr)
 {
-
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<SimPortCollection> weak_collection;
 
@@ -85,6 +83,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 
 	pConf = std::make_unique<SimPortConf>();
 	pSimConf = static_cast<SimPortConf*>(this->pConf.get());
+	pSimConf->SetName(Name);
 	ProcessFile();
 }
 
@@ -477,18 +476,20 @@ void SimPort::PortUp()
 		Timers["Analog"+std::to_string(index)] = pTimer;
 
 		//Check if we're configured to load this point from DB
-		if(DBStats.count("Analog"+std::to_string(index)))
+		const auto db_stats = pSimConf->GetDBStats();
+		if(db_stats.find("Analog"+std::to_string(index)) != db_stats.end())
 		{
 			auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
 			NextEventFromDB(event);
 			int64_t time_offset = 0;
-			if(!(TimestampHandling & TimestampMode::ABSOLUTE_T))
+			const auto timestamp_handling = pSimConf->GetTimestampHandling();
+			if(!(timestamp_handling & TimestampMode::ABSOLUTE_T))
 			{
-				if(!!(TimestampHandling & TimestampMode::FIRST))
+				if(!!(timestamp_handling & TimestampMode::FIRST))
 				{
 					time_offset = now - event->GetTimestamp();
 				}
-				else if(!!(TimestampHandling & TimestampMode::TOD))
+				else if(!!(timestamp_handling & TimestampMode::TOD))
 				{
 					auto whole_days_ts = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
 					auto whole_days_now = std::chrono::duration_cast<days>(std::chrono::milliseconds(now));
@@ -500,7 +501,7 @@ void SimPort::PortUp()
 					throw std::runtime_error("Invalid timestamp mode: Not absolute, but not relative either");
 				}
 			}
-			if(!(TimestampHandling & TimestampMode::FASTFORWARD))
+			if(!(timestamp_handling & TimestampMode::FASTFORWARD))
 			{
 				//Find the first event that's not in the past
 				while(now > (event->GetTimestamp()+time_offset))
@@ -609,13 +610,14 @@ void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 {
 	if(event->GetEventType() == EventType::Analog)
 	{
-		auto rv = sqlite3_step(DBStats.at("Analog"+std::to_string(event->GetIndex())).get());
+		auto db_stats = pSimConf->GetDBStats();
+		auto rv = sqlite3_step(db_stats["Analog"+std::to_string(event->GetIndex())].get());
 		if(rv == SQLITE_ROW)
 		{
-			auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(DBStats.at("Analog"+std::to_string(event->GetIndex())).get(),0));
+			auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stats["Analog"+std::to_string(event->GetIndex())].get(),0));
 			//TODO: apply some relative offset to time
 			event->SetTimestamp(t);
-			event->SetPayload<EventType::Analog>(sqlite3_column_double(DBStats.at("Analog"+std::to_string(event->GetIndex())).get(),1));
+			event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stats["Analog"+std::to_string(event->GetIndex())].get(),1));
 		}
 		else
 		{
@@ -634,7 +636,9 @@ void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
 	//Check if we're configured to load this point from DB
-	if(DBStats.count("Analog"+std::to_string(event->GetIndex())))
+	const auto db_stats = pSimConf->GetDBStats();
+	if(db_stats.find("Analog"+std::to_string(event->GetIndex())) !=
+	   db_stats.end())
 	{
 		NextEventFromDB(event);
 		event->SetTimestamp(event->GetTimestamp()+time_offset);

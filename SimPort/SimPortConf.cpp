@@ -26,7 +26,11 @@
  */
 
 #include "SimPortConf.h"
-#include "sqlite3/sqlite3.h"
+
+SimPortConf::SimPortConf():
+	m_name(""),
+	m_timestamp_handling(TimestampMode::FIRST),
+	default_std_dev_factor(0.1f) {}
 
 void SimPortConf::ProcessElements(const Json::Value& json_root)
 {
@@ -44,6 +48,21 @@ void SimPortConf::ProcessElements(const Json::Value& json_root)
 		m_ProcessBinaries(json_root["Binaries"]);
 	if(json_root.isMember("BinaryControls"))
 		m_ProcessBinaryControls(json_root["BinaryControls"]);
+}
+
+std::unordered_map<std::string, DB_STATEMENT> SimPortConf::GetDBStats() const
+{
+	return m_db_stats;
+}
+
+TimestampMode SimPortConf::GetTimestampHandling() const
+{
+	return m_timestamp_handling;
+}
+
+void SimPortConf::SetName(const std::string& name)
+{
+	m_name = name;
 }
 
 void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
@@ -241,12 +260,12 @@ void SimPortConf::m_ProcessBinaryControls(const Json::Value& binary_controls)
 	std::sort(ControlIndicies.begin(),ControlIndicies.end());
 }
 
-void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite3, const std::size_t& index)
+void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::size_t& index)
 {
-	if(sqlite3.isMember("File") && sqlite3.isMember("Query"))
+	if(sqlite.isMember("File") && sqlite.isMember("Query"))
 	{
 		sqlite3* db;
-		auto filename = sqlite3["File"].asString();
+		auto filename = sqlite["File"].asString();
 		auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_SHAREDCACHE,nullptr);
 		if(rv != SQLITE_OK)
 		{
@@ -256,10 +275,10 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite3, const std::size_t
 		else
 		{
 			auto deleter = [](sqlite3* db){sqlite3_close_v2(db);};
-			DBConns["Analog"+std::to_string(index)] = pDBConnection(db,deleter);
+			//DBConns["Analog"+std::to_string(index)] = pDBConnection(db,deleter);
 
 			sqlite3_stmt* stmt;
-			auto query = sqlite3["Query"].asString();
+			auto query = sqlite["Query"].asString();
 			auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);
 			if(rv != SQLITE_OK)
 			{
@@ -274,7 +293,7 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite3, const std::size_t
 			else
 			{
 				auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
-				DBStats["Analog"+std::to_string(index)] = pDBStatement(stmt,deleter);
+				m_db_stats["Analog"+std::to_string(index)] = DB_STATEMENT(stmt,deleter);
 				auto index_bind_index = sqlite3_bind_parameter_index(stmt, ":INDEX");
 				if(index_bind_index)
 				{
@@ -283,24 +302,24 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite3, const std::size_t
 					{
 						if(auto log = odc::spdlog_get("SimPort"))
 							log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
-						DBStats.erase("Analog"+std::to_string(index));
+						m_db_stats.erase("Analog"+std::to_string(index));
 					}
 				}
 			}
-			TimestampHandling = TimestampMode::FIRST;
-			if(sqlite3.isMember("TimestampHandling"))
+			m_timestamp_handling = TimestampMode::FIRST;
+			if(sqlite.isMember("TimestampHandling"))
 			{
-				auto ts_mode =sqlite3["TimestampHandling"].asString();
+				auto ts_mode =sqlite["TimestampHandling"].asString();
 				if(ts_mode == "ABSOLUTE")
-					TimestampHandling = TimestampMode::ABSOLUTE_T;
+					m_timestamp_handling = TimestampMode::ABSOLUTE_T;
 				else if(ts_mode == "ABSOLUTE_FASTFORWARD")
-					TimestampHandling = TimestampMode::ABSOLUTE_T | TimestampMode::FASTFORWARD;
+					m_timestamp_handling = TimestampMode::ABSOLUTE_T | TimestampMode::FASTFORWARD;
 				else if(ts_mode == "RELATIVE_TOD")
-					TimestampHandling = TimestampMode::TOD;
+					m_timestamp_handling = TimestampMode::TOD;
 				else if(ts_mode == "RELATIVE_TOD_FASTFORWARD")
-					TimestampHandling = TimestampMode::TOD | TimestampMode::FASTFORWARD;
+					m_timestamp_handling = TimestampMode::TOD | TimestampMode::FASTFORWARD;
 				else if(ts_mode == "RELATIVE_FIRST")
-					TimestampHandling = TimestampMode::FIRST;
+					m_timestamp_handling = TimestampMode::FIRST;
 				else if(auto log = odc::spdlog_get("SimPort"))
 					log->error("Invalid SQLite3 'TimeStampHandling' mode '{}'. Defaulting to RELATIVE_FIRST", ts_mode);
 			}
@@ -311,7 +330,7 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite3, const std::size_t
 	else
 	{
 		if(auto log = odc::spdlog_get("SimPort"))
-			log->error("'SQLite3' object requires 'File' and 'Query' for point : '{}'", sqlite3.toStyledString());
+			log->error("'SQLite3' object requires 'File' and 'Query' for point : '{}'", sqlite.toStyledString());
 	}
 }
 
@@ -362,9 +381,9 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 			}
 		}
 
-		auto on = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, on_qual);
+		auto on = std::make_shared<EventInfo>(EventType::Binary, fb_index, m_name, on_qual);
 		on->SetPayload<EventType::Binary>(std::move(on_val));
-		auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, off_qual);
+		auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, m_name, off_qual);
 		off->SetPayload<EventType::Binary>(std::move(off_val));
 
 		ControlFeedback[index].emplace_back(on, off, mode);
@@ -387,34 +406,34 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 	try
 	{
 		// Only allow 1 entry - you need pulse or repeated open/close to tap up and down from two separate signals.
-		if (!FeedbackPosition.isMember("Type"))
+		if (!feedback_position.isMember("Type"))
 		{
 			throw std::runtime_error("A 'Type' is required for Position feedback");
 		}
-		if (!FeedbackPosition.isMember("Action"))
+		if (!feedback_position.isMember("Action"))
 		{
 			throw std::runtime_error("An 'Action' is required for Position feedback");
 		}
-		if (!FeedbackPosition.isMember("FeedbackMode"))
+		if (!feedback_position.isMember("FeedbackMode"))
 		{
 			throw std::runtime_error("A 'FeedbackMode' is required for Position feedback");
 		}
-		if (!(FeedbackPosition.isMember("Index") || FeedbackPosition.isMember("Indexes")))
+		if (!(feedback_position.isMember("Index") || feedback_position.isMember("Indexes")))
 		{
 			throw std::runtime_error("An 'Index' or 'Indexes' is required for Position feedback");
 		}
 
-		if (FeedbackPosition["Type"] == "Analog")
+		if (feedback_position["Type"] == "Analog")
 		{
 			//TODO:
 			throw std::runtime_error("'Analog' Position feedback is unimplemented.");
 		}
-		else if (FeedbackPosition["Type"] == "Binary")
+		else if (feedback_position["Type"] == "Binary")
 		{
 			//TODO:
 			throw std::runtime_error("'Binary' Position feedback is unimplemented.");
 		}
-		else if (FeedbackPosition["Type"] == "BCD")
+		else if (feedback_position["Type"] == "BCD")
 		{
 			//TODO:
 			throw std::runtime_error("'BCD' Position feedback is unimplemented.");
@@ -426,7 +445,7 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 	}
 	catch (std::exception &e)
 	{
-		LOGERROR("{} : '{}'", e.what(),  FeedbackPosition.toStyledString());
+		LOGERROR("{} : '{}'", e.what(),  feedback_position.toStyledString());
 	}
 }
 
