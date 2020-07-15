@@ -72,20 +72,12 @@ file_free_callback(void *cls)
 	fclose(file);
 }
 
-const std::string GetPath(const std::string& rUrl)
-{
-	auto last = rUrl.find_last_of("/\\");
-	if (last == std::string::npos) return "";
-	return rUrl.substr(0,last);
-}
-
 const std::string GetFile(const std::string& rUrl)
 {
 	auto last = rUrl.find_last_of("/\\");
 	if (last == std::string::npos) return rUrl;
 	return rUrl.substr(last+1);
 }
-
 
 int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 {
