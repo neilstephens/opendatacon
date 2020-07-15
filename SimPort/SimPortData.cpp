@@ -18,36 +18,53 @@
  *	limitations under the License.
  */
 /*
- * SimPortData.h
+ * SimPortData.cpp
  *
- *  Created on: 2020-07-15
+ *  Created on: 15/07/2020
  *  The year of bush fires and pandemic
  *      Author: Rakesh Kumar <cpp.rakesh@gmail.com>
  */
 
-#ifndef SIMPORTDATA_H
-#define SIMPORTDATA_H
+#include "SimPortData.h"
 
-#include <string>
+SimPortData::SimPortData():
+	m_http_addr("0.0.0.0"),
+	m_http_port(""),
+	m_version("Unknown"),
+	m_default_std_dev_factor(0.01f) {}
 
-class SimPortData
+void SimPortData::HttpAddress(const std::string& http_addr)
 {
-public:
-	SimPortData();
+	m_http_addr = http_addr;
+}
 
-	void HttpAddress(const std::string& http_addr);
-	std::string HttpAddress() const;
-	void HttpPort(const std::string& http_port);
-	std::string HttpPort() const;
-	void Version(const std::string& version);
-	std::string Version() const;
-	double GetDefaultStdDev() const;
+std::string SimPortData::HttpAddress() const
+{
+	return m_http_addr;
+}
 
-private:
-	std::string m_http_addr;
-	std::string m_http_port;
-	std::string m_version;
-	double m_default_std_dev_factor;
-};
+void SimPortData::HttpPort(const std::string& http_port)
+{
+	m_http_port = http_port;
+}
 
-#endif // SIMPORTDATA_H
+std::string SimPortData::HttpPort() const
+{
+	return m_http_port;
+}
+
+void SimPortData::Version(const std::string& version)
+{
+	m_version = version;
+}
+
+std::string SimPortData::Version() const
+{
+	return m_version;
+}
+
+double SimPortData::GetDefaultStdDev() const
+{
+	return m_default_std_dev_factor;
+}
+

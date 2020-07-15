@@ -27,6 +27,7 @@
 #ifndef SIMPORTCONF_H
 #define SIMPORTCONF_H
 
+#include "SimPortData.h"
 #include "sqlite3/sqlite3.h"
 #include <opendatacon/DataPortConf.h>
 #include <opendatacon/IOTypes.h>
@@ -98,9 +99,10 @@ public:
 	void SetName(const std::string& name);
 	double GetDefaultStdDev() const;
 
-	std::string HttpAddr = "0.0.0.0";
-	std::string HttpPort = "";
-	std::string Version = "Unknown";
+	std::string HttpAddress() const;
+	std::string HttpPort() const;
+	std::string Version() const;
+
 	std::vector<uint32_t> BinaryIndicies;
 	std::map<uint32_t, bool> BinaryStartVals;
 	std::map<uint32_t, bool> BinaryVals;
@@ -118,9 +120,9 @@ public:
 
 private:
 	std::string m_name;
-	double m_default_std_dev_factor;
 	TimestampMode m_timestamp_handling;
 	std::unordered_map<std::string, DB_STATEMENT> m_db_stats;
+	std::shared_ptr<SimPortData> m_pport_data;
 
 	void m_ProcessAnalogs(const Json::Value& analogs);
 	void m_ProcessBinaries(const Json::Value& binaires);

@@ -29,18 +29,19 @@
 
 SimPortConf::SimPortConf():
 	m_name(""),
-	m_default_std_dev_factor(0.1f),
-	m_timestamp_handling(TimestampMode::FIRST) {}
+	m_timestamp_handling(TimestampMode::FIRST)
+{
+	m_pport_data = std::make_shared<SimPortData>();
+}
 
 void SimPortConf::ProcessElements(const Json::Value& json_root)
 {
 	if (json_root.isMember("HttpIP"))
-		HttpAddr = json_root["HttpIP"].asString();
+		m_pport_data->HttpAddress(json_root["HttpIP"].asString());
 	if (json_root.isMember("HttpPort"))
-		HttpPort = json_root["HttpPort"].asString();
+		m_pport_data->HttpPort(json_root["HttpPort"].asString());
 	if (json_root.isMember("Version"))
-		Version = json_root["Version"].asString();
-
+		m_pport_data->Version(json_root["Version"].asString());
 
 	if(json_root.isMember("Analogs"))
 		m_ProcessAnalogs(json_root["Analogs"]);
@@ -67,7 +68,22 @@ void SimPortConf::SetName(const std::string& name)
 
 double SimPortConf::GetDefaultStdDev() const
 {
-	return m_default_std_dev_factor;
+	return m_pport_data->GetDefaultStdDev();
+}
+
+std::string SimPortConf::HttpAddress() const
+{
+	return m_pport_data->HttpAddress();
+}
+
+std::string SimPortConf::HttpPort() const
+{
+	return m_pport_data->HttpPort();
+}
+
+std::string SimPortConf::Version() const
+{
+	return m_pport_data->Version();
 }
 
 void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)

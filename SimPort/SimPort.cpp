@@ -722,9 +722,9 @@ void SimPort::Build()
 	auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
 	this->SimCollection->Add(shared_this,this->Name);
 
-	if ((pSimConf->HttpAddr.length() != 0) && (pSimConf->HttpPort.length() != 0))
+	if ((pSimConf->HttpAddress().size() != 0) && (pSimConf->HttpPort().size() != 0))
 	{
-		pServer = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddr, pSimConf->HttpPort); //Static method - creates a new HttpServerManager if required
+		pServer = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddress(), pSimConf->HttpPort()); //Static method - creates a new HttpServerManager if required
 
 		// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
@@ -741,7 +741,7 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, pSimConf->Version);
+		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, pSimConf->Version());
 		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				rep.status = http::reply::ok;
