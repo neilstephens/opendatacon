@@ -548,7 +548,7 @@ void SimPort::PortUp()
 			if (pSimConf->AnalogUpdateIntervalms.count(index))
 			{
 				auto interval = pSimConf->AnalogUpdateIntervalms[index];
-				auto std_dev = pSimConf->AnalogStdDevs.count(index) ? pSimConf->AnalogStdDevs.at(index) : (mean ? (pSimConf->default_std_dev_factor * mean) : 20);
+				auto std_dev = pSimConf->AnalogStdDevs.count(index) ? pSimConf->AnalogStdDevs.at(index) : (mean ? (pSimConf->GetDefaultStdDev() * mean) : 20);
 				pSimConf->AnalogStdDevs[index] = std_dev;
 
 				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);

@@ -29,8 +29,8 @@
 
 SimPortConf::SimPortConf():
 	m_name(""),
-	m_timestamp_handling(TimestampMode::FIRST),
-	default_std_dev_factor(0.1f) {}
+	m_default_std_dev_factor(0.1f),
+	m_timestamp_handling(TimestampMode::FIRST) {}
 
 void SimPortConf::ProcessElements(const Json::Value& json_root)
 {
@@ -63,6 +63,11 @@ TimestampMode SimPortConf::GetTimestampHandling() const
 void SimPortConf::SetName(const std::string& name)
 {
 	m_name = name;
+}
+
+double SimPortConf::GetDefaultStdDev() const
+{
+	return m_default_std_dev_factor;
 }
 
 void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
@@ -274,9 +279,6 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::size_t&
 		}
 		else
 		{
-			auto deleter = [](sqlite3* db){sqlite3_close_v2(db);};
-			//DBConns["Analog"+std::to_string(index)] = pDBConnection(db,deleter);
-
 			sqlite3_stmt* stmt;
 			auto query = sqlite["Query"].asString();
 			auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);

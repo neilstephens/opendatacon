@@ -96,6 +96,7 @@ public:
 	std::unordered_map<std::string, DB_STATEMENT> GetDBStats() const;
 	TimestampMode GetTimestampHandling() const;
 	void SetName(const std::string& name);
+	double GetDefaultStdDev() const;
 
 	std::string HttpAddr = "0.0.0.0";
 	std::string HttpPort = "";
@@ -115,9 +116,9 @@ public:
 	std::map<uint32_t, unsigned int> ControlIntervalms;
 	std::map<uint32_t, std::vector<BinaryFeedback>> ControlFeedback;
 
-	double default_std_dev_factor;
 private:
 	std::string m_name;
+	double m_default_std_dev_factor;
 	TimestampMode m_timestamp_handling;
 	std::unordered_map<std::string, DB_STATEMENT> m_db_stats;
 
