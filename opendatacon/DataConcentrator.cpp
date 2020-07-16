@@ -359,7 +359,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 	if(!JSONRoot.isObject())
 		throw std::runtime_error("No valid JSON config object");
 
-	odc::ConfigVersion = JSONRoot.isMember("Version") ? JSONRoot["Version"].asString() : "No Version Available";
+	odc::SetConfigVersion(JSONRoot.isMember("Version") ? JSONRoot["Version"].asString() : "No Version Available");
 
 	//setup log sinks
 	auto log_size_kb = JSONRoot.isMember("LogFileSizekB") ? JSONRoot["LogFileSizekB"].asUInt() : 5*1024;

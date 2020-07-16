@@ -735,7 +735,7 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::ConfigVersion);
+		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::GetConfigVersion());
 		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				rep.status = http::reply::ok;
