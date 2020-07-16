@@ -30,6 +30,17 @@
 #include <utility>
 namespace odc
 {
+std::string ConfigVersion = "None";
+
+std::string GetConfigVersion()
+{
+	return ConfigVersion;
+}
+
+void SetConfigVersion(std::string Version)
+{
+	ConfigVersion = Version;
+}
 
 void spdlog_init_thread_pool(size_t q_size, size_t thread_count)
 {

@@ -46,7 +46,8 @@ bool getline_noncomment(std::istream& is, std::string& line);
 bool extract_delimited_string(std::istream& ist, std::string& extracted);
 bool extract_delimited_string(const std::string& delims, std::istream& ist, std::string& extracted);
 
-inline std::string ConfigVersion; //C++ 17 only one will exist
+std::string GetConfigVersion();
+void SetConfigVersion(std::string Version);
 
 } //namspace odc
 
