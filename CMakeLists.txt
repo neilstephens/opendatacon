@@ -19,32 +19,24 @@
  #
 cmake_minimum_required(VERSION 3.10)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
-
-option(SUPPRESS_ZERO_CHECK "Turn off the VS ZERO_CHECK config which runs everytime you build" OFF)
-if(SUPPRESS_ZERO_CHECK)
-	# If you dont want the ZERO_CHECK project in VS have the following line enabled.
-	set(CMAKE_SUPPRESS_REGENERATION true)
-endif()
-
-
-if(WIN32)
-	cmake_minimum_required(VERSION 3.4)
-else()
-	cmake_minimum_required(VERSION 2.8)
+if(NOT WIN32)
 	set(BUILD_TYPE_INSTRUCTIONS "Choose the type of build, default Release, other options: Debug RelWithDebInfo MinSizeRel.")
-	if(DEFINED CMAKE_BUILD_TYPE)
+	if(CMAKE_BUILD_TYPE)
 		set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING ${BUILD_TYPE_INSTRUCTIONS})
 	else()
 		set(CMAKE_BUILD_TYPE Release CACHE STRING ${BUILD_TYPE_INSTRUCTIONS})
 	endif()
 endif()
 
+#tempting to move this to the top - but don't! Must set CMAKE_BUILD_TYPE first
+project(opendatacon_suite C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
+
 #macro for resolving chain of symlinks into a list
 include(file_w_symlinks.cmake)
-project(opendatacon_suite C CXX)
 
 install(FILES "LICENSE.txt" DESTINATION ".")
 install(FILES "NOTICE.txt" DESTINATION ".")
@@ -172,6 +164,11 @@ add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
 	message("CMAKE configuring opendatacon for Visual Studio C++" )
+	option(SUPPRESS_ZERO_CHECK "Turn off the VS ZERO_CHECK config which runs everytime you build" OFF)
+	if(SUPPRESS_ZERO_CHECK)
+		# If you dont want the ZERO_CHECK project in VS have the following line enabled.
+		set(CMAKE_SUPPRESS_REGENERATION true)
+	endif()
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP /Zc:rvalueCast")
 	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too

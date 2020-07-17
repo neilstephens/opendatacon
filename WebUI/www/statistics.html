@@ -28,7 +28,7 @@
       $( document ).ready(function() {
           const type = new URL(window.location.href).searchParams.get('type');
           const target = new URL(window.location.href).searchParams.get('target');
-          const url = "/" + type + "/Statistics";
+          const url = "/" + type + " Statistics";
           $.post( url, { Target : target } )
               .done(function(data) {
                   const statistics_data = convert_to_treeview_data(data);

@@ -103,7 +103,7 @@ public:
 		const std::function<void(buf_t&)>& aReadCallback, //Handler for data read off socket
 		const std::function<void(bool)>& aStateCallback,  //Handler for communicating the connection state of the socket
 		const size_t abuffer_limit                        //
-		      = std::numeric_limits<size_t>::max(),       //maximum number of writes to buffer
+		= std::numeric_limits<size_t>::max(),             //maximum number of writes to buffer
 		const bool aauto_reopen = false,                  //Keeps the socket open (retry on error), unless you explicitly Close() it
 		const uint16_t aretry_time_ms = 0,                //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
 		const bool useKeepalives = true,                  //Set TCP keepalive socket option
@@ -141,7 +141,17 @@ public:
 					return;
 				if(isServer)
 				{
-				      pAcceptor = pIOS->make_tcp_acceptor(EndpointIterator);
+				      try
+				      {
+				            pAcceptor = pIOS->make_tcp_acceptor(EndpointIterator);
+					}
+				      catch(std::exception& e)
+				      {
+				            if(auto log = odc::spdlog_get("opendatacon"))
+							log->error("TCPSocketManager failed to start server on {}:{}. Exception: {}",EndpointIterator->host_name(),EndpointIterator->service_name(),e.what());
+				            AutoOpen();
+				            return;
+					}
 				      pAcceptor->async_accept(*pSock,pSockStrand->wrap([this,tracker](asio::error_code err_code)
 						{
 							if(manuallyClosed)
@@ -215,13 +225,8 @@ public:
 		std::weak_ptr<void> tracker = handler_tracker;
 		handler_tracker.reset();
 
-		size_t i = 0;
-		while(!tracker.expired() && ++i < 1000)
+		while(!tracker.expired() && !pIOS->stopped())
 			pIOS->poll_one();
-
-		if(auto t = tracker.lock())
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->critical("TCPSocketManager is being destroyed with {} outstanding handler(s). Was Close() not called, or Write() called after Close()?", t.use_count()-1);
 	}
 
 private:

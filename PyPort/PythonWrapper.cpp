@@ -460,13 +460,12 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 
 		threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 	}
-	catch (std::exception& e)
+	catch(const std::exception& e)
 	{
-		LOGERROR("Exception Caught during pyInitialize() - {}", e.what());
-		return;
+		LOGERROR("Exception on main Python thread Init - {}", e.what());
 	}
 
-	//Signal c'tor that everything initialised
+	//Signal c'tor that init finished
 	{ // lock scope
 		std::lock_guard<std::mutex> RunLock(RunMtx);
 		running = true;
@@ -478,19 +477,26 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 	std::unique_lock<std::mutex> RunLock(RunMtx);
 	RunBlocker.wait(RunLock, [this] {return !keep_running;});
 
-	// Restore the state as it was after we called Initialize()
-	// Supposed to acquire the GIL and restore the state...
-	LOGDEBUG("About to restore thread state - Have GIL {} ", PyGILState_Check());
-	PyEval_RestoreThread(threadState);
-	LOGDEBUG("Restored thread state - Have GIL {} ", PyGILState_Check());
+	try
+	{
+		// Restore the state as it was after we called Initialize()
+		// Supposed to acquire the GIL and restore the state...
+		LOGDEBUG("About to restore thread state - Have GIL {} ", PyGILState_Check());
+		PyEval_RestoreThread(threadState);
+		LOGDEBUG("Restored thread state - Have GIL {} ", PyGILState_Check());
 
-	LOGDEBUG("About to Py_Finalize");
-	Py_Finalize();
+		LOGDEBUG("About to Py_Finalize");
+		Py_Finalize();
+	}
+	catch (const std::exception& e)
+	{
+		LOGERROR("Exception on main Python thread De-init - {}", e.what());
+	}
 }
 
 PythonInitWrapper::~PythonInitWrapper()
 {
-	//Signal Run() to de-init and return
+	//Signal Run() thread to de-init and return
 	{ // lock scope
 		std::lock_guard<std::mutex> RunLock(RunMtx);
 		keep_running = false;

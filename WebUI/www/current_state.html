@@ -80,7 +80,7 @@
             });
 
             function update_values(type, target) {
-                const url = "/" + type + "/CurrentState";
+                const url = "/" + type + " CurrentState";
                 $.post(url, { Target : target })
                     .done(function(data) {
                         updateMimic(document.getElementById("mimic-svg"), data);
@@ -113,7 +113,7 @@
 
             /* get current state by post from the server and display the data in treeview */
             function refresh_values(type, target) {
-                const url = "/" + type + "/CurrentState";
+                const url = "/" + type + " CurrentState";
                 $.post(url, {Target : target})
                     .done(function(data) {
                         const current_state_data = convert_to_treeview_data(data);
