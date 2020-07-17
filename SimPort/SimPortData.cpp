@@ -31,7 +31,10 @@ SimPortData::SimPortData():
 	m_http_addr("0.0.0.0"),
 	m_http_port(""),
 	m_version("Unknown"),
-	m_default_std_dev_factor(0.01f) {}
+	m_default_std_dev_factor(0.01f)
+{
+	m_ppoint_data = std::make_shared<SimPortPointData>();
+}
 
 void SimPortData::HttpAddress(const std::string& http_addr)
 {
@@ -68,3 +71,7 @@ double SimPortData::GetDefaultStdDev() const
 	return m_default_std_dev_factor;
 }
 
+void SimPortData::SetAnalogPoint(std::size_t index, const std::shared_ptr<AnalogPoint>& point)
+{
+	m_ppoint_data->SetAnalogPoint(index, point);
+}

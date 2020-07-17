@@ -28,6 +28,7 @@
 #ifndef SIMPORTDATA_H
 #define SIMPORTDATA_H
 
+#include "SimPortPointData.h"
 #include <string>
 
 class SimPortData
@@ -43,11 +44,15 @@ public:
 	std::string Version() const;
 	double GetDefaultStdDev() const;
 
+	void SetAnalogPoint(std::size_t index, const std::shared_ptr<AnalogPoint>& point);
+
 private:
 	std::string m_http_addr;
 	std::string m_http_port;
 	std::string m_version;
 	double m_default_std_dev_factor;
+
+	std::shared_ptr<SimPortPointData> m_ppoint_data;
 };
 
 #endif // SIMPORTDATA_H

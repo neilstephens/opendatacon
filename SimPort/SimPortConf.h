@@ -124,6 +124,8 @@ private:
 	std::unordered_map<std::string, DB_STATEMENT> m_db_stats;
 	std::shared_ptr<SimPortData> m_pport_data;
 
+	bool m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const;
+
 	void m_ProcessAnalogs(const Json::Value& analogs);
 	void m_ProcessBinaries(const Json::Value& binaires);
 	void m_ProcessBinaryControls(const Json::Value& binary_controls);

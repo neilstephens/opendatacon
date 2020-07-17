@@ -86,87 +86,63 @@ std::string SimPortConf::Version() const
 	return m_pport_data->Version();
 }
 
+bool SimPortConf::m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const
+{
+	bool result = true;
+	if (data.isMember("Index"))
+		start = stop = data["Index"].asUInt();
+	else if (data["Range"].isMember("Start") &&
+	         data["Range"].isMember("Stop"))
+	{
+		start = data["Range"]["Start"].asUInt();
+		stop = data["Range"]["Stop"].asUInt();
+	}
+	else
+	{
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", data.toStyledString());
+		result = false;
+	}
+	return result;
+}
+
 void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 {
-	for(Json::ArrayIndex n = 0; n < analogs.size(); ++n)
+	for (Json::ArrayIndex i = 0; i < analogs.size(); ++i)
 	{
-		size_t start, stop;
-		if(analogs[n].isMember("Index"))
-			start = stop = analogs[n]["Index"].asUInt();
-		else if(analogs[n]["Range"].isMember("Start") && analogs[n]["Range"].isMember("Stop"))
-		{
-			start = analogs[n]["Range"]["Start"].asUInt();
-			stop = analogs[n]["Range"]["Stop"].asUInt();
-		}
-		else
-		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", analogs[n].toStyledString());
+		std::size_t start = 0;
+		std::size_t stop = 0;
+		if (!m_ParseIndexes(analogs[i], start, stop))
 			continue;
-		}
-		for(auto index = start; index <= stop; index++)
+
+		for (std::size_t index = start; index <= stop; ++index)
 		{
-			bool exists = false;
-			for(auto existing_index : AnalogIndicies)
-				if(existing_index == index)
-					exists = true;
-
-			if(!exists)
-				AnalogIndicies.push_back(index);
-
-			if(analogs[n].isMember("SQLite3"))
-				m_ProcessSQLite3(analogs[n]["SQLite3"], index);
-			if(analogs[n].isMember("StdDev"))
-				AnalogStdDevs[index] = analogs[n]["StdDev"].asDouble();
-			if(analogs[n].isMember("UpdateIntervalms"))
-				AnalogUpdateIntervalms[index] = analogs[n]["UpdateIntervalms"].asUInt();
-
-			if(analogs[n].isMember("StartVal"))
+			double start_val = 0.0f;
+			double std_dev = 0.0f;
+			std::size_t update_interval = 0;
+			if (analogs[i].isMember("SQLite3"))
+				m_ProcessSQLite3(analogs[i]["SQLite3"], index);
+			if (analogs[i].isMember("StdDev"))
+				std_dev = analogs[i]["StdDev"].asDouble();
+			if (analogs[i].isMember("UpdateIntervalms"))
+				update_interval = analogs[i]["UpdateIntervalms"].asUInt();
+			if (analogs[i].isMember("StartVal"))
 			{
-				std::string start_val = analogs[n]["StartVal"].asString();
-				if(start_val == "D") //delete this index
-				{
-					if(AnalogStartVals.count(index))
-						AnalogStartVals.erase(index);
-					if (AnalogVals.count(index))
-						AnalogVals.erase(index);
-					if(AnalogStdDevs.count(index))
-						AnalogStdDevs.erase(index);
-					if(AnalogUpdateIntervalms.count(index))
-						AnalogUpdateIntervalms.erase(index);
-					for(auto it = AnalogIndicies.begin(); it != AnalogIndicies.end(); it++)
-						if(*it == index)
-						{
-							AnalogIndicies.erase(it);
-							break;
-						}
-				}
-				else if(start_val == "NAN" || start_val == "nan" || start_val == "NaN")
-				{
-					AnalogStartVals[index] = std::numeric_limits<double>::quiet_NaN();
-				}
-				else if(start_val == "INF" || start_val == "inf")
-				{
-					AnalogStartVals[index] = std::numeric_limits<double>::infinity();
-				}
-				else if(start_val == "-INF" || start_val == "-inf")
-				{
-					AnalogStartVals[index] = -std::numeric_limits<double>::infinity();
-				}
-				else if (start_val == "X")
-				{
-					AnalogStartVals[index] = 0; //TODO: implement quality - use std::pair, or build the EventInfo here
-				}
+				std::string str_start_val = analogs[i]["StartVal"].asString();
+				std::transform(str_start_val.begin(), str_start_val.end(), str_start_val.begin(),
+					[](unsigned char c) { return std::tolower(c); });
+				if (str_start_val == "nan")
+					start_val = std::numeric_limits<double>::quiet_NaN();
+				else if (str_start_val == "inf")
+					start_val = std::numeric_limits<double>::infinity();
+				else if (str_start_val == "-inf")
+					start_val = std::numeric_limits<double>::infinity();
 				else
-				{
-					AnalogStartVals[index] = std::stod(start_val);
-				}
+					start_val = std::stod(str_start_val);
+				m_pport_data->SetAnalogPoint(index, std::make_shared<AnalogPoint>(start_val, update_interval, std_dev));
 			}
-			else if(AnalogStartVals.count(index))
-				AnalogStartVals.erase(index);
 		}
 	}
-	std::sort(AnalogIndicies.begin(),AnalogIndicies.end());
 }
 
 void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
@@ -466,5 +442,4 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 		LOGERROR("{} : '{}'", e.what(),  feedback_position.toStyledString());
 	}
 }
-
 

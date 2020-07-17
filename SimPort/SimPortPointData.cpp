@@ -18,16 +18,27 @@
  *	limitations under the License.
  */
 /*
- * SimPointData.h
+ * SimPortPointData.cpp
  *
- *  Created on: 2020-07-15
+ *  Created on: 16/07/2020
  *  The year of bush fires and pandemic
  *      Author: Rakesh Kumar <cpp.rakesh@gmail.com>
  */
 
-#ifndef SIMPOINTDATA_H
-#define SIMPOINTDATA_H
+#include "SimPortPointData.h"
 
+SimPortPointData::SimPortPointData() {}
 
+void SimPortPointData::SetAnalogPoint(std::size_t index, std::shared_ptr<AnalogPoint> point)
+{
+	m_analog_points[index] = point;
+}
 
-#endif // SIMPOINTDATA_H
+std::shared_ptr<AnalogPoint> SimPortPointData::GetAnalogPoint(std::size_t index)
+{
+	if (m_analog_points[index])
+		return m_analog_points[index];
+	else
+		return nullptr;
+}
+
