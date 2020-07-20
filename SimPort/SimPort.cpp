@@ -125,8 +125,7 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 		double val = event->GetPayload<EventType::Analog>();
 		pIOS->post([&, index, val]()
 			{
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				pSimConf->AnalogVals[index] = val;
+				pSimConf->SetAnalogValue(index, val);
 			});
 	}
 	if (event->GetEventType() == EventType::Binary)
@@ -147,15 +146,13 @@ std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 
 const Json::Value SimPort::GetCurrentState() const
 {
-	Json::Value current_state;
-	{ //lock scope
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		for(const auto& ind_val_pair : pSimConf->BinaryVals)
-			current_state["BinaryCurrent"][ind_val_pair.first] = ind_val_pair.second;
-		for(const auto& ind_val_pair : pSimConf->AnalogVals)
-			current_state["AnalogCurrent"][ind_val_pair.first] = ind_val_pair.second;
-	}
-	return current_state;
+	return pSimConf->GetCurrentState();
+	/*
+	for(const auto& ind_val_pair : pSimConf->BinaryVals)
+	    current_state["BinaryCurrent"][ind_val_pair.first] = ind_val_pair.second;
+	for(const auto& ind_val_pair : pSimConf->AnalogVals)
+	    current_state["AnalogCurrent"][ind_val_pair.first] = ind_val_pair.second;
+	*/
 }
 const Json::Value SimPort::GetStatistics() const
 {

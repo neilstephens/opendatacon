@@ -29,16 +29,30 @@
 
 SimPortPointData::SimPortPointData() {}
 
-void SimPortPointData::SetAnalogPoint(std::size_t index, std::shared_ptr<AnalogPoint> point)
+inline void SimPortPointData::SetAnalogPoint(std::size_t index, std::shared_ptr<AnalogPoint> point)
 {
 	m_analog_points[index] = point;
 }
 
-std::shared_ptr<AnalogPoint> SimPortPointData::GetAnalogPoint(std::size_t index)
+inline double SimPortPointData::GetAnalogStartValue(std::size_t index) const
 {
-	if (m_analog_points[index])
-		return m_analog_points[index];
-	else
-		return nullptr;
+	return m_analog_points[index]->start_value;
 }
 
+inline double SimPortPointData::GetAnalogStdDev(std::size_t index) const
+{
+	return m_analog_points[index]->std_dev;
+}
+
+inline void SimPortPointData::SetAnalogPoint(std::size_t index, double value)
+{
+	m_analog_points[index] = value;
+}
+
+inline std::map<std::size_t, double> SimPortPointData::GetAnalogValues() const
+{
+	std::map<std::size_t, double> values;
+	for (auto it = m_analog_points.begin(); it != m_analog_points.end(); ++it)
+		values[it->first] = it->second.start_value;
+	return std::move(values);
+}

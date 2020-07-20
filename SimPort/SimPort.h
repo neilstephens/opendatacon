@@ -83,9 +83,8 @@ private:
 	{
 		double mean, std_dev;
 		{ //lock scope
-			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-			mean = pSimConf->AnalogStartVals.at(event->GetIndex());
-			std_dev = pSimConf->AnalogStdDevs.at(event->GetIndex());
+			mean = pSimConf->GetAnalogStartValue(event->GetIndex());
+			std_dev = pSimConf->GetAnalogStdDev(event->GetIndex());
 		}
 
 		//change value around mean - handle 0 which windows does not...

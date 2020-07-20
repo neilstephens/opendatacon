@@ -36,42 +36,62 @@ SimPortData::SimPortData():
 	m_ppoint_data = std::make_shared<SimPortPointData>();
 }
 
-void SimPortData::HttpAddress(const std::string& http_addr)
+inline void SimPortData::HttpAddress(const std::string& http_addr)
 {
 	m_http_addr = http_addr;
 }
 
-std::string SimPortData::HttpAddress() const
+inline std::string SimPortData::HttpAddress() const
 {
 	return m_http_addr;
 }
 
-void SimPortData::HttpPort(const std::string& http_port)
+inline void SimPortData::HttpPort(const std::string& http_port)
 {
 	m_http_port = http_port;
 }
 
-std::string SimPortData::HttpPort() const
+inline std::string SimPortData::HttpPort() const
 {
 	return m_http_port;
 }
 
-void SimPortData::Version(const std::string& version)
+inline void SimPortData::Version(const std::string& version)
 {
 	m_version = version;
 }
 
-std::string SimPortData::Version() const
+inline std::string SimPortData::Version() const
 {
 	return m_version;
 }
 
-double SimPortData::GetDefaultStdDev() const
+inline double SimPortData::GetDefaultStdDev() const
 {
 	return m_default_std_dev_factor;
 }
 
-void SimPortData::SetAnalogPoint(std::size_t index, const std::shared_ptr<AnalogPoint>& point)
+inline void SimPortData::SetAnalogPoint(std::size_t index, const std::shared_ptr<AnalogPoint>& point)
 {
 	m_ppoint_data->SetAnalogPoint(index, point);
+}
+
+inline double SimPortData::GetAnalogStartValue(std::size_t index) const
+{
+	return m_ppoint_data->GetAnalogStartValue(index);
+}
+
+inline double SimPortData::GetAnalogStdDev(std::size_t index) const
+{
+	return m_ppoint_data->GetAnalogStdDev(index);
+}
+
+inline void SimPortData::SetAnalogValue(std::size_t index, double value)
+{
+	m_ppoint_data->SetAnalogValue(index, value);
+}
+
+inline std::map<std::size_t, double> SimPortData::GetAnalogValues() const
+{
+	return m_ppoint_data->GetAnalogValues();
 }

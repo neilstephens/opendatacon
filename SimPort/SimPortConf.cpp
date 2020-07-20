@@ -51,39 +51,63 @@ void SimPortConf::ProcessElements(const Json::Value& json_root)
 		m_ProcessBinaryControls(json_root["BinaryControls"]);
 }
 
-std::unordered_map<std::string, DB_STATEMENT> SimPortConf::GetDBStats() const
+inline std::unordered_map<std::string, DB_STATEMENT> SimPortConf::GetDBStats() const
 {
 	return m_db_stats;
 }
 
-TimestampMode SimPortConf::GetTimestampHandling() const
+inline TimestampMode SimPortConf::GetTimestampHandling() const
 {
 	return m_timestamp_handling;
 }
 
-void SimPortConf::SetName(const std::string& name)
+inline void SimPortConf::SetName(const std::string& name)
 {
 	m_name = name;
 }
 
-double SimPortConf::GetDefaultStdDev() const
+inline double SimPortConf::GetDefaultStdDev() const
 {
 	return m_pport_data->GetDefaultStdDev();
 }
 
-std::string SimPortConf::HttpAddress() const
+inline std::string SimPortConf::HttpAddress() const
 {
 	return m_pport_data->HttpAddress();
 }
 
-std::string SimPortConf::HttpPort() const
+inline std::string SimPortConf::HttpPort() const
 {
 	return m_pport_data->HttpPort();
 }
 
-std::string SimPortConf::Version() const
+inline std::string SimPortConf::Version() const
 {
 	return m_pport_data->Version();
+}
+
+inline double SimPortConf::GetAnalogStartValue(std::size_t index) const
+{
+	return m_pport_data->GetAnalogStartValue(index);
+}
+
+inline double SimPortConf::GetAnalogStdDev(std::size_t index) const
+{
+	return m_pport_data->GetAnalogStdDev(index);
+}
+
+inline void SimPortConf::SetAnalogValue(std::size_t index, double value)
+{
+	m_pport_data->SetAnalogValue(index, value);
+}
+
+inline Json::Value SimPortConf::GetCurrentState() const
+{
+	Json::Value state;
+	const std::map<std::size_t, double> values = m_pport_data->GetAnalogValues();
+	for (auto it = values.begin(); it != values.end(); ++it)
+		state["AnalogCurrent"][it->first] = it->second;
+	return state;
 }
 
 bool SimPortConf::m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const

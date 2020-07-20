@@ -28,6 +28,7 @@
 #ifndef SIMPORTPOINTDATA_H
 #define SIMPORTPOINTDATA_H
 
+#include <map>
 #include <memory>
 #include <unordered_map>
 
@@ -68,7 +69,12 @@ public:
 	SimPortPointData();
 
 	void SetAnalogPoint(std::size_t index, std::shared_ptr<AnalogPoint> point);
-	std::shared_ptr<AnalogPoint> GetAnalogPoint(std::size_t index);
+	double GetAnalogStartValue(std::size_t index) const;
+	double GetAnalogStdDev(std::size_t index) const;
+
+	void SetAnalogValue(std::size_t index, double value);
+
+	std::map<std::size_t , double> GetAnalogValues() const;
 
 private:
 	std::unordered_map<std::size_t, std::shared_ptr<AnalogPoint>> m_analog_points;

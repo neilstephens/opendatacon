@@ -46,6 +46,12 @@ public:
 
 	void SetAnalogPoint(std::size_t index, const std::shared_ptr<AnalogPoint>& point);
 
+	double GetAnalogStartValue(std::size_t index) const;
+	double GetAnalogStdDev(std::size_t index) const;
+
+	void SetAnalogValue(std::size_t index, double value);
+	std::map<std::size_t, double> GetAnalogValues() const;
+
 private:
 	std::string m_http_addr;
 	std::string m_http_port;
