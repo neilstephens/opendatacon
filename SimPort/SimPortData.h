@@ -44,13 +44,20 @@ public:
 	std::string Version() const;
 	double GetDefaultStdDev() const;
 
-	void SetAnalogPoint(std::size_t index, const std::shared_ptr<AnalogPoint>& point);
+	void SetPoint(const odc::EventType& type, std::size_t index, const std::shared_ptr<Point>& point);
+	void SetForcedState(const odc::EventType& type, std::size_t index, bool state);
+	bool GetForcedState(const odc::EventType& type, std::size_t) const;
+	void SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value);
+	std::size_t GetUpdateInterval(const odc::EventType& type, std::size_t index) const;
+	double GetStartValue(const odc::EventType& type, std::size_t index) const;
+	double GetStdDev(std::size_t index) const;
+	void SetValue(const odc::EventType& type, std::size_t index, double value);
+	double GetValue(const odc::EventType& type, std::size_t index) const;
 
-	double GetAnalogStartValue(std::size_t index) const;
-	double GetAnalogStdDev(std::size_t index) const;
+	std::vector<std::size_t> GetIndexes(const odc::EventType& type) const;
+	std::unordered_map<std::size_t, double> GetValues(const odc::EventType& type) const;
 
-	void SetAnalogValue(std::size_t index, double value);
-	std::map<std::size_t, double> GetAnalogValues() const;
+	bool IsIndex(const odc::EventType& type, std::size_t index) const;
 
 private:
 	std::string m_http_addr;

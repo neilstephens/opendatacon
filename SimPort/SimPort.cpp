@@ -125,7 +125,7 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 		double val = event->GetPayload<EventType::Analog>();
 		pIOS->post([&, index, val]()
 			{
-				pSimConf->SetAnalogValue(index, val);
+				pSimConf->SetValue(event->GetEventType(), index, val);
 			});
 	}
 	if (event->GetEventType() == EventType::Binary)
@@ -133,7 +133,6 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 		bool val = event->GetPayload<EventType::Binary>();
 		pIOS->post([&, index, val]()
 			{
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 				pSimConf->BinaryVals[index] = val;
 			});
 	}
@@ -165,33 +164,10 @@ const Json::Value SimPort::GetStatus() const
 	return status;
 }
 
-std::vector<uint32_t> SimPort::GetAllowedIndexes(std::string type)
+std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
 {
-	std::vector<uint32_t> allowed_indexes;
-	// Take a copy of the shared allowed_indexs while mutex protected.
-	if (StringToLower(type) == "analog")
-	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		allowed_indexes = pSimConf->AnalogIndicies;
-	}
-	else if (StringToLower(type) == "binary")
-	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		allowed_indexes = pSimConf->BinaryIndicies;
-	}
-	return allowed_indexes;
-}
-
-
-std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
-{
-	std::vector<uint32_t> indexes;
-	// Take a copy of the shared allowed_indexs while mutex protected.
-	std::vector<uint32_t> allowed_indexes = GetAllowedIndexes(type);
-
-	if (allowed_indexes.size() == 0)
-		return indexes;
-
+	std::vector<std::size_t> indexes;
+	odc::EventType point_type = (type == "analog") ? odc::EventType::Analog : odc::EventType::Binary;
 	//Check for comma separated list,no white space
 	std::regex comma_regx("^[0-9]+(?:,[0-9]+)*$");
 
@@ -201,7 +177,7 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 		auto idxstrings = split(index_str, ',');
 		for(const auto& idxs : idxstrings)
 		{
-			size_t idx;
+			std::size_t idx;
 			try
 			{
 				idx = std::stoi(idxs);
@@ -210,9 +186,8 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 			{
 				continue;
 			}
-			for(auto allowed : allowed_indexes)
 			{
-				if(idx == allowed)
+				if(pSimConf->IsIndex(point_type, idx))
 				{
 					indexes.push_back(idx);
 					break;
@@ -225,6 +200,7 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 		try
 		{
 			std::regex ind_regex(index_str,std::regex::extended);
+			const std::vector<std::size_t> allowed_indexes = pSimConf->GetIndexes(point_type);
 			for(auto allowed : allowed_indexes)
 			{
 				if(std::regex_match(std::to_string(allowed),ind_regex))
@@ -301,7 +277,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 			if (force)
 			{ //lock scope
 				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				pSimConf->AnalogForcedStates[idx] = true;
+				pSimConf->SetForcedState(odc::EventType::Analog, idx, true);
 			}
 			auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q,ts);
 			event->SetPayload<EventType::Analog>(std::move(val));
@@ -334,12 +310,8 @@ bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& in
 	{
 		for(auto idx : indexes)
 		{
-			{ //lock scope
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				if(!pSimConf->BinaryStartVals.count(idx))
-					return false;
-				pSimConf->BinaryUpdateIntervalms[idx] = delta;
-			}
+			// Rakesh, do I really need the start value present check here or not?
+			pSimConf->SetUpdateInterval(odc::EventType::Binary, idx, delta);
 			auto pTimer = Timers.at("Binary"+std::to_string(idx));
 			if(!delta) //zero means no updates
 			{
@@ -361,12 +333,8 @@ bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& in
 	{
 		for(auto idx : indexes)
 		{
-			{ //lock scope
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				if(!pSimConf->AnalogStartVals.count(idx))
-					return false;
-				pSimConf->AnalogUpdateIntervalms[idx] = delta;
-			}
+			// Rakesh, do I really need the start value present check here or not?
+			pSimConf->SetUpdateInterval(odc::EventType::Binary, idx, delta);
 			auto pTimer = Timers.at("Analog"+std::to_string(idx));
 			if(!delta) //zero means no updates
 			{
@@ -397,24 +365,23 @@ bool SimPort::UIRelease(const std::string& type, const std::string& index)
 
 bool SimPort::SetForcedState(const std::string& index, const std::string& type, bool forced)
 {
+	const odc::EventType point_type = (type == "binary") ? odc::EventType::Binary : odc::EventType::Analog;
 	auto indexes = IndexesFromString(index, type);
 	if (!indexes.size())
 		return false;
 
 	if (StringToLower(type) == "binary")
 	{
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 		for (auto idx : indexes)
 		{
-			pSimConf->BinaryForcedStates[idx] = forced;
+			pSimConf->SetForcedState(point_type, idx, forced);
 		}
 	}
 	else if (StringToLower(type) == "analog")
 	{
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 		for (auto idx : indexes)
 		{
-			pSimConf->AnalogForcedStates[idx] = forced;
+			pSimConf->SetForcedState(point_type, idx, forced);
 		}
 	}
 	else
@@ -453,7 +420,7 @@ std::string SimPort::GetCurrentAnalogValsAsJSONString(const std::string& index)
 		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 		for (auto idx : indexes)
 		{
-			root[std::to_string(idx)] = std::to_string(pSimConf->AnalogVals[idx]);
+			root[std::to_string(idx)] = std::to_string(pSimConf->GetValue(odc::EventType::Analog, idx));
 		}
 	}
 	Json::StreamWriterBuilder wbuilder;
@@ -465,7 +432,7 @@ std::string SimPort::GetCurrentAnalogValsAsJSONString(const std::string& index)
 void SimPort::PortUp()
 {
 	auto now = msSinceEpoch();
-	std::vector<uint32_t> indexes = GetAllowedIndexes("analog"); // Mutex protected copy of indexes.
+	std::vector<std::size_t> indexes = pSimConf->GetIndexes(odc::EventType::Analog);
 
 	for(auto index : indexes)
 	{
@@ -528,39 +495,22 @@ void SimPort::PortUp()
 			continue;
 		}
 
-		double mean;
-		{ //lock scope
-			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			//send initial event
-			mean = pSimConf->AnalogStartVals.count(index) ? pSimConf->AnalogStartVals.at(index) : 0;
-			pSimConf->AnalogStartVals[index] = mean;
-		}
+		double mean = pSimConf->GetStartValue(odc::EventType::Analog, index);
 		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Analog>(std::move(mean));
 		PostPublishEvent(event);
 
-		//queue up a timer if it has an update interval
-		{ //lock scope
-			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			if (pSimConf->AnalogUpdateIntervalms.count(index))
+		auto interval = pSimConf->GetUpdateInterval(odc::EventType::Analog, index);
+		auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
+		pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
+		pTimer->async_wait([=](asio::error_code err_code)
 			{
-				auto interval = pSimConf->AnalogUpdateIntervalms[index];
-				auto std_dev = pSimConf->AnalogStdDevs.count(index) ? pSimConf->AnalogStdDevs.at(index) : (mean ? (pSimConf->GetDefaultStdDev() * mean) : 20);
-				pSimConf->AnalogStdDevs[index] = std_dev;
-
-				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
-				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-				pTimer->async_wait([=](asio::error_code err_code)
-					{
-						if (enabled && !err_code)
-							StartAnalogEvents(index);
-					});
-			}
-		}
+				if (enabled && !err_code)
+					StartAnalogEvents(index);
+			});
 	}
 
-	indexes = GetAllowedIndexes("binary"); // Mutex protected copy of indexes.
-
+	indexes = pSimConf->GetIndexes(odc::EventType::Binary);
 	for(auto index : indexes)
 	{
 		//send initial event
@@ -647,19 +597,13 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 	if(event->GetEventType() == EventType::Analog)
 	{
 		RandomiseAnalog(event);
-		{ //lock scope
-			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-			interval = pSimConf->AnalogUpdateIntervalms.at(event->GetIndex());
-		}
+		interval = pSimConf->GetUpdateInterval(event->GetEventType(), event->GetIndex());
 	}
 	else if(event->GetEventType() == EventType::Binary)
 	{
 		bool val = !event->GetPayload<EventType::Binary>();
 		event->SetPayload<EventType::Binary>(std::move(val));
-		{ //lock scope
-			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-			interval = pSimConf->BinaryUpdateIntervalms.at(event->GetIndex());
-		}
+		interval = pSimConf->GetUpdateInterval(event->GetEventType(), event->GetIndex());
 	}
 	else if(auto log = odc::spdlog_get("SimPort"))
 	{
@@ -681,15 +625,13 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 	bool shouldPub = true;
 	if (event->GetEventType() == EventType::Analog)
 	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		if (pSimConf->AnalogForcedStates.count(event->GetIndex()))
-			shouldPub = !pSimConf->AnalogForcedStates.at(event->GetIndex());
+		// Rakesh do we need to check the forced states present or not?
+		shouldPub = !pSimConf->GetForcedState(event->GetEventType(), event->GetIndex());
 	}
 	if (event->GetEventType() == EventType::Binary)
 	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		if (pSimConf->BinaryForcedStates.count(event->GetIndex()))
-			shouldPub = !pSimConf->BinaryForcedStates.at(event->GetIndex());
+		// Rakesh do we need to check the forced states present or not?
+		shouldPub = !pSimConf->GetForcedState(event->GetEventType(), event->GetIndex());
 	}
 
 	if (shouldPub)

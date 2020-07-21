@@ -71,27 +71,62 @@ inline double SimPortData::GetDefaultStdDev() const
 	return m_default_std_dev_factor;
 }
 
-inline void SimPortData::SetAnalogPoint(std::size_t index, const std::shared_ptr<AnalogPoint>& point)
+inline void SimPortData::SetPoint(const odc::EventType& type, std::size_t index, const std::shared_ptr<Point>& point)
 {
-	m_ppoint_data->SetAnalogPoint(index, point);
+	m_ppoint_data->SetPoint(type, index, point);
 }
 
-inline double SimPortData::GetAnalogStartValue(std::size_t index) const
+inline void SimPortData::SetForcedState(const odc::EventType& type, std::size_t index, bool state)
 {
-	return m_ppoint_data->GetAnalogStartValue(index);
+	m_ppoint_data->SetForcedState(type, index, state);
 }
 
-inline double SimPortData::GetAnalogStdDev(std::size_t index) const
+inline bool SimPortData::GetForcedState(const odc::EventType& type, std::size_t index) const
 {
-	return m_ppoint_data->GetAnalogStdDev(index);
+	return m_ppoint_data->GetForcedState(type, index);
 }
 
-inline void SimPortData::SetAnalogValue(std::size_t index, double value)
+inline void SimPortData::SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value)
 {
-	m_ppoint_data->SetAnalogValue(index, value);
+	m_ppoint_data->SetUpdateInterval(type, index, value);
 }
 
-inline std::map<std::size_t, double> SimPortData::GetAnalogValues() const
+inline std::size_t SimPortData::GetUpdateInterval(const odc::EventType& type, std::size_t index) const
 {
-	return m_ppoint_data->GetAnalogValues();
+	return m_ppoint_data->GetUpdateInterval(type, index);
+}
+
+inline double SimPortData::GetStartValue(const odc::EventType& type, const std::size_t index) const
+{
+	return m_ppoint_data->GetStartValue(type, index);
+}
+
+inline double SimPortData::GetStdDev(std::size_t index) const
+{
+	return m_ppoint_data->GetStdDev(index);
+}
+
+inline void SimPortData::SetValue(const odc::EventType& type, std::size_t index, double value)
+{
+	m_ppoint_data->SetValue(type, index, value);
+}
+
+inline double SimPortData::GetValue(const odc::EventType& type, std::size_t index) const
+{
+	return m_ppoint_data->GetValue(type, index);
+}
+
+inline std::vector<std::size_t> SimPortData::GetIndexes(const odc::EventType& type) const
+{
+	return m_ppoint_data->GetIndexes(type);
+}
+
+inline std::unordered_map<std::size_t, double> SimPortData::GetValues(const odc::EventType& type) const
+{
+	return m_ppoint_data->GetValues(type);
+}
+
+inline bool SimPortData::IsIndex(const odc::EventType& type, std::size_t index) const
+{
+	return m_ppoint_data->IsIndex(type, index);
 }

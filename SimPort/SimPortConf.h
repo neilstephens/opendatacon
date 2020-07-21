@@ -103,11 +103,17 @@ public:
 	std::string HttpPort() const;
 	std::string Version() const;
 
-	double GetAnalogStartValue(std::size_t index) const;
-	double GetAnalogStdDev(std::size_t index) const;
+	double GetStartValue(const odc::EventType& type, std::size_t index) const;
+	double GetStdDev(std::size_t index) const;
 
-	void SetAnalogValue(std::size_t index, double value);
-
+	void SetValue(const odc::EventType& type, std::size_t index, double value);
+	double GetValue(const odc::EventType& type, std::size_t index) const;
+	void SetForcedState(const odc::EventType& type, std::size_t index, bool value);
+	bool GetForcedState(const odc::EventType& type, std::size_t index) const;
+	void SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value);
+	std::size_t GetUpdateInterval(const odc::EventType& type, std::size_t) const;
+	std::vector<std::size_t> GetIndexes(const odc::EventType& type) const;
+	bool IsIndex(const odc::EventType& type, std::size_t index) const;
 	Json::Value GetCurrentState() const;
 
 	std::vector<uint32_t> BinaryIndicies;

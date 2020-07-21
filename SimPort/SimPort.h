@@ -68,7 +68,6 @@ private:
 	typedef std::shared_ptr<Timer_t> pTimer_t;
 	std::unordered_map<std::string, pTimer_t> Timers;
 
-	std::vector<uint32_t> GetAllowedIndexes(std::string type);
 	// use this instead of PublishEvent, it catches current values and saves them.
 	void PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback);
 	std::string GetCurrentBinaryValsAsJSONString(const std::string& index);
@@ -83,8 +82,8 @@ private:
 	{
 		double mean, std_dev;
 		{ //lock scope
-			mean = pSimConf->GetAnalogStartValue(event->GetIndex());
-			std_dev = pSimConf->GetAnalogStdDev(event->GetIndex());
+			mean = pSimConf->GetStartValue(EventType::Analog, event->GetIndex());
+			std_dev = pSimConf->GetStdDev(event->GetIndex());
 		}
 
 		//change value around mean - handle 0 which windows does not...
@@ -124,7 +123,7 @@ private:
 	}
 	void PortUp();
 	void PortDown();
-	std::vector<uint32_t> IndexesFromString(const std::string& index_str, const std::string &type);
+	std::vector<std::size_t> IndexesFromString(const std::string& index_str, const std::string &type);
 
 	std::shared_ptr<SimPortCollection> SimCollection;
 

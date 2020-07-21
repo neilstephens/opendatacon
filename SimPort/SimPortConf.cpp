@@ -86,27 +86,59 @@ inline std::string SimPortConf::Version() const
 	return m_pport_data->Version();
 }
 
-inline double SimPortConf::GetAnalogStartValue(std::size_t index) const
+inline double SimPortConf::GetStartValue(const odc::EventType& type, std::size_t index) const
 {
-	return m_pport_data->GetAnalogStartValue(index);
+	return m_pport_data->GetStartValue(type, index);
 }
 
-inline double SimPortConf::GetAnalogStdDev(std::size_t index) const
+inline double SimPortConf::GetStdDev(std::size_t index) const
 {
-	return m_pport_data->GetAnalogStdDev(index);
+	return m_pport_data->GetStdDev(index);
 }
 
-inline void SimPortConf::SetAnalogValue(std::size_t index, double value)
+inline void SimPortConf::SetValue(const odc::EventType& type, std::size_t index, double value)
 {
-	m_pport_data->SetAnalogValue(index, value);
+	m_pport_data->SetValue(type, index, value);
+}
+
+inline double SimPortConf::GetValue(const odc::EventType& type, std::size_t index) const
+{
+	return m_pport_data->GetValue(type, index);
+}
+
+inline void SimPortConf::SetForcedState(const odc::EventType& type, std::size_t index, bool value)
+{
+	m_pport_data->SetForcedState(type, index, value);
+}
+
+inline bool SimPortConf::GetForcedState(const odc::EventType& type, std::size_t index) const
+{
+	return m_pport_data->GetForcedState(type, index);
+}
+
+inline void SimPortConf::SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value)
+{
+	m_pport_data->SetUpdateInterval(type, index, value);
+}
+
+inline std::size_t SimPortConf::GetUpdateInterval(const odc::EventType& type, std::size_t index) const
+{
+	return m_pport_data->GetUpdateInterval(type, index);
+}
+
+inline std::vector<std::size_t> SimPortConf::GetIndexes(const odc::EventType& type) const
+{
+	return m_pport_data->GetIndexes(type);
+}
+
+inline bool SimPortConf::IsIndex(const odc::EventType& type, std::size_t index) const
+{
+	return m_pport_data->IsIndex(type, index);
 }
 
 inline Json::Value SimPortConf::GetCurrentState() const
 {
 	Json::Value state;
-	const std::map<std::size_t, double> values = m_pport_data->GetAnalogValues();
-	for (auto it = values.begin(); it != values.end(); ++it)
-		state["AnalogCurrent"][it->first] = it->second;
 	return state;
 }
 
@@ -163,7 +195,7 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 					start_val = std::numeric_limits<double>::infinity();
 				else
 					start_val = std::stod(str_start_val);
-				m_pport_data->SetAnalogPoint(index, std::make_shared<AnalogPoint>(start_val, update_interval, std_dev));
+				m_pport_data->SetPoint(odc::EventType::Analog, index, std::make_shared<Point>(start_val, update_interval, std_dev));
 			}
 		}
 	}

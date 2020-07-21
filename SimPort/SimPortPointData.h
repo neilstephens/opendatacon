@@ -28,13 +28,19 @@
 #ifndef SIMPORTPOINTDATA_H
 #define SIMPORTPOINTDATA_H
 
-#include <map>
+#include <opendatacon/IOTypes.h>
+#include <vector>
 #include <memory>
 #include <unordered_map>
 
-struct AnalogPoint
+/*
+  This point is only for interfacing between Point data and sim configuration
+  With this interface user can doesn't have to bother about Analog / Binary point distinctions
+  Will use Analog Point & Binary point for storage, so we can consume less memory at run time
+ */
+struct Point
 {
-	AnalogPoint(double start_val,
+	Point(double start_val,
 		std::size_t refresh_rate,
 		double standard_dev):
 		start_value(start_val),
@@ -48,19 +54,8 @@ struct AnalogPoint
 	bool forced_state;
 	// This time interval is in milliseconds.
 	std::size_t update_interval;
-	// Standard deviation
+	// Only required for analog points
 	double std_dev;
-};
-
-struct BinaryPoint
-{
-	BinaryPoint() {}
-
-	bool start_val;
-	bool value;
-	bool forced_state;
-	// This time interval is in milliseconds.
-	std::size_t update_interval;
 };
 
 class SimPortPointData
@@ -68,15 +63,40 @@ class SimPortPointData
 public:
 	SimPortPointData();
 
-	void SetAnalogPoint(std::size_t index, std::shared_ptr<AnalogPoint> point);
-	double GetAnalogStartValue(std::size_t index) const;
-	double GetAnalogStdDev(std::size_t index) const;
+	void SetPoint(const odc::EventType& type, std::size_t index, std::shared_ptr<Point> point);
+	void SetForcedState(const odc::EventType& type, std::size_t index, bool state);
+	bool GetForcedState(const odc::EventType& type, std::size_t index);
+	void SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value);
+	std::size_t GetUpdateInterval(const odc::EventType& type, std::size_t index);
+	double GetStartValue(const odc::EventType& type, std::size_t index);
+	double GetStdDev(std::size_t index);
+	void SetValue(const odc::EventType& type, std::size_t index, double value);
+	double GetValue(const odc::EventType& type, std::size_t index);
 
-	void SetAnalogValue(std::size_t index, double value);
+	std::vector<std::size_t> GetIndexes(const odc::EventType& type);
+	std::unordered_map<std::size_t , double> GetValues(const odc::EventType& type);
 
-	std::map<std::size_t , double> GetAnalogValues() const;
+	bool IsIndex(const odc::EventType& type, std::size_t index);
 
 private:
+	struct BinaryPoint
+	{
+		BinaryPoint(bool start_val,
+			std::size_t refresh_rate):
+			start_value(start_val),
+			value(start_val),
+			forced_state(false),
+			update_interval(refresh_rate) {}
+
+		bool start_value;
+		bool value;
+		bool forced_state;
+		// This time interval is in milliseconds.
+		std::size_t update_interval;
+	};
+
+	// Using the same Point definition for AnalogPoint as it is same
+	using AnalogPoint = Point;
 	std::unordered_map<std::size_t, std::shared_ptr<AnalogPoint>> m_analog_points;
 	std::unordered_map<std::size_t, std::shared_ptr<BinaryPoint>> m_binary_points;
 };
