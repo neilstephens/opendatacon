@@ -51,7 +51,8 @@ inline Json::Value GetTestConfigJSON()
 		"Analogs" :
 		[
 			{"Range" : {"Start" : 0, "Stop" : 2}, "StartVal" : 50, "UpdateIntervalms" : 10000, "StdDev" : 2},
-			{"Range" : {"Start" : 3, "Stop" : 5}, "StartVal" : 230, "UpdateIntervalms" : 10000, "StdDev" : 5}
+			{"Range" : {"Start" : 3, "Stop" : 5}, "StartVal" : 230, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 7, "StartVal" : 5, "StdDev" : 0} //this is the tap position feedback
 			//,{"Index" : 6, "SQLite3" : { "File" : "test2.db", "Query" : "select timestamp,(value+:INDEX) from events", "TimestampHandling" : "RELATIVE_TOD_FASTFORWARD"}}
 		],
 
@@ -83,19 +84,19 @@ inline Json::Value GetTestConfigJSON()
 			},
 			{
 				"Index" : 4,
-				"FeedbackPosition": {"Type": "Binary", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13], "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
 			},
 			{
 				"Index" : 5,
-				"FeedbackPosition": {"Type": "Binary", "Indexes" : "10,11,12","FeedbackMode":"PULSE", "Action":"DOWN", "Limit":0}
+				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13],"FeedbackMode":"PULSE", "Action":"DOWN", "Limit":0}
 			},
 			{
 				"Index" : 6,
-				"FeedbackPosition":	{ "Type": "BCD", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+				"FeedbackPosition":	{ "Type": "BCD", "Indexes" : [10,11,12,13,14], "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
 			},
 			{
 				"Index" : 7,
-				"FeedbackPosition": {"Type": "BCD", "Indexes" : "10,11,12","FeedbackMode":"PULSE", "Action":"DOWN", "Limit":0}
+				"FeedbackPosition": {"Type": "BCD", "Indexes" : [10,11,12,13,14],"FeedbackMode":"PULSE", "Action":"DOWN", "Limit":0}
 			}
 		]
 	})001";

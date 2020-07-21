@@ -27,7 +27,7 @@
       $( document ).ready(function() {
           const type = new URL(window.location.href).searchParams.get('type');
           const target = new URL(window.location.href).searchParams.get('target');
-          const url = "/" + type + "/Configuration";
+          const url = "/" + type + " Configuration";
 
           $.post(url, {Target : target})
               .done(function(data) {

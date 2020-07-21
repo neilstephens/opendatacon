@@ -68,7 +68,6 @@ struct connection_info_struct
 
 
 const std::string& GetMimeType(const std::string& rUrl);
-const std::string GetPath(const std::string& rUrl);
 const std::string GetFile(const std::string& rUrl);
 
 int CreateNewRequest(void *cls,
