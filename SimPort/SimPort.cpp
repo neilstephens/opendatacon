@@ -113,7 +113,7 @@ void SimPort::Disable()
 		});
 }
 
-// Just a way to keep the BinaryVals and AnalogVals up to date...
+// Just a way to keep the BinaryVals and Analog+*Vals up to date...
 void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([](CommandStatus status) {}))
 {
 	PublishEvent(event, pStatusCallback);
@@ -122,10 +122,10 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 	size_t index = event->GetIndex();
 	if (event->GetEventType() == EventType::Analog)
 	{
-		double val = event->GetPayload<EventType::Analog>();
-		pIOS->post([&, index, val]()
+		double val = event->GetPayload<odc::EventType::Analog>();
+		pIOS->post([this, event, index, val]()
 			{
-				pSimConf->SetValue(event->GetEventType(), index, val);
+				pSimConf->SetPayload(event->GetEventType(), index, val);
 			});
 	}
 	if (event->GetEventType() == EventType::Binary)
@@ -420,7 +420,7 @@ std::string SimPort::GetCurrentAnalogValsAsJSONString(const std::string& index)
 		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 		for (auto idx : indexes)
 		{
-			root[std::to_string(idx)] = std::to_string(pSimConf->GetValue(odc::EventType::Analog, idx));
+			root[std::to_string(idx)] = std::to_string(pSimConf->GetPayload(odc::EventType::Analog, idx));
 		}
 	}
 	Json::StreamWriterBuilder wbuilder;
@@ -495,7 +495,7 @@ void SimPort::PortUp()
 			continue;
 		}
 
-		double mean = pSimConf->GetStartValue(odc::EventType::Analog, index);
+		double mean = pSimConf->GetPayload(odc::EventType::Analog, index);
 		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Analog>(std::move(mean));
 		PostPublishEvent(event);

@@ -33,29 +33,20 @@
 #include <memory>
 #include <unordered_map>
 
-/*
-  This point is only for interfacing between Point data and sim configuration
-  With this interface user can doesn't have to bother about Analog / Binary point distinctions
-  Will use Analog Point & Binary point for storage, so we can consume less memory at run time
- */
 struct Point
 {
-	Point(double start_val,
-		std::size_t refresh_rate,
-		double standard_dev):
-		start_value(start_val),
-		value(start_val),
-		forced_state(false),
-		update_interval(refresh_rate),
-		std_dev(standard_dev) {}
+	Point():
+		std_dev(0.0f),
+		update_interval(0),
+		start_value(0.0f),
+		forced_state(false) {}
 
-	double start_value;
-	double value;
-	bool forced_state;
-	// This time interval is in milliseconds.
-	std::size_t update_interval;
-	// Only required for analog points
+	std::shared_ptr<odc::EventInfo> event;
 	double std_dev;
+	// This refresh rate is in milliseconds
+	std::size_t update_interval;
+	double start_value;
+	bool forced_state;
 };
 
 class SimPortPointData
@@ -63,42 +54,25 @@ class SimPortPointData
 public:
 	SimPortPointData();
 
-	void SetPoint(const odc::EventType& type, std::size_t index, std::shared_ptr<Point> point);
-	void SetForcedState(const odc::EventType& type, std::size_t index, bool state);
-	bool GetForcedState(const odc::EventType& type, std::size_t index);
-	void SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value);
-	std::size_t GetUpdateInterval(const odc::EventType& type, std::size_t index);
-	double GetStartValue(const odc::EventType& type, std::size_t index);
+	void SetPoint(odc::EventType type, std::size_t index, const std::string& name,
+		double s_dev, std::size_t u_interval, double val);
+	void SetForcedState(odc::EventType type, std::size_t index, bool state);
+	bool GetForcedState(odc::EventType type, std::size_t index);
+	void SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
+	std::size_t GetUpdateInterval(odc::EventType type, std::size_t index);
+	void SetPayload(odc::EventType type, std::size_t index, double payload);
+	double GetPayload(odc::EventType type, std::size_t index);
+	double GetStartValue(odc::EventType type, std::size_t index);
 	double GetStdDev(std::size_t index);
-	void SetValue(const odc::EventType& type, std::size_t index, double value);
-	double GetValue(const odc::EventType& type, std::size_t index);
 
-	std::vector<std::size_t> GetIndexes(const odc::EventType& type);
-	std::unordered_map<std::size_t , double> GetValues(const odc::EventType& type);
+	std::vector<std::size_t> GetIndexes(odc::EventType type);
+	std::unordered_map<std::size_t , double> GetValues(odc::EventType type);
 
-	bool IsIndex(const odc::EventType& type, std::size_t index);
+	bool IsIndex(odc::EventType type, std::size_t index);
 
 private:
-	struct BinaryPoint
-	{
-		BinaryPoint(bool start_val,
-			std::size_t refresh_rate):
-			start_value(start_val),
-			value(start_val),
-			forced_state(false),
-			update_interval(refresh_rate) {}
-
-		bool start_value;
-		bool value;
-		bool forced_state;
-		// This time interval is in milliseconds.
-		std::size_t update_interval;
-	};
-
-	// Using the same Point definition for AnalogPoint as it is same
-	using AnalogPoint = Point;
-	std::unordered_map<std::size_t, std::shared_ptr<AnalogPoint>> m_analog_points;
-	std::unordered_map<std::size_t, std::shared_ptr<BinaryPoint>> m_binary_points;
+	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
+	std::unordered_map<odc::EventType, Points> m_points;
 };
 
 #endif // SIMPORTPOINTDATA_H

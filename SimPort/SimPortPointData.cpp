@@ -29,85 +29,112 @@
 
 SimPortPointData::SimPortPointData() {}
 
-inline void SimPortPointData::SetPoint(const odc::EventType& type, std::size_t index, std::shared_ptr<Point> point)
+void SimPortPointData::SetPoint(odc::EventType type, std::size_t index, const std::string& name,
+	double s_dev, std::size_t u_interval, double val)
 {
+	if (type == odc::EventType::Analog)
+	{
+		Point p;
+		p.std_dev = s_dev;
+		p.update_interval = u_interval;
+		p.start_value = val;
+
+		odc::QualityFlags flag = odc::QualityFlags::ONLINE;
+		if (!s_dev && !u_interval && !val)
+			flag = odc::QualityFlags::COMM_LOST;
+		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Analog, index, name, flag);
+		evt->SetPayload<odc::EventType::Analog>(std::move(val));
+		p.event = evt;
+		m_points[odc::EventType::Analog][index] = std::make_shared<Point>(p);
+	}
+
 	if (type == odc::EventType::Binary)
 	{
-		m_binary_points[index] = std::make_shared<BinaryPoint>(point->start_value, point->update_interval);
+		Point p;
+		p.std_dev = s_dev;
+		p.update_interval = u_interval;
+
+		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Binary, index, name, odc::QualityFlags::ONLINE);
+		evt->SetPayload<odc::EventType::Binary>(static_cast<bool>(val));
+		p.event = evt;
+		m_points[odc::EventType::Binary][index] = std::make_shared<Point>(p);
 	}
-	else
-		m_analog_points[index] = std::make_shared<AnalogPoint>(point->start_value, point->update_interval, point->std_dev);
 }
 
-void SimPortPointData::SetForcedState(const odc::EventType& type, std::size_t index, bool state)
+void SimPortPointData::SetForcedState(odc::EventType type, std::size_t index, bool state)
 {
+	m_points[type][index]->forced_state = state;
+}
+
+bool SimPortPointData::GetForcedState(odc::EventType type, std::size_t index)
+{
+	return m_points[type][index]->forced_state;
+}
+
+void SimPortPointData::SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
+{
+	m_points[type][index]->update_interval = value;
+}
+
+std::size_t SimPortPointData::GetUpdateInterval(odc::EventType type, std::size_t index)
+{
+	return m_points[type][index]->update_interval;
+}
+
+void SimPortPointData::SetPayload(odc::EventType type, std::size_t index, double payload)
+{
+	if (type == odc::EventType::Analog)
+		m_points[type][index]->event->SetPayload<odc::EventType::Analog>(std::move(payload));
 	if (type == odc::EventType::Binary)
-		m_binary_points[index]->forced_state = state;
-	else
-		m_analog_points[index]->forced_state = state;
+		m_points[type][index]->event->SetPayload<odc::EventType::Binary>(std::move(payload));
 }
 
-bool SimPortPointData::GetForcedState(const odc::EventType& type, std::size_t index)
+double SimPortPointData::GetPayload(odc::EventType type, std::size_t index)
 {
+	double payload = 0.0f;
+	if (type == odc::EventType::Analog)
+		payload = m_points[type][index]->event->GetPayload<odc::EventType::Analog>();
 	if (type == odc::EventType::Binary)
-		return m_binary_points[index]->forced_state;
-	return m_analog_points[index]->forced_state;
+		payload = m_points[type][index]->event->GetPayload<odc::EventType::Binary>();
+	return payload;
 }
 
-void SimPortPointData::SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value)
+double SimPortPointData::GetStartValue(odc::EventType type, std::size_t index)
 {
-	if (type == odc::EventType::Binary)
-		m_binary_points[index]->update_interval = value;
-	m_analog_points[index]->update_interval = value;
+	return m_points[type][index]->start_value;
 }
 
-std::size_t SimPortPointData::GetUpdateInterval(const odc::EventType& type, std::size_t index)
+double SimPortPointData::GetStdDev(std::size_t index)
 {
-	if (type == odc::EventType::Binary)
-		return m_binary_points[index]->update_interval;
-	return m_analog_points[index]->update_interval;
+	return m_points[odc::EventType::Analog][index]->std_dev;
 }
 
-inline double SimPortPointData::GetStartValue(const odc::EventType& type, std::size_t index)
-{
-	if (type == odc::EventType::Binary)
-		return m_binary_points[index]->start_value;
-	return m_analog_points[index]->start_value;
-}
-
-inline double SimPortPointData::GetStdDev(std::size_t index)
-{
-	return m_analog_points[index]->std_dev;
-}
-
-inline std::vector<std::size_t> SimPortPointData::GetIndexes(const odc::EventType& type)
+std::vector<std::size_t> SimPortPointData::GetIndexes(odc::EventType type)
 {
 	std::vector<std::size_t> indexes;
-	if (type == odc::EventType::Binary)
-		for (auto it = m_binary_points.begin(); it != m_binary_points.end(); ++it)
-			indexes.emplace_back(it->first);
-	else
-		for (auto it = m_analog_points.begin(); it != m_analog_points.end(); ++it)
-			indexes.emplace_back(it->first);
+	auto points = m_points[type];
+	for (auto it = points.begin(); it != points.end(); ++it)
+	{
+		indexes.emplace_back(it->first);
+	}
 	return indexes;
 }
 
-inline std::unordered_map<std::size_t, double> SimPortPointData::GetValues(const odc::EventType& type)
+std::unordered_map<std::size_t, double> SimPortPointData::GetValues(odc::EventType type)
 {
 	std::unordered_map<std::size_t, double> values;
-	if (type == odc::EventType::Binary)
-		for (auto it = m_binary_points.begin(); it != m_binary_points.end(); ++it)
-			values[it->first] = it->second->value;
-	else
-		for (auto it = m_analog_points.begin(); it != m_analog_points.end(); ++it)
-			values[it->first] = it->second->value;
+	auto points = m_points[type];
+	for (auto it = points.begin(); it != points.end(); ++it)
+	{
+		if (type == odc::EventType::Analog)
+			values[it->first] = it->second->event->GetPayload<odc::EventType::Analog>();
+		if (type == odc::EventType::Binary)
+			values[it->first] = it->second->event->GetPayload<odc::EventType::Binary>();
+	}
 	return values;
 }
 
-inline bool SimPortPointData::IsIndex(const odc::EventType& type, std::size_t index)
+bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 {
-	if (type == odc::EventType::Binary)
-		return m_binary_points.find(index) == m_binary_points.end();
-	else
-		return m_analog_points.find(index) == m_analog_points.end();
+	return m_points[type].find(index) == m_points[type].end();
 }

@@ -36,97 +36,98 @@ SimPortData::SimPortData():
 	m_ppoint_data = std::make_shared<SimPortPointData>();
 }
 
-inline void SimPortData::HttpAddress(const std::string& http_addr)
+void SimPortData::HttpAddress(const std::string& http_addr)
 {
 	m_http_addr = http_addr;
 }
 
-inline std::string SimPortData::HttpAddress() const
+std::string SimPortData::HttpAddress() const
 {
 	return m_http_addr;
 }
 
-inline void SimPortData::HttpPort(const std::string& http_port)
+void SimPortData::HttpPort(const std::string& http_port)
 {
 	m_http_port = http_port;
 }
 
-inline std::string SimPortData::HttpPort() const
+std::string SimPortData::HttpPort() const
 {
 	return m_http_port;
 }
 
-inline void SimPortData::Version(const std::string& version)
+void SimPortData::Version(const std::string& version)
 {
 	m_version = version;
 }
 
-inline std::string SimPortData::Version() const
+std::string SimPortData::Version() const
 {
 	return m_version;
 }
 
-inline double SimPortData::GetDefaultStdDev() const
+double SimPortData::GetDefaultStdDev() const
 {
 	return m_default_std_dev_factor;
 }
 
-inline void SimPortData::SetPoint(const odc::EventType& type, std::size_t index, const std::shared_ptr<Point>& point)
+void SimPortData::SetPoint(odc::EventType type, std::size_t index, const std::string& name,
+	double std_dev, std::size_t update_interal, double value)
 {
-	m_ppoint_data->SetPoint(type, index, point);
+	m_ppoint_data->SetPoint(type, index, name, std_dev, update_interal, value);
 }
 
-inline void SimPortData::SetForcedState(const odc::EventType& type, std::size_t index, bool state)
+void SimPortData::SetForcedState(odc::EventType type, std::size_t index, bool state)
 {
 	m_ppoint_data->SetForcedState(type, index, state);
 }
 
-inline bool SimPortData::GetForcedState(const odc::EventType& type, std::size_t index) const
+bool SimPortData::GetForcedState(odc::EventType type, std::size_t index) const
 {
 	return m_ppoint_data->GetForcedState(type, index);
 }
 
-inline void SimPortData::SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value)
+void SimPortData::SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
 {
 	m_ppoint_data->SetUpdateInterval(type, index, value);
 }
 
-inline std::size_t SimPortData::GetUpdateInterval(const odc::EventType& type, std::size_t index) const
+std::size_t SimPortData::GetUpdateInterval(odc::EventType type, std::size_t index) const
 {
 	return m_ppoint_data->GetUpdateInterval(type, index);
 }
 
-inline double SimPortData::GetStartValue(const odc::EventType& type, const std::size_t index) const
+void SimPortData::SetPayload(odc::EventType type, std::size_t index, double payload)
+{
+	m_ppoint_data->SetPayload(type, index, payload);
+}
+
+double SimPortData::GetPayload(odc::EventType type, std::size_t index) const
+{
+	return m_ppoint_data->GetPayload(type, index);
+}
+
+double SimPortData::GetStartValue(odc::EventType type, std::size_t index) const
 {
 	return m_ppoint_data->GetStartValue(type, index);
 }
 
-inline double SimPortData::GetStdDev(std::size_t index) const
+double SimPortData::GetStdDev(std::size_t index) const
 {
 	return m_ppoint_data->GetStdDev(index);
 }
 
-inline void SimPortData::SetValue(const odc::EventType& type, std::size_t index, double value)
-{
-	m_ppoint_data->SetValue(type, index, value);
-}
-
-inline double SimPortData::GetValue(const odc::EventType& type, std::size_t index) const
-{
-	return m_ppoint_data->GetValue(type, index);
-}
-
-inline std::vector<std::size_t> SimPortData::GetIndexes(const odc::EventType& type) const
+std::vector<std::size_t> SimPortData::GetIndexes(odc::EventType type) const
 {
 	return m_ppoint_data->GetIndexes(type);
 }
 
-inline std::unordered_map<std::size_t, double> SimPortData::GetValues(const odc::EventType& type) const
+std::unordered_map<std::size_t, double> SimPortData::GetValues(odc::EventType type) const
 {
 	return m_ppoint_data->GetValues(type);
 }
 
-inline bool SimPortData::IsIndex(const odc::EventType& type, std::size_t index) const
+bool SimPortData::IsIndex(odc::EventType type, std::size_t index) const
 {
 	return m_ppoint_data->IsIndex(type, index);
 }

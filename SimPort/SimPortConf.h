@@ -103,17 +103,17 @@ public:
 	std::string HttpPort() const;
 	std::string Version() const;
 
-	double GetStartValue(const odc::EventType& type, std::size_t index) const;
 	double GetStdDev(std::size_t index) const;
 
-	void SetValue(const odc::EventType& type, std::size_t index, double value);
-	double GetValue(const odc::EventType& type, std::size_t index) const;
-	void SetForcedState(const odc::EventType& type, std::size_t index, bool value);
-	bool GetForcedState(const odc::EventType& type, std::size_t index) const;
-	void SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value);
-	std::size_t GetUpdateInterval(const odc::EventType& type, std::size_t) const;
-	std::vector<std::size_t> GetIndexes(const odc::EventType& type) const;
-	bool IsIndex(const odc::EventType& type, std::size_t index) const;
+	void SetPayload(odc::EventType type, std::size_t index, double payload);
+	double GetPayload(odc::EventType type, std::size_t index) const;
+	double GetStartValue(odc::EventType type, std::size_t index) const;
+	void SetForcedState(odc::EventType type, std::size_t index, bool value);
+	bool GetForcedState(odc::EventType type, std::size_t index) const;
+	void SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
+	std::size_t GetUpdateInterval(odc::EventType type, std::size_t) const;
+	std::vector<std::size_t> GetIndexes(odc::EventType type) const;
+	bool IsIndex(odc::EventType type, std::size_t index) const;
 	Json::Value GetCurrentState() const;
 
 	std::vector<uint32_t> BinaryIndicies;

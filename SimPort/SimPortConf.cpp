@@ -51,92 +51,92 @@ void SimPortConf::ProcessElements(const Json::Value& json_root)
 		m_ProcessBinaryControls(json_root["BinaryControls"]);
 }
 
-inline std::unordered_map<std::string, DB_STATEMENT> SimPortConf::GetDBStats() const
+std::unordered_map<std::string, DB_STATEMENT> SimPortConf::GetDBStats() const
 {
 	return m_db_stats;
 }
 
-inline TimestampMode SimPortConf::GetTimestampHandling() const
+TimestampMode SimPortConf::GetTimestampHandling() const
 {
 	return m_timestamp_handling;
 }
 
-inline void SimPortConf::SetName(const std::string& name)
+void SimPortConf::SetName(const std::string& name)
 {
 	m_name = name;
 }
 
-inline double SimPortConf::GetDefaultStdDev() const
+double SimPortConf::GetDefaultStdDev() const
 {
 	return m_pport_data->GetDefaultStdDev();
 }
 
-inline std::string SimPortConf::HttpAddress() const
+std::string SimPortConf::HttpAddress() const
 {
 	return m_pport_data->HttpAddress();
 }
 
-inline std::string SimPortConf::HttpPort() const
+std::string SimPortConf::HttpPort() const
 {
 	return m_pport_data->HttpPort();
 }
 
-inline std::string SimPortConf::Version() const
+std::string SimPortConf::Version() const
 {
 	return m_pport_data->Version();
 }
 
-inline double SimPortConf::GetStartValue(const odc::EventType& type, std::size_t index) const
-{
-	return m_pport_data->GetStartValue(type, index);
-}
-
-inline double SimPortConf::GetStdDev(std::size_t index) const
+double SimPortConf::GetStdDev(std::size_t index) const
 {
 	return m_pport_data->GetStdDev(index);
 }
 
-inline void SimPortConf::SetValue(const odc::EventType& type, std::size_t index, double value)
+void SimPortConf::SetPayload(odc::EventType type, std::size_t index, double payload)
 {
-	m_pport_data->SetValue(type, index, value);
+	m_pport_data->SetPayload(type, index, payload);
 }
 
-inline double SimPortConf::GetValue(const odc::EventType& type, std::size_t index) const
+double SimPortConf::GetPayload(odc::EventType type, std::size_t index) const
 {
-	return m_pport_data->GetValue(type, index);
+	return m_pport_data->GetPayload(type, index);
 }
 
-inline void SimPortConf::SetForcedState(const odc::EventType& type, std::size_t index, bool value)
+double SimPortConf::GetStartValue(odc::EventType type, std::size_t index) const
+{
+	return m_pport_data->GetStartValue(type, index);
+}
+
+void SimPortConf::SetForcedState(odc::EventType type, std::size_t index, bool value)
 {
 	m_pport_data->SetForcedState(type, index, value);
 }
 
-inline bool SimPortConf::GetForcedState(const odc::EventType& type, std::size_t index) const
+bool SimPortConf::GetForcedState(odc::EventType type, std::size_t index) const
 {
 	return m_pport_data->GetForcedState(type, index);
 }
 
-inline void SimPortConf::SetUpdateInterval(const odc::EventType& type, std::size_t index, std::size_t value)
+void SimPortConf::SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
 {
 	m_pport_data->SetUpdateInterval(type, index, value);
 }
 
-inline std::size_t SimPortConf::GetUpdateInterval(const odc::EventType& type, std::size_t index) const
+std::size_t SimPortConf::GetUpdateInterval(odc::EventType type, std::size_t index) const
 {
 	return m_pport_data->GetUpdateInterval(type, index);
 }
 
-inline std::vector<std::size_t> SimPortConf::GetIndexes(const odc::EventType& type) const
+std::vector<std::size_t> SimPortConf::GetIndexes(odc::EventType type) const
 {
 	return m_pport_data->GetIndexes(type);
 }
 
-inline bool SimPortConf::IsIndex(const odc::EventType& type, std::size_t index) const
+bool SimPortConf::IsIndex(odc::EventType type, std::size_t index) const
 {
 	return m_pport_data->IsIndex(type, index);
 }
 
-inline Json::Value SimPortConf::GetCurrentState() const
+Json::Value SimPortConf::GetCurrentState() const
 {
 	Json::Value state;
 	return state;
@@ -195,7 +195,7 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 					start_val = std::numeric_limits<double>::infinity();
 				else
 					start_val = std::stod(str_start_val);
-				m_pport_data->SetPoint(odc::EventType::Analog, index, std::make_shared<Point>(start_val, update_interval, std_dev));
+				m_pport_data->SetPoint(odc::EventType::Analog, index, m_name, std_dev, update_interval, start_val);
 			}
 		}
 	}
