@@ -1693,9 +1693,9 @@ TEST_CASE("Master - SOE Request F10")
 	// Hook the output functions
 	std::atomic_bool done_flag(false);
 	std::string OSResponse = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&](std::string CBMessage){ OSResponse = std::move(CBMessage); done_flag = true; });
+	CBOSPort->SetSendTCPDataFn([&done_flag,&OSResponse](std::string CBMessage){ OSResponse = std::move(CBMessage); done_flag = true; });
 	std::string MAResponse = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&](std::string CBMessage){ MAResponse = std::move(CBMessage); done_flag = true; });
+	CBMAPort->SetSendTCPDataFn([&done_flag,&MAResponse](std::string CBMessage){ MAResponse = std::move(CBMessage); done_flag = true; });
 
 	asio::streambuf OSwrite_buffer;
 	std::ostream OSoutput(&OSwrite_buffer);

@@ -161,7 +161,7 @@ TEST_CASE("TestConfigLoad")
 		// Set up a callback for the result
 		std::atomic_bool executed(false);
 		CommandStatus cb_status;
-		auto pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
+		auto pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_status,&executed](CommandStatus status)
 			{
 				cb_status = status;
 				executed = true;

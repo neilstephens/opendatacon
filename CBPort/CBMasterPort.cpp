@@ -199,7 +199,7 @@ void CBMasterPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCa
 void CBMasterPort::SendNextMasterCommand()
 {
 	// We have to control access in the TCP callback, the send command, clear commands and the timeout callbacks.
-	MasterCommandStrand->dispatch([&]()
+	MasterCommandStrand->dispatch([this]()
 		{
 			UnprotectedSendNextMasterCommand(false);
 		});
@@ -251,7 +251,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::UNDEFINED);
 
 				// so mark everything as if we have lost comms!
-				pIOS->post([&]()
+				pIOS->post([this]()
 					{
 						SetAllPointsQualityToCommsLost(); // All the connected points need their quality set to comms lost
 					});
@@ -291,13 +291,13 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 
 			std::chrono::milliseconds endtime = MasterCommandProtectedData.TimerExpireTime;
 
-			MasterCommandProtectedData.CurrentCommandTimeoutTimer->async_wait([&, endtime](asio::error_code err_code)
+			MasterCommandProtectedData.CurrentCommandTimeoutTimer->async_wait([this, endtime](asio::error_code err_code)
 				{
 					if (err_code != asio::error::operation_aborted)
 					{
 					// We need strand protection for the variables, so this will queue another chunk of work below.
 					// If we get an answer in the delay this causes, no big deal - the length of the timeout will kind of jitter.
-					      MasterCommandStrand->dispatch([&, endtime]()
+					      MasterCommandStrand->dispatch([this, endtime]()
 							{
 								// The checking of the expire time is another way to make sure that we have not cancelled the timer. We really need to make sure that if
 								// we have cancelled the timer and this callback is called, that we do NOT take any action!
@@ -328,7 +328,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 // Strand protected clear the command queue.
 void CBMasterPort::ClearCBCommandQueue()
 {
-	MasterCommandStrand->dispatch([&]()
+	MasterCommandStrand->dispatch([this]()
 		{
 			CBMessage_t NextCommand;
 			while (!MasterCommandProtectedData.MasterCommandQueue.empty())
@@ -359,7 +359,7 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t& CompleteCBMessage)
 	//! Anywhere we find that we don't have what we need, return. If we succeed we send the next command at the end of this method.
 	// If the timeout on the command is activated, then the next command will be sent - or resent.
 	// Cant just use by reference, complete message and header will go out of scope...
-	MasterCommandStrand->dispatch([&, CompleteCBMessage]()
+	MasterCommandStrand->dispatch([this, CompleteCBMessage]()
 		{
 			if (CompleteCBMessage.size() == 0)
 			{
@@ -501,7 +501,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 
 	LOGDEBUG("{} - Group - {} Processing Payload - {} Value 0x{}", Name, group, payloadlocation.to_string(), to_hexstring(data));
 
-	MyPointConf->PointTable.ForEachMatchingAnalogPoint(group, payloadlocation, [&](CBAnalogCounterPoint& pt)
+	MyPointConf->PointTable.ForEachMatchingAnalogPoint(group, payloadlocation, [this,data,now,&FoundMatch](CBAnalogCounterPoint& pt)
 		{
 			// We have a matching point - there will be 1 or 2, set a flag to indicate we have a match.
 
@@ -530,7 +530,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 
 	if (!FoundMatch)
 	{
-		MyPointConf->PointTable.ForEachMatchingCounterPoint(group, payloadlocation, [&](CBAnalogCounterPoint& pt)
+		MyPointConf->PointTable.ForEachMatchingCounterPoint(group, payloadlocation, [this,data,now,&FoundMatch](CBAnalogCounterPoint& pt)
 			{
 				// We have a matching point - there will be only 1!!, set a flag to indicate we have a match.
 				pt.SetAnalog(data, now);
@@ -549,7 +549,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	}
 	if (!FoundMatch)
 	{
-		MyPointConf->PointTable.ForEachMatchingBinaryPoint(group, payloadlocation, [&](CBBinaryPoint& pt)
+		MyPointConf->PointTable.ForEachMatchingBinaryPoint(group, payloadlocation, [=,&FoundMatch](CBBinaryPoint& pt)
 			{
 				uint8_t ch = pt.GetChannel();
 
@@ -607,7 +607,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	if (!FoundMatch)
 	{
 		// See if it is a StatusByte we need to handle - there is only one status byte, but it could be requested in several groups. So deal with it whenever it comes back
-		MyPointConf->PointTable.ForEachMatchingStatusByte(group, payloadlocation, [&](void)
+		MyPointConf->PointTable.ForEachMatchingStatusByte(group, payloadlocation, [this, group, payloadlocation, &FoundMatch](void)
 			{
 				// We have a matching status byte, set a flag to indicate we have a match.
 				LOGDEBUG("{} Received a Status Byte at : {} - {}", Name, group, payloadlocation.to_string());
@@ -655,7 +655,7 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 		return false;
 
 	// Convert the BitArray to SOE events, and call our lambda for each
-	ForEachSOEEventInBitArray(BitArray, UsedBits, [&](SOEEventFormat& soeevnt)
+	ForEachSOEEventInBitArray(BitArray, UsedBits, [this](SOEEventFormat& soeevnt)
 		{
 			// Now use the data in the SOE Event to fire off an ODC event..
 			// Find the Point in our database...using SOE Group and Number
@@ -930,7 +930,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 	eventbinary->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
 
 	// Loop through all Binary points.
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint& Point)
+	MyPointConf->PointTable.ForEachBinaryPoint([this,eventbinary](CBBinaryPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			eventbinary->SetIndex(index);
@@ -942,7 +942,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 
 	auto eventanalog = std::make_shared<EventInfo>(EventType::AnalogQuality, 0, Name, QualityFlags::COMM_LOST);
 	eventanalog->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
-	MyPointConf->PointTable.ForEachAnalogPoint([&](CBAnalogCounterPoint& Point)
+	MyPointConf->PointTable.ForEachAnalogPoint([this,eventanalog](CBAnalogCounterPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			if (!MyPointConf->PointTable.ResetAnalogValueUsingODCIndex(index)) // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
@@ -955,7 +955,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 	auto eventcounter = std::make_shared<EventInfo>(EventType::CounterQuality, 0, Name, QualityFlags::COMM_LOST);
 	eventcounter->SetPayload<EventType::CounterQuality>(QualityFlags::COMM_LOST);
 
-	MyPointConf->PointTable.ForEachCounterPoint([&](CBAnalogCounterPoint& Point)
+	MyPointConf->PointTable.ForEachCounterPoint([this,eventcounter](CBAnalogCounterPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			if (!MyPointConf->PointTable.ResetCounterValueUsingODCIndex(index)) // Sets to MISSINGVALUE, time = 0, HasBeenSet to false
@@ -970,7 +970,7 @@ void CBMasterPort::SetAllPointsQualityToCommsLost()
 void CBMasterPort::SendAllPointEvents()
 {
 	// Quality of ONLINE means the data is GOOD.
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint& Point)
+	MyPointConf->PointTable.ForEachBinaryPoint([this](CBBinaryPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			uint8_t meas = Point.GetBinary();
@@ -982,7 +982,7 @@ void CBMasterPort::SendAllPointEvents()
 		});
 
 	// Analogs
-	MyPointConf->PointTable.ForEachAnalogPoint([&](CBAnalogCounterPoint& Point)
+	MyPointConf->PointTable.ForEachAnalogPoint([this](CBAnalogCounterPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			uint16_t meas = Point.GetAnalog();
@@ -996,7 +996,7 @@ void CBMasterPort::SendAllPointEvents()
 		});
 
 	// Counters
-	MyPointConf->PointTable.ForEachCounterPoint([&](CBAnalogCounterPoint& Point)
+	MyPointConf->PointTable.ForEachCounterPoint([this](CBAnalogCounterPoint& Point)
 		{
 			uint32_t index = Point.GetIndex();
 			uint16_t meas = Point.GetAnalog();

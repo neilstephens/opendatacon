@@ -325,7 +325,7 @@ std::string WebUI::InitCommand(const std::string& url)
 {
 	Json::Value return_data;
 	std::atomic_bool executed(false);
-	HandleCommand(url, [&](const Json::Value& data)
+	HandleCommand(url, [&executed,&return_data](const Json::Value& data)
 		{
 			return_data = std::move(data);
 			executed = true;

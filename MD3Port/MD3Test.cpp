@@ -373,8 +373,8 @@ TEST_CASE("Utility - Strand Queue")
 
 	auto work = pIOS->make_work(); // Just to keep things from stopping..
 
-	std::thread t1([&]() {pIOS->run(); });
-	std::thread t2([&]() {pIOS->run(); });
+	std::thread t1([pIOS]() {pIOS->run(); });
+	std::thread t2([pIOS]() {pIOS->run(); });
 
 	StrandProtectedQueue<int> foo(*pIOS, 10);
 	foo.sync_push(21);
@@ -2373,7 +2373,7 @@ TEST_CASE("Station - Multi-drop TCP Test")
 	MD3OSPort2->Enable();
 
 	ProducerConsumerQueue<std::string> Response;
-	auto ResponseCallback = [&](buf_t& readbuf)
+	auto ResponseCallback = [&Response](buf_t& readbuf)
 					{
 						size_t bufsize = readbuf.size();
 						std::string S(bufsize, 0);
@@ -2939,7 +2939,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		// The Master will then ask for a response to those events (all 16!!), which we have to give it, as simulated TCP.
 		// Each should be responded to with an OK packet, and its callback executed.
 
-		IOS->post([&]()
+		IOS->post([MD3OSPort,&OSoutput,&OSwrite_buffer]()
 			{
 				MD3BlockFn19MtoS commandblock(0x7C, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
 				MD3BlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON? Top byte ON, bottom byte OFF
@@ -2979,7 +2979,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		OSResponse = "Not Set";
 		MAResponse = "Not Set";
 
-		IOS->post([&]()
+		IOS->post([MD3OSPort,&OSoutput,&OSwrite_buffer]()
 			{
 				MD3BlockFn17MtoS commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
 				MD3BlockData datablock = commandblock.GenerateSecondBlock();

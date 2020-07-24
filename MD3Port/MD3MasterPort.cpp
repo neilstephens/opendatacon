@@ -209,7 +209,7 @@ void MD3MasterPort::PostCallbackCall(const odc::SharedStatusCallback_t &pStatusC
 void MD3MasterPort::SendNextMasterCommand()
 {
 	// We have to control access in the TCP callback, the send command, clear commands and the timeout callbacks.
-	MasterCommandStrand->dispatch([&]()
+	MasterCommandStrand->dispatch([this]()
 		{
 			UnprotectedSendNextMasterCommand(false);
 		});
@@ -237,7 +237,7 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::UNDEFINED);
 
 				// so mark everything as if we have lost comms!
-				pIOS->post([&]()
+				pIOS->post([this]()
 					{
 						SetAllPointsQualityToCommsLost(); // All the connected points need their quality set to comms lost
 					});
@@ -271,13 +271,13 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 
 			std::chrono::milliseconds endtime = MasterCommandProtectedData.TimerExpireTime;
 
-			MasterCommandProtectedData.CurrentCommandTimeoutTimer->async_wait([&,endtime](asio::error_code err_code)
+			MasterCommandProtectedData.CurrentCommandTimeoutTimer->async_wait([this,endtime](asio::error_code err_code)
 				{
 					if (err_code != asio::error::operation_aborted)
 					{
 					// We need strand protection for the variables, so this will queue another chunk of work below.
 					// If we get an answer in the delay this causes, no big deal - the length of the timeout will kind of jitter.
-					      MasterCommandStrand->dispatch([&,endtime]()
+					      MasterCommandStrand->dispatch([this,endtime]()
 							{
 								// The checking of the expire time is another way to make sure that we have not cancelled the timer. We really need to make sure that if
 								// we have cancelled the timer and this callback is called, that we do NOT take any action!
@@ -308,7 +308,7 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 // Strand protected clear the command queue.
 void MD3MasterPort::ClearMD3CommandQueue()
 {
-	MasterCommandStrand->dispatch([&]()
+	MasterCommandStrand->dispatch([this]()
 		{
 			MD3Message_t NextCommand;
 			while (!MasterCommandProtectedData.MasterCommandQueue.empty())
@@ -343,7 +343,7 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
 	//! Anywhere we find that we don't have what we need, return. If we succeed we send the next command at the end of this method.
 	// If the timeout on the command is activated, then the next command will be sent - or resent.
 	// Cant just use by reference, complete message and header will go out of scope...
-	MasterCommandStrand->dispatch([&, CompleteMD3Message]()
+	MasterCommandStrand->dispatch([this, CompleteMD3Message]()
 		{
 
 			if (CompleteMD3Message.size() == 0)
@@ -1381,7 +1381,7 @@ void MD3MasterPort::SetAllPointsQualityToCommsLost()
 	eventbinary->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
 
 	// Loop through all Binary points.
-	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &Point)
+	MyPointConf->PointTable.ForEachBinaryPoint([this,eventbinary](MD3BinaryPoint &Point)
 		{
 			uint32_t index = Point.GetIndex();
 			eventbinary->SetIndex(index);
@@ -1393,7 +1393,7 @@ void MD3MasterPort::SetAllPointsQualityToCommsLost()
 
 	auto eventanalog = std::make_shared<EventInfo>(EventType::AnalogQuality, 0, Name, QualityFlags::COMM_LOST);
 	eventanalog->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
-	MyPointConf->PointTable.ForEachAnalogPoint([&](MD3AnalogCounterPoint &Point)
+	MyPointConf->PointTable.ForEachAnalogPoint([this,eventanalog](MD3AnalogCounterPoint &Point)
 		{
 			uint32_t index = Point.GetIndex();
 			if (!MyPointConf->PointTable.ResetAnalogValueUsingODCIndex(index)) // Sets to 0x8000, time = 0, HasBeenSet to false
@@ -1406,7 +1406,7 @@ void MD3MasterPort::SetAllPointsQualityToCommsLost()
 	auto eventcounter = std::make_shared<EventInfo>(EventType::CounterQuality, 0, Name, QualityFlags::COMM_LOST);
 	eventcounter->SetPayload<EventType::CounterQuality>(QualityFlags::COMM_LOST);
 
-	MyPointConf->PointTable.ForEachCounterPoint([&](MD3AnalogCounterPoint &Point)
+	MyPointConf->PointTable.ForEachCounterPoint([this,eventcounter](MD3AnalogCounterPoint &Point)
 		{
 			uint32_t index = Point.GetIndex();
 			if (!MyPointConf->PointTable.ResetCounterValueUsingODCIndex(index)) // Sets to 0x8000, time = 0, HasBeenSet to false
@@ -1421,7 +1421,7 @@ void MD3MasterPort::SetAllPointsQualityToCommsLost()
 void MD3MasterPort::SendAllPointEvents()
 {
 	// Quality of ONLINE means the data is GOOD.
-	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &Point)
+	MyPointConf->PointTable.ForEachBinaryPoint([this](MD3BinaryPoint &Point)
 		{
 			uint32_t index = Point.GetIndex();
 			uint8_t meas = Point.GetBinary();
@@ -1433,7 +1433,7 @@ void MD3MasterPort::SendAllPointEvents()
 		});
 
 	// Analogs
-	MyPointConf->PointTable.ForEachAnalogPoint([&](MD3AnalogCounterPoint &Point)
+	MyPointConf->PointTable.ForEachAnalogPoint([this](MD3AnalogCounterPoint &Point)
 		{
 			uint32_t index = Point.GetIndex();
 			uint16_t meas = Point.GetAnalog();
@@ -1447,7 +1447,7 @@ void MD3MasterPort::SendAllPointEvents()
 		});
 
 	// Counters
-	MyPointConf->PointTable.ForEachCounterPoint([&](MD3AnalogCounterPoint &Point)
+	MyPointConf->PointTable.ForEachCounterPoint([this](MD3AnalogCounterPoint &Point)
 		{
 			uint32_t index = Point.GetIndex();
 			uint16_t meas = Point.GetAnalog();
