@@ -328,7 +328,7 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 		for(auto idx : indexes)
 		{
 			// Rakesh, do I really need the start value present check here or not?
-			pSimConf->SetUpdateInterval(odc::EventType::Binary, idx, delta);
+			pSimConf->SetUpdateInterval(odc::EventType::Analog, idx, delta);
 			auto pTimer = Timers.at("Analog"+std::to_string(idx));
 			if(!delta) //zero means no updates
 			{
@@ -360,28 +360,17 @@ bool SimPort::UIRelease(EventType type, const std::string& index)
 bool SimPort::SetForcedState(const std::string& index, EventType type, bool forced)
 {
 	auto indexes = IndexesFromString(index, type);
-	if (!indexes.size())
-		return false;
+	for (auto idx : indexes)
+		pSimConf->SetForcedState(type, idx, forced);
 
-	if (type == EventType::Binary)
-	{
-		for (auto idx : indexes)
-		{
-			pSimConf->SetForcedState(type, idx, forced);
-		}
-	}
-	else if (type == EventType::Analog)
-	{
-		for (auto idx : indexes)
-		{
-			pSimConf->SetForcedState(type, idx, forced);
-		}
-	}
-	else
-		return false;
-
-	return true;
+	bool result = true;
+	if (indexes.empty() ||
+	    !(type == EventType::Binary ||
+	      type == EventType::Analog))
+		result = false;
+	return result;
 }
+
 std::string SimPort::GetCurrentBinaryValsAsJSONString(const std::string& index)
 {
 	auto indexes = IndexesFromString(index, EventType::Binary);
