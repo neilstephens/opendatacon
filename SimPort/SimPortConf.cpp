@@ -231,44 +231,16 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 		}
 		for(auto index = start; index <= stop; index++)
 		{
-
-			bool exists = false;
-			for(auto existing_index : BinaryIndicies)
-				if(existing_index == index)
-					exists = true;
-
-			if(!exists)
-				BinaryIndicies.push_back(index);
-
-			if(binaries[n].isMember("UpdateIntervalms"))
-				BinaryUpdateIntervalms[index] = binaries[n]["UpdateIntervalms"].asUInt();
-
 			if(binaries[n].isMember("StartVal"))
 			{
-				std::string start_val = binaries[n]["StartVal"].asString();
-				if(start_val == "D") //delete this index
-				{
-					if(BinaryStartVals.count(index))
-						BinaryStartVals.erase(index);
-					if(BinaryUpdateIntervalms.count(index))
-						BinaryUpdateIntervalms.erase(index);
-					for(auto it = BinaryIndicies.begin(); it != BinaryIndicies.end(); it++)
-						if(*it == index)
-						{
-							BinaryIndicies.erase(it);
-							break;
-						}
-				}
-				else if(start_val == "X")
-					BinaryStartVals[index] = false; //TODO: implement quality - use std::pair, or build the EventInfo here
+				const std::string start_val = binaries[n]["StartVal"].asString();
+				if(start_val == "X")
+					m_pport_data->SetPayload(odc::EventType::Binary, index, false); //TODO: implement quality - use std::pair, or build the EventInfo here
 				else
-					BinaryStartVals[index] = binaries[n]["StartVal"].asBool();
+					m_pport_data->SetPayload(odc::EventType::Binary, index, binaries[n]["StartVal"].asBool());
 			}
-			else if(BinaryStartVals.count(index))
-				BinaryStartVals.erase(index);
 		}
 	}
-	std::sort(BinaryIndicies.begin(),BinaryIndicies.end());
 }
 
 void SimPortConf::m_ProcessBinaryControls(const Json::Value& binary_controls)

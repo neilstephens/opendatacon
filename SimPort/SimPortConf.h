@@ -116,11 +116,6 @@ public:
 	bool IsIndex(odc::EventType type, std::size_t index) const;
 	Json::Value GetCurrentState() const;
 
-	std::vector<uint32_t> BinaryIndicies;
-	std::map<uint32_t, bool> BinaryStartVals;
-	std::map<uint32_t, bool> BinaryVals;
-	std::map<uint32_t, bool> BinaryForcedStates;
-	std::map<uint32_t, unsigned int> BinaryUpdateIntervalms;
 	std::vector<uint32_t> ControlIndicies;
 	std::map<uint32_t, unsigned int> ControlIntervalms;
 	std::map<uint32_t, std::vector<BinaryFeedback>> ControlFeedback;

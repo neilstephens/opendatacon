@@ -127,7 +127,7 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 		bool val = event->GetPayload<EventType::Binary>();
 		pIOS->post([&, index, val]()
 			{
-				pSimConf->BinaryVals[index] = val;
+				pSimConf->SetPayload(event->GetEventType(), index, val);
 			});
 	}
 }
@@ -250,7 +250,7 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 			if (force)
 			{ //lock scope
 				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				pSimConf->BinaryForcedStates[idx] = true;
+				pSimConf->SetForcedState(EventType::Binary, idx, true);
 			}
 			auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,Q,ts);
 			bool valb = (val >= 1);
@@ -321,7 +321,6 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 	{
 		for(auto idx : indexes)
 		{
-			// Rakesh, do I really need the start value present check here or not?
 			pSimConf->SetUpdateInterval(odc::EventType::Analog, idx, delta);
 			auto pTimer = Timers.at("Analog"+std::to_string(idx));
 			if(!delta) //zero means no updates
@@ -376,7 +375,7 @@ std::string SimPort::GetCurrentBinaryValsAsJSONString(const std::string& index)
 		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 		for (auto idx : indexes)
 		{
-			root[std::to_string(idx)] = pSimConf->BinaryVals[idx] ? "1" : "0";
+			root[std::to_string(idx)] = pSimConf->GetPayload(odc::EventType::Binary, idx) ? "1" : "0";
 		}
 	}
 	Json::StreamWriterBuilder wbuilder;
@@ -493,8 +492,7 @@ void SimPort::PortUp()
 		bool val;
 		{ //lock scope
 			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			val = pSimConf->BinaryStartVals.count(index) ? pSimConf->BinaryStartVals.at(index) : false;
-			pSimConf->BinaryStartVals[index] = val;
+			val = pSimConf->GetPayload(odc::EventType::Binary, index);
 		}
 		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
 		event->SetPayload<EventType::Binary>(std::move(val));
@@ -506,18 +504,14 @@ void SimPort::PortUp()
 		//queue up a timer if it has an update interval
 		{ //lock scope
 			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			if (pSimConf->BinaryUpdateIntervalms.count(index))
-			{
-				auto interval = pSimConf->BinaryUpdateIntervalms[index];
-
-				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
-				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-				pTimer->async_wait([=](asio::error_code err_code)
-					{
-						if (enabled && !err_code)
-							StartBinaryEvents(index, !val);
-					});
-			}
+			auto interval = pSimConf->GetUpdateInterval(odc::EventType::Binary, index);
+			auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
+			pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
+			pTimer->async_wait([=](asio::error_code err_code)
+				{
+					if (enabled && !err_code)
+						StartBinaryEvents(index, !val);
+				});
 		}
 	}
 }
@@ -853,14 +847,14 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 							case ControlCode::CLOSE_PULSE_ON:
 							case ControlCode::TRIP_PULSE_ON:
 							{
-								if(!pSimConf->BinaryForcedStates[fb.on_value->GetIndex()])
+								if(!pSimConf->GetForcedState(odc::EventType::Binary, fb.on_value->GetIndex()))
 									PostPublishEvent(fb.on_value);
 								pTimer_t pTimer = pIOS->make_steady_timer();
 								pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
 								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
 									{
 										//FIXME: check err_code?
-										if(!pSimConf->BinaryForcedStates[fb.off_value->GetIndex()])
+										if(!pSimConf->GetForcedState(odc::EventType::Binary, fb.off_value->GetIndex()))
 											PostPublishEvent(fb.off_value);
 									});
 								//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
@@ -882,7 +876,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 									log->trace("{}: Control {}: Latch on feedback to Binary {}.",
 										Name, index,fb.on_value->GetIndex());
 								fb.on_value->SetTimestamp();
-								if(!pSimConf->BinaryForcedStates[fb.on_value->GetIndex()])
+								if(!pSimConf->GetForcedState(odc::EventType::Binary, fb.on_value->GetIndex()))
 									PostPublishEvent(fb.on_value);
 								break;
 							case ControlCode::LATCH_OFF:
@@ -892,7 +886,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 									log->trace("{}: Control {}: Latch off feedback to Binary {}.",
 										Name, index,fb.off_value->GetIndex());
 								fb.off_value->SetTimestamp();
-								if(!pSimConf->BinaryForcedStates[fb.off_value->GetIndex()])
+								if(!pSimConf->GetForcedState(odc::EventType::Binary, fb.off_value->GetIndex()))
 									PostPublishEvent(fb.off_value);
 								break;
 							default:
