@@ -140,12 +140,6 @@ std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 const Json::Value SimPort::GetCurrentState() const
 {
 	return pSimConf->GetCurrentState();
-	/*
-	for(const auto& ind_val_pair : pSimConf->BinaryVals)
-	    current_state["BinaryCurrent"][ind_val_pair.first] = ind_val_pair.second;
-	for(const auto& ind_val_pair : pSimConf->AnalogVals)
-	    current_state["AnalogCurrent"][ind_val_pair.first] = ind_val_pair.second;
-	*/
 }
 const Json::Value SimPort::GetStatistics() const
 {
