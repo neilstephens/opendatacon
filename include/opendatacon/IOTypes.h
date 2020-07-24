@@ -396,6 +396,16 @@ inline bool GetConnectStateFromStringName(const std::string StrConnectState, Con
 	return false;
 }
 
+inline EventType ToEventType(const std::string& str_type)
+{
+	EventType type;
+	if (to_lower(str_type) == "binary")
+		type = EventType::Binary;
+	if (to_lower(str_type) == "analog")
+		type = EventType::Analog;
+	return type;
+}
+
 typedef uint64_t msSinceEpoch_t;
 inline msSinceEpoch_t msSinceEpoch()
 {

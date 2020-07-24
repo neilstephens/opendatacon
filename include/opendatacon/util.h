@@ -45,7 +45,7 @@ void spdlog_shutdown();
 bool getline_noncomment(std::istream& is, std::string& line);
 bool extract_delimited_string(std::istream& ist, std::string& extracted);
 bool extract_delimited_string(const std::string& delims, std::istream& ist, std::string& extracted);
-
+std::string to_lower(const std::string& str);
 } //namspace odc
 
 #endif //UTIL_H

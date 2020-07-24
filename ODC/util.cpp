@@ -143,4 +143,12 @@ bool extract_delimited_string(const std::string& delims, std::istream& ist, std:
 	return extract_delimited_string(ist,extracted);
 }
 
+std::string to_lower(const std::string& str)
+{
+	std::string lower = str;
+	std::transform(lower.begin(), lower.end(), lower.begin(),
+		[](unsigned char c) { return std::tolower(c); });
+	return lower;
+}
+
 } // namespace odc

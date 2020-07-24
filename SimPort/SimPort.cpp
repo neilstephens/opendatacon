@@ -38,12 +38,6 @@
 
 thread_local std::mt19937 SimPort::RandNumGenerator = std::mt19937(std::random_device()());
 
-std::string StringToLower(std::string strToConvert)
-{
-	std::transform(strToConvert.begin(), strToConvert.end(), strToConvert.begin(), (int (*)(int)) std::tolower); // Specific overload requested..google it
-
-	return strToConvert;
-}
 std::vector<std::string> split(const std::string& s, char delimiter)
 {
 	std::vector<std::string> tokens;
@@ -164,10 +158,9 @@ const Json::Value SimPort::GetStatus() const
 	return status;
 }
 
-std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
+std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str, EventType type)
 {
 	std::vector<std::size_t> indexes;
-	odc::EventType point_type = (type == "analog") ? odc::EventType::Analog : odc::EventType::Binary;
 	//Check for comma separated list,no white space
 	std::regex comma_regx("^[0-9]+(?:,[0-9]+)*$");
 
@@ -187,7 +180,7 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 				continue;
 			}
 			{
-				if(pSimConf->IsIndex(point_type, idx))
+				if(pSimConf->IsIndex(type, idx))
 				{
 					indexes.push_back(idx);
 					break;
@@ -200,7 +193,7 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 		try
 		{
 			std::regex ind_regex(index_str,std::regex::extended);
-			const std::vector<std::size_t> allowed_indexes = pSimConf->GetIndexes(point_type);
+			const std::vector<std::size_t> allowed_indexes = pSimConf->GetIndexes(type);
 			for(auto allowed : allowed_indexes)
 			{
 				if(std::regex_match(std::to_string(allowed),ind_regex))
@@ -210,14 +203,15 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 		catch(std::exception& e)
 		{}
 	}
+
 	return indexes;
 }
 
-bool SimPort::UILoad(const std::string& type, const std::string& index, const std::string& value, const std::string& quality, const std::string& timestamp, const bool force)
+bool SimPort::UILoad(EventType type, const std::string& index, const std::string& value, const std::string& quality, const std::string& timestamp, const bool force)
 {
 	if (auto log = odc::spdlog_get("SimPort"))
 	{
-		log->debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, type, index, value, quality, timestamp, force);
+		log->debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, ToString(type), index, value, quality, timestamp, force);
 	}
 
 	double val;
@@ -255,7 +249,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 		}
 	}
 
-	if(StringToLower(type) == "binary")
+	if(type == EventType::Binary)
 	{
 		for(auto idx : indexes)
 		{
@@ -270,7 +264,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 			PostPublishEvent(event);
 		}
 	}
-	else if(StringToLower(type) == "analog")
+	else if(type == EventType::Analog)
 	{
 		for(auto idx : indexes)
 		{
@@ -290,7 +284,7 @@ bool SimPort::UILoad(const std::string& type, const std::string& index, const st
 	return true;
 }
 
-bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& index, const std::string& period)
+bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, const std::string& period)
 {
 	unsigned int delta;
 	try
@@ -306,7 +300,7 @@ bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& in
 	if(!indexes.size())
 		return false;
 
-	if(StringToLower(type) == "binary")
+	if(type == EventType::Binary)
 	{
 		for(auto idx : indexes)
 		{
@@ -329,7 +323,7 @@ bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& in
 			}
 		}
 	}
-	else if(StringToLower(type) == "analog")
+	else if(type == EventType::Analog)
 	{
 		for(auto idx : indexes)
 		{
@@ -358,30 +352,29 @@ bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& in
 	return true;
 }
 
-bool SimPort::UIRelease(const std::string& type, const std::string& index)
+bool SimPort::UIRelease(EventType type, const std::string& index)
 {
 	return SetForcedState(index, type, false);
 }
 
-bool SimPort::SetForcedState(const std::string& index, const std::string& type, bool forced)
+bool SimPort::SetForcedState(const std::string& index, EventType type, bool forced)
 {
-	const odc::EventType point_type = (type == "binary") ? odc::EventType::Binary : odc::EventType::Analog;
 	auto indexes = IndexesFromString(index, type);
 	if (!indexes.size())
 		return false;
 
-	if (StringToLower(type) == "binary")
+	if (type == EventType::Binary)
 	{
 		for (auto idx : indexes)
 		{
-			pSimConf->SetForcedState(point_type, idx, forced);
+			pSimConf->SetForcedState(type, idx, forced);
 		}
 	}
-	else if (StringToLower(type) == "analog")
+	else if (type == EventType::Analog)
 	{
 		for (auto idx : indexes)
 		{
-			pSimConf->SetForcedState(point_type, idx, forced);
+			pSimConf->SetForcedState(type, idx, forced);
 		}
 	}
 	else
@@ -391,7 +384,7 @@ bool SimPort::SetForcedState(const std::string& index, const std::string& type, 
 }
 std::string SimPort::GetCurrentBinaryValsAsJSONString(const std::string& index)
 {
-	auto indexes = IndexesFromString(index, "binary");
+	auto indexes = IndexesFromString(index, EventType::Binary);
 	if (!indexes.size())
 		return "";
 	Json::Value root;
@@ -411,7 +404,7 @@ std::string SimPort::GetCurrentBinaryValsAsJSONString(const std::string& index)
 
 std::string SimPort::GetCurrentAnalogValsAsJSONString(const std::string& index)
 {
-	auto indexes = IndexesFromString(index, "analog");
+	auto indexes = IndexesFromString(index, EventType::Analog);
 	if (!indexes.size())
 		return "";
 	Json::Value root;
@@ -720,11 +713,11 @@ void SimPort::Build()
 
 				if (error.length() == 0)
 				{
-				      if (StringToLower(type) == "binary")
+				      if (to_lower(type) == "binary")
 				      {
 				            result = GetCurrentBinaryValsAsJSONString(index);
 					}
-				      if (StringToLower(type) == "analog")
+				      if (to_lower(type) == "analog")
 				      {
 				            result = GetCurrentAnalogValsAsJSONString(index);
 					}
@@ -753,7 +746,7 @@ void SimPort::Build()
 				// So when we hit here, someone has made a POST request of our Port.
 				// The UILoad checks the values past to it and sets sensible defaults if they are missing.
 
-				std::string type = "";
+				EventType type;
 				std::string index = "";
 				std::string value = "";
 				std::string quality = "";
@@ -762,7 +755,7 @@ void SimPort::Build()
 				std::string error = "";
 
 				if (parameters.count("type") != 0)
-					type = parameters.at("type");
+					type = ToEventType(parameters.at("type"));
 				else
 					error = "No 'type' parameter found";
 
@@ -778,12 +771,12 @@ void SimPort::Build()
 
 				if (parameters.count("force") != 0)
 				{
-				      if (((StringToLower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
+				      if (((to_lower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
 				      {
 				            SetForcedState(index, type, true);
 				            rep.content.append("Set Period Command Accepted\n");
 					}
-				      if (((StringToLower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
+				      if (((to_lower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
 				      {
 				            SetForcedState(index, type, false);
 				            rep.content.append("Set Period Command Accepted\n");

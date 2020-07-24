@@ -69,8 +69,6 @@ private:
 
 	/* Internal functions */
 	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);
-
-	void ToLower(std::string& str);
 };
 
 #endif /* defined(__opendatacon__WebUI__) */

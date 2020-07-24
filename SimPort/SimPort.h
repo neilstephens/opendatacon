@@ -58,10 +58,10 @@ public:
 	const Json::Value GetStatistics() const override;
 	const Json::Value GetStatus() const override;
 
-	bool UILoad(const std::string &type, const std::string &index, const std::string &value, const std::string &quality, const std::string &timestamp, const bool force);
-	bool UIRelease(const std::string& type, const std::string& index);
-	bool SetForcedState(const std::string& index, const std::string& type, bool forced);
-	bool UISetUpdateInterval(const std::string& type, const std::string& index, const std::string& period);
+	bool UILoad(EventType type, const std::string &index, const std::string &value, const std::string &quality, const std::string &timestamp, const bool force);
+	bool UIRelease(EventType type, const std::string& index);
+	bool SetForcedState(const std::string& index, EventType type, bool forced);
+	bool UISetUpdateInterval(EventType type, const std::string& index, const std::string& period);
 
 private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
@@ -123,7 +123,7 @@ private:
 	}
 	void PortUp();
 	void PortDown();
-	std::vector<std::size_t> IndexesFromString(const std::string& index_str, const std::string &type);
+	std::vector<std::size_t> IndexesFromString(const std::string& index_str, EventType type);
 
 	std::shared_ptr<SimPortCollection> SimCollection;
 
