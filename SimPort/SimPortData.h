@@ -42,21 +42,23 @@ public:
 	std::string HttpPort() const;
 	void Version(const std::string& version);
 	std::string Version() const;
-	double GetDefaultStdDev() const;
+	double DefaultStdDev() const;
 
-	void SetPoint(odc::EventType type, std::size_t index, const std::string& name,
+	void CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
 		double std_dev, std::size_t update_interal, double value);
-	void SetForcedState(odc::EventType type, std::size_t index, bool state);
-	bool GetForcedState(odc::EventType type, std::size_t) const;
-	void SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
-	std::size_t GetUpdateInterval(odc::EventType type, std::size_t index) const;
-	void SetPayload(odc::EventType type, std::size_t index, double payload);
-	double GetPayload(odc::EventType type, std::size_t index) const;
-	double GetStartValue(odc::EventType type, std::size_t index) const;
-	double GetStdDev(std::size_t index) const;
+	void Event(std::shared_ptr<odc::EventInfo> event);
+	std::shared_ptr<odc::EventInfo> Event(odc::EventType type, std::size_t index) const;
+	void ForcedState(odc::EventType type, std::size_t index, bool state);
+	bool ForcedState(odc::EventType type, std::size_t) const;
+	void UpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
+	std::size_t UpdateInterval(odc::EventType type, std::size_t index) const;
+	void Payload(odc::EventType type, std::size_t index, double payload);
+	double Payload(odc::EventType type, std::size_t index) const;
+	double StartValue(odc::EventType type, std::size_t index) const;
+	double StdDev(std::size_t index) const;
 
-	std::vector<std::size_t> GetIndexes(odc::EventType type) const;
-	std::unordered_map<std::size_t, double> GetValues(odc::EventType type) const;
+	std::vector<std::size_t> Indexes(odc::EventType type) const;
+	std::unordered_map<std::size_t, double> Values(odc::EventType type) const;
 
 	bool IsIndex(odc::EventType type, std::size_t index) const;
 

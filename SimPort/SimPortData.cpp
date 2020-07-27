@@ -66,65 +66,75 @@ std::string SimPortData::Version() const
 	return m_version;
 }
 
-double SimPortData::GetDefaultStdDev() const
+double SimPortData::DefaultStdDev() const
 {
 	return m_default_std_dev_factor;
 }
 
-void SimPortData::SetPoint(odc::EventType type, std::size_t index, const std::string& name,
+void SimPortData::CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
 	double std_dev, std::size_t update_interal, double value)
 {
-	m_ppoint_data->SetPoint(type, index, name, std_dev, update_interal, value);
+	m_ppoint_data->CreateEvent(type, index, name, std_dev, update_interal, value);
 }
 
-void SimPortData::SetForcedState(odc::EventType type, std::size_t index, bool state)
+void SimPortData::Event(std::shared_ptr<odc::EventInfo> event)
 {
-	m_ppoint_data->SetForcedState(type, index, state);
+	m_ppoint_data->Event(event);
 }
 
-bool SimPortData::GetForcedState(odc::EventType type, std::size_t index) const
+std::shared_ptr<odc::EventInfo> SimPortData::Event(odc::EventType type, std::size_t index) const
 {
-	return m_ppoint_data->GetForcedState(type, index);
+	return m_ppoint_data->Event(type, index);
 }
 
-void SimPortData::SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
+void SimPortData::ForcedState(odc::EventType type, std::size_t index, bool state)
 {
-	m_ppoint_data->SetUpdateInterval(type, index, value);
+	m_ppoint_data->ForcedState(type, index, state);
 }
 
-std::size_t SimPortData::GetUpdateInterval(odc::EventType type, std::size_t index) const
+bool SimPortData::ForcedState(odc::EventType type, std::size_t index) const
 {
-	return m_ppoint_data->GetUpdateInterval(type, index);
+	return m_ppoint_data->ForcedState(type, index);
 }
 
-void SimPortData::SetPayload(odc::EventType type, std::size_t index, double payload)
+void SimPortData::UpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
 {
-	m_ppoint_data->SetPayload(type, index, payload);
+	m_ppoint_data->UpdateInterval(type, index, value);
 }
 
-double SimPortData::GetPayload(odc::EventType type, std::size_t index) const
+std::size_t SimPortData::UpdateInterval(odc::EventType type, std::size_t index) const
 {
-	return m_ppoint_data->GetPayload(type, index);
+	return m_ppoint_data->UpdateInterval(type, index);
 }
 
-double SimPortData::GetStartValue(odc::EventType type, std::size_t index) const
+void SimPortData::Payload(odc::EventType type, std::size_t index, double payload)
 {
-	return m_ppoint_data->GetStartValue(type, index);
+	m_ppoint_data->Payload(type, index, payload);
 }
 
-double SimPortData::GetStdDev(std::size_t index) const
+double SimPortData::Payload(odc::EventType type, std::size_t index) const
 {
-	return m_ppoint_data->GetStdDev(index);
+	return m_ppoint_data->Payload(type, index);
 }
 
-std::vector<std::size_t> SimPortData::GetIndexes(odc::EventType type) const
+double SimPortData::StartValue(odc::EventType type, std::size_t index) const
 {
-	return m_ppoint_data->GetIndexes(type);
+	return m_ppoint_data->StartValue(type, index);
 }
 
-std::unordered_map<std::size_t, double> SimPortData::GetValues(odc::EventType type) const
+double SimPortData::StdDev(std::size_t index) const
 {
-	return m_ppoint_data->GetValues(type);
+	return m_ppoint_data->StdDev(index);
+}
+
+std::vector<std::size_t> SimPortData::Indexes(odc::EventType type) const
+{
+	return m_ppoint_data->Indexes(type);
+}
+
+std::unordered_map<std::size_t, double> SimPortData::Values(odc::EventType type) const
+{
+	return m_ppoint_data->Values(type);
 }
 
 bool SimPortData::IsIndex(odc::EventType type, std::size_t index) const

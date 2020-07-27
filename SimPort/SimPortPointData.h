@@ -54,19 +54,21 @@ class SimPortPointData
 public:
 	SimPortPointData();
 
-	void SetPoint(odc::EventType type, std::size_t index, const std::string& name,
+	void CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
 		double s_dev, std::size_t u_interval, double val);
-	void SetForcedState(odc::EventType type, std::size_t index, bool state);
-	bool GetForcedState(odc::EventType type, std::size_t index);
-	void SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
-	std::size_t GetUpdateInterval(odc::EventType type, std::size_t index);
-	void SetPayload(odc::EventType type, std::size_t index, double payload);
-	double GetPayload(odc::EventType type, std::size_t index);
-	double GetStartValue(odc::EventType type, std::size_t index);
-	double GetStdDev(std::size_t index);
+	void Event(std::shared_ptr<odc::EventInfo> event);
+	std::shared_ptr<odc::EventInfo> Event(odc::EventType type, std::size_t index);
+	void ForcedState(odc::EventType type, std::size_t index, bool state);
+	bool ForcedState(odc::EventType type, std::size_t index);
+	void UpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
+	std::size_t UpdateInterval(odc::EventType type, std::size_t index);
+	void Payload(odc::EventType type, std::size_t index, double payload);
+	double Payload(odc::EventType type, std::size_t index);
+	double StartValue(odc::EventType type, std::size_t index);
+	double StdDev(std::size_t index);
 
-	std::vector<std::size_t> GetIndexes(odc::EventType type);
-	std::unordered_map<std::size_t , double> GetValues(odc::EventType type);
+	std::vector<std::size_t> Indexes(odc::EventType type);
+	std::unordered_map<std::size_t , double> Values(odc::EventType type);
 
 	bool IsIndex(odc::EventType type, std::size_t index);
 

@@ -80,12 +80,8 @@ private:
 	void SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset = 0);
 	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)
 	{
-		double mean, std_dev;
-		{ //lock scope
-			mean = pSimConf->GetStartValue(EventType::Analog, event->GetIndex());
-			std_dev = pSimConf->GetStdDev(event->GetIndex());
-		}
-
+		double mean = pSimConf->StartValue(EventType::Analog, event->GetIndex());
+		double std_dev = pSimConf->StdDev(event->GetIndex());
 		//change value around mean - handle 0 which windows does not...
 		if (std_dev != 0)
 		{

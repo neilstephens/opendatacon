@@ -56,19 +56,19 @@ std::unordered_map<std::string, DB_STATEMENT> SimPortConf::GetDBStats() const
 	return m_db_stats;
 }
 
-TimestampMode SimPortConf::GetTimestampHandling() const
+TimestampMode SimPortConf::TimestampHandling() const
 {
 	return m_timestamp_handling;
 }
 
-void SimPortConf::SetName(const std::string& name)
+void SimPortConf::Name(const std::string& name)
 {
 	m_name = name;
 }
 
-double SimPortConf::GetDefaultStdDev() const
+double SimPortConf::DefaultStdDev() const
 {
-	return m_pport_data->GetDefaultStdDev();
+	return m_pport_data->DefaultStdDev();
 }
 
 std::string SimPortConf::HttpAddress() const
@@ -86,49 +86,59 @@ std::string SimPortConf::Version() const
 	return m_pport_data->Version();
 }
 
-double SimPortConf::GetStdDev(std::size_t index) const
+double SimPortConf::StdDev(std::size_t index) const
 {
-	return m_pport_data->GetStdDev(index);
+	return m_pport_data->StdDev(index);
 }
 
-void SimPortConf::SetPayload(odc::EventType type, std::size_t index, double payload)
+void SimPortConf::Event(std::shared_ptr<odc::EventInfo> event)
 {
-	m_pport_data->SetPayload(type, index, payload);
+	m_pport_data->Event(event);
 }
 
-double SimPortConf::GetPayload(odc::EventType type, std::size_t index) const
+std::shared_ptr<odc::EventInfo> SimPortConf::Event(odc::EventType type, std::size_t index) const
 {
-	return m_pport_data->GetPayload(type, index);
+	return m_pport_data->Event(type, index);
 }
 
-double SimPortConf::GetStartValue(odc::EventType type, std::size_t index) const
+void SimPortConf::Payload(odc::EventType type, std::size_t index, double payload)
 {
-	return m_pport_data->GetStartValue(type, index);
+	m_pport_data->Payload(type, index, payload);
 }
 
-void SimPortConf::SetForcedState(odc::EventType type, std::size_t index, bool value)
+double SimPortConf::Payload(odc::EventType type, std::size_t index) const
 {
-	m_pport_data->SetForcedState(type, index, value);
+	return m_pport_data->Payload(type, index);
 }
 
-bool SimPortConf::GetForcedState(odc::EventType type, std::size_t index) const
+double SimPortConf::StartValue(odc::EventType type, std::size_t index) const
 {
-	return m_pport_data->GetForcedState(type, index);
+	return m_pport_data->StartValue(type, index);
 }
 
-void SimPortConf::SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
+void SimPortConf::ForcedState(odc::EventType type, std::size_t index, bool value)
 {
-	m_pport_data->SetUpdateInterval(type, index, value);
+	m_pport_data->ForcedState(type, index, value);
 }
 
-std::size_t SimPortConf::GetUpdateInterval(odc::EventType type, std::size_t index) const
+bool SimPortConf::ForcedState(odc::EventType type, std::size_t index) const
 {
-	return m_pport_data->GetUpdateInterval(type, index);
+	return m_pport_data->ForcedState(type, index);
 }
 
-std::vector<std::size_t> SimPortConf::GetIndexes(odc::EventType type) const
+void SimPortConf::UpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
 {
-	return m_pport_data->GetIndexes(type);
+	m_pport_data->UpdateInterval(type, index, value);
+}
+
+std::size_t SimPortConf::UpdateInterval(odc::EventType type, std::size_t index) const
+{
+	return m_pport_data->UpdateInterval(type, index);
+}
+
+std::vector<std::size_t> SimPortConf::Indexes(odc::EventType type) const
+{
+	return m_pport_data->Indexes(type);
 }
 
 bool SimPortConf::IsIndex(odc::EventType type, std::size_t index) const
@@ -136,15 +146,15 @@ bool SimPortConf::IsIndex(odc::EventType type, std::size_t index) const
 	return m_pport_data->IsIndex(type, index);
 }
 
-Json::Value SimPortConf::GetCurrentState() const
+Json::Value SimPortConf::CurrentState() const
 {
 	Json::Value state;
-	std::unordered_map<std::size_t, double> values = m_pport_data->GetValues(EventType::Binary);
+	std::unordered_map<std::size_t, double> values = m_pport_data->Values(EventType::Binary);
 	for (auto it = values.begin(); it != values.end(); ++it)
 	{
 		state["BinaryCurrent"][std::to_string(it->first)] = std::to_string(it->second);
 	}
-	values = m_pport_data->GetValues(EventType::Analog);
+	values = m_pport_data->Values(EventType::Analog);
 	for (auto it = values.begin(); it != values.end(); ++it)
 	{
 		state["AnalogCurrent"][std::to_string(it->first)] = std::to_string(it->second);
@@ -205,7 +215,7 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 					start_val = std::numeric_limits<double>::infinity();
 				else
 					start_val = std::stod(str_start_val);
-				m_pport_data->SetPoint(odc::EventType::Analog, index, m_name, std_dev, update_interval, start_val);
+				m_pport_data->CreateEvent(odc::EventType::Analog, index, m_name, std_dev, update_interval, start_val);
 			}
 		}
 	}
@@ -235,9 +245,9 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 			{
 				const std::string start_val = binaries[n]["StartVal"].asString();
 				if(start_val == "X")
-					m_pport_data->SetPayload(odc::EventType::Binary, index, false); //TODO: implement quality - use std::pair, or build the EventInfo here
+					m_pport_data->Payload(odc::EventType::Binary, index, false); //TODO: implement quality - use std::pair, or build the EventInfo here
 				else
-					m_pport_data->SetPayload(odc::EventType::Binary, index, binaries[n]["StartVal"].asBool());
+					m_pport_data->CreateEvent(odc::EventType::Binary, index, m_name, 0.0f, 0.0f, binaries[n]["StartVal"].asBool());
 			}
 		}
 	}

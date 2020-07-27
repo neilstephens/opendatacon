@@ -29,7 +29,7 @@
 
 SimPortPointData::SimPortPointData() {}
 
-void SimPortPointData::SetPoint(odc::EventType type, std::size_t index, const std::string& name,
+void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
 	double s_dev, std::size_t u_interval, double val)
 {
 	if (type == odc::EventType::Analog)
@@ -55,41 +55,61 @@ void SimPortPointData::SetPoint(odc::EventType type, std::size_t index, const st
 		p.update_interval = u_interval;
 
 		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Binary, index, name, odc::QualityFlags::ONLINE);
-		evt->SetPayload<odc::EventType::Binary>(static_cast<bool>(val));
+		bool v = static_cast<bool>(val);
+		evt->SetPayload<odc::EventType::Binary>(std::move(v));
 		p.event = evt;
 		m_points[odc::EventType::Binary][index] = std::make_shared<Point>(p);
 	}
 }
 
-void SimPortPointData::SetForcedState(odc::EventType type, std::size_t index, bool state)
+std::shared_ptr<odc::EventInfo> SimPortPointData::Event(odc::EventType type, std::size_t index)
+{
+	return m_points[type][index]->event;
+}
+
+void SimPortPointData::Event(std::shared_ptr<odc::EventInfo> event)
+{
+	m_points[event->GetEventType()][event->GetIndex()]->event = event;
+}
+
+void SimPortPointData::ForcedState(odc::EventType type, std::size_t index, bool state)
 {
 	m_points[type][index]->forced_state = state;
 }
 
-bool SimPortPointData::GetForcedState(odc::EventType type, std::size_t index)
+bool SimPortPointData::ForcedState(odc::EventType type, std::size_t index)
 {
 	return m_points[type][index]->forced_state;
 }
 
-void SimPortPointData::SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
+void SimPortPointData::UpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
 {
 	m_points[type][index]->update_interval = value;
 }
 
-std::size_t SimPortPointData::GetUpdateInterval(odc::EventType type, std::size_t index)
+std::size_t SimPortPointData::UpdateInterval(odc::EventType type, std::size_t index)
 {
 	return m_points[type][index]->update_interval;
 }
 
-void SimPortPointData::SetPayload(odc::EventType type, std::size_t index, double payload)
+void SimPortPointData::Payload(odc::EventType type, std::size_t index, double payload)
 {
+	auto points = m_points[type];
+	if (points.find(index) == points.end())
+	{
+		if(auto log = odc::spdlog_get("SimPort"))
+		{
+			log->error("{} Index == {} not found on the points container, why they are asking for set?", ToString(type), index);
+			return;
+		}
+	}
 	if (type == odc::EventType::Analog)
 		m_points[type][index]->event->SetPayload<odc::EventType::Analog>(std::move(payload));
 	if (type == odc::EventType::Binary)
-		m_points[type][index]->event->SetPayload<odc::EventType::Binary>(std::move(payload));
+		m_points[type][index]->event->SetPayload<odc::EventType::Binary>(std::move(static_cast<bool>(payload)));
 }
 
-double SimPortPointData::GetPayload(odc::EventType type, std::size_t index)
+double SimPortPointData::Payload(odc::EventType type, std::size_t index)
 {
 	double payload = 0.0f;
 	if (type == odc::EventType::Analog)
@@ -99,17 +119,17 @@ double SimPortPointData::GetPayload(odc::EventType type, std::size_t index)
 	return payload;
 }
 
-double SimPortPointData::GetStartValue(odc::EventType type, std::size_t index)
+double SimPortPointData::StartValue(odc::EventType type, std::size_t index)
 {
 	return m_points[type][index]->start_value;
 }
 
-double SimPortPointData::GetStdDev(std::size_t index)
+double SimPortPointData::StdDev(std::size_t index)
 {
 	return m_points[odc::EventType::Analog][index]->std_dev;
 }
 
-std::vector<std::size_t> SimPortPointData::GetIndexes(odc::EventType type)
+std::vector<std::size_t> SimPortPointData::Indexes(odc::EventType type)
 {
 	std::vector<std::size_t> indexes;
 	auto points = m_points[type];
@@ -120,7 +140,7 @@ std::vector<std::size_t> SimPortPointData::GetIndexes(odc::EventType type)
 	return indexes;
 }
 
-std::unordered_map<std::size_t, double> SimPortPointData::GetValues(odc::EventType type)
+std::unordered_map<std::size_t, double> SimPortPointData::Values(odc::EventType type)
 {
 	std::unordered_map<std::size_t, double> values;
 	auto points = m_points[type];

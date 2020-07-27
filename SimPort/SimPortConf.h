@@ -95,26 +95,28 @@ public:
 
 	void ProcessElements(const Json::Value& json_root);
 	std::unordered_map<std::string, DB_STATEMENT> GetDBStats() const;
-	TimestampMode GetTimestampHandling() const;
-	void SetName(const std::string& name);
-	double GetDefaultStdDev() const;
+	TimestampMode TimestampHandling() const;
+	void Name(const std::string& name);
+	double DefaultStdDev() const;
 
 	std::string HttpAddress() const;
 	std::string HttpPort() const;
 	std::string Version() const;
 
-	double GetStdDev(std::size_t index) const;
+	double StdDev(std::size_t index) const;
 
-	void SetPayload(odc::EventType type, std::size_t index, double payload);
-	double GetPayload(odc::EventType type, std::size_t index) const;
-	double GetStartValue(odc::EventType type, std::size_t index) const;
-	void SetForcedState(odc::EventType type, std::size_t index, bool value);
-	bool GetForcedState(odc::EventType type, std::size_t index) const;
-	void SetUpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
-	std::size_t GetUpdateInterval(odc::EventType type, std::size_t) const;
-	std::vector<std::size_t> GetIndexes(odc::EventType type) const;
+	void Event(std::shared_ptr<odc::EventInfo> event);
+	std::shared_ptr<odc::EventInfo> Event(odc::EventType type, std::size_t index) const;
+	void Payload(odc::EventType type, std::size_t index, double payload);
+	double Payload(odc::EventType type, std::size_t index) const;
+	double StartValue(odc::EventType type, std::size_t index) const;
+	void ForcedState(odc::EventType type, std::size_t index, bool value);
+	bool ForcedState(odc::EventType type, std::size_t index) const;
+	void UpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
+	std::size_t UpdateInterval(odc::EventType type, std::size_t) const;
+	std::vector<std::size_t> Indexes(odc::EventType type) const;
 	bool IsIndex(odc::EventType type, std::size_t index) const;
-	Json::Value GetCurrentState() const;
+	Json::Value CurrentState() const;
 
 	std::vector<uint32_t> ControlIndicies;
 	std::map<uint32_t, unsigned int> ControlIntervalms;
