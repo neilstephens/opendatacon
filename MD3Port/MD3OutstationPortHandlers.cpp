@@ -398,8 +398,13 @@ void MD3OutstationPort::SendAnalogOrCounterUnconditional(MD3_FUNCTION_CODE funct
 	for (uint8_t i = 0; i < NumberOfDataBlocks; i++)
 	{
 		bool lastblock = (i + 1 == NumberOfDataBlocks);
+		auto firstblock = Analogs[2 * i];
 
-		auto block = MD3BlockData(Analogs[2 * i], Analogs[2 * i + 1], lastblock);
+		uint16_t secondblock = 0;
+		if (Analogs.size() > (2u * i + 1))
+			secondblock = Analogs[2 * i + 1];
+
+		auto block = MD3BlockData(firstblock, secondblock, lastblock);
 		ResponseMD3Message.push_back(block);
 	}
 	SendMD3Message(ResponseMD3Message);
@@ -423,7 +428,20 @@ void MD3OutstationPort::SendAnalogDelta(std::vector<int> Deltas, uint8_t Station
 	{
 		bool lastblock = (i + 1 == NumberOfDataBlocks);
 
-		auto block = MD3BlockData(numeric_cast<uint8_t>(Deltas[i * 4]), numeric_cast<uint8_t>(Deltas[i * 4 + 1]), numeric_cast<uint8_t>(Deltas[i * 4 + 2]), numeric_cast<uint8_t>(Deltas[i * 4 + 3]), lastblock);
+		// Check for overflows, we can only guarantee the first value....
+		auto block1 = numeric_cast<uint8_t>(Deltas[i * 4]);
+		uint8_t block2 = 0;
+		uint8_t block3 = 0;
+		uint8_t block4 = 0;
+
+		if (Deltas.size() > (i * 4u + 1))
+			block2 = numeric_cast<uint8_t>(Deltas[i * 4 + 1]);
+		if (Deltas.size() > (i * 4u + 2))
+			block3 = numeric_cast<uint8_t>(Deltas[i * 4 + 2]);
+		if (Deltas.size() > (i * 4u + 3))
+			block4 = numeric_cast<uint8_t>(Deltas[i * 4 + 3]);
+
+		auto block = MD3BlockData(block1, block2 , block3, block4, lastblock);
 		ResponseMD3Message.push_back(block);
 	}
 	SendMD3Message(ResponseMD3Message);
@@ -803,7 +821,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 
 void MD3OutstationPort::MarkAllBinaryPointsAsChanged()
 {
-	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &pt)
+	MyPointConf->PointTable.ForEachBinaryPoint([](MD3BinaryPoint &pt)
 		{
 			pt.SetChangedFlag();
 		});
@@ -914,7 +932,7 @@ uint8_t MD3OutstationPort::CountBinaryBlocksWithChanges()
 	int lastblock = -1; // Non valid value
 
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
-	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &pt)
+	MyPointConf->PointTable.ForEachBinaryPoint([&lastblock,&changedblocks](MD3BinaryPoint &pt)
 		{
 			if (pt.GetChangedFlag())
 			{
@@ -987,7 +1005,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(uint8_t StartModul
 	uint8_t LastModuleAddress = 0;
 	bool WeAreScanning = (StartModuleAddress == 0); // If the startmoduleaddress is zero, we store changes from the start.
 
-	MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &Point)
+	MyPointConf->PointTable.ForEachBinaryPoint([StartModuleAddress,&WeAreScanning,&ModuleList,&LastModuleAddress](MD3BinaryPoint &Point)
 		{
 			uint8_t ModuleAddress = Point.GetModuleAddress();
 
@@ -1005,7 +1023,7 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(uint8_t StartModul
 	if (StartModuleAddress != 0)
 	{
 		// We have to then start again from zero, if we did not start from there.
-		MyPointConf->PointTable.ForEachBinaryPoint([&](MD3BinaryPoint &Point)
+		MyPointConf->PointTable.ForEachBinaryPoint([StartModuleAddress,&WeAreScanning,&ModuleList,&LastModuleAddress](MD3BinaryPoint &Point)
 			{
 				uint8_t ModuleAddress = Point.GetModuleAddress();
 
@@ -1536,7 +1554,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS& Header, MD3Message_t& Co
 	uint64_t currenttime = MD3NowUTC();
 
 	// So when adjusting SOE times, just add the Offset to the Clock (current time)
-	SOETimeOffsetMinutes = round(((msecsinceepoch > currenttime ) ? msecsinceepoch - currenttime : currenttime - msecsinceepoch )/(60.0*1000.0));
+	SOETimeOffsetMinutes = static_cast<int>(round(((msecsinceepoch > currenttime ) ? msecsinceepoch - currenttime : currenttime - msecsinceepoch )/(60.0*1000.0)));
 	if (msecsinceepoch < currenttime)
 		SOETimeOffsetMinutes = -SOETimeOffsetMinutes;
 
@@ -1582,13 +1600,13 @@ void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS& Header, MD3Message_t&
 
 	// Not used for now...
 	MD3BlockData& utcoffsetblock = CompleteMD3Message[2];
-	auto utcoffsetminutes = (int16_t)utcoffsetblock.GetFirstWord();
+	auto utcoffsetminutes = static_cast<int16_t>(utcoffsetblock.GetFirstWord());
 
 	// MD3 only maintains a time tagged change list for digitals/binaries Epoch is 1970, 1, 1 - Same as for MD3
 	uint64_t currenttime = MD3NowUTC();
 
 	// So when adjusting SOE times, just add the Offset to the Clock (current time)
-	SOETimeOffsetMinutes = round(((msecsinceepoch > currenttime) ? msecsinceepoch - currenttime : currenttime - msecsinceepoch) / (60.0 * 1000.0));
+	SOETimeOffsetMinutes = static_cast<int>(round(((msecsinceepoch > currenttime) ? msecsinceepoch - currenttime : currenttime - msecsinceepoch) / (60.0 * 1000.0)));
 	if (msecsinceepoch < currenttime)
 		SOETimeOffsetMinutes = -SOETimeOffsetMinutes;
 

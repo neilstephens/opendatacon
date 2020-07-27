@@ -114,7 +114,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 	std::ofstream ofs(conffilename1);
 	if (!ofs)
 	{
-		INFO("Could not open conffile1 for writing");
+		INFO("Could not open conffile1 for writing")
 	}
 	ofs << conffile1;
 	ofs.close();
@@ -177,7 +177,7 @@ void TestSetup(const std::string& TestName, bool writeconffiles = true)
 }
 void TestTearDown(void)
 {
-	INFO("Test Finished");
+	INFO("Test Finished")
 	#ifndef NONVSTESTING
 
 	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
@@ -233,8 +233,8 @@ bool WaitIOSFnResult(const std::shared_ptr<odc::asio_service>& IOS, int MaxWaitS
 class protected_string
 {
 public:
-	protected_string(): val("") {};
-	protected_string(const std::string& _val): val(_val) {};
+	protected_string(): val("") {}
+	protected_string(const std::string& _val): val(_val) {}
 	std::string  getandset(const std::string& newval)
 	{
 		std::unique_lock<std::shared_timed_mutex> lck(m);
@@ -410,9 +410,9 @@ TEST_CASE("Py.TestsUsingPython")
 
 
 	// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
-	REQUIRE_NOTHROW([&]()
+	REQUIRE_NOTHROW([=]()
 		{
-			if (!WaitIOSFnResult(IOS, 10, [&]()
+			if (!WaitIOSFnResult(IOS, 10, [=]()
 				{
 					return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
 				}))
@@ -425,7 +425,7 @@ TEST_CASE("Py.TestsUsingPython")
 	INFO("SendBinaryAndAnalogEvents")
 	{
 		std::atomic<CommandStatus> res{ CommandStatus::UNDEFINED };
-		auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&](CommandStatus command_stat)
+		auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([&res](CommandStatus command_stat)
 			{
 				res = command_stat;
 			});
@@ -435,19 +435,21 @@ TEST_CASE("Py.TestsUsingPython")
 		auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
 		boolevent->SetPayload<EventType::Binary>(std::move(val));
 
+		// Send a bool event on 4 ports, but only check that the first succeeded.
 		LOGINFO("Sending Binary Events");
 		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
 		PythonPort2->Event(boolevent, "TestHarness2", nullptr);
 		PythonPort3->Event(boolevent, "TestHarness3", nullptr);
 		PythonPort4->Event(boolevent, "TestHarness4", nullptr);
 
-		REQUIRE_NOTHROW([&]()
+		REQUIRE_NOTHROW([IOS,&res]()
 			{
 				if (!WaitIOSResult(IOS, 12, res, CommandStatus::UNDEFINED))
 					throw std::runtime_error("Command Status Update timed out");
 			} ());
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
+		// Now send an Analog Event, and check that it worked.
 		res = CommandStatus::UNDEFINED;
 		double fval = 100.1;
 		ODCIndex = 1001;
@@ -456,18 +458,19 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort->Event(event2, "TestHarness", pStatusCallback);
 
-		REQUIRE_NOTHROW([&]()
+		REQUIRE_NOTHROW([IOS,&res]()
 			{
 				if (!WaitIOSResult(IOS, 10, res, CommandStatus::UNDEFINED))
 					throw("Command Status Update timed out");
 			} ());
 		REQUIRE(ToString(res) == ToString(CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 
+		// Now create a web request and inject it into the code (simulate it coming in through a TCP connection)
 		std::string url("http://testserver/thisport/cb?test=harold");
 		protected_string sres("");
 
 		std::atomic<size_t> done_count(0);
-		auto pResponseCallback = std::make_shared<std::function<void(std::string url)>>([&](std::string response)
+		auto pResponseCallback = std::make_shared<std::function<void(std::string url)>>([&sres,&done_count](std::string response)
 			{
 				sres.set(std::move(response));
 				done_count++;
@@ -476,9 +479,10 @@ TEST_CASE("Py.TestsUsingPython")
 		// Direct inject web request to python code - we get response back from python module PyPortSim.py
 		PythonPort->RestHandler(url, "", pResponseCallback);
 
-		REQUIRE_NOTHROW([&]()
+		// Check that the Send Event occured.
+		REQUIRE_NOTHROW([IOS,&done_count]()
 			{
-				if (!WaitIOSFnResult(IOS, 5, [&]()
+				if (!WaitIOSFnResult(IOS, 5, [&done_count]()
 					{
 						return bool(done_count);
 					}))
@@ -487,26 +491,31 @@ TEST_CASE("Py.TestsUsingPython")
 				}
 			} ());
 
+		// Check that the web response is correct.
 		LOGDEBUG("Response {}", sres.get());
 		REQUIRE(sres.get() == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
 
 		// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.
+		// The first value is the timer ID, the second the delay in msec. The python code can handle them as it sees fit.
+		// Only timer id 1 restarts itself, every 250msec
 		PythonPort->SetTimer(120, 1200);
 		PythonPort->SetTimer(121, 1000);
 		PythonPort->SetTimer(122, 800);
 
+		// Make 1000 web requests, each one starts a timer callback - all going off in less than a second. They dont actually do anything
+		// (other than try to make the code fail/crash)
 		done_count = 0;
 		for (uint32_t i = 0; i < 1000; i++)
 		{
 			url = fmt::format("RestHandler sent url {:d}", i);
-			PythonPort2->SetTimer(i + 100, 1001 - i);
-			PythonPort->RestHandler(url, "", pResponseCallback);
+			PythonPort2->SetTimer(i + 100, 1001 - i);            // Just laoding up the response system, we dont check the results
+			PythonPort->RestHandler(url, "", pResponseCallback); // This callback should be called 1000 times...
 		}
 
-		// Wait - we should see the timer callback triggered and no crashes!
-		REQUIRE_NOTHROW([&]()
+		// Wait - we should see the timer callback triggered (1000 times) and no crashes!
+		REQUIRE_NOTHROW([IOS,&done_count]()
 			{
-				if (!WaitIOSFnResult(IOS, 7, [&]()
+				if (!WaitIOSFnResult(IOS, 7, [&done_count]()
 					{
 						if(done_count >= 1000)
 							return true;
@@ -566,9 +575,9 @@ TEST_CASE("Py.TestsUsingPython")
 	PythonPort3->Disable();
 	PythonPort4->Disable();
 
-	REQUIRE_NOTHROW([&]()
+	REQUIRE_NOTHROW([=]()
 		{
-			if (!WaitIOSFnResult(IOS, 10, [&]()
+			if (!WaitIOSFnResult(IOS, 10, [=]()
 				{
 					return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
 				}))
@@ -587,9 +596,9 @@ TEST_CASE("Py.TestsUsingPython")
 
 		PythonPort5->Enable();
 		// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
-		REQUIRE_NOTHROW([&]()
+		REQUIRE_NOTHROW([IOS,PythonPort5]()
 			{
-				if (!WaitIOSFnResult(IOS, 11, [&]()
+				if (!WaitIOSFnResult(IOS, 11, [PythonPort5]()
 					{
 						return (PythonPort5->Enabled());
 					}))
@@ -611,7 +620,7 @@ TEST_CASE("Py.TestsUsingPython")
 				});
 		}
 
-		IOS->post([&]()
+		IOS->post([PythonPort5,&block_callbacks]()
 			{
 				LOGINFO("Sending Binary Events 1");
 				for (int ODCIndex = 1; ODCIndex <= 5000; ODCIndex++)
@@ -623,7 +632,7 @@ TEST_CASE("Py.TestsUsingPython")
 				}
 				LOGINFO("Sending Binary Events 1 Done");
 			});
-		IOS->post([&]()
+		IOS->post([PythonPort5,&block_callbacks]()
 			{
 				LOGINFO("Sending Binary Events 2");
 				for (int ODCIndex = 5001; ODCIndex <= 9000; ODCIndex++)
@@ -635,7 +644,7 @@ TEST_CASE("Py.TestsUsingPython")
 				}
 				LOGINFO("Sending Binary Events 2 Done");
 			});
-		IOS->post([&]()
+		IOS->post([PythonPort5,&block_callbacks]()
 			{
 				LOGINFO("Sending Binary Events 3");
 				for (int ODCIndex = 9001; ODCIndex <= 12000; ODCIndex++)
@@ -647,7 +656,7 @@ TEST_CASE("Py.TestsUsingPython")
 				}
 				LOGINFO("Sending Binary Events 3 Done");
 			});
-		IOS->post([&]()
+		IOS->post([PythonPort5,&block_callbacks]()
 			{
 				LOGINFO("Sending Binary Events 4");
 				for (int ODCIndex = 12001; ODCIndex <= 15000; ODCIndex++)
@@ -662,9 +671,9 @@ TEST_CASE("Py.TestsUsingPython")
 
 
 		LOGERROR("Waiting for all events to be queued");
-		REQUIRE_NOTHROW([&]()
+		REQUIRE_NOTHROW([IOS,&block_counts]()
 			{
-				if (!WaitIOSFnResult(IOS, 60, [&]() // RPI very much slower than everything else... 5 works for all other platforms...
+				if (!WaitIOSFnResult(IOS, 60, [&block_counts]() // RPI very much slower than everything else... 5 works for all other platforms...
 					{
 						if(block_counts[0]+block_counts[1]+block_counts[2]+block_counts[3] < 15000)
 							return false;
@@ -677,9 +686,9 @@ TEST_CASE("Py.TestsUsingPython")
 			} ());
 		LOGERROR("All events queued");
 
-		REQUIRE_NOTHROW([&]()
+		REQUIRE_NOTHROW([IOS,PythonPort5]()
 			{
-				if (!WaitIOSFnResult(IOS, 6, [&]()
+				if (!WaitIOSFnResult(IOS, 6, [PythonPort5]()
 					{
 						if(PythonPort5->GetEventQueueSize() > 1)
 							return false;
@@ -716,9 +725,9 @@ TEST_CASE("Py.TestsUsingPython")
 		LOGDEBUG("Tests Complete, starting teardown");
 
 		PythonPort5->Disable();
-		REQUIRE_NOTHROW([&]()
+		REQUIRE_NOTHROW([IOS,PythonPort]()
 			{
-				if (!WaitIOSFnResult(IOS, 11, [&]()
+				if (!WaitIOSFnResult(IOS, 11, [PythonPort]()
 					{
 						return (!PythonPort->Enabled());
 					}))

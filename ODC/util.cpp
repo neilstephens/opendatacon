@@ -30,6 +30,17 @@
 #include <utility>
 namespace odc
 {
+static std::string ConfigVersion = "None";
+
+std::string GetConfigVersion()
+{
+	return ConfigVersion;
+}
+
+void SetConfigVersion(std::string Version)
+{
+	ConfigVersion = Version;
+}
 
 void spdlog_init_thread_pool(size_t q_size, size_t thread_count)
 {
@@ -43,7 +54,7 @@ std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool()
 
 void spdlog_flush_all()
 {
-	spdlog::apply_all([&](const std::shared_ptr<spdlog::logger>& l) {l->flush(); });
+	spdlog::apply_all([](const std::shared_ptr<spdlog::logger>& l) {l->flush(); });
 }
 
 void spdlog_apply_all(const std::function<void(std::shared_ptr<spdlog::logger>)> &fun)

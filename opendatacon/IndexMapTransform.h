@@ -36,7 +36,7 @@ class IndexMapTransform: public Transform
 public:
 	IndexMapTransform(const Json::Value& params): Transform(params)
 	{
-		auto load_map = [&](const std::string& map_name, std::unordered_map<uint16_t,uint16_t>& map)
+		auto load_map = [&params](const std::string& map_name, std::unordered_map<uint16_t,uint16_t>& map)
 				    {
 					    if(params.isMember(map_name) && params[map_name].isMember("From") && params[map_name].isMember("To")
 					       && params[map_name]["From"].isArray() && params[map_name]["To"].isArray() && params[map_name]["From"].size() == params[map_name]["To"].size())

@@ -83,7 +83,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 
 void SimPort::Enable()
 {
-	pEnableDisableSync->post([&]()
+	pEnableDisableSync->post([this]()
 		{
 			if(!enabled)
 			{
@@ -96,7 +96,7 @@ void SimPort::Enable()
 
 void SimPort::Disable()
 {
-	pEnableDisableSync->post([&]()
+	pEnableDisableSync->post([this]()
 		{
 			if(enabled)
 			{
@@ -616,7 +616,7 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, pSimConf->Version());
+		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::GetConfigVersion());
 		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				rep.status = http::reply::ok;
@@ -631,7 +631,7 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(pServer, "GET /Version", versionhandler);
 
-		auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+		auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				// So when we hit here, someone has made a Get request of our Named Port.
 				// The parameters are type and index, we return value, quality and timestamp
@@ -684,7 +684,7 @@ void SimPort::Build()
 			});
 		HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
-		auto posthandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+		auto posthandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				// So when we hit here, someone has made a POST request of our Port.
 				// The UILoad checks the values past to it and sets sensible defaults if they are missing.

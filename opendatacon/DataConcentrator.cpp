@@ -64,7 +64,7 @@ inline void AddLogger(const std::string& name, const std::unordered_map<std::str
 inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks)
 {
 	std::vector<std::string> lognames;
-	odc::spdlog_apply_all([&](std::shared_ptr<spdlog::logger> log)
+	odc::spdlog_apply_all([&lognames](std::shared_ptr<spdlog::logger> log)
 		{
 			lognames.push_back(log->name());
 		});
@@ -358,6 +358,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject())
 		throw std::runtime_error("No valid JSON config object");
+
+	odc::SetConfigVersion(JSONRoot.isMember("Version") ? JSONRoot["Version"].asString() : "No Version Available");
 
 	//setup log sinks
 	auto log_size_kb = JSONRoot.isMember("LogFileSizekB") ? JSONRoot["LogFileSizekB"].asUInt() : 5*1024;
@@ -816,7 +818,7 @@ void DataConcentrator::Run()
 	for(auto& Name_n_UI : Interfaces)
 	{
 		starting_element_count++;
-		pIOS->post([&]()
+		pIOS->post([this,Name_n_UI]()
 			{
 				Name_n_UI.second->Enable();
 				starting_element_count--;
@@ -870,53 +872,53 @@ void DataConcentrator::Shutdown()
 			shutting_down = true;
 			try
 			{
-				//wait for startup to finish before shutdown
-				while(starting_element_count > 0)
+			//wait for startup to finish before shutdown
+			      while(starting_element_count > 0)
 					pIOS->run_one();
 
-				if(auto log = odc::spdlog_get("opendatacon"))
-				{
-					log->critical("Shutting Down...");
-					log->info("Disabling Interfaces...");
+			      if(auto log = odc::spdlog_get("opendatacon"))
+			      {
+			            log->critical("Shutting Down...");
+			            log->info("Disabling Interfaces...");
 				}
-				for(auto& Name_n_UI : Interfaces)
-				{
-					Name_n_UI.second->Disable();
+			      for(auto& Name_n_UI : Interfaces)
+			      {
+			            Name_n_UI.second->Disable();
 				}
-				if(auto log = odc::spdlog_get("opendatacon"))
+			      if(auto log = odc::spdlog_get("opendatacon"))
 					log->info("Disabling DataConnectors...");
-				for(auto& Name_n_Conn : DataConnectors)
-				{
-					Name_n_Conn.second->Disable();
+			      for(auto& Name_n_Conn : DataConnectors)
+			      {
+			            Name_n_Conn.second->Disable();
 				}
-				if(auto log = odc::spdlog_get("opendatacon"))
+			      if(auto log = odc::spdlog_get("opendatacon"))
 					log->info("Disabling DataPorts...");
-				for(auto& Name_n_Port : DataPorts)
-				{
-					Name_n_Port.second->Disable();
+			      for(auto& Name_n_Port : DataPorts)
+			      {
+			            Name_n_Port.second->Disable();
 				}
 
-				if(auto log = odc::spdlog_get("opendatacon"))
-				{
-					log->info("Finishing asynchronous tasks...");
-					log->flush(); //for the benefit of tcp logger shutdown
+			      if(auto log = odc::spdlog_get("opendatacon"))
+			      {
+			            log->info("Finishing asynchronous tasks...");
+			            log->flush(); //for the benefit of tcp logger shutdown
 				}
 
-				//shutdown tcp logger so it doesn't keep the io_service going
-				for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
-				{
-					it->second.DeInit();
-					if(LogSinks.find(it->first) != LogSinks.end())
+			      //shutdown tcp logger so it doesn't keep the io_service going
+			      for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
+			      {
+			            it->second.DeInit();
+			            if(LogSinks.find(it->first) != LogSinks.end())
 						LogSinks[it->first]->set_level(spdlog::level::off);
 				}
 
-				ios_working.reset();
+			      ios_working.reset();
 			}
 			catch(const std::exception& e)
 			{
-				if(auto log = odc::spdlog_get("opendatacon"))
+			      if(auto log = odc::spdlog_get("opendatacon"))
 					log->critical("Caught exception in DataConcentrator::Shutdown(): {}", e.what());
-				//Fall through - we set the shutting_down flag for watchdog
+			//Fall through - we set the shutting_down flag for watchdog
 			}
 		});
 }
