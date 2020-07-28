@@ -137,6 +137,16 @@ std::unordered_map<std::size_t, double> SimPortData::Values(odc::EventType type)
 	return m_ppoint_data->Values(type);
 }
 
+Json::Value SimPortData::CurrentState() const
+{
+	return m_ppoint_data->CurrentState();
+}
+
+std::string SimPortData::CurrentState(odc::EventType type, std::vector<std::size_t>& indexes) const
+{
+	return m_ppoint_data->CurrentState(type, indexes);
+}
+
 bool SimPortData::IsIndex(odc::EventType type, std::size_t index) const
 {
 	return m_ppoint_data->IsIndex(type, index);

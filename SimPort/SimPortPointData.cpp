@@ -154,7 +154,52 @@ std::unordered_map<std::size_t, double> SimPortPointData::Values(odc::EventType 
 	return values;
 }
 
+Json::Value SimPortPointData::CurrentState()
+{
+	Json::Value state;
+	odc::EventType type = odc::EventType::Binary;
+	for (auto it = m_points[type].begin(); it != m_points[type].end(); ++it)
+	{
+		const bool val = it->second->event->GetPayload<odc::EventType::Binary>();
+		state["BinaryCurrent"][std::to_string(it->first)] = std::to_string(val);
+	}
+	type = odc::EventType::Analog;
+	for (auto it = m_points[type].begin(); it != m_points[type].end(); ++it)
+	{
+		const double val = it->second->event->GetPayload<odc::EventType::Analog>();
+		state["AnalogCurrent"][std::to_string(it->first)] = std::to_string(val);
+	}
+	return state;
+}
+
+std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std::size_t>& indexes)
+{
+	Json::Value state;
+	for (std::size_t index : indexes)
+	{
+		if (m_points[type].find(index) != m_points[type].end())
+		{
+			if (type == odc::EventType::Binary)
+			{
+				const bool val = m_points[type][index]->event->GetPayload<odc::EventType::Binary>();
+				state[std::to_string(index)] = std::to_string(val);
+			}
+			if (type == odc::EventType::Analog)
+			{
+				const double val = m_points[type][index]->event->GetPayload<odc::EventType::Analog>();
+				state[std::to_string(index)] = std::to_string(val);
+			}
+		}
+	}
+	Json::StreamWriterBuilder wbuilder;
+	wbuilder["indentation"] = "";
+	const std::string result = Json::writeString(wbuilder, state);
+	return result;
+}
+
 bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 {
 	return m_points[type].find(index) == m_points[type].end();
 }
+
+

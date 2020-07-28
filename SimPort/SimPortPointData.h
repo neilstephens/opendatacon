@@ -29,6 +29,7 @@
 #define SIMPORTPOINTDATA_H
 
 #include <opendatacon/IOTypes.h>
+#include <json/json.h>
 #include <vector>
 #include <memory>
 #include <unordered_map>
@@ -69,6 +70,9 @@ public:
 
 	std::vector<std::size_t> Indexes(odc::EventType type);
 	std::unordered_map<std::size_t , double> Values(odc::EventType type);
+
+	Json::Value CurrentState();
+	std::string CurrentState(odc::EventType type, std::vector<std::size_t>& indexes);
 
 	bool IsIndex(odc::EventType type, std::size_t index);
 

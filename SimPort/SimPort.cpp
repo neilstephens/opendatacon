@@ -129,6 +129,7 @@ const Json::Value SimPort::GetCurrentState() const
 {
 	return pSimConf->CurrentState();
 }
+
 const Json::Value SimPort::GetStatistics() const
 {
 	Json::Value stats;
@@ -303,46 +304,6 @@ bool SimPort::SetForcedState(const std::string& index, EventType type, bool forc
 	bool result = true;
 	if (indexes.empty() || !ValidEventType(type))
 		result = false;
-	return result;
-}
-
-std::string SimPort::GetCurrentBinaryValsAsJSONString(const std::string& index)
-{
-	auto indexes = IndexesFromString(index, EventType::Binary);
-	if (!indexes.size())
-		return "";
-	Json::Value root;
-
-	{
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-		for (auto idx : indexes)
-		{
-			root[std::to_string(idx)] = pSimConf->Payload(odc::EventType::Binary, idx) ? "1" : "0";
-		}
-	}
-	Json::StreamWriterBuilder wbuilder;
-	wbuilder["indentation"] = "";
-	const std::string result = Json::writeString(wbuilder, root);
-	return result;
-}
-
-std::string SimPort::GetCurrentAnalogValsAsJSONString(const std::string& index)
-{
-	auto indexes = IndexesFromString(index, EventType::Analog);
-	if (!indexes.size())
-		return "";
-	Json::Value root;
-
-	{
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-		for (auto idx : indexes)
-		{
-			root[std::to_string(idx)] = std::to_string(pSimConf->Payload(odc::EventType::Analog, idx));
-		}
-	}
-	Json::StreamWriterBuilder wbuilder;
-	wbuilder["indentation"] = "";
-	const std::string result = Json::writeString(wbuilder, root);
 	return result;
 }
 
@@ -616,11 +577,13 @@ void SimPort::Build()
 				{
 				      if (to_lower(type) == "binary")
 				      {
-				            result = GetCurrentBinaryValsAsJSONString(index);
+				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
+				            result = pSimConf->CurrentState(EventType::Binary, indexes);
 					}
 				      if (to_lower(type) == "analog")
 				      {
-				            result = GetCurrentAnalogValsAsJSONString(index);
+				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
+				            result = pSimConf->CurrentState(EventType::Analog, indexes);
 					}
 				}
 				if (result.length() != 0)

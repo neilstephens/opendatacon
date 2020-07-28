@@ -60,6 +60,9 @@ public:
 	std::vector<std::size_t> Indexes(odc::EventType type) const;
 	std::unordered_map<std::size_t, double> Values(odc::EventType type) const;
 
+	Json::Value CurrentState() const;
+	std::string CurrentState(odc::EventType type, std::vector<std::size_t>& indexes) const;
+
 	bool IsIndex(odc::EventType type, std::size_t index) const;
 
 private:

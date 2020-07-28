@@ -148,18 +148,12 @@ bool SimPortConf::IsIndex(odc::EventType type, std::size_t index) const
 
 Json::Value SimPortConf::CurrentState() const
 {
-	Json::Value state;
-	std::unordered_map<std::size_t, double> values = m_pport_data->Values(EventType::Binary);
-	for (auto it = values.begin(); it != values.end(); ++it)
-	{
-		state["BinaryCurrent"][std::to_string(it->first)] = std::to_string(it->second);
-	}
-	values = m_pport_data->Values(EventType::Analog);
-	for (auto it = values.begin(); it != values.end(); ++it)
-	{
-		state["AnalogCurrent"][std::to_string(it->first)] = std::to_string(it->second);
-	}
-	return state;
+	return m_pport_data->CurrentState();
+}
+
+std::string SimPortConf::CurrentState(odc::EventType type, std::vector<std::size_t>& indexes) const
+{
+	return m_pport_data->CurrentState(type, indexes);
 }
 
 bool SimPortConf::m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const

@@ -117,6 +117,7 @@ public:
 	std::vector<std::size_t> Indexes(odc::EventType type) const;
 	bool IsIndex(odc::EventType type, std::size_t index) const;
 	Json::Value CurrentState() const;
+	std::string CurrentState(odc::EventType type, std::vector<std::size_t>& indexes) const;
 
 	std::vector<uint32_t> ControlIndicies;
 	std::map<uint32_t, unsigned int> ControlIntervalms;
