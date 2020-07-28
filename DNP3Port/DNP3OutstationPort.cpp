@@ -322,7 +322,7 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	// either one would avoid the below polling loop
 	std::atomic_bool cb_executed(false);
 	CommandStatus cb_status;
-	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
+	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_status,&cb_executed](CommandStatus status)
 		{
 			cb_status = status;
 			cb_executed = true;

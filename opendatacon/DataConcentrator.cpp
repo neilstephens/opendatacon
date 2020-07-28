@@ -64,7 +64,7 @@ inline void AddLogger(const std::string& name, const std::unordered_map<std::str
 inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks)
 {
 	std::vector<std::string> lognames;
-	odc::spdlog_apply_all([&](std::shared_ptr<spdlog::logger> log)
+	odc::spdlog_apply_all([&lognames](std::shared_ptr<spdlog::logger> log)
 		{
 			lognames.push_back(log->name());
 		});
@@ -818,7 +818,7 @@ void DataConcentrator::Run()
 	for(auto& Name_n_UI : Interfaces)
 	{
 		starting_element_count++;
-		pIOS->post([&]()
+		pIOS->post([this,Name_n_UI]()
 			{
 				Name_n_UI.second->Enable();
 				starting_element_count--;

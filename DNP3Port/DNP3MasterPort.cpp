@@ -199,7 +199,7 @@ void DNP3MasterPort::OnLinkDown()
 				log->info("{}: Disabling stack following disconnect on non-persistent port.", Name);
 
 			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
-			pIOS->post([&]()
+			pIOS->post([this]()
 				{
 					DisableStack();
 				});
@@ -320,7 +320,7 @@ template<typename T>
 inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<T> >& meas)
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	meas.ForeachItem([&](const opendnp3::Indexed<T>&pair)
+	meas.ForeachItem([this,pConf](const opendnp3::Indexed<T>&pair)
 		{
 			auto event = ToODC(pair.value, pair.index, Name);
 			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
@@ -370,7 +370,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			if(auto log = odc::spdlog_get("DNP3Port"))
 				log->info("{}: upstream port connected, performing on-demand connection.", Name);
 
-			pIOS->post([&]()
+			pIOS->post([this]()
 				{
 					EnableStack();
 				});
@@ -379,7 +379,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
 		if (stack_enabled && !InDemand() && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
-			pIOS->post([&]()
+			pIOS->post([this]()
 				{
 					DisableStack();
 				});

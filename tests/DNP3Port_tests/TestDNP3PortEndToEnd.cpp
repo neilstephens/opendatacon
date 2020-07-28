@@ -35,7 +35,7 @@ TEST_CASE(SUITE("TCP link"))
 	{
 		auto ios = odc::asio_service::Get();
 		auto work = ios->make_work();
-		std::thread t([&](){ios->run();});
+		std::thread t([ios](){ios->run();});
 
 		//make an outstation port
 		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
@@ -116,7 +116,7 @@ TEST_CASE(SUITE("Serial link"))
 		{
 			auto ios = odc::asio_service::Get();
 			auto work = ios->make_work();
-			std::thread t([&](){ios->run();});
+			std::thread t([ios](){ios->run();});
 
 			if(system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &"))
 			{

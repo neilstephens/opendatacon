@@ -54,24 +54,21 @@ public:
 	// Return front of queue value
 	bool sync_front(T& retval)
 	{
-		std::promise<T> promise;
-		auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
-		bool success = false;
+		auto promise = std::make_shared<std::promise<std::pair<bool,T>>>();
+		auto future = promise->get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
 		// Dispatch will execute now - if we can, otherwise results in a post
-		internal_queue_strand->dispatch([&]()
+		internal_queue_strand->dispatch([this,promise]()
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
 				if (!fifo.empty())
 				{
-				      success = true;
 				      T val = fifo.front();
-				      promise.set_value(val);
+				      promise->set_value({true,val});
 				}
 				else
 				{
-				      T val;
-				      promise.set_value(val); // success is false,so this value should never be used
+				      promise->set_value({false,T()}); // success is false,so this value should never be used
 				}
 			});
 
@@ -87,28 +84,29 @@ public:
 			queue_io_context.poll_one();
 		}
 
-		retval = future.get();
-		return success;
+		auto retpair = future.get();
+		retval = retpair.second;
+		return retpair.first;
 	}
 
 	// Try and pop a value, return true if success. We remove the item if successfull
 	bool sync_pop()
 	{
-		std::promise<bool> promise;
-		auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
+		auto promise = std::make_shared<std::promise<bool>>();
+		auto future = promise->get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
 		// Dispatch will execute now - if we can, otherwise results in a post
-		internal_queue_strand->dispatch([&]()
+		internal_queue_strand->dispatch([this,promise]() mutable
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
 				if (!fifo.empty())
 				{
 				      fifo.pop();
-				      promise.set_value(true);
+				      promise->set_value(true);
 				}
 				else
 				{
-				      promise.set_value(false);
+				      promise->set_value(false);
 				}
 			});
 
@@ -128,13 +126,13 @@ public:
 	}
 	bool sync_empty()
 	{
-		std::promise<bool> promise;
-		auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
+		auto promise = std::make_shared<std::promise<bool>>();
+		auto future = promise->get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
-		internal_queue_strand->dispatch([&]() // Dispatch will execute now - if we can, otherwise results in a post
+		internal_queue_strand->dispatch([this,promise]() // Dispatch will execute now - if we can, otherwise results in a post
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
-				promise.set_value(fifo.empty());
+				promise->set_value(fifo.empty());
 			});
 
 		// Synchronously wait for promise to be fulfilled - but we dont want to block the ASIO thread.
@@ -155,7 +153,7 @@ public:
 	void async_push(const T& _value, const T& _queuefullvalue, std::shared_ptr<spdlog::logger> log)
 	{
 		// Dispatch will execute now - if we can, otherwise results in a post. Need to copy the _value into the Lambda as it will go out of scope when async_push exits
-		internal_queue_strand->dispatch([&, _value, _queuefullvalue, log]()
+		internal_queue_strand->dispatch([this, _value, _queuefullvalue, log]()
 			{
 				// This is only called from within the internal_queue_strand, so we are safe.
 				// If more than one space available, proceed as normal.

@@ -223,7 +223,7 @@ CommandStatus CBOutstationPort::Perform(const std::shared_ptr<EventInfo>& event,
 	//NEIL: enquire about the possibility of the opendnp3 API having a callback for the result that would avoid the below polling loop
 	std::atomic_bool cb_executed(false);
 	CommandStatus cb_status;
-	auto StatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([&](CommandStatus status)
+	auto StatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([&cb_status,&cb_executed](CommandStatus status)
 		{
 			cb_status = status;
 			cb_executed = true;

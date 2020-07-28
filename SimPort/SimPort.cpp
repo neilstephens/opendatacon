@@ -89,7 +89,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 }
 void SimPort::Enable()
 {
-	pEnableDisableSync->post([&]()
+	pEnableDisableSync->post([this]()
 		{
 			if(!enabled)
 			{
@@ -101,7 +101,7 @@ void SimPort::Enable()
 }
 void SimPort::Disable()
 {
-	pEnableDisableSync->post([&]()
+	pEnableDisableSync->post([this]()
 		{
 			if(enabled)
 			{
@@ -122,7 +122,7 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 	if (event->GetEventType() == EventType::Analog)
 	{
 		double val = event->GetPayload<EventType::Analog>();
-		pIOS->post([&, index, val]()
+		pIOS->post([this, index, val]()
 			{
 				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 				pSimConf->AnalogVals[index] = val;
@@ -131,7 +131,7 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 	if (event->GetEventType() == EventType::Binary)
 	{
 		bool val = event->GetPayload<EventType::Binary>();
-		pIOS->post([&, index, val]()
+		pIOS->post([this, index, val]()
 			{
 				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 				pSimConf->BinaryVals[index] = val;
@@ -750,7 +750,7 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(pServer, "GET /Version", versionhandler);
 
-		auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+		auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				// So when we hit here, someone has made a Get request of our Named Port.
 				// The parameters are type and index, we return value, quality and timestamp
@@ -803,7 +803,7 @@ void SimPort::Build()
 			});
 		HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
-		auto posthandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+		auto posthandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				// So when we hit here, someone has made a POST request of our Port.
 				// The UILoad checks the values past to it and sets sensible defaults if they are missing.

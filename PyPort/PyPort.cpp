@@ -158,7 +158,7 @@ void PyPort::Build()
 		});
 
 	// Every call to pWrapper should be strand protected. NOTE ASIO is not running here...
-	python_strand->dispatch([&, PyModPath]()
+	python_strand->dispatch([this, PyModPath]()
 		{
 			LOGSTRAND("Entered Strand on Build");
 			// If first time constructor is called, will instansiate the interpreter.
@@ -199,7 +199,7 @@ void PyPort::Build()
 
 	HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-	auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+	auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
 			std::string contenttype = "application/json";
@@ -280,14 +280,14 @@ void PyPort::Enable()
 	LOGDEBUG("pWrapper is good!");
 
 	HttpServerManager::StartConnection(pServer);
-	std::promise<bool> promise;
-	auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
+	auto promise = std::make_shared<std::promise<bool>>();
+	auto future = promise->get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
-	python_strand->dispatch([&]()
+	python_strand->dispatch([this,promise]()
 		{
 			LOGSTRAND("Entered Strand on Enable");
 			pWrapper->Enable();
-			promise.set_value(true);
+			promise->set_value(true);
 			pWrapper->PortOperational();
 			LOGDEBUG("Port enabled and  operational 1 {}", Name);
 			LOGSTRAND("Exit Strand");
@@ -316,7 +316,7 @@ void PyPort::Disable()
 	// Leaves handlers in place, so can be restarted without re-adding handlers
 	HttpServerManager::StopConnection(pServer);
 
-	python_strand->dispatch([&]()
+	python_strand->dispatch([this]()
 		{
 			LOGSTRAND("Entered Strand on Disable");
 			pWrapper->Disable();
@@ -547,7 +547,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 	}
 	else
 	{
-		python_strand->dispatch([&, event, SenderName, pStatusCallback]()
+		python_strand->dispatch([this, event, SenderName, pStatusCallback]()
 			{
 				LOGSTRAND("Entered Strand on Event");
 				CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
@@ -569,7 +569,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 	pTimer_t timer = pIOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::milliseconds(delayms));
 	timer->async_wait(python_strand->wrap(
-		[&, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
+		[this, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
 		{
 			if (err_code != asio::error::operation_aborted)
 			{
@@ -591,7 +591,7 @@ void PyPort::RestHandler(const std::string& url, const std::string& content, con
 		return;
 	}
 
-	python_strand->dispatch([&, url, content, pResponseCallback]()
+	python_strand->dispatch([this, url, content, pResponseCallback]()
 		{
 			LOGSTRAND("Entered Strand on RestHandler");
 			std::string result = pWrapper->RestHandler(url,content); // Expect no long processing or waits in the python code to handle this.
@@ -606,7 +606,7 @@ void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback
 {
 	if (pStatusCallback)
 	{
-		pIOS->post([&, pStatusCallback, c]()
+		pIOS->post([pStatusCallback, c]()
 			{
 				(*pStatusCallback)(c);
 			});
@@ -616,7 +616,7 @@ void PyPort::PostResponseCallbackCall(const ResponseCallback_t & pResponseCallba
 {
 	if (pResponseCallback)
 	{
-		pIOS->post([&, pResponseCallback, response]()
+		pIOS->post([pResponseCallback, response]()
 			{
 				(*pResponseCallback)(response);
 			});

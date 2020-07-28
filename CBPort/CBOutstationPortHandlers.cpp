@@ -207,7 +207,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	bool FoundMatch = false;
 	uint16_t Payload = 0;
 
-	MyPointConf->PointTable.ForEachMatchingAnalogPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+	MyPointConf->PointTable.ForEachMatchingAnalogPoint(Group, payloadlocation, [&Payload,&FoundMatch](CBAnalogCounterPoint &pt)
 		{
 			// We have a matching point - there may be 2, set a flag to indicate we have a match, and set our bits in the output.
 			uint8_t ch = pt.GetChannel();
@@ -223,7 +223,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 
 	if (!FoundMatch)
 	{
-		MyPointConf->PointTable.ForEachMatchingCounterPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+		MyPointConf->PointTable.ForEachMatchingCounterPoint(Group, payloadlocation, [&Payload,&FoundMatch](CBAnalogCounterPoint &pt)
 			{
 				// We have a matching point - there will be only 1!!, set a flag to indicate we have a match, and set our bit in the output.
 				Payload = pt.GetAnalog();
@@ -232,7 +232,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	}
 	if (!FoundMatch)
 	{
-		MyPointConf->PointTable.ForEachMatchingBinaryPoint(Group, payloadlocation, [&](CBBinaryPoint &pt)
+		MyPointConf->PointTable.ForEachMatchingBinaryPoint(Group, payloadlocation, [this,&Payload,&FoundMatch](CBBinaryPoint &pt)
 			{
 				// We have a matching point, set a flag to indicate we have a match, and set our bit in the output.
 				uint8_t ch = pt.GetChannel();
@@ -288,7 +288,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	if (!FoundMatch)
 	{
 		// See if it is a StatusByte we need to provide - there is only one status byte, but it could be requested in several groups.
-		MyPointConf->PointTable.ForEachMatchingStatusByte(Group, payloadlocation, [&](void)
+		MyPointConf->PointTable.ForEachMatchingStatusByte(Group, payloadlocation, [this,&Payload,&FoundMatch,&Group,&payloadlocation](void)
 			{
 				// We have a matching status byte, set a flag to indicate we have a match.
 				LOGDEBUG("{} Got a Status Byte request at :{} - {}",Name, Group ,payloadlocation.to_string());
@@ -877,7 +877,7 @@ bool CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
 }
 void CBOutstationPort::MarkAllBinaryPointsAsChanged()
 {
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &pt)
+	MyPointConf->PointTable.ForEachBinaryPoint([](CBBinaryPoint &pt)
 		{
 			pt.SetChangedFlag();
 		});
@@ -892,7 +892,7 @@ uint8_t CBOutstationPort::CountBinaryBlocksWithChanges()
 	int lastblock = -1; // Non valid value
 
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &pt)
+	MyPointConf->PointTable.ForEachBinaryPoint([&lastblock,&changedblocks](CBBinaryPoint &pt)
 		{
 			if (pt.GetChangedFlag())
 			{

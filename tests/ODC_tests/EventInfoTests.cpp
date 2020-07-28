@@ -81,7 +81,7 @@ TEST_CASE(SUITE("PayloadTransport"))
 	Conn.Enable();
 
 	std::atomic<uint16_t> cb_count(0);
-	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
+	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_count](CommandStatus status)
 		{
 			REQUIRE(status == CommandStatus::SUCCESS);
 			cb_count++;
@@ -106,7 +106,7 @@ TEST_CASE(SUITE("PayloadTransport"))
 	}
 	std::vector<std::thread> threads;
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		threads.emplace_back([&]() {ios->run(); });
+		threads.emplace_back([ios]() {ios->run(); });
 	while(cb_count < 1000)
 		ios->poll_one();
 	work.reset();
