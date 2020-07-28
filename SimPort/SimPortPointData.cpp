@@ -199,7 +199,7 @@ std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std:
 
 bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 {
-	return m_points[type].find(index) == m_points[type].end();
+	return m_points[type].find(index) != m_points[type].end();
 }
 
 
