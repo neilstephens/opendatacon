@@ -38,6 +38,11 @@
 
 thread_local std::mt19937 SimPort::RandNumGenerator = std::mt19937(std::random_device()());
 
+inline bool ValidEventType(EventType type)
+{
+	return type == EventType::Binary || type == EventType::Analog;
+}
+
 std::vector<std::string> split(const std::string& s, char delimiter)
 {
 	std::vector<std::string> tokens;
@@ -191,10 +196,54 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 		log->debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, ToString(type), index, value, quality, timestamp, force);
 	}
 
-	double val;
+	double val = 0.0f;
+	msSinceEpoch_t ts = msSinceEpoch();
 	try
 	{
 		val = std::stod(value);
+		if (!timestamp.empty())
+			ts = std::stoull(timestamp);
+	}
+	catch(std::exception& e)
+	{
+		return false;
+	}
+
+	QualityFlags Q = QualityFlags::ONLINE;
+	if (!quality.empty() && !GetQualityFlagsFromStringName(quality, Q))
+		return false;
+
+	auto indexes = IndexesFromString(index, type);
+	if (ValidEventType(type))
+	{
+		for (std::size_t index : indexes)
+		{
+			if (force)
+			{
+				pSimConf->ForcedState(type, index, true);
+			}
+			auto event = std::make_shared<EventInfo>(type, index, Name, Q, ts);
+			if (type == EventType::Binary)
+				event->SetPayload<EventType::Binary>(std::move(val));
+			if (type == EventType::Analog)
+				event->SetPayload<EventType::Analog>(std::move(val));
+			PostPublishEvent(event);
+		}
+	}
+	else
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, const std::string& period)
+{
+	unsigned int delta = 0;
+	try
+	{
+		delta = std::stoi(period);
 	}
 	catch(std::exception& e)
 	{
@@ -205,126 +254,37 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 	if(!indexes.size())
 		return false;
 
-	QualityFlags Q;
-	if(quality == "")
-		Q = QualityFlags::ONLINE;
-	else if(!GetQualityFlagsFromStringName(quality, Q))
-		return false;
-
-	msSinceEpoch_t ts;
-	if(timestamp == "")
-		ts = msSinceEpoch();
-	else
+	if (ValidEventType(type))
 	{
-		try
+		for (std::size_t index : indexes)
 		{
-			ts = std::stoull(timestamp);
-		}
-		catch(std::exception& e)
-		{
-			return false;
-		}
-	}
-
-	if(type == EventType::Binary)
-	{
-		for(auto idx : indexes)
-		{
-			if (force)
-			{ //lock scope
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				pSimConf->ForcedState(EventType::Binary, idx, true);
-			}
-			auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,Q,ts);
-			bool valb = (val >= 1);
-			event->SetPayload<EventType::Binary>(std::move(valb));
-			PostPublishEvent(event);
-		}
-	}
-
-	if(type == EventType::Analog)
-	{
-		for(auto idx : indexes)
-		{
-			if (force)
-			{ //lock scope
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				pSimConf->ForcedState(odc::EventType::Analog, idx, true);
-			}
-			auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q,ts);
-			event->SetPayload<EventType::Analog>(std::move(val));
-			PostPublishEvent(event);
-		}
-	}
-	else
-		return false;
-
-	return true;
-}
-
-bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, const std::string& period)
-{
-	unsigned int delta;
-	try
-	{
-		delta = std::stoi(period);
-	}
-	catch(std::exception& e)
-	{
-		return false;
-	}
-
-	auto indexes = IndexesFromString(index,type);
-	if(!indexes.size())
-		return false;
-
-	if(type == EventType::Binary)
-	{
-		for(auto idx : indexes)
-		{
-			// Rakesh, do I really need the start value present check here or not?
-			pSimConf->UpdateInterval(odc::EventType::Binary, idx, delta);
-			auto pTimer = Timers.at("Binary"+std::to_string(idx));
-			if(!delta) //zero means no updates
+			pSimConf->UpdateInterval(type, index, delta);
+			auto pTimer = Timers.at(ToString(type) + std::to_string(index));
+			if (!delta)
 			{
 				pTimer->cancel();
 			}
 			else
 			{
-				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*delta)(RandNumGenerator);
+				auto random_interval = std::uniform_int_distribution<unsigned int>(0, delta << 1)(RandNumGenerator);
 				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 				pTimer->async_wait([=](asio::error_code err_code)
 					{
 						if(enabled && !err_code)
-							StartBinaryEvents(idx);
-					});
-			}
-		}
-	}
-	else if(type == EventType::Analog)
-	{
-		for(auto idx : indexes)
-		{
-			pSimConf->UpdateInterval(odc::EventType::Analog, idx, delta);
-			auto pTimer = Timers.at("Analog"+std::to_string(idx));
-			if(!delta) //zero means no updates
-			{
-				pTimer->cancel();
-			}
-			else
-			{
-				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*delta)(RandNumGenerator);
-				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-				pTimer->async_wait([=](asio::error_code err_code)
-					{
-						if(enabled && !err_code)
-							StartAnalogEvents(idx);
+						{
+						      if (type == EventType::Binary)
+								StartBinaryEvents(index);
+						      if (type == EventType::Analog)
+								StartAnalogEvents(index);
+						}
 					});
 			}
 		}
 	}
 	else
+	{
 		return false;
+	}
 
 	return true;
 }
@@ -341,9 +301,7 @@ bool SimPort::SetForcedState(const std::string& index, EventType type, bool forc
 		pSimConf->ForcedState(type, idx, forced);
 
 	bool result = true;
-	if (indexes.empty() ||
-	    !(type == EventType::Binary ||
-	      type == EventType::Analog))
+	if (indexes.empty() || !ValidEventType(type))
 		result = false;
 	return result;
 }
@@ -452,7 +410,7 @@ void SimPort::PortUp()
 		PostPublishEvent(event);
 
 		auto interval = pSimConf->UpdateInterval(odc::EventType::Analog, index);
-		auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
+		auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 		pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 		pTimer->async_wait([=](asio::error_code err_code)
 			{
