@@ -11,10 +11,10 @@
 #ifndef HTTP_REPLY_HPP
 #define HTTP_REPLY_HPP
 
+#include "header.hpp"
+#include <opendatacon/asio.h>
 #include <string>
 #include <vector>
-#include <asio.hpp>
-#include "header.hpp"
 
 namespace http {
 
