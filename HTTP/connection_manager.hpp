@@ -36,8 +36,8 @@ public:
   connection_manager();
 
   /// Synchronised versions of their private couterparts
-  std::function<void(const connection_ptr&)> start = pSetStrand->wrap([this](const connection_ptr& c){start_(c);});
-  std::function<void(const connection_ptr&)> stop = pSetStrand->wrap([this](const connection_ptr& c){stop_(c);});
+  std::function<void(const connection_ptr)> start = pSetStrand->wrap([this](const connection_ptr c){start_(c);});
+  std::function<void(const connection_ptr)> stop = pSetStrand->wrap([this](const connection_ptr c){stop_(c);});
   std::function<void()> stop_all = pSetStrand->wrap([this](){stop_all_();});
 
 private:
