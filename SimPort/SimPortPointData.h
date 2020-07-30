@@ -34,6 +34,8 @@
 #include <memory>
 #include <unordered_map>
 
+enum class FeedbackMode { PULSE, LATCH };
+
 struct Point
 {
 	Point():
@@ -50,36 +52,203 @@ struct Point
 	bool forced_state;
 };
 
+//DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
+//We can generalise, and come up with a simpler superset:
+//	-have an arbitrary length list of outputs
+//	-arbitrary on/off values for each output
+//	-each output either pulsed or latched
+struct BinaryFeedback
+{
+	std::shared_ptr<odc::EventInfo> on_value;
+	std::shared_ptr<odc::EventInfo> off_value;
+	FeedbackMode mode;
+	std::size_t update_interval;
+
+	BinaryFeedback(const std::shared_ptr<odc::EventInfo>& on,
+		const std::shared_ptr<odc::EventInfo>& off,
+		FeedbackMode amode,
+		std::size_t u_interval):
+		on_value(on),
+		off_value(off),
+		mode(amode),
+		update_interval(u_interval) {}
+};
+
 class SimPortPointData
 {
 public:
 	SimPortPointData();
 
+	// ---------------------------------------------------------------------- //
+	//  These all funtions are for Points[Analog / Binary] manipulations
+	// ---------------------------------------------------------------------- //
+
+	/*
+	  function         : CreateEvent
+	  description      : this function will create an event [Analog / Bianry]
+	                     and initialize it with default and provided values
+	  param type       : event type like Analog / Binary
+	  param index      : index of the data point
+	  param name       : name of the sim port reading from configuration
+	  param flag       : quality of the data point
+	  param s_dev      : standard deviation for randomizing the data point
+	  param u_interval : update interval for randomizaing the data point
+	  param val        : starting value of the data point
+	  return           : void
+	 */
 	void CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
 		odc::QualityFlags flag, double s_dev, std::size_t u_interval,
 		double val);
+
+	/*
+	  function         : Event
+	  description      : this function will set the event
+	  param event      : the event info which holds the event type and index
+	  return           : void
+	 */
 	void Event(std::shared_ptr<odc::EventInfo> event);
+
+	/*
+	  function         : Event
+	  description      : this function will return the event
+	  param event      : the event info which holds the event type and index
+	  return           : point to the event
+	*/
 	std::shared_ptr<odc::EventInfo> Event(odc::EventType type, std::size_t index);
+
+	/*
+	  function         : ForcedState
+	  description      : this function will set the forced state
+	  param type       : the event type
+	  param index      : index of the data point
+	  param state      : new value to be forced the data point
+	  return           : void
+	*/
 	void ForcedState(odc::EventType type, std::size_t index, bool state);
+
+	/*
+	  function         : ForcedState
+	  description      : this function will set the forced state
+	  param type       : the event type
+	  param index      : index of the data point
+	  return           : return the forced state of the data point
+	*/
 	bool ForcedState(odc::EventType type, std::size_t index);
+
+	/*
+	  function         : UpdateInterval
+	  description      : this function will set the update interval of the data point
+	  param type       : the event type
+	  param index      : index of the data point
+	  param value      : new upate interval for the data point [SI Unit milliseconds]
+	  return           : void
+	*/
 	void UpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
+
+	/*
+	  function         : UpdateInterval
+	  description      : this function will get the update interval of the data point
+	  param type       : the event type
+	  param index      : index of the data point
+	  return           : update interval value [SI Unit milliseconds]
+	*/
 	std::size_t UpdateInterval(odc::EventType type, std::size_t index);
+
+	/*
+	  function         : Payload
+	  description      : this function will set the payload for the data point
+	  param type       : the event type
+	  param index      : index of the data point
+	  param payload    : new payload to the data point
+	  return           : void
+	*/
 	void Payload(odc::EventType type, std::size_t index, double payload);
+
+	/*
+	  function         : Payload
+	  description      : this function will get the payload for the data point
+	  param type       : the event type
+	  param index      : index of the data point
+	  return           : payload for the data point
+	*/
 	double Payload(odc::EventType type, std::size_t index);
+
+	/*
+	  function         : Payload
+	  description      : this function will get the payload for the data point
+	  param type       : the event type
+	  param index      : index of the data point
+	  return           : payload for the data point
+	*/
 	double StartValue(odc::EventType type, std::size_t index);
+
+	/*
+	  function         : StdDev
+	  description      : this function will get the standard deviation of the data point
+	  param type       : index
+	  return           : standard deviation of the data point
+	*/
 	double StdDev(std::size_t index);
 
+	/*
+	  function         : Indexes
+	  description      : this function will get all the indexes
+	  param type       : type
+	  return           : all the analog / binary indexes
+	*/
 	std::vector<std::size_t> Indexes(odc::EventType type);
+
+	/*
+	  function         : Values
+	  description      : this function will get all the payload
+	  param type       : type
+	  return           : all the analog / binary payloads
+	*/
 	std::unordered_map<std::size_t , double> Values(odc::EventType type);
 
+	/*
+	  function         : CurrentState
+	  description      : this function will return the current state of all the data points
+	  param type       : NA
+	  return           : current state of all the data points
+	*/
 	Json::Value CurrentState();
+
+	/*
+	  function         : CurrentState
+	  description      : this function will return the current state of all the provided indexes
+	  param type       : event type
+	  param indexes    : vector of the indexes
+	  return           : current state of the data points
+	*/
 	std::string CurrentState(odc::EventType type, std::vector<std::size_t>& indexes);
 
+	/*
+	  function         : IsIndex
+	  description      : this function will find the index into the points container
+	  param type       : event type
+	  param index      : index
+	  return           : is index exist or not
+	*/
 	bool IsIndex(odc::EventType type, std::size_t index);
+
+	// ---------------------------------------------------------------------- //
+	//  These all funtions are for Binary Control manipulations
+	// ---------------------------------------------------------------------- //
+
+	void CreateBinaryFeedback(std::size_t index,
+		const std::shared_ptr<odc::EventInfo>& on,
+		const std::shared_ptr<odc::EventInfo>& off,
+		FeedbackMode mode,
+		std::size_t update_interval);
+
+	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index);
+
 
 private:
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
 	std::unordered_map<odc::EventType, Points> m_points;
+	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
 };
 
 #endif // SIMPORTPOINTDATA_H

@@ -202,4 +202,17 @@ bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 	return m_points[type].find(index) != m_points[type].end();
 }
 
+void SimPortPointData::CreateBinaryFeedback(std::size_t index,
+	const std::shared_ptr<odc::EventInfo>& on,
+	const std::shared_ptr<odc::EventInfo>& off,
+	FeedbackMode mode,
+	std::size_t update_interval)
+{
+	std::shared_ptr<BinaryFeedback> bf = std::make_shared<BinaryFeedback>(on, off, mode, update_interval);
+	m_binary_feedbacks[index].emplace_back(bf);
+}
 
+std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(std::size_t index)
+{
+	return m_binary_feedbacks[index];
+}

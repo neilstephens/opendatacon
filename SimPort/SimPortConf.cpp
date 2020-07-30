@@ -156,6 +156,11 @@ std::string SimPortConf::CurrentState(odc::EventType type, std::vector<std::size
 	return m_pport_data->CurrentState(type, indexes);
 }
 
+std::vector<std::shared_ptr<BinaryFeedback>> SimPortConf::BinaryFeedbacks(std::size_t index) const
+{
+	return m_pport_data->BinaryFeedbacks(index);
+}
+
 bool SimPortConf::m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const
 {
 	bool result = true;
@@ -272,36 +277,15 @@ void SimPortConf::m_ProcessBinaryControls(const Json::Value& binary_controls)
 		}
 		for (auto index = start; index <= stop; index++)
 		{
-			bool exists = false;
-			for (auto existing_index : ControlIndicies)
-				if (existing_index == index)
-					exists = true;
-
-			if (!exists)
-				ControlIndicies.push_back(index);
+			std::size_t update_interval = 0;
 			if (binary_controls[n].isMember("Intervalms"))
-				ControlIntervalms[index] = binary_controls[n]["Intervalms"].asUInt();
-
-			auto start_val = binary_controls[n]["StartVal"].asString();
-			if (start_val == "D")
-			{
-				if (ControlIntervalms.count(index))
-					ControlIntervalms.erase(index);
-				for (auto it = ControlIndicies.begin(); it != ControlIndicies.end(); it++)
-					if (*it == index)
-					{
-						ControlIndicies.erase(it);
-						break;
-					}
-			}
-
+				update_interval = binary_controls[n]["Intervalms"].asUInt();
 			if (binary_controls[n].isMember("FeedbackBinaries"))
-				m_ProcessFeedbackBinaries(binary_controls[n]["FeedbackBinaries"], index);
+				m_ProcessFeedbackBinaries(binary_controls[n]["FeedbackBinaries"], index, update_interval);
 			if (binary_controls[n].isMember("FeedbackPosition"))
 				m_ProcessFeedbackPosition(binary_controls[n]["FeedbackPosition"]);
 		}
 	}
-	std::sort(ControlIndicies.begin(),ControlIndicies.end());
 }
 
 void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::size_t& index)
@@ -375,7 +359,8 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::size_t&
 	}
 }
 
-void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, const std::size_t& index)
+void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, const std::size_t& index,
+	std::size_t update_interval)
 {
 	for (Json::ArrayIndex fbn = 0; fbn < feedback_binaries.size(); ++fbn)
 	{
@@ -426,8 +411,7 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 		on->SetPayload<EventType::Binary>(std::move(on_val));
 		auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, m_name, off_qual);
 		off->SetPayload<EventType::Binary>(std::move(off_val));
-
-		ControlFeedback[index].emplace_back(on, off, mode);
+		m_pport_data->CreateBinaryFeedback(index, on, off, mode, update_interval);
 	}
 }
 

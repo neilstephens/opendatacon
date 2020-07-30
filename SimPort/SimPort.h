@@ -35,7 +35,6 @@
 #include <shared_mutex>
 #include <random>
 
-
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 
 class SimPortCollection;
@@ -48,7 +47,7 @@ public:
 	void Disable() final;
 	void Build() final;
 	void ProcessElements(const Json::Value& json_root) final;
-	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
+	void Event(std::shared_ptr<const odc::EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 	std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder() final;
 
 	//Implement ODC::DataPort functions for UI
@@ -56,10 +55,10 @@ public:
 	const Json::Value GetStatistics() const override;
 	const Json::Value GetStatus() const override;
 
-	bool UILoad(EventType type, const std::string &index, const std::string &value, const std::string &quality, const std::string &timestamp, const bool force);
-	bool UIRelease(EventType type, const std::string& index);
-	bool SetForcedState(const std::string& index, EventType type, bool forced);
-	bool UISetUpdateInterval(EventType type, const std::string& index, const std::string& period);
+	bool UILoad(odc::EventType type, const std::string &index, const std::string &value, const std::string &quality, const std::string &timestamp, const bool force);
+	bool UIRelease(odc::EventType type, const std::string& index);
+	bool SetForcedState(const std::string& index, odc::EventType type, bool forced);
+	bool UISetUpdateInterval(odc::EventType type, const std::string& index, const std::string& period);
 
 private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
@@ -67,36 +66,36 @@ private:
 	std::unordered_map<std::string, pTimer_t> Timers;
 
 	// use this instead of PublishEvent, it catches current values and saves them.
-	void PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback);
+	void PostPublishEvent(std::shared_ptr<odc::EventInfo> event, SharedStatusCallback_t pStatusCallback);
 
-	void NextEventFromDB(const std::shared_ptr<EventInfo>& event);
-	void PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset);
-	void SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset = 0);
-	inline void RandomiseAnalog(std::shared_ptr<EventInfo> event)
+	void NextEventFromDB(const std::shared_ptr<odc::EventInfo>& event);
+	void PopulateNextEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset);
+	void SpawnEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset = 0);
+	inline void RandomiseAnalog(std::shared_ptr<odc::EventInfo> event)
 	{
-		double mean = pSimConf->StartValue(EventType::Analog, event->GetIndex());
+		double mean = pSimConf->StartValue(odc::EventType::Analog, event->GetIndex());
 		double std_dev = pSimConf->StdDev(event->GetIndex());
 		//change value around mean - handle 0 which windows does not...
 		if (std_dev != 0)
 		{
 			std::normal_distribution<double> distribution(mean, std_dev);
-			event->SetPayload<EventType::Analog>(distribution(RandNumGenerator));
+			event->SetPayload<odc::EventType::Analog>(distribution(RandNumGenerator));
 		}
 		else
 		{
-			event->SetPayload<EventType::Analog>(std::move(mean));
+			event->SetPayload<odc::EventType::Analog>(std::move(mean));
 		}
 	}
 	inline void StartAnalogEvents(size_t index)
 	{
-		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
+		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Analog,index,Name);
 		RandomiseAnalog(event);
 		SpawnEvent(event);
 	}
 	inline void StartAnalogEvents(size_t index, double val)
 	{
-		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
-		event->SetPayload<EventType::Analog>(std::move(val));
+		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Analog,index,Name);
+		event->SetPayload<odc::EventType::Analog>(std::move(val));
 		SpawnEvent(event);
 	}
 	inline void StartBinaryEvents(size_t index)
@@ -107,13 +106,13 @@ private:
 	}
 	inline void StartBinaryEvents(size_t index, bool val)
 	{
-		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name);
-		event->SetPayload<EventType::Binary>(std::move(val));
+		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Binary,index,Name);
+		event->SetPayload<odc::EventType::Binary>(std::move(val));
 		SpawnEvent(event);
 	}
 	void PortUp();
 	void PortDown();
-	std::vector<std::size_t> IndexesFromString(const std::string& index_str, EventType type);
+	std::vector<std::size_t> IndexesFromString(const std::string& index_str, odc::EventType type);
 
 	std::shared_ptr<SimPortCollection> SimCollection;
 

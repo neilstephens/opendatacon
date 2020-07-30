@@ -690,97 +690,80 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	}
 	auto index = event->GetIndex();
 	auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
-	std::vector<unsigned int> indexes;
+	auto feedbacks = pSimConf->BinaryFeedbacks(index);
+	if (!feedbacks.empty())
 	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		indexes = pSimConf->ControlIndicies;
-	}
-	for(auto i : indexes)
-	{
-		if(i == index)
+		for(auto& fb : feedbacks)
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->trace("{}: Control {}: Matched configured index.", Name, index);
-
-			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-
-			if(pSimConf->ControlFeedback.count(i))
+			if(fb->mode == FeedbackMode::PULSE)
 			{
 				if(auto log = odc::spdlog_get("SimPort"))
-					log->trace("{}: Control {}: Setting ({}) control feedback point(s)...", Name, index, pSimConf->ControlFeedback[i].size());
-				for(auto& fb : pSimConf->ControlFeedback[i])
+					log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
+				switch(command.functionCode)
 				{
-					if(fb.mode == FeedbackMode::PULSE)
+					case ControlCode::PULSE_ON:
+					case ControlCode::LATCH_ON:
+					case ControlCode::LATCH_OFF:
+					case ControlCode::CLOSE_PULSE_ON:
+					case ControlCode::TRIP_PULSE_ON:
 					{
-						if(auto log = odc::spdlog_get("SimPort"))
-							log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index,fb.on_value->GetIndex());
-						switch(command.functionCode)
-						{
-							case ControlCode::PULSE_ON:
-							case ControlCode::LATCH_ON:
-							case ControlCode::LATCH_OFF:
-							case ControlCode::CLOSE_PULSE_ON:
-							case ControlCode::TRIP_PULSE_ON:
+						if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
+							PostPublishEvent(fb->on_value);
+						pTimer_t pTimer = pIOS->make_steady_timer();
+						pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
+						pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
 							{
-								if(!pSimConf->ForcedState(odc::EventType::Binary, fb.on_value->GetIndex()))
-									PostPublishEvent(fb.on_value);
-								pTimer_t pTimer = pIOS->make_steady_timer();
-								pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
-								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
-									{
-										//FIXME: check err_code?
-										if(!pSimConf->ForcedState(odc::EventType::Binary, fb.off_value->GetIndex()))
-											PostPublishEvent(fb.off_value);
-									});
-								//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
-								break;
-							}
-							default:
-								(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-								return;
-						}
+								//FIXME: check err_code?
+								if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
+									PostPublishEvent(fb->off_value);
+							});
+						//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
+						break;
 					}
-					else //LATCH
-					{
-						switch(command.functionCode)
-						{
-							case ControlCode::LATCH_ON:
-							case ControlCode::CLOSE_PULSE_ON:
-							case ControlCode::PULSE_ON:
-								if(auto log = odc::spdlog_get("SimPort"))
-									log->trace("{}: Control {}: Latch on feedback to Binary {}.",
-										Name, index,fb.on_value->GetIndex());
-								fb.on_value->SetTimestamp();
-								if(!pSimConf->ForcedState(odc::EventType::Binary, fb.on_value->GetIndex()))
-									PostPublishEvent(fb.on_value);
-								break;
-							case ControlCode::LATCH_OFF:
-							case ControlCode::TRIP_PULSE_ON:
-							case ControlCode::PULSE_OFF:
-								if(auto log = odc::spdlog_get("SimPort"))
-									log->trace("{}: Control {}: Latch off feedback to Binary {}.",
-										Name, index,fb.off_value->GetIndex());
-								fb.off_value->SetTimestamp();
-								if(!pSimConf->ForcedState(odc::EventType::Binary, fb.off_value->GetIndex()))
-									PostPublishEvent(fb.off_value);
-								break;
-							default:
-								(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-								return;
-						}
-					}
+					default:
+						(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+						return;
 				}
-				(*pStatusCallback)(CommandStatus::SUCCESS);
-				return;
 			}
-			else
+			else //LATCH
 			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->trace("{}: Control {}: No feeback points configured.", Name, index);
+				switch(command.functionCode)
+				{
+					case ControlCode::LATCH_ON:
+					case ControlCode::CLOSE_PULSE_ON:
+					case ControlCode::PULSE_ON:
+						if(auto log = odc::spdlog_get("SimPort"))
+							log->trace("{}: Control {}: Latch on feedback to Binary {}.",
+								Name, index,fb->on_value->GetIndex());
+						fb->on_value->SetTimestamp();
+						if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
+							PostPublishEvent(fb->on_value);
+						break;
+					case ControlCode::LATCH_OFF:
+					case ControlCode::TRIP_PULSE_ON:
+					case ControlCode::PULSE_OFF:
+						if(auto log = odc::spdlog_get("SimPort"))
+							log->trace("{}: Control {}: Latch off feedback to Binary {}.",
+								Name, index, fb->off_value->GetIndex());
+						fb->off_value->SetTimestamp();
+						if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
+							PostPublishEvent(fb->off_value);
+						break;
+					default:
+						(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+						return;
+				}
 			}
-			(*pStatusCallback)(CommandStatus::UNDEFINED);
-			return;
 		}
+		(*pStatusCallback)(CommandStatus::SUCCESS);
+		return;
+	}
+	else
+	{
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->trace("{}: Control {}: No feeback points configured.", Name, index);
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }

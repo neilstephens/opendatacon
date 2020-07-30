@@ -65,6 +65,13 @@ public:
 
 	bool IsIndex(odc::EventType type, std::size_t index) const;
 
+	void CreateBinaryFeedback(std::size_t index,
+		const std::shared_ptr<odc::EventInfo>& on,
+		const std::shared_ptr<odc::EventInfo>& off,
+		FeedbackMode mode,
+		std::size_t update_interval);
+	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
+
 private:
 	std::string m_http_addr;
 	std::string m_http_port;

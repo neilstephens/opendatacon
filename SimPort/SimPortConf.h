@@ -68,26 +68,6 @@ ENABLE_BITWISE(TimestampMode)
 	if (auto log = odc::spdlog_get("SimPort")) \
 	log->info(__VA_ARGS__)
 
-//DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
-//We can generalise, and come up with a simpler superset:
-//	-have an arbitrary length list of outputs
-//	-arbitrary on/off values for each output
-//	-each output either pulsed or latched
-
-enum class FeedbackMode { PULSE, LATCH };
-struct BinaryFeedback
-{
-	std::shared_ptr<EventInfo> on_value;
-	std::shared_ptr<EventInfo> off_value;
-	FeedbackMode mode;
-
-	BinaryFeedback(const std::shared_ptr<EventInfo> on, const std::shared_ptr<EventInfo> off, const FeedbackMode amode):
-		on_value(on),
-		off_value(off),
-		mode(amode)
-	{}
-};
-
 class SimPortConf: public DataPortConf
 {
 public:
@@ -119,9 +99,7 @@ public:
 	Json::Value CurrentState() const;
 	std::string CurrentState(odc::EventType type, std::vector<std::size_t>& indexes) const;
 
-	std::vector<uint32_t> ControlIndicies;
-	std::map<uint32_t, unsigned int> ControlIntervalms;
-	std::map<uint32_t, std::vector<BinaryFeedback>> ControlFeedback;
+	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
 
 private:
 	std::string m_name;
@@ -135,7 +113,8 @@ private:
 	void m_ProcessBinaries(const Json::Value& binaires);
 	void m_ProcessBinaryControls(const Json::Value& binary_controls);
 	void m_ProcessSQLite3(const Json::Value& sqlite, const std::size_t& index);
-	void m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, const std::size_t& index);
+	void m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, const std::size_t& index,
+		std::size_t update_interval);
 	void m_ProcessFeedbackPosition(const Json::Value& feedback_position);
 };
 
