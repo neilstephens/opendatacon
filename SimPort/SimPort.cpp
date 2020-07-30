@@ -164,10 +164,7 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 			}
 			{
 				if(pSimConf->IsIndex(type, idx))
-				{
-					indexes.push_back(idx);
-					break;
-				}
+					indexes.emplace_back(idx);
 			}
 		}
 	}
@@ -180,7 +177,7 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 			for(auto allowed : allowed_indexes)
 			{
 				if(std::regex_match(std::to_string(allowed),ind_regex))
-					indexes.push_back(allowed);
+					indexes.emplace_back(allowed);
 			}
 		}
 		catch(std::exception& e)
