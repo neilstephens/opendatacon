@@ -199,6 +199,7 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 			if (analogs[i].isMember("StartVal"))
 			{
 				std::string str_start_val = analogs[i]["StartVal"].asString();
+				odc::QualityFlags flag = odc::QualityFlags::ONLINE;
 				std::transform(str_start_val.begin(), str_start_val.end(), str_start_val.begin(),
 					[](unsigned char c) { return std::tolower(c); });
 				if (str_start_val == "nan")
@@ -207,9 +208,11 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 					start_val = std::numeric_limits<double>::infinity();
 				else if (str_start_val == "-inf")
 					start_val = std::numeric_limits<double>::infinity();
+				else if (str_start_val == "X")
+					flag = odc::QualityFlags::COMM_LOST;
 				else
 					start_val = std::stod(str_start_val);
-				m_pport_data->CreateEvent(odc::EventType::Analog, index, m_name, std_dev, update_interval, start_val);
+				m_pport_data->CreateEvent(odc::EventType::Analog, index, m_name, flag, std_dev, update_interval, start_val);
 			}
 		}
 	}
@@ -235,14 +238,16 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 		}
 		for(auto index = start; index <= stop; index++)
 		{
-			if(binaries[n].isMember("StartVal"))
+			bool val = false;
+			odc::QualityFlags flag = odc::QualityFlags::ONLINE;
+			if (binaries[n].isMember("StartVal"))
 			{
-				const std::string start_val = binaries[n]["StartVal"].asString();
-				if(start_val == "X")
-					m_pport_data->Payload(odc::EventType::Binary, index, false); //TODO: implement quality - use std::pair, or build the EventInfo here
+				if (binaries[n]["StartVal"].asString() == "X")
+					flag = odc::QualityFlags::COMM_LOST;
 				else
-					m_pport_data->CreateEvent(odc::EventType::Binary, index, m_name, 0.0f, 0.0f, binaries[n]["StartVal"].asBool());
+					val = binaries[n]["StartVal"].asBool();
 			}
+			m_pport_data->CreateEvent(odc::EventType::Binary, index, m_name, flag, 0.0f, 0.0f, val);
 		}
 	}
 }

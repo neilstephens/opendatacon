@@ -36,8 +36,6 @@
 #include <random>
 
 
-using namespace odc;
-
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 
 class SimPortCollection;

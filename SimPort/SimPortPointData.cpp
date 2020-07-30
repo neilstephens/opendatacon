@@ -30,7 +30,7 @@
 SimPortPointData::SimPortPointData() {}
 
 void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
-	double s_dev, std::size_t u_interval, double val)
+	odc::QualityFlags flag, double s_dev, std::size_t u_interval, double val)
 {
 	if (type == odc::EventType::Analog)
 	{
@@ -39,10 +39,10 @@ void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const
 		p.update_interval = u_interval;
 		p.start_value = val;
 
-		odc::QualityFlags flag = odc::QualityFlags::ONLINE;
+		odc::QualityFlags qflag = flag;
 		if (!s_dev && !u_interval && !val)
-			flag = odc::QualityFlags::COMM_LOST;
-		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Analog, index, name, flag);
+			qflag = odc::QualityFlags::COMM_LOST;
+		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Analog, index, name, qflag);
 		evt->SetPayload<odc::EventType::Analog>(std::move(val));
 		p.event = evt;
 		m_points[odc::EventType::Analog][index] = std::make_shared<Point>(p);
@@ -54,7 +54,7 @@ void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const
 		p.std_dev = s_dev;
 		p.update_interval = u_interval;
 
-		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Binary, index, name, odc::QualityFlags::ONLINE);
+		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Binary, index, name, flag);
 		bool v = static_cast<bool>(val);
 		evt->SetPayload<odc::EventType::Binary>(std::move(v));
 		p.event = evt;

@@ -56,7 +56,8 @@ public:
 	SimPortPointData();
 
 	void CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
-		double s_dev, std::size_t u_interval, double val);
+		odc::QualityFlags flag, double s_dev, std::size_t u_interval,
+		double val);
 	void Event(std::shared_ptr<odc::EventInfo> event);
 	std::shared_ptr<odc::EventInfo> Event(odc::EventType type, std::size_t index);
 	void ForcedState(odc::EventType type, std::size_t index, bool state);

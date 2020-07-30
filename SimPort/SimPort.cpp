@@ -376,36 +376,27 @@ void SimPort::PortUp()
 					StartAnalogEvents(index);
 			});
 	}
-/*
-      indexes = pSimConf->GetIndexes(odc::EventType::Binary);
-      for(auto index : indexes)
-      {
-            //send initial event
-            bool val;
-            { //lock scope
-                  std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-                  val = pSimConf->GetPayload(odc::EventType::Binary, index);
-            }
-            auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
-            event->SetPayload<EventType::Binary>(std::move(val));
-        PostPublishEvent(event);
 
-            pTimer_t pTimer = pIOS->make_steady_timer();
-            Timers["Binary"+std::to_string(index)] = pTimer;
+	indexes = pSimConf->Indexes(odc::EventType::Binary);
+	for(auto index : indexes)
+	{
+		auto event = pSimConf->Event(odc::EventType::Binary, index);
+		bool val = event->GetPayload<odc::EventType::Binary>();
+		PostPublishEvent(event);
 
-            //queue up a timer if it has an update interval
-            { //lock scope
-                  std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-                  auto interval = pSimConf->GetUpdateInterval(odc::EventType::Binary, index);
-                  auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
-                  pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-                  pTimer->async_wait([=](asio::error_code err_code)
-                        {
-                              if (enabled && !err_code)
-                                    StartBinaryEvents(index, !val);
-                        });
-            }
-        }*/
+		pTimer_t pTimer = pIOS->make_steady_timer();
+		Timers["Binary"+std::to_string(index)] = pTimer;
+
+		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
+		auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
+		pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
+		pTimer->async_wait([=](asio::error_code err_code)
+			{
+				if (enabled && !err_code)
+					StartBinaryEvents(index, !val);
+			});
+	}
 }
 
 void SimPort::PortDown()

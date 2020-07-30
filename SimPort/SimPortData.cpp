@@ -72,9 +72,9 @@ double SimPortData::DefaultStdDev() const
 }
 
 void SimPortData::CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
-	double std_dev, std::size_t update_interal, double value)
+	odc::QualityFlags flag, double std_dev, std::size_t update_interal, double value)
 {
-	m_ppoint_data->CreateEvent(type, index, name, std_dev, update_interal, value);
+	m_ppoint_data->CreateEvent(type, index, name, flag, std_dev, update_interal, value);
 }
 
 void SimPortData::Event(std::shared_ptr<odc::EventInfo> event)
