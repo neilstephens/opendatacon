@@ -535,7 +535,8 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 				ToString(event->GetQuality()),                             // 3
 				event->GetPayloadString(),                                 // 4
 				SenderName,                                                // 5
-				TagValue);                                                 // 6
+				TagValue,                                                  // 6
+				MyConf->pyTagPrefixString);                                // 7
 			pWrapper->QueueEvent(jsonevent);
 			LOGTRACE("Queued Event {}", jsonevent);
 			PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
@@ -651,6 +652,8 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("QueueFormatString"))
 		MyConf->pyQueueFormatString = JSONRoot["QueueFormatString"].asString();
+	if (JSONRoot.isMember("TagPrefix"))
+		MyConf->pyTagPrefixString = JSONRoot["TagPrefix"].asString();
 	if (JSONRoot.isMember("EventsAreQueued"))
 		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
 	if (JSONRoot.isMember("OnlyQueueEventsWithTags"))
