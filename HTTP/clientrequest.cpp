@@ -8,7 +8,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <asio.hpp>
+#include <opendatacon/asio.h>
 #include <iostream>
 #include <istream>
 #include <sstream>

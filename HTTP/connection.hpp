@@ -11,13 +11,13 @@
 #ifndef HTTP_CONNECTION_HPP
 #define HTTP_CONNECTION_HPP
 
-#include <array>
-#include <memory>
-#include <asio.hpp>
 #include "reply.hpp"
 #include "request.hpp"
 #include "request_handler.hpp"
 #include "request_parser.hpp"
+#include <opendatacon/asio.h>
+#include <array>
+#include <memory>
 
 namespace http {
 

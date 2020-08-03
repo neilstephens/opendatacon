@@ -13,11 +13,10 @@
 namespace http
 {
 
-
 connection_manager::connection_manager()
 {}
 
-void connection_manager::start(const connection_ptr& c)
+void connection_manager::start_(const connection_ptr& c)
 {
 	{
 		std::unique_lock<std::mutex> lck(SetMutex);
@@ -26,7 +25,7 @@ void connection_manager::start(const connection_ptr& c)
 	c->start();
 }
 
-void connection_manager::stop(const connection_ptr& c)
+void connection_manager::stop_(const connection_ptr& c)
 {
 	{
 		std::unique_lock<std::mutex> lck(SetMutex);
@@ -35,7 +34,7 @@ void connection_manager::stop(const connection_ptr& c)
 	c->stop();
 }
 
-void connection_manager::stop_all()
+void connection_manager::stop_all_()
 {
 	std::unique_lock<std::mutex> lck(SetMutex);
 	for (const auto& c: connections_)
