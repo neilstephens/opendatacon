@@ -51,7 +51,6 @@ private:
   void stop_all_();
 
   /// The managed connections.
-  std::mutex SetMutex; // Control access to the set
   std::set<connection_ptr> connections_;
 };
 

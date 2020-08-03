@@ -18,25 +18,18 @@ connection_manager::connection_manager()
 
 void connection_manager::start_(const connection_ptr& c)
 {
-	{
-		std::unique_lock<std::mutex> lck(SetMutex);
-		connections_.insert(c);
-	}
+	connections_.insert(c);
 	c->start();
 }
 
 void connection_manager::stop_(const connection_ptr& c)
 {
-	{
-		std::unique_lock<std::mutex> lck(SetMutex);
-		connections_.erase(c);
-	}
+	connections_.erase(c);
 	c->stop();
 }
 
 void connection_manager::stop_all_()
 {
-	std::unique_lock<std::mutex> lck(SetMutex);
 	for (const auto& c: connections_)
 		c->stop();
 	connections_.clear();
