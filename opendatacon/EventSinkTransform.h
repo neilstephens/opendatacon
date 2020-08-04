@@ -1,6 +1,6 @@
 /*	opendatacon
  *
- *	Copyright (c) 2014:
+ *	Copyright (c) 2020:
  *
  *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
  *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
@@ -18,37 +18,31 @@
  *	limitations under the License.
  */
 /*
- * RandTransform.h
+ * EventSinkTransform.h
  *
- *  Created on: 30/07/2014
- *      Author: Neil Stephens <dearknarl@gmail.com>
+ *  Created on: 4/8/2020
+ *      Author: Scott Ellis <scott.ellis@novatex.com.au>
  */
 
-#ifndef RANDTRANSFORM_H_
-#define RANDTRANSFORM_H_
+#ifndef EVENTSINKTRANSFORM_H_
+#define EVENTSINKTRANSFORM_H_
 
-#include <opendatacon/util.h>
+#include <cstdint>
 #include <opendatacon/Transform.h>
-#include <random>
 
 using namespace odc;
 
-class RandTransform: public Transform
+class EventSinkTransform: public Transform
 {
 public:
-	RandTransform(const Json::Value& params):
-		Transform(params)
+	EventSinkTransform(const Json::Value& params): Transform(params)
 	{}
 
 	bool Event(std::shared_ptr<EventInfo> event) override
 	{
-		thread_local std::mt19937 RandNumGenerator = std::mt19937(std::random_device()());
-		uint16_t random_number = std::uniform_int_distribution<unsigned int>(0, 100)(RandNumGenerator);
-		if(event->GetEventType() != EventType::Analog)
-			return true;
-		event->SetPayload<EventType::Analog>(std::move(random_number));
+		// Let the port think it succeeded!
 		return true;
 	}
 };
 
-#endif /* RANDTRANSFORM_H_ */
+#endif /* EVENTSINKTRANSFORM_H_ */
