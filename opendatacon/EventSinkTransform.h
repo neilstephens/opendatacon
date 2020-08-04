@@ -40,8 +40,9 @@ public:
 
 	bool Event(std::shared_ptr<EventInfo> event) override
 	{
-		// Let the port think it succeeded!
-		return true;
+		// Will result in the callback being called with response undefined. Which is technically correct, but we would probably like to "fool" the
+		// port we are sinking into thinking that everything is ok. Will require changes in DataConnector.cpp
+		return false;
 	}
 };
 
