@@ -203,17 +203,15 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 				update_interval = analogs[i]["UpdateIntervalms"].asUInt();
 			if (analogs[i].isMember("StartVal"))
 			{
-				std::string str_start_val = analogs[i]["StartVal"].asString();
+				std::string str_start_val = to_lower(analogs[i]["StartVal"].asString());
 				odc::QualityFlags flag = odc::QualityFlags::ONLINE;
-				std::transform(str_start_val.begin(), str_start_val.end(), str_start_val.begin(),
-					[](unsigned char c) { return std::tolower(c); });
 				if (str_start_val == "nan")
 					start_val = std::numeric_limits<double>::quiet_NaN();
 				else if (str_start_val == "inf")
 					start_val = std::numeric_limits<double>::infinity();
 				else if (str_start_val == "-inf")
 					start_val = std::numeric_limits<double>::infinity();
-				else if (str_start_val == "X")
+				else if (str_start_val == "x")
 					flag = odc::QualityFlags::COMM_LOST;
 				else
 					start_val = std::stod(str_start_val);
@@ -227,7 +225,7 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 {
 	for(Json::ArrayIndex n = 0; n < binaries.size(); ++n)
 	{
-		size_t start, stop;
+		size_t start = 0, stop = 0;
 		if(binaries[n].isMember("Index"))
 			start = stop = binaries[n]["Index"].asUInt();
 		else if(binaries[n]["Range"].isMember("Start") && binaries[n]["Range"].isMember("Stop"))

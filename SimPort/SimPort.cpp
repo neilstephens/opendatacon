@@ -295,12 +295,16 @@ bool SimPort::UIRelease(EventType type, const std::string& index)
 bool SimPort::SetForcedState(const std::string& index, EventType type, bool forced)
 {
 	auto indexes = IndexesFromString(index, type);
-	for (auto idx : indexes)
-		pSimConf->ForcedState(type, idx, forced);
-
 	bool result = true;
-	if (indexes.empty() || !ValidEventType(type))
+	if (!index.empty() && ValidEventType(type))
+	{
+		for (auto idx : indexes)
+			pSimConf->ForcedState(type, idx, forced);
+	}
+	else
+	{
 		result = false;
+	}
 	return result;
 }
 
@@ -389,7 +393,7 @@ void SimPort::PortUp()
 
 		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
-		auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
+		auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 		pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 		pTimer->async_wait([=](asio::error_code err_code)
 			{
