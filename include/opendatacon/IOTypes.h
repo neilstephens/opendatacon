@@ -153,7 +153,9 @@ enum class ControlCode : uint8_t
 	CLOSE_PULSE_ON_CANCEL = 12,
 	TRIP_PULSE_ON = 13,
 	TRIP_PULSE_ON_CANCEL = 14,
-	UNDEFINED = 15
+	RAISE = 15,
+	LOWER = 16,
+	UNDEFINED = 17
 };
 
 //TODO: make these ToString functions faster

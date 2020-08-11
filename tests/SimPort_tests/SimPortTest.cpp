@@ -33,6 +33,13 @@
 
 #define SUITE(name) "SimTests - " name
 
+/*
+  function     : GetTestConfigJSON
+  description  : this function will return the json configuration for sim port
+                 ; as it is a test we have a constant configuration for sim port
+  param        : NA
+  return       : Json::Value the jason configuration of test sim port
+*/
 inline Json::Value GetTestConfigJSON()
 {
 	// We actually have the conf file here to match the tests it is used in below.
@@ -76,27 +83,27 @@ inline Json::Value GetTestConfigJSON()
 			},
 			{
 				"Index" : 2,
-				"FeedbackPosition": {"Type": "Analog", "Index" : 7, "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+				"FeedbackPosition": {"Type": "Analog", "Index" : 7, "FeedbackMode":"PULSE", "Action":"RAISE", "Limit":10}
 			},
 			{
 				"Index" : 3,
-				"FeedbackPosition": {"Type": "Analog", "Index" : 7,"FeedbackMode":"PULSE", "Action":"DOWN", "Limit":0}
+				"FeedbackPosition": {"Type": "Analog", "Index" : 7,"FeedbackMode":"PULSE", "Action":"LOWER", "Limit":0}
 			},
 			{
 				"Index" : 4,
-				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13], "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13], "FeedbackMode":"PULSE", "Action":"RAISE", "Limit":10}
 			},
 			{
 				"Index" : 5,
-				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13],"FeedbackMode":"PULSE", "Action":"DOWN", "Limit":0}
+				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13],"FeedbackMode":"PULSE", "Action":"LOWER", "Limit":0}
 			},
 			{
 				"Index" : 6,
-				"FeedbackPosition":	{ "Type": "BCD", "Indexes" : [10,11,12,13,14], "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
+				"FeedbackPosition":	{ "Type": "BCD", "Indexes" : [10,11,12,13,14], "FeedbackMode":"PULSE", "Action":"RAISE", "Limit":10}
 			},
 			{
 				"Index" : 7,
-				"FeedbackPosition": {"Type": "BCD", "Indexes" : [10,11,12,13,14],"FeedbackMode":"PULSE", "Action":"DOWN", "Limit":0}
+				"FeedbackPosition": {"Type": "BCD", "Indexes" : [10,11,12,13,14],"FeedbackMode":"PULSE", "Action":"LOWER", "Limit":0}
 			}
 		]
 	})001";
@@ -113,7 +120,14 @@ inline Json::Value GetTestConfigJSON()
 	return json_conf;
 }
 
-void TestSetup(spdlog::level::level_enum loglevel)
+/*
+  function     : TestSetup
+  description  : this function is responsible for starting up the opendatacon
+                 routines like logs, libraries etc.
+  param        : loglevel, log level
+  return       : void
+*/
+inline void TestSetup(spdlog::level::level_enum loglevel)
 {
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 	auto pLibLogger = std::make_shared<spdlog::logger>("SimPort", console_sink);
@@ -132,12 +146,26 @@ void TestSetup(spdlog::level::level_enum loglevel)
 		});
 }
 
-void TestTearDown()
+/*
+  function     : TestTearDown
+  description  : this function tests the closing down of opendatacon routines like logs
+  param        : NA
+  return       : void
+*/
+inline void TestTearDown()
 {
 	odc::spdlog_drop_all(); // Close off everything
 }
 
-ParamCollection BuildParams(const std::string& a,
+/*
+  function     : BuildParams
+  description  : this function build the param collection
+  param        : a, param[0]
+  param        : b, param[1]
+  param        : c, param[2]
+  return       : ParamCollection
+*/
+inline ParamCollection BuildParams(const std::string& a,
 	const std::string& b,
 	const std::string& c)
 {
@@ -149,6 +177,38 @@ ParamCollection BuildParams(const std::string& a,
 	return params;
 }
 
+inline void SendEvent(ControlCode code, std::size_t index,
+	std::shared_ptr<DataPort> sim_port)
+{
+	auto IOS = odc::asio_service::Get();
+	// Set up a callback for the result
+	std::atomic_bool executed(false);
+	CommandStatus cb_status;
+	auto pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_status,&executed](CommandStatus status)
+		{
+			cb_status = status;
+			executed = true;
+		});
+
+	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+	val.functionCode = code;
+	auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, index);
+	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+	sim_port->Event(event, "TestHarness", pStatusCallback);
+	while(!executed)
+	{
+		IOS->run_one();
+	}
+	REQUIRE(cb_status == CommandStatus::SUCCESS);
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests loading and creation of the sim port
+  param        : TestConfigLoad, name of the test case
+  return       : NA
+*/
 TEST_CASE("TestConfigLoad")
 {
 	TestSetup(spdlog::level::level_enum::warn);
@@ -159,7 +219,6 @@ TEST_CASE("TestConfigLoad")
 
 	//scope for port, ios lifetime
 	{
-		auto IOS = odc::asio_service::Get();
 		newptr new_sim = GetPortCreator(port_lib, "Sim");
 		REQUIRE(new_sim);
 		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
@@ -176,6 +235,12 @@ TEST_CASE("TestConfigLoad")
 	TestTearDown();
 }
 
+/*
+  function     : TEST_CASE
+  description  : tests forcing a data point
+  param        : TestForcedPoint, name of the test case
+  return       : NA
+*/
 TEST_CASE("TestForcedPoint")
 {
 	//Load the library
@@ -184,7 +249,6 @@ TEST_CASE("TestForcedPoint")
 
 	//scope for port, ios lifetime
 	{
-		auto IOS = odc::asio_service::Get();
 		newptr new_sim = GetPortCreator(port_lib, "Sim");
 		REQUIRE(new_sim);
 		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
@@ -206,6 +270,12 @@ TEST_CASE("TestForcedPoint")
 	TestTearDown();
 }
 
+/*
+  function     : TEST_CASE
+  description  : tests releaseing a data point
+  param        : TestReleasePoint, name of the test case
+  return       : NA
+*/
 TEST_CASE("TestReleasePoint")
 {
 	//Load the library
@@ -214,7 +284,6 @@ TEST_CASE("TestReleasePoint")
 
 	//scope for port, ios lifetime
 	{
-		auto IOS = odc::asio_service::Get();
 		newptr new_sim = GetPortCreator(port_lib, "Sim");
 		REQUIRE(new_sim);
 		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
@@ -235,6 +304,12 @@ TEST_CASE("TestReleasePoint")
 	TestTearDown();
 }
 
+/*
+  function     : TEST_CASE
+  description  : tests latch on
+  param        : TestLatchOn, name of the test case
+  return       : NA
+*/
 TEST_CASE("TestLatchOn")
 {
 	//Load the library
@@ -243,7 +318,6 @@ TEST_CASE("TestLatchOn")
 
 	//scope for port, ios lifetime
 	{
-		auto IOS = odc::asio_service::Get();
 		newptr new_sim = GetPortCreator(port_lib, "Sim");
 		REQUIRE(new_sim);
 		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
@@ -255,35 +329,21 @@ TEST_CASE("TestLatchOn")
 
 		std::string result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
 		REQUIRE(result == "0");
-
-		// Set up a callback for the result
-		std::atomic_bool executed(false);
-		CommandStatus cb_status;
-		auto pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_status,&executed](CommandStatus status)
-			{
-				cb_status = status;
-				executed = true;
-			});
-
-		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-		val.functionCode = ControlCode::LATCH_ON;
-		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, 0);
-		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
-
-		sim_port->Event(event, "TestHarness", pStatusCallback);
-		while(!executed)
-		{
-			IOS->run_one();
-		}
+		SendEvent(ControlCode::LATCH_ON, 0, sim_port);
 		result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
 		REQUIRE(result == "1");
-		REQUIRE(cb_status == CommandStatus::SUCCESS);
 	}
 
 	UnLoadModule(port_lib);
 	TestTearDown();
 }
 
+/*
+  function     : TEST_CASE
+  description  : tests latch off
+  param        : TestLatchOff, name of the test case
+  return       : NA
+*/
 TEST_CASE("TestLatchOff")
 {
 	//Load the library
@@ -292,7 +352,6 @@ TEST_CASE("TestLatchOff")
 
 	//scope for port, ios lifetime
 	{
-		auto IOS = odc::asio_service::Get();
 		newptr new_sim = GetPortCreator(port_lib, "Sim");
 		REQUIRE(new_sim);
 		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
@@ -304,31 +363,103 @@ TEST_CASE("TestLatchOff")
 
 		std::string result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
 		REQUIRE(result == "0");
-
-		// Set up a callback for the result
-		std::atomic_bool executed(false);
-		CommandStatus cb_status;
-		auto pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_status,&executed](CommandStatus status)
-			{
-				cb_status = status;
-				executed = true;
-			});
-
-		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-		val.functionCode = ControlCode::TRIP_PULSE_ON;
-		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, 0);
-		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
-
-		sim_port->Event(event, "TestHarness", pStatusCallback);
-		while(!executed)
-		{
-			IOS->run_one();
-		}
+		SendEvent(ControlCode::TRIP_PULSE_ON, 0, sim_port);
 		result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
 		REQUIRE(result == "0");
-		REQUIRE(cb_status == CommandStatus::SUCCESS);
 	}
 
 	UnLoadModule(port_lib);
 	TestTearDown();
 }
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer raise
+  param        : TestTapChangerRaise, name of the test case
+  return       : NA
+*/
+/*
+TEST_CASE("TestTapChangerRaise")
+{
+      //Load the library
+      auto port_lib = LoadModule(GetLibFileName("SimPort"));
+      REQUIRE(port_lib);
+
+      //scope for port, ios lifetime
+      {
+            auto IOS = odc::asio_service::Get();
+            newptr new_sim = GetPortCreator(port_lib, "Sim");
+            REQUIRE(new_sim);
+            delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+            REQUIRE(delete_sim);
+
+            auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+            sim_port->Build();
+            sim_port->Enable();
+
+            std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
+            REQUIRE(result == "5.000000");
+*/
+/*
+  As we know the index 7 tap changer's default position is 5
+  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
+  Raise -> 10 (because 10 is the max limit)
+*/
+/*
+for (int i = 6; i <= 11; ++i)
+{
+    SendEvent(ControlCode::RAISE, 7, sim_port);
+    const int tap_position = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asInt();
+    REQUIRE(i == tap_position);
+}
+}
+UnLoadModule(port_lib);
+TestTearDown();
+}
+*/
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer lower
+  param        : TestTapChangerLower, name of the test case
+  return       : NA
+*/
+/*
+TEST_CASE("TestTapChangerLower")
+{
+      //Load the library
+      auto port_lib = LoadModule(GetLibFileName("SimPort"));
+      REQUIRE(port_lib);
+
+      //scope for port, ios lifetime
+      {
+            auto IOS = odc::asio_service::Get();
+            newptr new_sim = GetPortCreator(port_lib, "Sim");
+            REQUIRE(new_sim);
+            delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+            REQUIRE(delete_sim);
+
+            auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+            sim_port->Build();
+            sim_port->Enable();
+
+            std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
+            REQUIRE(result == "5.000000");
+*/
+/*
+  As we know the index 7 tap changer's default position is 5
+  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
+  Lower -> 0 (because 0 is the min limit)
+*/
+/*
+for (int i = 4; i >= -1 ; --i)
+{
+    SendEvent(ControlCode::LOWER, 7, sim_port);
+    const int tap_position = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asInt();
+    REQUIRE(i == tap_position);
+}
+}
+UnLoadModule(port_lib);
+TestTearDown();
+}
+*/
