@@ -137,26 +137,124 @@ void TestTearDown()
 	odc::spdlog_drop_all(); // Close off everything
 }
 
+ParamCollection BuildParams(const std::string& a,
+	const std::string& b,
+	const std::string& c)
+{
+	ParamCollection params;
+	params["0"] = a;
+	params["1"] = b;
+	params["2"] = c;
+	params["Target"] = "OutstationUnderTest";
+	return params;
+}
+
 TEST_CASE("TestConfigLoad")
 {
 	TestSetup(spdlog::level::level_enum::warn);
 
 	//Load the library
-	auto portlib = LoadModule(GetLibFileName("SimPort"));
-	REQUIRE(portlib);
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
 
 	//scope for port, ios lifetime
 	{
 		auto IOS = odc::asio_service::Get();
-		newptr newSim = GetPortCreator(portlib, "Sim");
-		REQUIRE(newSim);
-		delptr deleteSim = GetPortDestroyer(portlib, "Sim");
-		REQUIRE(deleteSim);
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
 
-		auto SimPort1 = std::shared_ptr<DataPort>(newSim("OutstationUnderTest", "", GetTestConfigJSON()), deleteSim);
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+		const bool result = sim_port->GetCurrentState()["AnalogCurrent"].isMember("0");
+		REQUIRE(result == true);
+	}
 
-		SimPort1->Build();
-		SimPort1->Enable();
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+TEST_CASE("TestForcedPoint")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const ParamCollection params = BuildParams("Analog", "0", "12345.6789");
+		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
+		REQUIRE(value["RESULT"].asString() == "Success");
+		REQUIRE(sim_port->GetCurrentState()["AnalogCurrent"]["0"] == "12345.678900");
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+TEST_CASE("TestReleasePoint")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const ParamCollection params = BuildParams("Analog", "0", "");
+		Json::Value value = resp->ExecuteCommand("ReleasePoint", params);
+		REQUIRE(value["RESULT"].asString() == "Success");
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+TEST_CASE("TestLatchOn")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::string result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
+		REQUIRE(result == "0");
 
 		// Set up a callback for the result
 		std::atomic_bool executed(false);
@@ -167,21 +265,70 @@ TEST_CASE("TestConfigLoad")
 				executed = true;
 			});
 
-
 		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
-		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, 1);
+		val.functionCode = ControlCode::LATCH_ON;
+		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, 0);
 		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
-		SimPort1->Event(event, "TestHarness", pStatusCallback);
-
+		sim_port->Event(event, "TestHarness", pStatusCallback);
 		while(!executed)
 		{
 			IOS->run_one();
 		}
-
+		result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
+		REQUIRE(result == "1");
 		REQUIRE(cb_status == CommandStatus::SUCCESS);
 	}
 
-	UnLoadModule(portlib);
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+TEST_CASE("TestLatchOff")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::string result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
+		REQUIRE(result == "0");
+
+		// Set up a callback for the result
+		std::atomic_bool executed(false);
+		CommandStatus cb_status;
+		auto pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_status,&executed](CommandStatus status)
+			{
+				cb_status = status;
+				executed = true;
+			});
+
+		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
+		val.functionCode = ControlCode::TRIP_PULSE_ON;
+		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, 0);
+		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
+
+		sim_port->Event(event, "TestHarness", pStatusCallback);
+		while(!executed)
+		{
+			IOS->run_one();
+		}
+		result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
+		REQUIRE(result == "0");
+		REQUIRE(cb_status == CommandStatus::SUCCESS);
+	}
+
+	UnLoadModule(port_lib);
 	TestTearDown();
 }
