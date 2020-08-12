@@ -178,7 +178,7 @@ inline ParamCollection BuildParams(const std::string& a,
 }
 
 inline void SendEvent(ControlCode code, std::size_t index,
-	std::shared_ptr<DataPort> sim_port)
+	std::shared_ptr<DataPort> sim_port, CommandStatus status)
 {
 	auto IOS = odc::asio_service::Get();
 	// Set up a callback for the result
@@ -200,7 +200,7 @@ inline void SendEvent(ControlCode code, std::size_t index,
 	{
 		IOS->run_one();
 	}
-	REQUIRE(cb_status == CommandStatus::SUCCESS);
+	REQUIRE(cb_status == status);
 }
 
 /*
@@ -329,7 +329,7 @@ TEST_CASE("TestLatchOn")
 
 		std::string result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
 		REQUIRE(result == "0");
-		SendEvent(ControlCode::LATCH_ON, 0, sim_port);
+		SendEvent(ControlCode::LATCH_ON, 0, sim_port, CommandStatus::SUCCESS);
 		result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
 		REQUIRE(result == "1");
 	}
@@ -363,7 +363,7 @@ TEST_CASE("TestLatchOff")
 
 		std::string result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
 		REQUIRE(result == "0");
-		SendEvent(ControlCode::TRIP_PULSE_ON, 0, sim_port);
+		SendEvent(ControlCode::TRIP_PULSE_ON, 0, sim_port, CommandStatus::SUCCESS);
 		result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
 		REQUIRE(result == "0");
 	}
@@ -405,9 +405,22 @@ TEST_CASE("TestTapChangerRaise")
 		*/
 		for (int i = 6; i <= 10; ++i)
 		{
-			SendEvent(ControlCode::UNDEFINED, 2, sim_port);
+			SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::SUCCESS);
 			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 		}
+
+		/*
+		  test the corner cases now.
+		  we will test to raise the tap changer beyond the upper limit mark
+		 */
+		SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::OUT_OF_RANGE);
+		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+
+		/*
+		  test the corner cases now.
+		  send the event with an index which doesnt exist
+		 */
+		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::UNDEFINED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -446,9 +459,22 @@ TEST_CASE("TestTapChangerLower")
 		*/
 		for (int i = 4; i >= 0; --i)
 		{
-			SendEvent(ControlCode::UNDEFINED, 3, sim_port);
+			SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::SUCCESS);
 			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 		}
+
+		/*
+		  test the corner cases now.
+		  we will test to raise the tap changer beyond the lower limit mark
+		 */
+		SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::OUT_OF_RANGE);
+		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+
+		/*
+		  test the corner cases now.
+		  send the event with an index which doesnt exist
+		 */
+		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::UNDEFINED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
