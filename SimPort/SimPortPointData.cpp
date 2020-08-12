@@ -216,3 +216,20 @@ std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(s
 {
 	return m_binary_feedbacks[index];
 }
+
+void SimPortPointData::CreateBinaryPosition(std::size_t index,
+	odc::FeedbackType type,
+	const std::vector<std::size_t>& indexes,
+	odc::TapChangerAction action,
+	std::size_t limit)
+{
+	m_binary_positions[index] = std::make_shared<BinaryPosition>(type, action, indexes, limit);
+}
+
+std::shared_ptr<BinaryPosition> SimPortPointData::GetBinaryPosition(std::size_t index)
+{
+	if (m_binary_positions.find(index) == m_binary_positions.end())
+		return nullptr;
+	else
+		return m_binary_positions[index];
+}

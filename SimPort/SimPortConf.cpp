@@ -161,6 +161,11 @@ std::vector<std::shared_ptr<BinaryFeedback>> SimPortConf::BinaryFeedbacks(std::s
 	return m_pport_data->BinaryFeedbacks(index);
 }
 
+std::shared_ptr<BinaryPosition> SimPortConf::GetBinaryPosition(std::size_t index) const
+{
+	return m_pport_data->GetBinaryPosition(index);
+}
+
 bool SimPortConf::m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const
 {
 	bool result = true;
@@ -281,12 +286,12 @@ void SimPortConf::m_ProcessBinaryControls(const Json::Value& binary_controls)
 			if (binary_controls[n].isMember("FeedbackBinaries"))
 				m_ProcessFeedbackBinaries(binary_controls[n]["FeedbackBinaries"], index, update_interval);
 			if (binary_controls[n].isMember("FeedbackPosition"))
-				m_ProcessFeedbackPosition(binary_controls[n]["FeedbackPosition"]);
+				m_ProcessFeedbackPosition(binary_controls[n]["FeedbackPosition"], index);
 		}
 	}
 }
 
-void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::size_t& index)
+void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, std::size_t index)
 {
 	if(sqlite.isMember("File") && sqlite.isMember("Query"))
 	{
@@ -357,7 +362,7 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::size_t&
 	}
 }
 
-void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, const std::size_t& index,
+void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, std::size_t index,
 	std::size_t update_interval)
 {
 	for (Json::ArrayIndex fbn = 0; fbn < feedback_binaries.size(); ++fbn)
@@ -424,46 +429,34 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
   get re-forced the next time a command comes through.
   Bit of a hack, but comes back to the original simulator design not "remembering" what its current state is.
 */
-void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position)
+void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position, std::size_t index)
 {
+	odc::FeedbackType type = odc::FeedbackType::UNDEFINED;
+	odc::TapChangerAction action = odc::TapChangerAction::UNDEFINED;
+	std::vector<std::size_t> indexes;
+	std::size_t limit = 0;
+	if (feedback_position.isMember("Type"))
+		type = ToFeedbackType(feedback_position["Type"].asString());
+	if (feedback_position.isMember("Index"))
+		indexes.emplace_back(feedback_position["Index"].asUInt());
+	if (feedback_position.isMember("Indexes"))
+		for (Json::ArrayIndex i = 0; i < feedback_position["Indexes"].size(); ++i)
+			indexes.emplace_back(feedback_position["Indexes"][i].asUInt());
+	if (feedback_position.isMember("Action"))
+		action = ToTapChangerAction(feedback_position["Action"].asString());
+	if (feedback_position.isMember("Limit"))
+		limit = feedback_position["Limit"].asUInt();
+	m_pport_data->CreateBinaryPosition(index, type, indexes, action, limit);
+
 	try
 	{
-		// Only allow 1 entry - you need pulse or repeated open/close to tap up and down from two separate signals.
-		if (!feedback_position.isMember("Type"))
+		if (feedback_position["Type"] == "Binary")
 		{
-			throw std::runtime_error("A 'Type' is required for Position feedback");
-		}
-		if (!feedback_position.isMember("Action"))
-		{
-			throw std::runtime_error("An 'Action' is required for Position feedback");
-		}
-		if (!feedback_position.isMember("FeedbackMode"))
-		{
-			throw std::runtime_error("A 'FeedbackMode' is required for Position feedback");
-		}
-		if (!(feedback_position.isMember("Index") || feedback_position.isMember("Indexes")))
-		{
-			throw std::runtime_error("An 'Index' or 'Indexes' is required for Position feedback");
-		}
-
-		if (feedback_position["Type"] == "Analog")
-		{
-			//TODO:
-			throw std::runtime_error("'Analog' Position feedback is unimplemented.");
-		}
-		else if (feedback_position["Type"] == "Binary")
-		{
-			//TODO:
 			throw std::runtime_error("'Binary' Position feedback is unimplemented.");
 		}
 		else if (feedback_position["Type"] == "BCD")
 		{
-			//TODO:
 			throw std::runtime_error("'BCD' Position feedback is unimplemented.");
-		}
-		else
-		{
-			throw std::runtime_error("The 'Type' for Position feedback is invalid, requires 'Analog','Binary' or 'BCD'");
 		}
 	}
 	catch (std::exception &e)
@@ -471,4 +464,3 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 		LOGERROR("{} : '{}'", e.what(),  feedback_position.toStyledString());
 	}
 }
-

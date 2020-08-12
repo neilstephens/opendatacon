@@ -83,27 +83,27 @@ inline Json::Value GetTestConfigJSON()
 			},
 			{
 				"Index" : 2,
-				"FeedbackPosition": {"Type": "Analog", "Index" : 7, "FeedbackMode":"PULSE", "Action":"RAISE", "Limit":10}
+				"FeedbackPosition": {"Type": "Analog", "Index" : 7, "Action":"RAISE", "Limit":10}
 			},
 			{
 				"Index" : 3,
-				"FeedbackPosition": {"Type": "Analog", "Index" : 7,"FeedbackMode":"PULSE", "Action":"LOWER", "Limit":0}
+				"FeedbackPosition": {"Type": "Analog", "Index" : 7, "Action":"LOWER", "Limit":0}
 			},
 			{
 				"Index" : 4,
-				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13], "FeedbackMode":"PULSE", "Action":"RAISE", "Limit":10}
+				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13], "Action":"RAISE", "Limit":10}
 			},
 			{
 				"Index" : 5,
-				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13],"FeedbackMode":"PULSE", "Action":"LOWER", "Limit":0}
+				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13], "Action":"LOWER", "Limit":0}
 			},
 			{
 				"Index" : 6,
-				"FeedbackPosition":	{ "Type": "BCD", "Indexes" : [10,11,12,13,14], "FeedbackMode":"PULSE", "Action":"RAISE", "Limit":10}
+				"FeedbackPosition":	{ "Type": "BCD", "Indexes" : [10,11,12,13,14], "Action":"RAISE", "Limit":10}
 			},
 			{
 				"Index" : 7,
-				"FeedbackPosition": {"Type": "BCD", "Indexes" : [10,11,12,13,14],"FeedbackMode":"PULSE", "Action":"LOWER", "Limit":0}
+				"FeedbackPosition": {"Type": "BCD", "Indexes" : [10,11,12,13,14], "Action":"LOWER", "Limit":0}
 			}
 		]
 	})001";
@@ -378,45 +378,40 @@ TEST_CASE("TestLatchOff")
   param        : TestTapChangerRaise, name of the test case
   return       : NA
 */
-/*
 TEST_CASE("TestTapChangerRaise")
 {
-      //Load the library
-      auto port_lib = LoadModule(GetLibFileName("SimPort"));
-      REQUIRE(port_lib);
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
 
-      //scope for port, ios lifetime
-      {
-            auto IOS = odc::asio_service::Get();
-            newptr new_sim = GetPortCreator(port_lib, "Sim");
-            REQUIRE(new_sim);
-            delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
-            REQUIRE(delete_sim);
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
 
-            auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
-            sim_port->Build();
-            sim_port->Enable();
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
 
-            std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
-            REQUIRE(result == "5.000000");
-*/
-/*
-  As we know the index 7 tap changer's default position is 5
-  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
-  Raise -> 10 (because 10 is the max limit)
-*/
-/*
-for (int i = 6; i <= 11; ++i)
-{
-    SendEvent(ControlCode::RAISE, 7, sim_port);
-    const int tap_position = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asInt();
-    REQUIRE(i == tap_position);
+		std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
+		REQUIRE(result == "5.000000");
+		/*
+		  As we know the index 7 tap changer's default position is 5
+		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
+		  Raise -> 10 (because 10 is the max limit)
+		*/
+		for (int i = 6; i <= 10; ++i)
+		{
+			SendEvent(ControlCode::UNDEFINED, 2, sim_port);
+			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		}
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
 }
-}
-UnLoadModule(port_lib);
-TestTearDown();
-}
-*/
 
 /*
   function     : TEST_CASE
@@ -424,42 +419,38 @@ TestTearDown();
   param        : TestTapChangerLower, name of the test case
   return       : NA
 */
-/*
 TEST_CASE("TestTapChangerLower")
 {
-      //Load the library
-      auto port_lib = LoadModule(GetLibFileName("SimPort"));
-      REQUIRE(port_lib);
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
 
-      //scope for port, ios lifetime
-      {
-            auto IOS = odc::asio_service::Get();
-            newptr new_sim = GetPortCreator(port_lib, "Sim");
-            REQUIRE(new_sim);
-            delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
-            REQUIRE(delete_sim);
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
 
-            auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
-            sim_port->Build();
-            sim_port->Enable();
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
 
-            std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
-            REQUIRE(result == "5.000000");
-*/
-/*
-  As we know the index 7 tap changer's default position is 5
-  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
-  Lower -> 0 (because 0 is the min limit)
-*/
-/*
-for (int i = 4; i >= -1 ; --i)
-{
-    SendEvent(ControlCode::LOWER, 7, sim_port);
-    const int tap_position = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asInt();
-    REQUIRE(i == tap_position);
+		std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
+		REQUIRE(result == "5.000000");
+		/*
+		  As we know the index 7 tap changer's default position is 5
+		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
+		  Lower -> 0 (because 0 is the min limit)
+		*/
+		for (int i = 4; i >= 0; --i)
+		{
+			SendEvent(ControlCode::UNDEFINED, 3, sim_port);
+			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		}
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
 }
-}
-UnLoadModule(port_lib);
-TestTearDown();
-}
-*/
+

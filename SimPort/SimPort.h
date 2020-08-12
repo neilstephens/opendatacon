@@ -114,6 +114,13 @@ private:
 	void PortDown();
 	std::vector<std::size_t> IndexesFromString(const std::string& index_str, odc::EventType type);
 
+	CommandStatus HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks,
+		std::size_t index, ControlRelayOutputBlock command);
+	CommandStatus HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position);
+	CommandStatus HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position);
+	CommandStatus HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position);
+	CommandStatus HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position);
+
 	std::shared_ptr<SimPortCollection> SimCollection;
 
 	mutable std::shared_timed_mutex ConfMutex;

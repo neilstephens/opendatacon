@@ -74,6 +74,20 @@ struct BinaryFeedback
 		update_interval(u_interval) {}
 };
 
+struct BinaryPosition
+{
+	BinaryPosition(odc::FeedbackType feedback_type,
+		odc::TapChangerAction tc_action,
+		const std::vector<std::size_t>& index,
+		std::size_t tap_limit):
+		type(feedback_type), action(tc_action), indexes(index), limit(tap_limit) {}
+
+	odc::FeedbackType type;
+	odc::TapChangerAction action;
+	std::vector<std::size_t> indexes;
+	std::size_t limit;
+};
+
 class SimPortPointData
 {
 public:
@@ -244,11 +258,18 @@ public:
 
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index);
 
+	void CreateBinaryPosition(std::size_t index,
+		odc::FeedbackType type,
+		const std::vector<std::size_t>& indexes,
+		odc::TapChangerAction action,
+		std::size_t limit);
+	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index);
 
 private:
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
 	std::unordered_map<odc::EventType, Points> m_points;
 	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
+	std::unordered_map<std::size_t, std::shared_ptr<BinaryPosition>> m_binary_positions;
 };
 
 #endif // SIMPORTPOINTDATA_H

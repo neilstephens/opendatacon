@@ -153,9 +153,22 @@ enum class ControlCode : uint8_t
 	CLOSE_PULSE_ON_CANCEL = 12,
 	TRIP_PULSE_ON = 13,
 	TRIP_PULSE_ON_CANCEL = 14,
-	RAISE = 15,
-	LOWER = 16,
-	UNDEFINED = 17
+	UNDEFINED = 15
+};
+
+enum class FeedbackType : uint8_t
+{
+	ANALOG = 1,
+	BINARY = 2,
+	BCD = 3,
+	UNDEFINED = 4
+};
+
+enum class TapChangerAction : uint8_t
+{
+	RAISE = 1,
+	LOWER = 2,
+	UNDEFINED = 3
 };
 
 //TODO: make these ToString functions faster
@@ -255,6 +268,14 @@ inline std::string ToString(const EventType et)
 	ENUMSTRING(et,EventType,Reserved11               )
 	ENUMSTRING(et,EventType,Reserved12               )
 	return "<no_string_representation>";
+}
+
+inline std::string ToString(const FeedbackType type)
+{
+	ENUMSTRING(type, FeedbackType, ANALOG            )
+	ENUMSTRING(type, FeedbackType, BINARY            )
+	ENUMSTRING(type, FeedbackType, BCD               )
+	ENUMSTRING(type, FeedbackType, UNDEFINED         )
 }
 
 //Quatilty flags that can be used for any EventType
@@ -363,7 +384,8 @@ inline bool GetEventTypeFromStringName(const std::string StrEventType, EventType
 
 	return (EventTypeResult != EventType::BeforeRange);
 }
-inline bool GetControlCodeFromStringName(const std::string StrControlCode, ControlCode& ControlCodeResult)
+
+inline bool ToControlCode(const std::string StrControlCode, ControlCode& ControlCodeResult)
 {
 #define CHECKCONTROLCODESTRING(X) if (StrControlCode.find(ToString(X)) != std::string::npos) ControlCodeResult = X
 
@@ -386,6 +408,7 @@ inline bool GetControlCodeFromStringName(const std::string StrControlCode, Contr
 
 	return (ControlCodeResult != ControlCode::UNDEFINED);
 }
+
 inline bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult)
 {
 #define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
@@ -406,6 +429,28 @@ inline EventType ToEventType(const std::string& str_type)
 	if (to_lower(str_type) == "analog")
 		type = EventType::Analog;
 	return type;
+}
+
+inline FeedbackType ToFeedbackType(const std::string& str_type)
+{
+	FeedbackType type = FeedbackType::UNDEFINED;
+	if (to_lower(str_type) == "analog")
+		type = FeedbackType::ANALOG;
+	if (to_lower(str_type) == "binary")
+		type = FeedbackType::BINARY;
+	if (to_lower(str_type) == "bcd")
+		type = FeedbackType::BCD;
+	return type;
+}
+
+inline TapChangerAction ToTapChangerAction(const std::string& str_action)
+{
+	TapChangerAction action = TapChangerAction::UNDEFINED;
+	if (to_lower(str_action) == "raise")
+		action = TapChangerAction::RAISE;
+	if (to_lower(str_action) == "lower")
+		action = TapChangerAction::LOWER;
+	return action;
 }
 
 typedef uint64_t msSinceEpoch_t;

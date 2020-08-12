@@ -100,6 +100,7 @@ public:
 	std::string CurrentState(odc::EventType type, std::vector<std::size_t>& indexes) const;
 
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
+	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index) const;
 
 private:
 	std::string m_name;
@@ -112,10 +113,10 @@ private:
 	void m_ProcessAnalogs(const Json::Value& analogs);
 	void m_ProcessBinaries(const Json::Value& binaires);
 	void m_ProcessBinaryControls(const Json::Value& binary_controls);
-	void m_ProcessSQLite3(const Json::Value& sqlite, const std::size_t& index);
-	void m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, const std::size_t& index,
+	void m_ProcessSQLite3(const Json::Value& sqlite, std::size_t index);
+	void m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, std::size_t index,
 		std::size_t update_interval);
-	void m_ProcessFeedbackPosition(const Json::Value& feedback_position);
+	void m_ProcessFeedbackPosition(const Json::Value& feedback_position, std::size_t index);
 };
 
 #endif // SIMPORTCONF_H

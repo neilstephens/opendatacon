@@ -72,6 +72,13 @@ public:
 		std::size_t update_interval);
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
 
+	void CreateBinaryPosition(std::size_t index,
+		odc::FeedbackType type,
+		const std::vector<std::size_t>& indexes,
+		odc::TapChangerAction action,
+		std::size_t limit);
+	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index) const;
+
 private:
 	std::string m_http_addr;
 	std::string m_http_port;
