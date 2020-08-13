@@ -18,7 +18,7 @@
  *	limitations under the License.
  */
 /*
- * SimPort.h
+ * SimPort.cpp
  *
  *  Created on: 29/07/2015
  *      Author: Neil Stephens <dearknarl@gmail.com>
@@ -38,12 +38,11 @@
 
 thread_local std::mt19937 SimPort::RandNumGenerator = std::mt19937(std::random_device()());
 
-std::string StringToLower(std::string strToConvert)
+inline bool ValidEventType(EventType type)
 {
-	std::transform(strToConvert.begin(), strToConvert.end(), strToConvert.begin(), (int (*)(int)) std::tolower); // Specific overload requested..google it
-
-	return strToConvert;
+	return type == EventType::Binary || type == EventType::Analog;
 }
+
 std::vector<std::string> split(const std::string& s, char delimiter)
 {
 	std::vector<std::string> tokens;
@@ -59,10 +58,8 @@ std::vector<std::string> split(const std::string& s, char delimiter)
 //Implement DataPort interface
 SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
 	DataPort(Name, File, Overrides),
-	TimestampHandling(TimestampMode::FIRST),
 	SimCollection(nullptr)
 {
-
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<SimPortCollection> weak_collection;
 
@@ -85,8 +82,10 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 
 	pConf = std::make_unique<SimPortConf>();
 	pSimConf = static_cast<SimPortConf*>(this->pConf.get());
+	pSimConf->Name(Name);
 	ProcessFile();
 }
+
 void SimPort::Enable()
 {
 	pEnableDisableSync->post([this]()
@@ -99,6 +98,7 @@ void SimPort::Enable()
 			}
 		});
 }
+
 void SimPort::Disable()
 {
 	pEnableDisableSync->post([this]()
@@ -112,31 +112,12 @@ void SimPort::Disable()
 		});
 }
 
-// Just a way to keep the BinaryVals and AnalogVals up to date...
+
+// Just a way to keep the BinaryVals and Analog+*Vals up to date...
 void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([](CommandStatus status) {}))
 {
 	PublishEvent(event, pStatusCallback);
-
-	// If we publish it, the value has changed so update current values.
-	size_t index = event->GetIndex();
-	if (event->GetEventType() == EventType::Analog)
-	{
-		double val = event->GetPayload<EventType::Analog>();
-		pIOS->post([this, index, val]()
-			{
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				pSimConf->AnalogVals[index] = val;
-			});
-	}
-	if (event->GetEventType() == EventType::Binary)
-	{
-		bool val = event->GetPayload<EventType::Binary>();
-		pIOS->post([this, index, val]()
-			{
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				pSimConf->BinaryVals[index] = val;
-			});
-	}
+	pSimConf->Event(event);
 }
 
 std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
@@ -146,16 +127,9 @@ std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 
 const Json::Value SimPort::GetCurrentState() const
 {
-	Json::Value current_state;
-	{ //lock scope
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		for(const auto& ind_val_pair : pSimConf->BinaryVals)
-			current_state["BinaryCurrent"][ind_val_pair.first] = ind_val_pair.second;
-		for(const auto& ind_val_pair : pSimConf->AnalogVals)
-			current_state["AnalogCurrent"][ind_val_pair.first] = ind_val_pair.second;
-	}
-	return current_state;
+	return pSimConf->CurrentState();
 }
+
 const Json::Value SimPort::GetStatistics() const
 {
 	Json::Value stats;
@@ -167,33 +141,9 @@ const Json::Value SimPort::GetStatus() const
 	return status;
 }
 
-std::vector<uint32_t> SimPort::GetAllowedIndexes(std::string type)
+std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str, EventType type)
 {
-	std::vector<uint32_t> allowed_indexes;
-	// Take a copy of the shared allowed_indexs while mutex protected.
-	if (StringToLower(type) == "analog")
-	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		allowed_indexes = pSimConf->AnalogIndicies;
-	}
-	else if (StringToLower(type) == "binary")
-	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		allowed_indexes = pSimConf->BinaryIndicies;
-	}
-	return allowed_indexes;
-}
-
-
-std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, const std::string& type)
-{
-	std::vector<uint32_t> indexes;
-	// Take a copy of the shared allowed_indexs while mutex protected.
-	std::vector<uint32_t> allowed_indexes = GetAllowedIndexes(type);
-
-	if (allowed_indexes.size() == 0)
-		return indexes;
-
+	std::vector<std::size_t> indexes;
 	//Check for comma separated list,no white space
 	std::regex comma_regx("^[0-9]+(?:,[0-9]+)*$");
 
@@ -203,7 +153,7 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 		auto idxstrings = split(index_str, ',');
 		for(const auto& idxs : idxstrings)
 		{
-			size_t idx;
+			std::size_t idx;
 			try
 			{
 				idx = std::stoi(idxs);
@@ -212,13 +162,9 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 			{
 				continue;
 			}
-			for(auto allowed : allowed_indexes)
 			{
-				if(idx == allowed)
-				{
-					indexes.push_back(idx);
-					break;
-				}
+				if(pSimConf->IsIndex(type, idx))
+					indexes.emplace_back(idx);
 			}
 		}
 	}
@@ -227,98 +173,72 @@ std::vector<uint32_t> SimPort::IndexesFromString(const std::string& index_str, c
 		try
 		{
 			std::regex ind_regex(index_str,std::regex::extended);
+			const std::vector<std::size_t> allowed_indexes = pSimConf->Indexes(type);
 			for(auto allowed : allowed_indexes)
 			{
 				if(std::regex_match(std::to_string(allowed),ind_regex))
-					indexes.push_back(allowed);
+					indexes.emplace_back(allowed);
 			}
 		}
 		catch(std::exception& e)
 		{}
 	}
+
 	return indexes;
 }
 
-bool SimPort::UILoad(const std::string& type, const std::string& index, const std::string& value, const std::string& quality, const std::string& timestamp, const bool force)
+bool SimPort::UILoad(EventType type, const std::string& index, const std::string& value, const std::string& quality, const std::string& timestamp, const bool force)
 {
 	if (auto log = odc::spdlog_get("SimPort"))
 	{
-		log->debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, type, index, value, quality, timestamp, force);
+		log->debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, ToString(type), index, value, quality, timestamp, force);
 	}
 
-	double val;
+	double val = 0.0f;
+	msSinceEpoch_t ts = msSinceEpoch();
 	try
 	{
 		val = std::stod(value);
+		if (!timestamp.empty())
+			ts = std::stoull(timestamp);
 	}
 	catch(std::exception& e)
 	{
 		return false;
 	}
 
-	auto indexes = IndexesFromString(index,type);
-	if(!indexes.size())
+	QualityFlags Q = QualityFlags::ONLINE;
+	if (!quality.empty() && !GetQualityFlagsFromStringName(quality, Q))
 		return false;
 
-	QualityFlags Q;
-	if(quality == "")
-		Q = QualityFlags::ONLINE;
-	else if(!GetQualityFlagsFromStringName(quality, Q))
-		return false;
-
-	msSinceEpoch_t ts;
-	if(timestamp == "")
-		ts = msSinceEpoch();
-	else
+	auto indexes = IndexesFromString(index, type);
+	if (ValidEventType(type))
 	{
-		try
-		{
-			ts = std::stoull(timestamp);
-		}
-		catch(std::exception& e)
-		{
-			return false;
-		}
-	}
-
-	if(StringToLower(type) == "binary")
-	{
-		for(auto idx : indexes)
+		for (std::size_t index : indexes)
 		{
 			if (force)
-			{ //lock scope
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				pSimConf->BinaryForcedStates[idx] = true;
+			{
+				pSimConf->ForcedState(type, index, true);
 			}
-			auto event = std::make_shared<EventInfo>(EventType::Binary,idx,Name,Q,ts);
-			bool valb = (val >= 1);
-			event->SetPayload<EventType::Binary>(std::move(valb));
-			PostPublishEvent(event);
-		}
-	}
-	else if(StringToLower(type) == "analog")
-	{
-		for(auto idx : indexes)
-		{
-			if (force)
-			{ //lock scope
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				pSimConf->AnalogForcedStates[idx] = true;
-			}
-			auto event = std::make_shared<EventInfo>(EventType::Analog,idx,Name,Q,ts);
-			event->SetPayload<EventType::Analog>(std::move(val));
+			auto event = std::make_shared<EventInfo>(type, index, Name, Q, ts);
+			if (type == EventType::Binary)
+				event->SetPayload<EventType::Binary>(std::move(val));
+			if (type == EventType::Analog)
+				event->SetPayload<EventType::Analog>(std::move(val));
 			PostPublishEvent(event);
 		}
 	}
 	else
+	{
 		return false;
+	}
 
 	return true;
 }
 
-bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& index, const std::string& period)
+bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, const std::string& period)
 {
-	unsigned int delta;
+	unsigned int delta = 0;
 	try
 	{
 		delta = std::stoi(period);
@@ -328,146 +248,70 @@ bool SimPort::UISetUpdateInterval(const std::string& type, const std::string& in
 		return false;
 	}
 
-	auto indexes = IndexesFromString(index,type);
+	auto indexes = IndexesFromString(index, type);
 	if(!indexes.size())
 		return false;
 
-	if(StringToLower(type) == "binary")
+	if (ValidEventType(type))
 	{
-		for(auto idx : indexes)
+		for (std::size_t index : indexes)
 		{
-			{ //lock scope
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				if(!pSimConf->BinaryStartVals.count(idx))
-					return false;
-				pSimConf->BinaryUpdateIntervalms[idx] = delta;
-			}
-			auto pTimer = Timers.at("Binary"+std::to_string(idx));
-			if(!delta) //zero means no updates
+			pSimConf->UpdateInterval(type, index, delta);
+			auto pTimer = Timers.at(ToString(type) + std::to_string(index));
+			if (!delta)
 			{
 				pTimer->cancel();
 			}
 			else
 			{
-				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*delta)(RandNumGenerator);
+				auto random_interval = std::uniform_int_distribution<unsigned int>(0, delta << 1)(RandNumGenerator);
 				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 				pTimer->async_wait([=](asio::error_code err_code)
 					{
 						if(enabled && !err_code)
-							StartBinaryEvents(idx);
-					});
-			}
-		}
-	}
-	else if(StringToLower(type) == "analog")
-	{
-		for(auto idx : indexes)
-		{
-			{ //lock scope
-				std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-				if(!pSimConf->AnalogStartVals.count(idx))
-					return false;
-				pSimConf->AnalogUpdateIntervalms[idx] = delta;
-			}
-			auto pTimer = Timers.at("Analog"+std::to_string(idx));
-			if(!delta) //zero means no updates
-			{
-				pTimer->cancel();
-			}
-			else
-			{
-				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2*delta)(RandNumGenerator);
-				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-				pTimer->async_wait([=](asio::error_code err_code)
-					{
-						if(enabled && !err_code)
-							StartAnalogEvents(idx);
+						{
+						      if (type == EventType::Binary)
+								StartBinaryEvents(index);
+						      if (type == EventType::Analog)
+								StartAnalogEvents(index);
+						}
 					});
 			}
 		}
 	}
 	else
+	{
 		return false;
+	}
 
 	return true;
 }
 
-bool SimPort::UIRelease(const std::string& type, const std::string& index)
+bool SimPort::UIRelease(EventType type, const std::string& index)
 {
 	return SetForcedState(index, type, false);
 }
 
-bool SimPort::SetForcedState(const std::string& index, const std::string& type, bool forced)
+bool SimPort::SetForcedState(const std::string& index, EventType type, bool forced)
 {
 	auto indexes = IndexesFromString(index, type);
-	if (!indexes.size())
-		return false;
-
-	if (StringToLower(type) == "binary")
+	bool result = true;
+	if (!index.empty() && ValidEventType(type))
 	{
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 		for (auto idx : indexes)
-		{
-			pSimConf->BinaryForcedStates[idx] = forced;
-		}
-	}
-	else if (StringToLower(type) == "analog")
-	{
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-		for (auto idx : indexes)
-		{
-			pSimConf->AnalogForcedStates[idx] = forced;
-		}
+			pSimConf->ForcedState(type, idx, forced);
 	}
 	else
-		return false;
-
-	return true;
-}
-std::string SimPort::GetCurrentBinaryValsAsJSONString(const std::string& index)
-{
-	auto indexes = IndexesFromString(index, "binary");
-	if (!indexes.size())
-		return "";
-	Json::Value root;
-
 	{
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-		for (auto idx : indexes)
-		{
-			root[std::to_string(idx)] = pSimConf->BinaryVals[idx] ? "1" : "0";
-		}
+		result = false;
 	}
-	Json::StreamWriterBuilder wbuilder;
-	wbuilder["indentation"] = "";
-	const std::string result = Json::writeString(wbuilder, root);
-	return result;
-}
-
-std::string SimPort::GetCurrentAnalogValsAsJSONString(const std::string& index)
-{
-	auto indexes = IndexesFromString(index, "analog");
-	if (!indexes.size())
-		return "";
-	Json::Value root;
-
-	{
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-		for (auto idx : indexes)
-		{
-			root[std::to_string(idx)] = std::to_string(pSimConf->AnalogVals[idx]);
-		}
-	}
-	Json::StreamWriterBuilder wbuilder;
-	wbuilder["indentation"] = "";
-	const std::string result = Json::writeString(wbuilder, root);
 	return result;
 }
 
 void SimPort::PortUp()
 {
 	auto now = msSinceEpoch();
-	std::vector<uint32_t> indexes = GetAllowedIndexes("analog"); // Mutex protected copy of indexes.
+	std::vector<std::size_t> indexes = pSimConf->Indexes(odc::EventType::Analog);
 
 	for(auto index : indexes)
 	{
@@ -475,18 +319,20 @@ void SimPort::PortUp()
 		Timers["Analog"+std::to_string(index)] = pTimer;
 
 		//Check if we're configured to load this point from DB
-		if(DBStats.count("Analog"+std::to_string(index)))
+		const auto db_stats = pSimConf->GetDBStats();
+		if(db_stats.find("Analog"+std::to_string(index)) != db_stats.end())
 		{
 			auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
 			NextEventFromDB(event);
 			int64_t time_offset = 0;
-			if(!(TimestampHandling & TimestampMode::ABSOLUTE_T))
+			const auto timestamp_handling = pSimConf->TimestampHandling();
+			if(!(timestamp_handling & TimestampMode::ABSOLUTE_T))
 			{
-				if(!!(TimestampHandling & TimestampMode::FIRST))
+				if(!!(timestamp_handling & TimestampMode::FIRST))
 				{
 					time_offset = now - event->GetTimestamp();
 				}
-				else if(!!(TimestampHandling & TimestampMode::TOD))
+				else if(!!(timestamp_handling & TimestampMode::TOD))
 				{
 					auto whole_days_ts = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
 					auto whole_days_now = std::chrono::duration_cast<days>(std::chrono::milliseconds(now));
@@ -498,19 +344,12 @@ void SimPort::PortUp()
 					throw std::runtime_error("Invalid timestamp mode: Not absolute, but not relative either");
 				}
 			}
-			if(!(TimestampHandling & TimestampMode::FASTFORWARD))
+			if(!(timestamp_handling & TimestampMode::FASTFORWARD))
 			{
 				//Find the first event that's not in the past
 				while(now > (event->GetTimestamp()+time_offset))
 					NextEventFromDB(event);
 			}
-
-			//TODO: remeber the last event in the past to send an initial event
-			//posting this is essential - otherwise SpawnEvent will deadlock the mutex we have locked
-//			pIOS->post([this,event,time_offset]()
-//				{
-//					SpawnEvent(last_event, time_offset);
-//				});
 
 			msSinceEpoch_t delta;
 			if(now > event->GetTimestamp())
@@ -528,71 +367,39 @@ void SimPort::PortUp()
 			continue;
 		}
 
-		double mean;
-		{ //lock scope
-			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			//send initial event
-			mean = pSimConf->AnalogStartVals.count(index) ? pSimConf->AnalogStartVals.at(index) : 0;
-			pSimConf->AnalogStartVals[index] = mean;
-		}
-		auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name,QualityFlags::ONLINE);
-		event->SetPayload<EventType::Analog>(std::move(mean));
+		auto event = pSimConf->Event(odc::EventType::Analog, index);
+		event->SetTimestamp(msSinceEpoch());
 		PostPublishEvent(event);
 
-		//queue up a timer if it has an update interval
-		{ //lock scope
-			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			if (pSimConf->AnalogUpdateIntervalms.count(index))
+		auto interval = pSimConf->UpdateInterval(odc::EventType::Analog, index);
+		auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
+		pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
+		pTimer->async_wait([=](asio::error_code err_code)
 			{
-				auto interval = pSimConf->AnalogUpdateIntervalms[index];
-				auto std_dev = pSimConf->AnalogStdDevs.count(index) ? pSimConf->AnalogStdDevs.at(index) : (mean ? (pSimConf->default_std_dev_factor * mean) : 20);
-				pSimConf->AnalogStdDevs[index] = std_dev;
-
-				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
-				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-				pTimer->async_wait([=](asio::error_code err_code)
-					{
-						if (enabled && !err_code)
-							StartAnalogEvents(index);
-					});
-			}
-		}
+				if (enabled && !err_code)
+					StartAnalogEvents(index);
+			});
 	}
 
-	indexes = GetAllowedIndexes("binary"); // Mutex protected copy of indexes.
-
+	indexes = pSimConf->Indexes(odc::EventType::Binary);
 	for(auto index : indexes)
 	{
-		//send initial event
-		bool val;
-		{ //lock scope
-			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			val = pSimConf->BinaryStartVals.count(index) ? pSimConf->BinaryStartVals.at(index) : false;
-			pSimConf->BinaryStartVals[index] = val;
-		}
-		auto event = std::make_shared<EventInfo>(EventType::Binary,index,Name,QualityFlags::ONLINE);
-		event->SetPayload<EventType::Binary>(std::move(val));
+		auto event = pSimConf->Event(odc::EventType::Binary, index);
+		bool val = event->GetPayload<odc::EventType::Binary>();
 		PostPublishEvent(event);
 
 		pTimer_t pTimer = pIOS->make_steady_timer();
 		Timers["Binary"+std::to_string(index)] = pTimer;
 
-		//queue up a timer if it has an update interval
-		{ //lock scope
-			std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-			if (pSimConf->BinaryUpdateIntervalms.count(index))
+		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
+		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
+		auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
+		pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
+		pTimer->async_wait([=](asio::error_code err_code)
 			{
-				auto interval = pSimConf->BinaryUpdateIntervalms[index];
-
-				auto random_interval = std::uniform_int_distribution<unsigned int>(0, 2 * interval)(RandNumGenerator);
-				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-				pTimer->async_wait([=](asio::error_code err_code)
-					{
-						if (enabled && !err_code)
-							StartBinaryEvents(index, !val);
-					});
-			}
-		}
+				if (enabled && !err_code)
+					StartBinaryEvents(index, !val);
+			});
 	}
 }
 
@@ -607,13 +414,14 @@ void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 {
 	if(event->GetEventType() == EventType::Analog)
 	{
-		auto rv = sqlite3_step(DBStats.at("Analog"+std::to_string(event->GetIndex())).get());
+		auto db_stats = pSimConf->GetDBStats();
+		auto rv = sqlite3_step(db_stats["Analog"+std::to_string(event->GetIndex())].get());
 		if(rv == SQLITE_ROW)
 		{
-			auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(DBStats.at("Analog"+std::to_string(event->GetIndex())).get(),0));
+			auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stats["Analog"+std::to_string(event->GetIndex())].get(),0));
 			//TODO: apply some relative offset to time
 			event->SetTimestamp(t);
-			event->SetPayload<EventType::Analog>(sqlite3_column_double(DBStats.at("Analog"+std::to_string(event->GetIndex())).get(),1));
+			event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stats["Analog"+std::to_string(event->GetIndex())].get(),1));
 		}
 		else
 		{
@@ -632,7 +440,9 @@ void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
 	//Check if we're configured to load this point from DB
-	if(DBStats.count("Analog"+std::to_string(event->GetIndex())))
+	const auto db_stats = pSimConf->GetDBStats();
+	if(db_stats.find("Analog"+std::to_string(event->GetIndex())) !=
+	   db_stats.end())
 	{
 		NextEventFromDB(event);
 		event->SetTimestamp(event->GetTimestamp()+time_offset);
@@ -644,19 +454,13 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 	if(event->GetEventType() == EventType::Analog)
 	{
 		RandomiseAnalog(event);
-		{ //lock scope
-			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-			interval = pSimConf->AnalogUpdateIntervalms.at(event->GetIndex());
-		}
+		interval = pSimConf->UpdateInterval(event->GetEventType(), event->GetIndex());
 	}
 	else if(event->GetEventType() == EventType::Binary)
 	{
 		bool val = !event->GetPayload<EventType::Binary>();
 		event->SetPayload<EventType::Binary>(std::move(val));
-		{ //lock scope
-			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-			interval = pSimConf->BinaryUpdateIntervalms.at(event->GetIndex());
-		}
+		interval = pSimConf->UpdateInterval(event->GetEventType(), event->GetIndex());
 	}
 	else if(auto log = odc::spdlog_get("SimPort"))
 	{
@@ -674,23 +478,11 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 {
 	//deep copy event to modify as next event
 	auto next_event = std::make_shared<EventInfo>(*event);
-
-	bool shouldPub = true;
-	if (event->GetEventType() == EventType::Analog)
+	if (!pSimConf->ForcedState(event->GetEventType(), event->GetIndex()))
 	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		if (pSimConf->AnalogForcedStates.count(event->GetIndex()))
-			shouldPub = !pSimConf->AnalogForcedStates.at(event->GetIndex());
-	}
-	if (event->GetEventType() == EventType::Binary)
-	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		if (pSimConf->BinaryForcedStates.count(event->GetIndex()))
-			shouldPub = !pSimConf->BinaryForcedStates.at(event->GetIndex());
-	}
-
-	if (shouldPub)
+		event->SetTimestamp(msSinceEpoch());
 		PostPublishEvent(event);
+	}
 
 	auto pTimer = Timers.at(ToString(event->GetEventType()) +std::to_string(event->GetIndex()));
 	PopulateNextEvent(next_event, time_offset);
@@ -716,9 +508,9 @@ void SimPort::Build()
 	auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
 	this->SimCollection->Add(shared_this,this->Name);
 
-	if ((pSimConf->HttpAddr.length() != 0) && (pSimConf->HttpPort.length() != 0))
+	if ((pSimConf->HttpAddress().size() != 0) && (pSimConf->HttpPort().size() != 0))
 	{
-		pServer = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddr, pSimConf->HttpPort); //Static method - creates a new HttpServerManager if required
+		pServer = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddress(), pSimConf->HttpPort()); //Static method - creates a new HttpServerManager if required
 
 		// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
@@ -775,13 +567,15 @@ void SimPort::Build()
 
 				if (error.length() == 0)
 				{
-				      if (StringToLower(type) == "binary")
+				      if (to_lower(type) == "binary")
 				      {
-				            result = GetCurrentBinaryValsAsJSONString(index);
+				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
+				            result = pSimConf->CurrentState(EventType::Binary, indexes);
 					}
-				      if (StringToLower(type) == "analog")
+				      if (to_lower(type) == "analog")
 				      {
-				            result = GetCurrentAnalogValsAsJSONString(index);
+				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
+				            result = pSimConf->CurrentState(EventType::Analog, indexes);
 					}
 				}
 				if (result.length() != 0)
@@ -808,7 +602,7 @@ void SimPort::Build()
 				// So when we hit here, someone has made a POST request of our Port.
 				// The UILoad checks the values past to it and sets sensible defaults if they are missing.
 
-				std::string type = "";
+				EventType type;
 				std::string index = "";
 				std::string value = "";
 				std::string quality = "";
@@ -817,7 +611,7 @@ void SimPort::Build()
 				std::string error = "";
 
 				if (parameters.count("type") != 0)
-					type = parameters.at("type");
+					type = ToEventType(parameters.at("type"));
 				else
 					error = "No 'type' parameter found";
 
@@ -833,12 +627,12 @@ void SimPort::Build()
 
 				if (parameters.count("force") != 0)
 				{
-				      if (((StringToLower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
+				      if (((to_lower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
 				      {
 				            SetForcedState(index, type, true);
 				            rep.content.append("Set Period Command Accepted\n");
 					}
-				      if (((StringToLower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
+				      if (((to_lower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
 				      {
 				            SetForcedState(index, type, false);
 				            rep.content.append("Set Period Command Accepted\n");
@@ -882,397 +676,9 @@ void SimPort::Build()
 	}
 }
 
-void SimPort::ProcessElements(const Json::Value& JSONRoot)
+void SimPort::ProcessElements(const Json::Value& json_root)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
-
-	if (JSONRoot.isMember("HttpIP"))
-		pSimConf->HttpAddr = JSONRoot["HttpIP"].asString();
-	if (JSONRoot.isMember("HttpPort"))
-		pSimConf->HttpPort = JSONRoot["HttpPort"].asString();
-
-
-	if(JSONRoot.isMember("Analogs"))
-	{
-		const auto Analogs = JSONRoot["Analogs"];
-		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
-		{
-			size_t start, stop;
-			if(Analogs[n].isMember("Index"))
-				start = stop = Analogs[n]["Index"].asUInt();
-			else if(Analogs[n]["Range"].isMember("Start") && Analogs[n]["Range"].isMember("Stop"))
-			{
-				start = Analogs[n]["Range"]["Start"].asUInt();
-				stop = Analogs[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
-				continue;
-			}
-			for(auto index = start; index <= stop; index++)
-			{
-				bool exists = false;
-				for(auto existing_index : pSimConf->AnalogIndicies)
-					if(existing_index == index)
-						exists = true;
-
-				if(!exists)
-					pSimConf->AnalogIndicies.push_back(index);
-
-				if(Analogs[n].isMember("SQLite3"))
-				{
-					if(Analogs[n]["SQLite3"].isMember("File") && Analogs[n]["SQLite3"].isMember("Query"))
-					{
-						sqlite3* db;
-						auto filename = Analogs[n]["SQLite3"]["File"].asString();
-						auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_SHAREDCACHE,nullptr);
-						if(rv != SQLITE_OK)
-						{
-							if(auto log = odc::spdlog_get("SimPort"))
-								log->error("Failed to open SQLite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
-						}
-						else
-						{
-							auto deleter = [](sqlite3* db){sqlite3_close_v2(db);};
-							DBConns["Analog"+std::to_string(index)] = pDBConnection(db,deleter);
-
-							sqlite3_stmt* stmt;
-							auto query = Analogs[n]["SQLite3"]["Query"].asString();
-							auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);
-							if(rv != SQLITE_OK)
-							{
-								if(auto log = odc::spdlog_get("SimPort"))
-									log->error("Failed to prepare SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
-							}
-							else if (sqlite3_column_count(stmt) != 2)
-							{
-								if(auto log = odc::spdlog_get("SimPort"))
-									log->error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", query);
-							}
-							else
-							{
-								auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
-								DBStats["Analog"+std::to_string(index)] = pDBStatement(stmt,deleter);
-								auto index_bind_index = sqlite3_bind_parameter_index(stmt, ":INDEX");
-								if(index_bind_index)
-								{
-									auto rv = sqlite3_bind_int(stmt, index_bind_index, index);
-									if(rv != SQLITE_OK)
-									{
-										if(auto log = odc::spdlog_get("SimPort"))
-											log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
-										DBStats.erase("Analog"+std::to_string(index));
-									}
-								}
-							}
-							TimestampHandling = TimestampMode::FIRST;
-							if(Analogs[n]["SQLite3"].isMember("TimestampHandling"))
-							{
-								auto ts_mode = Analogs[n]["SQLite3"]["TimestampHandling"].asString();
-								if(ts_mode == "ABSOLUTE")
-									TimestampHandling = TimestampMode::ABSOLUTE_T;
-								else if(ts_mode == "ABSOLUTE_FASTFORWARD")
-									TimestampHandling = TimestampMode::ABSOLUTE_T | TimestampMode::FASTFORWARD;
-								else if(ts_mode == "RELATIVE_TOD")
-									TimestampHandling = TimestampMode::TOD;
-								else if(ts_mode == "RELATIVE_TOD_FASTFORWARD")
-									TimestampHandling = TimestampMode::TOD | TimestampMode::FASTFORWARD;
-								else if(ts_mode == "RELATIVE_FIRST")
-									TimestampHandling = TimestampMode::FIRST;
-								else if(auto log = odc::spdlog_get("SimPort"))
-									log->error("Invalid SQLite3 'TimeStampHandling' mode '{}'. Defaulting to RELATIVE_FIRST", ts_mode);
-							}
-							else if(auto log = odc::spdlog_get("SimPort"))
-								log->info("SQLite3 'TimeStampHandling' mode defaulting to RELATIVE_FIRST");
-						}
-					}
-					else
-					{
-						if(auto log = odc::spdlog_get("SimPort"))
-							log->error("'SQLite3' object requires 'File' and 'Query' for point : '{}'", Analogs[n].toStyledString());
-					}
-				} //SQLite3
-
-				if(Analogs[n].isMember("StdDev"))
-					pSimConf->AnalogStdDevs[index] = Analogs[n]["StdDev"].asDouble();
-				if(Analogs[n].isMember("UpdateIntervalms"))
-					pSimConf->AnalogUpdateIntervalms[index] = Analogs[n]["UpdateIntervalms"].asUInt();
-
-				if(Analogs[n].isMember("StartVal"))
-				{
-					std::string start_val = Analogs[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
-					{
-						if(pSimConf->AnalogStartVals.count(index))
-							pSimConf->AnalogStartVals.erase(index);
-						if (pSimConf->AnalogVals.count(index))
-							pSimConf->AnalogVals.erase(index);
-						if(pSimConf->AnalogStdDevs.count(index))
-							pSimConf->AnalogStdDevs.erase(index);
-						if(pSimConf->AnalogUpdateIntervalms.count(index))
-							pSimConf->AnalogUpdateIntervalms.erase(index);
-						for(auto it = pSimConf->AnalogIndicies.begin(); it != pSimConf->AnalogIndicies.end(); it++)
-							if(*it == index)
-							{
-								pSimConf->AnalogIndicies.erase(it);
-								break;
-							}
-					}
-					else if(start_val == "NAN" || start_val == "nan" || start_val == "NaN")
-					{
-						pSimConf->AnalogStartVals[index] = std::numeric_limits<double>::quiet_NaN();
-					}
-					else if(start_val == "INF" || start_val == "inf")
-					{
-						pSimConf->AnalogStartVals[index] = std::numeric_limits<double>::infinity();
-					}
-					else if(start_val == "-INF" || start_val == "-inf")
-					{
-						pSimConf->AnalogStartVals[index] = -std::numeric_limits<double>::infinity();
-					}
-					else if (start_val == "X")
-					{
-						pSimConf->AnalogStartVals[index] = 0; //TODO: implement quality - use std::pair, or build the EventInfo here
-					}
-					else
-					{
-						pSimConf->AnalogStartVals[index] = std::stod(start_val);
-					}
-				}
-				else if(pSimConf->AnalogStartVals.count(index))
-					pSimConf->AnalogStartVals.erase(index);
-			}
-		}
-		std::sort(pSimConf->AnalogIndicies.begin(),pSimConf->AnalogIndicies.end());
-	}
-
-	if(JSONRoot.isMember("Binaries"))
-	{
-		const auto Binaries = JSONRoot["Binaries"];
-		for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
-		{
-			size_t start, stop;
-			if(Binaries[n].isMember("Index"))
-				start = stop = Binaries[n]["Index"].asUInt();
-			else if(Binaries[n]["Range"].isMember("Start") && Binaries[n]["Range"].isMember("Stop"))
-			{
-				start = Binaries[n]["Range"]["Start"].asUInt();
-				stop = Binaries[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
-				continue;
-			}
-			for(auto index = start; index <= stop; index++)
-			{
-
-				bool exists = false;
-				for(auto existing_index : pSimConf->BinaryIndicies)
-					if(existing_index == index)
-						exists = true;
-
-				if(!exists)
-					pSimConf->BinaryIndicies.push_back(index);
-
-				if(Binaries[n].isMember("UpdateIntervalms"))
-					pSimConf->BinaryUpdateIntervalms[index] = Binaries[n]["UpdateIntervalms"].asUInt();
-
-				if(Binaries[n].isMember("StartVal"))
-				{
-					std::string start_val = Binaries[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
-					{
-						if(pSimConf->BinaryStartVals.count(index))
-							pSimConf->BinaryStartVals.erase(index);
-						if(pSimConf->BinaryUpdateIntervalms.count(index))
-							pSimConf->BinaryUpdateIntervalms.erase(index);
-						for(auto it = pSimConf->BinaryIndicies.begin(); it != pSimConf->BinaryIndicies.end(); it++)
-							if(*it == index)
-							{
-								pSimConf->BinaryIndicies.erase(it);
-								break;
-							}
-					}
-					else if(start_val == "X")
-						pSimConf->BinaryStartVals[index] = false; //TODO: implement quality - use std::pair, or build the EventInfo here
-					else
-						pSimConf->BinaryStartVals[index] = Binaries[n]["StartVal"].asBool();
-				}
-				else if(pSimConf->BinaryStartVals.count(index))
-					pSimConf->BinaryStartVals.erase(index);
-			}
-		}
-		std::sort(pSimConf->BinaryIndicies.begin(),pSimConf->BinaryIndicies.end());
-	}
-
-	if(JSONRoot.isMember("BinaryControls"))
-	{
-		const auto BinaryControls= JSONRoot["BinaryControls"];
-		for(Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
-		{
-			size_t start, stop;
-			if(BinaryControls[n].isMember("Index"))
-				start = stop = BinaryControls[n]["Index"].asUInt();
-			else if(BinaryControls[n]["Range"].isMember("Start") && BinaryControls[n]["Range"].isMember("Stop"))
-			{
-				start = BinaryControls[n]["Range"]["Start"].asUInt();
-				stop = BinaryControls[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
-				continue;
-			}
-			for (auto index = start; index <= stop; index++)
-			{
-				bool exists = false;
-				for (auto existing_index : pSimConf->ControlIndicies)
-					if (existing_index == index)
-						exists = true;
-
-				if (!exists)
-					pSimConf->ControlIndicies.push_back(index);
-
-				if (BinaryControls[n].isMember("Intervalms"))
-					pSimConf->ControlIntervalms[index] = BinaryControls[n]["Intervalms"].asUInt();
-
-				auto start_val = BinaryControls[n]["StartVal"].asString();
-				if (start_val == "D")
-				{
-					if (pSimConf->ControlIntervalms.count(index))
-						pSimConf->ControlIntervalms.erase(index);
-					for (auto it = pSimConf->ControlIndicies.begin(); it != pSimConf->ControlIndicies.end(); it++)
-						if (*it == index)
-						{
-							pSimConf->ControlIndicies.erase(it);
-							break;
-						}
-				}
-
-				if (BinaryControls[n].isMember("FeedbackBinaries"))
-				{
-					const auto FeedbackBinaries = BinaryControls[n]["FeedbackBinaries"];
-					for (Json::ArrayIndex fbn = 0; fbn < FeedbackBinaries.size(); ++fbn)
-					{
-						if (!FeedbackBinaries[fbn].isMember("Index"))
-						{
-							if (auto log = odc::spdlog_get("SimPort"))
-								log->error("An 'Index' is required for Binary feedback : '{}'", FeedbackBinaries[fbn].toStyledString());
-							continue;
-						}
-
-						auto fb_index = FeedbackBinaries[fbn]["Index"].asUInt();
-						auto on_qual = QualityFlags::ONLINE;
-						auto off_qual = QualityFlags::ONLINE;
-						bool on_val = true;
-						bool off_val = false;
-						auto mode = FeedbackMode::LATCH;
-
-						if (FeedbackBinaries[fbn].isMember("OnValue"))
-						{
-							if (FeedbackBinaries[fbn]["OnValue"].asString() == "X")
-								on_qual = QualityFlags::COMM_LOST;
-							else
-								on_val = FeedbackBinaries[fbn]["OnValue"].asBool();
-						}
-						if (FeedbackBinaries[fbn].isMember("OffValue"))
-						{
-							if (FeedbackBinaries[fbn]["OffValue"].asString() == "X")
-								off_qual = QualityFlags::COMM_LOST;
-							else
-								off_val = FeedbackBinaries[fbn]["OffValue"].asBool();
-
-						}
-						if (FeedbackBinaries[fbn].isMember("FeedbackMode"))
-						{
-							auto mode_str = FeedbackBinaries[fbn]["FeedbackMode"].asString();
-							if (mode_str == "PULSE")
-								mode = FeedbackMode::PULSE;
-							else if (mode_str == "LATCH")
-								mode = FeedbackMode::LATCH;
-							else
-							{
-								if (auto log = odc::spdlog_get("SimPort"))
-									log->warn("Unrecognised feedback mode: '{}'", FeedbackBinaries[fbn].toStyledString());
-							}
-						}
-
-						auto on = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, on_qual);
-						on->SetPayload<EventType::Binary>(std::move(on_val));
-						auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, Name, off_qual);
-						off->SetPayload<EventType::Binary>(std::move(off_val));
-
-						pSimConf->ControlFeedback[index].emplace_back(on, off, mode);
-					}
-				}
-				// Used to implement TapChanger functionality, containing:
-				// {"Type": "Analog", "Index" : 7, "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
-				// {"Type": "Binary", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
-				// {"Type": "BCD", "Indexes" : "10,11,12", "FeedbackMode":"PULSE", "Action":"UP", "Limit":10}
-				//
-				// Because the feedback is complex, we need to keep the current value available so we can change it.
-				// As a result, the feedback bits or analog will be set to forced state. If you unforce them, they will
-				// get re-forced the next time a command comes through.
-				// Bit of a hack, but comes back to the original simulator design not "remembering" what its current state is.
-				if (BinaryControls[n].isMember("FeedbackPosition"))
-				{
-					const auto FeedbackPosition = BinaryControls[n]["FeedbackPosition"];
-					try
-					{
-						// Only allow 1 entry - you need pulse or repeated open/close to tap up and down from two separate signals.
-						if (!FeedbackPosition.isMember("Type"))
-						{
-							throw std::runtime_error("A 'Type' is required for Position feedback");
-						}
-						if (!FeedbackPosition.isMember("Action"))
-						{
-							throw std::runtime_error("An 'Action' is required for Position feedback");
-						}
-						if (!FeedbackPosition.isMember("FeedbackMode"))
-						{
-							throw std::runtime_error("A 'FeedbackMode' is required for Position feedback");
-						}
-						if (!(FeedbackPosition.isMember("Index") || FeedbackPosition.isMember("Indexes")))
-						{
-							throw std::runtime_error("An 'Index' or 'Indexes' is required for Position feedback");
-						}
-
-						if (FeedbackPosition["Type"] == "Analog")
-						{
-							auto fb_index = FeedbackPosition["Index"].asUInt();
-							//TODO:
-							throw std::runtime_error("'Analog' Position feedback is unimplemented.");
-						}
-						else if (FeedbackPosition["Type"] == "Binary")
-						{
-							//TODO:
-							throw std::runtime_error("'Binary' Position feedback is unimplemented.");
-						}
-						else if (FeedbackPosition["Type"] == "BCD")
-						{
-							//TODO:
-							throw std::runtime_error("'BCD' Position feedback is unimplemented.");
-						}
-						else
-						{
-							throw std::runtime_error("The 'Type' for Position feedback is invalid, requires 'Analog','Binary' or 'BCD'");
-						}
-					}
-					catch (std::exception &e)
-					{
-						LOGERROR("{} : '{}'", e.what(),  FeedbackPosition.toStyledString());
-						continue;
-					}
-				}
-			}
-		}
-		std::sort(pSimConf->ControlIndicies.begin(),pSimConf->ControlIndicies.end());
-	}
+	pSimConf->ProcessElements(json_root);
 }
 
 void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -1288,97 +694,160 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	}
 	auto index = event->GetIndex();
 	auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
-	std::vector<unsigned int> indexes;
+	auto feedbacks = pSimConf->BinaryFeedbacks(index);
+	if (feedbacks.empty())
 	{
-		std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-		indexes = pSimConf->ControlIndicies;
-	}
-	for(auto i : indexes)
-	{
-		if(i == index)
+		std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
+		if (bp != nullptr)
+		{
+			(*pStatusCallback)(HandleBinaryPosition(bp));
+			return;
+		}
+		else
 		{
 			if(auto log = odc::spdlog_get("SimPort"))
-				log->trace("{}: Control {}: Matched configured index.", Name, index);
-
-			std::shared_lock<std::shared_timed_mutex> lck(ConfMutex);
-
-			if(pSimConf->ControlFeedback.count(i))
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->trace("{}: Control {}: Setting ({}) control feedback point(s)...", Name, index, pSimConf->ControlFeedback[i].size());
-				for(auto& fb : pSimConf->ControlFeedback[i])
-				{
-					if(fb.mode == FeedbackMode::PULSE)
-					{
-						if(auto log = odc::spdlog_get("SimPort"))
-							log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index,fb.on_value->GetIndex());
-						switch(command.functionCode)
-						{
-							case ControlCode::PULSE_ON:
-							case ControlCode::LATCH_ON:
-							case ControlCode::LATCH_OFF:
-							case ControlCode::CLOSE_PULSE_ON:
-							case ControlCode::TRIP_PULSE_ON:
-							{
-								if(!pSimConf->BinaryForcedStates[fb.on_value->GetIndex()])
-									PostPublishEvent(fb.on_value);
-								pTimer_t pTimer = pIOS->make_steady_timer();
-								pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
-								pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
-									{
-										//FIXME: check err_code?
-										if(!pSimConf->BinaryForcedStates[fb.off_value->GetIndex()])
-											PostPublishEvent(fb.off_value);
-									});
-								//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
-								break;
-							}
-							default:
-								(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-								return;
-						}
-					}
-					else //LATCH
-					{
-						switch(command.functionCode)
-						{
-							case ControlCode::LATCH_ON:
-							case ControlCode::CLOSE_PULSE_ON:
-							case ControlCode::PULSE_ON:
-								if(auto log = odc::spdlog_get("SimPort"))
-									log->trace("{}: Control {}: Latch on feedback to Binary {}.",
-										Name, index,fb.on_value->GetIndex());
-								fb.on_value->SetTimestamp();
-								if(!pSimConf->BinaryForcedStates[fb.on_value->GetIndex()])
-									PostPublishEvent(fb.on_value);
-								break;
-							case ControlCode::LATCH_OFF:
-							case ControlCode::TRIP_PULSE_ON:
-							case ControlCode::PULSE_OFF:
-								if(auto log = odc::spdlog_get("SimPort"))
-									log->trace("{}: Control {}: Latch off feedback to Binary {}.",
-										Name, index,fb.off_value->GetIndex());
-								fb.off_value->SetTimestamp();
-								if(!pSimConf->BinaryForcedStates[fb.off_value->GetIndex()])
-									PostPublishEvent(fb.off_value);
-								break;
-							default:
-								(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-								return;
-						}
-					}
-				}
-				(*pStatusCallback)(CommandStatus::SUCCESS);
-				return;
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->trace("{}: Control {}: No feeback points configured.", Name, index);
-			}
+				log->trace("{}: Control {}: No feeback points configured.", Name, index);
 			(*pStatusCallback)(CommandStatus::UNDEFINED);
 			return;
 		}
 	}
+	else
+	{
+		(*pStatusCallback)(HandleBinaryFeedback(feedbacks, index, command));
+		return;
+	}
 	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+}
+
+CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks,
+	std::size_t index, ControlRelayOutputBlock command)
+{
+	for(auto& fb : feedbacks)
+	{
+		if(fb->mode == FeedbackMode::PULSE)
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
+			switch(command.functionCode)
+			{
+				case ControlCode::PULSE_ON:
+				case ControlCode::LATCH_ON:
+				case ControlCode::LATCH_OFF:
+				case ControlCode::CLOSE_PULSE_ON:
+				case ControlCode::TRIP_PULSE_ON:
+				{
+					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
+						PostPublishEvent(fb->on_value);
+					pTimer_t pTimer = pIOS->make_steady_timer();
+					pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
+					pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
+						{
+							//FIXME: check err_code?
+							if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
+								PostPublishEvent(fb->off_value);
+						});
+					//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
+					break;
+				}
+				default:
+					return CommandStatus::NOT_SUPPORTED;
+			}
+		}
+		else //LATCH
+		{
+			switch(command.functionCode)
+			{
+				case ControlCode::LATCH_ON:
+				case ControlCode::CLOSE_PULSE_ON:
+				case ControlCode::PULSE_ON:
+					if(auto log = odc::spdlog_get("SimPort"))
+						log->trace("{}: Control {}: Latch on feedback to Binary {}.",
+							Name, index,fb->on_value->GetIndex());
+					fb->on_value->SetTimestamp();
+					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
+						PostPublishEvent(fb->on_value);
+					break;
+				case ControlCode::LATCH_OFF:
+				case ControlCode::TRIP_PULSE_ON:
+				case ControlCode::PULSE_OFF:
+					if(auto log = odc::spdlog_get("SimPort"))
+						log->trace("{}: Control {}: Latch off feedback to Binary {}.",
+							Name, index, fb->off_value->GetIndex());
+					fb->off_value->SetTimestamp();
+					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
+						PostPublishEvent(fb->off_value);
+					break;
+				default:
+					return CommandStatus::NOT_SUPPORTED;
+			}
+		}
+	}
+	return CommandStatus::SUCCESS;
+}
+
+CommandStatus SimPort::HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position)
+{
+	if (binary_position->type == odc::FeedbackType::ANALOG)
+	{
+		return HandleBinaryPositionForAnalog(binary_position);
+	}
+	if (binary_position->type == odc::FeedbackType::BINARY)
+	{
+		return HandleBinaryPositionForBinary(binary_position);
+	}
+	if (binary_position->type == odc::FeedbackType::BCD)
+	{
+		return HandleBinaryPositionForBCD(binary_position);
+	}
+	return CommandStatus::NOT_SUPPORTED;
+}
+
+CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position)
+{
+	const std::size_t index = binary_position->indexes[0];
+	if (pSimConf->IsIndex(odc::EventType::Analog, index))
+	{
+		if (!pSimConf->ForcedState(odc::EventType::Analog, index))
+		{
+			auto event = pSimConf->Event(odc::EventType::Analog, index);
+			double payload = event->GetPayload<odc::EventType::Analog>();
+			if (binary_position->action == odc::PositionAction::RAISE)
+			{
+				if (payload < binary_position->limit)
+				{
+					++payload;
+					event->SetPayload<odc::EventType::Analog>(std::move(payload));
+					PostPublishEvent(event);
+					return CommandStatus::SUCCESS;
+				}
+			}
+			else if (binary_position->action == odc::PositionAction::LOWER)
+			{
+				if (payload > binary_position->limit)
+				{
+					--payload;
+					event->SetPayload<odc::EventType::Analog>(std::move(payload));
+					PostPublishEvent(event);
+					return CommandStatus::SUCCESS;
+				}
+			}
+			else
+			{
+				return CommandStatus::NOT_SUPPORTED;
+			}
+		}
+	}
+	return CommandStatus::OUT_OF_RANGE;
+}
+
+CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position)
+{
+	/* TBD */
+	return CommandStatus::SUCCESS;
+}
+
+CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position)
+{
+	/* TBD */
+	return CommandStatus::SUCCESS;
 }
