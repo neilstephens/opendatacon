@@ -799,7 +799,7 @@ CommandStatus SimPort::HandleBinaryPosition(const std::shared_ptr<BinaryPosition
 	{
 		return HandleBinaryPositionForBCD(binary_position);
 	}
-	return CommandStatus::UNDEFINED;
+	return CommandStatus::NOT_SUPPORTED;
 }
 
 CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position)
@@ -811,7 +811,7 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 		{
 			auto event = pSimConf->Event(odc::EventType::Analog, index);
 			double payload = event->GetPayload<odc::EventType::Analog>();
-			if (binary_position->action == odc::TapChangerAction::RAISE)
+			if (binary_position->action == odc::PositionAction::RAISE)
 			{
 				if (payload < binary_position->limit)
 				{
@@ -821,7 +821,7 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 					return CommandStatus::SUCCESS;
 				}
 			}
-			else if (binary_position->action == odc::TapChangerAction::LOWER)
+			else if (binary_position->action == odc::PositionAction::LOWER)
 			{
 				if (payload > binary_position->limit)
 				{
@@ -833,7 +833,7 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 			}
 			else
 			{
-				return CommandStatus::UNDEFINED;
+				return CommandStatus::NOT_SUPPORTED;
 			}
 		}
 	}

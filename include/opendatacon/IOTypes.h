@@ -164,7 +164,7 @@ enum class FeedbackType : uint8_t
 	UNDEFINED = 4
 };
 
-enum class TapChangerAction : uint8_t
+enum class PositionAction : uint8_t
 {
 	RAISE = 1,
 	LOWER = 2,
@@ -443,13 +443,13 @@ inline FeedbackType ToFeedbackType(const std::string& str_type)
 	return type;
 }
 
-inline TapChangerAction ToTapChangerAction(const std::string& str_action)
+inline PositionAction ToPositionAction(const std::string& str_action)
 {
-	TapChangerAction action = TapChangerAction::UNDEFINED;
+	PositionAction action = PositionAction::UNDEFINED;
 	if (to_lower(str_action) == "raise")
-		action = TapChangerAction::RAISE;
+		action = PositionAction::RAISE;
 	if (to_lower(str_action) == "lower")
-		action = TapChangerAction::LOWER;
+		action = PositionAction::LOWER;
 	return action;
 }
 

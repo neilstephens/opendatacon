@@ -75,7 +75,7 @@ public:
 	void CreateBinaryPosition(std::size_t index,
 		odc::FeedbackType type,
 		const std::vector<std::size_t>& indexes,
-		odc::TapChangerAction action,
+		odc::PositionAction action,
 		std::size_t limit);
 	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index) const;
 

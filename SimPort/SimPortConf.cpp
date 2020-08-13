@@ -432,7 +432,7 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position, std::size_t index)
 {
 	odc::FeedbackType type = odc::FeedbackType::UNDEFINED;
-	odc::TapChangerAction action = odc::TapChangerAction::UNDEFINED;
+	odc::PositionAction action = odc::PositionAction::UNDEFINED;
 	std::vector<std::size_t> indexes;
 	std::size_t limit = 0;
 	if (feedback_position.isMember("Type"))
@@ -443,7 +443,7 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 		for (Json::ArrayIndex i = 0; i < feedback_position["Indexes"].size(); ++i)
 			indexes.emplace_back(feedback_position["Indexes"][i].asUInt());
 	if (feedback_position.isMember("Action"))
-		action = ToTapChangerAction(feedback_position["Action"].asString());
+		action = ToPositionAction(feedback_position["Action"].asString());
 	if (feedback_position.isMember("Limit"))
 		limit = feedback_position["Limit"].asUInt();
 	m_pport_data->CreateBinaryPosition(index, type, indexes, action, limit);

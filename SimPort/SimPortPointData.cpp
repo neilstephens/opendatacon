@@ -220,7 +220,7 @@ std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(s
 void SimPortPointData::CreateBinaryPosition(std::size_t index,
 	odc::FeedbackType type,
 	const std::vector<std::size_t>& indexes,
-	odc::TapChangerAction action,
+	odc::PositionAction action,
 	std::size_t limit)
 {
 	m_binary_positions[index] = std::make_shared<BinaryPosition>(type, action, indexes, limit);

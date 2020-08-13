@@ -52,7 +52,18 @@ inline Json::Value GetTestConfigJSON()
 		//-------Point conf--------#
 		"Binaries" :
 		[
-			{"Index": 0},{"Index": 1},{"Index": 5},{"Index": 6},{"Index": 7},{"Index": 8},{"Index": 10},{"Index": 11},{"Index": 12},{"Index": 13},{"Index": 14},{"Index": 15}
+			{"Index": 0},
+            {"Index": 1},
+            {"Index": 5},
+            {"Index": 6},
+            {"Index": 7},
+            {"Index": 8},
+            {"Index": 10, "StartVal" : false},
+            {"Index": 11, "StartVal" : true},
+            {"Index": 12, "StartVal" : false},
+            {"Index": 13, "StartVal" : true},
+            {"Index": 14},
+            {"Index": 15}
 		],
 
 		"Analogs" :
@@ -374,11 +385,11 @@ TEST_CASE("TestLatchOff")
 
 /*
   function     : TEST_CASE
-  description  : tests tap changer raise
-  param        : TestTapChangerRaise, name of the test case
+  description  : tests tap changer raise for analog types
+  param        : TestAnalogTapChangerRaise, name of the test case
   return       : NA
 */
-TEST_CASE("TestTapChangerRaise")
+TEST_CASE("TestAnalogTapChangerRaise")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -428,11 +439,66 @@ TEST_CASE("TestTapChangerRaise")
 
 /*
   function     : TEST_CASE
-  description  : tests tap changer lower
+  description  : tests tap changer lower for analog type
+  param        : TestAnalogTapChangerLower, name of the test case
+  return       : NA
+*/
+TEST_CASE("TestAnalogTapChangerLower")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
+		REQUIRE(result == "5.000000");
+		/*
+		  As we know the index 7 tap changer's default position is 5
+		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
+		  Lower -> 0 (because 0 is the min limit)
+		*/
+		for (int i = 4; i >= 0; --i)
+		{
+			SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::SUCCESS);
+			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		}
+
+		/*
+		  test the corner cases now.
+		  we will test to raise the tap changer beyond the lower limit mark
+		 */
+		SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::OUT_OF_RANGE);
+		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+
+		/*
+		  test the corner cases now.
+		  send the event with an index which doesnt exist
+		 */
+		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::UNDEFINED);
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer lower for binary type
   param        : TestTapChangerLower, name of the test case
   return       : NA
 */
-TEST_CASE("TestTapChangerLower")
+TEST_CASE("TestBinaryTapChangerLower")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
