@@ -257,6 +257,7 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 		for (std::size_t index : indexes)
 		{
 			pSimConf->UpdateInterval(type, index, delta);
+			std::shared_lock<std::shared_timed_mutex> lck(TimersMutex);
 			auto pTimer = Timers.at(ToString(type) + std::to_string(index));
 			if (!delta)
 			{
@@ -316,6 +317,7 @@ void SimPort::PortUp()
 	for(auto index : indexes)
 	{
 		pTimer_t pTimer = pIOS->make_steady_timer();
+		std::unique_lock<std::shared_timed_mutex> lck(TimersMutex);
 		Timers["Analog"+std::to_string(index)] = pTimer;
 
 		//Check if we're configured to load this point from DB
@@ -389,6 +391,7 @@ void SimPort::PortUp()
 		PostPublishEvent(event);
 
 		pTimer_t pTimer = pIOS->make_steady_timer();
+		std::unique_lock<std::shared_timed_mutex> lck(TimersMutex);
 		Timers["Binary"+std::to_string(index)] = pTimer;
 
 		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
@@ -404,6 +407,7 @@ void SimPort::PortUp()
 
 void SimPort::PortDown()
 {
+	std::unique_lock<std::shared_timed_mutex> lck(TimersMutex);
 	for(const auto& pTimer : Timers)
 		pTimer.second->cancel();
 	Timers.clear();
@@ -483,6 +487,7 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 		PostPublishEvent(event);
 	}
 
+	std::shared_lock<std::shared_timed_mutex> lck(TimersMutex);
 	auto pTimer = Timers.at(ToString(event->GetEventType()) +std::to_string(event->GetIndex()));
 	PopulateNextEvent(next_event, time_offset);
 	auto now = msSinceEpoch();

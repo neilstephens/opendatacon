@@ -63,6 +63,7 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	typedef std::shared_ptr<Timer_t> pTimer_t;
 	std::unordered_map<std::string, pTimer_t> Timers;
+	mutable std::shared_timed_mutex TimersMutex;
 
 	// use this instead of PublishEvent, it catches current values and saves them.
 	void PostPublishEvent(std::shared_ptr<odc::EventInfo> event, SharedStatusCallback_t pStatusCallback);
