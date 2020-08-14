@@ -197,21 +197,23 @@ Json::Value SimPortPointData::CurrentState()
 
 std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std::size_t>& indexes)
 {
-	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	Json::Value state;
-	for (std::size_t index : indexes)
 	{
-		if (m_points[type].find(index) != m_points[type].end())
+		std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
+		for (std::size_t index : indexes)
 		{
-			if (type == odc::EventType::Binary)
+			if (m_points[type].find(index) != m_points[type].end())
 			{
-				const bool val = m_points[type][index]->event->GetPayload<odc::EventType::Binary>();
-				state[std::to_string(index)] = std::to_string(val);
-			}
-			if (type == odc::EventType::Analog)
-			{
-				const double val = m_points[type][index]->event->GetPayload<odc::EventType::Analog>();
-				state[std::to_string(index)] = std::to_string(val);
+				if (type == odc::EventType::Binary)
+				{
+					const bool val = m_points[type][index]->event->GetPayload<odc::EventType::Binary>();
+					state[std::to_string(index)] = std::to_string(val);
+				}
+				if (type == odc::EventType::Analog)
+				{
+					const double val = m_points[type][index]->event->GetPayload<odc::EventType::Analog>();
+					state[std::to_string(index)] = std::to_string(val);
+				}
 			}
 		}
 	}

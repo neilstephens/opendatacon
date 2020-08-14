@@ -272,6 +272,8 @@ private:
 	mutable std::shared_timed_mutex BinPosDataMutex;
 	
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
+
+	// These are the 3 data structures we need to protect from concurrent access.
 	std::unordered_map<odc::EventType, Points> m_points;
 	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
 	std::unordered_map<std::size_t, std::shared_ptr<BinaryPosition>> m_binary_positions;
