@@ -32,7 +32,6 @@
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <opendatacon/EnumClassFlags.h>
-#include <shared_mutex>
 #include <random>
 
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
@@ -122,8 +121,6 @@ private:
 	CommandStatus HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position);
 
 	std::shared_ptr<SimPortCollection> SimCollection;
-
-	mutable std::shared_timed_mutex ConfMutex;
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	static thread_local std::mt19937 RandNumGenerator;

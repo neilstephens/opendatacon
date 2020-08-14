@@ -391,7 +391,6 @@ void SimPort::PortUp()
 		pTimer_t pTimer = pIOS->make_steady_timer();
 		Timers["Binary"+std::to_string(index)] = pTimer;
 
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
 		auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 		pTimer->expires_from_now(std::chrono::milliseconds(random_interval));

@@ -33,6 +33,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <shared_mutex>
 
 enum class FeedbackMode { PULSE, LATCH };
 
@@ -266,6 +267,8 @@ public:
 	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index);
 
 private:
+	mutable std::shared_timed_mutex PointDataMutex;
+	
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
 	std::unordered_map<odc::EventType, Points> m_points;
 	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
