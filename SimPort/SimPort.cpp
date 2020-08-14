@@ -394,7 +394,7 @@ void SimPort::PortUp()
 		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
 		auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 		pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-		pTimer->async_wait([=](asio::error_code err_code)
+		pTimer->async_wait([&, index, val](asio::error_code err_code)
 			{
 				if (enabled && !err_code)
 					StartBinaryEvents(index, !val);
