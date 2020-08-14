@@ -268,6 +268,8 @@ public:
 
 private:
 	mutable std::shared_timed_mutex PointDataMutex;
+	mutable std::shared_timed_mutex BinFeedbackDataMutex;
+	mutable std::shared_timed_mutex BinPosDataMutex;
 	
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
 	std::unordered_map<odc::EventType, Points> m_points;

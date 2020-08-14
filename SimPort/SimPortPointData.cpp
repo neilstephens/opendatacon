@@ -32,7 +32,6 @@ SimPortPointData::SimPortPointData() {}
 void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
 	odc::QualityFlags flag, double s_dev, std::size_t u_interval, double val)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	if (type == odc::EventType::Analog)
 	{
 		Point p;
@@ -46,6 +45,7 @@ void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const
 		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Analog, index, name, qflag);
 		evt->SetPayload<odc::EventType::Analog>(std::move(val));
 		p.event = evt;
+		std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex); //Write
 		m_points[odc::EventType::Analog][index] = std::make_shared<Point>(p);
 	}
 
@@ -59,67 +59,76 @@ void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const
 		bool v = static_cast<bool>(val);
 		evt->SetPayload<odc::EventType::Binary>(std::move(v));
 		p.event = evt;
+		std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex); //Write
 		m_points[odc::EventType::Binary][index] = std::make_shared<Point>(p);
 	}
 }
 
 std::shared_ptr<odc::EventInfo> SimPortPointData::Event(odc::EventType type, std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	return m_points[type][index]->event;
 }
 
 void SimPortPointData::Event(std::shared_ptr<odc::EventInfo> event)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);	//Write
 	m_points[event->GetEventType()][event->GetIndex()]->event = event;
 }
 
 void SimPortPointData::ForcedState(odc::EventType type, std::size_t index, bool state)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);	//Write
 	m_points[type][index]->forced_state = state;
 }
 
 bool SimPortPointData::ForcedState(odc::EventType type, std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	return m_points[type][index]->forced_state;
 }
 
 void SimPortPointData::UpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);	//Write
 	m_points[type][index]->update_interval = value;
 }
 
 std::size_t SimPortPointData::UpdateInterval(odc::EventType type, std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	return m_points[type][index]->update_interval;
 }
 
 void SimPortPointData::Payload(odc::EventType type, std::size_t index, double payload)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
-	auto points = m_points[type];
-	if (points.find(index) == points.end())
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
+		std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
+		auto points = m_points[type];
+		if (points.find(index) == points.end())
 		{
-			log->error("{} Index == {} not found on the points container, why they are asking for set?", ToString(type), index);
-			return;
+			if (auto log = odc::spdlog_get("SimPort"))
+			{
+				log->error("{} Index == {} not found on the points container, why they are asking for set?", ToString(type), index);
+				return;
+			}
 		}
 	}
 	if (type == odc::EventType::Analog)
+	{
+		std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
 		m_points[type][index]->event->SetPayload<odc::EventType::Analog>(std::move(payload));
+	}
 	if (type == odc::EventType::Binary)
+	{
+		std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
 		m_points[type][index]->event->SetPayload<odc::EventType::Binary>(std::move(static_cast<bool>(payload)));
+	}
 }
 
 double SimPortPointData::Payload(odc::EventType type, std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	double payload = 0.0f;
 	if (type == odc::EventType::Analog)
 		payload = m_points[type][index]->event->GetPayload<odc::EventType::Analog>();
@@ -130,19 +139,19 @@ double SimPortPointData::Payload(odc::EventType type, std::size_t index)
 
 double SimPortPointData::StartValue(odc::EventType type, std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	return m_points[type][index]->start_value;
 }
 
 double SimPortPointData::StdDev(std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	return m_points[odc::EventType::Analog][index]->std_dev;
 }
 
 std::vector<std::size_t> SimPortPointData::Indexes(odc::EventType type)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	std::vector<std::size_t> indexes;
 	auto points = m_points[type];
 	for (auto it = points.begin(); it != points.end(); ++it)
@@ -154,7 +163,7 @@ std::vector<std::size_t> SimPortPointData::Indexes(odc::EventType type)
 
 std::unordered_map<std::size_t, double> SimPortPointData::Values(odc::EventType type)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	std::unordered_map<std::size_t, double> values;
 	auto points = m_points[type];
 	for (auto it = points.begin(); it != points.end(); ++it)
@@ -169,7 +178,7 @@ std::unordered_map<std::size_t, double> SimPortPointData::Values(odc::EventType 
 
 Json::Value SimPortPointData::CurrentState()
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	Json::Value state;
 	odc::EventType type = odc::EventType::Binary;
 	for (auto it = m_points[type].begin(); it != m_points[type].end(); ++it)
@@ -188,7 +197,7 @@ Json::Value SimPortPointData::CurrentState()
 
 std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std::size_t>& indexes)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	Json::Value state;
 	for (std::size_t index : indexes)
 	{
@@ -214,7 +223,7 @@ std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std:
 
 bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(PointDataMutex);
 	return m_points[type].find(index) != m_points[type].end();
 }
 
@@ -224,14 +233,14 @@ void SimPortPointData::CreateBinaryFeedback(std::size_t index,
 	FeedbackMode mode,
 	std::size_t update_interval)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::unique_lock<std::shared_timed_mutex> lck(BinFeedbackDataMutex);
 	std::shared_ptr<BinaryFeedback> bf = std::make_shared<BinaryFeedback>(on, off, mode, update_interval);
 	m_binary_feedbacks[index].emplace_back(bf);
 }
 
 std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(BinFeedbackDataMutex);
 	return m_binary_feedbacks[index];
 }
 
@@ -241,13 +250,13 @@ void SimPortPointData::CreateBinaryPosition(std::size_t index,
 	odc::PositionAction action,
 	std::size_t limit)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::unique_lock<std::shared_timed_mutex> lck(BinPosDataMutex);
 	m_binary_positions[index] = std::make_shared<BinaryPosition>(type, action, indexes, limit);
 }
 
 std::shared_ptr<BinaryPosition> SimPortPointData::GetBinaryPosition(std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(PointDataMutex);
+	std::shared_lock<std::shared_timed_mutex> lck(BinPosDataMutex);
 	if (m_binary_positions.find(index) == m_binary_positions.end())
 		return nullptr;
 	else
