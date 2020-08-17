@@ -46,14 +46,14 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 
 DNP3OutstationPort::~DNP3OutstationPort()
 {
-	ChannelStateSubscriber::Unsubscribe(this);
+	ChannelStateSubscriber::Unsubscribe(&ChanH);
 	if(pOutstation)
 	{
 		pOutstation->Shutdown();
 		pOutstation.reset();
 	}
-	if(pChannel)
-		pChannel.reset();
+	if(ChanH.pChannel)
+		ChanH.pChannel.reset();
 }
 
 void DNP3OutstationPort::Enable()
@@ -87,14 +87,14 @@ void DNP3OutstationPort::Disable()
 // Called when a the reset/unreset status of the link layer changes (and on link up / channel down)
 void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 {
-	this->status = status;
+	ChanH.status = status;
 
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
 
-	if(link_dead && !channel_dead) //must be on link up
+	if(ChanH.link_dead && !ChanH.channel_dead) //must be on link up
 	{
-		link_dead = false;
+		ChanH.link_dead = false;
 		PublishEvent(ConnectState::CONNECTED);
 	}
 	//TODO: track a new statistic - reset count
@@ -109,9 +109,9 @@ void DNP3OutstationPort::OnKeepAliveFailure()
 }
 void DNP3OutstationPort::OnLinkDown()
 {
-	if(!link_dead)
+	if(!ChanH.link_dead)
 	{
-		link_dead = true;
+		ChanH.link_dead = true;
 		PublishEvent(ConnectState::DISCONNECTED);
 	}
 }
@@ -121,9 +121,9 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveSuccess() called.", Name);
-	if(link_dead)
+	if(ChanH.link_dead)
 	{
-		link_dead = false;
+		ChanH.link_dead = false;
 		PublishEvent(ConnectState::CONNECTED);
 	}
 }
@@ -140,9 +140,7 @@ void DNP3OutstationPort::Build()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	pChannel = GetChannel();
-
-	if (pChannel == nullptr)
+	if (!ChanH.GetChannel())
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for outstation.", Name);
@@ -215,7 +213,7 @@ void DNP3OutstationPort::Build()
 	auto pCommandHandle = std::dynamic_pointer_cast<opendnp3::ICommandHandler>(wont_free);
 	auto pApplication = std::dynamic_pointer_cast<opendnp3::IOutstationApplication>(wont_free);
 
-	pOutstation = pChannel->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
+	pOutstation = ChanH.pChannel->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
 
 	if (pOutstation == nullptr)
 	{
@@ -250,9 +248,9 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 const Json::Value DNP3OutstationPort::GetStatistics() const
 {
 	Json::Value event;
-	if (pChannel != nullptr)
+	if (ChanH.pChannel != nullptr)
 	{
-		auto ChanStats = this->pChannel->GetStatistics();
+		auto ChanStats = ChanH.pChannel->GetStatistics();
 		event["parser"]["numHeaderCrcError"] = ChanStats.parser.numHeaderCrcError;
 		event["parser"]["numBodyCrcError"] = ChanStats.parser.numBodyCrcError;
 		event["parser"]["numLinkFrameRx"] = ChanStats.parser.numLinkFrameRx;

@@ -24,8 +24,9 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include "ChannelStateSubscriber.h"
 #include "DNP3MasterPort.h"
+#include "ChannelStateSubscriber.h"
+#include "ChannelHandler.h"
 #include "TypeConversion.h"
 #include <array>
 #include <asiopal/UTCTimeSource.h>
@@ -36,7 +37,7 @@
 
 DNP3MasterPort::~DNP3MasterPort()
 {
-	ChannelStateSubscriber::Unsubscribe(this);
+	ChannelStateSubscriber::Unsubscribe(&ChanH);
 	if(IntegrityScan)
 		IntegrityScan.reset();
 	if(pMaster)
@@ -44,8 +45,8 @@ DNP3MasterPort::~DNP3MasterPort()
 		pMaster->Shutdown();
 		pMaster.reset();
 	}
-	if(pChannel)
-		pChannel.reset();
+	if(ChanH.pChannel)
+		ChanH.pChannel.reset();
 }
 
 void DNP3MasterPort::Enable()
@@ -161,14 +162,14 @@ void DNP3MasterPort::SetCommsFailed()
 // Called when a the reset/unreset status of the link layer changes (and on link up / channel down)
 void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 {
-	this->status = status;
+	ChanH.status = status;
 
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
 
-	if(link_dead && !channel_dead) //must be on link up
+	if(ChanH.link_dead && !ChanH.channel_dead) //must be on link up
 	{
-		link_dead = false;
+		ChanH.link_dead = false;
 		// Update the comms state point
 		PortUp();
 	}
@@ -184,9 +185,9 @@ void DNP3MasterPort::OnKeepAliveFailure()
 }
 void DNP3MasterPort::OnLinkDown()
 {
-	if(!link_dead)
+	if(!ChanH.link_dead)
 	{
-		link_dead = true;
+		ChanH.link_dead = true;
 		PortDown();
 
 		// Notify subscribers that a disconnect event has occured
@@ -213,9 +214,9 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveSuccess() called.", Name);
 
-	if(link_dead)
+	if(ChanH.link_dead)
 	{
-		link_dead = false;
+		ChanH.link_dead = false;
 		// Update the comms state point
 		PortUp();
 
@@ -242,9 +243,7 @@ void DNP3MasterPort::Build()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	pChannel = GetChannel();
-
-	if (pChannel == nullptr)
+	if (!ChanH.GetChannel())
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for masterstation.", Name);
@@ -279,7 +278,7 @@ void DNP3MasterPort::Build()
 	auto ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(wont_free);
 	auto MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(wont_free);
 
-	pMaster = pChannel->AddMaster(Name, ISOEHandle, MasterApp, StackConfig);
+	pMaster = ChanH.pChannel->AddMaster(Name, ISOEHandle, MasterApp, StackConfig);
 
 	if (pMaster == nullptr)
 	{
@@ -482,9 +481,9 @@ const Json::Value DNP3MasterPort::GetStatistics() const
 {
 	Json::Value event;
 
-	if (pChannel != nullptr)
+	if (ChanH.pChannel != nullptr)
 	{
-		auto ChanStats = this->pChannel->GetStatistics();
+		auto ChanStats = ChanH.pChannel->GetStatistics();
 		event["parser"]["numHeaderCrcError"] = ChanStats.parser.numHeaderCrcError;
 		event["parser"]["numBodyCrcError"] = ChanStats.parser.numBodyCrcError;
 		event["parser"]["numLinkFrameRx"] = ChanStats.parser.numLinkFrameRx;
