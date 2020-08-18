@@ -214,6 +214,15 @@ inline void SendEvent(ControlCode code, std::size_t index,
 	REQUIRE(cb_status == status);
 }
 
+inline std::string GetBinaryEncodedString(const std::vector<std::size_t>& indexes,
+	const std::shared_ptr<DataPort>& sim_port)
+{
+	std::string binary;
+	for (std::size_t index : indexes)
+		binary += sim_port->GetCurrentState()["BinaryCurrent"][std::to_string(index)].asString();
+	return binary;
+}
+
 /*
   function     : TEST_CASE
   description  : tests loading and creation of the sim port
@@ -431,7 +440,7 @@ TEST_CASE("TestAnalogTapChangerRaise")
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::UNDEFINED);
+		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -494,11 +503,11 @@ TEST_CASE("TestAnalogTapChangerLower")
 
 /*
   function     : TEST_CASE
-  description  : tests tap changer lower for binary type
+  description  : tests tap changer raise for binary type
   param        : TestTapChangerLower, name of the test case
   return       : NA
 */
-TEST_CASE("TestBinaryTapChangerLower")
+TEST_CASE("TestBinaryTapChangerRaise")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -516,31 +525,35 @@ TEST_CASE("TestBinaryTapChangerLower")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
-		REQUIRE(result == "5.000000");
+		const std::vector<std::size_t> indexes = {10, 11, 12, 13};
+		std::string binary = GetBinaryEncodedString(indexes, sim_port);
+		REQUIRE(5 == to_decimal(binary));
+
 		/*
 		  As we know the index 7 tap changer's default position is 5
-		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
-		  Lower -> 0 (because 0 is the min limit)
+		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
+		  Raise -> 10 (because 10 is the max limit)
 		*/
-		for (int i = 4; i >= 0; --i)
+		for (int i = 6; i <= 10; ++i)
 		{
-			SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+			SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::SUCCESS);
+			binary = GetBinaryEncodedString(indexes, sim_port);
+			REQUIRE(i == static_cast<int>(to_decimal(binary)));
 		}
 
 		/*
 		  test the corner cases now.
-		  we will test to raise the tap changer beyond the lower limit mark
+		  we will test to raise the tap changer beyond the upper limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::OUT_OF_RANGE);
+		//binary = GetBinaryEncodedString(indexes, sim_port);
+		//REQUIRE(10 == to_decimal(binary));
 
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::UNDEFINED);
+		//SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::UNDEFINED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();

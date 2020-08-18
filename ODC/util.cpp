@@ -162,4 +162,35 @@ std::string to_lower(const std::string& str)
 	return lower;
 }
 
+std::size_t to_decimal(const std::string& binary)
+{
+	std::size_t n = 0;
+	for (int i = binary.size() - 1; i >= 0; --i)
+		if (binary[i] == '1')
+			n += (1 << (binary.size() - 1 - i));
+	return n;
+}
+
+/*
+  function    : to_binary
+  description : this function converts a decimal value to a binary string
+                this function also takes the size to have initial zero's
+                for example 6 can be written in binary as 110.
+                but if someone wants 6 in 4 bits we have to return 0110
+                therefore second param size is required to let us know how big binary coded you want
+  param       : n, the number to be converted to binary
+  param       : size, the size of the binary enocded string
+  return      : binary encoded string
+*/
+std::string to_binary(std::size_t n, std::size_t size)
+{
+	std::string binary(size, '0');
+	for (int i = size - 1; i >= 0; --i)
+	{
+		binary[i] = (n & 1) + '0';
+		n >>= 1;
+	}
+	return binary;
+}
+
 } // namespace odc

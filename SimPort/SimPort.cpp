@@ -120,6 +120,16 @@ void SimPort::PostPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCal
 	pSimConf->Event(event);
 }
 
+void SimPort::PublishBinaryEvents(const std::vector<std::size_t>& indexes, const std::string& payload)
+{
+	for (std::size_t i = 0; i < indexes.size(); ++i)
+	{
+		auto event = pSimConf->Event(odc::EventType::Binary, indexes[i]);
+		event->SetPayload<odc::EventType::Binary>(std::move(payload[i] - '0'));
+		PostPublishEvent(event);
+	}
+}
+
 std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
 {
 	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
@@ -683,8 +693,29 @@ void SimPort::ProcessElements(const Json::Value& json_root)
 
 void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
+	std::string message;
+	std::size_t index = event->GetIndex();
 	if(auto log = odc::spdlog_get("SimPort"))
-		log->trace("{}: Recieved control.", Name);
+		log->trace("{}: Recieved control for Index {}", index);
+
+	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
+	{
+		auto feedbacks = pSimConf->BinaryFeedbacks(index);
+		if (feedbacks.empty())
+		{
+			std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
+			if (bp == nullptr)
+			{
+				message = "No "
+			}
+			else
+			{
+				message
+			}
+		}
+		else
+		{}
+	}
 	if(event->GetEventType() != EventType::ControlRelayOutputBlock)
 	{
 		if(auto log = odc::spdlog_get("SimPort"))
@@ -706,9 +737,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 		else
 		{
 			if(auto log = odc::spdlog_get("SimPort"))
-				log->trace("{}: Control {}: No feeback points configured.", Name, index);
-			(*pStatusCallback)(CommandStatus::UNDEFINED);
-			return;
+				log->trace("{}: Control {}: No feeback / position points configured.", Name, index);
 		}
 	}
 	else
@@ -716,7 +745,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 		(*pStatusCallback)(HandleBinaryFeedback(feedbacks, index, command));
 		return;
 	}
-	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+	LogError("Control not supported.", index, CommandStatus::NOT_SUPPORTED);
 }
 
 CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks,
@@ -842,12 +871,51 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 
 CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position)
 {
-	/* TBD */
-	return CommandStatus::SUCCESS;
+	// check for all the binary indexes present
+	std::string binary;
+	for (std::size_t index : binary_position->indexes)
+	{
+		if (!pSimConf->IsIndex(odc::EventType::Binary, index) ||
+		    pSimConf->ForcedState(odc::EventType::Binary, index))
+			return CommandStatus::NOT_SUPPORTED;
+		binary += std::to_string(static_cast<bool>(pSimConf->Payload(odc::EventType::Binary, index)));
+	}
+
+	std::size_t payload = to_decimal(binary);
+	if (binary_position->action == odc::PositionAction::RAISE)
+	{
+		if (payload < binary_position->limit)
+		{
+			++payload;
+			binary = to_binary(payload, binary_position->indexes.size());
+			PublishBinaryEvents(binary_position->indexes, binary);
+			return CommandStatus::SUCCESS;
+		}
+	}
+	else if (binary_position->action == odc::PositionAction::LOWER)
+	{
+		if (payload > binary_position->limit)
+		{
+			--payload;
+			binary = to_binary(payload, binary_position->indexes.size());
+			PublishBinaryEvents(binary_position->indexes, binary);
+			return CommandStatus::SUCCESS;
+		}
+	}
+	return CommandStatus::NOT_SUPPORTED;
 }
 
 CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position)
 {
 	/* TBD */
 	return CommandStatus::SUCCESS;
+}
+
+void SimPort::LogError(const std::string& message, std::size_t index,
+	SharedStatusCallback_t pStatusCallback,
+	CommandStatus status)
+{
+	if(auto log = odc::spdlog_get("SimPort"))
+		log->trace("{} : {} for Index {}", Name, message, index);
+	(*pStatusCallback)(status);
 }

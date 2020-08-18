@@ -67,6 +67,7 @@ private:
 
 	// use this instead of PublishEvent, it catches current values and saves them.
 	void PostPublishEvent(std::shared_ptr<odc::EventInfo> event, SharedStatusCallback_t pStatusCallback);
+	void PublishBinaryEvents(const std::vector<std::size_t>& indexes, const std::string& payload);
 
 	void NextEventFromDB(const std::shared_ptr<odc::EventInfo>& event);
 	void PopulateNextEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset);
@@ -120,6 +121,9 @@ private:
 	CommandStatus HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position);
 	CommandStatus HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position);
 	CommandStatus HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position);
+
+	void LogError(const std::string& message, std::size_t index,
+		SharedStatusCallback_t pStatusCallback, CommandStatus status);
 
 	std::shared_ptr<SimPortCollection> SimCollection;
 
