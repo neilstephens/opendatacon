@@ -58,7 +58,7 @@ protected:
 
 	std::shared_ptr<asiodnp3::DNP3Manager> IOMgr;
 
-	virtual void OnLinkDown() = 0;
+	virtual void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) = 0;
 	virtual TCPClientServer ClientOrServer() = 0;
 };
 

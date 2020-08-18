@@ -57,8 +57,9 @@ protected:
 	const Json::Value GetStatistics() const override;
 
 	// Implement DNP3Port
-	void OnLinkDown() override;
 	TCPClientServer ClientOrServer() override;
+	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
+	bool channel_stayed_up = false; //keep track of the case where the link goes down and back up without the channel going down
 
 	/// Implement opendnp3::ISOEHandler
 	void Start() override {}
@@ -79,11 +80,27 @@ protected:
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::DNPTime>& values) override;
 
 	/// Implement opendnp3::IMasterApplication
-	void OnReceiveIIN(const opendnp3::IINField& iin) final {}
-	void OnTaskStart(opendnp3::MasterTaskType type, opendnp3::TaskId id) final {}
-	void OnTaskComplete(const opendnp3::TaskInfo& info) final {}
-	bool AssignClassDuringStartup() final { return false; }
-	void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) final {}
+	void OnTaskStart(opendnp3::MasterTaskType type, opendnp3::TaskId id) final
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: OnTaskStart(Type {}, ID {}) called.", Name, MasterTaskTypeToString(type), id.GetId());
+	}
+	void OnTaskComplete(const opendnp3::TaskInfo& info) final
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: OnTaskComplete(Type {}, ID {}, Res {}) called.", Name, MasterTaskTypeToString(info.type), info.id.GetId(), TaskCompletionToString(info.result));
+	}
+	bool AssignClassDuringStartup() final
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: AssignClassDuringStartup() called.", Name);
+		return false;
+	}
+	void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) final
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: ConfigureAssignClassRequest() called.", Name);
+	}
 	openpal::UTCTimestamp Now() final
 	{
 		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -96,6 +113,8 @@ protected:
 	void OnKeepAliveFailure() override;
 	// Called when a keep alive message receives a valid response
 	void OnKeepAliveSuccess() override;
+	// Called every application header receipt
+	void OnReceiveIIN(const opendnp3::IINField& iin) override;
 
 private:
 	std::shared_ptr<asiodnp3::IMaster> pMaster;

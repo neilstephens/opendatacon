@@ -1,34 +1,68 @@
 #include "ChannelHandler.h"
-#include "DNP3Port.h"
 #include "ChannelStateSubscriber.h"
+#include "DNP3Port.h"
 #include <opendatacon/util.h>
 
 ChannelHandler::ChannelHandler(DNP3Port *p):
 	pPort(p),
 	pChannel(nullptr),
-	status(opendnp3::LinkStatus::UNRESET),
-	link_dead(true),
-	channel_dead(true)
+	link_status(opendnp3::LinkStatus::UNRESET),
+	link_deadness(LinkDeadness::LinkDownChannelDown)
 {}
 
 // Called by OpenDNP3 Thread Pool
-void ChannelHandler::StateListener(opendnp3::ChannelState state)
+void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: ChannelState {}.", pPort->Name, opendnp3::ChannelStateToString(state));
 
-	if(state != opendnp3::ChannelState::OPEN)
+	auto previous_deadness = link_deadness.load();
+
+	if(state == opendnp3::ChannelState::OPEN && link_deadness == LinkDeadness::LinkDownChannelDown)
 	{
-		channel_dead = true;
-		pPort->OnLinkDown();
+		link_deadness = LinkDeadness::LinkDownChannelUp;
+		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
 	}
-	else
+	else if(state != opendnp3::ChannelState::OPEN && link_deadness != LinkDeadness::LinkDownChannelDown)
 	{
-		channel_dead = false;
+		link_deadness = LinkDeadness::LinkDownChannelDown;
+		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
 	}
 }
 
-std::shared_ptr<asiodnp3::IChannel> ChannelHandler::GetChannel()
+void ChannelHandler::SetLinkStatus_(opendnp3::LinkStatus status)
+{
+	link_status = status;
+	auto previous_deadness = link_deadness.load();
+
+	if(link_deadness == LinkDeadness::LinkDownChannelUp) //this is the initial link up event
+	{
+		link_deadness = LinkDeadness::LinkUpChannelUp;
+		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
+	}
+}
+void ChannelHandler::LinkDown_()
+{
+	auto previous_deadness = link_deadness.load();
+
+	if(link_deadness == LinkDeadness::LinkUpChannelUp)
+	{
+		link_deadness = LinkDeadness::LinkDownChannelUp;
+		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
+	}
+}
+void ChannelHandler::LinkUp_()
+{
+	auto previous_deadness = link_deadness.load();
+
+	if(link_deadness != LinkDeadness::LinkUpChannelUp)
+	{
+		link_deadness = LinkDeadness::LinkUpChannelUp;
+		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
+	}
+}
+
+std::shared_ptr<asiodnp3::IChannel> ChannelHandler::SetChannel()
 {
 	static std::unordered_map<std::string, std::weak_ptr<asiodnp3::IChannel>> Channels;
 

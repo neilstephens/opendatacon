@@ -74,11 +74,11 @@ const Json::Value DNP3Port::GetStatus() const
 
 	if(!enabled)
 		ret_val["Result"] = "Port disabled";
-	else if(ChanH.link_dead)
+	else if(ChanH.GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
 		ret_val["Result"] = "Port enabled - link down";
-	else if(ChanH.status == opendnp3::LinkStatus::RESET)
+	else if(ChanH.GetLinkStatus() == opendnp3::LinkStatus::RESET)
 		ret_val["Result"] = "Port enabled - link up (reset)";
-	else if(ChanH.status == opendnp3::LinkStatus::UNRESET)
+	else if(ChanH.GetLinkStatus() == opendnp3::LinkStatus::UNRESET)
 		ret_val["Result"] = "Port enabled - link up (unreset)";
 	else
 		ret_val["Result"] = "Port enabled - link status unknown";

@@ -29,6 +29,7 @@
 #include "DNP3Port.h"
 #include <unordered_map>
 #include <opendnp3/outstation/ICommandHandler.h>
+#include <opendnp3/outstation/ApplicationIIN.h>
 
 class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication
 {
@@ -43,8 +44,9 @@ protected:
 	void Build() override;
 
 	// Implement DNP3Port
-	void OnLinkDown() override;
 	TCPClientServer ClientOrServer() override;
+	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
+	std::atomic<msSinceEpoch_t> last_link_down_time = msSinceEpoch();
 
 	/// Implement ODC::DataPort functions for UI
 	const Json::Value GetCurrentState() const override;
@@ -57,6 +59,9 @@ protected:
 	void OnKeepAliveFailure() override;
 	// Called when a keep alive message receives a valid response
 	void OnKeepAliveSuccess() override;
+
+	void LinkUpCheck();
+	std::shared_ptr<asio::steady_timer> pLinkUpCheckTimer = pIOS->make_steady_timer();
 
 	/// Implement opendnp3::ICommandHandler
 	void Start() override {}
