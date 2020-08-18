@@ -86,6 +86,12 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	ProcessFile();
 }
 
+SimPort::~SimPort()
+{
+	Disable();
+	HttpServerManager::StopConnection(pServer);
+}
+
 void SimPort::Enable()
 {
 	pEnableDisableSync->post([this]()
@@ -93,7 +99,6 @@ void SimPort::Enable()
 			if(!enabled)
 			{
 			      enabled = true;
-			      HttpServerManager::StartConnection(pServer);
 			      PortUp();
 			}
 		});
@@ -106,7 +111,6 @@ void SimPort::Disable()
 			if(enabled)
 			{
 			      enabled = false;
-			      HttpServerManager::StopConnection(pServer);
 			      PortDown();
 			}
 		});
@@ -509,175 +513,180 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 void SimPort::Build()
 {
 	pEnableDisableSync = pIOS->make_strand();
-	auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
-	this->SimCollection->Add(shared_this,this->Name);
+	pEnableDisableSync->dispatch([this]()
+		{
+			auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
+			this->SimCollection->Add(shared_this, this->Name);
 
-	if ((pSimConf->HttpAddress().size() != 0) && (pSimConf->HttpPort().size() != 0))
-	{
-		pServer = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddress(), pSimConf->HttpPort()); //Static method - creates a new HttpServerManager if required
-
-		// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
-
-		auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+			if ((pSimConf->HttpAddress().size() != 0) && (pSimConf->HttpPort().size() != 0))
 			{
-				rep.status = http::reply::ok;
-				rep.content.append("You have reached the SimPort http interface.<br>To talk to a port the url must contain the SimPort name, which is case senstive.<br>The rest is formatted as if it were a console UI command.");
-				rep.headers.resize(2);
-				rep.headers[0].name = "Content-Length";
-				rep.headers[0].value = std::to_string(rep.content.size());
-				rep.headers[1].name = "Content-Type";
-				rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
-			});
+				pServer = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddress(), pSimConf->HttpPort()); //Static method - creates a new HttpServerManager if required
 
-		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
+				// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
-		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::GetConfigVersion());
-		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
-			{
-				rep.status = http::reply::ok;
+				auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+					{
+						rep.status = http::reply::ok;
+						rep.content.append("You have reached the SimPort http interface.<br>To talk to a port the url must contain the SimPort name, which is case senstive.<br>The rest is formatted as if it were a console UI command.");
+						rep.headers.resize(2);
+						rep.headers[0].name = "Content-Length";
+						rep.headers[0].value = std::to_string(rep.content.size());
+						rep.headers[1].name = "Content-Type";
+						rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
+					});
 
-				rep.content.append(VersionResp);
-				rep.headers.resize(2);
-				rep.headers[0].name = "Content-Length";
-				rep.headers[0].value = std::to_string(rep.content.size());
-				rep.headers[1].name = "Content-Type";
-				rep.headers[1].value = "application/json"; // http::server::mime_types::extension_to_type(extension);
-			});
+				HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-		HttpServerManager::AddHandler(pServer, "GET /Version", versionhandler);
+				std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::GetConfigVersion());
+				auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+					{
+						rep.status = http::reply::ok;
 
-		auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
-			{
-				// So when we hit here, someone has made a Get request of our Named Port.
-				// The parameters are type and index, we return value, quality and timestamp
-				// Split the absolute uri into parameters.
+						rep.content.append(VersionResp);
+						rep.headers.resize(2);
+						rep.headers[0].name = "Content-Length";
+						rep.headers[0].value = std::to_string(rep.content.size());
+						rep.headers[1].name = "Content-Type";
+						rep.headers[1].value = "application/json"; // http::server::mime_types::extension_to_type(extension);
+					});
 
-				std::string type = "";
-				std::string index = "";
-				std::string error = "";
+				HttpServerManager::AddHandler(pServer, "GET /Version", versionhandler);
 
-				if (parameters.count("type") != 0)
-					type = parameters.at("type");
-				else
-					error = "No 'type' parameter found";
+				auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+					{
+						// So when we hit here, someone has made a Get request of our Named Port.
+						// The parameters are type and index, we return value, quality and timestamp
+						// Split the absolute uri into parameters.
 
-				if (parameters.count("index") != 0)
-					index = parameters.at("index");
-				else
-					error += " No 'index' parameter found";
+						std::string type = "";
+						std::string index = "";
+						std::string error = "";
 
-				std::string result = "";
-				std::string contenttype = "application/json";
+						if (parameters.count("type") != 0)
+							type = parameters.at("type");
+						else
+							error = "No 'type' parameter found";
 
-				if (error.length() == 0)
-				{
-				      if (to_lower(type) == "binary")
-				      {
-				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
-				            result = pSimConf->CurrentState(EventType::Binary, indexes);
-					}
-				      if (to_lower(type) == "analog")
-				      {
-				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
-				            result = pSimConf->CurrentState(EventType::Analog, indexes);
-					}
-				}
-				if (result.length() != 0)
-				{
-				      rep.status = http::reply::ok;
-				      rep.content.append(result);
-				}
-				else
-				{
-				      rep.status = http::reply::not_found;
-				      contenttype = "text/html";
-				      rep.content.append("You have reached the SimPort Instance with GET on " + Name + " Invalid Request " + type + ", " + index + " - " + error);
-				}
-				rep.headers.resize(2);
-				rep.headers[0].name = "Content-Length";
-				rep.headers[0].value = std::to_string(rep.content.size());
-				rep.headers[1].name = "Content-Type";
-				rep.headers[1].value = contenttype;
-			});
-		HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
+						if (parameters.count("index") != 0)
+							index = parameters.at("index");
+						else
+							error += " No 'index' parameter found";
 
-		auto posthandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
-			{
-				// So when we hit here, someone has made a POST request of our Port.
-				// The UILoad checks the values past to it and sets sensible defaults if they are missing.
+						std::string result = "";
+						std::string contenttype = "application/json";
 
-				EventType type;
-				std::string index = "";
-				std::string value = "";
-				std::string quality = "";
-				std::string timestamp = "";
-				std::string period = "";
-				std::string error = "";
+						if (error.length() == 0)
+						{
+							if (to_lower(type) == "binary")
+							{
+								std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
+								result = pSimConf->CurrentState(EventType::Binary, indexes);
+							}
+							if (to_lower(type) == "analog")
+							{
+								std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
+								result = pSimConf->CurrentState(EventType::Analog, indexes);
+							}
+						}
+						if (result.length() != 0)
+						{
+							rep.status = http::reply::ok;
+							rep.content.append(result);
+						}
+						else
+						{
+							rep.status = http::reply::not_found;
+							contenttype = "text/html";
+							rep.content.append("You have reached the SimPort Instance with GET on " + Name + " Invalid Request " + type + ", " + index + " - " + error);
+						}
+						rep.headers.resize(2);
+						rep.headers[0].name = "Content-Length";
+						rep.headers[0].value = std::to_string(rep.content.size());
+						rep.headers[1].name = "Content-Type";
+						rep.headers[1].value = contenttype;
+					});
+				HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
-				if (parameters.count("type") != 0)
-					type = ToEventType(parameters.at("type"));
-				else
-					error = "No 'type' parameter found";
+				auto posthandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+					{
+						// So when we hit here, someone has made a POST request of our Port.
+						// The UILoad checks the values past to it and sets sensible defaults if they are missing.
 
-				if (parameters.count("index") != 0)
-					index = parameters.at("index");
-				else
-					error += " No 'index' parameter found";
+						EventType type;
+						std::string index = "";
+						std::string value = "";
+						std::string quality = "";
+						std::string timestamp = "";
+						std::string period = "";
+						std::string error = "";
 
-				if (parameters.count("quality") != 0)
-					quality = parameters.at("quality");
-				if (parameters.count("timestamp") != 0)
-					timestamp = parameters.at("timestamp");
+						if (parameters.count("type") != 0)
+							type = ToEventType(parameters.at("type"));
+						else
+							error = "No 'type' parameter found";
 
-				if (parameters.count("force") != 0)
-				{
-				      if (((to_lower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
-				      {
-				            SetForcedState(index, type, true);
-				            rep.content.append("Set Period Command Accepted\n");
-					}
-				      if (((to_lower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
-				      {
-				            SetForcedState(index, type, false);
-				            rep.content.append("Set Period Command Accepted\n");
-					}
-				}
+						if (parameters.count("index") != 0)
+							index = parameters.at("index");
+						else
+							error += " No 'index' parameter found";
 
-				if (parameters.count("value") != 0)
-					value = parameters.at("value");
-				if (parameters.count("period") != 0)
-					period = parameters.at("period");
+						if (parameters.count("quality") != 0)
+							quality = parameters.at("quality");
+						if (parameters.count("timestamp") != 0)
+							timestamp = parameters.at("timestamp");
 
-				if ((error.length() == 0) && (value.length() != 0) && UILoad(type, index, value, quality, timestamp, false)) // Forced set above
-				{
-				      rep.status = http::reply::ok;
-				      rep.content.append("Set Value Command Accepted\n");
-				}
+						if (parameters.count("force") != 0)
+						{
+							if (((to_lower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
+							{
+								SetForcedState(index, type, true);
+								rep.content.append("Set Period Command Accepted\n");
+							}
+							if (((to_lower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
+							{
+								SetForcedState(index, type, false);
+								rep.content.append("Set Period Command Accepted\n");
+							}
+						}
 
-				if ((error.length() == 0) && (period.length() != 0) && UISetUpdateInterval(type, index, period))
-				{
-				      rep.status = http::reply::ok;
-				      rep.content.append("Set Period Command Accepted\n");
-				}
+						if (parameters.count("value") != 0)
+							value = parameters.at("value");
+						if (parameters.count("period") != 0)
+							period = parameters.at("period");
 
-				if ((value.length() == 0) && (period.length() != 0))
-				{
-				      error += " Missing a value or period parameter. Must have at least one.";
-				}
+						if ((error.length() == 0) && (value.length() != 0) && UILoad(type, index, value, quality, timestamp, false)) // Forced set above
+						{
+							rep.status = http::reply::ok;
+							rep.content.append("Set Value Command Accepted\n");
+						}
 
-				if (error.length() != 0)
-				{
-				      rep.status = http::reply::not_found;
-				      rep.content.append("You have reached the SimPort Instance with POST on " + Name + " POST Command Failed - " + error);
-				}
-				rep.headers.resize(2);
-				rep.headers[0].name = "Content-Length";
-				rep.headers[0].value = std::to_string(rep.content.size());
-				rep.headers[1].name = "Content-Type";
-				rep.headers[1].value = "text/html";
-			});
-		HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
-	}
+						if ((error.length() == 0) && (period.length() != 0) && UISetUpdateInterval(type, index, period))
+						{
+							rep.status = http::reply::ok;
+							rep.content.append("Set Period Command Accepted\n");
+						}
+
+						if ((value.length() == 0) && (period.length() != 0))
+						{
+							error += " Missing a value or period parameter. Must have at least one.";
+						}
+
+						if (error.length() != 0)
+						{
+							rep.status = http::reply::not_found;
+							rep.content.append("You have reached the SimPort Instance with POST on " + Name + " POST Command Failed - " + error);
+						}
+						rep.headers.resize(2);
+						rep.headers[0].name = "Content-Length";
+						rep.headers[0].value = std::to_string(rep.content.size());
+						rep.headers[1].name = "Content-Type";
+						rep.headers[1].value = "text/html";
+					});
+				HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
+
+				HttpServerManager::StartConnection(pServer);
+			}
+		});
 }
 
 void SimPort::ProcessElements(const Json::Value& json_root)
