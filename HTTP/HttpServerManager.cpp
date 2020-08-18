@@ -89,7 +89,7 @@ void HttpServerManager::StartConnection(const ServerTokenType& ServerTok)
 	}
 	else
 	{
-		LOGERROR("Tried to start httpserver when the connection token was no longer valid");
+		LOGERROR("Tried to start httpserver when the connection token was not valid");
 	}
 }
 
@@ -102,7 +102,7 @@ void HttpServerManager::StopConnection(const ServerTokenType& ServerTok)
 	}
 	else
 	{
-		LOGERROR("Tried to stop httpserver when the connection token was no longer valid");
+		LOGERROR("Tried to stop httpserver when the connection token was not valid");
 	}
 }
 
@@ -115,7 +115,7 @@ void HttpServerManager::AddHandler(const ServerTokenType& ServerTok, const std::
 	}
 	else
 	{
-		LOGERROR("Tried to add a urihandler when the httpserver was no longer valid");
+		LOGERROR("Tried to add a urihandler when the httpserver was not valid");
 	}
 }
 
