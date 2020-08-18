@@ -476,24 +476,31 @@ std::string getISOCurrentTimestampUTC_from_msSinceEpoch_t(const odc::msSinceEpoc
 	return "Error";
 }
 
-std::string PyPort::GetTagValue(EventType Eventt, size_t Index)
+std::string PyPort::GetTagValue(const std::string & SenderName, EventType Eventt, size_t Index)
 {
 	// The unordered_maps lookup reading do not need to be protected, they are threadsafe for this
 	// The Event handler calling this is multithreaded, so there will be concurrent access.
-	if (Eventt == EventType::Analog)
+	// TODO: Need to look for the map that matches the sender...Then match the event.
+
+	auto searchport = PortTagMap.find(SenderName);
+	if (searchport != PortTagMap.end())
 	{
-		auto search = AnalogMap.find(Index);
-		return (search != AnalogMap.end()) ? search->second : "";
-	}
-	if (Eventt == EventType::Binary)
-	{
-		auto search = BinaryMap.find(Index);
-		return (search != BinaryMap.end()) ? search->second : "";
-	}
-	if (Eventt == EventType::ControlRelayOutputBlock)
-	{
-		auto search = BinaryControlMap.find(Index);
-		return (search != BinaryControlMap.end()) ? search->second : "";
+		auto foundport = searchport->second;
+		if (Eventt == EventType::Analog)
+		{
+			auto search = foundport.AnalogMap.find(Index);
+			return (search != foundport.AnalogMap.end()) ? search->second : "";
+		}
+		if (Eventt == EventType::Binary)
+		{
+			auto search = foundport.BinaryMap.find(Index);
+			return (search != foundport.BinaryMap.end()) ? search->second : "";
+		}
+		if (Eventt == EventType::ControlRelayOutputBlock)
+		{
+			auto search = foundport.BinaryControlMap.find(Index);
+			return (search != foundport.BinaryControlMap.end()) ? search->second : "";
+		}
 	}
 	return "";
 }
@@ -523,7 +530,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		std::string isotimestamp = getISOCurrentTimestampUTC_from_msSinceEpoch_t(event->GetTimestamp());
 		try
 		{
-			std::string TagValue = GetTagValue(event->GetEventType(),event->GetIndex());
+			std::string TagValue = GetTagValue(SenderName, event->GetEventType(),event->GetIndex());
 
 			if (MyConf->pyOnlyQueueEventsWithTags && (TagValue == ""))
 				return; // If only queue events that have tags, and we dont have a tag, return
@@ -700,6 +707,7 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
 		size_t index = 0;
+		std::string sender = "";
 
 		if (JSONNode[n].isMember("Index"))
 		{
@@ -710,17 +718,39 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 			throw std::invalid_argument("A point needs an \"Index\" : " + JSONNode[n].toStyledString());
 		}
 
+		if (JSONNode[n].isMember("Sender"))
+		{
+			sender = JSONNode[n]["Sender"].asString();
+		}
+
 		if (JSONNode[n].isMember("Tag"))
 		{
 			std::string Tag = JSONNode[n]["Tag"].asString();
 
-			// We have an index and a tag, so add to the hash.
+			if (sender == "")
+			{
+				throw std::invalid_argument("A point needs an \"Sender\" to match the PortName the event is coming from for a Tag to be valid : " + JSONNode[n].toStyledString());
+			}
+			// We have an index, tag and a sender, so add to the hash.
+			auto searchport = PortTagMap.find(sender);
+			if (searchport == PortTagMap.end())
+			{
+				PortTagMap.emplace(std::make_pair(sender, PortMapClass() ));
+			}
+			searchport = PortTagMap.find(sender);
+			if (searchport == PortTagMap.end())
+			{
+				throw std::invalid_argument("We could not find a PortTagMap entry that we just added? Bad things are happening! " + JSONNode[n].toStyledString());
+			}
+
+			auto foundport = searchport->second;
+
 			if (ptype == Analog)
-				AnalogMap.emplace(std::make_pair(index, Tag));
+				foundport.AnalogMap.emplace(std::make_pair(index, Tag));
 			else if (ptype == Binary)
-				BinaryMap.emplace(std::make_pair(index, Tag));
+				foundport.BinaryMap.emplace(std::make_pair(index, Tag));
 			else if (ptype == BinaryControl)
-				BinaryControlMap.emplace(std::make_pair(index, Tag));
+				foundport.BinaryControlMap.emplace(std::make_pair(index, Tag));
 			else
 			{
 				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
