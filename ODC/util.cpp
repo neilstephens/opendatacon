@@ -229,7 +229,6 @@ std::size_t bcd_encoded_to_decimal(const std::string& str)
 		decimal = to_decimal(pack);
 	}
 
-
 	for (std::size_t i = 0; i < (str.size() / bcd_pack_size); ++i)
 	{
 		std::string pack;
