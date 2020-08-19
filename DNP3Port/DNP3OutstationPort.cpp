@@ -149,6 +149,18 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 	if(to == LinkDeadness::LinkDownChannelDown)
 		pLinkUpCheckTimer->cancel();
 }
+void DNP3OutstationPort::ChannelWatchdogTrigger(bool on)
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	if(enabled)
+	{
+		if(on)
+			pOutstation->Disable();
+		else
+			pOutstation->Enable();
+	}
+}
 
 // Called by OpenDNP3 Thread Pool
 // Called when a keep alive message receives a valid response

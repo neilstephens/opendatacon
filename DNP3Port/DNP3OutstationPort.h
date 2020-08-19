@@ -46,6 +46,7 @@ protected:
 	// Implement DNP3Port
 	TCPClientServer ClientOrServer() override;
 	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
+	void ChannelWatchdogTrigger(bool on) override;
 	std::atomic<msSinceEpoch_t> last_link_down_time = msSinceEpoch();
 
 	/// Implement ODC::DataPort functions for UI

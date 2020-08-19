@@ -59,6 +59,7 @@ protected:
 	// Implement DNP3Port
 	TCPClientServer ClientOrServer() override;
 	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
+	void ChannelWatchdogTrigger(bool on) override;
 	bool channel_stayed_up = false; //keep track of the case where the link goes down and back up without the channel going down
 
 	/// Implement opendnp3::ISOEHandler

@@ -38,6 +38,7 @@ using namespace odc;
 class DNP3Port: public DataPort
 {
 	friend class ChannelHandler;
+	friend class ChannelLinksWatchdog;
 public:
 	DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~DNP3Port() override;
@@ -59,6 +60,7 @@ protected:
 	std::shared_ptr<asiodnp3::DNP3Manager> IOMgr;
 
 	virtual void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) = 0;
+	virtual void ChannelWatchdogTrigger(bool on) = 0;
 	virtual TCPClientServer ClientOrServer() = 0;
 };
 

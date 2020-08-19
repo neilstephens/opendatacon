@@ -229,6 +229,19 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		channel_stayed_up = false;
 }
 
+void DNP3MasterPort::ChannelWatchdogTrigger(bool on)
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	if(stack_enabled)
+	{
+		if(on)                    //don't mark the stack as disabled, because this is just a restart
+			pMaster->Disable(); //it will be enabled again shortly when the trigger is off
+		else
+			pMaster->Enable();
+	}
+}
+
 // Called by OpenDNP3 Thread Pool
 // Called when a keep alive message receives a valid response
 void DNP3MasterPort::OnKeepAliveSuccess()
