@@ -447,20 +447,4 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 	if (feedback_position.isMember("Limit"))
 		limit = feedback_position["Limit"].asUInt();
 	m_pport_data->CreateBinaryPosition(index, type, indexes, action, limit);
-
-	try
-	{
-		if (feedback_position["Type"] == "Binary")
-		{
-			throw std::runtime_error("'Binary' Position feedback is unimplemented.");
-		}
-		else if (feedback_position["Type"] == "BCD")
-		{
-			throw std::runtime_error("'BCD' Position feedback is unimplemented.");
-		}
-	}
-	catch (std::exception &e)
-	{
-		LOGERROR("{} : '{}'", e.what(),  feedback_position.toStyledString());
-	}
 }
