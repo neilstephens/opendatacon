@@ -50,6 +50,7 @@ std::string GetConfigVersion();
 void SetConfigVersion(std::string Version);
 std::size_t to_decimal(const std::string& binary);
 std::string to_binary(std::size_t n, std::size_t size);
+std::size_t bcd_encoded_to_decimal(const std::string& str);
 } //namspace odc
 
 #endif //UTIL_H

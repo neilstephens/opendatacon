@@ -188,8 +188,16 @@ inline ParamCollection BuildParams(const std::string& a,
 	return params;
 }
 
-inline void SendEvent(ControlCode code, std::size_t index,
-	std::shared_ptr<DataPort> sim_port, CommandStatus status)
+/*
+  function     : SendEvent
+  description  : this function will send the event to simulator
+  param        : code, control code of the event
+  param        : index, index of the binary control
+  param        : sim_port, pointer to the simulator port
+  param        : status, event response from the simulator
+  return       : void
+*/
+inline void SendEvent(ControlCode code, std::size_t index, std::shared_ptr<DataPort> sim_port, CommandStatus status)
 {
 	auto IOS = odc::asio_service::Get();
 	// Set up a callback for the result
@@ -214,12 +222,36 @@ inline void SendEvent(ControlCode code, std::size_t index,
 	REQUIRE(cb_status == status);
 }
 
+/*
+  function     : GetBinaryEncodedString
+  description  : this function will return the binary encoded string from
+                 getting the binary values from simulator
+  param        : indexes, indexes of the binary control
+  param        : sim_port, pointer to the simulator port
+  return       : binary encoded string
+*/
 inline std::string GetBinaryEncodedString(const std::vector<std::size_t>& indexes, const std::shared_ptr<DataPort>& sim_port)
 {
 	std::string binary;
 	for (std::size_t index : indexes)
 		binary += sim_port->GetCurrentState()["BinaryCurrent"][std::to_string(index)].asString();
 	return binary;
+}
+
+/*
+  function     : GetBCDEncodedString
+  description  : this function will return the BCD encoded string from
+                 getting the binary values from simulator
+  param        : indexes, indexes of the binary control
+  param        : sim_port, pointer to the simulator port
+  return       : binary encoded string
+*/
+std::size_t GetBCDEncodedString(const std::vector<std::size_t>& indexes, const std::shared_ptr<DataPort>& sim_port)
+{
+	std::string bcd_str;
+	for (std::size_t index : indexes)
+		bcd_str += sim_port->GetCurrentState()["BinaryCurrent"][std::to_string(index)].asString();
+	return odc::bcd_encoded_to_decimal(bcd_str);
 }
 
 /*
@@ -526,7 +558,7 @@ TEST_CASE("TestBinaryTapChangerRaise")
 
 		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(5 == to_decimal(binary));
+		REQUIRE(5 == odc::to_decimal(binary));
 
 		/*
 		  As we know the index 7 tap changer's default position is 5
@@ -537,7 +569,7 @@ TEST_CASE("TestBinaryTapChangerRaise")
 		{
 			SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::SUCCESS);
 			binary = GetBinaryEncodedString(indexes, sim_port);
-			REQUIRE(i == static_cast<int>(to_decimal(binary)));
+			REQUIRE(i == static_cast<int>(odc::to_decimal(binary)));
 		}
 
 		/*
@@ -546,7 +578,7 @@ TEST_CASE("TestBinaryTapChangerRaise")
 		 */
 		SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::NOT_SUPPORTED);
 		binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(10 == to_decimal(binary));
+		REQUIRE(10 == odc::to_decimal(binary));
 
 		/*
 		  test the corner cases now.
@@ -584,7 +616,7 @@ TEST_CASE("TestBinaryTapChangerLower")
 
 		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(5 == to_decimal(binary));
+		REQUIRE(5 == odc::to_decimal(binary));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
@@ -594,7 +626,7 @@ TEST_CASE("TestBinaryTapChangerLower")
 		{
 			SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::SUCCESS);
 			binary = GetBinaryEncodedString(indexes, sim_port);
-			REQUIRE(i == static_cast<int>(to_decimal(binary)));
+			REQUIRE(i == static_cast<int>(odc::to_decimal(binary)));
 		}
 		/*
 		  test the corner cases now.
@@ -602,7 +634,7 @@ TEST_CASE("TestBinaryTapChangerLower")
 		 */
 		SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::NOT_SUPPORTED);
 		binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(0 == to_decimal(binary));
+		REQUIRE(0 == odc::to_decimal(binary));
 
 		/*
 		  test the corner cases now.
@@ -639,9 +671,10 @@ TEST_CASE("TestBCDTapChangerRaise")
 		sim_port->Enable();
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
-		SendEvent(ControlCode::UNDEFINED, 6, sim_port, CommandStatus::SUCCESS);
+		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		//SendEvent(ControlCode::UNDEFINED, 6, sim_port, CommandStatus::SUCCESS);
 		//std::string binary = GetBinaryEncodedString(indexes, sim_port);
-		//REQUIRE(5 == to_decimal(binary));
+		//REQUIRE(5 == odc::to_decimal(binary));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
@@ -651,7 +684,7 @@ TEST_CASE("TestBCDTapChangerRaise")
 		{
 			//SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::SUCCESS);
 			//binary = GetBinaryEncodedString(indexes, sim_port);
-			//REQUIRE(i == static_cast<int>(to_decimal(binary)));
+			//REQUIRE(i == static_cast<int>(odc::to_decimal(binary)));
 		}
 		/*
 		  test the corner cases now.
@@ -659,7 +692,7 @@ TEST_CASE("TestBCDTapChangerRaise")
 		 */
 		//SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::NOT_SUPPORTED);
 		//binary = GetBinaryEncodedString(indexes, sim_port);
-		//REQUIRE(0 == to_decimal(binary));
+		//REQUIRE(0 == odc::to_decimal(binary));
 
 		/*
 		  test the corner cases now.

@@ -193,4 +193,38 @@ std::string to_binary(std::size_t n, std::size_t size)
 	return binary;
 }
 
+/*
+  function    : bcd_encoded_to_decimal
+  description : this function converts bcd encoded binary string to decmial value
+                for example
+                0101 0001 --> 51
+                  01 0011 --> 13
+                1000 0001 --> 81
+  param       : str, binary encoded bcd string
+  return      : decimal value
+*/
+std::size_t bcd_encoded_to_decimal(const std::string& str)
+{
+	// Now encode the bcd of packed 4 bits
+	std::size_t decimal = 0;
+	const std::size_t start = str.size() % 4;
+	if (start)
+	{
+		std::string pack;
+		for (std::size_t i = 0; i < start; ++i)
+			pack += str[i];
+		decimal = to_decimal(pack);
+	}
+
+
+	for (std::size_t i = 0; i < (str.size() / 4); ++i)
+	{
+		std::string pack;
+		for (std::size_t j = 0; j < 4; ++j)
+			pack += str[i * 4 + j + start];
+		decimal = (decimal * 10) + to_decimal(pack);
+	}
+	return decimal;
+}
+
 } // namespace odc
