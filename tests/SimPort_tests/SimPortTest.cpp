@@ -59,10 +59,10 @@ inline Json::Value GetTestConfigJSON()
             {"Index": 7},
             {"Index": 8},
             {"Index": 10, "StartVal" : false},
-            {"Index": 11, "StartVal" : true},
-            {"Index": 12, "StartVal" : false},
-            {"Index": 13, "StartVal" : true},
-            {"Index": 14},
+            {"Index": 11, "StartVal" : false},
+            {"Index": 12, "StartVal" : true},
+            {"Index": 13, "StartVal" : false},
+            {"Index": 14, "StartVal" : true},
             {"Index": 15}
 		],
 
@@ -102,11 +102,11 @@ inline Json::Value GetTestConfigJSON()
 			},
 			{
 				"Index" : 4,
-				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13], "Action":"RAISE", "Limit":10}
+				"FeedbackPosition": {"Type": "Binary", "Indexes" : [11,12,13,14], "Action":"RAISE", "Limit":10}
 			},
 			{
 				"Index" : 5,
-				"FeedbackPosition": {"Type": "Binary", "Indexes" : [10,11,12,13], "Action":"LOWER", "Limit":0}
+				"FeedbackPosition": {"Type": "Binary", "Indexes" : [11,12,13,14], "Action":"LOWER", "Limit":0}
 			},
 			{
 				"Index" : 6,
@@ -524,7 +524,7 @@ TEST_CASE("TestBinaryTapChangerRaise")
 		sim_port->Build();
 		sim_port->Enable();
 
-		const std::vector<std::size_t> indexes = {10, 11, 12, 13};
+		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
 		REQUIRE(5 == to_decimal(binary));
 
@@ -582,7 +582,7 @@ TEST_CASE("TestBinaryTapChangerLower")
 		sim_port->Build();
 		sim_port->Enable();
 
-		const std::vector<std::size_t> indexes = {10, 11, 12, 13};
+		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
 		REQUIRE(5 == to_decimal(binary));
 		/*
@@ -609,6 +609,63 @@ TEST_CASE("TestBinaryTapChangerLower")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer raise for BCD type
+  param        : TestBCDTapChangerRaise, name of the test case
+  return       : NA
+*/
+TEST_CASE("TestBCDTapChangerRaise")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
+		SendEvent(ControlCode::UNDEFINED, 6, sim_port, CommandStatus::SUCCESS);
+		//std::string binary = GetBinaryEncodedString(indexes, sim_port);
+		//REQUIRE(5 == to_decimal(binary));
+		/*
+		  As we know the index 7 tap changer's default position is 5
+		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
+		  Raise -> 10 (because 10 is the max limit)
+		*/
+		for (int i = 6; i <= 10; ++i)
+		{
+			//SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::SUCCESS);
+			//binary = GetBinaryEncodedString(indexes, sim_port);
+			//REQUIRE(i == static_cast<int>(to_decimal(binary)));
+		}
+		/*
+		  test the corner cases now.
+		  we will test to raise the tap changer beyond the lower limit mark
+		 */
+		//SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::NOT_SUPPORTED);
+		//binary = GetBinaryEncodedString(indexes, sim_port);
+		//REQUIRE(0 == to_decimal(binary));
+
+		/*
+		  test the corner cases now.
+		  send the event with an index which doesnt exist
+		 */
+		//SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
