@@ -877,9 +877,7 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 	for (std::size_t index : binary_position->indexes)
 	{
 		if (!pSimConf->IsIndex(odc::EventType::Binary, index))
-		{
-			return CommandStatus::NOT_SUPPORTED;
-		}
+			return status;
 		if (pSimConf->ForcedState(odc::EventType::Binary, index))
 		{
 			message = "this binary control position is blocked due to forced state";
@@ -888,13 +886,13 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 		binary += std::to_string(static_cast<bool>(pSimConf->Payload(odc::EventType::Binary, index)));
 	}
 
-	std::size_t payload = to_decimal(binary);
+	std::size_t payload = odc::to_decimal(binary);
 	if (binary_position->action == odc::PositionAction::RAISE)
 	{
 		if (payload < binary_position->limit)
 		{
 			++payload;
-			binary = to_binary(payload, binary_position->indexes.size());
+			binary = odc::to_binary(payload, binary_position->indexes.size());
 			PublishBinaryEvents(binary_position->indexes, binary);
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
@@ -905,7 +903,7 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 		if (payload > binary_position->limit)
 		{
 			--payload;
-			binary = to_binary(payload, binary_position->indexes.size());
+			binary = odc::to_binary(payload, binary_position->indexes.size());
 			PublishBinaryEvents(binary_position->indexes, binary);
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
@@ -916,8 +914,45 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 
 CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message)
 {
-	/* TBD */
-	return CommandStatus::SUCCESS;
+	CommandStatus status = CommandStatus::NOT_SUPPORTED;
+	message = "this binary control position is not supported for bcd type";
+	std::string bcd_binary;
+	for (std::size_t index : binary_position->indexes)
+	{
+		if (!pSimConf->IsIndex(odc::EventType::Binary, index))
+			return status;
+		if (pSimConf->ForcedState(odc::EventType::Binary, index))
+		{
+			message = "this binary control position is blocked due to forced state";
+			return CommandStatus::BLOCKED;
+		}
+		bcd_binary += std::to_string(static_cast<bool>(pSimConf->Payload(odc::EventType::Binary, index)));
+	}
+
+	std::size_t payload = bcd_encoded_to_decimal(bcd_binary);
+	if (binary_position->action == odc::PositionAction::RAISE)
+	{
+		if (payload < binary_position->limit)
+		{
+			++payload;
+			bcd_binary = odc::decimal_to_bcd_encoded_string(payload, binary_position->indexes.size());
+			PublishBinaryEvents(binary_position->indexes, bcd_binary);
+			message = "the event processing for this binary control position is a success";
+			status = CommandStatus::SUCCESS;
+		}
+	}
+	else if (binary_position->action == odc::PositionAction::LOWER)
+	{
+		if (payload > binary_position->limit)
+		{
+			--payload;
+			bcd_binary = odc::decimal_to_bcd_encoded_string(payload, binary_position->indexes.size());
+			PublishBinaryEvents(binary_position->indexes, bcd_binary);
+			message = "the event processing for this binary control position is a success";
+			status = CommandStatus::SUCCESS;
+		}
+	}
+	return status;
 }
 
 void SimPort::EventResponse(const std::string& message, std::size_t index, SharedStatusCallback_t pStatusCallback, CommandStatus status)
