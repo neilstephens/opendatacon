@@ -433,7 +433,7 @@ TEST_CASE("TestAnalogTapChangerRaise")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::OUT_OF_RANGE);
+		SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::NOT_SUPPORTED);
 		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 
 		/*
@@ -487,14 +487,14 @@ TEST_CASE("TestAnalogTapChangerLower")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::OUT_OF_RANGE);
+		SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::NOT_SUPPORTED);
 		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::UNDEFINED);
+		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -545,15 +545,15 @@ TEST_CASE("TestBinaryTapChangerRaise")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::OUT_OF_RANGE);
-		//binary = GetBinaryEncodedString(indexes, sim_port);
-		//REQUIRE(10 == to_decimal(binary));
+		SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::NOT_SUPPORTED);
+		binary = GetBinaryEncodedString(indexes, sim_port);
+		REQUIRE(10 == to_decimal(binary));
 
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		//SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::UNDEFINED);
+		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();

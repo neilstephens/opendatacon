@@ -693,64 +693,42 @@ void SimPort::ProcessElements(const Json::Value& json_root)
 
 void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	std::string message;
+	CommandStatus status = CommandStatus::NOT_SUPPORTED;
+	std::string message = "Control not supported";
 	std::size_t index = event->GetIndex();
+	auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
 	if(auto log = odc::spdlog_get("SimPort"))
 		log->trace("{}: Recieved control for Index {}", index);
 
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{
 		auto feedbacks = pSimConf->BinaryFeedbacks(index);
-		if (feedbacks.empty())
+		if (!feedbacks.empty())
+		{
+			status = HandleBinaryFeedback(feedbacks, index, command, message);
+		}
+		else
 		{
 			std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
-			if (bp == nullptr)
+			if (bp != nullptr)
 			{
-				message = "No "
+				status = HandleBinaryPosition(bp, message);
 			}
 			else
 			{
-				message
+				message = "No feedback positions point configured";
+				status = CommandStatus::NOT_SUPPORTED;
 			}
 		}
-		else
-		{}
 	}
-	if(event->GetEventType() != EventType::ControlRelayOutputBlock)
-	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->trace("{}: Control code not supported.", Name);
-		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-		return;
-	}
-	auto index = event->GetIndex();
-	auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
-	auto feedbacks = pSimConf->BinaryFeedbacks(index);
-	if (feedbacks.empty())
-	{
-		std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
-		if (bp != nullptr)
-		{
-			(*pStatusCallback)(HandleBinaryPosition(bp));
-			return;
-		}
-		else
-		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->trace("{}: Control {}: No feeback / position points configured.", Name, index);
-		}
-	}
-	else
-	{
-		(*pStatusCallback)(HandleBinaryFeedback(feedbacks, index, command));
-		return;
-	}
-	LogError("Control not supported.", index, CommandStatus::NOT_SUPPORTED);
+	EventResponse(message, index, pStatusCallback, status);
 }
 
-CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks,
-	std::size_t index, ControlRelayOutputBlock command)
+CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks, std::size_t index, ControlRelayOutputBlock command, std::string& message)
 {
+	CommandStatus status = CommandStatus::SUCCESS;
+	message = "Binary feedback event processing is a success";
+	bool forced = false;
 	for(auto& fb : feedbacks)
 	{
 		if(fb->mode == FeedbackMode::PULSE)
@@ -767,6 +745,8 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 				{
 					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
 						PostPublishEvent(fb->on_value);
+					else
+						forced = true;
 					pTimer_t pTimer = pIOS->make_steady_timer();
 					pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
 					pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
@@ -779,7 +759,8 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 					break;
 				}
 				default:
-					return CommandStatus::NOT_SUPPORTED;
+					message = "Binary feedback is not supported";
+					status = CommandStatus::NOT_SUPPORTED;
 			}
 		}
 		else //LATCH
@@ -795,6 +776,8 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 					fb->on_value->SetTimestamp();
 					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
 						PostPublishEvent(fb->on_value);
+					else
+						forced = true;
 					break;
 				case ControlCode::LATCH_OFF:
 				case ControlCode::TRIP_PULSE_ON:
@@ -805,34 +788,46 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 					fb->off_value->SetTimestamp();
 					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
 						PostPublishEvent(fb->off_value);
+					else
+						forced = true;
 					break;
 				default:
-					return CommandStatus::NOT_SUPPORTED;
+					message = "Binary feedback is not supported";
+					status = CommandStatus::NOT_SUPPORTED;
 			}
 		}
 	}
-	return CommandStatus::SUCCESS;
+	if (forced)
+	{
+		message = "This binary control point is blocked because it is forced";
+		status = CommandStatus::BLOCKED;
+	}
+	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position)
+CommandStatus SimPort::HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message)
 {
+	CommandStatus status = CommandStatus::NOT_SUPPORTED;
+	message = "This binary position point is not supported";
 	if (binary_position->type == odc::FeedbackType::ANALOG)
 	{
-		return HandleBinaryPositionForAnalog(binary_position);
+		status = HandleBinaryPositionForAnalog(binary_position, message);
 	}
 	if (binary_position->type == odc::FeedbackType::BINARY)
 	{
-		return HandleBinaryPositionForBinary(binary_position);
+		status = HandleBinaryPositionForBinary(binary_position, message);
 	}
 	if (binary_position->type == odc::FeedbackType::BCD)
 	{
-		return HandleBinaryPositionForBCD(binary_position);
+		status = HandleBinaryPositionForBCD(binary_position, message);
 	}
-	return CommandStatus::NOT_SUPPORTED;
+	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position)
+CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message)
 {
+	CommandStatus status = CommandStatus::NOT_SUPPORTED;
+	message = "this binary position control is not supported";
 	const std::size_t index = binary_position->indexes[0];
 	if (pSimConf->IsIndex(odc::EventType::Analog, index))
 	{
@@ -847,7 +842,8 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 					++payload;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
 					PostPublishEvent(event);
-					return CommandStatus::SUCCESS;
+					message = "binary position event processing a success";
+					status = CommandStatus::SUCCESS;
 				}
 			}
 			else if (binary_position->action == odc::PositionAction::LOWER)
@@ -857,27 +853,38 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 					--payload;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
 					PostPublishEvent(event);
-					return CommandStatus::SUCCESS;
+					message = "binary position event processing a success";
+					status = CommandStatus::SUCCESS;
 				}
 			}
-			else
-			{
-				return CommandStatus::NOT_SUPPORTED;
-			}
+		}
+		else
+		{
+			message = "this binary control position is blocked due to forced state";
+			status = CommandStatus::BLOCKED;
 		}
 	}
-	return CommandStatus::OUT_OF_RANGE;
+	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position)
+CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message)
 {
+	CommandStatus status = CommandStatus::NOT_SUPPORTED;
+	message = "this binary control position is not supported";
+
 	// check for all the binary indexes present
 	std::string binary;
 	for (std::size_t index : binary_position->indexes)
 	{
-		if (!pSimConf->IsIndex(odc::EventType::Binary, index) ||
-		    pSimConf->ForcedState(odc::EventType::Binary, index))
+		if (!pSimConf->IsIndex(odc::EventType::Binary, index))
+		{
 			return CommandStatus::NOT_SUPPORTED;
+		}
+		if (pSimConf->ForcedState(odc::EventType::Binary, index))
+		{
+			message = "this binary control position is blocked due to forced state";
+			return CommandStatus::BLOCKED;
+		}
 		binary += std::to_string(static_cast<bool>(pSimConf->Payload(odc::EventType::Binary, index)));
 	}
 
@@ -889,7 +896,8 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 			++payload;
 			binary = to_binary(payload, binary_position->indexes.size());
 			PublishBinaryEvents(binary_position->indexes, binary);
-			return CommandStatus::SUCCESS;
+			message = "the event processing for this binary control position is a success";
+			status = CommandStatus::SUCCESS;
 		}
 	}
 	else if (binary_position->action == odc::PositionAction::LOWER)
@@ -899,21 +907,20 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 			--payload;
 			binary = to_binary(payload, binary_position->indexes.size());
 			PublishBinaryEvents(binary_position->indexes, binary);
-			return CommandStatus::SUCCESS;
+			message = "the event processing for this binary control position is a success";
+			status = CommandStatus::SUCCESS;
 		}
 	}
-	return CommandStatus::NOT_SUPPORTED;
+	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position)
+CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message)
 {
 	/* TBD */
 	return CommandStatus::SUCCESS;
 }
 
-void SimPort::LogError(const std::string& message, std::size_t index,
-	SharedStatusCallback_t pStatusCallback,
-	CommandStatus status)
+void SimPort::EventResponse(const std::string& message, std::size_t index, SharedStatusCallback_t pStatusCallback, CommandStatus status)
 {
 	if(auto log = odc::spdlog_get("SimPort"))
 		log->trace("{} : {} for Index {}", Name, message, index);
