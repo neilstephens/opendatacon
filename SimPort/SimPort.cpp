@@ -690,6 +690,11 @@ void SimPort::Build()
 	}
 }
 
+/*
+  ProcessElements is called from the main thread before any thread is spawned
+  therefore, it is already synchronous code.
+  No need to worry about protection
+*/
 void SimPort::ProcessElements(const Json::Value& json_root)
 {
 	pSimConf->ProcessElements(json_root);
