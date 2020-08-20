@@ -699,13 +699,14 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	std::string message = "Control not supported";
-	std::size_t index = event->GetIndex();
-	auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
-	if(auto log = odc::spdlog_get("SimPort"))
-		log->trace("{}: Recieved control for Index {}", index);
+	std::size_t index = 0;
+	//if(auto log = odc::spdlog_get("SimPort"))
+	//    log->trace("{}: Recieved control for Name {}", Name);
 
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{
+		index = event->GetIndex();
+		auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
 		auto feedbacks = pSimConf->BinaryFeedbacks(index);
 		if (!feedbacks.empty())
 		{
