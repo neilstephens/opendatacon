@@ -401,7 +401,6 @@ void SimPort::PortUp()
 		pTimer_t pTimer = pIOS->make_steady_timer();
 		Timers["Binary"+std::to_string(index)] = pTimer;
 
-		std::unique_lock<std::shared_timed_mutex> lck(ConfMutex);
 		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
 		auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 		pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
@@ -512,6 +511,11 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 		});
 }
 
+/*
+  Build is called from the main thread before any thread is spawned
+  therefore, it is already synchronous code.
+  No need to worry about protection
+*/
 void SimPort::Build()
 {
 	pEnableDisableSync = pIOS->make_strand();
