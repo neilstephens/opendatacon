@@ -15,7 +15,6 @@
       <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
       <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
       <script src="/node_modules/bootstrap_select/dist/js/bootstrap-select.min.js"></script>
-      <script src="/common_modules/js/points.js"></script>
 
       <style>
         .modal.simcontrol .modal-dialog {
@@ -47,12 +46,12 @@
 
       <div class="row">
 
-        <div class="col-sm-4">
+        <div class="col-sm-3">
           <select class="selectpicker" multiple data-live-search="true" id="ports_select" title="Ports">
           </select>
         </div>
 
-        <div class="col-sm-4">
+        <div class="col-sm-2">
           <div class="dropdown" id="point_type_dropdown">
             <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
               Point Type
@@ -66,7 +65,7 @@
         </div>
 
         <div class="col-sm-4">
-          <select class="selectpicker" multiple data-live-search="true" id="index_select" title="Point Names">
+          <select class="selectpicker" multiple data-live-search="true" id="name_select" title="Point Names">
           </select>
         </div>
 
@@ -273,8 +272,8 @@
               options.push(option);
           }
 
-          $('#index_select').html(options);
-          $('#index_select').selectpicker('refresh');
+          $('#name_select').html(options);
+          $('#name_select').selectpicker('refresh');
 
           build_command();
       }
@@ -366,7 +365,7 @@
           build_command();
       });
 
-      $('#index_select').on('changed.bs.select', function (e, index, new_value, old_value) {
+      $('#name_select').on('changed.bs.select', function (e, index, new_value, old_value) {
           var selected = $(e.currentTarget).val();
           selected = selected.join(",");
           if (selected.includes("All")) {
