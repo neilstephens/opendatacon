@@ -1,40 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <html>
-  <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>OpenDataCon</title>
-
-    <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
-    <link rel = "stylesheet" href="/node_modules/bootstrap_select/dist/css/bootstrap-select.css" />
-
-    <script src="/node_modules/jquery/dist/jquery.min.js"></script>
-    <script src="/node_modules/popper/dist/umd/popper.min.js"></script>
-    <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
-    <script src= "/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src= "/node_modules/bootstrap_select/dist/js/bootstrap-select.min.js"></script>
-
-    <style>
-      .modal.simcontrol .modal-dialog {
-          width:1240px;
-          /* For responsive */
-          max-width:100%;
-          max-height:100%;
-      }
-
-      <span style="white-space: pre-line">@Model.CommentText</span>
-    </style>
-
-    <script>
-      $(function() {
-          $("#common_content").load("common.html");
-          $('select').selectpicker();
-      });
-    </script>
-  </head>
-
   <body>
+    <head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>OpenDataCon</title>
+
+      <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+      <link rel="stylesheet" href="/node_modules/bootstrap_select/dist/css/bootstrap-select.css">
+
+      <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+      <script src="/node_modules/popper/dist/umd/popper.min.js"></script>
+      <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+      <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+      <script src="/node_modules/bootstrap_select/dist/js/bootstrap-select.min.js"></script>
+      <script src="/common_modules/js/points.js"></script>
+
+      <style>
+        .modal.simcontrol .modal-dialog {
+            width:1240px;
+            /* For responsive */
+            max-width:100%;
+            max-height:100%;
+        }
+
+        <span style="white-space: pre-line">@Model.CommentText</span>
+      </style>
+
+      <script>
+        $(function() {
+            $("#common_content").load("common.html");
+            $('select').selectpicker();
+        });
+      </script>
+    </head>
     <div class="container">
       <div class="btn-group" id="btn_grp_simcontrol_commands">
       </div>
@@ -66,7 +66,7 @@
         </div>
 
         <div class="col-sm-4">
-          <select class="selectpicker" multiple data-live-search="true" id="index_select" title="Indexes">
+          <select class="selectpicker" multiple data-live-search="true" id="index_select" title="Point Names">
           </select>
         </div>
 
@@ -119,13 +119,11 @@
     </div>
 
     <script>
-      var ganalogs = [];
-      var gbinaries = [];
       var gpoint_type = null;
-      var gindex = null;
       var gvalue = null;
       var gcommand = null;
       var gcommand_text = null;
+      var gnames = {};
       var grefresh_rate = 2000;
       var gports = null;
       var gfilter_type = 'sub_text';
@@ -133,37 +131,46 @@
 
       $(document).ready(function() {
           $("#alert_command").hide();
-
-          var url = "/SimControl List";
+          const url = "/SimControl List";
           $.post(url, {})
               .done(function(data) {
-                  initialize(data["Items"]);
-                  const commands = data["Commands"];
-                  commands.forEach(function(item) {
-                      if (item != "List") {
-                          var desc = item;
-                          if (item == "SetUpdateInterval") {
-                              desc += "(milliseconds)";
-                          }
-                          var button='<button class="btn btn-primary" onclick="set_sim_control_command(\'' + item + '\');">'+ desc + '</button>&nbsp;&nbsp&nbsp';
-                          $("#btn_grp_simcontrol_commands").append(button);
-                      }
-                  });
-
-                  // initlaize the refresh rate ui with default
-                  document.getElementById("refresh_rate_box").value = grefresh_rate;
-                  init_command(commands[0]);
+                  set_ports(data["Items"]);
+                  set_commands(data["Commands"]);
               });
+          /*
+           var url = "/SimControl List";
+           $.post(url, {})
+           .done(function(data) {
+           initialize(data["Items"]);
+           const commands = data["Commands"];
+           commands.forEach(function(item) {
+           if (item != "List") {
+           var desc = item;
+           if (item == "SetUpdateInterval") {
+           desc += "(milliseconds)";
+           }
+           var button='<button class="btn btn-primary" onclick="set_sim_control_command(\'' + item + '\');">'+ desc + '</button>&nbsp;&nbsp&nbsp';
+           $("#btn_grp_simcontrol_commands").append(button);
+           }
+           });
 
-          const log_level = window.localStorage.getItem("log_level");
-          if (!log_level) {
-              const url = "/RootCommand set_loglevel tcp_web_ui trace";
-              $.post(url, {})
-                  .done(function(data) {
-                      console.log("Set log level success for == " + url);
-                  });
-          }
-          gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
+           // initlaize the refresh rate ui with default
+           document.getElementById("refresh_rate_box").value = grefresh_rate;
+           init_command(commands[0]);
+           });
+
+           const log_level = window.localStorage.getItem("log_level");
+           if (!log_level) {
+           const url = "/RootCommand set_loglevel tcp_web_ui trace";
+           $.post(url, {})
+           .done(function(data) {
+           console.log("Set log level success for == " + url);
+           });
+           }
+           const is_tcp = window.localStorage.getItem("is_tcp_on");
+           if (is_tcp_on == "true")
+           gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
+          */
       });
 
       function get_tcp_logs() {
@@ -174,7 +181,7 @@
               });
       }
 
-      function initialize(ports) {
+      function set_ports(ports) {
           var options = [];
           options.push("<option>All</option>");
           ports.forEach(function (item) {
@@ -184,18 +191,19 @@
 
           $('#ports_select').html(options);
           $('#ports_select').selectpicker('refresh');
+      }
 
-          const url = "/DataPorts Configuration";
-          $.post(url, { Target : ports[0]})
-              .done(function(data) {
-                  var analogs = [];
-                  var binaries = [];
-                  if (data["ConfigOverrides"]["Analogs"] != null)
-                      analogs = get_indexes(data["ConfigOverrides"]["Analogs"]);
-                  if (data["ConfigOverrides"]["Binaries"] != null)
-                      binaries = get_indexes(data["ConfigOverrides"]["Binaries"]);
-                  init_analog_binary(analogs, binaries);
-              });
+      function set_commands(commands) {
+          commands.forEach(function(item) {
+              if (item != "List") {
+                  var desc = item;
+                  if (item == "SetUpdateInterval") {
+                      desc += "(milliseconds)";
+                  }
+                  var button='<button class="btn btn-primary" onclick="set_sim_control_command(\'' + item + '\');">'+ desc + '</button>&nbsp;&nbsp&nbsp';
+                  $("#btn_grp_simcontrol_commands").append(button);
+              }
+          });
       }
 
       function init_command(command) {
@@ -232,19 +240,38 @@
       }
 
       function set_point_type(point_type) {
-          var indexes = [];
           gpoint_type = point_type;
+
+          pt = null;
           if (point_type == "Analog")
-              indexes = ganalogs;
-          if (point_type == "Binary")
-              indexes = gbinaries;
+              pt = "Analogs"
+          else
+              pt = "Binaries";
+
+          const url = "/DataPorts Configuration";
+          $.post(url, {Target : gports})
+              .done(function(data) {
+                  for (const [key, value] of Object.entries(data)) {
+                      if (key.includes('.conf')) {
+                          set_names(value[pt]);
+                      }
+                  }
+              });
+      }
+
+      function set_names(points) {
+          gnames = {};
+          points.forEach(function(item) {
+              gnames[item.Name] = item.Index;
+          });
 
           var options = [];
           options.push("<option>All</option>");
-          indexes.forEach(function (item) {
-              var option = "<option>" + item + "</option>"
+          for (const [key, value] of Object.entries(gnames)) {
+              console.log(key + ' : ' + value);
+              const option = "<option>" + key + "</option>";
               options.push(option);
-          });
+          }
 
           $('#index_select').html(options);
           $('#index_select').selectpicker('refresh');
@@ -300,7 +327,9 @@
           grefresh_rate = parseInt(document.getElementById("refresh_rate_box").value);
           //reset the timer
           window.clearInterval(gtimer_handle);
-          gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
+          const is_tcp = window.localStorage.getItem("is_tcp_on");
+          if (is_tcp == "true")
+              gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
           display_alert_message("Refresh Rate : " + grefresh_rate)
       }
 

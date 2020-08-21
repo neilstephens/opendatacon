@@ -57,6 +57,11 @@
             <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
           </div>
         </div>
+        <div class="col-sm-4">
+          <div class="col-sm-12 text-center">
+            <button id="tcp_on" class="btn btn-primary btn-lg" onclick="init_tcp()">Init TCP Connection for logs</button>
+          </div>
+        </div>
       </div>
 
       <br><br><br><br>
@@ -127,6 +132,10 @@
                       });
               });
           }
+      }
+
+      function init_tcp() {
+          window.localStorage.setItem("is_tcp_on", "true");
       }
 
       function logs() {
