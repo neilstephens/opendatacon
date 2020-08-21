@@ -201,10 +201,15 @@ int ConsoleUI::hotkeys(char c)
 		stream >> cmd;
 		stream >> sub_cmd;
 
+		std::string history_cmd;
+		std::string s;
+		while (stream >> s)
+			history_cmd += s + " ";
+
 		std::vector<std::string> matches;
 		AddRootCommands(cmd, matches);
 		AddCommands(cmd, sub_cmd, matches);
-		PrintMatches(cmd, sub_cmd, matches);
+		PrintMatches(cmd, sub_cmd, history_cmd, matches);
 
 		return 1;
 	}
@@ -315,7 +320,8 @@ void ConsoleUI::AddCommands(const std::string& cmd, const std::string& sub_cmd, 
 	}
 }
 
-void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd, const std::vector<std::string>& matches)
+void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd,
+	const std::string& history_cmd, const std::vector<std::string>& matches)
 {
 	std::string prompt;
 	if (matches.empty() == false)
@@ -334,9 +340,17 @@ void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd,
 
 			if (prompt.empty() == false)
 			{
-				std::cout << prompt << " " << std::flush;
+				if (!history_cmd.empty())
+					std::cout << prompt << " " << history_cmd << std::flush;
+				else
+					std::cout << prompt << " " << std::flush;
 				buffer.assign(matches[0].begin(), matches[0].end());
 				buffer.push_back(' ');
+				if (!history_cmd.empty())
+				{
+					for (char c : history_cmd)
+						buffer.push_back(c);
+				}
 				line_pos = buffer.size();
 			}
 		}
@@ -344,7 +358,10 @@ void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd,
 		{
 			std::cout << std::endl << std::flush;
 			for (const std::string& c : matches)
-				std::cout << c << std::endl << std::flush;
+				if (!history_cmd.empty())
+					std::cout << c << " " << history_cmd << std::endl << std::flush;
+				else
+					std::cout << c << std::endl << std::flush;
 
 			std::string prompt = cmd;
 			if (sub_cmd.empty() == false)
@@ -377,6 +394,8 @@ void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd,
 				prompt += matches[0].substr(prompt.size(), common_chars_count - prompt.size());
 			}
 
+			if (!history_cmd.empty())
+				prompt += " " + history_cmd;
 			std::cout << _prompt << prompt << std::flush;
 			buffer.assign(prompt.begin(), prompt.end());
 			line_pos = buffer.size();
