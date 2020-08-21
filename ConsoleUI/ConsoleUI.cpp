@@ -307,6 +307,7 @@ void ConsoleUI::AddCommands(const std::string& cmd, const std::string& sub_cmd, 
 	}
 }
 
+
 void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd,
 	const std::string& history_cmd, const std::vector<std::string>& matches)
 {
