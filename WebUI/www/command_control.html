@@ -122,7 +122,8 @@
       var gvalue = null;
       var gcommand = null;
       var gcommand_text = null;
-      var gnames = {};
+      var gnames = {"Analog" : {}, "Binary" : {}};
+      var gindex = null;
       var grefresh_rate = 2000;
       var gports = null;
       var gfilter_type = 'sub_text';
@@ -136,40 +137,19 @@
                   set_ports(data["Items"]);
                   set_commands(data["Commands"]);
               });
-          /*
-           var url = "/SimControl List";
-           $.post(url, {})
-           .done(function(data) {
-           initialize(data["Items"]);
-           const commands = data["Commands"];
-           commands.forEach(function(item) {
-           if (item != "List") {
-           var desc = item;
-           if (item == "SetUpdateInterval") {
-           desc += "(milliseconds)";
-           }
-           var button='<button class="btn btn-primary" onclick="set_sim_control_command(\'' + item + '\');">'+ desc + '</button>&nbsp;&nbsp&nbsp';
-           $("#btn_grp_simcontrol_commands").append(button);
-           }
-           });
 
-           // initlaize the refresh rate ui with default
-           document.getElementById("refresh_rate_box").value = grefresh_rate;
-           init_command(commands[0]);
-           });
-
-           const log_level = window.localStorage.getItem("log_level");
-           if (!log_level) {
-           const url = "/RootCommand set_loglevel tcp_web_ui trace";
-           $.post(url, {})
-           .done(function(data) {
-           console.log("Set log level success for == " + url);
-           });
-           }
-           const is_tcp = window.localStorage.getItem("is_tcp_on");
-           if (is_tcp_on == "true")
-           gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
-          */
+          const is_tcp = window.localStorage.getItem("is_tcp_on");
+          if (is_tcp == "true") {
+              const log_level = window.localStorage.getItem("log_level");
+              if (!log_level) {
+                  const url = "/RootCommand set_loglevel tcp_web_ui " + log_level;
+                  $.post(url, {})
+                      .done(function(data) {
+                          console.log("Set log level success for == " + url);
+                      });
+              }
+              gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
+          }
       });
 
       function get_tcp_logs() {
@@ -203,6 +183,10 @@
                   $("#btn_grp_simcontrol_commands").append(button);
               }
           });
+
+          // initlaize the refresh rate ui with default
+          document.getElementById("refresh_rate_box").value = grefresh_rate;
+          init_command(commands[0]);
       }
 
       function init_command(command) {
@@ -210,64 +194,16 @@
           build_command();
       }
 
-      function init_analog_binary(analogs, binaries) {
-          ganalogs = analogs;
-          gbinaries = binaries;
-      }
-
-      function get_indexes(data) {
-          indexes = [];
-          for (const [key, value] of Object.entries(data)) {
-              if (value["Range"] != null) {
-                  var start = 0;
-                  var stop = 0;
-                  if (value["Range"]["Start"] != null && value["Range"]["Stop"] != null) {
-                      start = parseInt(value["Range"]["Start"]);
-                      stop = parseInt(value["Range"]["Stop"]);
-
-                      for (var i = start; i <= stop; ++i)
-                          indexes.push(i.toString());
-                  }
-              }
-
-              if (value["Index"] != null) {
-                  indexes.push(value["Index"].toString());
-              }
-          }
-
-          return indexes;
-      }
-
       function set_point_type(point_type) {
           gpoint_type = point_type;
-
-          pt = null;
-          if (point_type == "Analog")
-              pt = "Analogs"
-          else
-              pt = "Binaries";
-
-          const url = "/DataPorts Configuration";
-          $.post(url, {Target : gports})
-              .done(function(data) {
-                  for (const [key, value] of Object.entries(data)) {
-                      if (key.includes('.conf')) {
-                          set_names(value[pt]);
-                      }
-                  }
-              });
+          set_names(point_type);
       }
 
-      function set_names(points) {
-          gnames = {};
-          points.forEach(function(item) {
-              gnames[item.Name] = item.Index;
-          });
-
+      function set_names(point_type) {
+          const names = gnames[point_type];
           var options = [];
           options.push("<option>All</option>");
-          for (const [key, value] of Object.entries(gnames)) {
-              console.log(key + ' : ' + value);
+          for (const [key, value] of Object.entries(names)) {
               const option = "<option>" + key + "</option>";
               options.push(option);
           }
@@ -355,13 +291,30 @@
 
       $('#ports_select').on('changed.bs.select', function (e, index, new_value, old_value) {
           var selected = $(e.currentTarget).val();
-          selected = selected.join(",");
-          if (selected.includes("All")) {
-              gports = ".*";
-          } else {
-              gports = selected;
-          }
+          gports = selected.join(",");
+          gnames = {"Analog" : {}, "Binary" : {}};
+          gpoint_type = gindex = gvalue = null;
+          build_command();
+          selected.forEach(function(item) {
+              const url = "/DataPorts Configuration";
+              $.post(url, {Target : item})
+                  .done(function(data) {
+                      for (const [key, value] of Object.entries(data)) {
+                          const k = item.substr(4, item.length - 4);
+                          if (key.includes(k)) {
+                              const analogs = value["Analogs"];
+                              analogs.forEach(function(item) {
+                                  gnames["Analog"][item.Name] = item.Index;
+                              });
 
+                              const binaries = value["Binaries"];
+                              binaries.forEach(function(item) {
+                                  gnames["Binary"][item.Name] = item.Index;
+                              });
+                          }
+                      }
+                  });
+          });
           build_command();
       });
 
@@ -369,11 +322,15 @@
           var selected = $(e.currentTarget).val();
           selected = selected.join(",");
           if (selected.includes("All")) {
+              gname = ".*";
               gindex = ".*";
           } else {
-              gindex = selected;
+              const indexes = [];
+              selected.split(",").forEach(function(item) {
+                  indexes.push(gnames[gpoint_type][item]);
+              });
+              gindex = indexes.join(",");
           }
-
           build_command();
       });
 
