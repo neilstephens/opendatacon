@@ -616,7 +616,7 @@ void SimPort::Build()
 				// So when we hit here, someone has made a POST request of our Port.
 				// The UILoad checks the values past to it and sets sensible defaults if they are missing.
 
-				EventType type;
+				EventType type = EventType::BeforeRange;
 				std::string index = "";
 				std::string value = "";
 				std::string quality = "";
