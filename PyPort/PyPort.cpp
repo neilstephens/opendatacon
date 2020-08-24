@@ -480,7 +480,8 @@ std::string PyPort::GetTagValue(const std::string & SenderName, EventType Eventt
 {
 	// The unordered_maps lookup reading do not need to be protected, they are threadsafe for this
 	// The Event handler calling this is multithreaded, so there will be concurrent access.
-	// TODO: Need to look for the map that matches the sender...Then match the event.
+
+	std::string Tag = "";
 
 	auto searchport = PortTagMap.find(SenderName);
 	if (searchport != PortTagMap.end())
@@ -488,21 +489,25 @@ std::string PyPort::GetTagValue(const std::string & SenderName, EventType Eventt
 		auto foundport = searchport->second;
 		if (Eventt == EventType::Analog)
 		{
-			auto search = foundport.AnalogMap.find(Index);
-			return (search != foundport.AnalogMap.end()) ? search->second : "";
+			auto search = foundport->AnalogMap.find(Index);
+			if (search != foundport->AnalogMap.end())
+				Tag = search->second;
 		}
 		if (Eventt == EventType::Binary)
 		{
-			auto search = foundport.BinaryMap.find(Index);
-			return (search != foundport.BinaryMap.end()) ? search->second : "";
+			auto search = foundport->BinaryMap.find(Index);
+			if (search != foundport->BinaryMap.end())
+				Tag = search->second;
 		}
 		if (Eventt == EventType::ControlRelayOutputBlock)
 		{
-			auto search = foundport.BinaryControlMap.find(Index);
-			return (search != foundport.BinaryControlMap.end()) ? search->second : "";
+			auto search = foundport->BinaryControlMap.find(Index);
+			if (search != foundport->BinaryControlMap.end())
+				Tag = search->second;
 		}
 	}
-	return "";
+	LOGTRACE("PyPort {} GetTagValue {} {} {} {}", Name, SenderName, Index, ToString(Eventt), Tag);
+	return Tag;
 }
 
 // So we have received an event from the ODC message bus - it will be Control or Connect events.
@@ -530,6 +535,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		std::string isotimestamp = getISOCurrentTimestampUTC_from_msSinceEpoch_t(event->GetTimestamp());
 		try
 		{
+			// Could use event->SourcePort (for the sending port, instead of the the SenderName, which will be the connector name.
 			std::string TagValue = GetTagValue(SenderName, event->GetEventType(),event->GetIndex());
 
 			if (MyConf->pyOnlyQueueEventsWithTags && (TagValue == ""))
@@ -670,22 +676,22 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("GlobalUseSystemPython"))
 		MyConf->GlobalUseSystemPython = JSONRoot["GlobalUseSystemPython"].asBool(); // Defaults to OFF
 
-	if (JSONRoot.isMember("Analog"))
+	if (JSONRoot.isMember("Analogs"))
 	{
-		const auto Analogs = JSONRoot["Analog"];
+		const auto Analogs = JSONRoot["Analogs"];
 		LOGDEBUG("Conf processed - Analog Points");
 		ProcessPoints(Analog, Analogs);
 	}
-	if (JSONRoot.isMember("Binary"))
+	if (JSONRoot.isMember("Binaries"))
 	{
-		const auto Binaries = JSONRoot["Binary"];
+		const auto Binaries = JSONRoot["Binaries"];
 		LOGDEBUG("Conf processed - Binary Points");
 		ProcessPoints(Binary, Binaries);
 	}
 
-	if (JSONRoot.isMember("Control"))
+	if (JSONRoot.isMember("BinaryControls"))
 	{
-		const auto BinaryControls = JSONRoot["Control"];
+		const auto BinaryControls = JSONRoot["BinaryControls"];
 		LOGDEBUG("Conf processed - Binary Controls");
 		ProcessPoints(BinaryControl, BinaryControls);
 	}
@@ -735,7 +741,7 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 			auto searchport = PortTagMap.find(sender);
 			if (searchport == PortTagMap.end())
 			{
-				PortTagMap.emplace(std::make_pair(sender, PortMapClass() ));
+				PortTagMap.emplace(std::make_pair(sender, std::make_shared<PortMapClass>() ));
 			}
 			searchport = PortTagMap.find(sender);
 			if (searchport == PortTagMap.end())
@@ -746,11 +752,11 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 			auto foundport = searchport->second;
 
 			if (ptype == Analog)
-				foundport.AnalogMap.emplace(std::make_pair(index, Tag));
+				foundport->AnalogMap.emplace(std::make_pair(index, Tag));
 			else if (ptype == Binary)
-				foundport.BinaryMap.emplace(std::make_pair(index, Tag));
+				foundport->BinaryMap.emplace(std::make_pair(index, Tag));
 			else if (ptype == BinaryControl)
-				foundport.BinaryControlMap.emplace(std::make_pair(index, Tag));
+				foundport->BinaryControlMap.emplace(std::make_pair(index, Tag));
 			else
 			{
 				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());

@@ -81,22 +81,22 @@ const char *conffile1 = R"001(
 	"EventsAreQueued": false,
 	"OnlyQueueEventsWithTags": false,
 	"QueueFormatString": "{{\"Tag\" : \"{6}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Quality\" : \"{3}\", \"TS\" : \"{2}\"}}", // Valid fmt.print string
-	"GlobalUseSystemPython": false,
+	"GlobalUseSystemPython": false,	// Should be false for non-windows system python testing (i.e. all the time except for manual testing on Windows)
 
 	// The point definitions are only proccessed by the Python code. Any events sent to PyPort by ODC will be passed on.
 	"Binaries" :
 	[
-		{"Index" : 0, "CBNumber" : 1, "SimType" : "CBStateBit0", "State": 0, "Tag": "Test0" },	// Half of a dual bit binary Open 10, Closed 01, Fault 00 or 11 (Is this correct?)
-		{"Index" : 1, "CBNumber" : 1, "SimType" : "CBStateBit1", "State": 1, "Tag": "Test1" },	// Half of a dual bit binary. State is starting state.
-		{"Index" : 2, "Tag": "Test2" },
-		{"Index" : 3, "Tag": "Test3" },
-		{"Index" : 4, "Tag": "Test4" }
+		{"Index" : 0, "CBNumber" : 1, "SimType" : "CBStateBit0", "State": 0, "Tag": "Test0", "Sender" : "Connector1" },	// Half of a dual bit binary Open 10, Closed 01, Fault 00 or 11 (Is this correct?)
+		{"Index" : 1, "CBNumber" : 1, "SimType" : "CBStateBit1", "State": 1, "Tag": "Test1", "Sender" : "Connector1" },	// Half of a dual bit binary. State is starting state.
+		{"Index" : 2, "Tag": "Test2", "Sender" : "Connector1" },
+		{"Index" : 3, "Tag": "Test3", "Sender" : "Connector1" },
+		{"Index" : 4, "Tag": "Test4", "Sender" : "Connector1" }
 	],
 
 	"BinaryControls" :
 	[
-		{"Index": 0, "CBNumber" : 1, "CBCommand":"Trip", "Tag": "Test3" },		// Trip pulse
-		{"Index": 1, "CBNumber" : 1, "CBCommand":"Close", "Tag": "Test4" }		// Close pulse
+		{"Index": 0, "CBNumber" : 1, "CBCommand":"Trip", "Tag": "Test3", "Sender" : "Connector1" },		// Trip pulse
+		{"Index": 1, "CBNumber" : 1, "CBCommand":"Close", "Tag": "Test4", "Sender" : "Connector1" }		// Close pulse
 	]
 })001";
 
@@ -437,7 +437,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		// Send a bool event on 4 ports, but only check that the first succeeded.
 		LOGINFO("Sending Binary Events");
-		PythonPort->Event(boolevent, "TestHarness", pStatusCallback);
+		PythonPort->Event(boolevent, "Connector1", pStatusCallback);
 		PythonPort2->Event(boolevent, "TestHarness2", nullptr);
 		PythonPort3->Event(boolevent, "TestHarness3", nullptr);
 		PythonPort4->Event(boolevent, "TestHarness4", nullptr);
@@ -456,7 +456,7 @@ TEST_CASE("Py.TestsUsingPython")
 		auto event2 = std::make_shared<EventInfo>(EventType::Analog, ODCIndex);
 		event2->SetPayload<EventType::Analog>(std::move(fval));
 
-		PythonPort->Event(event2, "TestHarness", pStatusCallback);
+		PythonPort->Event(event2, "Connector1", pStatusCallback);
 
 		REQUIRE_NOTHROW([IOS,&res]()
 			{
@@ -595,6 +595,13 @@ TEST_CASE("Py.TestsUsingPython")
 		TEST_PythonPort5(portoverride);
 
 		PythonPort5->Enable();
+
+		int ODCIndex = 1;
+		bool val = true;
+		auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing");
+		boolevent->SetPayload<EventType::Binary>(std::move(val));
+		PythonPort5->Event(boolevent, "Connector1", nullptr);
+
 		// The RasPi build is really slow to get ports up and enabled. If the events below are sent before they are enabled - test fail.
 		REQUIRE_NOTHROW([IOS,PythonPort5]()
 			{
@@ -628,7 +635,7 @@ TEST_CASE("Py.TestsUsingPython")
 				      bool val = (ODCIndex % 2 == 0);
 				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing1");
 				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "TestHarness", block_callbacks[0]);
+				      PythonPort5->Event(boolevent, "Connector1", block_callbacks[0]);
 				}
 				LOGINFO("Sending Binary Events 1 Done");
 			});
@@ -640,7 +647,7 @@ TEST_CASE("Py.TestsUsingPython")
 				      bool val = (ODCIndex % 2 == 0);
 				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
 				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "TestHarness", block_callbacks[1]);
+				      PythonPort5->Event(boolevent, "Connector1", block_callbacks[1]);
 				}
 				LOGINFO("Sending Binary Events 2 Done");
 			});
@@ -652,7 +659,7 @@ TEST_CASE("Py.TestsUsingPython")
 				      bool val = (ODCIndex % 2 == 0);
 				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
 				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "TestHarness", block_callbacks[2]);
+				      PythonPort5->Event(boolevent, "Connector1", block_callbacks[2]);
 				}
 				LOGINFO("Sending Binary Events 3 Done");
 			});
@@ -664,7 +671,7 @@ TEST_CASE("Py.TestsUsingPython")
 				      bool val = (ODCIndex % 2 == 0);
 				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
 				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "TestHarness", block_callbacks[3]);
+				      PythonPort5->Event(boolevent, "Connector1", block_callbacks[3]);
 				}
 				LOGINFO("Sending Binary Events 4 Done");
 			});
@@ -719,7 +726,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		size_t QueueSize = PythonPort5->GetEventQueueSize();
 
-		REQUIRE(ProcessedEvents == 14999);
+		REQUIRE(ProcessedEvents == 15000);
 		REQUIRE(QueueSize == 1);
 
 		LOGDEBUG("Tests Complete, starting teardown");

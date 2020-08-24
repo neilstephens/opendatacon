@@ -88,7 +88,7 @@ private:
 	std::unique_ptr<PythonWrapper> pWrapper;
 	std::string JSONMain;
 	std::string JSONOverride;
-	std::unordered_map<std::string, PortMapClass> PortTagMap;
+	std::unordered_map<std::string, std::shared_ptr<PortMapClass>> PortTagMap;
 
 	ServerTokenType pServer;
 

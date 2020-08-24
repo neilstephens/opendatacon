@@ -53,19 +53,20 @@ class SimPortClass:
     def __init__(self, odcportguid, objectname):
         self.objectname = objectname    # Documentation/error use only.
         self.guid = odcportguid         # So that when we call an odc method, ODC can work out which pyport to hand it too.
-        self.Enabled = False;
+        self.Enabled = False
         self.MessageIndex = 0
-        self.EventQueueSize = 0;
-        self.QueueErrorState = 0;       # 0 - No Error, 1 - Error, Notified,
-        self.SendErrorState = 0;        # As above
+        self.EventQueueSize = 0
+        self.QueueErrorState = 0       # 0 - No Error, 1 - Error, Notified,
+        self.SendErrorState = 0        # As above
         self.LastMessageIndex = self.MessageIndex
         self.StartTimeSeconds = time.time()
         self.timestart = 1.1 # Used for profiling, setup as a float
         self.measuretimeus = 0
         self.measuretimeus2 = 0
         self.ConfigDict = {}      # Config Dictionary
-        self.LogDebug("PyPortKafka - SimPortClass Init Called - {}".format(objectname))
+        self.LogInfo("PyPortKafka - SimPortClass Init Called - {}".format(objectname))
         self.LogDebug("Python sys.path - {}".format(sys.path))
+        self.producer = None
         return
 
         # time.perf_counter_ns() (3.6 up) gives the time including include sleeps time.process_time() is overall time.
@@ -185,7 +186,8 @@ class SimPortClass:
     def TimerHandler(self,TimerId):
         # self.LogDebug("TimerHander: ID {}, {}".format(TimerId, self.guid))
 
-        self.producer.poll(0)   # Do any waiting processing, but dont wait!
+        if (self.producer is not None):
+            self.producer.poll(0)   # Do any waiting processing, but dont wait!
 
         if (TimerId == 1):
 
@@ -197,47 +199,48 @@ class SimPortClass:
             self.measuretimeus = 0
             self.measuretimeus2 = 0
 
-            # Get Events from the queue and process them, up until we have an empty queue or MaxMessageCount entries
-            # Then trigger the Kafka library to send them.
+            if (self.producer is not None):
+                # Get Events from the queue and process them, up until we have an empty queue or MaxMessageCount entries
+                # Then trigger the Kafka library to send them.
 
-            while ((EventCount < MaxMessageCount)):
-                EventCount += 1
+                while ((EventCount < MaxMessageCount)):
+                    EventCount += 1
 
-                self.timeusstart()
-                ### Takes about 3.2usec (old 8.4usec) per call (approx) on DEV server
-                JsonEventstr, empty = odc.GetNextEvent(self.guid)
-                self.measuretimeus += self.timeusstop()
-
-                # The EventType will be an empty string if the queue is empty.
-                if (empty == True):
-                    break
-
-                try:
                     self.timeusstart()
-                    # Now 32msec/5000, about 5usec per record. (old 45msec/5000 so 9usec/record)
-                    # Can we only get a single delivery report per block of up to 5000 messages?
-                    # If we set the re-try count to max int, then handling the delivery report does not make much sense - the buffer will just fill up and then we will get an exception
-                    # here due to a full buffer. And we fill up the next buffer (in PyPort) (note we need to store the event we were about to send so we dont loose it!)
-                    # Eventually we will loose events, but there is nothing we can do about that.
-                    self.producer.produce(self.topic, value=JsonEventstr)
-                    self.measuretimeus2 += self.timeusstop()
-                    if self.QueueErrorState == 1:
-                        self.LogError("Kafka Producer Queue Recovered - NOT full ({} messages awaiting delivery)".format(len(self.producer)))
-                        self.QueueErrorState = 0
+                    ### Takes about 3.2usec (old 8.4usec) per call (approx) on DEV server
+                    JsonEventstr, empty = odc.GetNextEvent(self.guid)
+                    self.measuretimeus += self.timeusstop()
 
-                except BufferError:
-                    if self.QueueErrorState == 0:
-                        self.LogError("Kafka Producer Queue is full ({} messages awaiting delivery)".format(len(self.producer)))
-                        self.QueueErrorState = 1
-                    break
+                    # The EventType will be an empty string if the queue is empty.
+                    if (empty == True):
+                        break
 
-                if (EventCount % 100 == 0):
-                    self.producer.poll(0)   # Do any waiting processing, but dont wait!
+                    try:
+                        self.timeusstart()
+                        # Now 32msec/5000, about 5usec per record. (old 45msec/5000 so 9usec/record)
+                        # Can we only get a single delivery report per block of up to 5000 messages?
+                        # If we set the re-try count to max int, then handling the delivery report does not make much sense - the buffer will just fill up and then we will get an exception
+                        # here due to a full buffer. And we fill up the next buffer (in PyPort) (note we need to store the event we were about to send so we dont loose it!)
+                        # Eventually we will loose events, but there is nothing we can do about that.
+                        self.producer.produce(self.topic, value=JsonEventstr)
+                        self.measuretimeus2 += self.timeusstop()
+                        if self.QueueErrorState == 1:
+                            self.LogError("Kafka Producer Queue Recovered - NOT full ({} messages awaiting delivery)".format(len(self.producer)))
+                            self.QueueErrorState = 0
 
-            self.EventQueueSize = odc.GetEventQueueSize(self.guid);
-            #self.LogDebug("Kafka Produced {} messages. Kafka queue size {}. ODC Event queue size {} Execution time {} msec Timed code {}, {} us".format(EventCount,len(self.producer),self.EventQueueSize,self.millisdiff(starttime),self.measuretimeus,self.measuretimeus2))
+                    except BufferError:
+                        if self.QueueErrorState == 0:
+                            self.LogError("Kafka Producer Queue is full ({} messages awaiting delivery)".format(len(self.producer)))
+                            self.QueueErrorState = 1
+                        break
 
-            self.MessageIndex += EventCount
+                    if (EventCount % 100 == 0):
+                        self.producer.poll(0)   # Do any waiting processing, but dont wait!
+
+                self.EventQueueSize = odc.GetEventQueueSize(self.guid);
+                #self.LogDebug("Kafka Produced {} messages. Kafka queue size {}. ODC Event queue size {} Execution time {} msec Timed code {}, {} us".format(EventCount,len(self.producer),self.EventQueueSize,self.millisdiff(starttime),self.measuretimeus,self.measuretimeus2))
+
+                self.MessageIndex += EventCount
 
             # If we have pushed the maximum number of events in, we need to go faster...
             # If the producer queue hits the limit, this means the kafka cluster is not keeping up.
@@ -248,9 +251,10 @@ class SimPortClass:
 
         if (TimerId == 2):
             self.minutetimermessage()
-            odc.SetTimer(self.guid, 2, 10000)   # Set to run again in a minute
+            odc.SetTimer(self.guid, 2, 10000)   # Set to run again in 10 seconds
 
-        self.producer.poll(0)   # Do any waiting processing, but dont wait!
+        if (self.producer is not None):
+            self.producer.poll(0)   # Do any waiting processing, but dont wait!
 
         return
 
