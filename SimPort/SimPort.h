@@ -32,6 +32,7 @@
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <opendatacon/EnumClassFlags.h>
+#include <shared_mutex>
 #include <random>
 
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
@@ -42,7 +43,6 @@ class SimPort: public DataPort
 public:
 	//Implement DataPort interface
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
-	~SimPort();
 	void Enable() final;
 	void Disable() final;
 	void Build() final;
@@ -64,10 +64,10 @@ private:
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	typedef std::shared_ptr<Timer_t> pTimer_t;
 	std::unordered_map<std::string, pTimer_t> Timers;
-	mutable std::shared_timed_mutex TimersMutex;
 
 	// use this instead of PublishEvent, it catches current values and saves them.
 	void PostPublishEvent(std::shared_ptr<odc::EventInfo> event, SharedStatusCallback_t pStatusCallback);
+	void PublishBinaryEvents(const std::vector<std::size_t>& indexes, const std::string& payload);
 
 	void NextEventFromDB(const std::shared_ptr<odc::EventInfo>& event);
 	void PopulateNextEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset);
@@ -115,12 +115,13 @@ private:
 	void PortDown();
 	std::vector<std::size_t> IndexesFromString(const std::string& index_str, odc::EventType type);
 
-	CommandStatus HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks,
-		std::size_t index, ControlRelayOutputBlock command);
-	CommandStatus HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position);
-	CommandStatus HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position);
-	CommandStatus HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position);
-	CommandStatus HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position);
+	CommandStatus HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks, std::size_t index, ControlRelayOutputBlock command, std::string& message);
+	CommandStatus HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message);
+	CommandStatus HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message);
+	CommandStatus HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message);
+	CommandStatus HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message);
+
+	void EventResponse(const std::string& message, std::size_t index, SharedStatusCallback_t pStatusCallback, CommandStatus status);
 
 	std::shared_ptr<SimPortCollection> SimCollection;
 

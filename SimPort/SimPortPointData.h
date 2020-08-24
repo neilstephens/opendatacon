@@ -32,8 +32,8 @@
 #include <json/json.h>
 #include <vector>
 #include <memory>
-#include <unordered_map>
 #include <shared_mutex>
+#include <unordered_map>
 
 enum class FeedbackMode { PULSE, LATCH };
 
@@ -267,13 +267,10 @@ public:
 	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index);
 
 private:
-	mutable std::shared_timed_mutex PointDataMutex;
-	mutable std::shared_timed_mutex BinFeedbackDataMutex;
-	mutable std::shared_timed_mutex BinPosDataMutex;
-	
+	std::shared_timed_mutex point_mutex;
+	std::shared_timed_mutex feedback_mutex;
+	std::shared_timed_mutex position_mutex;
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
-
-	// These are the 3 data structures we need to protect from concurrent access.
 	std::unordered_map<odc::EventType, Points> m_points;
 	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
 	std::unordered_map<std::size_t, std::shared_ptr<BinaryPosition>> m_binary_positions;
