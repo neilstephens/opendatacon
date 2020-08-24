@@ -46,14 +46,12 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 
 DNP3OutstationPort::~DNP3OutstationPort()
 {
-	ChannelStateSubscriber::Unsubscribe(this);
+	ChannelStateSubscriber::Unsubscribe(&ChanH);
 	if(pOutstation)
 	{
 		pOutstation->Shutdown();
 		pOutstation.reset();
 	}
-	if(pChannel)
-		pChannel.reset();
 }
 
 void DNP3OutstationPort::Enable()
@@ -87,45 +85,90 @@ void DNP3OutstationPort::Disable()
 // Called when a the reset/unreset status of the link layer changes (and on link up / channel down)
 void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 {
-	this->status = status;
-
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
-
-	if(link_dead && !channel_dead) //must be on link up
-	{
-		link_dead = false;
-		PublishEvent(ConnectState::CONNECTED);
-	}
+	ChanH.SetLinkStatus(status);
 	//TODO: track a new statistic - reset count
 }
 // Called by OpenDNP3 Thread Pool
 // Called when a keep alive message (request link status) receives no response
 void DNP3OutstationPort::OnKeepAliveFailure()
 {
+	last_link_down_time = msSinceEpoch();
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveFailure() called.", Name);
-	this->OnLinkDown();
+	ChanH.LinkDown();
 }
-void DNP3OutstationPort::OnLinkDown()
+//There's no callback if a link recovers after it goes down,
+//	we keep track of the last time a keepalive failed
+//	if there hasn't been a fail in longer than the configured keepalive period, we're back up.
+void DNP3OutstationPort::LinkUpCheck()
 {
-	if(!link_dead)
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: LinkUpCheck() called.", Name);
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if(pConf->pPointConf->LinkKeepAlivems != 0)
 	{
-		link_dead = true;
-		PublishEvent(ConnectState::DISCONNECTED);
+		auto ms_since_down = msSinceEpoch() - last_link_down_time;
+		auto ms_required = pConf->pPointConf->LinkKeepAlivems + pConf->pPointConf->LinkTimeoutms;
+		if(ms_since_down >= ms_required)
+		{
+			ChanH.LinkUp();
+			return;
+		}
+
+		auto ms_left = ms_required - ms_since_down;
+		pLinkUpCheckTimer->expires_from_now(std::chrono::milliseconds(ms_left));
+		pLinkUpCheckTimer->async_wait([this](asio::error_code err)
+			{
+				if(!err)
+					LinkUpCheck();
+			});
 	}
 }
+void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
+{
+	if(to == LinkDeadness::LinkUpChannelUp) //must be on link up
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: Link up.", Name);
+		PublishEvent(ConnectState::CONNECTED);
+	}
+
+	if(from == LinkDeadness::LinkUpChannelUp) //must be on link down
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: Link down.", Name);
+		PublishEvent(ConnectState::DISCONNECTED);
+
+		if(to == LinkDeadness::LinkDownChannelUp) //means keepalive failed
+			LinkUpCheck();                      //kick off checking for coming back up
+	}
+
+	//if we get here, it's not link up or down, it's a channel up or down
+	if(to == LinkDeadness::LinkDownChannelDown)
+		pLinkUpCheckTimer->cancel();
+}
+void DNP3OutstationPort::ChannelWatchdogTrigger(bool on)
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	if(enabled)
+	{
+		if(on)
+			pOutstation->Disable();
+		else
+			pOutstation->Enable();
+	}
+}
+
 // Called by OpenDNP3 Thread Pool
 // Called when a keep alive message receives a valid response
 void DNP3OutstationPort::OnKeepAliveSuccess()
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveSuccess() called.", Name);
-	if(link_dead)
-	{
-		link_dead = false;
-		PublishEvent(ConnectState::CONNECTED);
-	}
+	ChanH.LinkUp();
 }
 
 TCPClientServer DNP3OutstationPort::ClientOrServer()
@@ -140,9 +183,7 @@ void DNP3OutstationPort::Build()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	pChannel = GetChannel();
-
-	if (pChannel == nullptr)
+	if (!ChanH.SetChannel())
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for outstation.", Name);
@@ -215,7 +256,7 @@ void DNP3OutstationPort::Build()
 	auto pCommandHandle = std::dynamic_pointer_cast<opendnp3::ICommandHandler>(wont_free);
 	auto pApplication = std::dynamic_pointer_cast<opendnp3::IOutstationApplication>(wont_free);
 
-	pOutstation = pChannel->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
+	pOutstation = ChanH.GetChannel()->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
 
 	if (pOutstation == nullptr)
 	{
@@ -250,9 +291,9 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 const Json::Value DNP3OutstationPort::GetStatistics() const
 {
 	Json::Value event;
-	if (pChannel != nullptr)
+	if (auto pChan = ChanH.GetChannel())
 	{
-		auto ChanStats = this->pChannel->GetStatistics();
+		auto ChanStats = pChan->GetStatistics();
 		event["parser"]["numHeaderCrcError"] = ChanStats.parser.numHeaderCrcError;
 		event["parser"]["numBodyCrcError"] = ChanStats.parser.numBodyCrcError;
 		event["parser"]["numLinkFrameRx"] = ChanStats.parser.numLinkFrameRx;

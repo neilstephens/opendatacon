@@ -26,23 +26,44 @@
 
 #ifndef CHANNELSTATESUBSCRIBER_H
 #define CHANNELSTATESUBSCRIBER_H
-#include "DNP3Port.h"
-#include <map>
+
+#include "ChannelHandler.h"
 #include <asiodnp3/IChannel.h>
+#include <asiodnp3/IChannelListener.h>
+#include <map>
+#include <mutex>
 
 class ChannelStateSubscriber
 {
 public:
-	static void Subscribe(DNP3Port* pPort, std::string ChanID);
-	static void Unsubscribe(DNP3Port* pPort, const std::string& ChanID = "");
+	//FIXME: use wek_ptrs instead of these raw pointers
+	static void Subscribe(ChannelHandler* pPort, std::string ChanID);
+	static void Unsubscribe(ChannelHandler* pPort, const std::string& ChanID = "");
 	static void StateListener(const std::string& ChanID, opendnp3::ChannelState state);
 
 private:
 	ChannelStateSubscriber() = delete;
-	static std::multimap<std::string, DNP3Port*> SubscriberMap;
+	static std::multimap<std::string, ChannelHandler*> SubscriberMap;
 
 	//FIXME: replace with a strand
 	static std::mutex MapMutex;
+};
+
+class ChannelListener: public asiodnp3::IChannelListener
+{
+public:
+	ChannelListener(const std::string& aChanID, ChannelHandler* pPort):
+		ChanID(aChanID)
+	{
+		ChannelStateSubscriber::Subscribe(pPort,ChanID);
+	}
+	//Receive callbacks for state transitions on the channels from opendnp3
+	void OnStateChange(opendnp3::ChannelState state) override
+	{
+		ChannelStateSubscriber::StateListener(ChanID,state);
+	}
+private:
+	const std::string ChanID;
 };
 
 #endif // CHANNELSTATESUBSCRIBER_H

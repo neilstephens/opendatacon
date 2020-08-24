@@ -33,10 +33,7 @@
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	pChannel(nullptr),
-	status(opendnp3::LinkStatus::UNRESET),
-	link_dead(true),
-	channel_dead(true)
+	ChanH(this)
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<asiodnp3::DNP3Manager> weak_mgr;
@@ -70,23 +67,6 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 DNP3Port::~DNP3Port()
 {}
 
-// Called by OpenDNP3 Thread Pool
-void DNP3Port::StateListener(opendnp3::ChannelState state)
-{
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: ChannelState {}.", Name, opendnp3::ChannelStateToString(state));
-
-	if(state != opendnp3::ChannelState::OPEN)
-	{
-		channel_dead = true;
-		OnLinkDown();
-	}
-	else
-	{
-		channel_dead = false;
-	}
-}
-
 //DataPort function for UI
 const Json::Value DNP3Port::GetStatus() const
 {
@@ -94,11 +74,11 @@ const Json::Value DNP3Port::GetStatus() const
 
 	if(!enabled)
 		ret_val["Result"] = "Port disabled";
-	else if(link_dead)
+	else if(ChanH.GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
 		ret_val["Result"] = "Port enabled - link down";
-	else if(status == opendnp3::LinkStatus::RESET)
+	else if(ChanH.GetLinkStatus() == opendnp3::LinkStatus::RESET)
 		ret_val["Result"] = "Port enabled - link up (reset)";
-	else if(status == opendnp3::LinkStatus::UNRESET)
+	else if(ChanH.GetLinkStatus() == opendnp3::LinkStatus::UNRESET)
 		ret_val["Result"] = "Port enabled - link up (unreset)";
 	else
 		ret_val["Result"] = "Port enabled - link status unknown";
@@ -219,94 +199,5 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 
-}
-
-class ChannelListener: public asiodnp3::IChannelListener
-{
-public:
-	ChannelListener(const std::string& aChanID, DNP3Port* pPort):
-		ChanID(aChanID)
-	{
-		ChannelStateSubscriber::Subscribe(pPort,ChanID);
-	}
-	//Receive callbacks for state transitions on the channels from opendnp3
-	void OnStateChange(opendnp3::ChannelState state) override
-	{
-		ChannelStateSubscriber::StateListener(ChanID,state);
-	}
-private:
-	const std::string ChanID;
-};
-
-std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
-{
-	static std::unordered_map<std::string, std::weak_ptr<asiodnp3::IChannel>> Channels;
-	std::shared_ptr<asiodnp3::IChannel> chan(nullptr);
-
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
-	std::string ChannelID;
-	bool isSerial;
-	if(pConf->mAddrConf.IP.empty())
-	{
-		ChannelID = pConf->mAddrConf.SerialSettings.deviceName;
-		isSerial = true;
-	}
-	else
-	{
-		ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
-		isSerial = false;
-	}
-
-	//create a new channel if needed
-	if(!Channels.count(ChannelID) || !(chan = Channels[ChannelID].lock()))
-	{
-		auto listener = std::make_shared<ChannelListener>(ChannelID,this);
-		if(isSerial)
-		{
-			chan = IOMgr->AddSerial(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
-				asiopal::ChannelRetry(
-					openpal::TimeDuration::Milliseconds(500),
-					openpal::TimeDuration::Milliseconds(5000)),
-				pConf->mAddrConf.SerialSettings,listener);
-		}
-		else
-		{
-			switch (ClientOrServer())
-			{
-				case TCPClientServer::SERVER:
-				{
-					chan = IOMgr->AddTCPServer(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
-						pConf->pPointConf->ServerAcceptMode,
-						pConf->mAddrConf.IP,
-						pConf->mAddrConf.Port,listener);
-					break;
-				}
-
-				case TCPClientServer::CLIENT:
-				{
-					chan = IOMgr->AddTCPClient(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
-						asiopal::ChannelRetry(
-							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
-						pConf->mAddrConf.IP,
-						"0.0.0.0",
-						pConf->mAddrConf.Port,listener);
-					break;
-				}
-
-				default:
-				{
-					const std::string msg(Name + ": Can't determine if TCP socket is client or server");
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->error(msg);
-					throw std::runtime_error(msg);
-				}
-			}
-		}
-		Channels[ChannelID] = chan;
-	}
-
-	return chan;
 }
 

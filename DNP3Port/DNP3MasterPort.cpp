@@ -24,8 +24,9 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include "ChannelStateSubscriber.h"
 #include "DNP3MasterPort.h"
+#include "ChannelStateSubscriber.h"
+#include "ChannelHandler.h"
 #include "TypeConversion.h"
 #include <array>
 #include <asiopal/UTCTimeSource.h>
@@ -36,7 +37,7 @@
 
 DNP3MasterPort::~DNP3MasterPort()
 {
-	ChannelStateSubscriber::Unsubscribe(this);
+	ChannelStateSubscriber::Unsubscribe(&ChanH);
 	if(IntegrityScan)
 		IntegrityScan.reset();
 	if(pMaster)
@@ -44,8 +45,6 @@ DNP3MasterPort::~DNP3MasterPort()
 		pMaster->Shutdown();
 		pMaster.reset();
 	}
-	if(pChannel)
-		pChannel.reset();
 }
 
 void DNP3MasterPort::Enable()
@@ -161,17 +160,9 @@ void DNP3MasterPort::SetCommsFailed()
 // Called when a the reset/unreset status of the link layer changes (and on link up / channel down)
 void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 {
-	this->status = status;
-
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
-
-	if(link_dead && !channel_dead) //must be on link up
-	{
-		link_dead = false;
-		// Update the comms state point
-		PortUp();
-	}
+	ChanH.SetLinkStatus(status);
 	//TODO: track a statistic - reset count
 }
 // Called by OpenDNP3 Thread Pool
@@ -180,19 +171,45 @@ void DNP3MasterPort::OnKeepAliveFailure()
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveFailure() called.", Name);
-	this->OnLinkDown();
+	ChanH.LinkDown();
 }
-void DNP3MasterPort::OnLinkDown()
+
+//calls to this will be synchronised
+void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 {
-	if(!link_dead)
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+	if(to == LinkDeadness::LinkUpChannelUp) //must be on link up
 	{
-		link_dead = true;
+		// Update the comms state point
+		PortUp();
+
+		// Notify subscribers that a connect event has occured
+		PublishEvent(ConnectState::CONNECTED);
+
+		//if it was just a link layer interruption, we might need an integrity scan
+		if(channel_stayed_up)
+		{
+			if(pConf->pPointConf->SetQualityOnLinkStatus)
+			{
+				// Trigger integrity scan to get point quality
+				// Only way to get true state upstream
+				// Can't just reset quality, because it would make new events for old values
+				IntegrityScan->Demand();
+			}
+		}
+		return;
+	}
+
+	if(from == LinkDeadness::LinkUpChannelUp) //must be on link down
+	{
+		channel_stayed_up = (to == LinkDeadness::LinkDownChannelUp);
+
 		PortDown();
 
 		// Notify subscribers that a disconnect event has occured
 		PublishEvent(ConnectState::DISCONNECTED);
 
-		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
@@ -204,30 +221,40 @@ void DNP3MasterPort::OnLinkDown()
 					DisableStack();
 				});
 		}
+		return;
+	}
+
+	//if we get here, it's not link up or down, it's a channel up or down
+	if(to == LinkDeadness::LinkDownChannelDown)
+		channel_stayed_up = false;
+}
+
+void DNP3MasterPort::ChannelWatchdogTrigger(bool on)
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	if(stack_enabled)
+	{
+		if(on)                    //don't mark the stack as disabled, because this is just a restart
+			pMaster->Disable(); //it will be enabled again shortly when the trigger is off
+		else
+			pMaster->Enable();
 	}
 }
+
 // Called by OpenDNP3 Thread Pool
 // Called when a keep alive message receives a valid response
 void DNP3MasterPort::OnKeepAliveSuccess()
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveSuccess() called.", Name);
-
-	if(link_dead)
-	{
-		link_dead = false;
-		// Update the comms state point
-		PortUp();
-
-		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-		if(pConf->pPointConf->SetQualityOnLinkStatus)
-		{
-			// Trigger integrity scan to get point quality
-			// Only way to get true state upstream
-			// Can't just reset quality, because it would make new events for old values
-			IntegrityScan->Demand();
-		}
-	}
+	ChanH.LinkUp();
+}
+void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->trace("{}: OnReceiveIIN(MSB {}, LSB {}) called.", Name, iin.MSB, iin.LSB);
+	ChanH.LinkUp();
 }
 
 TCPClientServer DNP3MasterPort::ClientOrServer()
@@ -242,9 +269,7 @@ void DNP3MasterPort::Build()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	pChannel = GetChannel();
-
-	if (pChannel == nullptr)
+	if (!ChanH.SetChannel())
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for masterstation.", Name);
@@ -279,7 +304,7 @@ void DNP3MasterPort::Build()
 	auto ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(wont_free);
 	auto MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(wont_free);
 
-	pMaster = pChannel->AddMaster(Name, ISOEHandle, MasterApp, StackConfig);
+	pMaster = ChanH.GetChannel()->AddMaster(Name, ISOEHandle, MasterApp, StackConfig);
 
 	if (pMaster == nullptr)
 	{
@@ -482,9 +507,9 @@ const Json::Value DNP3MasterPort::GetStatistics() const
 {
 	Json::Value event;
 
-	if (pChannel != nullptr)
+	if (auto pChan = ChanH.GetChannel())
 	{
-		auto ChanStats = this->pChannel->GetStatistics();
+		auto ChanStats = pChan->GetStatistics();
 		event["parser"]["numHeaderCrcError"] = ChanStats.parser.numHeaderCrcError;
 		event["parser"]["numBodyCrcError"] = ChanStats.parser.numBodyCrcError;
 		event["parser"]["numLinkFrameRx"] = ChanStats.parser.numLinkFrameRx;
