@@ -43,7 +43,8 @@ struct Point
 		std_dev(0.0f),
 		update_interval(0),
 		start_value(0.0f),
-		forced_state(false) {}
+		forced_state(false),
+		update_interval_state(false) {}
 
 	std::shared_ptr<odc::EventInfo> event;
 	double std_dev;
@@ -51,6 +52,7 @@ struct Point
 	std::size_t update_interval;
 	double start_value;
 	bool forced_state;
+	bool update_interval_state;
 };
 
 //DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
@@ -112,8 +114,8 @@ public:
 	  return           : void
 	 */
 	void CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
-		odc::QualityFlags flag, double s_dev, std::size_t u_interval,
-		double val);
+		odc::QualityFlags flag, double s_dev, bool u_interval_falg,
+		std::size_t u_interval, double val);
 
 	/*
 	  function         : Event
@@ -149,6 +151,15 @@ public:
 	  return           : return the forced state of the data point
 	*/
 	bool ForcedState(odc::EventType type, std::size_t index);
+
+	/*
+	  function         : UpdateIntervalState
+	  description      : this function will return the state of the update interval
+	  param type       : the event type
+	  param index      : index of the data point
+	  return           : return the update interval state
+	*/
+	bool UpdateIntervalState(odc::EventType type, std::size_t index);
 
 	/*
 	  function         : UpdateInterval

@@ -30,12 +30,13 @@
 SimPortPointData::SimPortPointData() {}
 
 void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
-	odc::QualityFlags flag, double s_dev, std::size_t u_interval, double val)
+	odc::QualityFlags flag, double s_dev, bool u_interval_state, std::size_t u_interval, double val)
 {
 	if (type == odc::EventType::Analog)
 	{
 		Point p;
 		p.std_dev = s_dev;
+		p.update_interval_state = u_interval_state;
 		p.update_interval = u_interval;
 		p.start_value = val;
 
@@ -90,6 +91,14 @@ bool SimPortPointData::ForcedState(odc::EventType type, std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(point_mutex);
 	return m_points[type][index]->forced_state;
+}
+
+bool SimPortPointData::UpdateIntervalState(odc::EventType type, std::size_t index)
+{
+	bool state = false;
+	if (m_points[type].find(index) != m_points[type].end())
+		state = m_points[type][index]->update_interval_state;
+	return state;
 }
 
 void SimPortPointData::UpdateInterval(odc::EventType type, std::size_t index, std::size_t value)

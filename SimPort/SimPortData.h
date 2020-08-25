@@ -45,11 +45,12 @@ public:
 	double DefaultStdDev() const;
 
 	void CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
-		odc::QualityFlags flag, double std_dev, std::size_t update_interal, double value);
+		odc::QualityFlags flag, double std_dev, bool update_interval_state, std::size_t update_interal, double value);
 	void Event(std::shared_ptr<odc::EventInfo> event);
 	std::shared_ptr<odc::EventInfo> Event(odc::EventType type, std::size_t index) const;
 	void ForcedState(odc::EventType type, std::size_t index, bool state);
 	bool ForcedState(odc::EventType type, std::size_t) const;
+	bool UpdateIntervalState(odc::EventType type, std::size_t index) const;
 	void UpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
 	std::size_t UpdateInterval(odc::EventType type, std::size_t index) const;
 	void Payload(odc::EventType type, std::size_t index, double payload);
