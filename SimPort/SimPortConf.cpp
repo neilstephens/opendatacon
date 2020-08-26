@@ -247,7 +247,13 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 		for(auto index = start; index <= stop; index++)
 		{
 			bool val = false;
+			double std_dev = 0.0f;
+			std::size_t update_interval = 0;
 			odc::QualityFlags flag = odc::QualityFlags::ONLINE;
+			if (binaries[n].isMember("StdDev"))
+				std_dev = binaries[n]["StdDev"].asDouble();
+			if (binaries[n].isMember("UpdateIntervalms"))
+				update_interval = binaries[n]["UpdateIntervalms"].asUInt();
 			if (binaries[n].isMember("StartVal"))
 			{
 				if (binaries[n]["StartVal"].asString() == "X")
@@ -255,7 +261,7 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 				else
 					val = binaries[n]["StartVal"].asBool();
 			}
-			m_pport_data->CreateEvent(odc::EventType::Binary, index, m_name, flag, 0.0f, 0.0f, val);
+			m_pport_data->CreateEvent(odc::EventType::Binary, index, m_name, flag, std_dev, update_interval, val);
 		}
 	}
 }

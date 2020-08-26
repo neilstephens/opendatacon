@@ -112,8 +112,7 @@ public:
 	  return           : void
 	 */
 	void CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
-		odc::QualityFlags flag, double s_dev, std::size_t u_interval,
-		double val);
+		odc::QualityFlags flag, double s_dev, std::size_t u_interval, double val);
 
 	/*
 	  function         : Event
@@ -168,7 +167,6 @@ public:
 	  return           : update interval value [SI Unit milliseconds]
 	*/
 	std::size_t UpdateInterval(odc::EventType type, std::size_t index);
-
 	/*
 	  function         : Payload
 	  description      : this function will set the payload for the data point
