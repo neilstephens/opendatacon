@@ -1,22 +1,22 @@
 /*	opendatacon
- *
- *	Copyright (c) 2014:
- *
- *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
- *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
- *
- *	Licensed under the Apache License, Version 2.0 (the "License");
- *	you may not use this file except in compliance with the License.
- *	You may obtain a copy of the License at
- *
- *		http://www.apache.org/licenses/LICENSE-2.0
- *
- *	Unless required by applicable law or agreed to in writing, software
- *	distributed under the License is distributed on an "AS IS" BASIS,
- *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *	See the License for the specific language governing permissions and
- *	limitations under the License.
- */
+     *
+     *	Copyright (c) 2014:
+     *
+     *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+     *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+     *
+     *	Licensed under the Apache License, Version 2.0 (the "License");
+     *	you may not use this file except in compliance with the License.
+     *	You may obtain a copy of the License at
+     *
+     *		http://www.apache.org/licenses/LICENSE-2.0
+     *
+     *	Unless required by applicable law or agreed to in writing, software
+     *	distributed under the License is distributed on an "AS IS" BASIS,
+     *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     *	See the License for the specific language governing permissions and
+     *	limitations under the License.
+     */
 /*
  * SimPort.h
  *
@@ -24,16 +24,16 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#ifndef SIMPORT_H
-#define SIMPORT_H
-#include "SimPortConf.h"
-#include "../HTTP/HttpServerManager.h"
-#include "sqlite3/sqlite3.h"
-#include <opendatacon/DataPort.h>
-#include <opendatacon/util.h>
-#include <opendatacon/EnumClassFlags.h>
-#include <shared_mutex>
-#include <random>
+    #ifndef SIMPORT_H
+    #define SIMPORT_H
+    #include "SimPortConf.h"
+    #include "../HTTP/HttpServerManager.h"
+    #include "sqlite3/sqlite3.h"
+    #include <opendatacon/DataPort.h>
+    #include <opendatacon/util.h>
+    #include <opendatacon/EnumClassFlags.h>
+    #include <shared_mutex>
+    #include <random>
 
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 
@@ -131,4 +131,4 @@ private:
 	SimPortConf* pSimConf = nullptr; // Set in constructor
 };
 
-#endif // SIMPORT_H
+    #endif // SIMPORT_H

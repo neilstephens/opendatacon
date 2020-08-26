@@ -92,7 +92,6 @@ public:
 	double StartValue(odc::EventType type, std::size_t index) const;
 	void ForcedState(odc::EventType type, std::size_t index, bool value);
 	bool ForcedState(odc::EventType type, std::size_t index) const;
-	bool UpdateIntervalState(odc::EventType type, std::size_t index) const;
 	void UpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
 	std::size_t UpdateInterval(odc::EventType type, std::size_t) const;
 	std::vector<std::size_t> Indexes(odc::EventType type) const;

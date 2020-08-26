@@ -268,8 +268,6 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 	{
 		for (std::size_t index : indexes)
 		{
-			if (!pSimConf->UpdateIntervalState(type, index))
-				continue;
 			pSimConf->UpdateInterval(type, index, delta);
 			auto pTimer = Timers.at(ToString(type) + std::to_string(index));
 			if (!delta)
@@ -385,9 +383,9 @@ void SimPort::PortUp()
 		event->SetTimestamp(msSinceEpoch());
 		PostPublishEvent(event);
 
-		if (pSimConf->UpdateIntervalState(odc::EventType::Analog, index))
+		auto interval = pSimConf->UpdateInterval(odc::EventType::Analog, index);
+		if (interval)
 		{
-			auto interval = pSimConf->UpdateInterval(odc::EventType::Analog, index);
 			auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 			pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 			pTimer->async_wait([=](asio::error_code err_code)
@@ -408,9 +406,9 @@ void SimPort::PortUp()
 		pTimer_t pTimer = pIOS->make_steady_timer();
 		Timers["Binary"+std::to_string(index)] = pTimer;
 
-		if (pSimConf->UpdateIntervalState(odc::EventType::Binary, index))
+		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
+		if (interval)
 		{
-			auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
 			auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 			pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
 			pTimer->async_wait([=](asio::error_code err_code)
@@ -489,11 +487,8 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 	else
 		return;
 
-	if (pSimConf->UpdateIntervalState(event->GetEventType(), event->GetIndex()))
-	{
-		auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
-		event->SetTimestamp(msSinceEpoch()+random_interval);
-	}
+	auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
+	event->SetTimestamp(msSinceEpoch()+random_interval);
 }
 
 void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)

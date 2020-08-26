@@ -72,9 +72,9 @@ double SimPortData::DefaultStdDev() const
 }
 
 void SimPortData::CreateEvent(odc::EventType type, std::size_t index, const std::string& name,
-	odc::QualityFlags flag, double std_dev, bool update_interval_state, std::size_t update_interal, double value)
+	odc::QualityFlags flag, double std_dev, std::size_t update_interal, double value)
 {
-	m_ppoint_data->CreateEvent(type, index, name, flag, std_dev, update_interval_state, update_interal, value);
+	m_ppoint_data->CreateEvent(type, index, name, flag, std_dev, update_interal, value);
 }
 
 void SimPortData::Event(std::shared_ptr<odc::EventInfo> event)
@@ -95,11 +95,6 @@ void SimPortData::ForcedState(odc::EventType type, std::size_t index, bool state
 bool SimPortData::ForcedState(odc::EventType type, std::size_t index) const
 {
 	return m_ppoint_data->ForcedState(type, index);
-}
-
-bool SimPortData::UpdateIntervalState(odc::EventType type, std::size_t index) const
-{
-	return m_ppoint_data->UpdateIntervalState(type, index);
 }
 
 void SimPortData::UpdateInterval(odc::EventType type, std::size_t index, std::size_t value)

@@ -126,11 +126,6 @@ bool SimPortConf::ForcedState(odc::EventType type, std::size_t index) const
 	return m_pport_data->ForcedState(type, index);
 }
 
-bool SimPortConf::UpdateIntervalState(odc::EventType type, std::size_t index) const
-{
-	return m_pport_data->UpdateIntervalState(type, index);
-}
-
 void SimPortConf::UpdateInterval(odc::EventType type, std::size_t index, std::size_t value)
 {
 	m_pport_data->UpdateInterval(type, index, value);
@@ -204,17 +199,13 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 		{
 			double start_val = 0.0f;
 			double std_dev = 0.0f;
-			bool update_interval_state = false;
 			std::size_t update_interval = 0;
 			if (analogs[i].isMember("SQLite3"))
 				m_ProcessSQLite3(analogs[i]["SQLite3"], index);
 			if (analogs[i].isMember("StdDev"))
 				std_dev = analogs[i]["StdDev"].asDouble();
 			if (analogs[i].isMember("UpdateIntervalms"))
-			{
-				update_interval_state = true;
 				update_interval = analogs[i]["UpdateIntervalms"].asUInt();
-			}
 			if (analogs[i].isMember("StartVal"))
 			{
 				std::string str_start_val = to_lower(analogs[i]["StartVal"].asString());
@@ -229,7 +220,7 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 					flag = odc::QualityFlags::COMM_LOST;
 				else
 					start_val = std::stod(str_start_val);
-				m_pport_data->CreateEvent(odc::EventType::Analog, index, m_name, flag, std_dev, update_interval_state, update_interval, start_val);
+				m_pport_data->CreateEvent(odc::EventType::Analog, index, m_name, flag, std_dev, update_interval, start_val);
 			}
 		}
 	}
@@ -256,17 +247,13 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 		for(auto index = start; index <= stop; index++)
 		{
 			bool val = false;
-			bool update_interval_state = false;
 			double std_dev = 0.0f;
 			std::size_t update_interval = 0;
 			odc::QualityFlags flag = odc::QualityFlags::ONLINE;
 			if (binaries[n].isMember("StdDev"))
 				std_dev = binaries[n]["StdDev"].asDouble();
 			if (binaries[n].isMember("UpdateIntervalms"))
-			{
-				update_interval_state = true;
 				update_interval = binaries[n]["UpdateIntervalms"].asUInt();
-			}
 			if (binaries[n].isMember("StartVal"))
 			{
 				if (binaries[n]["StartVal"].asString() == "X")
@@ -274,7 +261,7 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 				else
 					val = binaries[n]["StartVal"].asBool();
 			}
-			m_pport_data->CreateEvent(odc::EventType::Binary, index, m_name, flag, std_dev, update_interval_state, update_interval, val);
+			m_pport_data->CreateEvent(odc::EventType::Binary, index, m_name, flag, std_dev, update_interval, val);
 		}
 	}
 }
