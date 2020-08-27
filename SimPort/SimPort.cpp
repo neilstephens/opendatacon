@@ -273,16 +273,16 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 		for (std::size_t index : indexes)
 		{
 			pSimConf->UpdateInterval(type, index, delta);
-			auto pTimer = Timers.at(ToString(type) + std::to_string(index));
+			auto ptimer = pSimConf->Timer(ToString(type) + std::to_string(index));
 			if (!delta)
 			{
-				pTimer->cancel();
+				ptimer->cancel();
 			}
 			else
 			{
 				auto random_interval = std::uniform_int_distribution<unsigned int>(0, delta << 1)(RandNumGenerator);
-				pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-				pTimer->async_wait([=](asio::error_code err_code)
+				ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
+				ptimer->async_wait([=](asio::error_code err_code)
 					{
 						if(enabled && !err_code)
 						{
@@ -331,8 +331,8 @@ void SimPort::PortUp()
 
 	for(auto index : indexes)
 	{
-		pTimer_t pTimer = pIOS->make_steady_timer();
-		Timers["Analog"+std::to_string(index)] = pTimer;
+		ptimer_t ptimer = pIOS->make_steady_timer();
+		pSimConf->Timer("Analog"+std::to_string(index), ptimer);
 
 		//Check if we're configured to load this point from DB
 		const auto db_stats = pSimConf->GetDBStats();
@@ -372,8 +372,8 @@ void SimPort::PortUp()
 				delta = 0;
 			else
 				delta = event->GetTimestamp() - now;
-			pTimer->expires_from_now(std::chrono::milliseconds(delta));
-			pTimer->async_wait([=](asio::error_code err_code)
+			ptimer->expires_from_now(std::chrono::milliseconds(delta));
+			ptimer->async_wait([=](asio::error_code err_code)
 				{
 					if(enabled && !err_code)
 						SpawnEvent(event, time_offset);
@@ -391,8 +391,8 @@ void SimPort::PortUp()
 		if (interval)
 		{
 			auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
-			pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-			pTimer->async_wait([=](asio::error_code err_code)
+			ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
+			ptimer->async_wait([=](asio::error_code err_code)
 				{
 					if (enabled && !err_code)
 						StartAnalogEvents(index);
@@ -407,15 +407,15 @@ void SimPort::PortUp()
 		bool val = event->GetPayload<odc::EventType::Binary>();
 		PostPublishEvent(event);
 
-		pTimer_t pTimer = pIOS->make_steady_timer();
-		Timers["Binary"+std::to_string(index)] = pTimer;
+		ptimer_t ptimer = pIOS->make_steady_timer();
+		pSimConf->Timer("Binary"+std::to_string(index), ptimer);
 
 		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
 		if (interval)
 		{
 			auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
-			pTimer->expires_from_now(std::chrono::milliseconds(random_interval));
-			pTimer->async_wait([=](asio::error_code err_code)
+			ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
+			ptimer->async_wait([=](asio::error_code err_code)
 				{
 					if (enabled && !err_code)
 						StartBinaryEvents(index, !val);
@@ -426,9 +426,7 @@ void SimPort::PortUp()
 
 void SimPort::PortDown()
 {
-	for(const auto& pTimer : Timers)
-		pTimer.second->cancel();
-	Timers.clear();
+	pSimConf->CancelTimers();
 }
 
 void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
@@ -505,7 +503,7 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 		PostPublishEvent(event);
 	}
 
-	auto pTimer = Timers.at(ToString(event->GetEventType()) +std::to_string(event->GetIndex()));
+	auto ptimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
 	PopulateNextEvent(next_event, time_offset);
 	auto now = msSinceEpoch();
 	msSinceEpoch_t delta;
@@ -513,9 +511,9 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 		delta = 0;
 	else
 		delta = next_event->GetTimestamp() - now;
-	pTimer->expires_from_now(std::chrono::milliseconds(delta));
+	ptimer->expires_from_now(std::chrono::milliseconds(delta));
 	//wait til next time
-	pTimer->async_wait([=](asio::error_code err_code)
+	ptimer->async_wait([=](asio::error_code err_code)
 		{
 			if(enabled && !err_code)
 				SpawnEvent(next_event, time_offset);
@@ -771,9 +769,9 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 						PostPublishEvent(fb->on_value);
 					else
 						forced = true;
-					pTimer_t pTimer = pIOS->make_steady_timer();
-					pTimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
-					pTimer->async_wait([pTimer,fb,this](asio::error_code err_code)
+					ptimer_t ptimer = pIOS->make_steady_timer();
+					ptimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
+					ptimer->async_wait([ptimer,fb,this](asio::error_code err_code)
 						{
 							//FIXME: check err_code?
 							if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
@@ -863,6 +861,11 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;
 				}
+				else
+				{
+					message = "this binary control is out or range";
+					status = CommandStatus::OUT_OF_RANGE;
+				}
 			}
 			else if (binary_position->action == odc::PositionAction::LOWER)
 			{
@@ -873,6 +876,11 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;
+				}
+				else
+				{
+					message = "this binary control is out or range";
+					status = CommandStatus::OUT_OF_RANGE;
 				}
 			}
 		}
@@ -915,6 +923,11 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
 		}
+		else
+		{
+			message = "this binary control is out or range";
+			status = CommandStatus::OUT_OF_RANGE;
+		}
 	}
 	else if (binary_position->action == odc::PositionAction::LOWER)
 	{
@@ -925,6 +938,11 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 			PublishBinaryEvents(binary_position->indexes, binary);
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
+		}
+		else
+		{
+			message = "this binary control is out or range";
+			status = CommandStatus::OUT_OF_RANGE;
 		}
 	}
 	return status;
@@ -958,6 +976,11 @@ CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPo
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
 		}
+		else
+		{
+			message = "this binary control is out or range";
+			status = CommandStatus::OUT_OF_RANGE;
+		}
 	}
 	else if (binary_position->action == odc::PositionAction::LOWER)
 	{
@@ -968,6 +991,11 @@ CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPo
 			PublishBinaryEvents(binary_position->indexes, bcd_binary);
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
+		}
+		else
+		{
+			message = "this binary control is out or range";
+			status = CommandStatus::OUT_OF_RANGE;
 		}
 	}
 	return status;

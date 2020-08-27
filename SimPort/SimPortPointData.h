@@ -29,6 +29,7 @@
 #define SIMPORTPOINTDATA_H
 
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/asio.h>
 #include <json/json.h>
 #include <vector>
 #include <memory>
@@ -36,6 +37,9 @@
 #include <unordered_map>
 
 enum class FeedbackMode { PULSE, LATCH };
+
+typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
+typedef std::shared_ptr<Timer_t> ptimer_t;
 
 struct Point
 {
@@ -236,6 +240,10 @@ public:
 	*/
 	std::string CurrentState(odc::EventType type, std::vector<std::size_t>& indexes);
 
+	void Timer(const std::string& name, ptimer_t ptr);
+	ptimer_t Timer(const std::string& name);
+	void CancelTimers();
+
 	/*
 	  function         : IsIndex
 	  description      : this function will find the index into the points container
@@ -268,10 +276,12 @@ private:
 	std::shared_timed_mutex point_mutex;
 	std::shared_timed_mutex feedback_mutex;
 	std::shared_timed_mutex position_mutex;
+	std::shared_timed_mutex timer_mutex;
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
 	std::unordered_map<odc::EventType, Points> m_points;
 	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
 	std::unordered_map<std::size_t, std::shared_ptr<BinaryPosition>> m_binary_positions;
+	std::unordered_map<std::string, ptimer_t> m_timers;
 };
 
 #endif // SIMPORTPOINTDATA_H

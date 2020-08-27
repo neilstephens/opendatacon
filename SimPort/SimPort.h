@@ -43,7 +43,6 @@ class SimPort: public DataPort
 public:
 	//Implement DataPort interface
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
-	~SimPort();
 	void Enable() final;
 	void Disable() final;
 	void Build() final;
@@ -62,11 +61,6 @@ public:
 	bool UISetUpdateInterval(odc::EventType type, const std::string& index, const std::string& period);
 
 private:
-	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	typedef std::shared_ptr<Timer_t> pTimer_t;
-	std::unordered_map<std::string, pTimer_t> Timers;
-	std::shared_timed_mutex TimersMutex;
-
 	// use this instead of PublishEvent, it catches current values and saves them.
 	void PostPublishEvent(std::shared_ptr<odc::EventInfo> event, SharedStatusCallback_t pStatusCallback);
 	void PublishBinaryEvents(const std::vector<std::size_t>& indexes, const std::string& payload);

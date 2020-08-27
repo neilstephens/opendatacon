@@ -276,6 +276,7 @@ inline std::string ToString(const FeedbackType type)
 	ENUMSTRING(type, FeedbackType, BINARY            )
 	ENUMSTRING(type, FeedbackType, BCD               )
 	ENUMSTRING(type, FeedbackType, UNDEFINED         )
+	return "<no_string_representation>";
 }
 
 //Quatilty flags that can be used for any EventType

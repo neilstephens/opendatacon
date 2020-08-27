@@ -147,6 +147,21 @@ std::string SimPortData::CurrentState(odc::EventType type, std::vector<std::size
 	return m_ppoint_data->CurrentState(type, indexes);
 }
 
+void SimPortData::Timer(const std::string& name, ptimer_t ptr)
+{
+	m_ppoint_data->Timer(name, ptr);
+}
+
+ptimer_t SimPortData::Timer(const std::string& name) const
+{
+	return m_ppoint_data->Timer(name);
+}
+
+void SimPortData::CancelTimers()
+{
+	m_ppoint_data->CancelTimers();
+}
+
 bool SimPortData::IsIndex(odc::EventType type, std::size_t index) const
 {
 	return m_ppoint_data->IsIndex(type, index);

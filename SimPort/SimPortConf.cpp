@@ -136,16 +136,6 @@ std::size_t SimPortConf::UpdateInterval(odc::EventType type, std::size_t index) 
 	return m_pport_data->UpdateInterval(type, index);
 }
 
-std::vector<std::size_t> SimPortConf::Indexes(odc::EventType type) const
-{
-	return m_pport_data->Indexes(type);
-}
-
-bool SimPortConf::IsIndex(odc::EventType type, std::size_t index) const
-{
-	return m_pport_data->IsIndex(type, index);
-}
-
 Json::Value SimPortConf::CurrentState() const
 {
 	return m_pport_data->CurrentState();
@@ -154,6 +144,31 @@ Json::Value SimPortConf::CurrentState() const
 std::string SimPortConf::CurrentState(odc::EventType type, std::vector<std::size_t>& indexes) const
 {
 	return m_pport_data->CurrentState(type, indexes);
+}
+
+void SimPortConf::Timer(const std::string& name, ptimer_t ptr)
+{
+	m_pport_data->Timer(name, ptr);
+}
+
+ptimer_t SimPortConf::Timer(const std::string& name) const
+{
+	return m_pport_data->Timer(name);
+}
+
+void SimPortConf::CancelTimers()
+{
+	m_pport_data->CancelTimers();
+}
+
+std::vector<std::size_t> SimPortConf::Indexes(odc::EventType type) const
+{
+	return m_pport_data->Indexes(type);
+}
+
+bool SimPortConf::IsIndex(odc::EventType type, std::size_t index) const
+{
+	return m_pport_data->IsIndex(type, index);
 }
 
 std::vector<std::shared_ptr<BinaryFeedback>> SimPortConf::BinaryFeedbacks(std::size_t index) const

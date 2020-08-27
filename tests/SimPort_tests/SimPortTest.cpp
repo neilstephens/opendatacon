@@ -464,7 +464,7 @@ TEST_CASE("TestAnalogTapChangerRaise")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::OUT_OF_RANGE);
 		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 
 		/*
@@ -518,7 +518,7 @@ TEST_CASE("TestAnalogTapChangerLower")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::OUT_OF_RANGE);
 		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 
 		/*
@@ -576,7 +576,7 @@ TEST_CASE("TestBinaryTapChangerRaise")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::OUT_OF_RANGE);
 		binary = GetBinaryEncodedString(indexes, sim_port);
 		REQUIRE(10 == odc::to_decimal(binary));
 
@@ -632,7 +632,7 @@ TEST_CASE("TestBinaryTapChangerLower")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::OUT_OF_RANGE);
 		binary = GetBinaryEncodedString(indexes, sim_port);
 		REQUIRE(0 == odc::to_decimal(binary));
 
@@ -686,7 +686,7 @@ TEST_CASE("TestBCDTapChangerRaise")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 6, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(ControlCode::UNDEFINED, 6, sim_port, CommandStatus::OUT_OF_RANGE);
 		REQUIRE(10 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
@@ -738,7 +738,7 @@ TEST_CASE("TestBCDTapChangerLower")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
-		SendEvent(ControlCode::UNDEFINED, 7, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(ControlCode::UNDEFINED, 7, sim_port, CommandStatus::OUT_OF_RANGE);
 		REQUIRE(0 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
