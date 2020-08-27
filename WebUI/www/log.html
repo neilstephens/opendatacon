@@ -32,7 +32,9 @@
       }
 
       $( document ).ready(function() {
-          window.setInterval(function() { get_tcp_logs(); }, 2000);
+          const is_tcp = window.localStorgae.getItem("is_tcp_on");
+          if (is_tcp == "true")
+              window.setInterval(function() { get_tcp_logs(); }, 2000);
       });
     </script>
   </body>

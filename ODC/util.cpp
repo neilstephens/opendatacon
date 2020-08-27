@@ -28,6 +28,9 @@
 #include <opendatacon/util.h>
 #include <regex>
 #include <utility>
+
+const std::size_t bcd_pack_size = 4;
+
 namespace odc
 {
 static std::string ConfigVersion = "None";
@@ -152,6 +155,114 @@ bool extract_delimited_string(const std::string& delims, std::istream& ist, std:
 	}
 
 	return extract_delimited_string(ist,extracted);
+}
+
+std::string to_lower(const std::string& str)
+{
+	std::string lower = str;
+	std::transform(lower.begin(), lower.end(), lower.begin(),
+		[](unsigned char c) { return std::tolower(c); });
+	return lower;
+}
+
+/*
+  function    : to_decimal
+  description : convert binary to decimal
+                for example
+                1001 --> 9
+                1111 --> 15
+                0101 --> 5
+  param       : binary, binary encoded string
+  return      : decimal value of binary encoded string
+*/
+std::size_t to_decimal(const std::string& binary)
+{
+	std::size_t n = 0;
+	for (int i = binary.size() - 1; i >= 0; --i)
+		if (binary[i] == '1')
+			n += (1 << (binary.size() - 1 - i));
+	return n;
+}
+
+/*
+  function    : to_binary
+  description : this function converts a decimal value to a binary string
+                this function also takes the size to have initial zero's
+                for example 6 can be written in binary as 110.
+                but if someone wants 6 in 4 bits we have to return 0110
+                therefore second param size is required to let us know how big binary coded you want
+  param       : n, the number to be converted to binary
+  param       : size, the size of the binary enocded string
+  return      : binary encoded string
+*/
+std::string to_binary(std::size_t n, std::size_t size)
+{
+	std::string binary(size, '0');
+	for (int i = size - 1; i >= 0; --i)
+	{
+		binary[i] = (n & 1) + '0';
+		n >>= 1;
+	}
+	return binary;
+}
+
+/*
+  function    : bcd_encoded_to_decimal
+  description : this function converts bcd encoded binary string to decmial value
+                for example
+                0101 0001 --> 51
+                  01 0011 --> 13
+                1000 0001 --> 81
+  param       : str, binary encoded bcd string
+  return      : decimal value
+*/
+std::size_t bcd_encoded_to_decimal(const std::string& str)
+{
+	// Now encode the bcd of packed 4 bits
+	std::size_t decimal = 0;
+	const std::size_t start = str.size() % bcd_pack_size;
+	if (start)
+	{
+		std::string pack;
+		for (std::size_t i = 0; i < start; ++i)
+			pack += str[i];
+		decimal = to_decimal(pack);
+	}
+
+	for (std::size_t i = 0; i < (str.size() / bcd_pack_size); ++i)
+	{
+		std::string pack;
+		for (std::size_t j = 0; j < bcd_pack_size; ++j)
+			pack += str[i * bcd_pack_size + j + start];
+		decimal = (decimal * 10) + to_decimal(pack);
+	}
+	return decimal;
+}
+
+/*
+  function    : decimal_to_bcd_encoded_string
+  description : this function converts decimal encoded binary string
+                for example
+                0101 0001 --> 51
+                  01 0011 --> 13
+                1000 0001 --> 81
+  param       : str, binary encoded bcd string
+  return      : decimal value
+*/
+std::string decimal_to_bcd_encoded_string(std::size_t n, std::size_t size)
+{
+	const std::size_t sz = static_cast<std::size_t>(std::ceil(size / static_cast<double>(bcd_pack_size)) * bcd_pack_size);
+	std::string decimal(sz, '0');
+	int i = sz - bcd_pack_size;
+	while (n)
+	{
+		const std::string s = to_binary(n % 10, bcd_pack_size);
+		for (int j = i; j < i + static_cast<int>(bcd_pack_size); ++j)
+			decimal[j] = s[j - i];
+		n /= 10;
+		i -= bcd_pack_size;
+	}
+	return decimal.substr(decimal.size() - size, size);
 }
 
 } // namespace odc

@@ -45,10 +45,13 @@ void spdlog_shutdown();
 bool getline_noncomment(std::istream& is, std::string& line);
 bool extract_delimited_string(std::istream& ist, std::string& extracted);
 bool extract_delimited_string(const std::string& delims, std::istream& ist, std::string& extracted);
-
+std::string to_lower(const std::string& str);
 std::string GetConfigVersion();
 void SetConfigVersion(std::string Version);
-
+std::size_t to_decimal(const std::string& binary);
+std::string to_binary(std::size_t n, std::size_t size);
+std::size_t bcd_encoded_to_decimal(const std::string& str);
+std::string decimal_to_bcd_encoded_string(std::size_t n, std::size_t size);
 } //namspace odc
 
 #endif //UTIL_H

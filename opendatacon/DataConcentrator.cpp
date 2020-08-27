@@ -872,53 +872,53 @@ void DataConcentrator::Shutdown()
 			shutting_down = true;
 			try
 			{
-				//wait for startup to finish before shutdown
-				while(starting_element_count > 0)
+			//wait for startup to finish before shutdown
+			      while(starting_element_count > 0)
 					pIOS->run_one();
 
-				if(auto log = odc::spdlog_get("opendatacon"))
-				{
-					log->critical("Shutting Down...");
-					log->info("Disabling Interfaces...");
+			      if(auto log = odc::spdlog_get("opendatacon"))
+			      {
+			            log->critical("Shutting Down...");
+			            log->info("Disabling Interfaces...");
 				}
-				for(auto& Name_n_UI : Interfaces)
-				{
-					Name_n_UI.second->Disable();
+			      for(auto& Name_n_UI : Interfaces)
+			      {
+			            Name_n_UI.second->Disable();
 				}
-				if(auto log = odc::spdlog_get("opendatacon"))
+			      if(auto log = odc::spdlog_get("opendatacon"))
 					log->info("Disabling DataConnectors...");
-				for(auto& Name_n_Conn : DataConnectors)
-				{
-					Name_n_Conn.second->Disable();
+			      for(auto& Name_n_Conn : DataConnectors)
+			      {
+			            Name_n_Conn.second->Disable();
 				}
-				if(auto log = odc::spdlog_get("opendatacon"))
+			      if(auto log = odc::spdlog_get("opendatacon"))
 					log->info("Disabling DataPorts...");
-				for(auto& Name_n_Port : DataPorts)
-				{
-					Name_n_Port.second->Disable();
+			      for(auto& Name_n_Port : DataPorts)
+			      {
+			            Name_n_Port.second->Disable();
 				}
 
-				if(auto log = odc::spdlog_get("opendatacon"))
-				{
-					log->info("Finishing asynchronous tasks...");
-					log->flush(); //for the benefit of tcp logger shutdown
+			      if(auto log = odc::spdlog_get("opendatacon"))
+			      {
+			            log->info("Finishing asynchronous tasks...");
+			            log->flush(); //for the benefit of tcp logger shutdown
 				}
 
-				//shutdown tcp logger so it doesn't keep the io_service going
-				for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
-				{
-					it->second.DeInit();
-					if(LogSinks.find(it->first) != LogSinks.end())
+			      //shutdown tcp logger so it doesn't keep the io_service going
+			      for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
+			      {
+			            it->second.DeInit();
+			            if(LogSinks.find(it->first) != LogSinks.end())
 						LogSinks[it->first]->set_level(spdlog::level::off);
 				}
 
-				ios_working.reset();
+			      ios_working.reset();
 			}
 			catch(const std::exception& e)
 			{
-				if(auto log = odc::spdlog_get("opendatacon"))
+			      if(auto log = odc::spdlog_get("opendatacon"))
 					log->critical("Caught exception in DataConcentrator::Shutdown(): {}", e.what());
-				//Fall through - we set the shutting_down flag for watchdog
+			//Fall through - we set the shutting_down flag for watchdog
 			}
 		});
 }

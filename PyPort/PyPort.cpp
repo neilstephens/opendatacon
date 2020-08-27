@@ -399,7 +399,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				if (Parts.size() != 5) throw std::runtime_error("Payload for ControlRelayOutputBlock does not have enough sections " + PayloadStr);
 
 				ControlCode ControlCodeResult;
-				GetControlCodeFromStringName(Parts[1], ControlCodeResult);
+				ToControlCode(Parts[1], ControlCodeResult);
 				val.functionCode = ControlCodeResult;
 
 				if (Parts[2].find("Count") == std::string::npos) throw std::runtime_error("Count field of ControlRelayOutputBlock not in " + Parts[2]);

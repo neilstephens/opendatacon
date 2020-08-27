@@ -53,7 +53,7 @@ ConsoleUI::ConsoleUI():
 			            "Access contextual subcommands:"<<std::endl<<std::endl;
 			/* list sub commands */
 			            auto commands = Responders[arg]->GetCommandList();
-					for (const auto& command : commands)
+			            for (const auto& command : commands)
 			            {
 			                  auto cmd = command.asString();
 			                  auto desc = Responders[arg]->GetCommandDescription(cmd);
@@ -65,7 +65,7 @@ ConsoleUI::ConsoleUI():
 			{
 			      std::cout<<help_intro<<std::endl<<std::endl;
 			//print root commands with descriptions
-				for(const auto& desc: mDescriptions)
+			      for(const auto& desc: mDescriptions)
 			      {
 			            std::cout<<std::setw(25)<<std::left<<desc.first+":"<<desc.second<<std::endl<<std::endl;
 				}
@@ -73,7 +73,7 @@ ConsoleUI::ConsoleUI():
 			      if (this->context.empty())
 			      {
 			//check if command matches a Responder - if so, arg is our partial sub command
-					for(const auto& name_n_responder : Responders)
+			            for(const auto& name_n_responder : Responders)
 			            {
 			                  std::cout<<std::setw(25)<<std::left<<name_n_responder.first+":"<<
 			                  "Access contextual subcommands."<<std::endl<<std::endl;
@@ -83,7 +83,7 @@ ConsoleUI::ConsoleUI():
 			      {
 			            /* list commands available to current responder */
 			            auto commands = Responders[this->context]->GetCommandList();
-					for (const auto& command : commands)
+			            for (const auto& command : commands)
 			            {
 			                  auto cmd = command.asString();
 			                  auto desc = Responders[this->context]->GetCommandDescription(cmd);
@@ -141,8 +141,7 @@ int ConsoleUI::trigger (const std::string& s)
 	std::stringstream LineStream(s);
 	std::string cmd, lower_cmd;
 	LineStream>>cmd;
-	lower_cmd = cmd;
-	ToLower(lower_cmd);
+	lower_cmd = to_lower(cmd);
 
 	if(this->context.empty() && Responders.count(cmd))
 	{
@@ -203,15 +202,13 @@ int ConsoleUI::hotkeys(char c)
 		std::string cmd, lower_cmd;
 		cmd.assign(buffer.begin(), buffer.end());
 
-		lower_cmd = cmd;
-		ToLower(lower_cmd);
+		lower_cmd = to_lower(cmd);
 
 		//find root commands that start with the partial
 		std::vector<std::string> matching_cmds;
 		for(const auto& name_n_description : mDescriptions)
 		{
-			std::string name = name_n_description.first;
-			ToLower(name);
+			std::string name = to_lower(name_n_description.first);
 			if (name.substr(0, lower_cmd.size()) == lower_cmd)
 				matching_cmds.push_back(name_n_description.first);
 		}
@@ -226,8 +223,7 @@ int ConsoleUI::hotkeys(char c)
 				auto commands = Responders[cmd]->GetCommandList();
 				for (const auto& command : commands)
 				{
-					std::string cmd = command.asString();
-					ToLower(cmd);
+					std::string cmd = to_lower(command.asString());
 					if (cmd.substr(0, lower_cmd.size()) == lower_cmd)
 						matching_cmds.push_back(cmd + " " + command.asString());
 				}
@@ -238,8 +234,7 @@ int ConsoleUI::hotkeys(char c)
 				/* list all matching responders */
 				for(const auto& name_n_responder : Responders)
 				{
-					std::string name = name_n_responder.first;
-					ToLower(name);
+					std::string name = to_lower(name_n_responder.first);
 					if (name.substr(0, lower_cmd.size()) == lower_cmd)
 						matching_cmds.emplace_back(name_n_responder.first);
 				}
@@ -251,8 +246,7 @@ int ConsoleUI::hotkeys(char c)
 			auto commands = Responders[this->context]->GetCommandList();
 			for (const auto& command : commands)
 			{
-				std::string cmd = command.asString();
-				ToLower(cmd);
+				std::string cmd = to_lower(command.asString());
 				if (cmd.substr(0, lower_cmd.size()) == lower_cmd)
 					matching_cmds.push_back(command.asString());
 			}
@@ -360,12 +354,6 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 		auto result = pResponder->ExecuteCommand(command, params);
 		std::cout<<result.toStyledString()<<std::endl;
 	}
-}
-
-void ConsoleUI::ToLower(std::string& str)
-{
-	std::transform(str.begin(), str.end(), str.begin(),
-		[](unsigned char c) { return std::tolower(c); });
 }
 
 void ConsoleUI::Build()

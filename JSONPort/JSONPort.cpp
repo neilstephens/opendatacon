@@ -411,11 +411,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						{
 							Json::Value result;
 							result["Command"]["Index"] = point_pair.first;
-
-							if(command_stat == CommandStatus::SUCCESS)
-								result["Command"]["Status"] = "SUCCESS";
-							else
-								result["Command"]["Status"] = "UNDEFINED";
+							result["Command"]["Status"] = odc::ToString(command_stat);
 
 							//TODO: make this writer reusable (class member)
 							//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...

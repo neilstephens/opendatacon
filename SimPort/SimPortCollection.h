@@ -51,7 +51,7 @@ public:
 				{
 				      return IUIResponder::GenerateResult("Bad parameter");
 				}
-				auto type = params.at("0");
+				auto type = ToEventType(params.at("0"));
 				auto index = params.at("1");
 				auto period = params.at("2");
 				if(target->UISetUpdateInterval(type,index,period))
@@ -82,7 +82,7 @@ public:
 				{
 				      return IUIResponder::GenerateResult("Bad parameter");
 				}
-				auto type = params.at("0");
+				auto type = ToEventType(params.at("0"));
 				auto index = params.at("1");
 				if(target->UIRelease(type,index))
 					return IUIResponder::GenerateResult("Success");
@@ -105,7 +105,7 @@ public:
 		{
 			return IUIResponder::GenerateResult("Bad parameter");
 		}
-		auto type = params.at("0");
+		auto type = ToEventType(params.at("0"));
 		auto index = params.at("1");
 		auto value = params.at("2");
 		std::string quality = "";
