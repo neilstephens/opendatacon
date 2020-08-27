@@ -230,6 +230,26 @@ std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std:
 	return result;
 }
 
+void SimPortPointData::Timer(const std::string& name, ptimer_t ptr)
+{
+	std::unique_lock<std::shared_timed_mutex> lck(timer_mutex);
+	m_timers[name] = ptr;
+}
+
+ptimer_t SimPortPointData::Timer(const std::string& name)
+{
+	std::shared_lock<std::shared_timed_mutex> lck(timer_mutex);
+	return m_timers.at(name);
+}
+
+void SimPortPointData::CancelTimers()
+{
+	std::shared_lock<std::shared_timed_mutex> lck(timer_mutex);
+	for (const auto& timer : m_timers)
+		timer.second->cancel();
+	m_timers.clear();
+}
+
 bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(point_mutex);
