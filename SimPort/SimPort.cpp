@@ -855,6 +855,11 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;
 				}
+				else
+				{
+					message = "this binary control is out or range";
+					status = CommandStatus::OUT_OF_RANGE;
+				}
 			}
 			else if (binary_position->action == odc::PositionAction::LOWER)
 			{
@@ -865,6 +870,11 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;
+				}
+				else
+				{
+					message = "this binary control is out or range";
+					status = CommandStatus::OUT_OF_RANGE;
 				}
 			}
 		}
@@ -907,6 +917,11 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
 		}
+		else
+		{
+			message = "this binary control is out or range";
+			status = CommandStatus::OUT_OF_RANGE;
+		}
 	}
 	else if (binary_position->action == odc::PositionAction::LOWER)
 	{
@@ -917,6 +932,11 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 			PublishBinaryEvents(binary_position->indexes, binary);
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
+		}
+		else
+		{
+			message = "this binary control is out or range";
+			status = CommandStatus::OUT_OF_RANGE;
 		}
 	}
 	return status;
@@ -950,6 +970,11 @@ CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPo
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
 		}
+		else
+		{
+			message = "this binary control is out or range";
+			status = CommandStatus::OUT_OF_RANGE;
+		}
 	}
 	else if (binary_position->action == odc::PositionAction::LOWER)
 	{
@@ -960,6 +985,11 @@ CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPo
 			PublishBinaryEvents(binary_position->indexes, bcd_binary);
 			message = "the event processing for this binary control position is a success";
 			status = CommandStatus::SUCCESS;
+		}
+		else
+		{
+			message = "this binary control is out or range";
+			status = CommandStatus::OUT_OF_RANGE;
 		}
 	}
 	return status;
