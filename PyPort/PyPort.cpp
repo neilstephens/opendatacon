@@ -535,6 +535,9 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		std::string isotimestamp = getISOCurrentTimestampUTC_from_msSinceEpoch_t(event->GetTimestamp());
 		try
 		{
+			if (MyConf->pyQueueFormatString == "")
+				return;
+
 			// Could use event->SourcePort (for the sending port, instead of the the SenderName, which will be the connector name.
 			std::string TagValue = GetTagValue(SenderName, event->GetEventType(),event->GetIndex());
 
