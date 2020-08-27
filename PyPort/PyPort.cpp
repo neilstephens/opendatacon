@@ -761,7 +761,7 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 			{
 				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
 			}
-			LOGTRACE("Type - {}, Tag - {}, Index - {}", Name, Tag, index);
+			LOGTRACE("Sender - {}, Type - {}, Tag - {}, Index - {}", sender, Name, Tag, index);
 		}
 	}
 	LOGDEBUG("Conf processing - {} - Finished",Name);
