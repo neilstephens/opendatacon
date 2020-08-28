@@ -43,8 +43,8 @@ public:
 		pyQueueFormatString(""), //"{{\"Tag\" : \"{6}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Quality\" : \"{3}\", \"TS\" : \"{2}\"}}"),
 		pyEventsAreQueued(false),
 		pyOnlyQueueEventsWithTags(false),
-		GlobalUseSystemPython(false),
-		pyTagPrefixString("")
+		pyTagPrefixString(""),
+		GlobalUseSystemPython(false)
 	{}
 
 	std::string pyModuleName;
