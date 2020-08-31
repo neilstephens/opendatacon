@@ -119,7 +119,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 	if(PACKAGE_PYTHON)
 		set(PACK_NAMES python expat zlib tinfo sqlite readline ncurses mpdec lzma ffi db5 bz2)
 		find_path(PYTHON_STDLIB_DIR _pydecimal.py
-			PATHS ${PYTHON_HOME}/lib/${PYTHON_VER} ${PYTHON_HOME}/Lib
+			PATHS ${PYTHON_HOME}/lib/${PYTHON_VER} ${PYTHON_HOME}/lib64/${PYTHON_VER} ${PYTHON_HOME}/Lib
 			NO_DEFAULT_PATH
 			CMAKE_FIND_ROOT_PATH_BOTH)
 		if(PYTHON_STDLIB_DIR)
