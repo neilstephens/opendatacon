@@ -43,7 +43,7 @@ class SimPort: public DataPort
 public:
 	//Implement DataPort interface
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
-	~SimPort();
+
 	void Enable() final;
 	void Disable() final;
 	void Build() final;

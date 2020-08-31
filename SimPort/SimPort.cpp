@@ -86,12 +86,6 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	ProcessFile();
 }
 
-SimPort::~SimPort()
-{
-	Disable();
-	HttpServerManager::StopConnection(pServer);
-}
-
 void SimPort::Enable()
 {
 	pEnableDisableSync->post([this]()
