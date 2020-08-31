@@ -38,7 +38,7 @@ class ProducerConsumerQueue
 private:
 	const uint32_t MaxSize = 255; // MD3 maximum event queue size
 	std::queue<T> Queue;
-	std::shared_timed_mutex m;
+	mutable std::shared_timed_mutex m;
 
 public:
 	bool Peek(T& item)
@@ -53,7 +53,7 @@ public:
 	}
 	bool Pop(T& item)
 	{
-		std::shared_lock<std::shared_timed_mutex> lck(m);
+		std::unique_lock<std::shared_timed_mutex> lck(m);
 		if (Queue.empty())
 		{
 			return false;
@@ -64,7 +64,7 @@ public:
 	}
 	bool Pop()
 	{
-		std::shared_lock<std::shared_timed_mutex> lck(m);
+		std::unique_lock<std::shared_timed_mutex> lck(m);
 		if (Queue.empty())
 		{
 			return false;
@@ -75,7 +75,7 @@ public:
 
 	bool Push(const T& item)
 	{
-		std::shared_lock<std::shared_timed_mutex> lck(m);
+		std::unique_lock<std::shared_timed_mutex> lck(m);
 
 		// Limit the number of elements...
 		if (Queue.size() >= MaxSize)

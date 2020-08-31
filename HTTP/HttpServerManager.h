@@ -51,7 +51,7 @@ class ServerTokenType
 public:
 	ServerTokenType():
 		ServerID(""),
-		pServerManager()
+		pServerManager(nullptr)
 	{}
 	ServerTokenType(std::string serverid, std::shared_ptr<HttpServerManager> servermanager):
 		ServerID(serverid),
@@ -70,8 +70,10 @@ class HttpServerManager
 
 public:
 	HttpServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort);
+	~HttpServerManager();
 
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
+	// This is the factory method for this class.
 	static void AddHandler(const ServerTokenType& ServerTok, const std::string& urlpattern, http::pHandlerCallbackType urihandler);
 
 	static ServerTokenType AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort);
@@ -83,8 +85,10 @@ public:
 	{
 		return aEndPoint + ":" + aPort;
 	}
-
-	~HttpServerManager();
+	// Make the class non-copyable
+	HttpServerManager& operator=(const HttpServerManager&) = delete;
+	HttpServerManager(const HttpServerManager&) = delete;
+	HttpServerManager() = default;
 
 private:
 	std::shared_ptr<odc::asio_service> pIOS;

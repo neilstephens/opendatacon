@@ -32,6 +32,7 @@
 #include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <unordered_map>
+#include <string>
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> pTimer_t;
@@ -43,6 +44,15 @@ void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
 enum PointType { Binary = 0, Analog = 1, BinaryControl = 2};
+
+// We have a map of these structures, for each sender to this port. This way we only need one port to handle all inbound data on the event bus.
+class PortMapClass
+{
+public:
+	std::unordered_map<size_t, std::string> AnalogMap;
+	std::unordered_map<size_t, std::string> BinaryMap;
+	std::unordered_map<size_t, std::string> BinaryControlMap;
+};
 
 class PyPort: public DataPort
 {
@@ -67,7 +77,7 @@ public:
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
 
 	size_t GetEventQueueSize() { return pWrapper->GetEventQueueSize(); }
-	std::string GetTagValue(EventType Eventt, size_t Index);
+	std::string GetTagValue(const std::string& SenderName, EventType Eventt, size_t Index);
 	void ProcessPoints(PointType ptype, const Json::Value& JSONNode);
 
 protected:
@@ -78,9 +88,7 @@ private:
 	std::unique_ptr<PythonWrapper> pWrapper;
 	std::string JSONMain;
 	std::string JSONOverride;
-	std::unordered_map<size_t, std::string> AnalogMap;
-	std::unordered_map<size_t, std::string> BinaryMap;
-	std::unordered_map<size_t, std::string> BinaryControlMap;
+	std::unordered_map<std::string, std::shared_ptr<PortMapClass>> PortTagMap;
 
 	ServerTokenType pServer;
 

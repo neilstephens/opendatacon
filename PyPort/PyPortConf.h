@@ -40,9 +40,10 @@ public:
 		pyClassName("SimPortClass"),
 		pyHTTPAddr("localhost"),
 		pyHTTPPort("8000"),
-		pyQueueFormatString("{{\"Tag\" : \"{0}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Qual\" : \"{3}\", \"TS\" : \"{2}\"}}"),
+		pyQueueFormatString(""), //"{{\"Tag\" : \"{6}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Quality\" : \"{3}\", \"TS\" : \"{2}\"}}"),
 		pyEventsAreQueued(false),
 		pyOnlyQueueEventsWithTags(false),
+		pyTagPrefixString(""),
 		GlobalUseSystemPython(false)
 	{}
 
@@ -51,6 +52,7 @@ public:
 	std::string pyHTTPAddr;
 	std::string pyHTTPPort;
 	std::string pyQueueFormatString;
+	std::string pyTagPrefixString;
 	bool pyEventsAreQueued;
 	bool pyOnlyQueueEventsWithTags;
 	bool GlobalUseSystemPython;

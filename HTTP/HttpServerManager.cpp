@@ -60,17 +60,22 @@ ServerTokenType HttpServerManager::AddConnection(std::shared_ptr<odc::asio_servi
 	std::string ServerID = MakeServerID(aEndPoint, aPort);
 
 	// Only add if does not exist, or has expired
-	std::shared_ptr<HttpServerManager> pSM;
-	if (ServerMap.count(ServerID) == 0 || !(pSM = ServerMap[ServerID].lock()))
+	// If we can get the weak_ptr, it was created and is still valid, so use it.
+	if (ServerMap.count(ServerID) != 0)
 	{
-		LOGDEBUG("First ServerTok for connection - {}", ServerID);
-		// If we give each ServerToken a shared_ptr to the connection, then the
-		//connection gets destoyed with the last token
-		pSM = std::make_shared<HttpServerManager>(apIOS, aEndPoint, aPort);
-		ServerMap[ServerID] = pSM;
+		if (auto pSM = ServerMap[ServerID].lock())
+		{
+			LOGDEBUG("ServerTok already exists, using that connection - {}", ServerID);
+			return ServerTokenType(ServerID, pSM);
+		}
 	}
-	else
-		LOGDEBUG("ServerTok already exists, using that connection - {}", ServerID);
+
+	// Either the weak_ptr is no longer valid, or there is no entry, so create it..
+	LOGDEBUG("First ServerTok for connection - {}", ServerID);
+	// If we give each ServerToken a shared_ptr to the connection, then the connection gets destoyed with the last token
+	// This should be the only way to call the constuctor (we disable copy constructors)
+	auto pSM = std::make_shared<HttpServerManager>(apIOS, aEndPoint, aPort);
+	ServerMap[ServerID] = pSM;
 
 	return ServerTokenType(ServerID, pSM);
 }
@@ -84,7 +89,7 @@ void HttpServerManager::StartConnection(const ServerTokenType& ServerTok)
 	}
 	else
 	{
-		LOGERROR("Tried to start httpserver when the connection token was no longer valid");
+		LOGERROR("Tried to start httpserver when the connection token was not valid");
 	}
 }
 
@@ -97,7 +102,7 @@ void HttpServerManager::StopConnection(const ServerTokenType& ServerTok)
 	}
 	else
 	{
-		LOGERROR("Tried to stop httpserver when the connection token was no longer valid");
+		LOGERROR("Tried to stop httpserver when the connection token was not valid");
 	}
 }
 
@@ -110,7 +115,7 @@ void HttpServerManager::AddHandler(const ServerTokenType& ServerTok, const std::
 	}
 	else
 	{
-		LOGERROR("Tried to add a urihandler when the httpserver was no longer valid");
+		LOGERROR("Tried to add a urihandler when the httpserver was not valid");
 	}
 }
 

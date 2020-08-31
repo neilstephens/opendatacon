@@ -141,7 +141,7 @@ public:
 		return val;
 	}
 private:
-	std::shared_timed_mutex m;
+	mutable std::shared_timed_mutex m;
 	bool val;
 };
 

@@ -349,7 +349,7 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 		PendingCommands[group].Command = pCommand;
 		PendingCommands[group].ExpiryTime = CBNowUTC() + PendingCommands[group].CommandValidTimemsec;
 
-		LOGDEBUG("{} Got a valid {} PendingCommand, Data {} FailControlResponse {}",Name, cmd, PendingCommands[group].Data, FailControlResponse);
+		LOGDEBUG("{} Got a valid {} PendingCommand, Data {} DeliberatelyFailControlResponse {}",Name, cmd, PendingCommands[group].Data, FailControlResponse);
 
 		if (FailControlResponse)
 		{
