@@ -41,9 +41,9 @@ public:
 		pyHTTPAddr("localhost"),
 		pyHTTPPort("8000"),
 		pyQueueFormatString(""), //"{{\"Tag\" : \"{6}\", \"Idx\" : {1}, \"Val\" : \"{4}\", \"Quality\" : \"{3}\", \"TS\" : \"{2}\"}}"),
+		pyTagPrefixString(""),
 		pyEventsAreQueued(false),
 		pyOnlyQueueEventsWithTags(false),
-		pyTagPrefixString(""),
 		GlobalUseSystemPython(false)
 	{}
 

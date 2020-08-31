@@ -18,7 +18,7 @@
  *	limitations under the License.
  */
 /*
- * EventSinkTransform.h
+ * BlackHoleTransform.h
  *
  *  Created on: 4/8/2020
  *      Author: Scott Ellis <scott.ellis@novatex.com.au>
@@ -32,10 +32,10 @@
 
 using namespace odc;
 
-class EventSinkTransform: public Transform
+class BlackHoleTransform: public Transform
 {
 public:
-	EventSinkTransform(const Json::Value& params): Transform(params)
+	BlackHoleTransform(const Json::Value& params): Transform(params)
 	{}
 
 	bool Event(std::shared_ptr<EventInfo> event) override

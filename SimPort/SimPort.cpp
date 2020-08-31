@@ -88,6 +88,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 
 SimPort::~SimPort()
 {
+	Disable();
 	HttpServerManager::StopConnection(pServer);
 }
 
