@@ -78,6 +78,15 @@ TEST_CASE(SUITE("TCP link"))
 		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 
+		//wait to actually recieve something
+		count = 0;
+		while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 20000)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			count++;
+		}
+		REQUIRE(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() > 0);
+
 		//turn outstation off
 		OPUT->Disable();
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -167,17 +176,27 @@ TEST_CASE(SUITE("Serial link"))
 			REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 			REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 
+			//wait to actually recieve something
+			count = 0;
+			while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 20000)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				count++;
+			}
+			REQUIRE(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() > 0);
+
 			//turn outstation off
 			OPUT->Disable();
 
 			count = 0;
-			while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
+			std::string new_status;
+			while((new_status = MPUT->GetStatus()["Result"].asString()) == "Port enabled - link up (unreset)" && count < 20000)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				count++;
 			}
 
-			REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
+			REQUIRE(new_status == "Port enabled - link down");
 			REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
 			if(system("killall socat"))
