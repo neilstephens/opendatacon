@@ -80,7 +80,7 @@ const char *conffilename2 = "MD3Config2.conf";
 const char *conffile1 = R"001(
 {
 	"IP" : "127.0.0.1",
-	"Port" : 10000,
+	"Port" : 10010,
 	"OutstationAddr" : 124,
 	"ServerType" : "PERSISTENT",
 	"TCPClientServer" : "SERVER",
@@ -146,7 +146,7 @@ const char *conffile1 = R"001(
 const char *conffile2 = R"002(
 {
 	"IP" : "127.0.0.1",
-	"Port" : 10000,
+	"Port" : 10010,
 	"OutstationAddr" : 125,
 	"ServerType" : "PERSISTENT",
 	"TCPClientServer" : "SERVER",
@@ -2395,7 +2395,7 @@ TEST_CASE("Station - Multi-drop TCP Test")
 	// An outstation is a server by default (Master connects to it...)
 	// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
 	auto pSockMan = std::make_shared<TCPSocketManager<std::string>>
-		                (IOS, false, "127.0.0.1", "10000",
+		                (IOS, false, "127.0.0.1", "10010",
 		                ResponseCallback,
 		                SocketStateHandler,
 		                std::numeric_limits<size_t>::max(),
@@ -2554,7 +2554,7 @@ TEST_CASE("Master - Analog")
 	TEST_MD3MAPort(Json::nullValue);
 
 	Json::Value portoverride;
-	portoverride["Port"] = static_cast<Json::UInt64>(10001);
+	portoverride["Port"] = static_cast<Json::UInt64>(10011);
 	TEST_MD3OSPort(portoverride);
 
 	START_IOS(1);
@@ -2820,7 +2820,7 @@ TEST_CASE("Master - DOM and POM Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10011);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -3025,7 +3025,7 @@ TEST_CASE("Master - TimeDate Poll Tests")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10011);
 	OSportoverride["StandAloneOutstation"] = false;
 	OSportoverride["TimeSetPoint"]["Index"] = 60000;
 	TEST_MD3OSPort(OSportoverride);
@@ -3098,7 +3098,7 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10011);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -3190,7 +3190,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10011);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
@@ -3293,7 +3293,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 	TEST_MD3MAPort(MAportoverride);
 
 	Json::Value OSportoverride;
-	OSportoverride["Port"] = static_cast<Json::UInt64>(10001);
+	OSportoverride["Port"] = static_cast<Json::UInt64>(10011);
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
