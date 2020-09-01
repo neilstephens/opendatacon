@@ -19,6 +19,7 @@
  */
 /**
  */
+#include "TestDNP3Helpers.h"
 #include "../PortLoader.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
@@ -28,8 +29,8 @@
 
 TEST_CASE(SUITE("TCP link"))
 {
-	//Load the library
-	InitLibaryLoading();
+	TestSetup();
+
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
@@ -43,9 +44,8 @@ TEST_CASE(SUITE("TCP link"))
 		delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
 		REQUIRE(delOutstation);
 
-		Json::Value Oconf;
-		Oconf["IP"] = "0.0.0.0";
-		auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
+		Json::Value conf;
+		auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", conf), delOutstation);
 		REQUIRE(OPUT);
 
 		//make a master port
@@ -54,9 +54,8 @@ TEST_CASE(SUITE("TCP link"))
 		delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
 		REQUIRE(delMaster);
 
-		Json::Value Mconf;
-		Mconf["ServerType"] = "PERSISTENT";
-		auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+		conf["ServerType"] = "PERSISTENT";
+		auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", conf), delMaster);
 		REQUIRE(MPUT);
 
 		//get them to build themselves using their configs
@@ -107,6 +106,7 @@ TEST_CASE(SUITE("TCP link"))
 	}
 	//Unload the library
 	UnLoadModule(portlib);
+	TestTearDown();
 }
 
 
@@ -118,8 +118,8 @@ TEST_CASE(SUITE("Serial link"))
 	}
 	else
 	{
-		//Load the library
-		InitLibaryLoading();
+		TestSetup();
+
 		auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 		REQUIRE(portlib);
 		{
@@ -131,6 +131,7 @@ TEST_CASE(SUITE("Serial link"))
 			{
 				WARN("socat system call failed");
 			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 			//make an outstation port
 			newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
@@ -140,6 +141,7 @@ TEST_CASE(SUITE("Serial link"))
 
 			Json::Value Oconf;
 			Oconf["SerialDevice"] = "SerialEndpoint1";
+			Oconf["LOG_LEVEL"] = "ALL";
 			auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
 			REQUIRE(OPUT);
 
@@ -152,6 +154,7 @@ TEST_CASE(SUITE("Serial link"))
 			Json::Value Mconf;
 			Mconf["ServerType"] = "PERSISTENT";
 			Mconf["SerialDevice"] = "SerialEndpoint2";
+			Mconf["LOG_LEVEL"] = "ALL";
 			Mconf["LinkKeepAlivems"] = 200;
 			Mconf["LinkTimeoutms"] = 100;
 			auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
@@ -210,6 +213,7 @@ TEST_CASE(SUITE("Serial link"))
 		}
 		//Unload the library
 		UnLoadModule(portlib);
+		TestTearDown();
 	}
 }
 

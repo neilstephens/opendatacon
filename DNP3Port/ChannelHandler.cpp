@@ -83,7 +83,7 @@ std::shared_ptr<asiodnp3::IChannel> ChannelHandler::SetChannel()
 	}
 	else
 	{
-		ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
+		ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port)+":"+to_string(pPort->ClientOrServer());
 		isSerial = false;
 	}
 
@@ -97,9 +97,8 @@ std::shared_ptr<asiodnp3::IChannel> ChannelHandler::SetChannel()
 	{
 		pChannel = Channels[ChannelID].first.lock();
 		pWatchdog = Channels[ChannelID].second.lock();
-		if(!pChannel || !pWatchdog)
-			throw std::runtime_error(pPort->Name+" SetChannel(): Expired Channel or Watchdog on pre-existing ChannelID");
-		return pChannel;
+		if(pChannel && pWatchdog)
+			return pChannel;
 	}
 
 	//create a new channel and watchdog if we get to here

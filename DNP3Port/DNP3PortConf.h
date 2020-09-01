@@ -33,6 +33,19 @@
 #include <openpal/logging/LogFilters.h>
 
 enum class TCPClientServer {CLIENT,SERVER,DEFAULT};
+inline std::string to_string(const TCPClientServer CS)
+{
+	switch(CS)
+	{
+		case TCPClientServer::CLIENT:
+			return "CLIENT";
+		case TCPClientServer::SERVER:
+			return "SERVER";
+		case TCPClientServer::DEFAULT:
+			return "DEFAULT";
+	}
+	return "UNKNOWN";
+}
 enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 struct DNP3AddrConf
 {
