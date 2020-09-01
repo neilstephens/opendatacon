@@ -127,7 +127,12 @@ if(NOT USE_PYTHON_SUBMODULE)
 			if(NOT PYTHON_NUM)
 				set(PYTHON_NUM 3${PYTHON_MINOR_VER})
 			endif()
-			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_SHARED}/Python${PYTHON_NUM})
+			file(GLOB_RECURSE STDLIB_SUBDIR
+				RELATIVE ${PYTHON_HOME}
+				${PYTHON_STDLIB_DIR}/_pydecimal.py)
+			get_filename_component(STDLIB_SUBDIR ${STDLIB_SUBDIR} DIRECTORY)
+			message("Install Python stdlib dir: '${INSTALLDIR_SHARED}/Python${PYTHON_NUM}/${STDLIB_SUBDIR}'")
+			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_SHARED}/Python${PYTHON_NUM}/${STDLIB_SUBDIR})
 			add_definitions(-DPYTHON_LIBDIR="Python${PYTHON_NUM}")
 			file(GLOB_RECURSE PLATFORMPATH
 				RELATIVE ${PYTHON_STDLIB_DIR}
@@ -137,7 +142,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 				message("Found separate platform python dir: '${CMAKE_MATCH_1}'")
 			endif()
 			add_custom_target(copy-python-files ALL
-				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}
+				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}/${STDLIB_SUBDIR}
 			)
 			file(GLOB_RECURSE PYTHON_EXES ${PYTHON_STDLIB_DIR}/*.exe)
 			foreach(python_exe ${PYTHON_EXES})
