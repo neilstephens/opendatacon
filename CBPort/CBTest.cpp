@@ -1105,6 +1105,52 @@ TEST_CASE("Station - SOERequest F10")
 
 	STANDARD_TEST_TEARDOWN();
 }
+
+TEST_CASE("Station - Time Set Command")
+{
+	STANDARD_TEST_SETUP();
+	Json::Value portoverride;
+	//portoverride["OutstationAddr"] = static_cast<Json::UInt>(4);
+	TEST_CBOSPort(portoverride);
+
+	CBOSPort->Enable();
+
+	// Invalid messages sent by ADMS
+	// 9b50201e 4deb6e35 - station 11
+	// 99502022 4de9ea0d - station 9
+	// 9a502000 4dec0229 - station 10
+	//CBBlockData b0("94501032");	// From a log file, this was sent by ADMS. 
+	//CBBlockData b1("7b2a4529");
+
+	auto cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
+
+	CBMessage_t CompleteCBMessage;
+
+	CBMasterPort::BuildUpdateTimeMessage(9, cbtime, CompleteCBMessage);
+
+	asio::streambuf write_buffer;
+	std::ostream output(&write_buffer);
+	output << CompleteCBMessage[0].ToBinaryString();
+	output << CompleteCBMessage[1].ToBinaryString();
+
+	// Hook the output function with a lambda
+	std::string Response = "Not Set";
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
+
+	// Send the PendingCommand
+	CBOSPort->InjectSimulatedTCPMessage(write_buffer);
+	WaitIOS(*IOS, 2);
+
+	std::string DesiredResult = "99501030f0487dbb";
+
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult); 
+
+	// Check the time offset - 1 minute??
+
+	CBOSPort->Disable();
+
+	STANDARD_TEST_TEARDOWN();
+}
 TEST_CASE("Station - BinaryEvent")
 {
 	STANDARD_TEST_SETUP();
@@ -1281,6 +1327,7 @@ TEST_CASE("Station - CONTROL Commands")
 
 	STANDARD_TEST_TEARDOWN();
 }
+
 
 TEST_CASE("Station - Baker ScanRequest F0")
 {

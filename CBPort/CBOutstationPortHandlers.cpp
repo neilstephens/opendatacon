@@ -603,7 +603,7 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 			}
 			else
 			{
-				LOGERROR("{} Received Illegal MASTER_SUB_FUNC_SEND_TIME_UPDATES Command - Index {}, Blocks {}, Message Size {} ", Name, DataIndex, NumberOfBlocksInMessage, CompleteCBMessage.size());
+				LOGERROR("{} Received Illegal MASTER_SUB_FUNC_SEND_TIME_UPDATES Command - Index {} (must be 0), Blocks {} (must be 2), Message Size {} (must be 2) ", Name, DataIndex, NumberOfBlocksInMessage, CompleteCBMessage.size());
 			}
 		}
 		break;
