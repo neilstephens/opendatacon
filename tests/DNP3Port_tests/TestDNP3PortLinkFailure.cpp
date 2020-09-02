@@ -48,16 +48,16 @@ inline port_pair_t PortPair(void* portlib, size_t os_addr, size_t ms_addr = 0, M
 
 	//config overrides
 	Json::Value conf;
-	conf["MasterAddr"] = ms_addr;
-	conf["OutstationAddr"] = os_addr;
+	conf["MasterAddr"] = Json::UInt(ms_addr);
+	conf["OutstationAddr"] = Json::UInt(os_addr);
 	conf["ServerType"] = "PERSISTENT";
-	conf["LinkKeepAlivems"] = link_ka_period;
-	conf["LinkTimeoutms"] = link_ka_period >> 1;
+	conf["LinkKeepAlivems"] = Json::UInt(link_ka_period);
+	conf["LinkTimeoutms"] = Json::UInt(link_ka_period >> 1);
 	//man in the middle config: first half opposite of MS, second half opposite of OS
 	conf["TCPClientServer"] = (direction == MITMConfig::SERVER_CLIENT
 	                           || direction == MITMConfig::CLIENT_CLIENT)
 	                          ? "DEFAULT" : "CLIENT";
-	conf["Port"] = os_port;
+	conf["Port"] = Json::UInt(os_port);
 
 	//make an outstation port
 	auto OPUT = std::shared_ptr<DataPort>(newOutstation("Outstation"+std::to_string(os_addr), "", conf), delOutstation);
@@ -66,7 +66,7 @@ inline port_pair_t PortPair(void* portlib, size_t os_addr, size_t ms_addr = 0, M
 	conf["TCPClientServer"] = (direction == MITMConfig::SERVER_CLIENT
 	                           || direction == MITMConfig::SERVER_SERVER)
 	                          ? "DEFAULT" : "SERVER";
-	conf["Port"] = ms_port;
+	conf["Port"] = Json::UInt(ms_port);
 
 	//make a master port
 	auto MPUT = std::shared_ptr<DataPort>(newMaster("Master"+std::to_string(ms_addr), "", conf), delMaster);
