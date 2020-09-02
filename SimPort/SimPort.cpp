@@ -585,15 +585,15 @@ void SimPort::Build()
 
 				if (error.length() == 0)
 				{
-				      if (to_lower(type) == "binary")
-				      {
-				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
-				            result = pSimConf->CurrentState(EventType::Binary, indexes);
+					if (to_lower(type) == "binary")
+					{
+						std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
+						result = pSimConf->CurrentState(EventType::Binary, indexes);
 					}
-				      if (to_lower(type) == "analog")
-				      {
-				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
-				            result = pSimConf->CurrentState(EventType::Analog, indexes);
+					if (to_lower(type) == "analog")
+					{
+						std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Analog);
+						result = pSimConf->CurrentState(EventType::Analog, indexes);
 					}
 				}
 				if (result.length() != 0)
@@ -612,6 +612,7 @@ void SimPort::Build()
 				rep.headers[0].value = std::to_string(rep.content.size());
 				rep.headers[1].name = "Content-Type";
 				rep.headers[1].value = contenttype;
+				LOGDEBUG("{} Get Command {}, Resp {}", Name, absoluteuri, rep.content);
 			});
 		HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
@@ -689,8 +690,10 @@ void SimPort::Build()
 				rep.headers[0].value = std::to_string(rep.content.size());
 				rep.headers[1].name = "Content-Type";
 				rep.headers[1].value = "text/html";
+				LOGDEBUG("{} Post/Get Command {}, Resp {}", Name, absoluteuri, rep.content);
 			});
 		HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
+		HttpServerManager::AddHandler(pServer, "GET /post/" + Name, posthandler);	// Allow the post functionality but using a get - easier for testing!
 
 		HttpServerManager::StartConnection(pServer);
 	}
