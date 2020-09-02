@@ -38,6 +38,21 @@ enum class MITMConfig
 	CLIENT_CLIENT,
 	SERVER_SERVER
 };
+inline std::string to_string(const MITMConfig MC)
+{
+	switch(MC)
+	{
+		case MITMConfig::CLIENT_SERVER:
+			return "CLIENT_SERVER";
+		case MITMConfig::SERVER_CLIENT:
+			return "SERVER_CLIENT";
+		case MITMConfig::CLIENT_CLIENT:
+			return "CLIENT_CLIENT";
+		case MITMConfig::SERVER_SERVER:
+			return "SERVER_SERVER";
+	}
+	return "UNKNOWN";
+}
 
 class ManInTheMiddle
 {
