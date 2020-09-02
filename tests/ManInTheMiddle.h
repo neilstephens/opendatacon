@@ -59,7 +59,7 @@ class ManInTheMiddle
 public:
 	ManInTheMiddle() = delete;
 	ManInTheMiddle(const ManInTheMiddle&) = delete;
-	ManInTheMiddle(MITMConfig conf, unsigned int port1, unsigned int port2);
+	ManInTheMiddle(MITMConfig conf, unsigned int port1, unsigned int port2, const std::string& a_log_name = "opendatacon");
 	~ManInTheMiddle();
 	void Up();
 	void Down();
@@ -78,6 +78,7 @@ private:
 	std::atomic<unsigned int> Sock2Count = 0;
 	odc::TCPSocketManager<std::vector<char>> SockMan1;
 	odc::TCPSocketManager<std::vector<char>> SockMan2;
+	const std::string log_name;
 };
 
 #endif // MANINTHEMIDDLE_H

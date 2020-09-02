@@ -144,7 +144,7 @@ TEST_CASE(SUITE("Single Drop"))
 		{
 			odc::spdlog_get("DNP3Port")->info("MITMConfig: {}.",to_string(conn_dir));
 			//Make back-to-back TCP sockets so we can drop data and count re-connects
-			auto pMITM = std::make_shared<ManInTheMiddle>(conn_dir,ms_port,os_port);
+			auto pMITM = std::make_shared<ManInTheMiddle>(conn_dir,ms_port,os_port,"DNP3Port");
 
 			//create an outstation/master pair, and enable them
 			port_pair_t port_pair = PortPair(portlib,1,0,conn_dir,ms_port,os_port);
@@ -162,14 +162,12 @@ TEST_CASE(SUITE("Single Drop"))
 			odc::spdlog_get("DNP3Port")->info("Initial connection count: {},{}",start_open1,start_open2);
 
 			pMITM->Drop();
-			odc::spdlog_get("DNP3Port")->info("Dropping.");
 			//data is being dropped now, so the links should go down,
 			//and reconnects should happen because it's single-drop
 			require_link_down(port_pair.first);
 			require_link_down(port_pair.second);
 
 			pMITM->Allow();
-			odc::spdlog_get("DNP3Port")->info("Allowing.");
 			//wait another couple of keepalive periods just in case
 			std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period*2));
 			require_link_up(port_pair.first);
@@ -205,7 +203,7 @@ TEST_CASE(SUITE("Multi Drop"))
 		const unsigned int port2 = 20001;
 
 		//Make back-to-back TCP sockets so we can drop data and count re-connects
-		auto pMITM = std::make_shared<ManInTheMiddle>(MITMConfig::SERVER_CLIENT,port1,port2);
+		auto pMITM = std::make_shared<ManInTheMiddle>(MITMConfig::SERVER_CLIENT,port1,port2,"DNP3Port");
 
 		//create outstation/master pairs, and enable them
 		std::vector<port_pair_t> port_pairs;
@@ -267,7 +265,6 @@ TEST_CASE(SUITE("Multi Drop"))
 		REQUIRE(pMITM->ConnectionCount(false) == start_open2);
 
 		pMITM->Drop();
-		odc::spdlog_get("DNP3Port")->info("Dropping.");
 		//data is being dropped now, so all the links should go down,
 		//and reconnects should happen because they're all down
 		for(auto port_pair : port_pairs)
@@ -277,7 +274,6 @@ TEST_CASE(SUITE("Multi Drop"))
 		}
 
 		pMITM->Allow();
-		odc::spdlog_get("DNP3Port")->info("Allowing.");
 		//wait another couple of keepalive periods just in case
 		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period*2));
 		for(auto port_pair : port_pairs)
