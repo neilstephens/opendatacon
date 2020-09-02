@@ -121,7 +121,7 @@ public:
 		StateCallback(aStateCallback),
 		LogCallback(aLogCallback),
 		Keepalives(useKeepalives,KeepAliveTimeout_s,KeepAliveRetry_s,KeepAliveFailcount),
-		pSock(pIOS->make_tcp_socket()),
+		pSock(nullptr),
 		pReadStrand(pIOS->make_strand()),
 		pWriteStrand(pIOS->make_strand()),
 		pSockStrand(pIOS->make_strand()),
@@ -143,6 +143,7 @@ public:
 				if(isConnected)
 					return;
 				LogCallback("Socket opening.");
+				pSock = pIOS->make_tcp_socket();
 				if(isServer)
 				{
 				      try
