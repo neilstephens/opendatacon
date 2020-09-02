@@ -151,8 +151,8 @@ public:
 					}
 				      catch(std::exception& e)
 				      {
-				            if(auto log = odc::spdlog_get("opendatacon"))
-							log->error("TCPSocketManager failed to start server on {}:{}. Exception: {}",EndpointIterator->host_name(),EndpointIterator->service_name(),e.what());
+				            auto msg = "Failed to start server on "+EndpointIterator->host_name()+":"+EndpointIterator->service_name()+". Exception: "+e.what();
+				            LogCallback(msg);
 				            AutoOpen();
 				            return;
 					}
@@ -220,6 +220,7 @@ public:
 						      writebufs.push_back(buf);
 						      if(writebufs.size() > buffer_limit)
 								writebufs.erase(writebufs.begin());
+						      LogCallback("Connection async write error: "+err_code.message());
 						      AutoClose();
 						      AutoOpen();
 						      return;
@@ -278,7 +279,7 @@ private:
 	{
 		if(err_code)
 		{
-			LogCallback("Connection completion error.");
+			LogCallback("Connection completion error: "+err_code.message());
 			AutoOpen();
 			return;
 		}
@@ -298,7 +299,7 @@ private:
 						      auto n = asio::write(*pSock,writebufs,asio::transfer_all());
 						      if(n == 0)
 						      {
-						            LogCallback("Connection write error.");
+						            LogCallback("Connection sync write error: Zero bytes written");
 						            AutoClose();
 						            AutoOpen();
 						            return;
@@ -316,7 +317,7 @@ private:
 			{
 				if(err_code)
 				{
-				      LogCallback("Connection read error.");
+				      LogCallback("Connection async read error: "+err_code.message());
 				      AutoClose();
 				      AutoOpen();
 				}
