@@ -263,8 +263,12 @@
           //reset the timer
           window.clearInterval(gtimer_handle);
           const is_tcp = window.localStorage.getItem("is_tcp_on");
-          if (is_tcp == "ready")
-              gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
+          if (is_tcp == "ready") {
+              if (grefresh_rate >= 2000)
+                  gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
+              else
+                  gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, 2000);
+          }
           display_alert_message("Refresh Rate : " + grefresh_rate)
       }
 
