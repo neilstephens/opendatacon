@@ -75,7 +75,9 @@
       }
 
       $(document).ready(function() {
-          window.localStorage.setItem("is_tcp_on", "not_ready");
+          const is_tcp = window.localStorage.getItem("is_tcp_on");
+          if (is_tcp != "ready")
+              window.localStorage.setItem("is_tcp_on", "not_ready");
           const commands = ["add_logsink", "del_logsink", "ls_logsink", "set_loglevel", "shutdown", "version"];
           commands.forEach(function(value, index) {
               const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_opendatacon_command(\'' + value + '\');">' + value + '</a>'
@@ -119,9 +121,6 @@
 
               $("#log_levels_modal").on("hidden.bs.modal", function () {
                   var log_level = window.localStorage.getItem("log_level");
-                  if (!log_level)
-                      log_level = "trace";
-
                   const url = "/RootCommand set_loglevel tcp_web_ui " + log_level;
                   $.post(url, {})
                       .done(function(data) {
@@ -133,6 +132,10 @@
 
       function init_tcp() {
           window.localStorage.setItem("is_tcp_on", "ready");
+      }
+
+      function deinit_tcp() {
+          window.localStorage.setItem("is_tcp_on", "not_ready");
       }
 
       function go_to_command_control() {
