@@ -259,20 +259,12 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 	}
 }
 
-void ConsoleUI::ToLower(std::string& str)
-{
-	std::transform(str.begin(), str.end(), str.begin(),
-		[](unsigned char c) { return std::tolower(c); });
-}
-
 void ConsoleUI::AddRootCommands(const std::string& cmd, std::vector<std::string>& matches)
 {
-	std::string lower_cmd = cmd;
-	ToLower(lower_cmd);
+	std::string lower_cmd = to_lower(cmd);
 	for (auto name : mDescriptions)
 	{
-		std::string lower_name = name.first;
-		ToLower(lower_name);
+		std::string lower_name = to_lower(name.first);
 		if (lower_name.substr(0, lower_cmd.size()) == lower_cmd)
 			matches.push_back(name.first);
 	}
@@ -280,10 +272,8 @@ void ConsoleUI::AddRootCommands(const std::string& cmd, std::vector<std::string>
 
 void ConsoleUI::AddCommands(const std::string& cmd, const std::string& sub_cmd, std::vector<std::string>& matches)
 {
-	std::string lower_cmd = cmd;
-	std::string lower_sub_cmd = sub_cmd;
-	ToLower(lower_cmd);
-	ToLower(lower_sub_cmd);
+	std::string lower_cmd = to_lower(cmd);
+	std::string lower_sub_cmd = to_lower(sub_cmd);
 
 	if (context.empty())
 	{
@@ -291,8 +281,7 @@ void ConsoleUI::AddCommands(const std::string& cmd, const std::string& sub_cmd, 
 		{
 			for (auto command : Responders[cmd]->GetCommandList())
 			{
-				std::string lower_name = command.asString();
-				ToLower(lower_name);
+				std::string lower_name = to_lower(command.asString());
 				if (lower_name.substr(0, lower_sub_cmd.size()) == lower_sub_cmd)
 					matches.push_back(cmd + " " + command.asString());
 			}
@@ -301,8 +290,7 @@ void ConsoleUI::AddCommands(const std::string& cmd, const std::string& sub_cmd, 
 		{
 			for (auto name : Responders)
 			{
-				std::string lower_name = name.first;
-				ToLower(lower_name);
+				std::string lower_name = to_lower(name.first);
 				if (lower_name.substr(0, lower_cmd.size()) == lower_cmd)
 					matches.push_back(name.first);
 			}
@@ -312,8 +300,7 @@ void ConsoleUI::AddCommands(const std::string& cmd, const std::string& sub_cmd, 
 	{
 		for (auto command : Responders[context]->GetCommandList())
 		{
-			std::string lower_name = command.asString();
-			ToLower(lower_name);
+			std::string lower_name = to_lower(command.asString());
 			if (lower_name.substr(0, lower_cmd.size()) == lower_cmd)
 				matches.push_back(command.asString());
 		}
@@ -324,82 +311,48 @@ void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd,
 	const std::string& history_cmd, const std::vector<std::string>& matches)
 {
 	std::string prompt;
-	if (matches.empty() == false)
+	if (!matches.empty())
 	{
 		if (matches.size() == 1)
 		{
-			if (sub_cmd.empty())
-			{
-				prompt = matches[0].substr(cmd.size(), matches[0].size() - cmd.size());
-			}
-			else
-			{
-				const std::size_t pos = matches[0].find(' ');
-				prompt = matches[0].substr(pos + sub_cmd.size() + 1, matches[0].size() - (cmd.size() + sub_cmd.size() + 1));
-			}
-
-			if (prompt.empty() == false)
-			{
-				if (!history_cmd.empty())
-					std::cout << prompt << " " << history_cmd << std::flush;
-				else
-					std::cout << prompt << " " << std::flush;
-				buffer.assign(matches[0].begin(), matches[0].end());
-				buffer.push_back(' ');
-				if (!history_cmd.empty())
-				{
-					for (char c : history_cmd)
-						buffer.push_back(c);
-				}
-				line_pos = buffer.size();
-			}
+			/*
+			 * This line is to clear the current line so we can make the new prompt
+			 * It is easy to make the prompt than adding or not.
+			 */
+			printf("%c[2K\r", 27); std::cout << _prompt << std::flush;
+			prompt = matches[0] + " ";
+			if (matches[0].find(" ") == std::string::npos && !sub_cmd.empty())
+				prompt += sub_cmd + " ";
+			if (!history_cmd.empty()) prompt += history_cmd + " ";
+			std::cout << prompt << std::flush;
 		}
 		else
 		{
 			std::cout << std::endl << std::flush;
 			for (const std::string& c : matches)
+			{
 				if (!history_cmd.empty())
 					std::cout << c << " " << history_cmd << std::endl << std::flush;
 				else
 					std::cout << c << std::endl << std::flush;
-
-			std::string prompt = cmd;
-			if (sub_cmd.empty() == false)
-			{
-				prompt += " " + sub_cmd;
 			}
-			else
+			std::size_t common_chars_count = 0;
+			while (common_chars_count < matches[0].size())
 			{
-				if (matches[0].find(' ') != std::string::npos)
-					prompt += " ";
+				std::size_t diff = 0;
+				for (std::size_t i = 1; i < matches.size(); ++i)
+					diff += std::tolower(matches[i][common_chars_count]) - std::tolower(matches[0][common_chars_count]);
+				if (diff)
+					break;
+				++common_chars_count;
 			}
-
-			/*
-			  If there are any matching characters to follow the prompt
-			  add it to the auto completion
-			 */
-			if (prompt[prompt.size() - 1] != ' ')
-			{
-				std::size_t common_chars_count = prompt.size();
-				while (common_chars_count < matches[0].size())
-				{
-					int diff = 0;
-					for (std::size_t i = 1; i < matches.size(); ++i)
-						diff += matches[i][common_chars_count] - matches[i - 1][common_chars_count];
-					if (diff != 0)
-						break;
-					++common_chars_count;
-				}
-
-				prompt += matches[0].substr(prompt.size(), common_chars_count - prompt.size());
-			}
-
+			prompt = matches[0].substr(0, common_chars_count);
 			if (!history_cmd.empty())
 				prompt += " " + history_cmd;
 			std::cout << _prompt << prompt << std::flush;
-			buffer.assign(prompt.begin(), prompt.end());
-			line_pos = buffer.size();
 		}
+		buffer.assign(prompt.begin(), prompt.end());
+		line_pos = buffer.size();
 	}
 }
 
