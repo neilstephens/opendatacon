@@ -139,7 +139,7 @@
               });
 
           const is_tcp = window.localStorage.getItem("is_tcp_on");
-          if (is_tcp == "true") {
+          if (is_tcp == "ready") {
               const log_level = window.localStorage.getItem("log_level");
               if (!log_level) {
                   const url = "/RootCommand set_loglevel tcp_web_ui " + log_level;
@@ -263,7 +263,7 @@
           //reset the timer
           window.clearInterval(gtimer_handle);
           const is_tcp = window.localStorage.getItem("is_tcp_on");
-          if (is_tcp == "true")
+          if (is_tcp == "ready")
               gtimer_handle = window.setInterval(function() { get_tcp_logs(); }, grefresh_rate);
           display_alert_message("Refresh Rate : " + grefresh_rate)
       }
@@ -292,29 +292,35 @@
       $('#ports_select').on('changed.bs.select', function (e, index, new_value, old_value) {
           var selected = $(e.currentTarget).val();
           gports = selected.join(",");
+          if (selected.includes("All"))
+              gports = ".*";
           gnames = {"Analog" : {}, "Binary" : {}};
           gpoint_type = gindex = gvalue = null;
           build_command();
-          selected.forEach(function(item) {
-              const url = "/DataPorts Configuration";
-              $.post(url, {Target : item})
-                  .done(function(data) {
-                      for (const [key, value] of Object.entries(data)) {
-                          const k = item.substr(4, item.length - 4);
-                          if (key.includes(k)) {
-                              const analogs = value["Analogs"];
-                              analogs.forEach(function(item) {
-                                  gnames["Analog"][item.Name] = item.Index;
-                              });
+          if (gports != ".*") {
+              gports.split(",").forEach(function(item) {
+                  if (item.length > 0) {
+                  const url = "/DataPorts Configuration";
+                  $.post(url, {Target : item})
+                      .done(function(data) {
+                          for (const [key, value] of Object.entries(data)) {
+                              const k = item.substr(4, item.length - 4);
+                              if (key.includes(k)) {
+                                  const analogs = value["Analogs"];
+                                  analogs.forEach(function(item) {
+                                      gnames["Analog"][item.Name] = item.Index;
+                                  });
 
-                              const binaries = value["Binaries"];
-                              binaries.forEach(function(item) {
-                                  gnames["Binary"][item.Name] = item.Index;
-                              });
+                                  const binaries = value["Binaries"];
+                                  binaries.forEach(function(item) {
+                                      gnames["Binary"][item.Name] = item.Index;
+                                  });
+                              }
                           }
-                      }
-                  });
-          });
+                      });
+                  }
+              });
+          }
           build_command();
       });
 

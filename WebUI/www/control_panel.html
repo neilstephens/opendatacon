@@ -75,6 +75,7 @@
       }
 
       $(document).ready(function() {
+          window.localStorage.setItem("is_tcp_on", "not_ready");
           const commands = ["add_logsink", "del_logsink", "ls_logsink", "set_loglevel", "shutdown", "version"];
           commands.forEach(function(value, index) {
               const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_opendatacon_command(\'' + value + '\');">' + value + '</a>'
@@ -131,7 +132,7 @@
       }
 
       function init_tcp() {
-          window.localStorage.setItem("is_tcp_on", "true");
+          window.localStorage.setItem("is_tcp_on", "ready");
       }
 
       function go_to_command_control() {
