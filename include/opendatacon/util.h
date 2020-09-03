@@ -52,6 +52,14 @@ std::size_t to_decimal(const std::string& binary);
 std::string to_binary(std::size_t n, std::size_t size);
 std::size_t bcd_encoded_to_decimal(const std::string& str);
 std::string decimal_to_bcd_encoded_string(std::size_t n, std::size_t size);
+
+typedef uint64_t msSinceEpoch_t;
+inline msSinceEpoch_t msSinceEpoch()
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds>
+		       (std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
 } //namspace odc
 
 #endif //UTIL_H

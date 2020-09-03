@@ -454,13 +454,6 @@ inline PositionAction ToPositionAction(const std::string& str_action)
 	return action;
 }
 
-typedef uint64_t msSinceEpoch_t;
-inline msSinceEpoch_t msSinceEpoch()
-{
-	return std::chrono::duration_cast<std::chrono::milliseconds>
-		       (std::chrono::system_clock::now().time_since_epoch()).count();
-}
-
 //Map EventTypes to payload types
 template<EventType t> struct EventTypePayload { typedef void type; };
 #define EVENTPAYLOAD(E,T)\
