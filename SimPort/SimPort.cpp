@@ -734,7 +734,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 			std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
 			if (bp != nullptr)
 			{
-				status = HandleBinaryPosition(bp, message);
+				status = HandleBinaryPosition(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
 			}
 			else
 			{
@@ -746,7 +746,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	EventResponse(message, index, pStatusCallback, status);
 }
 
-CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks, std::size_t index, ControlRelayOutputBlock command, std::string& message)
+CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks, std::size_t index, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::SUCCESS;
 	message = "Binary feedback event processing is a success";
@@ -757,65 +757,56 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 		{
 			if(auto log = odc::spdlog_get("SimPort"))
 				log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
-			switch(command.functionCode)
+			if (IsPulse(command.functionCode))
 			{
-				case ControlCode::PULSE_ON:
-				case ControlCode::LATCH_ON:
-				case ControlCode::LATCH_OFF:
-				case ControlCode::CLOSE_PULSE_ON:
-				case ControlCode::TRIP_PULSE_ON:
-				{
-					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
-						PostPublishEvent(fb->on_value);
-					else
-						forced = true;
-					ptimer_t ptimer = pIOS->make_steady_timer();
-					ptimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
-					ptimer->async_wait([ptimer,fb,this](asio::error_code err_code)
-						{
-							//FIXME: check err_code?
-							if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
-								PostPublishEvent(fb->off_value);
-						});
-					//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
-					break;
-				}
-				default:
-					message = "Binary feedback is not supported";
-					status = CommandStatus::NOT_SUPPORTED;
+				if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
+					PostPublishEvent(fb->on_value);
+				else
+					forced = true;
+				ptimer_t ptimer = pIOS->make_steady_timer();
+				ptimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
+				ptimer->async_wait([ptimer,fb,this](asio::error_code err_code)
+					{
+						//FIXME: check err_code?
+						if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
+							PostPublishEvent(fb->off_value);
+					});
+				//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
+			}
+			else
+			{
+				message = "Binary feedback is not supported";
+				status = CommandStatus::NOT_SUPPORTED;
 			}
 		}
 		else //LATCH
 		{
-			switch(command.functionCode)
+			if (IsLatchOn(command.functionCode))
 			{
-				case ControlCode::LATCH_ON:
-				case ControlCode::CLOSE_PULSE_ON:
-				case ControlCode::PULSE_ON:
-					if(auto log = odc::spdlog_get("SimPort"))
-						log->trace("{}: Control {}: Latch on feedback to Binary {}.",
-							Name, index,fb->on_value->GetIndex());
-					fb->on_value->SetTimestamp();
-					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
-						PostPublishEvent(fb->on_value);
-					else
-						forced = true;
-					break;
-				case ControlCode::LATCH_OFF:
-				case ControlCode::TRIP_PULSE_ON:
-				case ControlCode::PULSE_OFF:
-					if(auto log = odc::spdlog_get("SimPort"))
-						log->trace("{}: Control {}: Latch off feedback to Binary {}.",
-							Name, index, fb->off_value->GetIndex());
-					fb->off_value->SetTimestamp();
-					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
-						PostPublishEvent(fb->off_value);
-					else
-						forced = true;
-					break;
-				default:
-					message = "Binary feedback is not supported";
-					status = CommandStatus::NOT_SUPPORTED;
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->trace("{}: Control {}: Latch on feedback to Binary {}.",
+						Name, index,fb->on_value->GetIndex());
+				fb->on_value->SetTimestamp();
+				if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
+					PostPublishEvent(fb->on_value);
+				else
+					forced = true;
+			}
+			else if (IsLatchOff(command.functionCode))
+			{
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->trace("{}: Control {}: Latch off feedback to Binary {}.",
+						Name, index, fb->off_value->GetIndex());
+				fb->off_value->SetTimestamp();
+				if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
+					PostPublishEvent(fb->off_value);
+				else
+					forced = true;
+			}
+			else
+			{
+				message = "Binary feedback is not supported";
+				status = CommandStatus::NOT_SUPPORTED;
 			}
 		}
 	}
@@ -827,20 +818,20 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message)
+CommandStatus SimPort::HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "This binary position point is not supported";
 	if (binary_position->type == odc::FeedbackType::ANALOG)
-		status = HandleBinaryPositionForAnalog(binary_position, message);
+		status = HandleBinaryPositionForAnalog(binary_position, command, message);
 	if (binary_position->type == odc::FeedbackType::BINARY)
-		status = HandleBinaryPositionForBinary(binary_position, message);
+		status = HandleBinaryPositionForBinary(binary_position, command, message);
 	if (binary_position->type == odc::FeedbackType::BCD)
-		status = HandleBinaryPositionForBCD(binary_position, message);
+		status = HandleBinaryPositionForBCD(binary_position, command, message);
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message)
+CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary position control is not supported";
@@ -849,11 +840,14 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 	{
 		if (!pSimConf->ForcedState(odc::EventType::Analog, index))
 		{
+			odc::PositionAction action = binary_position->action[ON];
+			if (IsLatchOff(command.functionCode))
+				action = binary_position->action[OFF];
 			auto event = pSimConf->Event(odc::EventType::Analog, index);
 			double payload = event->GetPayload<odc::EventType::Analog>();
-			if (binary_position->action == odc::PositionAction::RAISE)
+			if (action == odc::PositionAction::RAISE)
 			{
-				if (payload < binary_position->limit)
+				if (payload < binary_position->raise_limit)
 				{
 					++payload;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
@@ -867,9 +861,9 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 					status = CommandStatus::OUT_OF_RANGE;
 				}
 			}
-			else if (binary_position->action == odc::PositionAction::LOWER)
+			else if (action == odc::PositionAction::LOWER)
 			{
-				if (payload > binary_position->limit)
+				if (payload > binary_position->lower_limit)
 				{
 					--payload;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
@@ -893,7 +887,7 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message)
+CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary control position is not supported";
@@ -913,9 +907,12 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 	}
 
 	std::size_t payload = odc::to_decimal(binary);
-	if (binary_position->action == odc::PositionAction::RAISE)
+	odc::PositionAction action = binary_position->action[ON];
+	if (IsLatchOff(command.functionCode))
+		action = binary_position->action[OFF];
+	if (action == odc::PositionAction::RAISE)
 	{
-		if (payload < binary_position->limit)
+		if (payload < binary_position->raise_limit)
 		{
 			++payload;
 			binary = odc::to_binary(payload, binary_position->indexes.size());
@@ -929,9 +926,9 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 			status = CommandStatus::OUT_OF_RANGE;
 		}
 	}
-	else if (binary_position->action == odc::PositionAction::LOWER)
+	else if (action == odc::PositionAction::LOWER)
 	{
-		if (payload > binary_position->limit)
+		if (payload > binary_position->lower_limit)
 		{
 			--payload;
 			binary = odc::to_binary(payload, binary_position->indexes.size());
@@ -948,7 +945,7 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message)
+CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary control position is not supported for bcd type";
@@ -966,9 +963,12 @@ CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPo
 	}
 
 	std::size_t payload = bcd_encoded_to_decimal(bcd_binary);
-	if (binary_position->action == odc::PositionAction::RAISE)
+	odc::PositionAction action = binary_position->action[ON];
+	if (IsLatchOff(command.functionCode))
+		action = binary_position->action[OFF];
+	if (action == odc::PositionAction::RAISE)
 	{
-		if (payload < binary_position->limit)
+		if (payload < binary_position->raise_limit)
 		{
 			++payload;
 			bcd_binary = odc::decimal_to_bcd_encoded_string(payload, binary_position->indexes.size());
@@ -982,9 +982,9 @@ CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPo
 			status = CommandStatus::OUT_OF_RANGE;
 		}
 	}
-	else if (binary_position->action == odc::PositionAction::LOWER)
+	else if (action == odc::PositionAction::LOWER)
 	{
-		if (payload > binary_position->limit)
+		if (payload > binary_position->lower_limit)
 		{
 			--payload;
 			bcd_binary = odc::decimal_to_bcd_encoded_string(payload, binary_position->indexes.size());
@@ -1007,3 +1007,27 @@ void SimPort::EventResponse(const std::string& message, std::size_t index, Share
 		log->trace("{} : {} for Index {}", Name, message, index);
 	(*pStatusCallback)(status);
 }
+
+bool SimPort::IsPulse(odc::ControlCode code) const
+{
+	return code == ControlCode::PULSE_ON ||
+	       code == ControlCode::LATCH_ON ||
+	       code == ControlCode::LATCH_OFF ||
+	       code == ControlCode::CLOSE_PULSE_ON ||
+	       code == ControlCode::TRIP_PULSE_ON;
+}
+
+bool SimPort::IsLatchOff(odc::ControlCode code) const
+{
+	return code == ControlCode::LATCH_OFF ||
+	       code == ControlCode::TRIP_PULSE_ON ||
+	       code == ControlCode::PULSE_OFF;
+}
+
+bool SimPort::IsLatchOn(odc::ControlCode code) const
+{
+	return code == ControlCode::LATCH_ON ||
+	       code == ControlCode::CLOSE_PULSE_ON ||
+	       code == ControlCode::PULSE_ON;
+}
+
