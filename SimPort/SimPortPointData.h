@@ -40,6 +40,8 @@ enum class FeedbackMode { PULSE, LATCH };
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> ptimer_t;
+const std::size_t OFF = 0;
+const std::size_t ON = 1;
 
 struct Point
 {
@@ -82,15 +84,16 @@ struct BinaryFeedback
 struct BinaryPosition
 {
 	BinaryPosition(odc::FeedbackType feedback_type,
-		odc::PositionAction p_action,
+		const std::vector<odc::PositionAction>& an,
 		const std::vector<std::size_t>& index,
-		std::size_t tap_limit):
-		type(feedback_type), action(p_action), indexes(index), limit(tap_limit) {}
+		std::size_t l_limit, std::size_t r_limit):
+		type(feedback_type), action(an), indexes(index), lower_limit(l_limit), raise_limit(r_limit) {}
 
 	odc::FeedbackType type;
-	odc::PositionAction action;
+	std::vector<odc::PositionAction> action;
 	std::vector<std::size_t> indexes;
-	std::size_t limit;
+	std::size_t lower_limit;
+	std::size_t raise_limit;
 };
 
 class SimPortPointData
@@ -268,8 +271,8 @@ public:
 	void CreateBinaryPosition(std::size_t index,
 		odc::FeedbackType type,
 		const std::vector<std::size_t>& indexes,
-		odc::PositionAction action,
-		std::size_t limit);
+		const std::vector<odc::PositionAction>& action,
+		std::size_t lower_limit, std::size_t raise_limit);
 	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index);
 
 private:
