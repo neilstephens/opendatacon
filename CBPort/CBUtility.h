@@ -434,6 +434,7 @@ std::string BuildBinaryStringFromASCIIHexString(const std::string &as);
 std::string BuildASCIIHexStringfromBinaryString(const std::string &bs);
 
 std::string BuildASCIIHexStringfromCBMessage(const CBMessage_t & CBMessage);
+CBMessage_t BuildCBMessageFromASCIIHexString(const  std::string Message);
 std::string CBMessageAsString(const CBMessage_t& CompleteCBMessage);
 
 // SOE Data Packet Definitions.
