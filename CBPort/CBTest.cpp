@@ -135,13 +135,8 @@ const char *conffile1 = R"001(
 	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
 					{"Index" : 1, "Group" : 3, "PayloadLocation": "3B","Channel" : 1, "Type":"ANA"},
 					{"Index" : 2, "Group" : 3, "PayloadLocation": "4A","Channel" : 1, "Type":"ANA"},
-					{"Index" : 3, "Group" : 3, "PayloadLocation": "4B","Channel" : 1, "Type":"ANA6"},
-					{"Index" : 4, "Group" : 3, "PayloadLocation": "4B","Channel" : 2, "Type":"ANA6"}],
-
-	// None of the counter commands are used  - ACC(12) and ACC24 are not used.
-	"Counters" : [	{"Index" : 5, "Group" : 3, "PayloadLocation": "5A","Channel" : 1, "Type":"ACC12"},
-					{"Index" : 6, "Group" : 3, "PayloadLocation": "5B","Channel" : 1, "Type":"ACC12"},
-					{"Index" : 7, "Group" : 3, "PayloadLocation": "6A","Channel" : 1, "Type":"ACC24"}],
+					{"Index" : 3, "Group" : 3, "PayloadLocation": "5B","Channel" : 1, "Type":"ANA6"},
+					{"Index" : 4, "Group" : 3, "PayloadLocation": "5B","Channel" : 2, "Type":"ANA6"}],
 
 	// CONTROL up to 12 bits per group address, Channel 1 to 12. Python simulator used dual points one for trip one for close.
 	"BinaryControls" : [{"Index": 1,  "Group" : 4, "Channel" : 1, "Type" : "CONTROL"},
@@ -151,7 +146,7 @@ const char *conffile1 = R"001(
 	"AnalogControls" : [{"Index": 1,  "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
 
 	// Special definition, so we know where to find the Remote Status Data in the scanned group.
-	"RemoteStatus" : [{"Group":3, "Channel" : 1, "PayloadLocation": "7A"}]
+	"RemoteStatus" : [{"Group":3, "Channel" : 1, "PayloadLocation": "5A"}]
 
 })001";
 
@@ -861,8 +856,6 @@ TEST_CASE("Station - ScanRequest F0")
 	                            "14080022" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "00080006"
-	                            "00080006"
 	                            "00080007";
 
 	while(!done_flag)
@@ -891,15 +884,6 @@ TEST_CASE("Station - ScanRequest F0")
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 	}
-	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
-	{
-		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(numeric_cast<unsigned int>(1024 + ODCIndex));
-
-		CBOSPort->Event(event, "TestHarness", pStatusCallback);
-
-		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
-	}
 
 	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
 	{
@@ -921,10 +905,14 @@ TEST_CASE("Station - ScanRequest F0")
 	DesiredResult = "09355516" // Echoed block plus data 1B
 	                "04080034" // Data 2A and 2B
 	                "400a00b6"
-	                "402882b8"
-	                "405a032c"
-	                "40780030"
-	                "80080023";
+	                "4028000c"
+	                "80088297";
+
+	CBMessage_t Msg = BuildCBMessageFromASCIIHexString(DesiredResult);
+	assert(Msg[2].GetA() == 1024, "Checking payload values");
+	assert(Msg[2].GetB() == 1025, "Checking payload values");
+	assert(Msg[3].GetA() == 1026, "Checking payload values");
+	assert(Msg[4].GetB() == (4 << 6) + 5, "Checking payload values");	// The require below does the whole check in one go!
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -960,10 +948,8 @@ TEST_CASE("Station - ScanRequest F0")
 	DesiredResult = "09355516" // Echoed block plus data 1B
 	                "fc080016" // Data 2A and 2B
 	                "400a00b6"
-	                "402882b8"
-	                "405a032c"
-	                "40780030"
-	                "80080023";
+	                "4028000c"
+	                "80088297";
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -987,10 +973,8 @@ TEST_CASE("Station - ScanRequest F0")
 	DesiredResult = "09355516" // Echoed block plus data 1B
 	                "00080006" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
-	                "402882b8"
-	                "405a032c"
-	                "40780030"
-	                "c0080031"; // The SOE buffer overflow bit should be set here...
+	                "4028000c"
+	                "c0088285"; // The SOE buffer overflow bit should be set here...
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -1370,8 +1354,6 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                            "02880010" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "00080006"
-	                            "00080006"
 	                            "00080007";
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
@@ -1396,16 +1378,6 @@ TEST_CASE("Station - Baker ScanRequest F0")
 		CBOSPort->Event(event, "TestHarness", pStatusCallback);
 		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
 	}
-	for (int ODCIndex = 5; ODCIndex < 8; ODCIndex++)
-	{
-		auto event = std::make_shared<EventInfo>(EventType::Counter, ODCIndex);
-		event->SetPayload<EventType::Counter>(numeric_cast<unsigned int>(1024 + ODCIndex));
-
-		CBOSPort->Event(event, "TestHarness", pStatusCallback);
-
-		REQUIRE((res == CommandStatus::SUCCESS)); // The Get will Wait for the result to be set.
-	}
-
 	for (int ODCIndex = 0; ODCIndex < 12; ODCIndex++)
 	{
 		SendBinaryEvent(CBOSPort, ODCIndex, ((ODCIndex % 2) == 0));
@@ -1428,10 +1400,8 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	DesiredResult = "0392aab8" // Echoed block plus data 1B
 	                "0208003a" // Data 2A and 2B
 	                "400a00b6"
-	                "402882b8"
-	                "405a032c"
-	                "40780030"
-	                "80080023";
+	                "4028000c"
+	                "80088297";
 	WaitIOS(*IOS, 1);
 
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -1464,10 +1434,8 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	DesiredResult = "0392aab8" // Echoed block plus data 1B
 	                "03f8002a" // Data 2A and 2B
 	                "400a00b6"
-	                "402882b8"
-	                "405a032c"
-	                "40780030"
-	                "80080023";
+	                "4028000c"
+	                "80088297";
 	WaitIOS(*IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
@@ -1488,10 +1456,8 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	DesiredResult = "0392aab8" // Echoed block plus data 1B
 	                "00080006" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
-	                "402882b8"
-	                "405a032c"
-	                "40780030"
-	                "c0080031"; // The SOE buffer overflow bit should be set here...
+	                "4028000c"
+	                "c0088285"; // The SOE buffer overflow bit should be set here...
 	WaitIOS(*IOS, 1);
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
@@ -1622,12 +1588,10 @@ TEST_CASE("Master - Scan Request F0")
 
 	// From the outstation test above!!
 	std::string Payload = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                                    "fc080016" // Data 2A and 2B
-		                                                    "400a00b6"
-		                                                    "402882b8"
-		                                                    "405a032c"
-		                                                    "40780030"
-		                                                    "55580013");
+																"fc080016" // Data 2A and 2B
+																"400a00b6"
+																"4028000c"
+																"80088297");
 	output << Payload;
 
 	// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
@@ -1650,12 +1614,6 @@ TEST_CASE("Master - Scan Request F0")
 	{
 		CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		REQUIRE(res == (1 + ODCIndex));
-	}
-	//Counters
-	for (size_t ODCIndex = 5; ODCIndex < 8; ODCIndex++)
-	{
-		CBMAPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
-		REQUIRE(res == (1024 + ODCIndex));
 	}
 
 	bool changed;
@@ -1687,11 +1645,6 @@ TEST_CASE("Master - Scan Request F0")
 	{
 		CBOSPort->GetPointTable()->GetAnalogValueUsingODCIndex(ODCIndex, res, hasbeenset);
 		//		REQUIRE(res == (1+ODCIndex));
-	}
-	for (size_t ODCIndex = 5; ODCIndex < 8; ODCIndex++)
-	{
-		CBOSPort->GetPointTable()->GetCounterValueUsingODCIndex(ODCIndex, res, hasbeenset);
-		REQUIRE(res == (1024 + ODCIndex));
 	}
 	for (size_t ODCIndex = 0; ODCIndex < 12; ODCIndex++)
 	{
