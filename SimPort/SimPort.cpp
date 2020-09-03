@@ -826,9 +826,9 @@ CommandStatus SimPort::HandleBinaryPosition(const std::shared_ptr<BinaryPosition
 	message = "This binary position point is not supported";
 	if (binary_position->type == odc::FeedbackType::ANALOG)
 		status = HandleBinaryPositionForAnalog(binary_position, command, message);
-	if (binary_position->type == odc::FeedbackType::BINARY)
+	else if (binary_position->type == odc::FeedbackType::BINARY)
 		status = HandleBinaryPositionForBinary(binary_position, command, message);
-	if (binary_position->type == odc::FeedbackType::BCD)
+	else if (binary_position->type == odc::FeedbackType::BCD)
 		status = HandleBinaryPositionForBCD(binary_position, command, message);
 	return status;
 }
