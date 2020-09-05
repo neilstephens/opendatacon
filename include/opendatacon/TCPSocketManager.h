@@ -115,6 +115,8 @@ public:
 		handler_tracker(std::make_shared<char>()),
 		isConnected(false),
 		pending_connections(0),
+		pending_write(false),
+		pending_read(false),
 		manuallyClosed(true),
 		pIOS(apIOS),
 		isServer(aisServer),
@@ -122,9 +124,9 @@ public:
 		StateCallback(aStateCallback),
 		LogCallback(aLogCallback),
 		Keepalives(useKeepalives,KeepAliveTimeout_s,KeepAliveRetry_s,KeepAliveFailcount),
+		queue_writebufs(&writebufs1),
+		dispatch_writebufs(&writebufs2),
 		pSock(nullptr),
-		pReadStrand(pIOS->make_strand()),
-		pWriteStrand(pIOS->make_strand()),
 		pSockStrand(pIOS->make_strand()),
 		pRetryTimer(pIOS->make_steady_timer()),
 		buffer_limit(abuffer_limit),
@@ -162,13 +164,13 @@ public:
 							if(err_code)
 							{
 							      LogCallback("Resolution error: "+err_code.message());
-							      AutoOpen();
+							      AutoOpen(tracker);
 							      return;
 							}
 							LogCallback("Resolved endpoint(s).");
 							EndpointIterator = endpoint_it;
 							resolve_time = msSinceEpoch();
-							AutoOpen();
+							AutoOpen(tracker);
 						}));
 				      return;
 				}
@@ -190,7 +192,7 @@ public:
 				                  auto msg = "Failed to start server on "+addr_str+". Exception: "+e.what();
 				                  LogCallback(msg);
 				                  if(pending_connections == 0)
-								AutoOpen();
+								AutoOpen(tracker);
 				                  return;
 						}
 				            pending_connections++;
@@ -204,7 +206,7 @@ public:
 								}
 								if(!err_code)
 									LogCallback("Connection accepted on "+addr_str);
-								ConnectCompletionHandler(err_code,pCandidateSock,addr_str);
+								ConnectCompletionHandler(tracker,err_code,pCandidateSock,addr_str);
 								pAcceptor.reset();
 							}));
 					}
@@ -223,7 +225,7 @@ public:
 								}
 								if(!err_code)
 									LogCallback("Connection established on "+addr_str);
-								ConnectCompletionHandler(err_code,pCandidateSock,addr_str);
+								ConnectCompletionHandler(tracker,err_code,pCandidateSock,addr_str);
 							}));
 					}
 				}
@@ -239,7 +241,7 @@ public:
 				ramp_time_ms = 0;
 				pRetryTimer->cancel();
 				pAcceptor.reset();
-				AutoClose();
+				AutoClose(tracker);
 			});
 	}
 
@@ -247,34 +249,41 @@ public:
 	void Write(T&& aContainer)
 	{
 		//shared_const_buffer is a ref counted wraper that will delete the data in good time
-		auto buf = shared_const_buffer<T>(std::make_shared<T>(std::move(aContainer)));
+		shared_const_buffer<T> buf(std::make_shared<T>(std::move(aContainer)));
 
 		auto tracker = handler_tracker;
 		pSockStrand->post([this,tracker,buf]()
 			{
-				if(!isConnected)
+				if(!isConnected || manuallyClosed || pending_write)
 				{
-				      pWriteStrand->post([this,tracker,buf]()
-						{
-							writebufs.push_back(buf);
-							if(writebufs.size() > buffer_limit)
-								writebufs.erase(writebufs.begin());
-						});
+				      queue_writebufs->push_back(buf);
+				      if(queue_writebufs->size() > buffer_limit)
+						queue_writebufs->erase(queue_writebufs->begin());
 				      return;
 				}
 
-				asio::async_write(*pSock,buf,asio::transfer_all(),pWriteStrand->wrap([this,tracker,buf](asio::error_code err_code, std::size_t n)
+				pending_write = true;
+				asio::async_write(*pSock,buf,asio::transfer_all(),pSockStrand->wrap([this,tracker,buf](asio::error_code err_code, std::size_t n)
 					{
+						write_count += n;
+						pending_write = false;
 						if(err_code)
 						{
-						      writebufs.push_back(buf);
-						      if(writebufs.size() > buffer_limit)
-								writebufs.erase(writebufs.begin());
-						      LogCallback("Connection async write ("+std::to_string(n)+" bytes) error: "+err_code.message());
-						      AutoClose();
-						      AutoOpen();
+						      LogCallback("Async write ("+std::to_string(n)+" of "+std::to_string(buf.size())+" bytes) error: "+err_code.message());
+						      if(buf.size() > n)
+						      {
+						            LogCallback("Buffering "+std::to_string(buf.size()-n)+" bytes");
+						            queue_writebufs->push_back(buf);
+						            queue_writebufs->back() += n;
+						            if(queue_writebufs->size() > buffer_limit)
+									queue_writebufs->erase(queue_writebufs->begin());
+							}
+						      AutoClose(tracker);
+						      AutoOpen(tracker);
 						      return;
 						}
+						if(isConnected && !manuallyClosed)
+							WriteBuffer(tracker);
 					}));
 			});
 	}
@@ -287,12 +296,16 @@ public:
 
 		while(!tracker.expired() && !pIOS->stopped())
 			pIOS->poll_one();
+
+		LogCallback("Written total "+std::to_string(write_count)+" bytes");
 	}
 
 private:
 	std::shared_ptr<void> handler_tracker;
 	bool isConnected;
 	size_t pending_connections;
+	bool pending_write;
+	bool pending_read;
 	bool manuallyClosed;
 	std::shared_ptr<odc::asio_service> pIOS;
 	const bool isServer;
@@ -302,19 +315,20 @@ private:
 	TCPKeepaliveOpts Keepalives;
 
 	buf_t readbuf;
-	std::vector<shared_const_buffer<Q>> writebufs;
-	std::shared_ptr<asio::ip::tcp::socket> pSock;
+	//dual buffers for alternate queuing and passing to asio
+	std::vector<shared_const_buffer<Q>> writebufs1;
+	std::vector<shared_const_buffer<Q>> writebufs2;
+	std::vector<shared_const_buffer<Q>>* queue_writebufs;
+	std::vector<shared_const_buffer<Q>>* dispatch_writebufs;
 
-	//Strand to sync access to read buffer
-	std::unique_ptr<asio::io_service::strand> pReadStrand;
-	//Strand to sync access to write buffers
-	std::unique_ptr<asio::io_service::strand> pWriteStrand;
-	//Strand to sync access to socket state
+	std::shared_ptr<asio::ip::tcp::socket> pSock;
+	//Strand to sync access to socket
 	std::unique_ptr<asio::io_service::strand> pSockStrand;
 
 	//for timing open-retries
 	std::unique_ptr<asio::steady_timer> pRetryTimer;
 
+	//not a size limit, but number of Write() limit
 	size_t buffer_limit;
 
 	//Auto open funtionality - see constructor for description
@@ -322,20 +336,74 @@ private:
 	uint16_t retry_time_ms;
 	uint16_t ramp_time_ms; //keep track of exponential backoff
 
-	//Host/IP and Port are resolved into these:
+	//Host/IP and Port resolution:
 	const std::string host_name;
 	const std::string service_name;
 	asio::ip::tcp::resolver::iterator EndpointIterator;
 	msSinceEpoch_t resolve_time;
 	std::unique_ptr<asio::ip::tcp::acceptor> pAcceptor;
 
-	void ConnectCompletionHandler(asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str)
+	//some stats
+	uint64_t write_count = 0;
+	uint64_t read_count = 0;
+
+	void WriteBuffer(std::shared_ptr<void> tracker)
+	{
+		//if there's anything in the buffer sequence, write it
+		if((queue_writebufs->size() || dispatch_writebufs->size()) && !pending_write)
+		{
+			if(dispatch_writebufs->size() == 0)
+			{
+				//swap buffers
+				auto temp = queue_writebufs;
+				queue_writebufs = dispatch_writebufs;
+				dispatch_writebufs = temp;
+			}
+
+			pending_write = true;
+			asio::async_write(*pSock,*dispatch_writebufs,asio::transfer_all(),pSockStrand->wrap([this,tracker](asio::error_code err_code, std::size_t n)
+				{
+					pending_write = false;
+					write_count += n;
+					if(err_code)
+					{
+					      size_t consumed = 0;
+					      while(consumed < n)
+					      {
+					            if(dispatch_writebufs->begin()->size() > (n-consumed))
+					            {
+					                  (*(dispatch_writebufs->begin())) += (n-consumed);
+					                  consumed = n;
+					                  break;
+							}
+					            consumed += dispatch_writebufs->begin()->size();
+					            dispatch_writebufs->erase(dispatch_writebufs->begin());
+						}
+
+					      size_t left = 0;
+					      for(auto& b : *dispatch_writebufs)
+							left += b.size();
+
+					      LogCallback("Buffer async write ("+std::to_string(n)+" of "+std::to_string(left+consumed)+" bytes) error: "+err_code.message());
+					      LogCallback("Leaving "+std::to_string(left)+" bytes in buffer");
+					      AutoClose(tracker);
+					      AutoOpen(tracker);
+					      return;
+					}
+					dispatch_writebufs->clear();
+					if(isConnected && !manuallyClosed)
+						WriteBuffer(tracker);
+				}));
+		}
+	}
+
+	void ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str)
 	{
 		if(err_code)
 		{
 			LogCallback("Connection error on "+addr_str+" : "+err_code.message());
 			if(pending_connections == 0)
-				AutoOpen();
+				AutoOpen(tracker);
 			return;
 		}
 		pSock = pCandidateSock;
@@ -344,46 +412,35 @@ private:
 		StateCallback(isConnected);
 		ramp_time_ms = 0;
 
-		//if there's anything in the buffer sequence, write it
-		auto tracker = handler_tracker;
-		pWriteStrand->post([this,tracker]()
-			{
-				if(writebufs.size() > 0)
-				{
-				      auto n = asio::write(*pSock,writebufs,asio::transfer_all());
-				      if(n == 0)
-				      {
-				            LogCallback("Connection sync write error: Zero bytes written");
-				            AutoClose();
-				            AutoOpen();
-				            return;
-					}
-				      writebufs.clear();
-				}
-			});
-		Read();
+		WriteBuffer(tracker);
+		Read(tracker);
 	}
-	void Read()
+
+	void Read(std::shared_ptr<void> tracker)
 	{
-		auto tracker = handler_tracker;
-		asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pReadStrand->wrap([this,tracker](asio::error_code err_code, std::size_t n)
+		if(pending_read)
+			return;
+
+		pending_read = true;
+		asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pSockStrand->wrap([this,tracker](asio::error_code err_code, std::size_t n)
 			{
+				pending_read = false;
 				if(err_code)
 				{
 				      LogCallback("Connection async read ("+std::to_string(n)+" bytes) error: "+err_code.message());
-				      AutoClose();
-				      AutoOpen();
+				      AutoClose(tracker);
+				      AutoOpen(tracker);
 				}
 				else
 				{
 				      ReadCallback(readbuf);
-				      Read();
+				      if(isConnected && !manuallyClosed)
+						Read(tracker);
 				}
 			}));
 	}
-	void AutoOpen()
+	void AutoOpen(std::shared_ptr<void> tracker)
 	{
-		auto tracker = handler_tracker;
 		pSockStrand->post([this,tracker]()
 			{
 				if(!auto_reopen || manuallyClosed)
@@ -408,15 +465,14 @@ private:
 							if(manuallyClosed || err_code)
 								return;
 							ramp_time_ms *= 2;
-							LogCallback("Socket open retry.");
+							LogCallback("Re-trying to open socket...");
 							Open();
 						}));
 				}
 			});
 	}
-	void AutoClose()
+	void AutoClose(std::shared_ptr<void> tracker)
 	{
-		auto tracker = handler_tracker;
 		pSockStrand->post([this,tracker]()
 			{
 				if(!isConnected)
