@@ -46,9 +46,7 @@ inline void require_equal(const T& thing1, const T& thing2)
 		odc::asio_service::Get()->poll_one();
 		count++;
 	}
-	//We get data loss when the socket is forcefully closed - I think this is expected
-	//REQUIRE(thing1 == thing2);
-	odc::spdlog_get("opendatacon")->debug("REQUIRE({} == {})",thing1,thing2);
+	REQUIRE(thing1 == thing2);
 }
 
 TEST_CASE(SUITE("SimpleStrings"))
@@ -135,24 +133,17 @@ TEST_CASE(SUITE("ManyStrings"))
 	std::atomic<uint64_t> recv_count2 = 0;
 	std::atomic<uint64_t> send_count1 = 0;
 	std::atomic<uint64_t> send_count2 = 0;
-	std::atomic<uint64_t> loss_count1 = 0;
-	std::atomic<uint64_t> loss_count2 = 0;
-
 
 	auto ReadHandler =
 		[&](bool sock1, odc::buf_t& buf)
 		{
 			auto& count = sock1 ? recv_count1 : recv_count2;
-			auto& loss = sock1 ? loss_count1 : loss_count2;
 			while(buf.size())
 			{
 				count++;
 				auto ch = buf.sgetc();
-				while((count+loss)%256 != ch)
-				{
-					loss++;
-					odc::spdlog_get("opendatacon")->critical("{} bytes DATA LOST!!!!!!!!!!!!!!!!!!!!!!!!!",loss);
-				}
+				if((count)%256 != ch)
+					odc::spdlog_get("opendatacon")->critical("Possible out of order or lost data: {} != {}",(count)%256, ch);
 				buf.consume(1);
 			}
 		};

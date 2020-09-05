@@ -413,30 +413,28 @@ private:
 		ramp_time_ms = 0;
 
 		WriteBuffer(tracker);
-		Read(tracker);
+		Read(pSock,tracker);
 	}
 
-	void Read(std::shared_ptr<void> tracker)
+	void Read(std::shared_ptr<asio::ip::tcp::socket> pReadSock, std::shared_ptr<void> tracker)
 	{
 		if(pending_read)
 			return;
 
 		pending_read = true;
-		asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pSockStrand->wrap([this,tracker](asio::error_code err_code, std::size_t n)
+		asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,pReadSock](asio::error_code err_code, std::size_t n)
 			{
 				pending_read = false;
+				if(n)
+					ReadCallback(readbuf);
 				if(err_code)
 				{
 				      LogCallback("Connection async read ("+std::to_string(n)+" bytes) error: "+err_code.message());
-				      AutoClose(tracker);
-				      AutoOpen(tracker);
+				      pReadSock->shutdown(asio::ip::tcp::socket::shutdown_both,err_code);
+				      pReadSock->close();
 				}
 				else
-				{
-				      ReadCallback(readbuf);
-				      if(isConnected && !manuallyClosed)
-						Read(tracker);
-				}
+					Read(pReadSock,tracker);
 			}));
 	}
 	void AutoOpen(std::shared_ptr<void> tracker)
@@ -480,7 +478,8 @@ private:
 				      return;
 				}
 				LogCallback("Connection auto close.");
-				pSock->close();
+				asio::error_code err;
+				pSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
 				isConnected = false;
 				StateCallback(isConnected);
 				//Force endpoint(s) resolution between connections
