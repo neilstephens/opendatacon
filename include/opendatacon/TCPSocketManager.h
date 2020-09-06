@@ -432,6 +432,9 @@ private:
 				      LogCallback("Connection async read ("+std::to_string(n)+" bytes) error: "+err_code.message());
 				      pReadSock->shutdown(asio::ip::tcp::socket::shutdown_both,err_code);
 				      pReadSock->close();
+				      if(isConnected && pSock == pReadSock)
+						AutoClose(tracker);
+				      AutoOpen(tracker);
 				}
 				else
 					Read(pReadSock,tracker);
@@ -441,7 +444,7 @@ private:
 	{
 		pSockStrand->post([this,tracker]()
 			{
-				if(!auto_reopen || manuallyClosed)
+				if(!auto_reopen || manuallyClosed || isConnected)
 					return;
 
 				if(retry_time_ms != 0)

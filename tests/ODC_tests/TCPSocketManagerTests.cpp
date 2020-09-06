@@ -32,20 +32,27 @@
 
 using namespace odc;
 
-const unsigned int test_timeout = 10000;
+const unsigned int test_timeout = 20000;
 
 #define SUITE(name) "TCPSocketManager - " name
 
 template<typename T>
-inline void require_equal(const T& thing1, const T& thing2)
+void require_equal(const T& thing1, const T& thing2)
 {
-	unsigned int count = 0;
-	while(thing1 != thing2 && count < test_timeout)
-	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	//make a watchdog timer
+	std::atomic_bool stop = false;
+	auto stop_timer = odc::asio_service::Get()->make_steady_timer();
+	stop_timer->expires_from_now(std::chrono::milliseconds(test_timeout));
+	stop_timer->async_wait([&stop](const asio::error_code& err){stop = true;});
+
+	while(thing1 != thing2 && !stop)
 		odc::asio_service::Get()->poll_one();
-		count++;
-	}
+
+	if(!stop)
+		stop_timer->cancel();
+	while(!stop)
+		odc::asio_service::Get()->poll_one();
+
 	REQUIRE(thing1 == thing2);
 }
 
@@ -57,9 +64,16 @@ TEST_CASE(SUITE("SimpleStrings"))
 	std::string send2 = "looooooooooooooooooooooooooooooooooooooooooonnnnnnnnnnnnnnnnggggggggggggggggggggeeeeeeeeeeeeeeeeeeeeeeeerrrrrrrrr string";
 	std::string recv1 = "";
 	std::string recv2 = "";
+	std::atomic_bool state1 = false;
+	std::atomic_bool state2 = false;
+
+	bool close_on_read = false;
+	std::unique_ptr<TCPSocketManager<std::string>>* sock_ptr_ptr;
+	auto CloseOnRead = [&](){if(close_on_read) {(*sock_ptr_ptr)->Close();close_on_read = false;}};
 
 	auto ReadHandler = [&](bool sock1, odc::buf_t& buf)
 				 {
+					 CloseOnRead();
 					 auto& recv = sock1 ? recv1 : recv2;
 
 					 while(buf.size())
@@ -69,8 +83,10 @@ TEST_CASE(SUITE("SimpleStrings"))
 						 buf.consume(1);
 					 }
 				 };
-	auto StateHandler = [](bool sock1, bool state)
+	auto StateHandler = [&](bool sock1, bool state)
 				  {
+					  auto& sockstate = sock1 ? state1 : state2;
+					  sockstate = state;
 					  odc::spdlog_get("opendatacon")->debug("Sock{} state: {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
 				  };
 
@@ -94,11 +110,48 @@ TEST_CASE(SUITE("SimpleStrings"))
 	pSockMan1->Write(std::string(send1));
 	pSockMan2->Write(std::string(send2));
 
-	require_equal(send1,recv2);
-	require_equal(send2,recv1);
+	require_equal(recv1,send2);
+	require_equal(recv2,send1);
+
+	//close then write, to test buffering
+	pSockMan1->Close();
+	pSockMan2->Close();
+	//wait for close
+	while(state1 || state2)
+		odc::asio_service::Get()->poll_one();
+	//echo back - the recv1 strings are ok to use now, because sockets should be closed
+	pSockMan1->Write(std::string(recv1));
+	pSockMan2->Write(std::string(recv2));
+	pSockMan1->Write(std::string("X"));
+	pSockMan2->Write(std::string("X"));
+	pSockMan1->Open();
+	pSockMan2->Open();
+
+	require_equal(recv1,send2+send1+"X");
+	require_equal(recv2,send1+send2+"X");
+
+	//send a big packet then close the sender as soon as it starts coming through
+	sock_ptr_ptr = &pSockMan1;
+	recv2.clear();
+	close_on_read = true;
+	for(auto i=0; i<50000; i++)
+		send1.append(std::to_string(i));
+	pSockMan1->Write(std::string(send1));
+
+	//wait for close
+	require_equal(state1,std::atomic_bool(false));
+	pSockMan1->Open();
+	//wait for open
+	require_equal(state1,std::atomic_bool(true));
+
+	require_equal(recv2,send1);
 
 	pSockMan1->Close();
 	pSockMan2->Close();
+	//wait for close
+	require_equal(state1,std::atomic_bool(false));
+	require_equal(state2,std::atomic_bool(false));
+
 	pSockMan1.reset();
 	pSockMan2.reset();
 
@@ -113,7 +166,7 @@ void interrupt(std::unique_ptr<TCPSocketManager<std::string>>& sock, std::atomic
 		sock->Open();
 	else
 		sock->Close();
-	timer->expires_from_now(std::chrono::milliseconds(std::uniform_int_distribution<uint16_t>(100,300)(RandNumGenerator)));
+	timer->expires_from_now(std::chrono::milliseconds(std::uniform_int_distribution<uint16_t>(70,200)(RandNumGenerator)));
 	timer->async_wait([&](const asio::error_code& err)
 		{
 			if(err || stop)
@@ -133,6 +186,9 @@ TEST_CASE(SUITE("ManyStrings"))
 	std::atomic<uint64_t> recv_count2 = 0;
 	std::atomic<uint64_t> send_count1 = 0;
 	std::atomic<uint64_t> send_count2 = 0;
+	std::atomic<uint64_t> interrupt_count = 0;
+	std::atomic_bool state1;
+	std::atomic_bool state2;
 
 	auto ReadHandler =
 		[&](bool sock1, odc::buf_t& buf)
@@ -150,6 +206,10 @@ TEST_CASE(SUITE("ManyStrings"))
 	auto StateHandler =
 		[&](bool sock1, bool state)
 		{
+			auto& sock_state = sock1 ? state1 : state2;
+			sock_state = state;
+			if(!state1 && !state2)
+				interrupt_count++;
 			odc::spdlog_get("opendatacon")->debug("Sock{} state: {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
 		};
 
@@ -176,7 +236,7 @@ TEST_CASE(SUITE("ManyStrings"))
 	//make a timer to stop the run
 	std::atomic_bool stop = false;
 	auto stop_timer = odc::asio_service::Get()->make_steady_timer();
-	stop_timer->expires_from_now(std::chrono::milliseconds(1000));
+	stop_timer->expires_from_now(std::chrono::milliseconds(5000));
 	stop_timer->async_wait([&stop](const asio::error_code& err){stop = true;});
 
 	//make two 'chains' of timers that fire off at random times to open and close the two socket managers
@@ -191,11 +251,11 @@ TEST_CASE(SUITE("ManyStrings"))
 	//write a bunch of data while the connections are going up and down
 	while(!stop)
 	{
-		std::this_thread::sleep_for(std::chrono::microseconds(50));
+		std::this_thread::sleep_for(std::chrono::microseconds(200));
 
 		std::string data1 = "";
 		std::string data2 = "";
-		for(int i=0; i<4; i++)
+		for(int i=0; i<300; i++)
 		{
 			data1.push_back(char(++send_count1%256));
 			data2.push_back(char(++send_count2%256));
@@ -220,7 +280,8 @@ TEST_CASE(SUITE("ManyStrings"))
 	pSockMan2.reset();
 	work.reset();
 
-	odc::spdlog_get("opendatacon")->debug("send_count1 {} recv_count2 {} send_count2 {} recv_count1 {}",send_count1,recv_count2,send_count2,recv_count1);
+	odc::spdlog_get("opendatacon")->info("send_count1:{}, recv_count2:{}, send_count2:{}, recv_count1:{}",send_count1,recv_count2,send_count2,recv_count1);
+	odc::spdlog_get("opendatacon")->info("Interruption count: {}", interrupt_count);
 
 	for(auto& thread : threads)
 		thread.join();
