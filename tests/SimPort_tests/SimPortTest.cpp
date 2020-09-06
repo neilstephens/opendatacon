@@ -38,6 +38,7 @@ const int START = 0;
 const int FINISH = 100;
 const std::vector<ControlCode> LATCH_ON_CODES = {ControlCode::LATCH_ON, ControlCode::CLOSE_PULSE_ON, ControlCode::PULSE_ON};
 const std::vector<ControlCode> LATCH_OFF_CODES = {ControlCode::LATCH_OFF, ControlCode::TRIP_PULSE_ON, ControlCode::PULSE_OFF};
+const std::vector<std::size_t> ANALOG_INDEXES = {0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 110, 120, 1110, 1293, 119201, 118281, 1782718, 19281919};
 
 /*
   function     : GetTestConfigJSON
@@ -76,7 +77,18 @@ inline Json::Value GetTestConfigJSON()
 		[
 			{"Range" : {"Start" : 0, "Stop" : 2}, "StartVal" : 50, "UpdateIntervalms" : 10000, "StdDev" : 2},
 			{"Range" : {"Start" : 3, "Stop" : 5}, "StartVal" : 230, "UpdateIntervalms" : 10000, "StdDev" : 5},
-			{"Index" : 7, "StartVal" : 5, "StdDev" : 0} //this is the tap position feedback
+			{"Index" : 7, "StartVal" : 5, "StdDev" : 0}, //this is the tap position feedback
+			{"Index" : 8, "StartVal" : 240, "UpdateIntervalms" : 10000 ,"StdDev" : 5},
+			{"Index" : 9, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 10, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 110, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 120, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 1110, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 1293, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 119201, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 118281, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 1782718, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
+			{"Index" : 19281919, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5}
 			//,{"Index" : 6, "SQLite3" : { "File" : "test2.db", "Query" : "select timestamp,(value+:INDEX) from events", "TimestampHandling" : "RELATIVE_TOD_FASTFORWARD"}}
 		],
 
@@ -401,6 +413,42 @@ TEST_CASE("TestReleasePoint")
 		const ParamCollection params = BuildParams("Analog", "0", "");
 		Json::Value value = resp->ExecuteCommand("ReleasePoint", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests sending an event to all analog points
+  param        : TestAnalogEventToAll
+  return       : NA
+*/
+TEST_CASE("TestAnalogEventToAll")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const ParamCollection params = BuildParams("Analog", ".*", "12345.6789");
+		Json::Value value = resp->ExecuteCommand("SendEvent", params);
+		REQUIRE(value["RESULT"].asString() == "Success");
+		for (std::size_t index : ANALOG_INDEXES)
+			REQUIRE(sim_port->GetCurrentState()["AnalogCurrent"][std::to_string(index)] == "12345.678900");
 	}
 
 	UnLoadModule(port_lib);
