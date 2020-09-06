@@ -23,6 +23,8 @@
  *  Created on: 2018-06-17
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+
+#include "TestODCHelpers.h"
 #include "../opendatacon/DataConnector.h"
 #include "TestPorts.h"
 #include <catch.hpp>
@@ -34,6 +36,7 @@ using namespace odc;
 
 TEST_CASE(SUITE("StatusCallback"))
 {
+	TestSetup();
 	/*
 	 * Send events from one port to 7 other ports
 	 *	- 3 ports via separate connector IOHandlers - check port (de)multiplexing
@@ -120,4 +123,6 @@ TEST_CASE(SUITE("StatusCallback"))
 		else
 			REQUIRE(cb_status == CommandStatus::UNDEFINED);
 	}
+
+	TestTearDown();
 }

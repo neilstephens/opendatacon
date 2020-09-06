@@ -76,9 +76,9 @@ private:
 	std::atomic_bool state2 = false;
 	std::atomic<unsigned int> Sock1Count = 0;
 	std::atomic<unsigned int> Sock2Count = 0;
+	const std::string log_name;
 	odc::TCPSocketManager<std::vector<char>> SockMan1;
 	odc::TCPSocketManager<std::vector<char>> SockMan2;
-	const std::string log_name;
 };
 
 #endif // MANINTHEMIDDLE_H

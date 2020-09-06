@@ -23,6 +23,8 @@
  *  Created on: 05/06/2019
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+
+#include "TestODCHelpers.h"
 #include "../opendatacon/DataConnector.h"
 #include "TestPorts.h"
 #include <atomic>
@@ -34,6 +36,8 @@ using namespace odc;
 
 TEST_CASE(SUITE("EventTypes"))
 {
+	TestSetup();
+
 	auto event_type = EventType::BeforeRange;
 	REQUIRE(ToString(event_type) == "<no_string_representation>");
 	while((event_type+1) != EventType::AfterRange)
@@ -56,10 +60,14 @@ TEST_CASE(SUITE("EventTypes"))
 		REQUIRE_NOTHROW(event.reset());
 		REQUIRE_NOTHROW(event_copy.reset());
 	}
+
+	TestTearDown();
 }
 
 TEST_CASE(SUITE("PayloadTransport"))
 {
+	TestSetup();
+
 	//Generate a load of events
 	//send them over a DataConnector
 	//check they arrived intact
@@ -112,6 +120,8 @@ TEST_CASE(SUITE("PayloadTransport"))
 	work.reset();
 	for(auto& t : threads)
 		t.join();
+
+	TestTearDown();
 }
 
 

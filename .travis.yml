@@ -189,7 +189,7 @@ script:
   - $BUILDRUN sh -c "$PRESOURCE make -j3"
   - $BUILDRUN sh -c "$PRESOURCE make package"
   - $BUILDRUN sh -c "$PRESOURCE make install"
-  - $RUN install/bin/ODC_tests -d yes
+  - $RUN install/bin/ODC_tests $LOG_LVL -d yes
   - $RUN install/bin/DNP3Port_tests $LOG_LVL -d yes
   - $RUN install/bin/SimPort_tests -d yes
   - $RUN install/bin/MD3Port_tests $LOG_LVL -d yes
