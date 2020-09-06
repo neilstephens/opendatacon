@@ -67,6 +67,10 @@ install:
   - mkdir -p build/install && cd build
   - export INSTALL_PREFIX=$(pwd)/install
   - |
+    if [ -z "$LOG_LVL" ]; then
+      export LOG_LVL="error"
+    fi
+  - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       HOMEBREW_NO_AUTO_UPDATE=1 brew install libmodbus libmicrohttpd socat
       export TOOLCHAIN_OPT="-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMICROHTTPD=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF"
@@ -186,11 +190,11 @@ script:
   - $BUILDRUN sh -c "$PRESOURCE make package"
   - $BUILDRUN sh -c "$PRESOURCE make install"
   - $RUN install/bin/ODC_tests -d yes
-  - $RUN install/bin/DNP3Port_tests -d yes
+  - $RUN install/bin/DNP3Port_tests $LOG_LVL -d yes
   - $RUN install/bin/SimPort_tests -d yes
-  - $RUN install/bin/MD3Port_tests error -d yes
-  - $RUN install/bin/CBPort_tests error -d yes
-  - $RUN install/bin/PyPort_tests error -d yes
+  - $RUN install/bin/MD3Port_tests $LOG_LVL -d yes
+  - $RUN install/bin/CBPort_tests $LOG_LVL -d yes
+  - $RUN install/bin/PyPort_tests $LOG_LVL -d yes
   - $STOP
 
 deploy:

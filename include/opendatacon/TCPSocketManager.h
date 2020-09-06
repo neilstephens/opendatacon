@@ -106,6 +106,8 @@ public:
 		      = std::numeric_limits<size_t>::max(),       //maximum number of writes to buffer
 		const bool aauto_reopen = false,                  //Keeps the socket open (retry on error), unless you explicitly Close() it
 		const uint16_t aretry_time_ms = 0,                //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
+		const std::function<void(const std::string&)>&    //
+		aLogCallback = [](const std::string& m){},        //Handler for log messages
 		const bool useKeepalives = true,                  //Set TCP keepalive socket option
 		const unsigned int KeepAliveTimeout_s = 599,      //TCP keepalive idle timeout (seconds)
 		const unsigned int KeepAliveRetry_s = 10,         //TCP keepalive retry interval (seconds)
@@ -117,8 +119,9 @@ public:
 		isServer(aisServer),
 		ReadCallback(aReadCallback),
 		StateCallback(aStateCallback),
+		LogCallback(aLogCallback),
 		Keepalives(useKeepalives,KeepAliveTimeout_s,KeepAliveRetry_s,KeepAliveFailcount),
-		pSock(pIOS->make_tcp_socket()),
+		pSock(nullptr),
 		pReadStrand(pIOS->make_strand()),
 		pWriteStrand(pIOS->make_strand()),
 		pSockStrand(pIOS->make_strand()),
@@ -139,6 +142,8 @@ public:
 				manuallyClosed = false;
 				if(isConnected)
 					return;
+				LogCallback("Socket opening.");
+				pSock = pIOS->make_tcp_socket();
 				if(isServer)
 				{
 				      try
@@ -147,8 +152,8 @@ public:
 					}
 				      catch(std::exception& e)
 				      {
-				            if(auto log = odc::spdlog_get("opendatacon"))
-							log->error("TCPSocketManager failed to start server on {}:{}. Exception: {}",EndpointIterator->host_name(),EndpointIterator->service_name(),e.what());
+				            auto msg = "Failed to start server on "+EndpointIterator->host_name()+":"+EndpointIterator->service_name()+". Exception: "+e.what();
+				            LogCallback(msg);
 				            AutoOpen();
 				            return;
 					}
@@ -156,6 +161,8 @@ public:
 						{
 							if(manuallyClosed)
 								return;
+							if(!err_code)
+								LogCallback("Connection accepted.");
 							ConnectCompletionHandler(err_code);
 							pAcceptor.reset();
 						}));
@@ -166,6 +173,8 @@ public:
 						{
 							if(manuallyClosed)
 								return;
+							if(!err_code)
+								LogCallback("Connection established.");
 							ConnectCompletionHandler(err_code);
 						}));
 				}
@@ -176,6 +185,7 @@ public:
 		auto tracker = handler_tracker;
 		pSockStrand->post([this,tracker]()
 			{
+				LogCallback("Connection manual close.");
 				manuallyClosed = true;
 				ramp_time_ms = 0;
 				pRetryTimer->cancel();
@@ -211,6 +221,7 @@ public:
 						      writebufs.push_back(buf);
 						      if(writebufs.size() > buffer_limit)
 								writebufs.erase(writebufs.begin());
+						      LogCallback("Connection async write error: "+err_code.message());
 						      AutoClose();
 						      AutoOpen();
 						      return;
@@ -237,6 +248,7 @@ private:
 	const bool isServer;
 	const std::function<void(buf_t&)> ReadCallback;
 	const std::function<void(bool)> StateCallback;
+	const std::function<void(const std::string&)> LogCallback;
 	TCPKeepaliveOpts Keepalives;
 
 	buf_t readbuf;
@@ -268,7 +280,7 @@ private:
 	{
 		if(err_code)
 		{
-			//TODO: implement logging
+			LogCallback("Connection completion error: "+err_code.message());
 			AutoOpen();
 			return;
 		}
@@ -288,6 +300,7 @@ private:
 						      auto n = asio::write(*pSock,writebufs,asio::transfer_all());
 						      if(n == 0)
 						      {
+						            LogCallback("Connection sync write error: Zero bytes written");
 						            AutoClose();
 						            AutoOpen();
 						            return;
@@ -305,6 +318,7 @@ private:
 			{
 				if(err_code)
 				{
+				      LogCallback("Connection async read error: "+err_code.message());
 				      AutoClose();
 				      AutoOpen();
 				}
@@ -331,6 +345,7 @@ private:
 				if(ramp_time_ms == 0)
 				{
 				      ramp_time_ms = 125;
+				      LogCallback("Socket open retry.");
 				      Open();
 				}
 				else
@@ -341,6 +356,7 @@ private:
 							if(manuallyClosed || err_code)
 								return;
 							ramp_time_ms *= 2;
+							LogCallback("Socket open retry.");
 							Open();
 						}));
 				}
@@ -355,6 +371,7 @@ private:
 				{
 				      return;
 				}
+				LogCallback("Connection auto close.");
 				pSock->close();
 				isConnected = false;
 				StateCallback(isConnected);
