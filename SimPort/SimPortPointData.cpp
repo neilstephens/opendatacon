@@ -276,11 +276,11 @@ std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(s
 void SimPortPointData::CreateBinaryPosition(std::size_t index,
 	odc::FeedbackType type,
 	const std::vector<std::size_t>& indexes,
-	odc::PositionAction action,
-	std::size_t limit)
+	const std::vector<odc::PositionAction>& action,
+	std::size_t lower_limit, std::size_t raise_limit)
 {
 	std::unique_lock<std::shared_timed_mutex> lck(position_mutex);
-	m_binary_positions[index] = std::make_shared<BinaryPosition>(type, action, indexes, limit);
+	m_binary_positions[index] = std::make_shared<BinaryPosition>(type, action, indexes, lower_limit, raise_limit);
 }
 
 std::shared_ptr<BinaryPosition> SimPortPointData::GetBinaryPosition(std::size_t index)

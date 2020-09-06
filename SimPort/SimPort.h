@@ -112,13 +112,17 @@ private:
 	void PortDown();
 	std::vector<std::size_t> IndexesFromString(const std::string& index_str, odc::EventType type);
 
-	CommandStatus HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks, std::size_t index, ControlRelayOutputBlock command, std::string& message);
-	CommandStatus HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message);
-	CommandStatus HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message);
-	CommandStatus HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message);
-	CommandStatus HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position, std::string& message);
+	CommandStatus HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks, std::size_t index, const odc::ControlRelayOutputBlock& command, std::string& message);
+	CommandStatus HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message);
+	CommandStatus HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message);
+	CommandStatus HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message);
+	CommandStatus HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message);
 
 	void EventResponse(const std::string& message, std::size_t index, SharedStatusCallback_t pStatusCallback, CommandStatus status);
+
+	bool IsPulse(odc::ControlCode code) const;
+	bool IsLatchOff(odc::ControlCode code) const;
+	bool IsLatchOn(odc::ControlCode code) const;
 
 	std::shared_ptr<SimPortCollection> SimCollection;
 
