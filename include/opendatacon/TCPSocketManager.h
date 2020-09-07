@@ -146,7 +146,7 @@ public:
 		pSockStrand->post([this,tracker]()
 			{
 				manuallyClosed = false;
-				if(isConnected || pending_connections)
+				if(isConnected || pending_connections || pending_read)
 					return;
 
 				asio::ip::tcp::resolver::iterator end;
@@ -199,14 +199,13 @@ public:
 				            pAcceptor->async_accept(*pCandidateSock,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
 							{
 								pending_connections--;
-								if(manuallyClosed || isConnected)
-								{
-								      LogCallback("Connection dropped on "+addr_str);
-								      return;
-								}
+								std::string remote_addr_str = ".";
 								if(!err_code)
-									LogCallback("Connection accepted on "+addr_str);
-								ConnectCompletionHandler(tracker,err_code,pCandidateSock,addr_str);
+								{
+								      remote_addr_str = pCandidateSock->remote_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->remote_endpoint().port());
+								      LogCallback("Connection accepted on "+addr_str+" from "+remote_addr_str);
+								}
+								ConnectCompletionHandler(tracker,err_code,pCandidateSock,addr_str,remote_addr_str);
 								pAcceptor.reset();
 							}));
 					}
@@ -218,14 +217,13 @@ public:
 				            pCandidateSock->async_connect(*endpoint_it,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
 							{
 								pending_connections--;
-								if(manuallyClosed || isConnected)
-								{
-								      LogCallback("Connection dropped on "+addr_str);
-								      return;
-								}
+								std::string local_addr_str = ".";
 								if(!err_code)
-									LogCallback("Connection established on "+addr_str);
-								ConnectCompletionHandler(tracker,err_code,pCandidateSock,addr_str);
+								{
+								      local_addr_str = pCandidateSock->local_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->local_endpoint().port());
+								      LogCallback("Connection established to "+addr_str+" from "+local_addr_str);
+								}
+								ConnectCompletionHandler(tracker,err_code,pCandidateSock,local_addr_str,addr_str);
 							}));
 					}
 				}
@@ -263,27 +261,28 @@ public:
 				}
 
 				pending_write = true;
-				asio::async_write(*pSock,buf,asio::transfer_all(),pSockStrand->wrap([this,tracker,buf](asio::error_code err_code, std::size_t n)
+				auto pWriteSock = pSock;
+				auto remote_addr_str = pWriteSock->remote_endpoint().address().to_string()+":"+std::to_string(pWriteSock->remote_endpoint().port());
+				asio::async_write(*pWriteSock,buf,asio::transfer_all(),pSockStrand->wrap([this,tracker,buf,pWriteSock,remote_addr_str](asio::error_code err_code, std::size_t n)
 					{
 						write_count += n;
 						pending_write = false;
 						if(err_code)
 						{
-						      LogCallback("Async write ("+std::to_string(n)+" of "+std::to_string(buf.size())+" bytes) error: "+err_code.message());
+						      LogCallback("Async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(buf.size())+" bytes) error: "+err_code.message());
 						      if(buf.size() > n)
 						      {
 						            LogCallback("Buffering "+std::to_string(buf.size()-n)+" bytes");
 						            queue_writebufs->push_back(buf);
 						            queue_writebufs->back() += n;
 						            if(queue_writebufs->size() > buffer_limit)
-									queue_writebufs->erase(queue_writebufs->begin());
+						            {
+						                  LogCallback("Write queue full: dropping "+std::to_string(queue_writebufs->begin()->size())+" bytes.");
+						                  queue_writebufs->erase(queue_writebufs->begin());
+								}
 							}
-						      AutoClose(tracker);
-						      AutoOpen(tracker);
-						      return;
 						}
-						if(isConnected && !manuallyClosed)
-							WriteBuffer(tracker);
+						CheckLastWrite(pWriteSock,remote_addr_str,tracker);
 					}));
 			});
 	}
@@ -347,7 +346,23 @@ private:
 	uint64_t write_count = 0;
 	uint64_t read_count = 0;
 
-	void WriteBuffer(std::shared_ptr<void> tracker)
+	void CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
+	{
+		//if the connection is still the active one, keep writing
+		if(pWriteSock == pSock && isConnected && !manuallyClosed)
+			WriteBuffer(pWriteSock,remote_addr_str,tracker);
+		else
+		{ //this socket is finished with - we're responsible for shutting down send
+			LogCallback("Finished sending to "+remote_addr_str+" - shutting socket send");
+			asio::error_code err;
+			pWriteSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
+			if(err)
+				LogCallback("Send shutdown failed from write handler: "+err.message());
+			AutoOpen(tracker);
+		}
+	}
+
+	void WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
 	{
 		//if there's anything in the buffer sequence, write it
 		if((queue_writebufs->size() || dispatch_writebufs->size()) && !pending_write)
@@ -361,10 +376,11 @@ private:
 			}
 
 			pending_write = true;
-			asio::async_write(*pSock,*dispatch_writebufs,asio::transfer_all(),pSockStrand->wrap([this,tracker](asio::error_code err_code, std::size_t n)
+			asio::async_write(*pWriteSock,*dispatch_writebufs,asio::transfer_all(),pSockStrand->wrap([this,pWriteSock,remote_addr_str,tracker](asio::error_code err_code, std::size_t n)
 				{
 					pending_write = false;
 					write_count += n;
+
 					if(err_code)
 					{
 					      size_t consumed = 0;
@@ -384,67 +400,78 @@ private:
 					      for(auto& b : *dispatch_writebufs)
 							left += b.size();
 
-					      LogCallback("Buffer async write ("+std::to_string(n)+" of "+std::to_string(left+consumed)+" bytes) error: "+err_code.message());
+					      LogCallback("Buffer async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(left+consumed)+" bytes) error: "+err_code.message());
 					      LogCallback("Leaving "+std::to_string(left)+" bytes in buffer");
-					      AutoClose(tracker);
-					      AutoOpen(tracker);
-					      return;
 					}
-					dispatch_writebufs->clear();
-					if(isConnected && !manuallyClosed)
-						WriteBuffer(tracker);
+					else //wrote everything, connection still healthy
+						dispatch_writebufs->clear();
+
+					CheckLastWrite(pWriteSock,remote_addr_str,tracker);
 				}));
 		}
 	}
 
-	void ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str)
+	void ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str)
 	{
 		if(err_code)
 		{
-			LogCallback("Connection error on "+addr_str+" : "+err_code.message());
+			LogCallback("Connection error from "+addr_str+" to "+remote_addr_str+" : "+err_code.message());
 			if(pending_connections == 0)
 				AutoOpen(tracker);
 			return;
 		}
+
+		if(isConnected)
+		{
+			LogCallback("Dropping redundant connection from "+addr_str+" to "+remote_addr_str);
+			return;
+		}
+
 		pSock = pCandidateSock;
 		SetTCPKeepalives(*pSock,Keepalives.enabled,Keepalives.idle_timeout_s,Keepalives.retry_interval_s,Keepalives.fail_count);
 		isConnected = true;
 		StateCallback(isConnected);
 		ramp_time_ms = 0;
+		Read(remote_addr_str,tracker);
 
-		WriteBuffer(tracker);
-		Read(pSock,tracker);
+		if(manuallyClosed)
+		{ //must have been manually closed after we'd already initiated a connection
+			//still close the socket nicely and read anything off the socket
+			//but don't write anything
+			LogCallback("Closing unneeded connection on "+addr_str+" from "+remote_addr_str);
+			AutoClose(tracker);
+			return;
+		}
+
+		WriteBuffer(pSock,remote_addr_str,tracker);
 	}
 
-	void Read(std::shared_ptr<asio::ip::tcp::socket> pReadSock, std::shared_ptr<void> tracker)
+	void Read(std::string remote_addr_str, std::shared_ptr<void> tracker)
 	{
-		if(pending_read)
-			return;
-
 		pending_read = true;
-		asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,pReadSock](asio::error_code err_code, std::size_t n)
+		asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str](asio::error_code err_code, std::size_t n)
 			{
 				pending_read = false;
 				if(n)
 					ReadCallback(readbuf);
 				if(err_code)
 				{
-				      LogCallback("Connection async read ("+std::to_string(n)+" bytes) error: "+err_code.message());
-				      pReadSock->shutdown(asio::ip::tcp::socket::shutdown_both,err_code);
-				      pReadSock->close();
-				      if(isConnected && pSock == pReadSock)
-						AutoClose(tracker);
+				      LogCallback("Async read from "+remote_addr_str+" ("+std::to_string(n)+" bytes) error: "+err_code.message());
+				      pSock->shutdown(asio::ip::tcp::socket::shutdown_receive,err_code);
+				      if(err_code)
+						LogCallback("Read shutdown failed: "+err_code.message());
+				      AutoClose(tracker);
 				      AutoOpen(tracker);
 				}
 				else
-					Read(pReadSock,tracker);
+					Read(remote_addr_str,tracker);
 			}));
 	}
 	void AutoOpen(std::shared_ptr<void> tracker)
 	{
 		pSockStrand->post([this,tracker]()
 			{
-				if(!auto_reopen || manuallyClosed || isConnected || pending_connections)
+				if(!auto_reopen || manuallyClosed || isConnected || pending_connections || pending_read)
 					return;
 
 				if(retry_time_ms != 0)
@@ -481,8 +508,21 @@ private:
 				      return;
 				}
 				LogCallback("Connection auto close.");
-				asio::error_code err;
-				pSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
+				if(!pending_write) //if there's a pending write - the write handler will shutdown sending
+				{
+				      LogCallback("Not sending - shutting socket send from auto-close");
+				      asio::error_code err;
+				      pSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
+				      if(err)
+						LogCallback("Send shutdown failed from auto-close: "+err.message());
+				}
+				else if(!pending_read) //only time there's no pending read is if other side sent fin
+				{
+				      asio::error_code err;
+				      pSock->cancel(err);
+				      if(err)
+						LogCallback("Cancel pending write failed from auto-close: "+err.message());
+				}
 				isConnected = false;
 				StateCallback(isConnected);
 				//Force endpoint(s) resolution between connections
