@@ -424,7 +424,7 @@ inline bool GetConnectStateFromStringName(const std::string StrConnectState, Con
 
 inline EventType ToEventType(const std::string& str_type)
 {
-	EventType type;
+	EventType type = EventType::BeforeRange;
 	if (to_lower(str_type) == "binary")
 		type = EventType::Binary;
 	else if (to_lower(str_type) == "analog")
