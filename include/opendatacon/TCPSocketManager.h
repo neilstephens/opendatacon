@@ -146,7 +146,7 @@ public:
 		pSockStrand->post([this,tracker]()
 			{
 				manuallyClosed = false;
-				if(isConnected)
+				if(isConnected || pending_connections)
 					return;
 
 				asio::ip::tcp::resolver::iterator end;
@@ -444,7 +444,7 @@ private:
 	{
 		pSockStrand->post([this,tracker]()
 			{
-				if(!auto_reopen || manuallyClosed || isConnected)
+				if(!auto_reopen || manuallyClosed || isConnected || pending_connections)
 					return;
 
 				if(retry_time_ms != 0)

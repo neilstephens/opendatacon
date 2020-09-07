@@ -50,6 +50,9 @@ void require_equal(const T& thing1, const T& thing2)
 
 	if(!stop)
 		stop_timer->cancel();
+	else
+		odc::spdlog_get("opendatacon")->critical("Test timeout");
+
 	while(!stop)
 		odc::asio_service::Get()->poll_one();
 
@@ -189,17 +192,23 @@ TEST_CASE(SUITE("ManyStrings"))
 	std::atomic<uint64_t> interrupt_count = 0;
 	std::atomic_bool state1;
 	std::atomic_bool state2;
+	int recv_offset1 = 0;
+	int recv_offset2 = 0;
 
 	auto ReadHandler =
 		[&](bool sock1, odc::buf_t& buf)
 		{
 			auto& count = sock1 ? recv_count1 : recv_count2;
+			auto& recv_offset = sock1 ? recv_offset1 : recv_offset2;
 			while(buf.size())
 			{
 				count++;
 				auto ch = buf.sgetc();
-				if((count)%256 != ch)
-					odc::spdlog_get("opendatacon")->critical("Possible out of order or lost data: {} != {}",(count)%256, ch);
+				if((count+recv_offset)%256 != ch)
+				{
+					recv_offset = ch - count%256;
+					odc::spdlog_get("opendatacon")->critical("Possible out of order or lost data. Recieved {}, count {} ({}), offset {}",(uint8_t)ch,count,count%256,recv_offset);
+				}
 				buf.consume(1);
 			}
 		};
@@ -251,11 +260,11 @@ TEST_CASE(SUITE("ManyStrings"))
 	//write a bunch of data while the connections are going up and down
 	while(!stop)
 	{
-		std::this_thread::sleep_for(std::chrono::microseconds(200));
+		std::this_thread::sleep_for(std::chrono::microseconds(300));
 
 		std::string data1 = "";
 		std::string data2 = "";
-		for(int i=0; i<300; i++)
+		for(int i=0; i<100; i++)
 		{
 			data1.push_back(char(++send_count1%256));
 			data2.push_back(char(++send_count2%256));
