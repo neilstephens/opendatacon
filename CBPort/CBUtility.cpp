@@ -250,9 +250,9 @@ std::string BuildASCIIHexStringfromCBMessage(const CBMessage_t & CBMessage)
 CBMessage_t BuildCBMessageFromASCIIHexString(const std::string Message)
 {
 	// Parse into blocks, add to the message. Used only for testing atm.
-	assert(Message.size() % 8 == 0, "Hex string passed to build a CBMessage object must be a multiple of 8 in length");
+	assert(Message.size() % 8 == 0);	// Hex string passed to build a CBMessage object must be a multiple of 8 in length
 	CBMessage_t Msg;
-	for (int i = 0; i < Message.size(); i += 8)
+	for (size_t i = 0; i < Message.size(); i += 8)
 	{
 		CBBlockData block(Message.substr(i,8));
 		Msg.push_back(block);
