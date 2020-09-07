@@ -240,9 +240,8 @@ TEST_CASE(SUITE("ManyStrings"))
 	//use debug for logs - we force lots of errors
 
 	auto work = odc::asio_service::Get()->make_work();
-	std::vector<std::thread> threads;
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		threads.emplace_back([](){odc::asio_service::Get()->run();});
+		std::thread([](){odc::asio_service::Get()->run();}).detach();
 
 	//make a timer to stop the run
 	std::atomic_bool stop = false;
@@ -294,8 +293,8 @@ TEST_CASE(SUITE("ManyStrings"))
 	odc::spdlog_get("opendatacon")->info("send_count1:{}, recv_count2:{}, send_count2:{}, recv_count1:{}",send_count1,recv_count2,send_count2,recv_count1);
 	odc::spdlog_get("opendatacon")->info("Interruption count: {}", interrupt_count);
 
-	for(auto& thread : threads)
-		thread.join();
+	//make sure work is all done
+	odc::asio_service::Get()->run();
 
 	TestTearDown();
 }
