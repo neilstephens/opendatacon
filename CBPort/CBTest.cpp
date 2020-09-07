@@ -909,10 +909,10 @@ TEST_CASE("Station - ScanRequest F0")
 	                "80088297";
 
 	CBMessage_t Msg = BuildCBMessageFromASCIIHexString(DesiredResult);
-	assert(Msg[2].GetA() == 1024, "Checking payload values");
-	assert(Msg[2].GetB() == 1025, "Checking payload values");
-	assert(Msg[3].GetA() == 1026, "Checking payload values");
-	assert(Msg[4].GetB() == (4 << 6) + 5, "Checking payload values");	// The require below does the whole check in one go!
+	assert(Msg[2].GetA() == 1024);	// Checking payload values
+	assert(Msg[2].GetB() == 1025);	// Checking payload values
+	assert(Msg[3].GetA() == 1026);	// Checking payload values
+	assert(Msg[4].GetB() == (4 << 6) + 5);	// Checking payload values	// The require below does the whole check in one go!
 
 	while(!done_flag)
 		IOS->poll_one();
