@@ -149,83 +149,19 @@ public:
 				if(isConnected || pending_connections || pending_read)
 					return;
 
+				if(!EndPointResolved(tracker))
+					return;
+
 				asio::ip::tcp::resolver::iterator end;
-
-				//resolve between connections or every 15mins
-				if(EndpointIterator == end || (msSinceEpoch()-resolve_time) > 900000)
-				{
-				//need to resolve endpoint(s)
-				      std::shared_ptr<asio::ip::tcp::resolver> res = pIOS->make_tcp_resolver();
-				      res->async_resolve(host_name,service_name,pSockStrand->wrap(
-						[this,res,tracker](asio::error_code err_code, asio::ip::tcp::resolver::iterator endpoint_it)
-						{
-							if(manuallyClosed)
-								return;
-							if(err_code)
-							{
-							      LogCallback("error","Resolution error: "+err_code.message());
-							      AutoOpen(tracker);
-							      return;
-							}
-							LogCallback("debug","Resolved endpoint(s).");
-							EndpointIterator = endpoint_it;
-							resolve_time = msSinceEpoch();
-							AutoOpen(tracker);
-						}));
-				      return;
-				}
-
 				for(auto endpoint_it = EndpointIterator; endpoint_it != end; endpoint_it++)
 				{
 				      auto addr_str = endpoint_it->endpoint().address().to_string()+":"+std::to_string(endpoint_it->endpoint().port());
 				      std::shared_ptr<asio::ip::tcp::socket> pCandidateSock = pIOS->make_tcp_socket();
+
 				      if(isServer)
-				      {
-				            try
-				            {
-				                  pAcceptor = pIOS->make_tcp_acceptor(endpoint_it);
-				                  auto msg = "Listening on "+addr_str;
-				                  LogCallback("info",msg);
-						}
-				            catch(std::exception& e)
-				            {
-				                  auto msg = "Failed to start server on "+addr_str+". Exception: "+e.what();
-				                  LogCallback("error",msg);
-				                  if(pending_connections == 0)
-								AutoOpen(tracker);
-				                  return;
-						}
-				            pending_connections++;
-				            pAcceptor->async_accept(*pCandidateSock,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
-							{
-								pending_connections--;
-								std::string remote_addr_str = ".";
-								if(!err_code)
-								{
-								      remote_addr_str = pCandidateSock->remote_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->remote_endpoint().port());
-								      LogCallback("info","Connection accepted on "+addr_str+" from "+remote_addr_str);
-								}
-								ConnectCompletionHandler(tracker,err_code,pCandidateSock,addr_str,remote_addr_str);
-								pAcceptor.reset();
-							}));
-					}
+						ServerOpen(pCandidateSock, endpoint_it, addr_str, tracker);
 				      else
-				      {
-				            auto msg = "Connecting to "+addr_str;
-				            LogCallback("info",msg);
-				            pending_connections++;
-				            pCandidateSock->async_connect(*endpoint_it,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
-							{
-								pending_connections--;
-								std::string local_addr_str = ".";
-								if(!err_code)
-								{
-								      local_addr_str = pCandidateSock->local_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->local_endpoint().port());
-								      LogCallback("info","Connection established to "+addr_str+" from "+local_addr_str);
-								}
-								ConnectCompletionHandler(tracker,err_code,pCandidateSock,local_addr_str,addr_str);
-							}));
-					}
+						ClientOpen(pCandidateSock, endpoint_it, addr_str, tracker);
 				}
 			});
 	}
@@ -256,7 +192,10 @@ public:
 				{
 				      queue_writebufs->push_back(buf);
 				      if(queue_writebufs->size() > buffer_limit)
-						queue_writebufs->erase(queue_writebufs->begin());
+				      {
+				            LogCallback("warning","Write queue full: dropping "+std::to_string(queue_writebufs->begin()->size())+" bytes.");
+				            queue_writebufs->erase(queue_writebufs->begin());
+					}
 				      return;
 				}
 
@@ -345,6 +284,85 @@ private:
 	//some stats
 	uint64_t write_count = 0;
 	uint64_t read_count = 0;
+
+	bool EndPointResolved(std::shared_ptr<void> tracker)
+	{
+		asio::ip::tcp::resolver::iterator end;
+
+		//resolve between connections or every 15mins
+		if(EndpointIterator == end || (msSinceEpoch()-resolve_time) > 900000)
+		{
+			//need to resolve endpoint(s)
+			std::shared_ptr<asio::ip::tcp::resolver> res = pIOS->make_tcp_resolver();
+			res->async_resolve(host_name,service_name,pSockStrand->wrap(
+				[this,res,tracker](asio::error_code err_code, asio::ip::tcp::resolver::iterator endpoint_it)
+				{
+					if(manuallyClosed)
+						return;
+					if(err_code)
+					{
+					      LogCallback("error","Resolution error: "+err_code.message());
+					      AutoOpen(tracker);
+					      return;
+					}
+					LogCallback("debug","Resolved endpoint(s).");
+					EndpointIterator = endpoint_it;
+					resolve_time = msSinceEpoch();
+					AutoOpen(tracker);
+				}));
+			return false;
+		}
+		return true;
+	}
+
+	void ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
+	{
+		try
+		{
+			pAcceptor = pIOS->make_tcp_acceptor(endpoint_it);
+			auto msg = "Listening on "+addr_str;
+			LogCallback("info",msg);
+		}
+		catch(std::exception& e)
+		{
+			auto msg = "Failed to start server on "+addr_str+". Exception: "+e.what();
+			LogCallback("error",msg);
+			if(pending_connections == 0)
+				AutoOpen(tracker);
+			return;
+		}
+		pending_connections++;
+		pAcceptor->async_accept(*pCandidateSock,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
+			{
+				pending_connections--;
+				std::string remote_addr_str = ".";
+				if(!err_code)
+				{
+				      remote_addr_str = pCandidateSock->remote_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->remote_endpoint().port());
+				      LogCallback("info","Connection accepted on "+addr_str+" from "+remote_addr_str);
+				}
+				ConnectCompletionHandler(tracker,err_code,pCandidateSock,addr_str,remote_addr_str);
+				pAcceptor.reset();
+			}));
+	}
+
+	void ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
+	{
+		auto msg = "Connecting to "+addr_str;
+		LogCallback("info",msg);
+		pending_connections++;
+		pCandidateSock->async_connect(*endpoint_it,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
+			{
+				pending_connections--;
+				std::string local_addr_str = ".";
+				if(!err_code)
+				{
+				      local_addr_str = pCandidateSock->local_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->local_endpoint().port());
+				      LogCallback("info","Connection established to "+addr_str+" from "+local_addr_str);
+				}
+				ConnectCompletionHandler(tracker,err_code,pCandidateSock,local_addr_str,addr_str);
+			}));
+	}
 
 	void CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
 	{
