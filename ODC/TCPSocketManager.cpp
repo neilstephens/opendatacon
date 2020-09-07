@@ -137,7 +137,15 @@ void TCPSocketManager<Q>::Write(Q&& aContainer)
 
 			pending_write = true;
 			auto pWriteSock = pSock;
-			auto remote_addr_str = pWriteSock->remote_endpoint().address().to_string()+":"+std::to_string(pWriteSock->remote_endpoint().port());
+
+			std::string remote_addr_str;
+			asio::error_code addr_err;
+			auto remote_end = pWriteSock->remote_endpoint(addr_err);
+			if(!addr_err)
+				remote_addr_str = remote_end.address().to_string()+":"+std::to_string(remote_end.port());
+			else
+				remote_addr_str = "'"+addr_err.message()+"'";
+
 			asio::async_write(*pWriteSock,buf,asio::transfer_all(),pSockStrand->wrap([this,tracker,buf,pWriteSock,remote_addr_str](asio::error_code err_code, std::size_t n)
 				{
 					write_count += n;
@@ -230,12 +238,18 @@ void TCPSocketManager<Q>::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCan
 	pAcceptor->async_accept(*pCandidateSock,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
 		{
 			pending_connections--;
-			std::string remote_addr_str = ".";
+
+			std::string remote_addr_str;
+			asio::error_code addr_err;
+			auto remote_end = pCandidateSock->remote_endpoint(addr_err);
+			if(!addr_err)
+				remote_addr_str = remote_end.address().to_string()+":"+std::to_string(remote_end.port());
+			else
+				remote_addr_str = "'"+addr_err.message()+"'";
+
 			if(!err_code)
-			{
-			      remote_addr_str = pCandidateSock->remote_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->remote_endpoint().port());
-			      LogCallback("info","Connection accepted on "+addr_str+" from "+remote_addr_str);
-			}
+				LogCallback("info","Connection accepted on "+addr_str+" from "+remote_addr_str);
+
 			ConnectCompletionHandler(tracker,err_code,pCandidateSock,addr_str,remote_addr_str);
 			pAcceptor.reset();
 		}));
@@ -250,12 +264,18 @@ void TCPSocketManager<Q>::ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCan
 	pCandidateSock->async_connect(*endpoint_it,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
 		{
 			pending_connections--;
-			std::string local_addr_str = ".";
+
+			std::string local_addr_str;
+			asio::error_code addr_err;
+			auto local_end = pCandidateSock->local_endpoint(addr_err);
+			if(!addr_err)
+				local_addr_str = local_end.address().to_string()+":"+std::to_string(local_end.port());
+			else
+				local_addr_str = "'"+addr_err.message()+"'";
+
 			if(!err_code)
-			{
-			      local_addr_str = pCandidateSock->local_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->local_endpoint().port());
-			      LogCallback("info","Connection established to "+addr_str+" from "+local_addr_str);
-			}
+				LogCallback("info","Connection established to "+addr_str+" from "+local_addr_str);
+
 			ConnectCompletionHandler(tracker,err_code,pCandidateSock,local_addr_str,addr_str);
 		}));
 }
