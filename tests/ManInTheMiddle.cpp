@@ -32,12 +32,26 @@ ManInTheMiddle::ManInTheMiddle(MITMConfig conf, unsigned int port1, unsigned int
 		(conf == MITMConfig::SERVER_CLIENT || conf == MITMConfig::SERVER_SERVER),
 		"127.0.0.1",std::to_string(port1),
 		[this](odc::buf_t& buf){ReadHandler(false,buf);},[this](bool s){StateHandler(true,s);},
-		10,true,0,[a_log_name,port1](const std::string& msg){ if(auto log = odc::spdlog_get(a_log_name)) log->debug("ManInTheMiddle port {}: {}",port1,msg);}),
+		10,true,0,[a_log_name,port1](const std::string& level, const std::string& msg)
+		{
+			if(auto log = odc::spdlog_get(a_log_name))
+			{
+			      auto lvl = spdlog::level::from_str(level);
+			      log->log(lvl,"ManInTheMiddle port {}: {}",port1,msg);
+			}
+		}),
 	SockMan2(odc::asio_service::Get(),
 		(conf == MITMConfig::CLIENT_SERVER || conf == MITMConfig::SERVER_SERVER),
 		"127.0.0.1",std::to_string(port2),
 		[this](odc::buf_t& buf){ReadHandler(true,buf);},[this](bool s){StateHandler(false,s);},
-		10,true,0,[a_log_name,port2](const std::string& msg){ if(auto log = odc::spdlog_get(a_log_name)) log->debug("ManInTheMiddle port {}: {}",port2,msg);})
+		10,true,0,[a_log_name,port2](const std::string& level, const std::string& msg)
+		{
+			if(auto log = odc::spdlog_get(a_log_name))
+			{
+			      auto lvl = spdlog::level::from_str(level);
+			      log->log(lvl,"ManInTheMiddle port {}: {}",port2,msg);
+			}
+		})
 {
 	Up();
 }

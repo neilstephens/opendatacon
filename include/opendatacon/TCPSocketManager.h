@@ -96,22 +96,22 @@ class TCPSocketManager
 {
 public:
 	TCPSocketManager
-		(std::shared_ptr<odc::asio_service> apIOS,        //pointer to an asio io_service
-		const bool aisServer,                             //Whether to act as a server or client
-		const std::string& aEndPoint,                     //IP addr or hostname (to connect to if client, or bind to if server)
-		const std::string& aPort,                         //Port to connect to if client, or listen on if server
-		const std::function<void(buf_t&)>& aReadCallback, //Handler for data read off socket
-		const std::function<void(bool)>& aStateCallback,  //Handler for communicating the connection state of the socket
-		const size_t abuffer_limit                        //
-		      = std::numeric_limits<size_t>::max(),       //maximum number of writes to buffer
-		const bool aauto_reopen = false,                  //Keeps the socket open (retry on error), unless you explicitly Close() it
-		const uint16_t aretry_time_ms = 0,                //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
-		const std::function<void(const std::string&)>&    //
-		aLogCallback = [](const std::string& m){},        //Handler for log messages
-		const bool useKeepalives = true,                  //Set TCP keepalive socket option
-		const unsigned int KeepAliveTimeout_s = 599,      //TCP keepalive idle timeout (seconds)
-		const unsigned int KeepAliveRetry_s = 10,         //TCP keepalive retry interval (seconds)
-		const unsigned int KeepAliveFailcount = 3):       //TCP keepalive fail count
+		(std::shared_ptr<odc::asio_service> apIOS,                        //pointer to an asio io_service
+		const bool aisServer,                                             //Whether to act as a server or client
+		const std::string& aEndPoint,                                     //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                                         //Port to connect to if client, or listen on if server
+		const std::function<void(buf_t&)>& aReadCallback,                 //Handler for data read off socket
+		const std::function<void(bool)>& aStateCallback,                  //Handler for communicating the connection state of the socket
+		const size_t abuffer_limit                                        //
+		      = std::numeric_limits<size_t>::max(),                       //maximum number of writes to buffer
+		const bool aauto_reopen = false,                                  //Keeps the socket open (retry on error), unless you explicitly Close() it
+		const uint16_t aretry_time_ms = 0,                                //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
+		const std::function<void(const std::string&,const std::string&)>& //
+		aLogCallback = [](const std::string&, const std::string&){},      //Handler for log messages
+		const bool useKeepalives = true,                                  //Set TCP keepalive socket option
+		const unsigned int KeepAliveTimeout_s = 599,                      //TCP keepalive idle timeout (seconds)
+		const unsigned int KeepAliveRetry_s = 10,                         //TCP keepalive retry interval (seconds)
+		const unsigned int KeepAliveFailcount = 3):                       //TCP keepalive fail count
 		handler_tracker(std::make_shared<char>()),
 		isConnected(false),
 		pending_connections(0),
@@ -163,11 +163,11 @@ public:
 								return;
 							if(err_code)
 							{
-							      LogCallback("Resolution error: "+err_code.message());
+							      LogCallback("error","Resolution error: "+err_code.message());
 							      AutoOpen(tracker);
 							      return;
 							}
-							LogCallback("Resolved endpoint(s).");
+							LogCallback("debug","Resolved endpoint(s).");
 							EndpointIterator = endpoint_it;
 							resolve_time = msSinceEpoch();
 							AutoOpen(tracker);
@@ -185,12 +185,12 @@ public:
 				            {
 				                  pAcceptor = pIOS->make_tcp_acceptor(endpoint_it);
 				                  auto msg = "Listening on "+addr_str;
-				                  LogCallback(msg);
+				                  LogCallback("info",msg);
 						}
 				            catch(std::exception& e)
 				            {
 				                  auto msg = "Failed to start server on "+addr_str+". Exception: "+e.what();
-				                  LogCallback(msg);
+				                  LogCallback("error",msg);
 				                  if(pending_connections == 0)
 								AutoOpen(tracker);
 				                  return;
@@ -203,7 +203,7 @@ public:
 								if(!err_code)
 								{
 								      remote_addr_str = pCandidateSock->remote_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->remote_endpoint().port());
-								      LogCallback("Connection accepted on "+addr_str+" from "+remote_addr_str);
+								      LogCallback("info","Connection accepted on "+addr_str+" from "+remote_addr_str);
 								}
 								ConnectCompletionHandler(tracker,err_code,pCandidateSock,addr_str,remote_addr_str);
 								pAcceptor.reset();
@@ -212,7 +212,7 @@ public:
 				      else
 				      {
 				            auto msg = "Connecting to "+addr_str;
-				            LogCallback(msg);
+				            LogCallback("info",msg);
 				            pending_connections++;
 				            pCandidateSock->async_connect(*endpoint_it,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
 							{
@@ -221,7 +221,7 @@ public:
 								if(!err_code)
 								{
 								      local_addr_str = pCandidateSock->local_endpoint().address().to_string()+":"+std::to_string(pCandidateSock->local_endpoint().port());
-								      LogCallback("Connection established to "+addr_str+" from "+local_addr_str);
+								      LogCallback("info","Connection established to "+addr_str+" from "+local_addr_str);
 								}
 								ConnectCompletionHandler(tracker,err_code,pCandidateSock,local_addr_str,addr_str);
 							}));
@@ -234,7 +234,7 @@ public:
 		auto tracker = handler_tracker;
 		pSockStrand->post([this,tracker]()
 			{
-				LogCallback("Connection manual close.");
+				LogCallback("debug","Connection manual close.");
 				manuallyClosed = true;
 				ramp_time_ms = 0;
 				pRetryTimer->cancel();
@@ -269,15 +269,15 @@ public:
 						pending_write = false;
 						if(err_code)
 						{
-						      LogCallback("Async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(buf.size())+" bytes) error: "+err_code.message());
+						      LogCallback("debug","Async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(buf.size())+" bytes) error: "+err_code.message());
 						      if(buf.size() > n)
 						      {
-						            LogCallback("Buffering "+std::to_string(buf.size()-n)+" bytes");
+						            LogCallback("debug","Buffering "+std::to_string(buf.size()-n)+" bytes");
 						            queue_writebufs->push_back(buf);
 						            queue_writebufs->back() += n;
 						            if(queue_writebufs->size() > buffer_limit)
 						            {
-						                  LogCallback("Write queue full: dropping "+std::to_string(queue_writebufs->begin()->size())+" bytes.");
+						                  LogCallback("warning","Write queue full: dropping "+std::to_string(queue_writebufs->begin()->size())+" bytes.");
 						                  queue_writebufs->erase(queue_writebufs->begin());
 								}
 							}
@@ -296,7 +296,7 @@ public:
 		while(!tracker.expired() && !pIOS->stopped())
 			pIOS->poll_one();
 
-		LogCallback("Written total "+std::to_string(write_count)+" bytes");
+		LogCallback("debug","Write total "+std::to_string(write_count)+" bytes");
 	}
 
 private:
@@ -310,7 +310,7 @@ private:
 	const bool isServer;
 	const std::function<void(buf_t&)> ReadCallback;
 	const std::function<void(bool)> StateCallback;
-	const std::function<void(const std::string&)> LogCallback;
+	const std::function<void(const std::string& level,const std::string& message)> LogCallback;
 	TCPKeepaliveOpts Keepalives;
 
 	buf_t readbuf;
@@ -353,11 +353,11 @@ private:
 			WriteBuffer(pWriteSock,remote_addr_str,tracker);
 		else
 		{ //this socket is finished with - we're responsible for shutting down send
-			LogCallback("Finished sending to "+remote_addr_str+" - shutting socket send");
+			LogCallback("debug","Finished sending to "+remote_addr_str+" - shutting socket send");
 			asio::error_code err;
 			pWriteSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
 			if(err)
-				LogCallback("Send shutdown failed from write handler: "+err.message());
+				LogCallback("debug","Send shutdown failed from write handler: "+err.message());
 			AutoOpen(tracker);
 		}
 	}
@@ -400,8 +400,8 @@ private:
 					      for(auto& b : *dispatch_writebufs)
 							left += b.size();
 
-					      LogCallback("Buffer async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(left+consumed)+" bytes) error: "+err_code.message());
-					      LogCallback("Leaving "+std::to_string(left)+" bytes in buffer");
+					      LogCallback("debug","Buffer async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(left+consumed)+" bytes) error: "+err_code.message());
+					      LogCallback("debug","Leaving "+std::to_string(left)+" bytes in buffer");
 					}
 					else //wrote everything, connection still healthy
 						dispatch_writebufs->clear();
@@ -415,7 +415,7 @@ private:
 	{
 		if(err_code)
 		{
-			LogCallback("Connection error from "+addr_str+" to "+remote_addr_str+" : "+err_code.message());
+			LogCallback("error","Connection error from "+addr_str+" to "+remote_addr_str+" : "+err_code.message());
 			if(pending_connections == 0)
 				AutoOpen(tracker);
 			return;
@@ -423,7 +423,7 @@ private:
 
 		if(isConnected)
 		{
-			LogCallback("Dropping redundant connection from "+addr_str+" to "+remote_addr_str);
+			LogCallback("warning","Dropping redundant connection from "+addr_str+" to "+remote_addr_str);
 			return;
 		}
 
@@ -438,7 +438,7 @@ private:
 		{ //must have been manually closed after we'd already initiated a connection
 			//still close the socket nicely and read anything off the socket
 			//but don't write anything
-			LogCallback("Closing unneeded connection on "+addr_str+" from "+remote_addr_str);
+			LogCallback("debug","Closing unneeded connection on "+addr_str+" from "+remote_addr_str);
 			AutoClose(tracker);
 			return;
 		}
@@ -456,10 +456,11 @@ private:
 					ReadCallback(readbuf);
 				if(err_code)
 				{
-				      LogCallback("Async read from "+remote_addr_str+" ("+std::to_string(n)+" bytes) error: "+err_code.message());
+				      auto level = (err_code == asio::error::eof) ? "info" : "warning";
+				      LogCallback(level,"Async read from "+remote_addr_str+" ("+std::to_string(n)+" bytes) : "+err_code.message());
 				      pSock->shutdown(asio::ip::tcp::socket::shutdown_receive,err_code);
 				      if(err_code)
-						LogCallback("Read shutdown failed: "+err_code.message());
+						LogCallback("debug","Read shutdown failed: "+err_code.message());
 				      AutoClose(tracker);
 				      AutoOpen(tracker);
 				}
@@ -482,7 +483,7 @@ private:
 				if(ramp_time_ms == 0)
 				{
 				      ramp_time_ms = 125;
-				      LogCallback("Trying to open socket...");
+				      LogCallback("debug","Trying to open socket...");
 				      Open();
 				}
 				else
@@ -493,7 +494,7 @@ private:
 							if(manuallyClosed || err_code)
 								return;
 							ramp_time_ms *= 2;
-							LogCallback("Re-trying to open socket...");
+							LogCallback("debug","Re-trying to open socket...");
 							Open();
 						}));
 				}
@@ -507,21 +508,21 @@ private:
 				{
 				      return;
 				}
-				LogCallback("Connection auto close.");
+				LogCallback("debug","Connection auto close.");
 				if(!pending_write) //if there's a pending write - the write handler will shutdown sending
 				{
-				      LogCallback("Not sending - shutting socket send from auto-close");
+				      LogCallback("debug","Not sending - shutting socket send from auto-close");
 				      asio::error_code err;
 				      pSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
 				      if(err)
-						LogCallback("Send shutdown failed from auto-close: "+err.message());
+						LogCallback("debug","Send shutdown failed from auto-close: "+err.message());
 				}
 				else if(!pending_read) //only time there's no pending read is if other side sent fin
 				{
 				      asio::error_code err;
 				      pSock->cancel(err);
 				      if(err)
-						LogCallback("Cancel pending write failed from auto-close: "+err.message());
+						LogCallback("debug","Cancel pending write failed from auto-close: "+err.message());
 				}
 				isConnected = false;
 				StateCallback(isConnected);
