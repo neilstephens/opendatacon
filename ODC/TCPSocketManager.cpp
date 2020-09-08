@@ -77,29 +77,9 @@ TCPSocketManager<Q>::TCPSocketManager
 template <typename Q>
 void TCPSocketManager<Q>::Open()
 {
-	auto tracker = handler_tracker;
-	pSockStrand->post([this,tracker]()
-		{
-			manuallyClosed = false;
-			if(isConnected || pending_connections || pending_read)
-				return;
-
-			if(!EndPointResolved(tracker))
-				return;
-
-			asio::ip::tcp::resolver::iterator end;
-			for(auto endpoint_it = EndpointIterator; endpoint_it != end; endpoint_it++)
-			{
-			      auto addr_str = endpoint_it->endpoint().address().to_string()+":"+std::to_string(endpoint_it->endpoint().port());
-			      std::shared_ptr<asio::ip::tcp::socket> pCandidateSock = pIOS->make_tcp_socket();
-
-			      if(isServer)
-					ServerOpen(pCandidateSock, endpoint_it, addr_str, tracker);
-			      else
-					ClientOpen(pCandidateSock, endpoint_it, addr_str, tracker);
-			}
-		});
+	Open(handler_tracker);
 }
+
 template <typename Q>
 void TCPSocketManager<Q>::Close()
 {
@@ -187,6 +167,32 @@ TCPSocketManager<Q>::~TCPSocketManager()
 //----------------Private
 
 template <typename Q>
+void TCPSocketManager<Q>::Open(std::shared_ptr<void> tracker)
+{
+	pSockStrand->post([this,tracker]()
+		{
+			manuallyClosed = false;
+			if(isConnected || pending_connections || pending_read)
+				return;
+
+			if(!EndPointResolved(tracker))
+				return;
+
+			asio::ip::tcp::resolver::iterator end;
+			for(auto endpoint_it = EndpointIterator; endpoint_it != end; endpoint_it++)
+			{
+			      auto addr_str = endpoint_it->endpoint().address().to_string()+":"+std::to_string(endpoint_it->endpoint().port());
+			      std::shared_ptr<asio::ip::tcp::socket> pCandidateSock = pIOS->make_tcp_socket();
+
+			      if(isServer)
+					ServerOpen(pCandidateSock, endpoint_it, addr_str, tracker);
+			      else
+					ClientOpen(pCandidateSock, endpoint_it, addr_str, tracker);
+			}
+		});
+}
+
+template <typename Q>
 bool TCPSocketManager<Q>::EndPointResolved(std::shared_ptr<void> tracker)
 {
 	asio::ip::tcp::resolver::iterator end;
@@ -223,13 +229,11 @@ void TCPSocketManager<Q>::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCan
 	try
 	{
 		pAcceptor = pIOS->make_tcp_acceptor(endpoint_it);
-		auto msg = "Listening on "+addr_str;
-		LogCallback("info",msg);
+		LogCallback("info","Listening on "+addr_str);
 	}
 	catch(std::exception& e)
 	{
-		auto msg = "Failed to start server on "+addr_str+". Exception: "+e.what();
-		LogCallback("error",msg);
+		LogCallback("error","Failed to start server on "+addr_str+". Exception: "+e.what());
 		if(pending_connections == 0)
 			AutoOpen(tracker);
 		return;
@@ -258,8 +262,7 @@ void TCPSocketManager<Q>::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCan
 template <typename Q>
 void TCPSocketManager<Q>::ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
 {
-	auto msg = "Connecting to "+addr_str;
-	LogCallback("info",msg);
+	LogCallback("info","Connecting to "+addr_str);
 	pending_connections++;
 	pCandidateSock->async_connect(*endpoint_it,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
 		{
@@ -424,7 +427,7 @@ void TCPSocketManager<Q>::AutoOpen(std::shared_ptr<void> tracker)
 			{
 			      ramp_time_ms = 125;
 			      LogCallback("debug","Trying to open socket...");
-			      Open();
+			      Open(tracker);
 			}
 			else
 			{
@@ -435,7 +438,7 @@ void TCPSocketManager<Q>::AutoOpen(std::shared_ptr<void> tracker)
 							return;
 						ramp_time_ms *= 2;
 						LogCallback("debug","Re-trying to open socket...");
-						Open();
+						Open(tracker);
 					}));
 			}
 		});

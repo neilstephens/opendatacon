@@ -171,6 +171,7 @@ private:
 	void WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
 	void ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str);
 	void Read(std::string remote_addr_str, std::shared_ptr<void> tracker);
+	void Open(std::shared_ptr<void> tracker);
 	void AutoOpen(std::shared_ptr<void> tracker);
 	void AutoClose(std::shared_ptr<void> tracker);
 };
