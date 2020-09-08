@@ -50,6 +50,9 @@ void require_equal(const T& thing1, const T& thing2)
 
 	if(!stop)
 		stop_timer->cancel();
+	else
+		odc::spdlog_get("opendatacon")->critical("Test timeout");
+
 	while(!stop)
 		odc::asio_service::Get()->poll_one();
 
@@ -98,12 +101,12 @@ TEST_CASE(SUITE("SimpleStrings"))
 	odc::spdlog_get("opendatacon")->debug("Creating Sock1");
 	auto pSockMan1 = std::make_unique<TCPSocketManager<std::string>>(odc::asio_service::Get(),
 		true,"127.0.0.1","22222",ReadHandler1,StateHandler1,10,true,0,
-		[](const std::string& msg){ odc::spdlog_get("opendatacon")->debug("Sock1: {}",msg);});
+		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
 
 	odc::spdlog_get("opendatacon")->debug("Creating Sock2");
 	auto pSockMan2 = std::make_unique<TCPSocketManager<std::string>>(odc::asio_service::Get(),
 		false,"127.0.0.1","22222",ReadHandler2,StateHandler2,10,true,0,
-		[](const std::string& msg){ odc::spdlog_get("opendatacon")->debug("Sock2: {}",msg);});
+		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock2: {}",msg);});
 
 	pSockMan1->Open();
 	pSockMan2->Open();
@@ -189,17 +192,23 @@ TEST_CASE(SUITE("ManyStrings"))
 	std::atomic<uint64_t> interrupt_count = 0;
 	std::atomic_bool state1;
 	std::atomic_bool state2;
+	int recv_offset1 = 0;
+	int recv_offset2 = 0;
 
 	auto ReadHandler =
 		[&](bool sock1, odc::buf_t& buf)
 		{
 			auto& count = sock1 ? recv_count1 : recv_count2;
+			auto& recv_offset = sock1 ? recv_offset1 : recv_offset2;
 			while(buf.size())
 			{
 				count++;
 				auto ch = buf.sgetc();
-				if((count)%256 != ch)
-					odc::spdlog_get("opendatacon")->critical("Possible out of order or lost data: {} != {}",(count)%256, ch);
+				if((count+recv_offset)%256 != ch)
+				{
+					recv_offset = ch - count%256;
+					odc::spdlog_get("opendatacon")->critical("{}: Possible out of order or lost data. Recieved {}, count {} ({}), offset {}",sock1 ? "Sock1" : "Sock2",(uint8_t)ch,count,count%256,recv_offset);
+				}
 				buf.consume(1);
 			}
 		};
@@ -210,7 +219,7 @@ TEST_CASE(SUITE("ManyStrings"))
 			sock_state = state;
 			if(!state1 && !state2)
 				interrupt_count++;
-			odc::spdlog_get("opendatacon")->debug("Sock{} state: {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
+			odc::spdlog_get("opendatacon")->debug("Sock{}: state {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
 		};
 
 	auto ReadHandler1 = std::bind(ReadHandler,true,std::placeholders::_1);
@@ -221,23 +230,24 @@ TEST_CASE(SUITE("ManyStrings"))
 	odc::spdlog_get("opendatacon")->debug("Creating Sock1");
 	auto pSockMan1 = std::make_unique<TCPSocketManager<std::string>>(odc::asio_service::Get(),
 		true,"127.0.0.1","22222",ReadHandler1,StateHandler1,1000000,true,10,
-		[](const std::string& msg){ odc::spdlog_get("opendatacon")->debug("Sock1: {}",msg);});
+		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->debug("[{}] Sock1: {}",level,msg);});
+	//use debug for logs - we force lots of errors
 
 	odc::spdlog_get("opendatacon")->debug("Creating Sock2");
 	auto pSockMan2 = std::make_unique<TCPSocketManager<std::string>>(odc::asio_service::Get(),
 		false,"127.0.0.1","22222",ReadHandler2,StateHandler2,1000000,true,10,
-		[](const std::string& msg){ odc::spdlog_get("opendatacon")->debug("Sock2: {}",msg);});
+		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->debug("[{}] Sock2: {}",level,msg);});
+	//use debug for logs - we force lots of errors
 
 	auto work = odc::asio_service::Get()->make_work();
-	std::vector<std::thread> threads;
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		threads.emplace_back([](){odc::asio_service::Get()->run();});
+		std::thread([](){odc::asio_service::Get()->run();}).detach();
 
 	//make a timer to stop the run
 	std::atomic_bool stop = false;
 	auto stop_timer = odc::asio_service::Get()->make_steady_timer();
 	stop_timer->expires_from_now(std::chrono::milliseconds(5000));
-	stop_timer->async_wait([&stop](const asio::error_code& err){stop = true;});
+	stop_timer->async_wait([&stop](const asio::error_code&){stop = true;});
 
 	//make two 'chains' of timers that fire off at random times to open and close the two socket managers
 	std::atomic_bool s1_open = false;
@@ -251,11 +261,11 @@ TEST_CASE(SUITE("ManyStrings"))
 	//write a bunch of data while the connections are going up and down
 	while(!stop)
 	{
-		std::this_thread::sleep_for(std::chrono::microseconds(200));
+		std::this_thread::sleep_for(std::chrono::microseconds(300));
 
 		std::string data1 = "";
 		std::string data2 = "";
-		for(int i=0; i<300; i++)
+		for(int i=0; i<100; i++)
 		{
 			data1.push_back(char(++send_count1%256));
 			data2.push_back(char(++send_count2%256));
@@ -283,8 +293,8 @@ TEST_CASE(SUITE("ManyStrings"))
 	odc::spdlog_get("opendatacon")->info("send_count1:{}, recv_count2:{}, send_count2:{}, recv_count1:{}",send_count1,recv_count2,send_count2,recv_count1);
 	odc::spdlog_get("opendatacon")->info("Interruption count: {}", interrupt_count);
 
-	for(auto& thread : threads)
-		thread.join();
+	//make sure work is all done
+	odc::asio_service::Get()->run();
 
 	TestTearDown();
 }
