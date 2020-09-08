@@ -49,7 +49,7 @@
 //	CONTROL - Used
 //	ACC24
 //	MCDA - Used - Same as SMCDA
-//	ANA6 - Used - Half of an analog 12 bit value... //TODO: Need to combine these and split out again.
+//	ANA6 - Used - Half of an analog 12 bit value... 
 
 // Microsoft Message Analyzer filter
 // Virtually all the master commands are 4 bytes only. So look for these only with command # > 0

@@ -512,6 +512,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 					analogvalue = (data >> 6) & 0x3F; // Top 6 bits only.
 			      else
 					analogvalue &= 0x3F; // Bottom 6 bits only.
+				  analogvalue = 63 - analogvalue;	// ANA6 Are Inverted
 			}
 
 			pt.SetAnalog(analogvalue, now);
