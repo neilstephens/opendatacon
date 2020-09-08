@@ -167,6 +167,16 @@ inline Json::Value GetTestConfigJSON()
                                        "OffAction":"LOWER",
                                        "RaiseLimit":10,
                                        "LowerLimit":0}
+			},
+			{
+				"Index" : 11,
+				"FeedbackPosition":	{
+                                       "Type": "BCD",
+                                       "Indexes" : [10,11,12,13,14],
+                                       "OnAction":"LOWER",
+                                       "OffAction":"RAISE",
+                                       "RaiseLimit":10,
+                                       "LowerLimit":0}
 			}
 		]
 	})001";
@@ -1224,3 +1234,106 @@ TEST_CASE("ConitelTestBCDTapChangerLower")
 	TestTearDown();
 }
 
+/*
+  function     : TEST_CASE
+  description  : tests tap changer raise for BCD type for trip
+  param        : ConitelBCDTapChangerRaiseWithTrip, name of the test case
+  return       : NA
+*/
+TEST_CASE("ConitelBCDTapChangerRaiseWithTrip")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
+		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		/*
+		  As we know the index 7 tap changer's default position is 5
+		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
+		  Raise -> 10 (because 10 is the max limit)
+		*/
+		for (int i = 6; i <= 10; ++i)
+		{
+			SendEvent(ControlCode::TRIP_PULSE_ON, 11, sim_port, CommandStatus::SUCCESS);
+			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+		}
+		/*
+		  test the corner cases now.
+		  we will test to raise the tap changer beyond the lower limit mark
+		 */
+		SendEvent(ControlCode::TRIP_PULSE_ON, 11, sim_port, CommandStatus::OUT_OF_RANGE);
+		REQUIRE(10 == GetBCDEncodedString(indexes, sim_port));
+		/*
+		  test the corner cases now.
+		  send the event with an index which doesnt exist
+		 */
+		SendEvent(ControlCode::TRIP_PULSE_ON, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer lower for BCD type
+  param        : ConitelTestBCDTapChangerLowerWithClose, name of the test case
+  return       : NA
+*/
+TEST_CASE("ConitelTestBCDTapChangerLowerWithClose")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
+		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		/*
+		  As we know the index 7 tap changer's default position is 5
+		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
+		  Lower -> 0 (because 0 is the min limit)
+		*/
+		for (int i = 4; i >= 0; --i)
+		{
+			SendEvent(ControlCode::CLOSE_PULSE_ON, 11, sim_port, CommandStatus::SUCCESS);
+			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+		}
+		/*
+		  test the corner cases now.
+		  we will test to raise the tap changer beyond the lower limit mark
+		 */
+		SendEvent(ControlCode::CLOSE_PULSE_ON, 11, sim_port, CommandStatus::OUT_OF_RANGE);
+		REQUIRE(0 == GetBCDEncodedString(indexes, sim_port));
+		/*
+		  test the corner cases now.
+		  send the event with an index which doesnt exist
+		 */
+		SendEvent(ControlCode::CLOSE_PULSE_ON, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
