@@ -211,9 +211,14 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 		{
 			// We have a matching point - there may be 2, set a flag to indicate we have a match, and set our bits in the output.
 			uint8_t ch = pt.GetChannel();
-			if ((pt.GetPointType() == ANA6) && (ch == 1))
+			if (pt.GetPointType() == ANA6) 
 			{
-			      Payload |= ShiftLeftResult16Bits(pt.GetAnalog(), 6);
+				uint16_t value = (63 - pt.GetAnalog() & 0x03f);	// ANA6 Are Inverted, 6 bit result only
+				// Shift only if ch == 1 (it is in the top bits!)
+				if (ch == 1)
+					Payload |= ShiftLeftResult16Bits(value, 6);
+				else
+					Payload |= value;
 			}
 			else
 				Payload |= pt.GetAnalog();

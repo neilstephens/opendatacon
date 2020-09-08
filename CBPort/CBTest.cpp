@@ -845,7 +845,7 @@ TEST_CASE("Station - ScanRequest F0")
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
 	std::atomic_bool done_flag(false);
-	CBOSPort->SetSendTCPDataFn([&Response,&done_flag](std::string CBMessage) { Response = std::move(CBMessage); done_flag = true; });
+	CBOSPort->SetSendTCPDataFn([&Response,&done_flag](std::string CBMessage) { Response = BuildASCIIHexStringfromBinaryString(CBMessage); done_flag = true; });
 
 	// Send the commands in as if came from TCP channel
 	output << commandblock.ToBinaryString();
@@ -856,14 +856,14 @@ TEST_CASE("Station - ScanRequest F0")
 	                            "14080022" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "00080007";
+	                            "000fff89";
 
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+	REQUIRE(Response == DesiredResult);
 
 
 	// Call the Event functions to set the CB table data to what we are expecting to get back.
@@ -906,19 +906,19 @@ TEST_CASE("Station - ScanRequest F0")
 	                "04080034" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "80088297";
-
+	                "800f7d19";
+	
 	CBMessage_t Msg = BuildCBMessageFromASCIIHexString(DesiredResult);
 	assert(Msg[2].GetA() == 1024);	// Checking payload values
 	assert(Msg[2].GetB() == 1025);	// Checking payload values
 	assert(Msg[3].GetA() == 1026);	// Checking payload values
-	assert(Msg[4].GetB() == (4 << 6) + 5);	// Checking payload values	// The require below does the whole check in one go!
+	assert(Msg[4].GetB() == (~((4 << 6) + 5) & 0x0FFF));	// Checking payload values	// The require below does the whole check in one go!
 
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
 
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+	REQUIRE(Response == DesiredResult);
 
 	// Test the MC bit types. Note 1 is generally CLOSED (true), 0 is OPEN(false)
 	// Note that for MCA below, we only INVERT the bit when it is on the wire. For input and output through the interface OPEN and CLOSED are normal
@@ -949,14 +949,14 @@ TEST_CASE("Station - ScanRequest F0")
 	                "fc080016" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "80088297";
-
+	                "800f7d19";
+	
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+	REQUIRE(Response == DesiredResult);
 
 	// Now do the changes that do not trigger the change bits being set.
 	SendBinaryEvent(CBOSPort, 12, true); // MCA inverted on the wire!!
@@ -974,14 +974,14 @@ TEST_CASE("Station - ScanRequest F0")
 	                "00080006" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
-	                "c0088285"; // The SOE buffer overflow bit should be set here...
-
+	                "c00f7d0b"; // The SOE buffer overflow bit should be set here...
+	
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+	REQUIRE(Response == DesiredResult);
 
 	CBOSPort->Disable();
 
@@ -1341,7 +1341,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
+	CBOSPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = BuildASCIIHexStringfromBinaryString(CBMessage); });
 
 	// Send the commands in as if came from TCP channel
 	output << commandblock.ToBinaryString();
@@ -1354,10 +1354,10 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                            "02880010" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "00080007";
-
+	                            "000fff89";
+	
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+	REQUIRE(Response == DesiredResult);
 
 
 	// Call the Event functions to set the CB table data to what we are expecting to get back.
@@ -1401,10 +1401,10 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "0208003a" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "80088297";
+	                "800f7d19";
 	WaitIOS(*IOS, 1);
 
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+	REQUIRE(Response == DesiredResult);
 
 	// Test the MC bit types. Note 1 is generally CLOSED (true), 0 is OPEN(false)
 	// Note that for MCA below, we only INVERT the bit when it is on the wire. For input and output through the interface OPEN and CLOSED are normal
@@ -1435,11 +1435,11 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "03f8002a" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "80088297";
+	                "800f7d19";
 	WaitIOS(*IOS, 1);
-
+	
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+	REQUIRE(Response == DesiredResult);
 
 	// Now do the changes that do not trigger the change bits being set.
 	SendBinaryEvent(CBOSPort, 12, true); // MCA inverted on the wire!!
@@ -1457,11 +1457,11 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "00080006" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
-	                "c0088285"; // The SOE buffer overflow bit should be set here...
+	                "c00f7d0b"; // The SOE buffer overflow bit should be set here...
 	WaitIOS(*IOS, 1);
-
+	
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
+	REQUIRE(Response == DesiredResult);
 
 	CBOSPort->Disable();
 
@@ -1591,7 +1591,7 @@ TEST_CASE("Master - Scan Request F0")
 																"fc080016" // Data 2A and 2B
 																"400a00b6"
 																"4028000c"
-																"80088297");
+																"800f7d19");
 	output << Payload;
 
 	// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
