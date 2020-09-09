@@ -52,11 +52,10 @@ namespace odc
 typedef asio::basic_streambuf<std::allocator<char>> buf_t;
 
 //buffer to track a data container
-//T must be a container with a data(), size() and get_allocator() members
-template <typename T>
 class shared_const_buffer: public asio::const_buffer
 {
 public:
+	template <typename T> //T must be a container with a data(), size() and get_allocator() members
 	shared_const_buffer(std::shared_ptr<T> pCon):
 		asio::const_buffer(pCon->data(),pCon->size()*sizeof(pCon->get_allocator())),
 		con(pCon)
@@ -74,7 +73,7 @@ public:
 	}
 
 private:
-	std::shared_ptr<T> con;
+	std::shared_ptr<void> con;
 };
 
 struct TCPKeepaliveOpts
@@ -91,7 +90,6 @@ struct TCPKeepaliveOpts
 	unsigned int fail_count;
 };
 
-template <typename Q>
 class TCPSocketManager
 {
 public:
@@ -112,9 +110,18 @@ public:
 		const unsigned int KeepAliveTimeout_s = 599,                      //TCP keepalive idle timeout (seconds)
 		const unsigned int KeepAliveRetry_s = 10,                         //TCP keepalive retry interval (seconds)
 		const unsigned int KeepAliveFailcount = 3);                       //TCP keepalive fail count
+
 	void Open();
 	void Close();
-	void Write(Q&& aContainer);
+
+	template <typename Q> //Q must be a container with a data(), size() and get_allocator() members
+	void Write(Q&& aContainer)
+	{
+		//shared_const_buffer is a ref counted wraper that will delete the data in good time
+		shared_const_buffer buf(std::make_shared<Q>(std::move(aContainer)));
+		Write(buf);
+	}
+
 	~TCPSocketManager();
 
 private:
@@ -133,10 +140,10 @@ private:
 
 	buf_t readbuf;
 	//dual buffers for alternate queuing and passing to asio
-	std::vector<shared_const_buffer<Q>> writebufs1;
-	std::vector<shared_const_buffer<Q>> writebufs2;
-	std::vector<shared_const_buffer<Q>>* queue_writebufs;
-	std::vector<shared_const_buffer<Q>>* dispatch_writebufs;
+	std::vector<shared_const_buffer> writebufs1;
+	std::vector<shared_const_buffer> writebufs2;
+	std::vector<shared_const_buffer>* queue_writebufs;
+	std::vector<shared_const_buffer>* dispatch_writebufs;
 
 	std::shared_ptr<asio::ip::tcp::socket> pSock;
 	//Strand to sync access to socket
@@ -164,6 +171,7 @@ private:
 	uint64_t write_count = 0;
 	uint64_t read_count = 0;
 
+	void Write(shared_const_buffer buf);
 	bool EndPointResolved(std::shared_ptr<void> tracker);
 	void ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker);
 	void ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker);
