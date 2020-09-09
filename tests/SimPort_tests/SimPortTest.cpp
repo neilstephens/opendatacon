@@ -39,6 +39,8 @@ const int FINISH = 100;
 const std::vector<ControlCode> LATCH_ON_CODES = {ControlCode::LATCH_ON, ControlCode::CLOSE_PULSE_ON, ControlCode::PULSE_ON};
 const std::vector<ControlCode> LATCH_OFF_CODES = {ControlCode::LATCH_OFF, ControlCode::TRIP_PULSE_ON, ControlCode::PULSE_OFF};
 const std::vector<std::size_t> ANALOG_INDEXES = {0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 110, 120, 1110, 1293, 119201, 118281, 1782718, 19281919};
+const std::vector<std::size_t> BINARY_INDEXES = {0, 1, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15};
+
 
 /*
   function     : GetTestConfigJSON
@@ -449,6 +451,42 @@ TEST_CASE("TestAnalogEventToAll")
 		REQUIRE(value["RESULT"].asString() == "Success");
 		for (std::size_t index : ANALOG_INDEXES)
 			REQUIRE(sim_port->GetCurrentState()["AnalogCurrent"][std::to_string(index)] == "12345.678900");
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests sending an event to all binary points
+  param        : TestBinaryEventToAll
+  return       : NA
+*/
+TEST_CASE("TestBinaryEventToAll")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const ParamCollection params = BuildParams("Binary", ".*", "1");
+		Json::Value value = resp->ExecuteCommand("SendEvent", params);
+		REQUIRE(value["RESULT"].asString() == "Success");
+		for (std::size_t index : BINARY_INDEXES)
+			REQUIRE(sim_port->GetCurrentState()["BinaryCurrent"][std::to_string(index)] == "1");
 	}
 
 	UnLoadModule(port_lib);
