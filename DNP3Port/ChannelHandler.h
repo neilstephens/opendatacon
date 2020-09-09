@@ -5,7 +5,7 @@
 #include <opendatacon/asio.h>
 #include <opendnp3/gen/LinkStatus.h>
 #include <opendnp3/gen/ChannelState.h>
-#include <asiodnp3/IChannel.h>
+#include <opendnp3/channel/IChannel.h>
 #include <atomic>
 
 enum class LinkDeadness : uint8_t
@@ -35,7 +35,7 @@ public:
 	std::function<void(opendnp3::ChannelState state)> StateListener = pSyncStrand->wrap([this](opendnp3::ChannelState state){StateListener_(state);});
 
 	//Factory function for the Channel
-	std::shared_ptr<asiodnp3::IChannel> SetChannel();
+	std::shared_ptr<opendnp3::IChannel> SetChannel();
 	//inline Getters, to ensure readonly atomic access outside synchronisation
 	inline opendnp3::LinkStatus GetLinkStatus() const
 	{
@@ -45,7 +45,7 @@ public:
 	{
 		return link_deadness.load();
 	}
-	inline std::shared_ptr<asiodnp3::IChannel> GetChannel() const
+	inline std::shared_ptr<opendnp3::IChannel> GetChannel() const
 	{
 		return pChannel;
 	}
@@ -59,7 +59,7 @@ private:
 
 	//data members
 	DNP3Port* const pPort;
-	std::shared_ptr<asiodnp3::IChannel> pChannel;
+	std::shared_ptr<opendnp3::IChannel> pChannel;
 	std::shared_ptr<ChannelLinksWatchdog> pWatchdog;
 	//use atomic for status data - so the getters can read them concurrently
 	std::atomic<opendnp3::LinkStatus> link_status;

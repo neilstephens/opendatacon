@@ -297,10 +297,10 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
-set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an include directory within")
+set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an asio/include path within")
 if(USE_ASIO_SUBMODULE)
-	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/submodules/asio/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
-	if(NOT EXISTS "${ASIO_HOME}/../.git")
+	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/submodules/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
+	if(NOT EXISTS "${ASIO_HOME}/.git")
 		execute_process(COMMAND git submodule update --init -- submodules/asio
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 	endif()

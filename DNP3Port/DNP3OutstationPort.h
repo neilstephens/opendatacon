@@ -65,18 +65,19 @@ protected:
 	std::shared_ptr<asio::steady_timer> pLinkUpCheckTimer = pIOS->make_steady_timer();
 
 	/// Implement opendnp3::ICommandHandler
-	void Start() override {}
+	void Begin() override {}
 	void End() override {}
+
 	opendnp3::CommandStatus Select(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex) override { return SupportsT(arCommand, aIndex); }
-	opendnp3::CommandStatus Operate(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
+	opendnp3::CommandStatus Operate(const opendnp3::ControlRelayOutputBlock& arCommand, uint16_t aIndex, opendnp3::IUpdateHandler& handler, opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
 	opendnp3::CommandStatus Select(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex) override {return SupportsT(arCommand,aIndex);}
-	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
+	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputInt16& arCommand, uint16_t aIndex, opendnp3::IUpdateHandler& handler,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
 	opendnp3::CommandStatus Select(const opendnp3::AnalogOutputInt32& arCommand, uint16_t aIndex) override {return SupportsT(arCommand,aIndex);}
-	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputInt32& arCommand, uint16_t aIndex,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
+	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputInt32& arCommand, uint16_t aIndex, opendnp3::IUpdateHandler& handler,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
 	opendnp3::CommandStatus Select(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t aIndex) override {return SupportsT(arCommand,aIndex);}
-	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t aIndex,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
+	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputFloat32& arCommand, uint16_t aIndex, opendnp3::IUpdateHandler& handler,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
 	opendnp3::CommandStatus Select(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex) override {return SupportsT(arCommand,aIndex);}
-	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
+	opendnp3::CommandStatus Operate(const opendnp3::AnalogOutputDouble64& arCommand, uint16_t aIndex, opendnp3::IUpdateHandler& handler,opendnp3::OperateType op_type) override {return PerformT(arCommand,aIndex);}
 
 	//Implement IOHandler
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
@@ -84,7 +85,7 @@ protected:
 private:
 	Json::Value state;
 	std::unique_ptr<asio::io_service::strand> pStateSync;
-	std::shared_ptr<asiodnp3::IOutstation> pOutstation;
+	std::shared_ptr<opendnp3::IOutstation> pOutstation;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
 	template<typename T> void EventT(T meas, uint16_t index);

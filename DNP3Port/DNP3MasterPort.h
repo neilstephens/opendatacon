@@ -62,9 +62,8 @@ protected:
 	void ChannelWatchdogTrigger(bool on) override;
 	bool channel_stayed_up = false; //keep track of the case where the link goes down and back up without the channel going down
 
-	/// Implement opendnp3::ISOEHandler
-	void Start() override {}
-	void End() override {}
+	void BeginFragment(const opendnp3::ResponseInfo& info) override {}
+	void EndFragment(const opendnp3::ResponseInfo& info) override {}
 
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::Binary> >& meas) override;
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::DoubleBitBinary> >& meas) override;
@@ -77,19 +76,18 @@ protected:
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::TimeAndInterval> >& meas) override;
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryCommandEvent> >& meas) override;
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogCommandEvent> >& meas) override;
-	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::SecurityStat> >& meas) override;
 	void Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::DNPTime>& values) override;
 
 	/// Implement opendnp3::IMasterApplication
 	void OnTaskStart(opendnp3::MasterTaskType type, opendnp3::TaskId id) final
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: OnTaskStart(Type {}, ID {}) called.", Name, MasterTaskTypeToString(type), id.GetId());
+			log->debug("{}: OnTaskStart(Type {}, ID {}) called.", Name, opendnp3::MasterTaskTypeSpec::to_human_string(type), id.GetId());
 	}
 	void OnTaskComplete(const opendnp3::TaskInfo& info) final
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: OnTaskComplete(Type {}, ID {}, Res {}) called.", Name, MasterTaskTypeToString(info.type), info.id.GetId(), TaskCompletionToString(info.result));
+			log->debug("{}: OnTaskComplete(Type {}, ID {}, Res {}) called.", Name, opendnp3::MasterTaskTypeSpec::to_human_string(info.type), info.id.GetId(), opendnp3::TaskCompletionSpec::to_human_string(info.result));
 	}
 	bool AssignClassDuringStartup() final
 	{
@@ -102,10 +100,10 @@ protected:
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: ConfigureAssignClassRequest() called.", Name);
 	}
-	openpal::UTCTimestamp Now() final
+	opendnp3::UTCTimestamp Now() final
 	{
 		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		return openpal::UTCTimestamp(time);
+		return opendnp3::UTCTimestamp(time);
 	}
 
 	// Called when a the reset/unreset status of the link layer changes (and on link up)
@@ -118,11 +116,11 @@ protected:
 	void OnReceiveIIN(const opendnp3::IINField& iin) override;
 
 private:
-	std::shared_ptr<asiodnp3::IMaster> pMaster;
+	std::shared_ptr<opendnp3::IMaster> pMaster;
 
 	std::atomic_bool stack_enabled;
 	bool assign_class_sent;
-	std::shared_ptr<asiodnp3::IMasterScan> IntegrityScan;
+	std::shared_ptr<opendnp3::IMasterScan> IntegrityScan;
 	std::shared_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
 	void SetCommsGood();
@@ -147,10 +145,11 @@ private:
 	inline void DoOverrideControlCode(opendnp3::ControlRelayOutputBlock& arCommand)
 	{
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-		if(pConf->pPointConf->OverrideControlCode != opendnp3::ControlCode::UNDEFINED)
+		if(pConf->pPointConf->OverrideControlCode.first != opendnp3::OperationType::Undefined)
 		{
-			arCommand.functionCode = pConf->pPointConf->OverrideControlCode;
-			arCommand.rawCode = opendnp3::ControlCodeToType(arCommand.functionCode);
+			arCommand.opType = pConf->pPointConf->OverrideControlCode.first;
+			arCommand.tcc = pConf->pPointConf->OverrideControlCode.second;
+			arCommand.rawCode = opendnp3::OperationTypeSpec::to_type(arCommand.opType);
 		}
 
 	}

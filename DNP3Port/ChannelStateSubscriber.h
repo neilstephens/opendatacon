@@ -28,8 +28,8 @@
 #define CHANNELSTATESUBSCRIBER_H
 
 #include "ChannelHandler.h"
-#include <asiodnp3/IChannel.h>
-#include <asiodnp3/IChannelListener.h>
+#include <opendnp3/channel/IChannel.h>
+#include <opendnp3/channel/IChannelListener.h>
 #include <map>
 #include <mutex>
 
@@ -49,7 +49,7 @@ private:
 	static std::mutex MapMutex;
 };
 
-class ChannelListener: public asiodnp3::IChannelListener
+class ChannelListener: public opendnp3::IChannelListener
 {
 public:
 	ChannelListener(const std::string& aChanID, ChannelHandler* pPort):

@@ -29,7 +29,7 @@
 #include "ChannelHandler.h"
 #include "TypeConversion.h"
 #include <array>
-#include <asiopal/UTCTimeSource.h>
+#include <opendnp3/master/IUTCTimeSource.h>
 #include <opendatacon/util.h>
 #include <opendnp3/app/ClassField.h>
 #include <opendnp3/app/MeasurementTypes.h>
@@ -161,7 +161,7 @@ void DNP3MasterPort::SetCommsFailed()
 void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
+		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
 	ChanH.SetLinkStatus(status);
 	//TODO: track a statistic - reset count
 }
@@ -276,27 +276,28 @@ void DNP3MasterPort::Build()
 		return;
 	}
 
-	asiodnp3::MasterStackConfig StackConfig;
+	opendnp3::MasterStackConfig StackConfig;
+	opendnp3::LinkConfig link(true,pConf->pPointConf->LinkUseConfirms);
 
 	// Link layer configuration
-	StackConfig.link.LocalAddr = pConf->mAddrConf.MasterAddr;
-	StackConfig.link.RemoteAddr = pConf->mAddrConf.OutstationAddr;
-	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
-	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	link.LocalAddr = pConf->mAddrConf.MasterAddr;
+	link.RemoteAddr = pConf->mAddrConf.OutstationAddr;
+	link.Timeout.Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	if(pConf->pPointConf->LinkKeepAlivems == 0)
-		StackConfig.link.KeepAliveTimeout = openpal::TimeDuration::Max();
+		link.KeepAliveTimeout.Max();
 	else
-		StackConfig.link.KeepAliveTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
-	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
+		link.KeepAliveTimeout.Milliseconds(pConf->pPointConf->LinkKeepAlivems);
+
+	StackConfig.link = link;
 
 	// Master station configuration
-	StackConfig.master.responseTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->MasterResponseTimeoutms);
+	StackConfig.master.responseTimeout.Milliseconds(pConf->pPointConf->MasterResponseTimeoutms);
 	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ? opendnp3::TimeSyncMode::NonLAN : opendnp3::TimeSyncMode::None;
 	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
 	StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask();
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
-	StackConfig.master.taskRetryPeriod = openpal::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
+	StackConfig.master.taskRetryPeriod.Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory
@@ -315,15 +316,15 @@ void DNP3MasterPort::Build()
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), openpal::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems));
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems),ISOEHandle);
 	else
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), openpal::TimeDuration::Minutes(600000000)); //ten million hours
+		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), opendnp3::TimeDuration::Minutes(600000000),ISOEHandle); //ten million hours
 	if(pConf->pPointConf->EventClass1ScanRatems > 0)
-		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class1), openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems));
+		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class1), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems),ISOEHandle);
 	if(pConf->pPointConf->EventClass2ScanRatems > 0)
-		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class2), openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass2ScanRatems));
+		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class2), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->EventClass2ScanRatems),ISOEHandle);
 	if(pConf->pPointConf->EventClass3ScanRatems > 0)
-		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class3), openpal::TimeDuration::Milliseconds(pConf->pPointConf->EventClass3ScanRatems));
+		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class3), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->EventClass3ScanRatems),ISOEHandle);
 }
 
 // Called by OpenDNP3 Thread Pool
@@ -339,7 +340,6 @@ void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::I
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::TimeAndInterval> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryCommandEvent> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogCommandEvent> >& meas){ /*LoadT(meas);*/ }
-void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::SecurityStat> >& meas){ /*LoadT(meas);*/ }
 
 template<typename T>
 inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<T> >& meas)
@@ -349,7 +349,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 		{
 			auto event = ToODC(pair.value, pair.index, Name);
 			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time == 0)))
+			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time.value == 0)))
 			{
 			      event->SetTimestamp();
 			}

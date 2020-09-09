@@ -29,69 +29,6 @@
 #include <string>
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/app/MeasurementInfo.h>
-#include <openpal/container/ArrayView.h>
-
-/*
-template <typename T>
-opendnp3::PointIndexes GetIndexes(const opendnp3::Database& database);
-
-template <>
-opendnp3::PointIndexes GetIndexes<opendnp3::Binary>(const opendnp3::Database& database)
-{
-        return database.staticData.binaries.indexes;
-}
-
-template <>
-opendnp3::PointIndexes GetIndexes<opendnp3::DoubleBitBinary>(const opendnp3::Database& database)
-{
-        return database.staticData.doubleBinaries.indexes;
-}
-
-template <>
-opendnp3::PointIndexes GetIndexes<opendnp3::Analog>(const opendnp3::Database& database)
-{
-        return database.staticData.analogs.indexes;
-}
-
-template <>
-opendnp3::PointIndexes GetIndexes<opendnp3::Counter>(const opendnp3::Database& database)
-{
-        return database.staticData.counters.indexes;
-}
-
-template <>
-opendnp3::PointIndexes GetIndexes<opendnp3::FrozenCounter>(const opendnp3::Database& database)
-{
-        return database.staticData.frozenCounters.indexes;
-}
-
-template <>
-opendnp3::PointIndexes GetIndexes<opendnp3::BinaryOutputStatus>(const opendnp3::Database& database)
-{
-        return database.staticData.binaryOutputStatii.indexes;
-}
-
-template <>
-opendnp3::PointIndexes GetIndexes<opendnp3::AnalogOutputStatus>(const opendnp3::Database& database)
-{
-        return database.staticData.analogOutputStatii.indexes;
-}
-
-template<typename T>
-T GetCurrentValue(opendnp3::IDatabase& database, uint16_t index)
-{
-        database.Modify()
-        auto idx = GetIndexes<T>(database).GetPosition(index);
-        return database.Values<T>()[idx].current;
-}
-
-template<typename T>
-T UpdateQuality(opendnp3::IDatabase& database, uint8_t qual, uint16_t index)
-{
-        T meas(GetCurrentValue<T>(database, index));
-        meas.quality = qual;
-        return meas;
-}*/
 
 opendnp3::StaticBinaryVariation StringToStaticBinaryResponse(const std::string& str);
 opendnp3::StaticAnalogVariation StringToStaticAnalogResponse(const std::string& str);
@@ -100,53 +37,5 @@ opendnp3::EventBinaryVariation StringToEventBinaryResponse(const std::string& st
 opendnp3::EventAnalogVariation StringToEventAnalogResponse(const std::string& str);
 opendnp3::EventCounterVariation StringToEventCounterResponse(const std::string& str);
 
-template <class ValueType, class IndexType>
-class ArrayViewIterator
-{
-public:
-	ArrayViewIterator(openpal::ArrayView<ValueType, IndexType>* data, IndexType pos)
-		: _pos(pos)
-		, _data(data)
-	{ }
-
-	bool
-	operator!= (const ArrayViewIterator<ValueType, IndexType>& other) const
-	{
-		return _pos != other._pos;
-	}
-
-	ValueType& operator* () const
-	{
-		return (*_data)[_pos];
-	}
-
-	const ArrayViewIterator& operator++ ()
-	{
-		++_pos;
-		// although not strictly necessary for a range-based for loop
-		// following the normal convention of returning a value from
-		// operator++ is a good idea.
-		return *this;
-	}
-
-private:
-	IndexType _pos;
-	openpal::ArrayView<ValueType, IndexType>* _data;
-};
-
-namespace openpal
-{
-template <class ValueType, class IndexType>
-ArrayViewIterator<ValueType, IndexType> begin(openpal::ArrayView<ValueType, IndexType>& data)
-{
-	return ArrayViewIterator<ValueType, IndexType>(&data, 0);
-}
-
-template <class ValueType, class IndexType>
-ArrayViewIterator<ValueType, IndexType> end(openpal::ArrayView<ValueType, IndexType>& data)
-{
-	return ArrayViewIterator<ValueType, IndexType>(&data, data.Size());
-}
-}
 
 #endif
