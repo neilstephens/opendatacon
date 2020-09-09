@@ -220,23 +220,23 @@ void DNP3OutstationPort::Build()
 	opendnp3::LinkConfig link(false,pConf->pPointConf->LinkUseConfirms);
 	link.LocalAddr = pConf->mAddrConf.OutstationAddr;
 	link.RemoteAddr = pConf->mAddrConf.MasterAddr;
-	link.Timeout.Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	link.Timeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	if(pConf->pPointConf->LinkKeepAlivems == 0)
-		link.KeepAliveTimeout.Max();
+		link.KeepAliveTimeout = opendnp3::TimeDuration::Max();
 	else
-		link.KeepAliveTimeout.Milliseconds(pConf->pPointConf->LinkKeepAlivems);
+		link.KeepAliveTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
 	StackConfig.link = link;
 
 	// Outstation parameters
 	StackConfig.outstation.params.allowUnsolicited = pConf->pPointConf->EnableUnsol;
 	StackConfig.outstation.params.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.outstation.params.typesAllowedInClass0 = opendnp3::StaticTypeBitField::AllTypes();            /// TODO: Create parameter
-	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest;           /// The maximum number of controls the outstation will attempt to process from a single APDU
-	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;                           /// The maximum fragment size the outstation will use for fragments it sends
-	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;                           /// The maximum fragment size the outstation will use for fragments it sends
-	StackConfig.outstation.params.selectTimeout.Milliseconds(pConf->pPointConf->SelectTimeoutms);             /// How long the outstation will allow an operate to proceed after a prior select
-	StackConfig.outstation.params.solConfirmTimeout.Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);     /// Timeout for solicited confirms
-	StackConfig.outstation.params.unsolConfirmTimeout.Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
+	StackConfig.outstation.params.typesAllowedInClass0 = opendnp3::StaticTypeBitField::AllTypes();                                      /// TODO: Create parameter
+	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest;                                     /// The maximum number of controls the outstation will attempt to process from a single APDU
+	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;                                                     /// The maximum fragment size the outstation will use for fragments it sends
+	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;                                                     /// The maximum fragment size the outstation will use for fragments it sends
+	StackConfig.outstation.params.selectTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->SelectTimeoutms);             /// How long the outstation will allow an operate to proceed after a prior select
+	StackConfig.outstation.params.solConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);     /// Timeout for solicited confirms
+	StackConfig.outstation.params.unsolConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
 
 	// TODO: Expose event limits for any new event types to be supported by opendatacon
 	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents;   /// The number of binary events the outstation will buffer before overflowing

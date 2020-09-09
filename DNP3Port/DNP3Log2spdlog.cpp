@@ -50,5 +50,5 @@ void DNP3Log2spdlog::log(opendnp3::ModuleId module, const char* id, opendnp3::Lo
 		spdlevel = spdlog::level::trace;
 
 	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->log(spdlevel, "{} - {} - {} - {} - {}",DNP3LevelName,module.value,id,location,message);
+		log->log(spdlevel, "{} - {} - {}",DNP3LevelName,id,message);
 }

@@ -282,22 +282,22 @@ void DNP3MasterPort::Build()
 	// Link layer configuration
 	link.LocalAddr = pConf->mAddrConf.MasterAddr;
 	link.RemoteAddr = pConf->mAddrConf.OutstationAddr;
-	link.Timeout.Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	link.Timeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	if(pConf->pPointConf->LinkKeepAlivems == 0)
-		link.KeepAliveTimeout.Max();
+		link.KeepAliveTimeout = opendnp3::TimeDuration::Max();
 	else
-		link.KeepAliveTimeout.Milliseconds(pConf->pPointConf->LinkKeepAlivems);
+		link.KeepAliveTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
 
 	StackConfig.link = link;
 
 	// Master station configuration
-	StackConfig.master.responseTimeout.Milliseconds(pConf->pPointConf->MasterResponseTimeoutms);
+	StackConfig.master.responseTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->MasterResponseTimeoutms);
 	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ? opendnp3::TimeSyncMode::NonLAN : opendnp3::TimeSyncMode::None;
 	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
 	StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask();
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
-	StackConfig.master.taskRetryPeriod.Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
+	StackConfig.master.taskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory
