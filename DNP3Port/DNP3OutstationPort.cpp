@@ -380,23 +380,24 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		return;
 	}
 
-	std::string type;
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
-			type = "BinaryCurrent";
+			SetState("BinaryCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
+			SetState("BinaryQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
 			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
-			type = "AnalogCurrent";
+			SetState("AnalogCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
+			SetState("AnalogQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
-			type = "BinaryQuality";
+			SetState("BinaryQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
 			EventQ<opendnp3::Binary>(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
-			type = "AnalogQuality";
+			SetState("AnalogQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
 			EventQ<opendnp3::Analog>(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:
@@ -405,10 +406,6 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 			return;
 	}
-
-	const std::string index = std::to_string(event->GetIndex());
-	const std::string payload = event->GetPayloadString();
-	SetState(type, index, payload);
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
