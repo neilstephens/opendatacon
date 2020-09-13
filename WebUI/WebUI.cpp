@@ -391,7 +391,7 @@ void WebUI::ConnectToTCPServer()
 	//Use the ODC TCP manager
 	// Client connection to localhost on the port we set up for log sinking
 	// Automatically retry to connect on error
-	pSockMan = std::make_unique<odc::TCPSocketManager<std::string>>
+	pSockMan = std::make_unique<odc::TCPSocketManager>
 		           (pIOS, false, "localhost", tcp_port,
 		           [this](odc::buf_t& readbuf){ReadCompletionHandler(readbuf);},
 		           [this](bool state){ConnectionEvent(state);},

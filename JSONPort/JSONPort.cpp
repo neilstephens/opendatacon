@@ -118,7 +118,7 @@ void JSONPort::Build()
 {
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	pSockMan = std::make_unique<TCPSocketManager<std::string>>
+	pSockMan = std::make_unique<TCPSocketManager>
 		           (pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
 		           std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
 		           std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),

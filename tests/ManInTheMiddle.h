@@ -77,8 +77,8 @@ private:
 	std::atomic<unsigned int> Sock1Count = 0;
 	std::atomic<unsigned int> Sock2Count = 0;
 	const std::string log_name;
-	odc::TCPSocketManager<std::vector<char>> SockMan1;
-	odc::TCPSocketManager<std::vector<char>> SockMan2;
+	odc::TCPSocketManager SockMan1;
+	odc::TCPSocketManager SockMan2;
 };
 
 #endif // MANINTHEMIDDLE_H

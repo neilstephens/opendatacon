@@ -66,7 +66,7 @@ private:
 	std::string key_pem;
 	std::string web_root;
 	std::string tcp_port;
-	std::unique_ptr<odc::TCPSocketManager<std::string>> pSockMan;
+	std::unique_ptr<odc::TCPSocketManager> pSockMan;
 
 	//TODO: these can be maps with entry per web session
 	//the pairs in the Q hold:

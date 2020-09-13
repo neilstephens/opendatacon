@@ -69,7 +69,7 @@ MD3Connection::MD3Connection
 	EndPoint(aEndPoint),
 	Port(aPort),
 	isServer(aisServer),
-	pSockMan(std::make_shared<TCPSocketManager<std::string>>
+	pSockMan(std::make_shared<TCPSocketManager>
 			(pIOS, isServer, EndPoint, Port,
 			std::bind(&MD3Connection::ReadCompletionHandler, this, std::placeholders::_1),
 			std::bind(&MD3Connection::SocketStateHandler, this, std::placeholders::_1),

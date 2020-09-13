@@ -2394,7 +2394,7 @@ TEST_CASE("Station - Multi-drop TCP Test")
 
 	// An outstation is a server by default (Master connects to it...)
 	// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
-	auto pSockMan = std::make_shared<TCPSocketManager<std::string>>
+	auto pSockMan = std::make_shared<TCPSocketManager>
 		                (IOS, false, "127.0.0.1", "10010",
 		                ResponseCallback,
 		                SocketStateHandler,
