@@ -510,33 +510,33 @@ const Json::Value DNP3MasterPort::GetStatistics() const
 	if (auto pChan = ChanH.GetChannel())
 	{
 		auto ChanStats = pChan->GetStatistics();
-		event["parser"]["numHeaderCrcError"] = ChanStats.parser.numHeaderCrcError;
-		event["parser"]["numBodyCrcError"] = ChanStats.parser.numBodyCrcError;
-		event["parser"]["numLinkFrameRx"] = ChanStats.parser.numLinkFrameRx;
-		event["parser"]["numBadLength"] = ChanStats.parser.numBadLength;
-		event["parser"]["numBadFunctionCode"] = ChanStats.parser.numBadFunctionCode;
-		event["parser"]["numBadFCV"] = ChanStats.parser.numBadFCV;
-		event["parser"]["numBadFCB"] = ChanStats.parser.numBadFCB;
-		event["channel"]["numOpen"] = ChanStats.channel.numOpen;
-		event["channel"]["numOpenFail"] = ChanStats.channel.numOpenFail;
-		event["channel"]["numClose"] = ChanStats.channel.numClose;
-		event["channel"]["numBytesRx"] = ChanStats.channel.numBytesRx;
-		event["channel"]["numBytesTx"] = ChanStats.channel.numBytesTx;
-		event["channel"]["numLinkFrameTx"] = ChanStats.channel.numLinkFrameTx;
+		event["parser"]["numHeaderCrcError"] = Json::UInt(ChanStats.parser.numHeaderCrcError);
+		event["parser"]["numBodyCrcError"] = Json::UInt(ChanStats.parser.numBodyCrcError);
+		event["parser"]["numLinkFrameRx"] = Json::UInt(ChanStats.parser.numLinkFrameRx);
+		event["parser"]["numBadLength"] = Json::UInt(ChanStats.parser.numBadLength);
+		event["parser"]["numBadFunctionCode"] = Json::UInt(ChanStats.parser.numBadFunctionCode);
+		event["parser"]["numBadFCV"] = Json::UInt(ChanStats.parser.numBadFCV);
+		event["parser"]["numBadFCB"] = Json::UInt(ChanStats.parser.numBadFCB);
+		event["channel"]["numOpen"] = Json::UInt(ChanStats.channel.numOpen);
+		event["channel"]["numOpenFail"] = Json::UInt(ChanStats.channel.numOpenFail);
+		event["channel"]["numClose"] = Json::UInt(ChanStats.channel.numClose);
+		event["channel"]["numBytesRx"] = Json::UInt(ChanStats.channel.numBytesRx);
+		event["channel"]["numBytesTx"] = Json::UInt(ChanStats.channel.numBytesTx);
+		event["channel"]["numLinkFrameTx"] = Json::UInt(ChanStats.channel.numLinkFrameTx);
 	}
 	if (pMaster != nullptr)
 	{
 		auto StackStats = this->pMaster->GetStackStatistics();
-		event["link"]["numBadMasterBit"] = StackStats.link.numBadMasterBit;
-		event["link"]["numUnexpectedFrame"] = StackStats.link.numUnexpectedFrame;
-		event["link"]["numUnknownDestination"] = StackStats.link.numUnknownDestination;
-		event["link"]["numUnknownSource"] = StackStats.link.numUnknownSource;
-		event["transport"]["numTransportBufferOverflow"] = StackStats.transport.rx.numTransportBufferOverflow;
-		event["transport"]["numTransportDiscard"] = StackStats.transport.rx.numTransportDiscard;
-		event["transport"]["numTransportErrorRx"] = StackStats.transport.rx.numTransportErrorRx;
-		event["transport"]["numTransportIgnore"] = StackStats.transport.rx.numTransportIgnore;
-		event["transport"]["numTransportRx"] = StackStats.transport.rx.numTransportRx;
-		event["transport"]["numTransportTx"] = StackStats.transport.tx.numTransportTx;
+		event["link"]["numBadMasterBit"] = Json::UInt(StackStats.link.numBadMasterBit);
+		event["link"]["numUnexpectedFrame"] = Json::UInt(StackStats.link.numUnexpectedFrame);
+		event["link"]["numUnknownDestination"] = Json::UInt(StackStats.link.numUnknownDestination);
+		event["link"]["numUnknownSource"] = Json::UInt(StackStats.link.numUnknownSource);
+		event["transport"]["numTransportBufferOverflow"] = Json::UInt(StackStats.transport.rx.numTransportBufferOverflow);
+		event["transport"]["numTransportDiscard"] = Json::UInt(StackStats.transport.rx.numTransportDiscard);
+		event["transport"]["numTransportErrorRx"] = Json::UInt(StackStats.transport.rx.numTransportErrorRx);
+		event["transport"]["numTransportIgnore"] = Json::UInt(StackStats.transport.rx.numTransportIgnore);
+		event["transport"]["numTransportRx"] = Json::UInt(StackStats.transport.rx.numTransportRx);
+		event["transport"]["numTransportTx"] = Json::UInt(StackStats.transport.tx.numTransportTx);
 	}
 
 	return event;
