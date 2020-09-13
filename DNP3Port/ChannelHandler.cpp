@@ -11,6 +11,18 @@ ChannelHandler::ChannelHandler(DNP3Port *p):
 	link_deadness(LinkDeadness::LinkDownChannelDown)
 {}
 
+ChannelHandler::~ChannelHandler()
+{
+	StateListener = nullptr;
+	LinkDown = nullptr;
+	LinkUp = nullptr;
+	SetLinkStatus = nullptr;
+	std::weak_ptr<void> tracker = handler_tracker;
+	handler_tracker.reset();
+	while(!tracker.expired() && !pIOS->stopped())
+		pIOS->poll_one();
+}
+
 // Called by OpenDNP3 Thread Pool
 void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 {
