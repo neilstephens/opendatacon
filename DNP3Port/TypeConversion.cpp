@@ -907,6 +907,7 @@ template<> opendnp3::ControlRelayOutputBlock FromODC<opendnp3::ControlRelayOutpu
 			dnp3.opType = opendnp3::OperationType::Undefined;
 			break;
 	}
+	dnp3.rawCode = opendnp3::OperationTypeSpec::to_type(dnp3.opType);
 	dnp3.count = control.count;
 	dnp3.onTimeMS = control.onTimeMS;
 	dnp3.offTimeMS = control.offTimeMS;
