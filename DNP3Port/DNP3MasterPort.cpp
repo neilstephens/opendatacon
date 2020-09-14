@@ -64,8 +64,11 @@ void DNP3MasterPort::Enable()
 
 	enabled = true;
 
-	if(!stack_enabled && pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
-		EnableStack();
+	if(!stack_enabled && !(pConf->mAddrConf.ServerType == server_type_t::MANUAL))
+	{
+		if(pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || InDemand())
+			EnableStack();
+	}
 
 }
 void DNP3MasterPort::Disable()
