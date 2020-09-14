@@ -766,7 +766,11 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 				case ControlCode::TRIP_PULSE_ON:
 				{
 					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
-						PostPublishEvent(fb->on_value);
+					{
+						auto event = std::make_shared<odc::EventInfo>(*fb->on_value);
+						event->SetTimestamp();
+						PostPublishEvent(event);
+					}
 					else
 						forced = true;
 					ptimer_t ptimer = pIOS->make_steady_timer();
@@ -775,7 +779,11 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 						{
 							//FIXME: check err_code?
 							if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
-								PostPublishEvent(fb->off_value);
+							{
+							      auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
+							      event->SetTimestamp();
+							      PostPublishEvent(event);
+							}
 						});
 					//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
 					break;
@@ -797,7 +805,11 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 							Name, index,fb->on_value->GetIndex());
 					fb->on_value->SetTimestamp();
 					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
-						PostPublishEvent(fb->on_value);
+					{
+						auto event = std::make_shared<odc::EventInfo>(*fb->on_value);
+						event->SetTimestamp();
+						PostPublishEvent(event);
+					}
 					else
 						forced = true;
 					break;
