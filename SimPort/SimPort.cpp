@@ -88,8 +88,8 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 
 SimPort::~SimPort()
 {
-	Disable();
-	HttpServerManager::StopConnection(pServer);
+	if(!httpServerToken.ServerID.empty())
+		HttpServerManager::StopConnection(httpServerToken);
 }
 
 void SimPort::Enable()
@@ -534,7 +534,7 @@ void SimPort::Build()
 
 	if ((pSimConf->HttpAddress().size() != 0) && (pSimConf->HttpPort().size() != 0))
 	{
-		pServer = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddress(), pSimConf->HttpPort()); //Static method - creates a new HttpServerManager if required
+		httpServerToken = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddress(), pSimConf->HttpPort()); //Static method - creates a new HttpServerManager if required
 
 		// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
@@ -549,7 +549,7 @@ void SimPort::Build()
 				rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
 			});
 
-		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
+		HttpServerManager::AddHandler(httpServerToken, "GET /", roothandler);
 
 		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::GetConfigVersion());
 		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
@@ -564,7 +564,7 @@ void SimPort::Build()
 				rep.headers[1].value = "application/json"; // http::server::mime_types::extension_to_type(extension);
 			});
 
-		HttpServerManager::AddHandler(pServer, "GET /Version", versionhandler);
+		HttpServerManager::AddHandler(httpServerToken, "GET /Version", versionhandler);
 
 		auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
@@ -619,7 +619,7 @@ void SimPort::Build()
 				rep.headers[1].name = "Content-Type";
 				rep.headers[1].value = contenttype;
 			});
-		HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
+		HttpServerManager::AddHandler(httpServerToken, "GET /" + Name, gethandler);
 
 		auto posthandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
@@ -696,9 +696,9 @@ void SimPort::Build()
 				rep.headers[1].name = "Content-Type";
 				rep.headers[1].value = "text/html";
 			});
-		HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
+		HttpServerManager::AddHandler(httpServerToken, "POST /" + Name, posthandler);
 
-		HttpServerManager::StartConnection(pServer);
+		HttpServerManager::StartConnection(httpServerToken);
 	}
 }
 

@@ -124,7 +124,7 @@ private:
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	static thread_local std::mt19937 RandNumGenerator;
-	ServerTokenType pServer;
+	ServerTokenType httpServerToken;
 	SimPortConf* pSimConf = nullptr; // Set in constructor
 };
 
