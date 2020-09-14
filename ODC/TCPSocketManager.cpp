@@ -77,7 +77,7 @@ TCPSocketManager::TCPSocketManager
 
 void TCPSocketManager::Open()
 {
-	Open(handler_tracker);
+	pSockStrand->post([this,h = handler_tracker](){Open(h);});
 }
 
 
@@ -164,27 +164,24 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 
 void TCPSocketManager::Open(std::shared_ptr<void> tracker)
 {
-	pSockStrand->post([this,tracker]()
-		{
-			manuallyClosed = false;
-			if(isConnected || pending_connections || pending_read)
-				return;
+	manuallyClosed = false;
+	if(isConnected || pending_connections || pending_read)
+		return;
 
-			if(!EndPointResolved(tracker))
-				return;
+	if(!EndPointResolved(tracker))
+		return;
 
-			asio::ip::tcp::resolver::iterator end;
-			for(auto endpoint_it = EndpointIterator; endpoint_it != end; endpoint_it++)
-			{
-			      auto addr_str = endpoint_it->endpoint().address().to_string()+":"+std::to_string(endpoint_it->endpoint().port());
-			      std::shared_ptr<asio::ip::tcp::socket> pCandidateSock = pIOS->make_tcp_socket();
+	asio::ip::tcp::resolver::iterator end;
+	for(auto endpoint_it = EndpointIterator; endpoint_it != end; endpoint_it++)
+	{
+		auto addr_str = endpoint_it->endpoint().address().to_string()+":"+std::to_string(endpoint_it->endpoint().port());
+		std::shared_ptr<asio::ip::tcp::socket> pCandidateSock = pIOS->make_tcp_socket();
 
-			      if(isServer)
-					ServerOpen(pCandidateSock, endpoint_it, addr_str, tracker);
-			      else
-					ClientOpen(pCandidateSock, endpoint_it, addr_str, tracker);
-			}
-		});
+		if(isServer)
+			ServerOpen(pCandidateSock, endpoint_it, addr_str, tracker);
+		else
+			ClientOpen(pCandidateSock, endpoint_it, addr_str, tracker);
+	}
 }
 
 
