@@ -453,9 +453,9 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position, std::size_t index)
 {
 	odc::FeedbackType type = odc::FeedbackType::UNDEFINED;
-	odc::PositionAction action = odc::PositionAction::UNDEFINED;
+	std::vector<odc::PositionAction> action(2, odc::PositionAction::UNDEFINED);
 	std::vector<std::size_t> indexes;
-	std::size_t limit = 0;
+	std::size_t lower_limit = 0, raise_limit = 0;
 	if (feedback_position.isMember("Type"))
 		type = ToFeedbackType(feedback_position["Type"].asString());
 	if (feedback_position.isMember("Index"))
@@ -463,9 +463,13 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 	if (feedback_position.isMember("Indexes"))
 		for (Json::ArrayIndex i = 0; i < feedback_position["Indexes"].size(); ++i)
 			indexes.emplace_back(feedback_position["Indexes"][i].asUInt());
-	if (feedback_position.isMember("Action"))
-		action = ToPositionAction(feedback_position["Action"].asString());
-	if (feedback_position.isMember("Limit"))
-		limit = feedback_position["Limit"].asUInt();
-	m_pport_data->CreateBinaryPosition(index, type, indexes, action, limit);
+	if (feedback_position.isMember("OffAction"))
+		action[OFF] = ToPositionAction(feedback_position["OffAction"].asString());
+	if (feedback_position.isMember("OnAction"))
+		action[ON] = ToPositionAction(feedback_position["OnAction"].asString());
+	if (feedback_position.isMember("LowerLimit"))
+		lower_limit = feedback_position["LowerLimit"].asUInt();
+	if (feedback_position.isMember("RaiseLimit"))
+		raise_limit = feedback_position["RaiseLimit"].asUInt();
+	m_pport_data->CreateBinaryPosition(index, type, indexes, action, lower_limit, raise_limit);
 }

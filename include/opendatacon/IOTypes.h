@@ -403,10 +403,10 @@ inline bool GetConnectStateFromStringName(const std::string StrConnectState, Con
 
 inline EventType ToEventType(const std::string& str_type)
 {
-	EventType type;
+	EventType type = EventType::BeforeRange;
 	if (to_lower(str_type) == "binary")
 		type = EventType::Binary;
-	if (to_lower(str_type) == "analog")
+	else if (to_lower(str_type) == "analog")
 		type = EventType::Analog;
 	return type;
 }
@@ -416,9 +416,9 @@ inline FeedbackType ToFeedbackType(const std::string& str_type)
 	FeedbackType type = FeedbackType::UNDEFINED;
 	if (to_lower(str_type) == "analog")
 		type = FeedbackType::ANALOG;
-	if (to_lower(str_type) == "binary")
+	else if (to_lower(str_type) == "binary")
 		type = FeedbackType::BINARY;
-	if (to_lower(str_type) == "bcd")
+	else if (to_lower(str_type) == "bcd")
 		type = FeedbackType::BCD;
 	return type;
 }
@@ -428,7 +428,7 @@ inline PositionAction ToPositionAction(const std::string& str_action)
 	PositionAction action = PositionAction::UNDEFINED;
 	if (to_lower(str_action) == "raise")
 		action = PositionAction::RAISE;
-	if (to_lower(str_action) == "lower")
+	else if (to_lower(str_action) == "lower")
 		action = PositionAction::LOWER;
 	return action;
 }
